@@ -6,6 +6,7 @@
 
 #include "../functional/cxx_universal.h"
 #include "../functional/cxx_polyfill.h"
+#include "../functional/cxx_functional_polyfill.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -80,6 +81,18 @@ namespace sqlite_orm {
         template<class Tpl, class L>
         void iterate_tuple(L&& lambda) {
             iterate_tuple<Tpl>(std::make_index_sequence<std::tuple_size<Tpl>::value>{}, std::forward<L>(lambda));
+        }
+
+        template<class R, class Tpl, size_t... Idx, class Proj>
+        R create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, Proj&& projection) {
+            return R{polyfill::invoke(std::forward<Proj>(projection), std::get<Idx>(std::forward<Tpl>(tpl)))...};
+        }
+
+        template<class R, class Tpl, class Proj>
+        R create_from_tuple(Tpl&& tpl, Proj&& projection) {
+            return create_from_tuple(std::make_index_sequence<std::tuple_size<Tpl>::value>{},
+                                     std::forward<Tpl>(tpl),
+                                     std::forward<Proj>(projection)...);
         }
     }
 }

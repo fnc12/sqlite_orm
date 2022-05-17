@@ -4,6 +4,11 @@
  */
 #pragma once
 
+#include <memory>  //  std::make_unique
+
+#include "../functional/static_magic.h"
+#include "../tuple_helper/tuple_filter.h"
+#include "../tuple_helper/tuple_traits.h"
 #include "../default_value_extractor.h"
 #include "../column.h"
 
@@ -12,13 +17,17 @@ namespace sqlite_orm {
 
         template<class O, class T, class G, class S, class... Op>
         std::unique_ptr<std::string> column_t<O, T, G, S, Op...>::default_value() const {
-            std::unique_ptr<std::string> res;
-            iterate_tuple(this->constraints, [&res](auto& v) {
-                if(auto dft = default_value_extractor{}(v)) {
-                    res = move(dft);
-                }
-            });
-            return res;
+            using default_op_index_sequence =
+                filter_tuple_sequence_t<constraints_type, check_if_is_same_template<default_t>::template fn>;
+
+            std::unique_ptr<std::string> value;
+            call_if_constexpr<default_op_index_sequence::size()>(
+                [&value](auto& constraints) {
+                    constexpr size_t opIndex = first_index_sequence_value(default_op_index_sequence{});
+                    value = std::make_unique<std::string>(serialize_default_value(get<opIndex>(constraints)));
+                },
+                this->constraints);
+            return value;
         }
 
     }

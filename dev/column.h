@@ -73,7 +73,7 @@ namespace sqlite_orm {
             /**
              *  Simplified interface for `NOT NULL` constraint
              */
-            constexpr bool not_null() const {
+            constexpr bool is_not_null() const {
                 return !type_is_nullable<field_type>::value;
             }
 

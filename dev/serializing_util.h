@@ -114,6 +114,7 @@ namespace sqlite_orm {
             values_placeholders,
             table_columns,
             non_generated_columns,
+            column_field_values_excluding,
             mapped_columns_expressions,
         };
 
@@ -139,6 +140,7 @@ namespace sqlite_orm {
         constexpr streaming<stream_as::values_placeholders> streaming_values_placeholders{};
         constexpr streaming<stream_as::table_columns> streaming_table_column_names{};
         constexpr streaming<stream_as::non_generated_columns> streaming_non_generated_column_names{};
+        constexpr streaming<stream_as::column_field_values_excluding> streaming_column_field_values_excluding{};
         constexpr streaming<stream_as::mapped_columns_expressions> streaming_mapped_columns_expressions{};
 
         // serialize and stream a tuple of condition expressions;
@@ -162,10 +164,10 @@ namespace sqlite_orm {
             const auto& actions = get<1>(tpl);
             auto& context = get<2>(tpl);
 
-            bool first = true;
-            iterate_tuple(actions, [&ss, &context, &first](auto& a) {
+            iterate_tuple(actions, [&ss, &context, first = true](auto& action) mutable {
                 constexpr std::array<const char*, 2> sep = {" ", ""};
-                ss << sep[std::exchange(first, false)] << serialize(a, context);
+                ss << sep[std::exchange(first, false)]  ///
+                   << serialize(action, context);
             });
             return ss;
         }
@@ -178,10 +180,10 @@ namespace sqlite_orm {
             const auto& args = get<1>(tpl);
             auto& context = get<2>(tpl);
 
-            bool first = true;
-            iterate_tuple(args, [&ss, &context, &first](auto& arg) {
+            iterate_tuple(args, [&ss, &context, first = true](auto& arg) mutable {
                 constexpr std::array<const char*, 2> sep = {", ", ""};
-                ss << sep[std::exchange(first, false)] << serialize(arg, context);
+                ss << sep[std::exchange(first, false)]  ///
+                   << serialize(arg, context);
             });
             return ss;
         }
@@ -195,8 +197,7 @@ namespace sqlite_orm {
             const auto& args = get<1>(tpl);
             auto& context = get<2>(tpl);
 
-            bool first = true;
-            iterate_tuple(args, [&ss, &context, &first](auto& arg) {
+            iterate_tuple(args, [&ss, &context, first = true](auto& arg) mutable {
                 constexpr std::array<const char*, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)] << serialize_order_by(arg, context);
             });
@@ -213,7 +214,8 @@ namespace sqlite_orm {
 
             constexpr std::array<const char*, 2> sep = {", ", ""};
             for(size_t i = 0, first = true; i < args.size(); ++i) {
-                ss << sep[std::exchange(first, false)] << serialize(args[i], context);
+                ss << sep[std::exchange(first, false)]  ///
+                   << serialize(args[i], context);
             }
             return ss;
         }
@@ -226,7 +228,8 @@ namespace sqlite_orm {
 
             constexpr std::array<const char*, 2> sep = {", ", ""};
             for(size_t i = 0, first = true; i < strings.size(); ++i) {
-                ss << sep[std::exchange(first, false)] << strings[i];
+                ss << sep[std::exchange(first, false)]  ///
+                   << strings[i];
             }
             return ss;
         }
@@ -298,12 +301,12 @@ namespace sqlite_orm {
             const auto& table = get<1>(tpl);
             const bool& qualified = get<2>(tpl);
 
-            bool first = true;
-            table.for_each_column([&ss, &tableName = qualified ? table.name : std::string{}, &first](auto& column) {
-                constexpr std::array<const char*, 2> sep = {", ", ""};
-                ss << sep[std::exchange(first, false)];
-                stream_identifier(ss, tableName, column.name, std::string{});
-            });
+            table.for_each_column(
+                [&ss, &tableName = qualified ? table.name : std::string{}, first = true](auto& column) mutable {
+                    constexpr std::array<const char*, 2> sep = {", ", ""};
+                    ss << sep[std::exchange(first, false)];
+                    stream_identifier(ss, tableName, column.name, std::string{});
+                });
             return ss;
         }
 
@@ -314,12 +317,37 @@ namespace sqlite_orm {
                                  std::tuple<const streaming<stream_as::non_generated_columns>&, Table> tpl) {
             const auto& table = get<1>(tpl);
 
-            bool first = true;
-            table.template for_each_column_excluding<is_generated_always>([&ss, &first](auto& column) {
+            table.template for_each_column_excluding<is_generated_always>([&ss, first = true](auto& column) mutable {
                 constexpr std::array<const char*, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)];
                 stream_identifier(ss, column.name);
             });
+            return ss;
+        }
+
+        // stream a table's non-generated column identifiers, unqualified;
+        // comma-separated
+        template<class PredFnCls, class L, class Ctx, class Obj>
+        std::ostream&
+        operator<<(std::ostream& ss,
+                   std::tuple<const streaming<stream_as::column_field_values_excluding>&, PredFnCls, L, Ctx, Obj> tpl) {
+            using check_if_excluded = polyfill::remove_cvref_t<std::tuple_element_t<1, decltype(tpl)>>;
+            auto& excluded = get<2>(tpl);
+            auto& context = get<3>(tpl);
+            auto& object = get<4>(tpl);
+            using object_type = polyfill::remove_cvref_t<decltype(object)>;
+            auto& tImpl = pick_impl<object_type>(context.impl);
+
+            tImpl.table.template for_each_column_excluding<check_if_excluded>(
+                [&ss, &excluded, &context, &object, first = true](auto& column) mutable {
+                    if(excluded(column)) {
+                        return;
+                    }
+
+                    constexpr std::array<const char*, 2> sep = {", ", ""};
+                    ss << sep[std::exchange(first, false)]  ///
+                       << serialize(polyfill::invoke(column.member_pointer, object), context);
+                });
             return ss;
         }
 
@@ -331,8 +359,7 @@ namespace sqlite_orm {
             const auto& columns = get<1>(tpl);
             auto& context = get<2>(tpl);
 
-            bool first = true;
-            iterate_tuple(columns, [&ss, &context, &first](auto& column) {
+            iterate_tuple(columns, [&ss, &context, first = true](auto& column) mutable {
                 const std::string* columnName = find_column_name(context.impl, column);
                 if(!columnName) {
                     throw std::system_error{orm_error_code::column_not_found};

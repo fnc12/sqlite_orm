@@ -36,6 +36,12 @@ namespace sqlite_orm {
             decltype(auto) invoke(Callable&& obj, std::reference_wrapper<Arg1> arg1, Args&&... args) {
                 return invoke(std::forward<Callable>(obj), arg1.get(), std::forward<Args>(args)...);
             }
+
+            // functor
+            template<class Callable, class... Args>
+            decltype(auto) invoke(Callable&& obj, Args&&... args) {
+                return std::forward<Callable>(obj)(std::forward<Args>(args)...);
+            }
 #endif
         }
     }

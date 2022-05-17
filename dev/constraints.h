@@ -55,7 +55,7 @@ namespace sqlite_orm {
         /**
          *  PRIMARY KEY constraint class.
          *  Cs is parameter pack which contains columns (member pointers and/or function pointers). Can be empty when
-         *  used withen `make_column` function.
+         *  used within `make_column` function.
          */
         template<class... Cs>
         struct primary_key_t : primary_key_base {
@@ -465,12 +465,6 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class T>
-        using is_autoincrement = std::is_same<T, autoincrement_t>;
-
-        template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_autoincrement_v = is_autoincrement<T>::value;
-
-        template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_foreign_key_v = polyfill::is_specialization_of_v<T, foreign_key_t>;
 
         template<class T>
@@ -488,7 +482,7 @@ namespace sqlite_orm {
         template<typename T>
         struct is_primary_key_insertable
             : std::disjunction<mpl::invoke_t<mpl::disjunction<check_if_tuple_has_template<default_t>,
-                                                              check_if_tuple_has<is_autoincrement>>,
+                                                              check_if_tuple_has_type<autoincrement_t>>,
                                              constraints_type_t<T>>,
                                std::is_base_of<integer_printer, type_printer<field_type_t<T>>>> {
 

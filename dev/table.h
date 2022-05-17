@@ -84,10 +84,6 @@ namespace sqlite_orm {
                 using F = member_field_type_t<M>;
                 const F* res = nullptr;
                 this->for_each_column_with_field_type<F>([&res, &memberPointer, &object](auto& column) {
-                    if(res) {
-                        return;
-                    }
-
                     if(compare_any(column.setter, memberPointer)) {
                         res = &polyfill::invoke(column.member_pointer, object);
                     }
@@ -104,10 +100,8 @@ namespace sqlite_orm {
                         if(column.name != name) {
                             return;
                         }
-
                         using generated_op_index_sequence =
-                            filter_tuple_sequence_t<polyfill::remove_cvref_t<decltype(column.constraints)>,
-                                                    is_generated_always>;
+                            filter_tuple_sequence_t<decltype(column.constraints), is_generated_always>;
                         constexpr size_t opIndex = first_index_sequence_value(generated_op_index_sequence{});
                         result = &get<opIndex>(column.constraints).storage;
                     });
@@ -117,12 +111,17 @@ namespace sqlite_orm {
 
             template<class C>
             bool exists_in_composite_primary_key(const C& column) const {
-                auto res = false;
+                bool res = false;
                 this->for_each_primary_key([&column, &res](auto& primaryKey) {
-                    iterate_tuple(primaryKey.columns, [&res, &column](auto& memberPointer) {
-                        if(!res) {
-                            res = compare_any(memberPointer, column.member_pointer) ||
-                                  compare_any(memberPointer, column.setter);
+                    using colrefs_tuple = decltype(primaryKey.columns);
+                    using check_if_same_field_type = mpl::bind_front_fn<std::is_same, typename C::field_type>;
+                    using same_type_index_sequence = filter_tuple_sequence_t<colrefs_tuple,
+                                                                             check_if_same_field_type::template fn,
+                                                                             member_field_type_t>;
+                    iterate_tuple(primaryKey.columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
+                        if(compare_any(memberPointer, column.member_pointer) ||
+                           compare_any(memberPointer, column.setter)) {
+                            res = true;
                         }
                     });
                 });
@@ -147,14 +146,18 @@ namespace sqlite_orm {
             }
 
             std::vector<std::string> primary_key_column_names() const {
-                std::vector<std::string> res;
-                this->for_each_column_with<is_primary_key>([&res](auto& column) {
-                    res.push_back(column.name);
-                });
-                if(res.empty()) {
-                    res = this->composite_key_columns_names();
+                using col_index_sequence = filter_tuple_sequence_t<elements_type, is_column>;
+                using pkcol_index_sequence = filter_tuple_sequence_t<elements_type,
+                                                                     check_if_tuple_has<is_primary_key>::template fn,
+                                                                     column_constraints_type_t,
+                                                                     col_index_sequence>;
+                if(pkcol_index_sequence::size() > 0) {
+                    return create_from_tuple<std::vector<std::string>>(this->elements,
+                                                                       pkcol_index_sequence{},
+                                                                       &basic_column::name);
+                } else {
+                    return this->composite_key_columns_names();
                 }
-                return res;
             }
 
             template<class L>
@@ -174,9 +177,10 @@ namespace sqlite_orm {
 
             template<class... Args>
             std::vector<std::string> composite_key_columns_names(const primary_key_t<Args...>& primaryKey) const {
+                using colrefs_tuple = decltype(primaryKey.columns);
+
                 std::vector<std::string> res;
-                using pk_columns_tuple = decltype(primaryKey.columns);
-                res.reserve(std::tuple_size<pk_columns_tuple>::value);
+                res.reserve(std::tuple_size<colrefs_tuple>::value);
                 iterate_tuple(primaryKey.columns, [this, &res](auto& memberPointer) {
                     if(auto* columnName = this->find_column_name(memberPointer)) {
                         res.push_back(*columnName);

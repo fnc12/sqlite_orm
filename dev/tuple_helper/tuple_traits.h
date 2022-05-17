@@ -9,6 +9,10 @@
 namespace sqlite_orm {
     namespace internal {
 
+        template<template<class...> class Primary>
+        using check_if_is_same_template =
+            mpl::pass_extracted_fn_to<mpl::bind_front_fn<std::is_same, mpl::quote_fn<Primary>>>;
+
         /*
          *  Higher-order trait metafunction that checks whether a tuple contains a type with given trait.
          *  
@@ -50,8 +54,7 @@ namespace sqlite_orm {
          *     then compares the resulting template template parameters.
          */
         template<template<class...> class Primary>
-        using check_if_tuple_has_template = mpl::bind_front_higherorder_fn<
-            tuple_has,
-            mpl::pass_extracted_fn_to<mpl::bind_front_fn<std::is_same, mpl::quote_fn<Primary>>>::template fn>;
+        using check_if_tuple_has_template =
+            mpl::bind_front_higherorder_fn<tuple_has, check_if_is_same_template<Primary>::template fn>;
     }
 }

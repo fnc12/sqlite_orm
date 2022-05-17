@@ -18,19 +18,19 @@ namespace sqlite_orm {
         std::vector<table_xinfo> table_t<T, WithoutRowId, Cs...>::get_table_info() const {
             std::vector<table_xinfo> res;
             res.reserve(size_t(this->elements_count));
-            this->for_each_column([&res](auto& col) {
-                using field_type = field_type_t<std::decay_t<decltype(col)>>;
+            this->for_each_column([&res](auto& column) {
+                using field_type = field_type_t<std::decay_t<decltype(column)>>;
                 std::string dft;
-                if(auto d = col.default_value()) {
+                if(auto d = column.default_value()) {
                     dft = move(*d);
                 }
                 res.emplace_back(-1,
-                                 col.name,
+                                 column.name,
                                  type_printer<field_type>().print(),
-                                 col.not_null(),
+                                 column.is_not_null(),
                                  dft,
-                                 col.template is<is_primary_key>(),
-                                 col.is_generated());
+                                 column.template is<is_primary_key>(),
+                                 column.is_generated());
             });
             auto compositeKeyColumnNames = this->composite_key_columns_names();
             for(size_t i = 0; i < compositeKeyColumnNames.size(); ++i) {
