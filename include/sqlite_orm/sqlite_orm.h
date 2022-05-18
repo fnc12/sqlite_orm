@@ -19321,11 +19321,13 @@ namespace sqlite_orm {
 
             std::unique_ptr<std::string> value;
             call_if_constexpr<default_op_index_sequence::size()>(
-                [&value](auto& constraints) {
+                [&value](auto& constraints, auto op_index_sequence) {
+                    using default_op_index_sequence = decltype(op_index_sequence);
                     constexpr size_t opIndex = first_index_sequence_value(default_op_index_sequence{});
                     value = std::make_unique<std::string>(serialize_default_value(get<opIndex>(constraints)));
                 },
-                this->constraints);
+                this->constraints,
+                default_op_index_sequence{});
             return value;
         }
 
