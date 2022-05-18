@@ -119,7 +119,7 @@ namespace sqlite_orm {
         struct is_column_with_insertable_primary_key<
             C,
             std::enable_if_t<tuple_has<is_primary_key, typename C::constraints_type>::value>>
-            : polyfill::bool_constant<is_primary_key_insertable<C>::value> {};
+            : is_primary_key_insertable<C> {};
 
         /**
          *  Column with noninsertable primary key traits. Common case.
@@ -134,7 +134,7 @@ namespace sqlite_orm {
         struct is_column_with_noninsertable_primary_key<
             C,
             std::enable_if_t<tuple_has<is_primary_key, typename C::constraints_type>::value>>
-            : polyfill::bool_constant<!is_primary_key_insertable<C>::value> {};
+            : polyfill::negation<is_primary_key_insertable<C>> {};
 
         template<class T>
         struct column_field_type {

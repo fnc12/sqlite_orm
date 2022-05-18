@@ -372,6 +372,22 @@ namespace sqlite_orm {
             }
         };
 
+    }
+
+    namespace internal {
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_foreign_key_v = polyfill::is_specialization_of_v<T, foreign_key_t>;
+
+        template<class T>
+        using is_foreign_key = polyfill::bool_constant<is_foreign_key_v<T>>;
+
+        template<class T>
+        using is_primary_key = polyfill::is_specialization_of<T, primary_key_t>;
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_primary_key_v = is_primary_key<T>::value;
+
         template<class T>
         using is_generated_always = polyfill::is_specialization_of<T, generated_always_t>;
 
@@ -379,19 +395,44 @@ namespace sqlite_orm {
         SQLITE_ORM_INLINE_VAR constexpr bool is_generated_always_v = is_generated_always<T>::value;
 
         template<class T>
-        using is_constraint = polyfill::disjunction<std::is_same<T, autoincrement_t>,
-                                                    polyfill::is_specialization_of<T, primary_key_t>,
-                                                    polyfill::is_specialization_of<T, unique_t>,
-                                                    polyfill::is_specialization_of<T, default_t>,
-                                                    polyfill::is_specialization_of<T, foreign_key_t>,
-                                                    std::is_same<T, collate_constraint_t>,
-                                                    polyfill::is_specialization_of<T, check_t>,
+        using is_autoincrement = std::is_same<T, autoincrement_t>;
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_autoincrement_v = is_autoincrement<T>::value;
+
+        /**
+         * PRIMARY KEY INSERTABLE traits.
+         */
+        template<typename T>
+        struct is_primary_key_insertable
+            : std::disjunction<mpl::invoke_t<mpl::disjunction<check_if_tuple_has<is_autoincrement>,
+                                                              check_if_tuple_has_template<default_t>>,
+                                             constraints_type_t<T>>,
+                               std::is_base_of<integer_printer, type_printer<field_type_t<T>>>> {
+
+            static_assert(tuple_has<is_primary_key, constraints_type_t<T>>::value, "an unexpected type was passed");
+        };
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_primary_key_insertable_v = is_primary_key_insertable<T>::value;
+
+        template<class T>
+        using is_constraint =
+            mpl::instantiate<mpl::disjunction<check_if<is_autoincrement>,
+                                              check_if<is_primary_key>,
+                                              check_if<is_foreign_key>,
+                                              check_if_is_template<unique_t>,
+                                              check_if_is_template<default_t>,
+                                              check_if_is_template<check_t>,
+                                              check_if_is_type<collate_constraint_t>,
 #if SQLITE_VERSION_NUMBER >= 3031000
-                                                    polyfill::is_specialization_of<T, generated_always_t>,
+                                              check_if<is_generated_always>,
 #endif
-                                                    // dummy tail because of SQLITE_VERSION_NUMBER checks above
-                                                    std::false_type>;
+                                              // dummy tail because of SQLITE_VERSION_NUMBER checks above
+                                              mpl::always<std::false_type>>,
+                             T>;
     }
+
 #if SQLITE_VERSION_NUMBER >= 3031000
     template<class T>
     internal::generated_always_t<T> generated_always_as(T expression) {
@@ -461,33 +502,4 @@ namespace sqlite_orm {
     internal::check_t<T> check(T t) {
         return {std::move(t)};
     }
-
-    namespace internal {
-
-        template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_foreign_key_v = polyfill::is_specialization_of_v<T, foreign_key_t>;
-
-        template<class T>
-        using is_foreign_key = polyfill::bool_constant<is_foreign_key_v<T>>;
-
-        template<class T>
-        using is_primary_key = polyfill::is_specialization_of<T, primary_key_t>;
-
-        template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_primary_key_v = is_primary_key<T>::value;
-
-        /**
-         * PRIMARY KEY INSERTABLE traits.
-         */
-        template<typename T>
-        struct is_primary_key_insertable
-            : std::disjunction<mpl::invoke_t<mpl::disjunction<check_if_tuple_has_template<default_t>,
-                                                              check_if_tuple_has_type<autoincrement_t>>,
-                                             constraints_type_t<T>>,
-                               std::is_base_of<integer_printer, type_printer<field_type_t<T>>>> {
-
-            static_assert(tuple_has<is_primary_key, constraints_type_t<T>>::value, "an unexpected type was passed");
-        };
-    }
-
 }

@@ -630,8 +630,7 @@ namespace sqlite_orm {
                 auto& tImpl = this->get_impl<O>();
                 std::stringstream ss;
                 ss << "{ ";
-                bool first = true;
-                tImpl.table.for_each_column([&ss, &first, &object](auto& column) {
+                tImpl.table.for_each_column([&ss, &object, first = true](auto& column) mutable {
                     using column_type = std::decay_t<decltype(column)>;
                     using field_type = typename column_type::field_type;
                     constexpr std::array<const char*, 2> sep = {", ", ""};
@@ -1230,9 +1229,9 @@ namespace sqlite_orm {
 
                 auto processObject = [&tImpl = this->get_impl<object_type>(),
                                       bind_value = field_value_binder{stmt}](auto& object) mutable {
-                    using table_type = std::decay_t<decltype(tImpl.table)>;
+                    using is_without_rowid = typename decltype(tImpl.table)::is_without_rowid;
                     tImpl.table.template for_each_column_excluding<
-                        mpl::conjunction<mpl::not_<mpl::always<typename table_type::is_without_rowid>>,
+                        mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                          mpl::disjunction_fn<is_generated_always, is_primary_key>>>(
                         [&tImpl, &bind_value, &object](auto& column) {
                             if(!tImpl.table.exists_in_composite_primary_key(column)) {
@@ -1463,20 +1462,15 @@ namespace sqlite_orm {
 #endif
                             std::stringstream ss;
                             ss << "SELECT COUNT(*)"
-                               << " FROM " << streaming_identifier(storageImpl.table.name);
-                            ss << " WHERE ";
-                            auto columnIndex = 0;
-                            iterate_tuple(foreignKey.columns, [&ss, &columnIndex, &storageImpl](auto& column) {
+                               << " FROM " << streaming_identifier(storageImpl.table.name) << " WHERE ";
+                            iterate_tuple(foreignKey.columns, [&ss, &storageImpl, first = true](auto& column) mutable {
                                 auto* columnName = storageImpl.table.find_column_name(column);
                                 if(!columnName) {
                                     throw std::system_error{orm_error_code::column_not_found};
                                 }
 
-                                if(columnIndex > 0) {
-                                    ss << " AND ";
-                                }
-                                ss << streaming_identifier(*columnName) << " = ?";
-                                ++columnIndex;
+                                constexpr std::array<const char*, 2> sep = {" AND ", ""};
+                                ss << sep[std::exchange(first, false)] << streaming_identifier(*columnName) << " = ?";
                             });
                             ss.flush();
                             auto query = ss.str();

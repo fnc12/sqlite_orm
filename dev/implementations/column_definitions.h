@@ -18,7 +18,7 @@ namespace sqlite_orm {
         template<class O, class T, class G, class S, class... Op>
         std::unique_ptr<std::string> column_t<O, T, G, S, Op...>::default_value() const {
             using default_op_index_sequence =
-                filter_tuple_sequence_t<constraints_type, check_if_is_same_template<default_t>::template fn>;
+                filter_tuple_sequence_t<constraints_type, check_if_is_template<default_t>::template fn>;
 
             std::unique_ptr<std::string> value;
             call_if_constexpr<default_op_index_sequence::size()>(

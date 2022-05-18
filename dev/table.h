@@ -177,18 +177,15 @@ namespace sqlite_orm {
 
             template<class... Args>
             std::vector<std::string> composite_key_columns_names(const primary_key_t<Args...>& primaryKey) const {
-                using colrefs_tuple = decltype(primaryKey.columns);
-
-                std::vector<std::string> res;
-                res.reserve(std::tuple_size<colrefs_tuple>::value);
-                iterate_tuple(primaryKey.columns, [this, &res](auto& memberPointer) {
-                    if(auto* columnName = this->find_column_name(memberPointer)) {
-                        res.push_back(*columnName);
-                    } else {
-                        res.emplace_back();
-                    }
-                });
-                return res;
+                return create_from_tuple<std::vector<std::string>>(
+                    primaryKey.columns,
+                    [this, empty = std::string{}](auto& memberPointer) -> const std::string& {
+                        if(const std::string* columnName = this->find_column_name(memberPointer)) {
+                            return *columnName;
+                        } else {
+                            return empty;
+                        }
+                    });
             }
 
             /**
@@ -253,27 +250,27 @@ namespace sqlite_orm {
             }
 
             /**
-             *  Call passed lambda with columns filtered on `Predicate(Transform(column_t))`.
+             *  Call passed lambda with columns filtered on `PredicateFn(TransformFn(column_t))`.
              *  @param lambda Lambda to be called for each column. Must have signature like this [] (auto col) -> void {}
              */
-            template<template<class...> class Transform, template<class...> class PredicateFn, class L>
+            template<template<class...> class TransformFn, template<class...> class PredicateFn, class L>
             void for_each_column(L&& lambda) const {
                 using col_index_sequence = filter_tuple_sequence_t<elements_type, is_column>;
                 using filtered_index_sequence =
-                    filter_tuple_sequence_t<elements_type, PredicateFn, Transform, col_index_sequence>;
+                    filter_tuple_sequence_t<elements_type, PredicateFn, TransformFn, col_index_sequence>;
                 iterate_tuple(this->elements, filtered_index_sequence{}, lambda);
             }
 
             /**
-             *  Call passed lambda with columns filtered on `Predicate(Transform(column_t))`.
+             *  Call passed lambda with columns filtered on `PredicateFn(TransformFn(column_t))`.
              *  @param lambda Lambda to be called for each column. Must have signature like this [] (auto col) -> void {}
              */
-            template<template<class...> class Transform,
+            template<template<class...> class TransformFn,
                      class PredicateFnCls,
                      class L,
                      satisfies<mpl::is_metafunction_class, PredicateFnCls> = true>
             void for_each_column(L&& lambda) const {
-                return this->for_each_column<Transform, PredicateFnCls::template fn>(lambda);
+                return this->for_each_column<TransformFn, PredicateFnCls::template fn>(lambda);
             }
 
             /**
@@ -282,8 +279,7 @@ namespace sqlite_orm {
              */
             template<class F, class L>
             void for_each_column_with_field_type(L&& lambda) const {
-                using check_if_same_field_type = mpl::bind_front_fn<std::is_same, F>;
-                this->for_each_column<column_field_type_t, check_if_same_field_type>(lambda);
+                this->for_each_column<column_field_type_t, check_if_is_type<F>>(lambda);
             }
 
             /**
@@ -322,12 +318,14 @@ namespace sqlite_orm {
      *  cause table class is templated and its constructing too (just like std::make_unique or std::make_pair).
      */
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
-    internal::table_t<T, false, Cs...> make_table(const std::string& name, Cs... args) {
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
+    internal::table_t<T, false, Cs...> make_table(std::string name, Cs... args) {
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
+            return {move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
     }
 
     template<class T, class... Cs>
-    internal::table_t<T, false, Cs...> make_table(const std::string& name, Cs... args) {
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
+    internal::table_t<T, false, Cs...> make_table(std::string name, Cs... args) {
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
+            return {move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
     }
 }

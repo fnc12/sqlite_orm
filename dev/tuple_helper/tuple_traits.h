@@ -8,11 +8,6 @@
 
 namespace sqlite_orm {
     namespace internal {
-
-        template<template<class...> class Primary>
-        using check_if_is_same_template =
-            mpl::pass_extracted_fn_to<mpl::bind_front_fn<std::is_same, mpl::quote_fn<Primary>>>;
-
         /*
          *  Higher-order trait metafunction that checks whether a tuple contains a type with given trait.
          *  
@@ -23,13 +18,13 @@ namespace sqlite_orm {
         struct tuple_has<TraitFn, std::tuple<Types...>> : polyfill::disjunction<TraitFn<Types>...> {};
 
         /*
-         *  Metafunction class that checks whether a tuple contains a type with given trait.
+         *  Trait metafunction class that checks whether a tuple contains a type with given trait.
          */
         template<template<class...> class TraitFn>
         using check_if_tuple_has = mpl::bind_front_higherorder_fn<tuple_has, TraitFn>;
 
         /*
-         *  Metafunction class that checks whether a tuple doesn't contain a type with given trait.
+         *  Trait metafunction class that checks whether a tuple doesn't contain a type with given trait.
          */
         template<template<class...> class TraitFn>
         using check_if_tuple_has_not = mpl::not_<check_if_tuple_has<TraitFn>>;
@@ -38,8 +33,7 @@ namespace sqlite_orm {
          *  Metafunction class that checks whether a tuple contains given type.
          */
         template<class T>
-        using check_if_tuple_has_type =
-            mpl::bind_front_higherorder_fn<tuple_has, mpl::bind_front_fn<std::is_same, T>::template fn>;
+        using check_if_tuple_has_type = mpl::bind_front_higherorder_fn<tuple_has, check_if_is_type<T>::template fn>;
 
         /*
          *  Metafunction class that checks whether a tuple contains a given template.
@@ -55,6 +49,6 @@ namespace sqlite_orm {
          */
         template<template<class...> class Primary>
         using check_if_tuple_has_template =
-            mpl::bind_front_higherorder_fn<tuple_has, check_if_is_same_template<Primary>::template fn>;
+            mpl::bind_front_higherorder_fn<tuple_has, check_if_is_template<Primary>::template fn>;
     }
 }

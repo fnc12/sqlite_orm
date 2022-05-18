@@ -114,7 +114,7 @@ namespace sqlite_orm {
             values_placeholders,
             table_columns,
             non_generated_columns,
-            column_field_values_excluding,
+            field_values_excluding,
             mapped_columns_expressions,
         };
 
@@ -140,7 +140,7 @@ namespace sqlite_orm {
         constexpr streaming<stream_as::values_placeholders> streaming_values_placeholders{};
         constexpr streaming<stream_as::table_columns> streaming_table_column_names{};
         constexpr streaming<stream_as::non_generated_columns> streaming_non_generated_column_names{};
-        constexpr streaming<stream_as::column_field_values_excluding> streaming_column_field_values_excluding{};
+        constexpr streaming<stream_as::field_values_excluding> streaming_field_values_excluding{};
         constexpr streaming<stream_as::mapped_columns_expressions> streaming_mapped_columns_expressions{};
 
         // serialize and stream a tuple of condition expressions;
@@ -330,7 +330,7 @@ namespace sqlite_orm {
         template<class PredFnCls, class L, class Ctx, class Obj>
         std::ostream&
         operator<<(std::ostream& ss,
-                   std::tuple<const streaming<stream_as::column_field_values_excluding>&, PredFnCls, L, Ctx, Obj> tpl) {
+                   std::tuple<const streaming<stream_as::field_values_excluding>&, PredFnCls, L, Ctx, Obj> tpl) {
             using check_if_excluded = polyfill::remove_cvref_t<std::tuple_element_t<1, decltype(tpl)>>;
             auto& excluded = get<2>(tpl);
             auto& context = get<3>(tpl);

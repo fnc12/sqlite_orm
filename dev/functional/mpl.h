@@ -61,6 +61,12 @@ namespace sqlite_orm {
             using invoke_t = typename FnCls::template fn<Args...>::type;
 
             /*
+             *  Instantiate metafunction class' nested metafunction.
+             */
+            template<class FnCls, class... Args>
+            using instantiate = typename FnCls::template fn<Args...>;
+
+            /*
              *  Wrap given type such that `typename T::type` is valid.
              */
             template<class T, class SFINAE = void>
@@ -234,4 +240,27 @@ namespace sqlite_orm {
     }
 
     namespace mpl = internal::mpl;
+
+    // convenience metafunction classes
+    namespace internal {
+        /*
+         *  Trait metafunction class that checks if a type has the specified trait.
+         */
+        template<template<class...> class TraitFn>
+        using check_if = mpl::quote_fn<TraitFn>;
+
+        /*
+         *  Trait metafunction class that checks if a type is the same as the specified type.
+         */
+        template<class Type>
+        using check_if_is_type = mpl::bind_front_fn<std::is_same, Type>;
+
+        /*
+         *  Trait metafunction class that checks if a type's template matches the specified template
+         *  (similar to `is_specialization_of`).
+         */
+        template<template<class...> class Template>
+        using check_if_is_template =
+            mpl::pass_extracted_fn_to<mpl::bind_front_fn<std::is_same, mpl::quote_fn<Template>>>;
+    }
 }

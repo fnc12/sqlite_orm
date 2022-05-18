@@ -91,12 +91,7 @@ namespace sqlite_orm {
                 auto newContext = context;
                 newContext.skip_table_name = false;
                 iterate_tuple(cols.columns, [&columnNames, &newContext](auto& m) {
-                    auto columnName = serialize(m, newContext);
-                    if(!columnName.empty()) {
-                        columnNames.push_back(move(columnName));
-                    } else {
-                        throw std::system_error{orm_error_code::column_not_found};
-                    }
+                    columnNames.push_back(serialize(m, newContext));
                 });
                 return columnNames;
             }

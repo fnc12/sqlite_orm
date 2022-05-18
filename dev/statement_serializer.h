@@ -928,7 +928,7 @@ namespace sqlite_orm {
                             constraintsStrings.push_back(serialize(v, context));
                             if(is_primary_key_v<constraint_type>) {
                                 primaryKeyIndex = tupleIndex;
-                            } else if(std::is_same<autoincrement_t, constraint_type>::value) {
+                            } else if(is_autoincrement_v<constraint_type>) {
                                 autoincrementIndex = tupleIndex;
                             }
                             ++tupleIndex;
@@ -976,7 +976,7 @@ namespace sqlite_orm {
                 ss << "REPLACE INTO " << streaming_identifier(tImpl.table.name)  ///
                    << " (" << streaming_non_generated_column_names(tImpl.table) << ")"  ///
                    << " VALUES ("
-                   << streaming_column_field_values_excluding(
+                   << streaming_field_values_excluding(
                           mpl::quote_fn<is_generated_always>{},
                           [](auto& /*column*/) {
                               return false;  //  don't exclude
@@ -1067,14 +1067,13 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
                 ss << "SET ";
-                size_t assignIndex = 0;
                 auto leftContext = context;
                 leftContext.skip_table_name = true;
                 iterate_tuple(statement.assigns, [&ss, &context, &leftContext, first = true](auto& value) mutable {
                     constexpr std::array<const char*, 2> sep = {", ", ""};
                     ss << sep[std::exchange(first, false)]  ///
-                       << serialize(value.lhs, leftContext)  ///
-                       << ' ' << value.serialize() << ' ' << serialize(value.rhs, context);
+                       << serialize(value.lhs, leftContext) << ' ' << value.serialize() << ' '
+                       << serialize(value.rhs, context);
                 });
                 return ss.str();
             }
@@ -1148,7 +1147,7 @@ namespace sqlite_orm {
                 ss << " VALUES";
                 if(columnNamesCount) {
                     ss << " ("
-                       << streaming_column_field_values_excluding(
+                       << streaming_field_values_excluding(
                               mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                                mpl::disjunction_fn<is_primary_key, is_generated_always>>{},
                               [&tImpl](auto& column) {
@@ -1243,16 +1242,14 @@ namespace sqlite_orm {
                     idsStrings.push_back(serialize(idValue, context));
                 });
                 tImpl.table.for_each_primary_key_column(
-                    [&ss, &tImpl, &idsStrings, index = 0](auto& memberPointer) mutable {
+                    [&tImpl, &ss, &idsStrings, index = 0](auto& memberPointer) mutable {
                         auto* columnName = tImpl.table.find_column_name(memberPointer);
                         if(!columnName) {
                             throw std::system_error{orm_error_code::column_not_found};
                         }
 
-                        if(index > 0) {
-                            ss << " AND ";
-                        }
-                        ss << streaming_identifier(*columnName) << " = " << idsStrings[index];
+                        constexpr std::array<const char*, 2> sep = {" AND ", ""};
+                        ss << sep[index == 0] << streaming_identifier(*columnName) << " = " << idsStrings[index];
                         ++index;
                     });
                 return ss.str();
