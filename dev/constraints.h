@@ -405,10 +405,10 @@ namespace sqlite_orm {
          */
         template<typename T>
         struct is_primary_key_insertable
-            : std::disjunction<mpl::invoke_t<mpl::disjunction<check_if_tuple_has<is_autoincrement>,
-                                                              check_if_tuple_has_template<default_t>>,
-                                             constraints_type_t<T>>,
-                               std::is_base_of<integer_printer, type_printer<field_type_t<T>>>> {
+            : polyfill::disjunction<mpl::invoke_t<mpl::disjunction<check_if_tuple_has<is_autoincrement>,
+                                                                   check_if_tuple_has_template<default_t>>,
+                                                  constraints_type_t<T>>,
+                                    std::is_base_of<integer_printer, type_printer<field_type_t<T>>>> {
 
             static_assert(tuple_has<is_primary_key, constraints_type_t<T>>::value, "an unexpected type was passed");
         };

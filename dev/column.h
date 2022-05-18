@@ -52,7 +52,8 @@ namespace sqlite_orm {
         struct column_constraints {
             using constraints_type = std::tuple<Op...>;
 
-            constraints_type constraints;
+            SQLITE_ORM_NOUNIQUEADDRESS
+            const constraints_type constraints;
         };
 
         /**
@@ -70,7 +71,7 @@ namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
             column_t(std::string name, G memberPointer, S setter, std::tuple<Op...> op) :
-                basic_column{move(name)}, field_access_closure<G, S>{memberPointer, setter}, column_constraints{
+                basic_column{move(name)}, field_access_closure<G, S>{memberPointer, setter}, column_constraints<Op...>{
                                                                                                  move(op)} {}
 #endif
 

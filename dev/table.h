@@ -95,16 +95,16 @@ namespace sqlite_orm {
             find_column_generated_storage_type(const std::string& name) const {
                 const basic_generated_always::storage_type* result = nullptr;
 #if SQLITE_VERSION_NUMBER >= 3031000
-                this->for_each_column<column_constraints_type_t, check_if_tuple_has<is_generated_always>>(
-                    [&result, &name](auto& column) {
-                        if(column.name != name) {
-                            return;
-                        }
-                        using generated_op_index_sequence =
-                            filter_tuple_sequence_t<decltype(column.constraints), is_generated_always>;
-                        constexpr size_t opIndex = first_index_sequence_value(generated_op_index_sequence{});
-                        result = &get<opIndex>(column.constraints).storage;
-                    });
+                this->for_each_column<column_constraints_type_t,
+                                      check_if_tuple_has<is_generated_always>>([&result, &name](auto& column) {
+                    if(column.name != name) {
+                        return;
+                    }
+                    using generated_op_index_sequence =
+                        filter_tuple_sequence_t<std::remove_const_t<decltype(column.constraints)>, is_generated_always>;
+                    constexpr size_t opIndex = first_index_sequence_value(generated_op_index_sequence{});
+                    result = &get<opIndex>(column.constraints).storage;
+                });
 #endif
                 return result;
             }
