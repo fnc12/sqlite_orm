@@ -3,7 +3,7 @@
 #include <tuple>  //  std::tuple
 #include <string>  //  std::string
 #include <memory>  //  std::unique_ptr
-#include <type_traits>  //  std::true_type, std::false_type, std::is_same, std::enable_if, std::decay
+#include <type_traits>  //  std::false_type, std::is_same, std::enable_if
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_polyfill.h"
@@ -32,6 +32,8 @@ namespace sqlite_orm {
         struct field_access_closure {
             using member_pointer_t = G;
             using setter_type = S;
+            using object_type = member_object_type_t<G>;
+            using field_type = member_field_type_t<G>;
 
             /**
              *  Member pointer used to read a field value.
@@ -46,6 +48,13 @@ namespace sqlite_orm {
             const setter_type setter;
         };
 
+        template<class... Op>
+        struct column_constraints {
+            using constraints_type = std::tuple<Op...>;
+
+            constraints_type constraints;
+        };
+
         /**
          *  This class stores information about a single column.
          *  column_t is a pair of [column_name:member_pointer] mapped to a storage.
@@ -54,28 +63,16 @@ namespace sqlite_orm {
          *  T is a mapped class'es field type, e.g. &User::name
          *  Op... is a constraints pack, e.g. primary_key_t, autoincrement_t etc
          */
-        template<class O, class T, class G, class S, class... Op>
-        struct column_t : basic_column, field_access_closure<G, S> {
-            using object_type = O;
-            using field_type = T;
-            using constraints_type = std::tuple<Op...>;
-
-            /**
-             *  Constraints tuple
-             */
-            constraints_type constraints;
+        template<class G, class S, class... Op>
+        struct column_t : basic_column, field_access_closure<G, S>, column_constraints<Op...> {
+            using field_type = typename field_access_closure<G, S>::field_type;
+            using constraints_type = typename column_constraints<Op...>::constraints_type;
 
 #ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
             column_t(std::string name, G memberPointer, S setter, std::tuple<Op...> op) :
-                basic_column{move(name)}, field_access_closure<G, S>{memberPointer, setter}, constraints{move(op)} {}
+                basic_column{move(name)}, field_access_closure<G, S>{memberPointer, setter}, column_constraints{
+                                                                                                 move(op)} {}
 #endif
-
-            /**
-             *  Simplified interface for `NOT NULL` constraint
-             */
-            constexpr bool is_not_null() const {
-                return !type_is_nullable<field_type>::value;
-            }
 
             /**
              *  Checks whether contraints are of trait `Trait`
@@ -86,10 +83,11 @@ namespace sqlite_orm {
             }
 
             /**
-             *  Simplified interface for `DEFAULT` constraint
-             *  @return string representation of default value if it exists otherwise nullptr
+             *  Simplified interface for `NOT NULL` constraint
              */
-            std::unique_ptr<std::string> default_value() const;
+            constexpr bool is_not_null() const {
+                return !type_is_nullable<field_type>::value;
+            }
 
             constexpr bool is_generated() const {
 #if SQLITE_VERSION_NUMBER >= 3031000
@@ -98,6 +96,12 @@ namespace sqlite_orm {
                 return false;
 #endif
             }
+
+            /**
+             *  Simplified interface for `DEFAULT` constraint
+             *  @return string representation of default value if it exists otherwise nullptr
+             */
+            std::unique_ptr<std::string> default_value() const;
         };
 
         template<class T>
@@ -141,9 +145,9 @@ namespace sqlite_orm {
             using type = void;
         };
 
-        template<class O, class T, class... Op>
-        struct column_field_type<column_t<O, T, Op...>> {
-            using type = typename column_t<O, T, Op...>::field_type;
+        template<class G, class S, class... Op>
+        struct column_field_type<column_t<G, S, Op...>> {
+            using type = typename column_t<G, S, Op...>::field_type;
         };
 
         template<class T>
@@ -154,9 +158,9 @@ namespace sqlite_orm {
             using type = std::tuple<>;
         };
 
-        template<class O, class T, class... Op>
-        struct column_constraints_type<column_t<O, T, Op...>> {
-            using type = typename column_t<O, T, Op...>::constraints_type;
+        template<class G, class S, class... Op>
+        struct column_constraints_type<column_t<G, S, Op...>> {
+            using type = typename column_t<G, S, Op...>::constraints_type;
         };
 
         template<class T>
@@ -167,10 +171,8 @@ namespace sqlite_orm {
     /**
      *  Column builder function. You should use it to create columns instead of constructor
      */
-    template<class M, internal::satisfies<std::is_member_object_pointer, M> = true, class... Op>
-    internal::
-        column_t<internal::member_object_type_t<M>, internal::object_field_type_t<M>, M, internal::empty_setter, Op...>
-        make_column(std::string name, M m, Op... constraints) {
+    template<class M, class... Op, internal::satisfies<std::is_member_object_pointer, M> = true>
+    internal::column_t<M, internal::empty_setter, Op...> make_column(std::string name, M m, Op... constraints) {
         static_assert(internal::count_tuple<std::tuple<Op...>, internal::is_constraint>::value ==
                           std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
@@ -182,11 +184,10 @@ namespace sqlite_orm {
      */
     template<class G,
              class S,
+             class... Op,
              internal::satisfies<internal::is_getter, G> = true,
-             internal::satisfies<internal::is_setter, S> = true,
-             class... Op>
-    internal::column_t<internal::member_object_type_t<G>, internal::getter_field_type_t<G>, G, S, Op...>
-    make_column(std::string name, S setter, G getter, Op... constraints) {
+             internal::satisfies<internal::is_setter, S> = true>
+    internal::column_t<G, S, Op...> make_column(std::string name, S setter, G getter, Op... constraints) {
         static_assert(std::is_same<internal::setter_field_type_t<S>, internal::getter_field_type_t<G>>::value,
                       "Getter and setter must get and set same data type");
         static_assert(internal::count_tuple<std::tuple<Op...>, internal::is_constraint>::value ==
@@ -201,11 +202,10 @@ namespace sqlite_orm {
      */
     template<class G,
              class S,
+             class... Op,
              internal::satisfies<internal::is_getter, G> = true,
-             internal::satisfies<internal::is_setter, S> = true,
-             class... Op>
-    internal::column_t<internal::member_object_type_t<G>, internal::getter_field_type_t<G>, G, S, Op...>
-    make_column(std::string name, G getter, S setter, Op... constraints) {
+             internal::satisfies<internal::is_setter, S> = true>
+    internal::column_t<G, S, Op...> make_column(std::string name, G getter, S setter, Op... constraints) {
         static_assert(std::is_same<internal::setter_field_type_t<S>, internal::getter_field_type_t<G>>::value,
                       "Getter and setter must get and set same data type");
         static_assert(internal::count_tuple<std::tuple<Op...>, internal::is_constraint>::value ==

@@ -902,9 +902,9 @@ namespace sqlite_orm {
             }
         };
 #endif
-        template<class O, class T, class G, class S, class... Op>
-        struct statement_serializer<column_t<O, T, G, S, Op...>, void> {
-            using statement_type = column_t<O, T, G, S, Op...>;
+        template<class G, class S, class... Op>
+        struct statement_serializer<column_t<G, S, Op...>, void> {
+            using statement_type = column_t<G, S, Op...>;
 
             template<class Ctx>
             std::string operator()(const statement_type& c, const Ctx& context) const {
