@@ -1,7 +1,7 @@
 #pragma once
 
 #include <sqlite3.h>
-#include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::true_type, std::false_type
+#include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::true_type, std::false_type, std::make_index_sequence, std::index_sequence
 #include <memory>  //  std::default_delete
 #include <string>  //  std::string, std::wstring
 #include <vector>  //  std::vector
@@ -12,6 +12,7 @@
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_polyfill.h"
+#include "functional/cxx_functional_polyfill.h"
 #include "is_std_ptr.h"
 #include "tuple_helper/tuple_filter.h"
 #include "error_code.h"
@@ -304,6 +305,50 @@ namespace sqlite_orm {
                     throw std::system_error{orm_error_code::value_is_null};
                 }
                 (*this)(*value);
+            }
+        };
+
+        struct tuple_value_binder {
+            sqlite3_stmt* stmt = nullptr;
+
+            explicit tuple_value_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
+
+            template<class Tpl, class Proj>
+            void operator()(const Tpl& tpl, Proj&& project) const {
+                (*this)(tpl, std::make_index_sequence<std::tuple_size<Tpl>::value>{}, std::forward<Proj>(project));
+            }
+
+          private:
+#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
+            template<class Tpl, size_t... Idx, class Proj>
+            void operator()(const Tpl& tpl, std::index_sequence<Idx...>, Proj&& project) const {
+                (this->bind(polyfill::invoke(std::forward<Proj>(project), std::get<Idx>(tpl)), Idx), ...);
+            }
+#else
+            template<class Tpl, size_t I, size_t... Idx, class Proj>
+            void operator()(const Tpl& tpl, std::index_sequence<I, Idx...>, Proj&& project) const {
+                this->bind(polyfill::invoke(std::forward<Proj>(project), std::get<I>(tpl)), I);
+                (*this)(tpl, std::index_sequence<Idx...>{}, std::forward<Proj>(project));
+            }
+
+            template<class Tpl, size_t... Idx, class Proj>
+            void operator()(const Tpl& tpl, std::index_sequence<Idx...>, Proj&& project) const {}
+#endif
+
+            template<class T>
+            void bind(const T& t, size_t idx) const {
+                int rc = statement_binder<T>{}.bind(this->stmt, int(idx + 1), t);
+                if(SQLITE_OK != rc) {
+                    throw_translated_sqlite_error(stmt);
+                }
+            }
+
+            template<class T>
+            void bind(const T* value, size_t idx) const {
+                if(!value) {
+                    throw std::system_error{orm_error_code::value_is_null};
+                }
+                (*this)(*value, idx);
             }
         };
 

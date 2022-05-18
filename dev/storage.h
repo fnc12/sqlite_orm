@@ -1174,12 +1174,11 @@ namespace sqlite_orm {
 
                 sqlite3_stmt* stmt = reset(statement.stmt);
 
-                iterate_tuple(statement.expression.columns.columns,
-                              [&tImpl = this->get_impl<object_type>(),
-                               bind_value = field_value_binder{stmt},
-                               &object = statement.expression.obj](auto& memberPointer) mutable {
-                                  bind_value(tImpl.table.object_field_value(object, memberPointer));
-                              });
+                tuple_value_binder{stmt}(
+                    statement.expression.columns.columns,
+                    [&tImpl = this->get_impl<object_type>(), &object = statement.expression.obj](auto& memberPointer) {
+                        return tImpl.table.object_field_value(object, memberPointer);
+                    });
                 perform_step(stmt);
                 return sqlite3_last_insert_rowid(sqlite3_db_handle(stmt));
             }
@@ -1483,11 +1482,9 @@ namespace sqlite_orm {
                             statement_finalizer finalizer{stmt};
 
                             auto& tImpl = this->get_impl<O>();
-                            iterate_tuple(
-                                foreignKey.references,
-                                [&tImpl, bind_value = field_value_binder{stmt}, &object](auto& memberPointer) mutable {
-                                    bind_value(tImpl.table.object_field_value(object, memberPointer));
-                                });
+                            tuple_value_binder{stmt}(foreignKey.references, [&tImpl, &object](auto& memberPointer) {
+                                return tImpl.table.object_field_value(object, memberPointer);
+                            });
                             if(SQLITE_ROW != sqlite3_step(stmt)) {
                                 throw_translated_sqlite_error(stmt);
                             }
