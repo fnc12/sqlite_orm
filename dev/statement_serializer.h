@@ -1122,7 +1122,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 using object_type = typename expression_object_type<statement_type>::type;
                 auto& tImpl = pick_impl<object_type>(context.impl);
-                using is_without_rowid = typename std::decay_t<decltype(tImpl.table)>::is_without_rowid;
+                using is_without_rowid = typename decltype(tImpl.table)::is_without_rowid;
 
                 std::vector<std::reference_wrapper<const std::string>> columnNames;
                 tImpl.table.template for_each_column_excluding<
@@ -1284,7 +1284,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 using object_type = typename expression_object_type<statement_type>::type;
                 auto& tImpl = pick_impl<object_type>(context.impl);
-                using is_without_rowid = typename std::decay_t<decltype(tImpl.table)>::is_without_rowid;
+                using is_without_rowid = typename decltype(tImpl.table)::is_without_rowid;
 
                 std::vector<std::reference_wrapper<const std::string>> columnNames;
                 tImpl.table.template for_each_column_excluding<

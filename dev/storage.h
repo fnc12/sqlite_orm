@@ -1205,7 +1205,9 @@ namespace sqlite_orm {
 
                 auto processObject = [&tImpl = this->get_impl<object_type>(),
                                       bind_value = field_value_binder{stmt}](auto& object) mutable {
-                    using is_without_rowid = typename decltype(tImpl.table)::is_without_rowid;
+                    // internal note: retrieve table_type because of legacy compilers not liking embedded decltype
+                    using table_type = decltype(tImpl.table);
+                    using is_without_rowid = typename table_type::is_without_rowid;
                     tImpl.table.template for_each_column_excluding<
                         mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                          mpl::disjunction_fn<is_generated_always, is_primary_key>>>(

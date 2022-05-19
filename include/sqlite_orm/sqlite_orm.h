@@ -16032,7 +16032,7 @@ namespace sqlite_orm {
                 return "CHECK (" + serialize(statement.expression, context) + ")";
             }
         };
-#if SQLITE_VERSION_NUMBER >= 3031000
+#if SQLITE_VERSION_NUMBER >= 9999999
         template<class T>
         struct statement_serializer<generated_always_t<T>, void> {
             using statement_type = generated_always_t<T>;
@@ -16280,7 +16280,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 using object_type = typename expression_object_type<statement_type>::type;
                 auto& tImpl = pick_impl<object_type>(context.impl);
-                using is_without_rowid = typename std::decay_t<decltype(tImpl.table)>::is_without_rowid;
+                using is_without_rowid = typename decltype(tImpl.table)::is_without_rowid;
 
                 std::vector<std::reference_wrapper<const std::string>> columnNames;
                 tImpl.table.template for_each_column_excluding<
@@ -16442,7 +16442,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 using object_type = typename expression_object_type<statement_type>::type;
                 auto& tImpl = pick_impl<object_type>(context.impl);
-                using is_without_rowid = typename std::decay_t<decltype(tImpl.table)>::is_without_rowid;
+                using is_without_rowid = typename decltype(tImpl.table)::is_without_rowid;
 
                 std::vector<std::reference_wrapper<const std::string>> columnNames;
                 tImpl.table.template for_each_column_excluding<
@@ -18367,7 +18367,9 @@ namespace sqlite_orm {
 
                 auto processObject = [&tImpl = this->get_impl<object_type>(),
                                       bind_value = field_value_binder{stmt}](auto& object) mutable {
-                    using is_without_rowid = typename decltype(tImpl.table)::is_without_rowid;
+                    // internal note: retrieve table_type because of legacy compilers not liking embedded decltype
+                    using table_type = decltype(tImpl.table);
+                    using is_without_rowid = typename table_type::is_without_rowid;
                     tImpl.table.template for_each_column_excluding<
                         mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                          mpl::disjunction_fn<is_generated_always, is_primary_key>>>(
