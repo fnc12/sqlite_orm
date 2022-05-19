@@ -141,7 +141,7 @@ using std::nullptr_t;
 
 #include <type_traits>
 
-// #include "functional/cxx_universal.h"
+// #include "cxx_universal.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -7758,6 +7758,19 @@ namespace sqlite_orm {
 namespace sqlite_orm {
     namespace internal {
         namespace polyfill {
+#if __cpp_lib_type_identity >= 201806L
+            using std::identity;
+#else
+            struct identity {
+                template<class T>
+                constexpr T&& operator()(T&& v) const noexcept {
+                    return std::forward<T>(v);
+                }
+
+                using is_transparent = int;
+            };
+#endif
+
 #if __cpp_lib_invoke >= 201411L
             using std::invoke;
 #else
@@ -8104,26 +8117,28 @@ namespace sqlite_orm {
 
             explicit tuple_value_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
 
-            template<class Tpl, class Proj>
-            void operator()(const Tpl& tpl, Proj&& project) const {
-                (*this)(tpl, std::make_index_sequence<std::tuple_size<Tpl>::value>{}, std::forward<Proj>(project));
+            template<class Tpl, class Projection>
+            void operator()(const Tpl& tpl, Projection project) const {
+                (*this)(tpl,
+                        std::make_index_sequence<std::tuple_size<Tpl>::value>{},
+                        std::forward<Projection>(project));
             }
 
           private:
 #ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
-            template<class Tpl, size_t... Idx, class Proj>
-            void operator()(const Tpl& tpl, std::index_sequence<Idx...>, Proj&& project) const {
-                (this->bind(polyfill::invoke(std::forward<Proj>(project), std::get<Idx>(tpl)), Idx), ...);
+            template<class Tpl, size_t... Idx, class Projection>
+            void operator()(const Tpl& tpl, std::index_sequence<Idx...>, Projection project) const {
+                (this->bind(polyfill::invoke(project, std::get<Idx>(tpl)), Idx), ...);
             }
 #else
-            template<class Tpl, size_t I, size_t... Idx, class Proj>
-            void operator()(const Tpl& tpl, std::index_sequence<I, Idx...>, Proj&& project) const {
-                this->bind(polyfill::invoke(std::forward<Proj>(project), std::get<I>(tpl)), I);
-                (*this)(tpl, std::index_sequence<Idx...>{}, std::forward<Proj>(project));
+            template<class Tpl, size_t I, size_t... Idx, class Projection>
+            void operator()(const Tpl& tpl, std::index_sequence<I, Idx...>, Projection project) const {
+                this->bind(polyfill::invoke(project, std::get<I>(tpl)), I);
+                (*this)(tpl, std::index_sequence<Idx...>{}, std::forward<Projection>(project));
             }
 
-            template<class Tpl, size_t... Idx, class Proj>
-            void operator()(const Tpl& tpl, std::index_sequence<Idx...>, Proj&& project) const {}
+            template<class Tpl, class Projection>
+            void operator()(const Tpl&, std::index_sequence<>, Projection) const {}
 #endif
 
             template<class T>
@@ -10239,17 +10254,17 @@ namespace sqlite_orm {
             iterate_tuple<Tpl>(std::make_index_sequence<std::tuple_size<Tpl>::value>{}, std::forward<L>(lambda));
         }
 
-        template<class R, class Tpl, size_t... Idx, class Proj>
-        R create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, Proj&& project) {
-            return R{polyfill::invoke(std::forward<Proj>(project), std::get<Idx>(std::forward<Tpl>(tpl)))...};
+        template<class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
+        R create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, Projection project = {}) {
+            return R{polyfill::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
         }
 
-        template<class R, class Tpl, class Proj>
-        R create_from_tuple(Tpl&& tpl, Proj&& project) {
+        template<class R, class Tpl, class Projection = polyfill::identity>
+        R create_from_tuple(Tpl&& tpl, Projection project = {}) {
             return create_from_tuple<R>(
                 std::forward<Tpl>(tpl),
                 std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
-                std::forward<Proj>(project));
+                std::forward<Projection>(project));
         }
     }
 }

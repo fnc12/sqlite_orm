@@ -83,17 +83,17 @@ namespace sqlite_orm {
             iterate_tuple<Tpl>(std::make_index_sequence<std::tuple_size<Tpl>::value>{}, std::forward<L>(lambda));
         }
 
-        template<class R, class Tpl, size_t... Idx, class Proj>
-        R create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, Proj&& project) {
-            return R{polyfill::invoke(std::forward<Proj>(project), std::get<Idx>(std::forward<Tpl>(tpl)))...};
+        template<class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
+        R create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, Projection project = {}) {
+            return R{polyfill::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
         }
 
-        template<class R, class Tpl, class Proj>
-        R create_from_tuple(Tpl&& tpl, Proj&& project) {
+        template<class R, class Tpl, class Projection = polyfill::identity>
+        R create_from_tuple(Tpl&& tpl, Projection project = {}) {
             return create_from_tuple<R>(
                 std::forward<Tpl>(tpl),
                 std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
-                std::forward<Proj>(project));
+                std::forward<Projection>(project));
         }
     }
 }

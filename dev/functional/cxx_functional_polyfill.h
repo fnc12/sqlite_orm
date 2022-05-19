@@ -8,6 +8,19 @@
 namespace sqlite_orm {
     namespace internal {
         namespace polyfill {
+#if __cpp_lib_type_identity >= 201806L
+            using std::identity;
+#else
+            struct identity {
+                template<class T>
+                constexpr T&& operator()(T&& v) const noexcept {
+                    return std::forward<T>(v);
+                }
+
+                using is_transparent = int;
+            };
+#endif
+
 #if __cpp_lib_invoke >= 201411L
             using std::invoke;
 #else

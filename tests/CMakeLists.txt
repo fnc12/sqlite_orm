@@ -27,6 +27,7 @@ add_executable(unit_tests
     static_tests/column_result_t.cpp
     static_tests/is_primary_key_insertable.cpp
     static_tests/is_column_with_insertable_primary_key.cpp
+    tuple_iteration.cpp
     sync_schema_tests.cpp
     tests.cpp
     tests2.cpp
@@ -121,7 +122,6 @@ add_executable(unit_tests
     backup_tests.cpp
     transaction_tests.cpp
     json.cpp
-    tuple_helper_tests.cpp
     row_id.cpp
     trigger_tests.cpp
     ast_iterator_tests.cpp
