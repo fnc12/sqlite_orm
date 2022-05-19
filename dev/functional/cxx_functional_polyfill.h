@@ -8,7 +8,7 @@
 namespace sqlite_orm {
     namespace internal {
         namespace polyfill {
-#if __cpp_lib_type_identity >= 201806L
+#if __cplusplus >= 202002L  // C++20 or later (unfortunately there's no feature test macro)
             using std::identity;
 #else
             struct identity {
