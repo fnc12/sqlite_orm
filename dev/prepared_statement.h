@@ -1,9 +1,10 @@
 #pragma once
 
 #include <sqlite3.h>
+#include <memory>  //  std::unique_ptr
 #include <iterator>  //  std::iterator_traits
 #include <string>  //  std::string
-#include <type_traits>  //  std::true_type, std::false_type
+#include <type_traits>  //  std::integral_constant
 #include <utility>  //  std::pair
 
 #include "functional/cxx_universal.h"
@@ -27,18 +28,14 @@ namespace sqlite_orm {
 #endif
 
             ~prepared_statement_base() {
-                if(this->stmt) {
-                    sqlite3_finalize(this->stmt);
-                }
+                sqlite3_finalize(this->stmt);
             }
 
             std::string sql() const {
-                if(this->stmt) {
-                    if(auto res = sqlite3_sql(this->stmt)) {
-                        return res;
-                    } else {
-                        return {};
-                    }
+                // note: sqlite3 internally checks for null before calling
+                // sqlite3_normalized_sql() or sqlite3_expanded_sql(), so check here, too, even if superfluous
+                if(const char* sql = sqlite3_sql(this->stmt)) {
+                    return sql;
                 } else {
                     return {};
                 }
@@ -46,14 +43,10 @@ namespace sqlite_orm {
 
 #if SQLITE_VERSION_NUMBER >= 3014000
             std::string expanded_sql() const {
-                if(this->stmt) {
-                    if(auto res = sqlite3_expanded_sql(this->stmt)) {
-                        std::string result = res;
-                        sqlite3_free(res);
-                        return result;
-                    } else {
-                        return {};
-                    }
+                // note: must check return value due to SQLITE_OMIT_TRACE
+                using char_ptr = std::unique_ptr<char, std::integral_constant<decltype(&sqlite3_free), sqlite3_free>>;
+                if(char_ptr sql{sqlite3_expanded_sql(this->stmt)}) {
+                    return sql.get();
                 } else {
                     return {};
                 }
@@ -61,12 +54,8 @@ namespace sqlite_orm {
 #endif
 #if SQLITE_VERSION_NUMBER >= 3026000 and defined(SQLITE_ENABLE_NORMALIZE)
             std::string normalized_sql() const {
-                if(this->stmt) {
-                    if(auto res = sqlite3_normalized_sql(this->stmt)) {
-                        return res;
-                    } else {
-                        return {};
-                    }
+                if(const char* sql = sqlite3_normalized_sql(this->stmt)) {
+                    return sql;
                 } else {
                     return {};
                 }
