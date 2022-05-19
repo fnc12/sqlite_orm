@@ -141,15 +141,7 @@ namespace sqlite_orm {
                 perform_void_exec(db, ss.str());
             }
 #endif
-            void add_generated_cols(std::vector<const table_xinfo*>& columnsToAdd,
-                                    const std::vector<table_xinfo>& storageTableInfo) {
-                //  iterate through storage columns
-                for(const table_xinfo& storageColumnInfo: storageTableInfo) {
-                    if(storageColumnInfo.hidden) {
-                        columnsToAdd.push_back(&storageColumnInfo);
-                    }
-                }
-            }
+
             template<class I>
             void drop_create_with_loss(sqlite3* db, const I& tImpl) {
                 // eliminated all transaction handling
@@ -404,7 +396,7 @@ namespace sqlite_orm {
              */
             template<class O, class... Ids>
             std::shared_ptr<O> get_no_throw(Ids... ids) {
-                return std::shared_ptr<O>(get_pointer<O>(std::forward<Ids>(ids)...));
+                return std::shared_ptr<O>(this->get_pointer<O>(std::forward<Ids>(ids)...));
             }
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -950,7 +942,7 @@ namespace sqlite_orm {
                                           bool preserve);
 
             template<class C>
-            void add_column(const std::string& tableName, const C& column, sqlite3* db) const {
+            void add_column(sqlite3* db, const std::string& tableName, const C& column) const {
                 using context_t = serializer_context<impl_type>;
 
                 context_t context{this->impl};
@@ -1023,16 +1015,6 @@ namespace sqlite_orm {
                     result.insert({tImpl.table.name, schemaStatus});
                 });
                 return result;
-            }
-
-            /**
-             *  Checks whether table exists in db. Doesn't check storage itself - works only with actual database.
-             *  Note: table can be not mapped to a storage
-             *  @return true if table with a given name exists in db, false otherwise.
-             */
-            bool table_exists(const std::string& tableName) {
-                auto con = this->get_connection();
-                return this->table_exists(con.get(), tableName);
             }
 
             using storage_base::table_exists;  // now that it is in storage_base make it into overload set
@@ -1149,14 +1131,14 @@ namespace sqlite_orm {
 
             template<class... Args>
             void execute(const prepared_statement_t<replace_raw_t<Args...>>& statement) {
-                sqlite3_stmt* stmt = reset(statement.stmt);
+                sqlite3_stmt* stmt = reset_stmt(statement.stmt);
                 iterate_ast(statement.expression.args, conditional_binder{statement.stmt});
                 perform_step(stmt);
             }
 
             template<class... Args>
             void execute(const prepared_statement_t<insert_raw_t<Args...>>& statement) {
-                sqlite3_stmt* stmt = reset(statement.stmt);
+                sqlite3_stmt* stmt = reset_stmt(statement.stmt);
                 iterate_ast(statement.expression.args, conditional_binder{stmt});
                 perform_step(stmt);
             }
@@ -1167,7 +1149,7 @@ namespace sqlite_orm {
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
 
-                sqlite3_stmt* stmt = reset(statement.stmt);
+                sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
                 tuple_value_binder{stmt}(
                     statement.expression.columns.columns,
@@ -1185,7 +1167,7 @@ namespace sqlite_orm {
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
 
-                sqlite3_stmt* stmt = reset(statement.stmt);
+                sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
                 auto processObject = [&tImpl = this->get_impl<object_type>(),
                                       bind_value = field_value_binder{stmt}](auto& object) mutable {
@@ -1219,7 +1201,7 @@ namespace sqlite_orm {
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
 
-                sqlite3_stmt* stmt = reset(statement.stmt);
+                sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
                 auto processObject = [&tImpl = this->get_impl<object_type>(),
                                       bind_value = field_value_binder{stmt}](auto& object) mutable {
@@ -1256,7 +1238,7 @@ namespace sqlite_orm {
 
             template<class T, class... Ids>
             void execute(const prepared_statement_t<remove_t<T, Ids...>>& statement) {
-                sqlite3_stmt* stmt = reset(statement.stmt);
+                sqlite3_stmt* stmt = reset_stmt(statement.stmt);
                 iterate_ast(statement.expression.ids, conditional_binder{stmt});
                 perform_step(stmt);
             }
@@ -1267,7 +1249,7 @@ namespace sqlite_orm {
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
 
-                sqlite3_stmt* stmt = reset(statement.stmt);
+                sqlite3_stmt* stmt = reset_stmt(statement.stmt);
                 auto& tImpl = this->get_impl<object_type>();
 
                 field_value_binder bind_value{stmt};
@@ -1289,7 +1271,7 @@ namespace sqlite_orm {
 
             template<class T, class... Ids>
             std::unique_ptr<T> execute(const prepared_statement_t<get_pointer_t<T, Ids...>>& statement) {
-                sqlite3_stmt* stmt = reset(statement.stmt);
+                sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
                 iterate_ast(statement.expression.ids, conditional_binder{stmt});
 
@@ -1305,7 +1287,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
             template<class T, class... Ids>
             std::optional<T> execute(const prepared_statement_t<get_optional_t<T, Ids...>>& statement) {
-                sqlite3_stmt* stmt = reset(statement.stmt);
+                sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
                 iterate_ast(statement.expression.ids, conditional_binder{stmt});
 
@@ -1320,7 +1302,7 @@ namespace sqlite_orm {
 
             template<class T, class... Ids>
             T execute(const prepared_statement_t<get_t<T, Ids...>>& statement) {
-                sqlite3_stmt* stmt = reset(statement.stmt);
+                sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
                 iterate_ast(statement.expression.ids, conditional_binder{stmt});
 
@@ -1356,14 +1338,14 @@ namespace sqlite_orm {
 
             template<class T, class... Args>
             void execute(const prepared_statement_t<remove_all_t<T, Args...>>& statement) {
-                sqlite3_stmt* stmt = reset(statement.stmt);
+                sqlite3_stmt* stmt = reset_stmt(statement.stmt);
                 iterate_ast(statement.expression.conditions, conditional_binder{stmt});
                 perform_step(stmt);
             }
 
             template<class... Args, class... Wargs>
             void execute(const prepared_statement_t<update_all_t<set_t<Args...>, Wargs...>>& statement) {
-                sqlite3_stmt* stmt = reset(statement.stmt);
+                sqlite3_stmt* stmt = reset_stmt(statement.stmt);
                 conditional_binder bind_node{stmt};
                 iterate_tuple(statement.expression.set.assigns, [&bind_node](auto& setArg) {
                     iterate_ast(setArg, bind_node);
@@ -1374,7 +1356,7 @@ namespace sqlite_orm {
 
             template<class T, class... Args, class R = column_result_of_t<self, T>>
             std::vector<R> execute(const prepared_statement_t<select_t<T, Args...>>& statement) {
-                sqlite3_stmt* stmt = reset(statement.stmt);
+                sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
                 iterate_ast(statement.expression, conditional_binder{stmt});
 
@@ -1389,7 +1371,7 @@ namespace sqlite_orm {
 
             template<class T, class R, class... Args>
             R execute(const prepared_statement_t<get_all_t<T, R, Args...>>& statement) {
-                sqlite3_stmt* stmt = reset(statement.stmt);
+                sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
                 iterate_ast(statement.expression, conditional_binder{stmt});
 
@@ -1405,7 +1387,7 @@ namespace sqlite_orm {
 
             template<class T, class R, class... Args>
             R execute(const prepared_statement_t<get_all_pointer_t<T, R, Args...>>& statement) {
-                sqlite3_stmt* stmt = reset(statement.stmt);
+                sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
                 iterate_ast(statement.expression, conditional_binder{stmt});
 
@@ -1422,7 +1404,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
             template<class T, class R, class... Args>
             R execute(const prepared_statement_t<get_all_optional_t<T, R, Args...>>& statement) {
-                sqlite3_stmt* stmt = reset(statement.stmt);
+                sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
                 iterate_ast(statement.expression, conditional_binder{stmt});
 

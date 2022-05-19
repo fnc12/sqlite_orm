@@ -71,7 +71,7 @@ namespace sqlite_orm {
                                     if(column.name != colInfo->name) {
                                         return;
                                     }
-                                    this->add_column(tImpl.table.name, column, db);
+                                    this->add_column(db, tImpl.table.name, column);
                                 });
                             }
                             res = sync_schema_result::new_columns_added;

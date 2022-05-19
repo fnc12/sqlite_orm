@@ -50,12 +50,12 @@ namespace sqlite_orm {
 
     namespace internal {
         // Wrapper to reduce boiler-plate code
-        inline sqlite3_stmt* reset(sqlite3_stmt* stmt) {
+        inline sqlite3_stmt* reset_stmt(sqlite3_stmt* stmt) {
             sqlite3_reset(stmt);
             return stmt;
         }
 
-        // note: query is taken by value, such that it is thrown away early
+        // note: query is deliberately taken by value, such that it is thrown away early
         inline sqlite3_stmt* prepare_stmt(sqlite3* db, std::string query) {
             sqlite3_stmt* stmt;
             if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
