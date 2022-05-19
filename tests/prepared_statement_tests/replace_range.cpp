@@ -65,8 +65,6 @@ TEST_CASE("Prepared replace range") {
         expected.push_back(User{3, "Maître Gims"});
         SECTION("straight") {
             users.push_back(user);
-            auto sql = storage.dump(replace_range(users.begin(), users.end()), true);
-            CAPTURE(sql);
             auto statement = storage.prepare(replace_range(users.begin(), users.end()));
             REQUIRE(get<0>(statement) == users.begin());
             REQUIRE(get<1>(statement) == users.end());

@@ -217,7 +217,7 @@ namespace sqlite_orm {
                                             col_index_sequence>;
                 return int(non_generated_col_index_sequence::size());
 #else
-                return 0;
+                return this->count_columns_amount();
 #endif
             }
 

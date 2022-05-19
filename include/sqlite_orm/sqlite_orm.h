@@ -10489,7 +10489,7 @@ namespace sqlite_orm {
                                             col_index_sequence>;
                 return int(non_generated_col_index_sequence::size());
 #else
-                return 0;
+                return this->count_columns_amount();
 #endif
             }
 
@@ -11281,9 +11281,7 @@ namespace sqlite_orm {
 #endif
 
             ~prepared_statement_base() {
-                if(this->stmt) {
-                    sqlite3_finalize(this->stmt);
-                }
+                sqlite3_finalize(this->stmt);
             }
 
             std::string sql() const {
