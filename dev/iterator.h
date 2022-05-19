@@ -6,12 +6,14 @@
 #include <utility>  //  std::move
 #include <iterator>  //  std::input_iterator_tag
 #include <system_error>  //  std::system_error
+#include <functional>  //  std::bind
 
 #include "functional/cxx_universal.h"
-#include "row_extractor.h"
 #include "statement_finalizer.h"
 #include "error_code.h"
 #include "object_from_column_builder.h"
+#include "storage_lookup.h"
+#include "util.h"
 
 namespace sqlite_orm {
 
@@ -24,15 +26,13 @@ namespace sqlite_orm {
 
           protected:
             /**
-             *  The double-indirection is so that copies of the iterator
-             *  share the same sqlite3_stmt from a sqlite3_prepare_v2()
-             *  call. When one finishes iterating it the pointer
-             *  inside the shared_ptr is nulled out in all copies.
+             *  shared_ptr is used over unique_ptr here
+             *  so that the iterator can be copyable.
              */
-            std::shared_ptr<statement_finalizer> stmt;
+            std::shared_ptr<sqlite3_stmt> stmt;
 
             // only null for the default constructed iterator
-            view_type* view;
+            view_type* view = nullptr;
 
             /**
              *  shared_ptr is used over unique_ptr here
@@ -44,8 +44,18 @@ namespace sqlite_orm {
                 auto& storage = this->view->storage;
                 auto& impl = pick_const_impl<value_type>(storage);
                 this->current = std::make_shared<value_type>();
-                object_from_column_builder<value_type> builder{*this->current, this->stmt->get()};
+                object_from_column_builder<value_type> builder{*this->current, this->stmt.get()};
                 impl.table.for_each_column(builder);
+            }
+
+            void next() {
+                this->current.reset();
+                if(sqlite3_stmt* stmt = this->stmt.get()) {
+                    perform_step(stmt, std::bind(&iterator_t::extract_value, this));
+                    if(!this->current) {
+                        this->stmt.reset();
+                    }
+                }
             }
 
           public:
@@ -54,10 +64,9 @@ namespace sqlite_orm {
             using reference = value_type&;
             using iterator_category = std::input_iterator_tag;
 
-            iterator_t() : view(nullptr){};
+            iterator_t(){};
 
-            iterator_t(sqlite3_stmt* stmt_, view_type& view_) :
-                stmt(std::make_shared<statement_finalizer>(stmt_)), view(&view_) {
+            iterator_t(statement_finalizer stmt_, view_type& view_) : stmt{move(stmt_)}, view{&view_} {
                 next();
             }
 
@@ -72,27 +81,6 @@ namespace sqlite_orm {
                 return &(this->operator*());
             }
 
-          private:
-            void next() {
-                this->current.reset();
-                if(this->stmt) {
-                    int rc = sqlite3_step(this->stmt->get());
-                    switch(rc) {
-                        case SQLITE_ROW:
-                            this->extract_value();
-                            break;
-                        case SQLITE_DONE:
-                            this->stmt.reset();
-                            break;
-                        default: {
-                            sqlite3* db = this->view->connection.get();
-                            throw_translated_sqlite_error(db);
-                        }
-                    }
-                }
-            }
-
-          public:
             iterator_t<V>& operator++() {
                 next();
                 return *this;

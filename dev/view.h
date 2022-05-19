@@ -1,7 +1,6 @@
 #pragma once
 
 #include <sqlite3.h>
-#include <memory>  //  std::shared_ptr
 #include <string>  //  std::string
 #include <utility>  //  std::forward, std::move
 #include <tuple>  //  std::tuple, std::make_tuple
@@ -12,6 +11,7 @@
 #include "ast_iterator.h"
 #include "prepared_statement.h"
 #include "connection_holder.h"
+#include "util.h"
 
 namespace sqlite_orm {
 
@@ -39,11 +39,11 @@ namespace sqlite_orm {
             view_t(storage_type& stor, decltype(connection) conn, Args&&... args_) :
                 storage(stor), connection(std::move(conn)), args{std::make_tuple(std::forward<Args>(args_)...)} {}
 
-            size_t size() {
+            size_t size() const {
                 return this->storage.template count<T>();
             }
 
-            bool empty() {
+            bool empty() const {
                 return !this->size();
             }
 
@@ -52,16 +52,10 @@ namespace sqlite_orm {
                 context_t context{obtain_const_impl(this->storage)};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
-                auto query = serialize(this->args, context);
 
-                sqlite3* db = this->connection.get();
-                sqlite3_stmt* stmt = nullptr;
-                int ret = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
-                if(ret != SQLITE_OK) {
-                    throw_translated_sqlite_error(db);
-                }
-                iterate_ast(this->args.conditions, conditional_binder{stmt});
-                return {stmt, *this};
+                statement_finalizer stmt{prepare_stmt(this->connection.get(), serialize(this->args, context))};
+                iterate_ast(this->args.conditions, conditional_binder{stmt.get()});
+                return {move(stmt), *this};
             }
 
             iterator_t<self> end() {

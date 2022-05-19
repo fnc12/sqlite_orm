@@ -55,6 +55,15 @@ namespace sqlite_orm {
             return stmt;
         }
 
+        // note: query is taken by value, such that it is thrown away early
+        inline sqlite3_stmt* prepare_stmt(sqlite3* db, std::string query) {
+            sqlite3_stmt* stmt;
+            if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+                throw_translated_sqlite_error(db);
+            }
+            return stmt;
+        }
+
         inline void perform_void_exec(sqlite3* db, const std::string& query) {
             int rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
             if(rc != SQLITE_OK) {
@@ -79,9 +88,10 @@ namespace sqlite_orm {
             return perform_exec(db, query.c_str(), callback, user_data);
         }
 
-        inline void perform_step(sqlite3_stmt* stmt) {
+        template<int expected = SQLITE_DONE>
+        void perform_step(sqlite3_stmt* stmt) {
             int rc = sqlite3_step(stmt);
-            if(rc != SQLITE_DONE) {
+            if(rc != expected) {
                 throw_translated_sqlite_error(stmt);
             }
         }

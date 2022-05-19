@@ -962,19 +962,14 @@ namespace sqlite_orm {
 
             template<typename S>
             prepared_statement_t<S> prepare_impl(S statement) {
-                auto con = this->get_connection();
-                sqlite3* db = con.get();
-                sqlite3_stmt* stmt;
                 using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
-                auto query = serialize(statement, context);
-                if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    return prepared_statement_t<S>{std::forward<S>(statement), stmt, con};
-                } else {
-                    throw_translated_sqlite_error(db);
-                }
+
+                auto con = this->get_connection();
+                sqlite3_stmt* stmt = prepare_stmt(con.get(), serialize(statement, context));
+                return prepared_statement_t<S>{std::forward<S>(statement), stmt, con};
             }
 
           public:
@@ -1472,27 +1467,19 @@ namespace sqlite_orm {
                                 ss << sep[std::exchange(first, false)] << streaming_identifier(*columnName) << " = ?";
                             });
                             ss.flush();
-                            auto query = ss.str();
+
                             auto con = this->get_connection();
-                            sqlite3* db = con.get();
-                            sqlite3_stmt* stmt;
-                            if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
-                                throw_translated_sqlite_error(db);
-                            }
+                            sqlite3_stmt* stmt = prepare_stmt(con.get(), ss.str());
                             statement_finalizer finalizer{stmt};
 
                             auto& tImpl = this->get_impl<O>();
                             tuple_value_binder{stmt}(foreignKey.references, [&tImpl, &object](auto& memberPointer) {
                                 return tImpl.table.object_field_value(object, memberPointer);
                             });
-                            if(SQLITE_ROW != sqlite3_step(stmt)) {
-                                throw_translated_sqlite_error(stmt);
-                            }
+                            perform_step<SQLITE_ROW>(stmt);
                             auto countResult = sqlite3_column_int(stmt, 0);
                             res = countResult > 0;
-                            if(SQLITE_DONE != sqlite3_step(stmt)) {
-                                throw_translated_sqlite_error(stmt);
-                            }
+                            perform_step(stmt);
 #ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
                         }
 #else

@@ -1541,9 +1541,9 @@ namespace sqlite_orm {
          */
         template<typename T>
         struct is_primary_key_insertable
-            : polyfill::disjunction<mpl::invoke_t<mpl::disjunction<check_if_tuple_has<is_autoincrement>,
-                                                                   check_if_tuple_has_template<default_t>>,
-                                                  constraints_type_t<T>>,
+            : polyfill::disjunction<mpl::instantiate<mpl::disjunction<check_if_tuple_has<is_autoincrement>,
+                                                                      check_if_tuple_has_template<default_t>>,
+                                                     constraints_type_t<T>>,
                                     std::is_base_of<integer_printer, type_printer<field_type_t<T>>>> {
 
             static_assert(tuple_has<is_primary_key, constraints_type_t<T>>::value, "an unexpected type was passed");
@@ -8639,6 +8639,15 @@ namespace sqlite_orm {
             return stmt;
         }
 
+        // note: query is taken by value, such that it is thrown away early
+        inline sqlite3_stmt* prepare_stmt(sqlite3* db, std::string query) {
+            sqlite3_stmt* stmt;
+            if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+                throw_translated_sqlite_error(db);
+            }
+            return stmt;
+        }
+
         inline void perform_void_exec(sqlite3* db, const std::string& query) {
             int rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
             if(rc != SQLITE_OK) {
@@ -8663,9 +8672,10 @@ namespace sqlite_orm {
             return perform_exec(db, query.c_str(), callback, user_data);
         }
 
-        inline void perform_step(sqlite3_stmt* stmt) {
+        template<int expected = SQLITE_DONE>
+        void perform_step(sqlite3_stmt* stmt) {
             int rc = sqlite3_step(stmt);
-            if(rc != SQLITE_DONE) {
+            if(rc != expected) {
                 throw_translated_sqlite_error(stmt);
             }
         }
@@ -10924,7 +10934,6 @@ namespace sqlite_orm {
 // #include "view.h"
 
 #include <sqlite3.h>
-#include <memory>  //  std::shared_ptr
 #include <string>  //  std::string
 #include <utility>  //  std::forward, std::move
 #include <tuple>  //  std::tuple, std::make_tuple
@@ -10941,16 +10950,19 @@ namespace sqlite_orm {
 #include <utility>  //  std::move
 #include <iterator>  //  std::input_iterator_tag
 #include <system_error>  //  std::system_error
+#include <functional>  //  std::bind
 
 // #include "functional/cxx_universal.h"
-
-// #include "row_extractor.h"
 
 // #include "statement_finalizer.h"
 
 // #include "error_code.h"
 
 // #include "object_from_column_builder.h"
+
+// #include "storage_lookup.h"
+
+// #include "util.h"
 
 namespace sqlite_orm {
 
@@ -10963,15 +10975,13 @@ namespace sqlite_orm {
 
           protected:
             /**
-             *  The double-indirection is so that copies of the iterator
-             *  share the same sqlite3_stmt from a sqlite3_prepare_v2()
-             *  call. When one finishes iterating it the pointer
-             *  inside the shared_ptr is nulled out in all copies.
+             *  shared_ptr is used over unique_ptr here
+             *  so that the iterator can be copyable.
              */
-            std::shared_ptr<statement_finalizer> stmt;
+            std::shared_ptr<sqlite3_stmt> stmt;
 
             // only null for the default constructed iterator
-            view_type* view;
+            view_type* view = nullptr;
 
             /**
              *  shared_ptr is used over unique_ptr here
@@ -10983,8 +10993,18 @@ namespace sqlite_orm {
                 auto& storage = this->view->storage;
                 auto& impl = pick_const_impl<value_type>(storage);
                 this->current = std::make_shared<value_type>();
-                object_from_column_builder<value_type> builder{*this->current, this->stmt->get()};
+                object_from_column_builder<value_type> builder{*this->current, this->stmt.get()};
                 impl.table.for_each_column(builder);
+            }
+
+            void next() {
+                this->current.reset();
+                if(sqlite3_stmt* stmt = this->stmt.get()) {
+                    perform_step(stmt, std::bind(&iterator_t::extract_value, this));
+                    if(!this->current) {
+                        this->stmt.reset();
+                    }
+                }
             }
 
           public:
@@ -10993,10 +11013,9 @@ namespace sqlite_orm {
             using reference = value_type&;
             using iterator_category = std::input_iterator_tag;
 
-            iterator_t() : view(nullptr){};
+            iterator_t(){};
 
-            iterator_t(sqlite3_stmt* stmt_, view_type& view_) :
-                stmt(std::make_shared<statement_finalizer>(stmt_)), view(&view_) {
+            iterator_t(statement_finalizer stmt_, view_type& view_) : stmt{move(stmt_)}, view{&view_} {
                 next();
             }
 
@@ -11011,27 +11030,6 @@ namespace sqlite_orm {
                 return &(this->operator*());
             }
 
-          private:
-            void next() {
-                this->current.reset();
-                if(this->stmt) {
-                    int rc = sqlite3_step(this->stmt->get());
-                    switch(rc) {
-                        case SQLITE_ROW:
-                            this->extract_value();
-                            break;
-                        case SQLITE_DONE:
-                            this->stmt.reset();
-                            break;
-                        default: {
-                            sqlite3* db = this->view->connection.get();
-                            throw_translated_sqlite_error(db);
-                        }
-                    }
-                }
-            }
-
-          public:
             iterator_t<V>& operator++() {
                 next();
                 return *this;
@@ -12764,6 +12762,8 @@ namespace sqlite_orm {
 
 // #include "connection_holder.h"
 
+// #include "util.h"
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -12790,11 +12790,11 @@ namespace sqlite_orm {
             view_t(storage_type& stor, decltype(connection) conn, Args&&... args_) :
                 storage(stor), connection(std::move(conn)), args{std::make_tuple(std::forward<Args>(args_)...)} {}
 
-            size_t size() {
+            size_t size() const {
                 return this->storage.template count<T>();
             }
 
-            bool empty() {
+            bool empty() const {
                 return !this->size();
             }
 
@@ -12803,16 +12803,10 @@ namespace sqlite_orm {
                 context_t context{obtain_const_impl(this->storage)};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
-                auto query = serialize(this->args, context);
 
-                sqlite3* db = this->connection.get();
-                sqlite3_stmt* stmt = nullptr;
-                int ret = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
-                if(ret != SQLITE_OK) {
-                    throw_translated_sqlite_error(db);
-                }
-                iterate_ast(this->args.conditions, conditional_binder{stmt});
-                return {stmt, *this};
+                statement_finalizer stmt{prepare_stmt(this->connection.get(), serialize(this->args, context))};
+                iterate_ast(this->args.conditions, conditional_binder{stmt.get()});
+                return {move(stmt), *this};
             }
 
             iterator_t<self> end() {
@@ -18123,19 +18117,14 @@ namespace sqlite_orm {
 
             template<typename S>
             prepared_statement_t<S> prepare_impl(S statement) {
-                auto con = this->get_connection();
-                sqlite3* db = con.get();
-                sqlite3_stmt* stmt;
                 using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
-                auto query = serialize(statement, context);
-                if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    return prepared_statement_t<S>{std::forward<S>(statement), stmt, con};
-                } else {
-                    throw_translated_sqlite_error(db);
-                }
+
+                auto con = this->get_connection();
+                sqlite3_stmt* stmt = prepare_stmt(con.get(), serialize(statement, context));
+                return prepared_statement_t<S>{std::forward<S>(statement), stmt, con};
             }
 
           public:
@@ -18633,27 +18622,19 @@ namespace sqlite_orm {
                                 ss << sep[std::exchange(first, false)] << streaming_identifier(*columnName) << " = ?";
                             });
                             ss.flush();
-                            auto query = ss.str();
+
                             auto con = this->get_connection();
-                            sqlite3* db = con.get();
-                            sqlite3_stmt* stmt;
-                            if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
-                                throw_translated_sqlite_error(db);
-                            }
+                            sqlite3_stmt* stmt = prepare_stmt(con.get(), ss.str());
                             statement_finalizer finalizer{stmt};
 
                             auto& tImpl = this->get_impl<O>();
                             tuple_value_binder{stmt}(foreignKey.references, [&tImpl, &object](auto& memberPointer) {
                                 return tImpl.table.object_field_value(object, memberPointer);
                             });
-                            if(SQLITE_ROW != sqlite3_step(stmt)) {
-                                throw_translated_sqlite_error(stmt);
-                            }
+                            perform_step<SQLITE_ROW>(stmt);
                             auto countResult = sqlite3_column_int(stmt, 0);
                             res = countResult > 0;
-                            if(SQLITE_DONE != sqlite3_step(stmt)) {
-                                throw_translated_sqlite_error(stmt);
-                            }
+                            perform_step(stmt);
 #ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
                         }
 #else
