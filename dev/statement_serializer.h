@@ -871,7 +871,9 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
-                return "CHECK (" + serialize(statement.expression, context) + ")";
+                std::stringstream ss;
+                ss << "CHECK (" << serialize(statement.expression, context) << ")";
+                return ss.str();
             }
         };
 #if SQLITE_VERSION_NUMBER >= 3031000
