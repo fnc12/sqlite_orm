@@ -10455,9 +10455,9 @@ namespace sqlite_orm {
 
             template<class... Args>
             std::vector<std::string> composite_key_columns_names(const primary_key_t<Args...>& primaryKey) const {
-                return create_from_tuple<std::vector<std::string>>(
+                return create_from_tuple<std::vector<std::string>>(  ///
                     primaryKey.columns,
-                    [this, empty = std::string{}](auto& memberPointer) -> const std::string& {
+                    [this, empty = std::string{}](auto& memberPointer) {
                         if(const std::string* columnName = this->find_column_name(memberPointer)) {
                             return *columnName;
                         } else {
@@ -10509,7 +10509,7 @@ namespace sqlite_orm {
 
             /**
              *  Call passed lambda with all defined foreign keys.
-             *  @param lambda Lambda to be called for each column. Must have signature like this [] (auto col) -> void {}
+             *  @param lambda Lambda called for each column. Function signature: `void(auto& column)`
              */
             template<class L>
             void for_each_foreign_key(L&& lambda) const {
@@ -10519,7 +10519,7 @@ namespace sqlite_orm {
 
             /**
              *  Call passed lambda with all defined columns.
-             *  @param lambda Lambda to be called for each column. Must have signature like this [] (auto col) -> void {}
+             *  @param lambda Lambda called for each column. Function signature: `void(auto& column)`
              */
             template<class L>
             void for_each_column(L&& lambda) const {
@@ -10529,7 +10529,7 @@ namespace sqlite_orm {
 
             /**
              *  Call passed lambda with columns filtered on `PredicateFn(TransformFn(column_t))`.
-             *  @param lambda Lambda to be called for each column. Must have signature like this [] (auto col) -> void {}
+             *  @param lambda Lambda called for each column. Function signature: `void(auto& column)`
              */
             template<template<class...> class TransformFn, template<class...> class PredicateFn, class L>
             void for_each_column(L&& lambda) const {
@@ -10541,7 +10541,7 @@ namespace sqlite_orm {
 
             /**
              *  Call passed lambda with columns filtered on `PredicateFn(TransformFn(column_t))`.
-             *  @param lambda Lambda to be called for each column. Must have signature like this [] (auto col) -> void {}
+             *  @param lambda Lambda called for each column. Function signature: `void(auto& column)`
              */
             template<template<class...> class TransformFn,
                      class PredicateFnCls,
@@ -10553,7 +10553,7 @@ namespace sqlite_orm {
 
             /**
              *  Call passed lambda with columns having the specified field type `F`.
-             *  @param lambda Lambda to be called for each column. Must have signature like this [] (auto col) -> void {}
+             *  @param lambda Lambda called for each column. Function signature: `void(auto& column)`
              */
             template<class F, class L>
             void for_each_column_with_field_type(L&& lambda) const {
@@ -10562,7 +10562,7 @@ namespace sqlite_orm {
 
             /**
              *  Call passed lambda with columns having the specified constraint trait `OpTrait`.
-             *  @param lambda Lambda to be called for each column. Must have signature like this [] (auto col) -> void {}
+             *  @param lambda Lambda called for each column. Function signature: `void(auto& column)`
              */
             template<template<class...> class OpTraitFn, class L>
             void for_each_column_with(L&& lambda) const {
@@ -10571,7 +10571,7 @@ namespace sqlite_orm {
 
             /**
              *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
-             *  @param lambda Lambda to be called for each column.
+             *  @param lambda Lambda called for each column.
              */
             template<template<class...> class OpTraitFn, class L>
             void for_each_column_excluding(L&& lambda) const {
@@ -10580,7 +10580,7 @@ namespace sqlite_orm {
 
             /**
              *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
-             *  @param lambda Lambda to be called for each column.
+             *  @param lambda Lambda called for each column.
              */
             template<class OpTraitFnCls, class L, satisfies<mpl::is_metafunction_class, OpTraitFnCls> = true>
             void for_each_column_excluding(L&& lambda) const {
@@ -10592,8 +10592,9 @@ namespace sqlite_orm {
     }
 
     /**
-     *  Function used for table creation. Do not use table constructor - use this function
-     *  cause table class is templated and its constructing too (just like std::make_unique or std::make_pair).
+     *  Factory function for a table definition.
+     *
+     *  The mapped object type is determined implicitly from the first column definition.
      */
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::table_t<T, false, Cs...> make_table(std::string name, Cs... args) {
@@ -10601,6 +10602,11 @@ namespace sqlite_orm {
             return {move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
     }
 
+    /**
+     *  Factory function for a table definition.
+     * 
+     *  The mapped object type is explicitly specified.
+     */
     template<class T, class... Cs>
     internal::table_t<T, false, Cs...> make_table(std::string name, Cs... args) {
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
