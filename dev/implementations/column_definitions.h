@@ -15,8 +15,8 @@
 namespace sqlite_orm {
     namespace internal {
 
-        template<class G, class S, class... Op>
-        std::unique_ptr<std::string> column_t<G, S, Op...>::default_value() const {
+        template<class... Op>
+        std::unique_ptr<std::string> column_constraints<Op...>::default_value() const {
             using default_op_index_sequence =
                 filter_tuple_sequence_t<constraints_type, check_if_is_template<default_t>::template fn>;
 

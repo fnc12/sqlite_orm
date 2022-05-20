@@ -46,6 +46,13 @@ namespace sqlite_orm {
              */
             SQLITE_ORM_NOUNIQUEADDRESS
             const setter_type setter;
+
+            /**
+             *  Simplified interface for `NOT NULL` constraint
+             */
+            constexpr bool is_not_null() const {
+                return !type_is_nullable<field_type>::value;
+            }
         };
 
         template<class... Op>
@@ -54,26 +61,6 @@ namespace sqlite_orm {
 
             SQLITE_ORM_NOUNIQUEADDRESS
             const constraints_type constraints;
-        };
-
-        /**
-         *  This class stores information about a single column.
-         *  column_t is a pair of [column_name:member_pointer] mapped to a storage.
-         *  
-         *  O is a mapped class, e.g. User
-         *  T is a mapped class'es field type, e.g. &User::name
-         *  Op... is a constraints pack, e.g. primary_key_t, autoincrement_t etc
-         */
-        template<class G, class S, class... Op>
-        struct column_t : basic_column, field_access_closure<G, S>, column_constraints<Op...> {
-            using field_type = typename field_access_closure<G, S>::field_type;
-            using constraints_type = typename column_constraints<Op...>::constraints_type;
-
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            column_t(std::string name, G memberPointer, S setter, std::tuple<Op...> op) :
-                basic_column{move(name)}, field_access_closure<G, S>{memberPointer, setter}, column_constraints<Op...>{
-                                                                                                 move(op)} {}
-#endif
 
             /**
              *  Checks whether contraints are of trait `Trait`
@@ -81,13 +68,6 @@ namespace sqlite_orm {
             template<template<class...> class Trait>
             constexpr bool is() const {
                 return tuple_has<Trait, constraints_type>::value;
-            }
-
-            /**
-             *  Simplified interface for `NOT NULL` constraint
-             */
-            constexpr bool is_not_null() const {
-                return !type_is_nullable<field_type>::value;
             }
 
             constexpr bool is_generated() const {
@@ -103,6 +83,23 @@ namespace sqlite_orm {
              *  @return string representation of default value if it exists otherwise nullptr
              */
             std::unique_ptr<std::string> default_value() const;
+        };
+
+        /**
+         *  This class stores information about a single column.
+         *  column_t is a pair of [column_name:member_pointer] mapped to a storage.
+         *  
+         *  O is a mapped class, e.g. User
+         *  T is a mapped class'es field type, e.g. &User::name
+         *  Op... is a constraints pack, e.g. primary_key_t, autoincrement_t etc
+         */
+        template<class G, class S, class... Op>
+        struct column_t : basic_column, field_access_closure<G, S>, column_constraints<Op...> {
+#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
+            column_t(std::string name, G memberPointer, S setter, std::tuple<Op...> op) :
+                basic_column{move(name)}, field_access_closure<G, S>{memberPointer, setter}, column_constraints<Op...>{
+                                                                                                 move(op)} {}
+#endif
         };
 
         template<class T>
