@@ -1,19 +1,22 @@
 #pragma once
+#include <functional>
 #if __cpp_lib_invoke < 201411L
 #include <type_traits>  //  std::enable_if, std::is_member_object_pointer, std::is_member_function_pointer
 #endif
-#include <functional>
 #include <utility>  //  std::forward
 
 namespace sqlite_orm {
     namespace internal {
         namespace polyfill {
-#if __cplusplus >= 202002L  // C++20 or later (unfortunately there's no feature test macro)
+            // C++20 or later (unfortunately there's no feature test macro).
+            // Stupidly, clang < 11 says C++20, but comes w/o std::identity.
+            // Another way of detection would be the constrained algorithms feature macro __cpp_lib_ranges
+#if(__cplusplus >= 202002L) && (!__clang_major__ || __clang_major__ >= 11)
             using std::identity;
 #else
             struct identity {
                 template<class T>
-                constexpr T&& operator()(T&& v) const noexcept {
+                [[nodiscard]] constexpr T&& operator()(T&& v) const noexcept {
                     return std::forward<T>(v);
                 }
 

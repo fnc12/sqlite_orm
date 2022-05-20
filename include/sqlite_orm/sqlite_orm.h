@@ -1119,7 +1119,7 @@ namespace sqlite_orm {
 
 // #include "error_code.h"
 
-// #include "table_type.h"
+// #include "table_type_of.h"
 
 namespace sqlite_orm {
 
@@ -1133,22 +1133,25 @@ namespace sqlite_orm {
          *  T - member pointer
          *  `type` is a type which is mapped.
          *  E.g.
-         *  -   `table_type<decltype(&User::id)>::type` is `User`
-         *  -   `table_type<decltype(&User::getName)>::type` is `User`
-         *  -   `table_type<decltype(&User::setName)>::type` is `User`
+         *  -   `table_type_of<decltype(&User::id)>::type` is `User`
+         *  -   `table_type_of<decltype(&User::getName)>::type` is `User`
+         *  -   `table_type_of<decltype(&User::setName)>::type` is `User`
          */
-        template<class T, class SFINAE = void>
-        struct table_type;
+        template<class T>
+        struct table_type_of;
 
         template<class O, class F>
-        struct table_type<F O::*, void> {
+        struct table_type_of<F O::*> {
             using type = O;
         };
 
         template<class T, class F>
-        struct table_type<column_pointer<T, F>, void> {
+        struct table_type_of<column_pointer<T, F>> {
             using type = T;
         };
+
+        template<class T>
+        using table_type_of_t = typename table_type_of_t<T>::type;
     }
 }
 
@@ -1387,12 +1390,12 @@ namespace sqlite_orm {
             /**
              * Holds obect type of all referenced columns.
              */
-            using target_type = typename same_or_void<typename table_type<Rs>::type...>::type;
+            using target_type = typename same_or_void<table_type_of_t<Rs>...>::type;
 
             /**
              * Holds obect type of all source columns.
              */
-            using source_type = typename same_or_void<typename table_type<Cs>::type...>::type;
+            using source_type = typename same_or_void<table_type_of_t<Cs>...>::type;
 
             columns_type columns;
             references_type references;
@@ -7053,7 +7056,7 @@ namespace sqlite_orm {
          */
         template<class T, class... S>
         struct trigger_t : base_trigger {
-            using object_type = void;  // Not sure
+            using object_type = void;
             using elements_type = typename partial_trigger_t<T, S...>::statements_type;
 
             /**
@@ -7749,21 +7752,24 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_functional_polyfill.h"
 
+#include <functional>
 #if __cpp_lib_invoke < 201411L
 #include <type_traits>  //  std::enable_if, std::is_member_object_pointer, std::is_member_function_pointer
 #endif
-#include <functional>
 #include <utility>  //  std::forward
 
 namespace sqlite_orm {
     namespace internal {
         namespace polyfill {
-#if __cplusplus >= 202002L  // C++20 or later (unfortunately there's no feature test macro)
+            // C++20 or later (unfortunately there's no feature test macro).
+            // Stupidly, clang < 11 says C++20, but comes w/o std::identity.
+            // Another way of detection would be the constrained algorithms feature macro __cpp_lib_ranges
+#if(__cplusplus >= 202002L) && (!__clang_major__ || __clang_major__ >= 11)
             using std::identity;
 #else
             struct identity {
                 template<class T>
-                constexpr T&& operator()(T&& v) const noexcept {
+                [[nodiscard]] constexpr T&& operator()(T&& v) const noexcept {
                     return std::forward<T>(v);
                 }
 
@@ -10837,16 +10843,16 @@ namespace sqlite_orm {
                 object_from_column_builder_base{stmt_}, object(object_) {}
 
             template<class C>
-            void operator()(const C& c) {
+            void operator()(const C& column) {
                 using field_type = typename C::field_type;
                 auto value = row_extractor<field_type>().extract(this->stmt, this->index++);
                 static_if<std::is_member_object_pointer<typename C::member_pointer_t>::value>(
-                    [&value, &object = this->object](const auto& c) {
-                        object.*c.member_pointer = std::move(value);
+                    [&value, &object = this->object](const auto& column) {
+                        object.*column.member_pointer = std::move(value);
                     },
-                    [&value, &object = this->object](const auto& c) {
-                        (object.*c.setter)(std::move(value));
-                    })(c);
+                    [&value, &object = this->object](const auto& column) {
+                        (object.*column.setter)(std::move(value));
+                    })(column);
             }
         };
     }
@@ -15197,7 +15203,7 @@ namespace sqlite_orm {
 
 // #include "triggers.h"
 
-// #include "table_type.h"
+// #include "table_type_of.h"
 
 // #include "index.h"
 
@@ -16008,7 +16014,7 @@ namespace sqlite_orm {
                 {
                     using references_type_t = typename std::decay_t<decltype(fk)>::references_type;
                     using first_reference_t = std::tuple_element_t<0, references_type_t>;
-                    using first_reference_mapped_type = typename internal::table_type<first_reference_t>::type;
+                    using first_reference_mapped_type = table_type_of_t<first_reference_t>;
                     auto refTableName = lookup_table_name<first_reference_mapped_type>(context.impl);
                     ss << streaming_identifier(refTableName);
                 }
@@ -16700,7 +16706,7 @@ namespace sqlite_orm {
                 }
                 using elements_type = typename std::decay_t<decltype(statement)>::elements_type;
                 using head_t = typename std::tuple_element_t<0, elements_type>::column_type;
-                using indexed_type = typename table_type<head_t>::type;
+                using indexed_type = table_type_of_t<head_t>;
                 ss << "INDEX IF NOT EXISTS " << streaming_identifier(statement.name) << " ON "
                    << streaming_identifier(lookup_table_name<indexed_type>(context.impl));
                 std::vector<std::string> columnNames;
