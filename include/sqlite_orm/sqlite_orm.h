@@ -7758,6 +7758,12 @@ namespace sqlite_orm {
 #endif
 #include <utility>  //  std::forward
 
+#if __cpp_lib_invoke < 201411L
+// #include "cxx_polyfill.h"
+
+#endif
+// #include "../member_traits/member_traits.h"
+
 namespace sqlite_orm {
     namespace internal {
         namespace polyfill {
@@ -7769,7 +7775,7 @@ namespace sqlite_orm {
 #else
             struct identity {
                 template<class T>
-                [[nodiscard]] constexpr T&& operator()(T&& v) const noexcept {
+                constexpr T&& operator()(T&& v) const noexcept {
                     return std::forward<T>(v);
                 }
 
@@ -7782,34 +7788,40 @@ namespace sqlite_orm {
 #else
             // pointer-to-data-member+object
             template<class Callable,
-                     class Arg1,
+                     class Object,
                      class... Args,
                      class Unqualified = remove_cvref_t<Callable>,
                      std::enable_if_t<std::is_member_object_pointer<Unqualified>::value, bool> = true>
-            decltype(auto) invoke(Callable&& obj, Arg1&& arg1, Args&&... args) {
-                return std::forward<Arg1>(arg1).*obj;
+            decltype(auto) invoke(Callable&& callable, Object&& object, Args&&... args) {
+                return std::forward<Object>(object).*callable;
             }
 
             // pointer-to-member-function+object
             template<class Callable,
-                     class Arg1,
+                     class Object,
                      class... Args,
                      class Unqualified = remove_cvref_t<Callable>,
                      std::enable_if_t<std::is_member_function_pointer<Unqualified>::value, bool> = true>
-            decltype(auto) invoke(Callable&& obj, Arg1&& arg1, Args&&... args) {
-                return (std::forward<Arg1>(arg1).*obj)(std::forward<Args>(args)...);
+            decltype(auto) invoke(Callable&& callable, Object&& object, Args&&... args) {
+                return (std::forward<Object>(object).*callable)(std::forward<Args>(args)...);
             }
 
-            // pointer-to-member+reference-wrapped object
-            template<class Callable, class Arg1, class... Args>
-            decltype(auto) invoke(Callable&& obj, std::reference_wrapper<Arg1> arg1, Args&&... args) {
-                return invoke(std::forward<Callable>(obj), arg1.get(), std::forward<Args>(args)...);
+            // pointer-to-member+reference-wrapped object (expect `reference_wrapper::*`)
+            template<class Callable,
+                     class Object,
+                     class... Args,
+                     std::enable_if_t<polyfill::negation_v<polyfill::is_specialization_of<
+                                          member_object_type_t<std::remove_reference_t<Callable>>,
+                                          std::reference_wrapper>>,
+                                      bool> = true>
+            decltype(auto) invoke(Callable&& callable, std::reference_wrapper<Object> wrapper, Args&&... args) {
+                return invoke(std::forward<Callable>(callable), wrapper.get(), std::forward<Args>(args)...);
             }
 
             // functor
             template<class Callable, class... Args>
-            decltype(auto) invoke(Callable&& obj, Args&&... args) {
-                return std::forward<Callable>(obj)(std::forward<Args>(args)...);
+            decltype(auto) invoke(Callable&& callable, Args&&... args) {
+                return std::forward<Callable>(callable)(std::forward<Args>(args)...);
             }
 #endif
         }
@@ -8781,7 +8793,7 @@ namespace sqlite_orm {
 }
 #pragma once
 
-#include <tuple>  //  std::tuple, std::make_tuple
+#include <tuple>  //  std::tuple, std::make_tuple, std::declval
 #include <string>  //  std::string
 #include <utility>  //  std::forward
 
@@ -8835,38 +8847,19 @@ namespace sqlite_orm {
         };
 
         template<class C>
-        struct indexed_column_maker {
-            using type = indexed_column_t<C>;
-
-            indexed_column_t<C> operator()(C col) const {
-                return {std::move(col)};
-            }
-        };
-
-        template<class C>
-        struct indexed_column_maker<where_t<C>> {
-            using type = where_t<C>;
-
-            type operator()(type wher) const {
-                return {std::move(wher)};
-            }
-        };
-
-        template<class C>
-        struct indexed_column_maker<indexed_column_t<C>> {
-            using type = indexed_column_t<C>;
-
-            indexed_column_t<C> operator()(indexed_column_t<C> col) const {
-                return std::move(col);
-            }
-        };
-
-        template<class C>
-        auto make_indexed_column(C col) {
-            indexed_column_maker<C> maker;
-            return maker(std::move(col));
+        indexed_column_t<C> make_indexed_column(C col) {
+            return {std::move(col)};
         }
 
+        template<class C>
+        where_t<C> make_indexed_column(where_t<C> wher) {
+            return std::move(wher);
+        }
+
+        template<class C>
+        indexed_column_t<C> make_indexed_column(indexed_column_t<C> col) {
+            return std::move(col);
+        }
     }
 
     /**
@@ -8908,8 +8901,8 @@ namespace sqlite_orm {
     }
 
     template<class... Cols>
-    internal::index_t<typename internal::indexed_column_maker<Cols>::type...> make_index(const std::string& name,
-                                                                                         Cols... cols) {
+    internal::index_t<decltype(internal::make_indexed_column(std::declval<Cols>()))...>
+    make_index(const std::string& name, Cols... cols) {
         using cols_tuple = std::tuple<Cols...>;
         static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
                       "amount of where arguments can be 0 or 1");
@@ -8918,8 +8911,8 @@ namespace sqlite_orm {
     }
 
     template<class... Cols>
-    internal::index_t<typename internal::indexed_column_maker<Cols>::type...> make_unique_index(const std::string& name,
-                                                                                                Cols... cols) {
+    internal::index_t<decltype(internal::make_indexed_column(std::declval<Cols>()))...>
+    make_unique_index(const std::string& name, Cols... cols) {
         using cols_tuple = std::tuple<Cols...>;
         static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
                       "amount of where arguments can be 0 or 1");
@@ -10773,8 +10766,7 @@ namespace sqlite_orm {
 #include <system_error>  //  std::system_error
 #include <string>  //  std::string
 #include <type_traits>  //  std::remove_reference, std::is_base_of, std::decay, std::false_type, std::true_type
-#include <iterator>  //  std::input_iterator_tag, std::iterator_traits, std::distance
-#include <functional>  //  std::function
+#include <functional>  //   std::identity
 #include <sstream>  //  std::stringstream
 #include <map>  //  std::map
 #include <vector>  //  std::vector
@@ -11083,12 +11075,14 @@ namespace sqlite_orm {
 #include <memory>  //  std::unique_ptr
 #include <iterator>  //  std::iterator_traits
 #include <string>  //  std::string
-#include <type_traits>  //  std::integral_constant
+#include <type_traits>  //  std::integral_constant, std::declval
 #include <utility>  //  std::pair
 
 // #include "functional/cxx_universal.h"
 
 // #include "functional/cxx_polyfill.h"
+
+// #include "functional/cxx_functional_polyfill.h"
 
 // #include "tuple_helper/tuple_filter.h"
 
@@ -11482,11 +11476,10 @@ namespace sqlite_orm {
         template<class T>
         using is_replace = polyfill::bool_constant<is_replace_v<T>>;
 
-        template<class It, class L, class O>
+        template<class It, class Projection, class O>
         struct insert_range_t {
             using iterator_type = It;
-            using container_object_type = typename std::iterator_traits<iterator_type>::value_type;
-            using transformer_type = L;
+            using transformer_type = Projection;
             using object_type = O;
 
             std::pair<iterator_type, iterator_type> range;
@@ -11499,11 +11492,10 @@ namespace sqlite_orm {
         template<class T>
         using is_insert_range = polyfill::bool_constant<is_insert_range_v<T>>;
 
-        template<class It, class L, class O>
+        template<class It, class Projection, class O>
         struct replace_range_t {
             using iterator_type = It;
-            using container_object_type = typename std::iterator_traits<iterator_type>::value_type;
-            using transformer_type = L;
+            using transformer_type = Projection;
             using object_type = O;
 
             std::pair<iterator_type, iterator_type> range;
@@ -11541,14 +11533,6 @@ namespace sqlite_orm {
 
         template<class T>
         using is_replace_raw = polyfill::bool_constant<is_replace_raw_v<T>>;
-
-        struct default_transformer {
-
-            template<class T>
-            const T& operator()(const T& object) const {
-                return object;
-            }
-        };
 
         struct default_values_t {};
 
@@ -11749,7 +11733,8 @@ namespace sqlite_orm {
     }
 
     /**
-     *  Create a replace range statement
+     *  Create a replace range statement.
+     *  The objects in the range are transformed using the specified projection, which defaults to identity projection.
      *
      *  @example
      *  ```
@@ -11758,33 +11743,33 @@ namespace sqlite_orm {
      *  auto statement = storage.prepare(replace_range(users.begin(), users.end()));
      *  storage.execute(statement);
      *  ```
-     */
-    template<class It>
-    internal::replace_range_t<It, internal::default_transformer, typename std::iterator_traits<It>::value_type>
-    replace_range(It from, It to) {
-        return {{std::move(from), std::move(to)}};
-    }
-
-    /**
-     *  Create an replace range statement with explicit transformer. Transformer is used to apply containers with no strict objects with other kind of objects like pointers,
-     *  optionals or whatever.
      *  @example
      *  ```
      *  std::vector<std::unique_ptr<User>> userPointers;
      *  userPointers.push_back(std::make_unique<User>(1, "Eneli"));
-     *  auto statement = storage.prepare(replace_range<User>(userPointers.begin(), userPointers.end(), [](const std::unique_ptr<User> &userPointer) -> const User & {
-     *      return *userPointer;
-     *  }));
+     *  auto statement = storage.prepare(replace_range(userPointers.begin(), userPointers.end(), &std::unique_ptr<User>::operator*));
      *  storage.execute(statement);
      *  ```
      */
-    template<class T, class It, class L>
-    internal::replace_range_t<It, L, T> replace_range(It from, It to, L transformer) {
-        return {{std::move(from), std::move(to)}, std::move(transformer)};
+    template<class It, class Projection = polyfill::identity>
+    auto replace_range(It from, It to, Projection project = {}) {
+        using O = std::decay_t<decltype(polyfill::invoke(std::declval<Projection>(), *std::declval<It>()))>;
+        return internal::replace_range_t<It, Projection, O>{{std::move(from), std::move(to)}, std::move(project)};
+    }
+
+    /*
+     *  Create a replace range statement.
+     *  Overload of `replace_range(It, It, Projection)` with explicit object type template parameter.
+     */
+    template<class O, class It, class Projection = polyfill::identity>
+    internal::replace_range_t<It, Projection, O> replace_range(It from, It to, Projection project = {}) {
+        return {{std::move(from), std::move(to)}, std::move(project)};
     }
 
     /**
-     *  Create an insert range statement
+     *  Create an insert range statement.
+     *  The objects in the range are transformed using the specified projection, which defaults to identity projection.
+     *  
      *  @example
      *  ```
      *  std::vector<User> users;
@@ -11792,30 +11777,29 @@ namespace sqlite_orm {
      *  auto statement = storage.prepare(insert_range(users.begin(), users.end()));
      *  storage.execute(statement);
      *  ```
-     */
-    template<class It>
-    internal::insert_range_t<It, internal::default_transformer, typename std::iterator_traits<It>::value_type>
-    insert_range(It from, It to) {
-        return {{std::move(from), std::move(to)}, internal::default_transformer{}};
-    }
-
-    /**
-     *  Create an insert range statement with explicit transformer. Transformer is used to apply containers with no strict objects with other kind of objects like pointers,
-     *  optionals or whatever.
      *  @example
      *  ```
      *  std::vector<std::unique_ptr<User>> userPointers;
      *  userPointers.push_back(std::make_unique<User>(1, "Eneli"));
-     *  auto statement = storage.prepare(insert_range<User>(userPointers.begin(), userPointers.end(), [](const std::unique_ptr<User> &userPointer) -> const User & {
-     *      return *userPointer;
-     *  }));
+     *  auto statement = storage.prepare(insert_range(userPointers.begin(), userPointers.end(), &std::unique_ptr<User>::operator*));
      *  storage.execute(statement);
      *  ```
      */
-    template<class T, class It, class L>
-    internal::insert_range_t<It, L, T> insert_range(It from, It to, L transformer) {
-        return {{std::move(from), std::move(to)}, std::move(transformer)};
+    template<class It, class Projection = polyfill::identity>
+    auto insert_range(It from, It to, Projection project = {}) {
+        using O = std::decay_t<decltype(polyfill::invoke(std::declval<Projection>(), *std::declval<It>()))>;
+        return internal::insert_range_t<It, Projection, O>{{std::move(from), std::move(to)}, std::move(project)};
     }
+
+    /*
+     *  Create an insert range statement.
+     *  Overload of `insert_range(It, It, Projection)` with explicit object type template parameter.
+     */
+    template<class O, class It, class Projection = polyfill::identity>
+    internal::insert_range_t<It, Projection, O> insert_range(It from, It to, Projection project = {}) {
+        return {{std::move(from), std::move(to)}, std::move(project)};
+    }
+
     /**
      *  Create a replace statement.
      *  T is an object type mapped to a storage.
@@ -17823,26 +17807,28 @@ namespace sqlite_orm {
                 this->execute(statement);
             }
 
-            template<class It>
-            void replace_range(It from, It to) {
-                using O = typename std::iterator_traits<It>::value_type;
+            template<class It, class Projection = polyfill::identity>
+            void replace_range(It from, It to, Projection project = {}) {
+                using O = std::decay_t<decltype(polyfill::invoke(std::declval<Projection>(), *std::declval<It>()))>;
                 this->assert_mapped_type<O>();
                 if(from == to) {
                     return;
                 }
 
-                auto statement = this->prepare(sqlite_orm::replace_range(from, to));
+                auto statement =
+                    this->prepare(sqlite_orm::replace_range(std::move(from), std::move(to), std::move(project)));
                 this->execute(statement);
             }
 
-            template<class T, class It, class L>
-            void replace_range(It from, It to, L transformer) {
-                this->assert_mapped_type<T>();
+            template<class O, class It, class Projection = polyfill::identity>
+            void replace_range(It from, It to, Projection project = {}) {
+                this->assert_mapped_type<O>();
                 if(from == to) {
                     return;
                 }
 
-                auto statement = this->prepare(sqlite_orm::replace_range<T>(from, to, std::move(transformer)));
+                auto statement =
+                    this->prepare(sqlite_orm::replace_range<O>(std::move(from), std::move(to), std::move(project)));
                 this->execute(statement);
             }
 
@@ -17942,26 +17928,28 @@ namespace sqlite_orm {
                 this->execute(statement);
             }
 
-            template<class It>
-            void insert_range(It from, It to) {
-                using O = typename std::iterator_traits<It>::value_type;
+            template<class It, class Projection = polyfill::identity>
+            void insert_range(It from, It to, Projection project = {}) {
+                using O = std::decay_t<decltype(polyfill::invoke(std::declval<Projection>(), *std::declval<It>()))>;
                 this->assert_mapped_type<O>();
                 this->assert_insertable_type<O>();
                 if(from == to) {
                     return;
                 }
-                auto statement = this->prepare(sqlite_orm::insert_range(from, to));
+                auto statement =
+                    this->prepare(sqlite_orm::insert_range(std::move(from), std::move(to), std::move(project)));
                 this->execute(statement);
             }
 
-            template<class T, class It, class L>
-            void insert_range(It from, It to, L transformer) {
-                this->assert_mapped_type<T>();
-                this->assert_insertable_type<T>();
+            template<class O, class It, class Projection = polyfill::identity>
+            void insert_range(It from, It to, Projection project = {}) {
+                this->assert_mapped_type<O>();
+                this->assert_insertable_type<O>();
                 if(from == to) {
                     return;
                 }
-                auto statement = this->prepare(sqlite_orm::insert_range<T>(from, to, std::move(transformer)));
+                auto statement =
+                    this->prepare(sqlite_orm::insert_range<O>(std::move(from), std::move(to), std::move(project)));
                 this->execute(statement);
             }
 
@@ -18354,20 +18342,20 @@ namespace sqlite_orm {
                 };
 
                 static_if<is_replace_range_v<T>>(
-                    [&processObject](auto& statement) {
-                        auto& transformer = statement.expression.transformer;
+                    [&processObject](auto& expression) {
+                        auto& transformer = expression.transformer;
                         std::for_each(  ///
-                            statement.expression.range.first,
-                            statement.expression.range.second,
-                            [&processObject, &transformer](auto& object) {
-                                auto& realObject = transformer(object);
-                                processObject(realObject);
+                            expression.range.first,
+                            expression.range.second,
+                            [&processObject, &transformer](auto& item) {
+                                const object_type& object = polyfill::invoke(transformer, item);
+                                processObject(object);
                             });
                     },
-                    [&processObject](auto& statement) {
-                        auto& o = get_object(statement.expression);
+                    [&processObject](auto& expression) {
+                        const object_type& o = get_object(expression);
                         processObject(o);
-                    })(statement);
+                    })(statement.expression);
                 perform_step(stmt);
             }
 
@@ -18395,20 +18383,20 @@ namespace sqlite_orm {
                 };
 
                 static_if<is_insert_range_v<T>>(
-                    [&processObject](auto& statement) {
-                        auto& transformer = statement.expression.transformer;
+                    [&processObject](auto& expression) {
+                        auto& transformer = expression.transformer;
                         std::for_each(  ///
-                            statement.expression.range.first,
-                            statement.expression.range.second,
-                            [&processObject, &transformer](auto& object) {
-                                auto& realObject = transformer(object);
-                                processObject(realObject);
+                            expression.range.first,
+                            expression.range.second,
+                            [&processObject, &transformer](auto& item) {
+                                const object_type& object = polyfill::invoke(transformer, item);
+                                processObject(object);
                             });
                     },
-                    [&processObject](auto& statement) {
-                        auto& o = get_object(statement.expression);
+                    [&processObject](auto& expression) {
+                        const object_type& o = get_object(expression);
                         processObject(o);
-                    })(statement);
+                    })(statement.expression);
 
                 perform_step(stmt);
                 return sqlite3_last_insert_rowid(sqlite3_db_handle(stmt));
