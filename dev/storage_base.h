@@ -10,6 +10,7 @@
 #include <memory>  //  std::make_shared, std::shared_ptr
 #include <map>  //  std::map
 #include <type_traits>  //  std::decay, std::is_same
+#include <algorithm>  //  std::find_if
 
 #include "functional/cxx_universal.h"
 #include "functional/static_magic.h"

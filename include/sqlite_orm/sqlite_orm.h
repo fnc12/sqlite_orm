@@ -10772,7 +10772,7 @@ namespace sqlite_orm {
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_size, std::tuple, std::make_tuple
 #include <utility>  //  std::forward, std::pair
-#include <algorithm>  //  std::find
+#include <algorithm>  //  std::for_each, std::ranges::for_each
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>  // std::optional
@@ -12815,6 +12815,7 @@ namespace sqlite_orm {
 #include <memory>  //  std::make_shared, std::shared_ptr
 #include <map>  //  std::map
 #include <type_traits>  //  std::decay, std::is_same
+#include <algorithm>  //  std::find_if
 
 // #include "functional/cxx_universal.h"
 
@@ -17758,7 +17759,7 @@ namespace sqlite_orm {
                 static_assert(is_preparable_v<self, Ex>, "Expression must be a high-level statement");
 
                 decltype(auto) e2 = static_if<is_select_v<Ex>>(
-                    [](auto expression) {
+                    [](auto expression) -> auto {
                         expression.highest_level = true;
                         return expression;
                     },
@@ -18343,19 +18344,27 @@ namespace sqlite_orm {
 
                 static_if<is_replace_range_v<T>>(
                     [&processObject](auto& expression) {
-                        auto& transformer = expression.transformer;
-                        std::for_each(  ///
-                            expression.range.first,
-                            expression.range.second,
-                            [&processObject, &transformer](auto& item) {
-                                const object_type& object = polyfill::invoke(transformer, item);
-                                processObject(object);
-                            });
+#if __cpp_lib_ranges >= 201911L
+                        std::ranges::for_each(expression.range.first,
+                                              expression.range.second,
+                                              std::ref(processObject),
+                                              std::ref(expression.transformer));
+#else
+                            auto& transformer = expression.transformer;
+                            std::for_each(  ///
+                                expression.range.first,
+                                expression.range.second,
+                                [&processObject, &transformer](auto& item) {
+                                    const object_type& object = polyfill::invoke(transformer, item);
+                                    processObject(object);
+                                });
+#endif
                     },
                     [&processObject](auto& expression) {
                         const object_type& o = get_object(expression);
                         processObject(o);
                     })(statement.expression);
+
                 perform_step(stmt);
             }
 
@@ -18384,14 +18393,21 @@ namespace sqlite_orm {
 
                 static_if<is_insert_range_v<T>>(
                     [&processObject](auto& expression) {
-                        auto& transformer = expression.transformer;
-                        std::for_each(  ///
-                            expression.range.first,
-                            expression.range.second,
-                            [&processObject, &transformer](auto& item) {
-                                const object_type& object = polyfill::invoke(transformer, item);
-                                processObject(object);
-                            });
+#if __cpp_lib_ranges >= 201911L
+                        std::ranges::for_each(expression.range.first,
+                                              expression.range.second,
+                                              std::ref(processObject),
+                                              std::ref(expression.transformer));
+#else
+                            auto& transformer = expression.transformer;
+                            std::for_each(  ///
+                                expression.range.first,
+                                expression.range.second,
+                                [&processObject, &transformer](auto& item) {
+                                    const object_type& object = polyfill::invoke(transformer, item);
+                                    processObject(object);
+                                });
+#endif
                     },
                     [&processObject](auto& expression) {
                         const object_type& o = get_object(expression);
