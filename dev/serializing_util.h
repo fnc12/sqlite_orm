@@ -301,12 +301,12 @@ namespace sqlite_orm {
             const auto& table = get<1>(tpl);
             const bool& qualified = get<2>(tpl);
 
-            table.for_each_column(
-                [&ss, &tableName = qualified ? table.name : std::string{}, first = true](auto& column) mutable {
-                    constexpr std::array<const char*, 2> sep = {", ", ""};
-                    ss << sep[std::exchange(first, false)];
-                    stream_identifier(ss, tableName, column.name, std::string{});
-                });
+            table.for_each_column([&ss, &tableName = qualified ? table.name : std::string{}, first = true](
+                                      const basic_column& column) mutable {
+                constexpr std::array<const char*, 2> sep = {", ", ""};
+                ss << sep[std::exchange(first, false)];
+                stream_identifier(ss, tableName, column.name, std::string{});
+            });
             return ss;
         }
 
@@ -317,11 +317,12 @@ namespace sqlite_orm {
                                  std::tuple<const streaming<stream_as::non_generated_columns>&, Table> tpl) {
             const auto& table = get<1>(tpl);
 
-            table.template for_each_column_excluding<is_generated_always>([&ss, first = true](auto& column) mutable {
-                constexpr std::array<const char*, 2> sep = {", ", ""};
-                ss << sep[std::exchange(first, false)];
-                stream_identifier(ss, column.name);
-            });
+            table.template for_each_column_excluding<is_generated_always>(
+                [&ss, first = true](const basic_column& column) mutable {
+                    constexpr std::array<const char*, 2> sep = {", ", ""};
+                    ss << sep[std::exchange(first, false)];
+                    stream_identifier(ss, column.name);
+                });
             return ss;
         }
 
