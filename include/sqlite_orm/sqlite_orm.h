@@ -1151,7 +1151,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        using table_type_of_t = typename table_type_of_t<T>::type;
+        using table_type_of_t = typename table_type_of<T>::type;
     }
 }
 
