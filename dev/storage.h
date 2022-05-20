@@ -5,8 +5,7 @@
 #include <system_error>  //  std::system_error
 #include <string>  //  std::string
 #include <type_traits>  //  std::remove_reference, std::is_base_of, std::decay, std::false_type, std::true_type
-#include <iterator>  //  std::input_iterator_tag, std::iterator_traits, std::distance
-#include <functional>  //  std::function
+#include <functional>  //   std::identity
 #include <sstream>  //  std::stringstream
 #include <map>  //  std::map
 #include <vector>  //  std::vector
@@ -647,26 +646,28 @@ namespace sqlite_orm {
                 this->execute(statement);
             }
 
-            template<class It>
-            void replace_range(It from, It to) {
-                using O = typename std::iterator_traits<It>::value_type;
+            template<class It, class Projection = polyfill::identity>
+            void replace_range(It from, It to, Projection project = {}) {
+                using O = std::decay_t<decltype(polyfill::invoke(std::declval<Projection>(), *std::declval<It>()))>;
                 this->assert_mapped_type<O>();
                 if(from == to) {
                     return;
                 }
 
-                auto statement = this->prepare(sqlite_orm::replace_range(from, to));
+                auto statement =
+                    this->prepare(sqlite_orm::replace_range(std::move(from), std::move(to), std::move(project)));
                 this->execute(statement);
             }
 
-            template<class T, class It, class L>
-            void replace_range(It from, It to, L transformer) {
-                this->assert_mapped_type<T>();
+            template<class O, class It, class Projection = polyfill::identity>
+            void replace_range(It from, It to, Projection project = {}) {
+                this->assert_mapped_type<O>();
                 if(from == to) {
                     return;
                 }
 
-                auto statement = this->prepare(sqlite_orm::replace_range<T>(from, to, std::move(transformer)));
+                auto statement =
+                    this->prepare(sqlite_orm::replace_range<O>(std::move(from), std::move(to), std::move(project)));
                 this->execute(statement);
             }
 
@@ -766,26 +767,28 @@ namespace sqlite_orm {
                 this->execute(statement);
             }
 
-            template<class It>
-            void insert_range(It from, It to) {
-                using O = typename std::iterator_traits<It>::value_type;
+            template<class It, class Projection = polyfill::identity>
+            void insert_range(It from, It to, Projection project = {}) {
+                using O = std::decay_t<decltype(polyfill::invoke(std::declval<Projection>(), *std::declval<It>()))>;
                 this->assert_mapped_type<O>();
                 this->assert_insertable_type<O>();
                 if(from == to) {
                     return;
                 }
-                auto statement = this->prepare(sqlite_orm::insert_range(from, to));
+                auto statement =
+                    this->prepare(sqlite_orm::insert_range(std::move(from), std::move(to), std::move(project)));
                 this->execute(statement);
             }
 
-            template<class T, class It, class L>
-            void insert_range(It from, It to, L transformer) {
-                this->assert_mapped_type<T>();
-                this->assert_insertable_type<T>();
+            template<class O, class It, class Projection = polyfill::identity>
+            void insert_range(It from, It to, Projection project = {}) {
+                this->assert_mapped_type<O>();
+                this->assert_insertable_type<O>();
                 if(from == to) {
                     return;
                 }
-                auto statement = this->prepare(sqlite_orm::insert_range<T>(from, to, std::move(transformer)));
+                auto statement =
+                    this->prepare(sqlite_orm::insert_range<O>(std::move(from), std::move(to), std::move(project)));
                 this->execute(statement);
             }
 
@@ -1178,20 +1181,20 @@ namespace sqlite_orm {
                 };
 
                 static_if<is_replace_range_v<T>>(
-                    [&processObject](auto& statement) {
-                        auto& transformer = statement.expression.transformer;
+                    [&processObject](auto& expression) {
+                        auto& transformer = expression.transformer;
                         std::for_each(  ///
-                            statement.expression.range.first,
-                            statement.expression.range.second,
-                            [&processObject, &transformer](auto& object) {
-                                auto& realObject = transformer(object);
-                                processObject(realObject);
+                            expression.range.first,
+                            expression.range.second,
+                            [&processObject, &transformer](auto& item) {
+                                const object_type& object = polyfill::invoke(transformer, item);
+                                processObject(object);
                             });
                     },
-                    [&processObject](auto& statement) {
-                        auto& o = get_object(statement.expression);
+                    [&processObject](auto& expression) {
+                        const object_type& o = get_object(expression);
                         processObject(o);
-                    })(statement);
+                    })(statement.expression);
                 perform_step(stmt);
             }
 
@@ -1219,20 +1222,20 @@ namespace sqlite_orm {
                 };
 
                 static_if<is_insert_range_v<T>>(
-                    [&processObject](auto& statement) {
-                        auto& transformer = statement.expression.transformer;
+                    [&processObject](auto& expression) {
+                        auto& transformer = expression.transformer;
                         std::for_each(  ///
-                            statement.expression.range.first,
-                            statement.expression.range.second,
-                            [&processObject, &transformer](auto& object) {
-                                auto& realObject = transformer(object);
-                                processObject(realObject);
+                            expression.range.first,
+                            expression.range.second,
+                            [&processObject, &transformer](auto& item) {
+                                const object_type& object = polyfill::invoke(transformer, item);
+                                processObject(object);
                             });
                     },
-                    [&processObject](auto& statement) {
-                        auto& o = get_object(statement.expression);
+                    [&processObject](auto& expression) {
+                        const object_type& o = get_object(expression);
                         processObject(o);
-                    })(statement);
+                    })(statement.expression);
 
                 perform_step(stmt);
                 return sqlite3_last_insert_rowid(sqlite3_db_handle(stmt));

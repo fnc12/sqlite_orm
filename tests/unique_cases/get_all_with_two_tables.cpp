@@ -6,6 +6,11 @@ using namespace sqlite_orm;
 namespace {
     struct Pattern {
         std::string value;
+
+#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
+        Pattern() = default;
+        Pattern(std::string value) : value{move(value)} {}
+#endif
     };
     struct Item {
         int id = 0;
@@ -50,15 +55,11 @@ TEST_CASE("get_all with two tables") {
     }
     SECTION("pointers insert") {
         std::vector<std::unique_ptr<Pattern>> patterns;
-        patterns.push_back(std::make_unique<Pattern>(Pattern{"n"}));
-        patterns.push_back(std::make_unique<Pattern>(Pattern{"w"}));
+        patterns.push_back(std::make_unique<Pattern>("n"));
+        patterns.push_back(std::make_unique<Pattern>("w"));
 
         storage.begin_transaction();
-        storage.insert_range<Pattern>(patterns.begin(),
-                                      patterns.end(),
-                                      [](const std::unique_ptr<Pattern>& pointer) -> const Pattern& {
-                                          return *pointer;
-                                      });
+        storage.insert_range<Pattern>(patterns.begin(), patterns.end(), &std::unique_ptr<Pattern>::operator*);
     }
     {
         auto rows = storage.select(&Item::id, where(like(&Item::attributes, conc(conc("%", &Pattern::value), "%"))));

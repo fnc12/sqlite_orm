@@ -5,6 +5,11 @@
 #endif
 #include <utility>  //  std::forward
 
+#if __cpp_lib_invoke < 201411L
+#include "cxx_polyfill.h"
+#endif
+#include "../member_traits/member_traits.h"
+
 namespace sqlite_orm {
     namespace internal {
         namespace polyfill {
@@ -16,7 +21,7 @@ namespace sqlite_orm {
 #else
             struct identity {
                 template<class T>
-                [[nodiscard]] constexpr T&& operator()(T&& v) const noexcept {
+                constexpr T&& operator()(T&& v) const noexcept {
                     return std::forward<T>(v);
                 }
 
@@ -29,34 +34,40 @@ namespace sqlite_orm {
 #else
             // pointer-to-data-member+object
             template<class Callable,
-                     class Arg1,
+                     class Object,
                      class... Args,
                      class Unqualified = remove_cvref_t<Callable>,
                      std::enable_if_t<std::is_member_object_pointer<Unqualified>::value, bool> = true>
-            decltype(auto) invoke(Callable&& obj, Arg1&& arg1, Args&&... args) {
-                return std::forward<Arg1>(arg1).*obj;
+            decltype(auto) invoke(Callable&& callable, Object&& object, Args&&... args) {
+                return std::forward<Object>(object).*callable;
             }
 
             // pointer-to-member-function+object
             template<class Callable,
-                     class Arg1,
+                     class Object,
                      class... Args,
                      class Unqualified = remove_cvref_t<Callable>,
                      std::enable_if_t<std::is_member_function_pointer<Unqualified>::value, bool> = true>
-            decltype(auto) invoke(Callable&& obj, Arg1&& arg1, Args&&... args) {
-                return (std::forward<Arg1>(arg1).*obj)(std::forward<Args>(args)...);
+            decltype(auto) invoke(Callable&& callable, Object&& object, Args&&... args) {
+                return (std::forward<Object>(object).*callable)(std::forward<Args>(args)...);
             }
 
-            // pointer-to-member+reference-wrapped object
-            template<class Callable, class Arg1, class... Args>
-            decltype(auto) invoke(Callable&& obj, std::reference_wrapper<Arg1> arg1, Args&&... args) {
-                return invoke(std::forward<Callable>(obj), arg1.get(), std::forward<Args>(args)...);
+            // pointer-to-member+reference-wrapped object (expect `reference_wrapper::*`)
+            template<class Callable,
+                     class Object,
+                     class... Args,
+                     std::enable_if_t<polyfill::negation_v<polyfill::is_specialization_of<
+                                          member_object_type_t<std::remove_reference_t<Callable>>,
+                                          std::reference_wrapper>>,
+                                      bool> = true>
+            decltype(auto) invoke(Callable&& callable, std::reference_wrapper<Object> wrapper, Args&&... args) {
+                return invoke(std::forward<Callable>(callable), wrapper.get(), std::forward<Args>(args)...);
             }
 
             // functor
             template<class Callable, class... Args>
-            decltype(auto) invoke(Callable&& obj, Args&&... args) {
-                return std::forward<Callable>(obj)(std::forward<Args>(args)...);
+            decltype(auto) invoke(Callable&& callable, Args&&... args) {
+                return std::forward<Callable>(callable)(std::forward<Args>(args)...);
             }
 #endif
         }

@@ -110,11 +110,21 @@ TEST_CASE("InsertRange") {
     struct Object {
         int id;
         std::string name;
+
+#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
+        Object() = default;
+        Object(int id, std::string name) : id{id}, name{move(name)} {}
+#endif
     };
 
     struct ObjectWithoutRowid {
         int id;
         std::string name;
+
+#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
+        ObjectWithoutRowid() = default;
+        ObjectWithoutRowid(int id, std::string name) : id{id}, name{move(name)} {}
+#endif
     };
 
     auto storage = make_storage(
@@ -153,35 +163,22 @@ TEST_CASE("InsertRange") {
         std::vector<std::unique_ptr<Object>> objects;
         objects.reserve(100);
         for(auto i = 0; i < 100; ++i) {
-            objects.push_back(std::make_unique<Object>(Object{0, "Skillet"}));
+            objects.push_back(std::make_unique<Object>(0, "Skillet"));
         }
-        storage.insert_range<Object>(objects.begin(),
-                                     objects.end(),
-                                     [](const std::unique_ptr<Object> &pointer) -> const Object & {
-                                         return *pointer;
-                                     });
+        storage.insert_range(objects.begin(), objects.end(), &std::unique_ptr<Object>::operator*);
         REQUIRE(storage.count<Object>() == 100);
 
         //  test empty container
         std::vector<std::unique_ptr<Object>> emptyVector;
-        storage.insert_range<Object>(emptyVector.begin(),
-                                     emptyVector.end(),
-                                     [](const std::unique_ptr<Object> &pointer) -> const Object & {
-                                         return *pointer;
-                                     });
+        storage.insert_range(emptyVector.begin(), emptyVector.end(), &std::unique_ptr<Object>::operator*);
 
         //  test insert_range without rowid
         std::vector<std::unique_ptr<ObjectWithoutRowid>> objectsWR;
-        objectsWR.push_back(std::make_unique<ObjectWithoutRowid>(ObjectWithoutRowid{10, "Life"}));
-        objectsWR.push_back(std::make_unique<ObjectWithoutRowid>(ObjectWithoutRowid{20, "Death"}));
+        objectsWR.push_back(std::make_unique<ObjectWithoutRowid>(10, "Life"));
+        objectsWR.push_back(std::make_unique<ObjectWithoutRowid>(20, "Death"));
 
         REQUIRE(objectsWR.size() == 2);
-        storage.insert_range<ObjectWithoutRowid>(
-            objectsWR.begin(),
-            objectsWR.end(),
-            [](const std::unique_ptr<ObjectWithoutRowid> &pointer) -> const ObjectWithoutRowid & {
-                return *pointer;
-            });
+        storage.insert_range(objectsWR.begin(), objectsWR.end(), &std::unique_ptr<ObjectWithoutRowid>::operator*);
         REQUIRE(storage.get<ObjectWithoutRowid>(10).name == "Life");
         REQUIRE(storage.get<ObjectWithoutRowid>(20).name == "Death");
     }
@@ -377,6 +374,11 @@ TEST_CASE("Replace query") {
     struct Object {
         int id;
         std::string name;
+
+#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
+        Object() = default;
+        Object(int id, std::string name) : id{id}, name{move(name)} {}
+#endif
     };
 
     struct User {
@@ -461,22 +463,14 @@ TEST_CASE("Replace query") {
     }
     SECTION("pointers") {
         std::vector<std::unique_ptr<Object>> vector;
-        vector.push_back(std::make_unique<Object>(Object{300, "Iggy"}));
-        vector.push_back(std::make_unique<Object>(Object{400, "Azalea"}));
-        storage.replace_range<Object>(vector.begin(),
-                                      vector.end(),
-                                      [](const std::unique_ptr<Object> &pointer) -> const Object & {
-                                          return *pointer;
-                                      });
+        vector.push_back(std::make_unique<Object>(300, "Iggy"));
+        vector.push_back(std::make_unique<Object>(400, "Azalea"));
+        storage.replace_range(vector.begin(), vector.end(), &std::unique_ptr<Object>::operator*);
         REQUIRE(storage.count<Object>() == 4);
 
         //  test empty container
         std::vector<std::unique_ptr<Object>> emptyVector;
-        storage.replace_range<Object>(emptyVector.begin(),
-                                      emptyVector.end(),
-                                      [](const std::unique_ptr<Object> &pointer) -> const Object & {
-                                          return *pointer;
-                                      });
+        storage.replace_range(emptyVector.begin(), emptyVector.end(), &std::unique_ptr<Object>::operator*);
     }
     REQUIRE(storage.count<User>() == 0);
     storage.replace(User{10, "Daddy Yankee"});

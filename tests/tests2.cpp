@@ -174,19 +174,12 @@ TEST_CASE("insert") {
         std::transform(initList.begin(), initList.end(), std::back_inserter(pointers), [](const Object &object) {
             return std::make_unique<Object>(Object{object});
         });
-        storage.insert_range<Object>(pointers.begin(),
-                                     pointers.end(),
-                                     [](const unique_ptr<Object> &pointer) -> const Object & {
-                                         return *pointer;
-                                     });
+        storage.insert_range(pointers.begin(), pointers.end(), &std::unique_ptr<Object>::operator*);
 
         //  test empty container
         std::vector<unique_ptr<Object>> emptyVector;
-        storage.insert_range<Object>(emptyVector.begin(),
-                                     emptyVector.end(),
-                                     [](const unique_ptr<Object> &pointer) -> const Object & {
-                                         return *pointer;
-                                     });
+        REQUIRE_NOTHROW(
+            storage.insert_range(emptyVector.begin(), emptyVector.end(), &std::unique_ptr<Object>::operator*));
     }
 
     //  test insert without rowid

@@ -3,13 +3,18 @@
 
 using namespace sqlite_orm;
 
+template<class E1, class E2>
+static void assert_same(const E1&, const E2&) {
+    STATIC_REQUIRE(std::is_same<E1, E2>::value);
+}
+
 TEST_CASE("statement_serializer insert/replace") {
     using internal::serialize;
     struct User {
         int id = 0;
         std::string name;
 
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+#if !defined(SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED) || !defined(SQLITE_ORM_AGGREGATE_BASES_SUPPORTED)
         User() = default;
         User(int id, std::string name) : id{id}, name{move(name)} {}
 #endif
@@ -74,6 +79,51 @@ TEST_CASE("statement_serializer insert/replace") {
                 value = serialize(statement, context);
                 expected =
                     R"(REPLACE INTO "users" SELECT "users_backup"."id", "users_backup"."name" FROM "users_backup")";
+            }
+        }
+        SECTION("range") {
+            context.replace_bindable_with_question = false;
+
+            std::vector<User> users(1);
+            SECTION("objects") {
+                auto expression = replace_range<User>(users.begin(), users.end());
+                // deduced object type
+                assert_same(replace_range(users.begin(), users.end()), expression);
+                // deduced object type
+                assert_same(replace_range(users.begin(), users.end(), polyfill::identity{}), expression);
+                assert_same(replace_range<User>(users.begin(), users.end(), polyfill::identity{}), expression);
+                value = serialize(expression, context);
+                expected = R"(REPLACE INTO "users" ("id", "name") VALUES (?, ?))";
+            }
+            SECTION("indirected") {
+                std::vector<std::unique_ptr<User>> userPtrs;
+                userPtrs.push_back(std::make_unique<User>(users.front()));
+                auto expression =
+                    replace_range<User>(userPtrs.begin(), userPtrs.end(), &std::unique_ptr<User>::operator*);
+                // deduced object type
+                assert_same(replace_range(userPtrs.begin(), userPtrs.end(), &std::unique_ptr<User>::operator*),
+                            expression);
+                value = serialize(expression, context);
+                expected = R"(REPLACE INTO "users" ("id", "name") VALUES (?, ?))";
+            }
+            SECTION("wrapper") {
+                std::vector<std::reference_wrapper<User>> userRefs{std::ref(users.front())};
+                SECTION("identity") {
+                    auto expression = replace_range<User>(userRefs.begin(), userRefs.end());
+                    assert_same(replace_range<User>(userRefs.begin(), userRefs.end(), polyfill::identity{}),
+                                expression);
+                    value = serialize(expression, context);
+                    expected = R"(REPLACE INTO "users" ("id", "name") VALUES (?, ?))";
+                }
+                SECTION("projected") {
+                    auto expression =
+                        replace_range<User>(userRefs.begin(), userRefs.end(), &std::reference_wrapper<User>::get);
+                    // deduced object type
+                    assert_same(replace_range(userRefs.begin(), userRefs.end(), &std::reference_wrapper<User>::get),
+                                expression);
+                    value = serialize(expression, context);
+                    expected = R"(REPLACE INTO "users" ("id", "name") VALUES (?, ?))";
+                }
             }
         }
     }
@@ -302,6 +352,51 @@ TEST_CASE("statement_serializer insert/replace") {
                     value = serialize(statement, context);
                     expected =
                         R"(INSERT OR ROLLBACK INTO "users" SELECT "users_backup"."id", "users_backup"."name" FROM "users_backup")";
+                }
+            }
+        }
+        SECTION("range") {
+            context.replace_bindable_with_question = false;
+
+            std::vector<User> users(1);
+            SECTION("objects") {
+                auto expression = insert_range<User>(users.begin(), users.end());
+                // deduced object type
+                assert_same(insert_range(users.begin(), users.end()), expression);
+                // deduced object type
+                assert_same(insert_range(users.begin(), users.end(), polyfill::identity{}), expression);
+                assert_same(insert_range<User>(users.begin(), users.end(), polyfill::identity{}), expression);
+                value = serialize(expression, context);
+                expected = R"(INSERT INTO "users" ("id", "name") VALUES (?, ?))";
+            }
+            SECTION("indirected") {
+                std::vector<std::unique_ptr<User>> userPtrs;
+                userPtrs.push_back(std::make_unique<User>(users.front()));
+                auto expression =
+                    insert_range<User>(userPtrs.begin(), userPtrs.end(), &std::unique_ptr<User>::operator*);
+                // deduced object type
+                assert_same(insert_range(userPtrs.begin(), userPtrs.end(), &std::unique_ptr<User>::operator*),
+                            expression);
+                value = serialize(expression, context);
+                expected = R"(INSERT INTO "users" ("id", "name") VALUES (?, ?))";
+            }
+            SECTION("wrapper") {
+                std::vector<std::reference_wrapper<User>> userRefs{std::ref(users.front())};
+                SECTION("identity") {
+                    auto expression = insert_range<User>(userRefs.begin(), userRefs.end());
+                    // deduced object type
+                    assert_same(insert_range<User>(userRefs.begin(), userRefs.end(), polyfill::identity{}), expression);
+                    value = serialize(expression, context);
+                    expected = R"(INSERT INTO "users" ("id", "name") VALUES (?, ?))";
+                }
+                SECTION("projected") {
+                    auto expression =
+                        insert_range<User>(userRefs.begin(), userRefs.end(), &std::reference_wrapper<User>::get);
+                    // deduced object type
+                    assert_same(insert_range(userRefs.begin(), userRefs.end(), &std::reference_wrapper<User>::get),
+                                expression);
+                    value = serialize(expression, context);
+                    expected = R"(INSERT INTO "users" ("id", "name") VALUES (?, ?))";
                 }
             }
         }

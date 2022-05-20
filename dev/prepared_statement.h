@@ -4,11 +4,12 @@
 #include <memory>  //  std::unique_ptr
 #include <iterator>  //  std::iterator_traits
 #include <string>  //  std::string
-#include <type_traits>  //  std::integral_constant
+#include <type_traits>  //  std::integral_constant, std::declval
 #include <utility>  //  std::pair
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_polyfill.h"
+#include "functional/cxx_functional_polyfill.h"
 #include "tuple_helper/tuple_filter.h"
 #include "connection_holder.h"
 #include "select_constraints.h"
@@ -217,11 +218,10 @@ namespace sqlite_orm {
         template<class T>
         using is_replace = polyfill::bool_constant<is_replace_v<T>>;
 
-        template<class It, class L, class O>
+        template<class It, class Projection, class O>
         struct insert_range_t {
             using iterator_type = It;
-            using container_object_type = typename std::iterator_traits<iterator_type>::value_type;
-            using transformer_type = L;
+            using transformer_type = Projection;
             using object_type = O;
 
             std::pair<iterator_type, iterator_type> range;
@@ -234,11 +234,10 @@ namespace sqlite_orm {
         template<class T>
         using is_insert_range = polyfill::bool_constant<is_insert_range_v<T>>;
 
-        template<class It, class L, class O>
+        template<class It, class Projection, class O>
         struct replace_range_t {
             using iterator_type = It;
-            using container_object_type = typename std::iterator_traits<iterator_type>::value_type;
-            using transformer_type = L;
+            using transformer_type = Projection;
             using object_type = O;
 
             std::pair<iterator_type, iterator_type> range;
@@ -276,14 +275,6 @@ namespace sqlite_orm {
 
         template<class T>
         using is_replace_raw = polyfill::bool_constant<is_replace_raw_v<T>>;
-
-        struct default_transformer {
-
-            template<class T>
-            const T& operator()(const T& object) const {
-                return object;
-            }
-        };
 
         struct default_values_t {};
 
@@ -484,7 +475,8 @@ namespace sqlite_orm {
     }
 
     /**
-     *  Create a replace range statement
+     *  Create a replace range statement.
+     *  The objects in the range are transformed using the specified projection, which defaults to identity projection.
      *
      *  @example
      *  ```
@@ -493,33 +485,33 @@ namespace sqlite_orm {
      *  auto statement = storage.prepare(replace_range(users.begin(), users.end()));
      *  storage.execute(statement);
      *  ```
-     */
-    template<class It>
-    internal::replace_range_t<It, internal::default_transformer, typename std::iterator_traits<It>::value_type>
-    replace_range(It from, It to) {
-        return {{std::move(from), std::move(to)}};
-    }
-
-    /**
-     *  Create an replace range statement with explicit transformer. Transformer is used to apply containers with no strict objects with other kind of objects like pointers,
-     *  optionals or whatever.
      *  @example
      *  ```
      *  std::vector<std::unique_ptr<User>> userPointers;
      *  userPointers.push_back(std::make_unique<User>(1, "Eneli"));
-     *  auto statement = storage.prepare(replace_range<User>(userPointers.begin(), userPointers.end(), [](const std::unique_ptr<User> &userPointer) -> const User & {
-     *      return *userPointer;
-     *  }));
+     *  auto statement = storage.prepare(replace_range(userPointers.begin(), userPointers.end(), &std::unique_ptr<User>::operator*));
      *  storage.execute(statement);
      *  ```
      */
-    template<class T, class It, class L>
-    internal::replace_range_t<It, L, T> replace_range(It from, It to, L transformer) {
-        return {{std::move(from), std::move(to)}, std::move(transformer)};
+    template<class It, class Projection = polyfill::identity>
+    auto replace_range(It from, It to, Projection project = {}) {
+        using O = std::decay_t<decltype(polyfill::invoke(std::declval<Projection>(), *std::declval<It>()))>;
+        return internal::replace_range_t<It, Projection, O>{{std::move(from), std::move(to)}, std::move(project)};
+    }
+
+    /*
+     *  Create a replace range statement.
+     *  Overload of `replace_range(It, It, Projection)` with explicit object type template parameter.
+     */
+    template<class O, class It, class Projection = polyfill::identity>
+    internal::replace_range_t<It, Projection, O> replace_range(It from, It to, Projection project = {}) {
+        return {{std::move(from), std::move(to)}, std::move(project)};
     }
 
     /**
-     *  Create an insert range statement
+     *  Create an insert range statement.
+     *  The objects in the range are transformed using the specified projection, which defaults to identity projection.
+     *  
      *  @example
      *  ```
      *  std::vector<User> users;
@@ -527,30 +519,29 @@ namespace sqlite_orm {
      *  auto statement = storage.prepare(insert_range(users.begin(), users.end()));
      *  storage.execute(statement);
      *  ```
-     */
-    template<class It>
-    internal::insert_range_t<It, internal::default_transformer, typename std::iterator_traits<It>::value_type>
-    insert_range(It from, It to) {
-        return {{std::move(from), std::move(to)}, internal::default_transformer{}};
-    }
-
-    /**
-     *  Create an insert range statement with explicit transformer. Transformer is used to apply containers with no strict objects with other kind of objects like pointers,
-     *  optionals or whatever.
      *  @example
      *  ```
      *  std::vector<std::unique_ptr<User>> userPointers;
      *  userPointers.push_back(std::make_unique<User>(1, "Eneli"));
-     *  auto statement = storage.prepare(insert_range<User>(userPointers.begin(), userPointers.end(), [](const std::unique_ptr<User> &userPointer) -> const User & {
-     *      return *userPointer;
-     *  }));
+     *  auto statement = storage.prepare(insert_range(userPointers.begin(), userPointers.end(), &std::unique_ptr<User>::operator*));
      *  storage.execute(statement);
      *  ```
      */
-    template<class T, class It, class L>
-    internal::insert_range_t<It, L, T> insert_range(It from, It to, L transformer) {
-        return {{std::move(from), std::move(to)}, std::move(transformer)};
+    template<class It, class Projection = polyfill::identity>
+    auto insert_range(It from, It to, Projection project = {}) {
+        using O = std::decay_t<decltype(polyfill::invoke(std::declval<Projection>(), *std::declval<It>()))>;
+        return internal::insert_range_t<It, Projection, O>{{std::move(from), std::move(to)}, std::move(project)};
     }
+
+    /*
+     *  Create an insert range statement.
+     *  Overload of `insert_range(It, It, Projection)` with explicit object type template parameter.
+     */
+    template<class O, class It, class Projection = polyfill::identity>
+    internal::insert_range_t<It, Projection, O> insert_range(It from, It to, Projection project = {}) {
+        return {{std::move(from), std::move(to)}, std::move(project)};
+    }
+
     /**
      *  Create a replace statement.
      *  T is an object type mapped to a storage.
