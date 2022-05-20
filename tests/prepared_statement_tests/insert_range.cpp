@@ -8,6 +8,7 @@ using namespace sqlite_orm;
 
 TEST_CASE("Prepared insert range") {
     using namespace PreparedStatementTests;
+    using Catch::Matchers::Contains;
     using Catch::Matchers::UnorderedEquals;
 
     const int defaultVisitTime = 50;
@@ -46,25 +47,17 @@ TEST_CASE("Prepared insert range") {
 
     SECTION("empty") {
         SECTION("strict") {
-            try {
-                auto statement = storage.prepare(insert_range(users.begin(), users.end()));
-                REQUIRE(false);
-            } catch(const std::system_error &) {
-                //..
-            }
+            REQUIRE_THROWS_WITH(storage.prepare(insert_range(users.begin(), users.end())),
+                                Contains("incomplete input"));
         }
         SECTION("container with pointers") {
-            try {
-                std::vector<std::unique_ptr<User>> usersPointers;
-                auto statement = storage.prepare(insert_range<User>(usersPointers.begin(),
-                                                                    usersPointers.end(),
-                                                                    [](const std::unique_ptr<User> &pointer) {
-                                                                        return *pointer;
-                                                                    }));
-                REQUIRE(false);
-            } catch(const std::system_error &) {
-                //..
-            }
+            std::vector<std::unique_ptr<User>> usersPointers;
+            REQUIRE_THROWS_WITH(storage.prepare(insert_range<User>(usersPointers.begin(),
+                                                                   usersPointers.end(),
+                                                                   [](const std::unique_ptr<User> &pointer) {
+                                                                       return *pointer;
+                                                                   })),
+                                Contains("incomplete input"));
         }
     }
     SECTION("one") {

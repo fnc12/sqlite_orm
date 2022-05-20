@@ -504,6 +504,8 @@ TEST_CASE("Remove all") {
 }
 
 TEST_CASE("Explicit insert") {
+    using Catch::Matchers::Contains;
+
     struct User {
         int id;
         std::string name;
@@ -591,13 +593,7 @@ TEST_CASE("Explicit insert") {
         SECTION("one column") {
             User user4;
             user4.name = "Egor";
-            try {
-                storage.insert(user4, columns(&User::name));
-                REQUIRE(false);
-                //                throw std::runtime_error("Must not fire");
-            } catch(const std::system_error &) {
-                //        cout << e.what() << endl;
-            }
+            REQUIRE_THROWS_WITH(storage.insert(user4, columns(&User::name)), Contains("NOT NULL constraint failed"));
         }
     }
     SECTION("visit") {
@@ -629,12 +625,8 @@ TEST_CASE("Explicit insert") {
             Visit visit3;
             visit3.setId(10);
             SECTION("getter") {
-                try {
-                    storage.insert(visit3, columns(&Visit::id));
-                    REQUIRE(false);
-                } catch(const std::system_error &) {
-                    //        cout << e.what() << endl;
-                }
+                REQUIRE_THROWS_WITH(storage.insert(visit3, columns(&Visit::id)),
+                                    Contains("NOT NULL constraint failed"));
             }
         }
     }

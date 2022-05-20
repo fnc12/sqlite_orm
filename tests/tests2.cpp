@@ -166,7 +166,7 @@ TEST_CASE("insert") {
 
         //  test empty container
         std::vector<Object> emptyVector;
-        storage.insert_range(emptyVector.begin(), emptyVector.end());
+        REQUIRE_NOTHROW(storage.insert_range(emptyVector.begin(), emptyVector.end()));
     }
     SECTION("pointers") {
         std::vector<unique_ptr<Object>> pointers;
@@ -364,6 +364,8 @@ int FirstFunction::objectsCount = 0;
 int FirstFunction::callsCount = 0;
 
 TEST_CASE("custom functions") {
+    using Catch::Matchers::Contains;
+
     SqrtFunction::callsCount = 0;
     HasPrefixFunction::callsCount = 0;
     FirstFunction::callsCount = 0;
@@ -386,14 +388,8 @@ TEST_CASE("custom functions") {
     };
     auto storage = make_storage(path, make_table("users", make_column("id", &User::id)));
     storage.sync_schema();
-    {  //   call before creation
-        try {
-            auto rows = storage.select(func<SqrtFunction>(4));
-            REQUIRE(false);
-        } catch(const std::system_error &) {
-            //..
-        }
-    }
+    //   call before creation
+    REQUIRE_THROWS_WITH(storage.select(func<SqrtFunction>(4)), Contains("no such function"));
 
     //  create function
     REQUIRE(SqrtFunction::callsCount == 0);
