@@ -108,36 +108,6 @@ namespace sqlite_orm {
         template<class T>
         using is_column = polyfill::bool_constant<is_column_v<T>>;
 
-        /**
-         *  Column with insertable primary key traits. Common case.
-         */
-        template<class T, class SFINAE = void>
-        struct is_column_with_insertable_primary_key : std::false_type {};
-
-        /**
-         *  Column with insertable primary key traits. Specialized case case.
-         */
-        template<class C>
-        struct is_column_with_insertable_primary_key<
-            C,
-            std::enable_if_t<tuple_has<is_primary_key, typename C::constraints_type>::value>>
-            : is_primary_key_insertable<C> {};
-
-        /**
-         *  Column with noninsertable primary key traits. Common case.
-         */
-        template<class T, class SFINAE = void>
-        struct is_column_with_noninsertable_primary_key : std::false_type {};
-
-        /**
-         *  Column with noninsertable primary key traits. Specialized case case.
-         */
-        template<class C>
-        struct is_column_with_noninsertable_primary_key<
-            C,
-            std::enable_if_t<tuple_has<is_primary_key, typename C::constraints_type>::value>>
-            : polyfill::negation<is_primary_key_insertable<C>> {};
-
         template<class T>
         struct column_field_type {
             using type = void;
@@ -164,6 +134,17 @@ namespace sqlite_orm {
         template<class T>
         using column_constraints_type_t = typename column_constraints_type<T>::type;
 
+        template<class Elements, template<class...> class TraitFn>
+        using col_index_sequence_with = filter_tuple_sequence_t<Elements,
+                                                                check_if_tuple_has<TraitFn>::template fn,
+                                                                column_constraints_type_t,
+                                                                filter_tuple_sequence_t<Elements, is_column>>;
+
+        template<class Elements, template<class...> class TraitFn>
+        using col_index_sequence_excluding = filter_tuple_sequence_t<Elements,
+                                                                     check_if_tuple_has_not<TraitFn>::template fn,
+                                                                     column_constraints_type_t,
+                                                                     filter_tuple_sequence_t<Elements, is_column>>;
     }
 
     /**

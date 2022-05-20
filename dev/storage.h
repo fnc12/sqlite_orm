@@ -187,28 +187,33 @@ namespace sqlite_orm {
             void assert_insertable_type() const {
                 auto& tImpl = this->get_impl<O>();
                 using table_type = std::decay_t<decltype(tImpl.table)>;
-                using elements_type = std::decay_t<decltype(tImpl.table.elements)>;
 
 #ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
                 if constexpr(!table_type::is_without_rowid_v) {
 #else
-                static_if<!table_type::is_without_rowid_v>(
+                call_if_constexpr<!table_type::is_without_rowid_v>(
                     [](auto& tImpl) {  // unfortunately, this static_assert's can't see any composite keys((
-                        std::ignore = tImpl;
 #endif
-                    static_assert(count_tuple<elements_type, is_column_with_insertable_primary_key>::value <= 1,
-                                  "Attempting to execute 'insert' request into an noninsertable table was detected. "
-                                  "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
-                                  "'insert', or you can use 'insert' with explicit column listing.");
+                    using elements_type = std::decay_t<decltype(tImpl.table.elements)>;
+                    using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
                     static_assert(
-                        count_tuple<elements_type, is_column_with_noninsertable_primary_key>::value == 0,
+                        count_filtered_tuple<elements_type, is_primary_key_insertable, pkcol_index_sequence>::value <=
+                            1,
+                        "Attempting to execute 'insert' request into an noninsertable table was detected. "
+                        "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
+                        "'insert', or you can use 'insert' with explicit column listing.");
+                    static_assert(
+                        count_filtered_tuple<elements_type,
+                                             check_if_not<is_primary_key_insertable>::template fn,
+                                             pkcol_index_sequence>::value == 0,
                         "Attempting to execute 'insert' request into an noninsertable table was detected. "
                         "Insertable table cannot contain non-standard primary keys. Please use 'replace' instead "
                         "of 'insert', or you can use 'insert' with explicit column listing.");
 #ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
                 }
 #else
-                    })(tImpl);
+                    },
+                    tImpl);
 #endif
             }
 
@@ -1221,7 +1226,7 @@ namespace sqlite_orm {
                     using is_without_rowid = typename table_type::is_without_rowid;
                     tImpl.table.template for_each_column_excluding<
                         mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
-                                         mpl::disjunction_fn<is_generated_always, is_primary_key>>>(
+                                         mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
                         [&tImpl, &bind_value, &object](auto& column) {
                             if(!tImpl.table.exists_in_composite_primary_key(column)) {
                                 bind_value(polyfill::invoke(column.member_pointer, object));
@@ -1275,7 +1280,7 @@ namespace sqlite_orm {
                 field_value_binder bind_value{stmt};
                 auto& object = get_object(statement.expression);
                 tImpl.table
-                    .template for_each_column_excluding<mpl::disjunction_fn<is_generated_always, is_primary_key>>(
+                    .template for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
                         [&tImpl, &bind_value, &object](auto& column) {
                             if(!tImpl.table.exists_in_composite_primary_key(column)) {
                                 bind_value(polyfill::invoke(column.member_pointer, object));

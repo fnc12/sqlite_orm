@@ -114,10 +114,10 @@ namespace sqlite_orm {
                 bool res = false;
                 this->for_each_primary_key([&column, &res](auto& primaryKey) {
                     using colrefs_tuple = decltype(primaryKey.columns);
-                    using check_if_same_field_type = mpl::bind_front_fn<std::is_same, typename C::field_type>;
-                    using same_type_index_sequence = filter_tuple_sequence_t<colrefs_tuple,
-                                                                             check_if_same_field_type::template fn,
-                                                                             member_field_type_t>;
+                    using same_type_index_sequence =
+                        filter_tuple_sequence_t<colrefs_tuple,
+                                                check_if_is_type<field_type_t<C>>::template fn,
+                                                member_field_type_t>;
                     iterate_tuple(primaryKey.columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
                         if(compare_any(memberPointer, column.member_pointer) ||
                            compare_any(memberPointer, column.setter)) {
@@ -146,11 +146,8 @@ namespace sqlite_orm {
             }
 
             std::vector<std::string> primary_key_column_names() const {
-                using col_index_sequence = filter_tuple_sequence_t<elements_type, is_column>;
-                using pkcol_index_sequence = filter_tuple_sequence_t<elements_type,
-                                                                     check_if_tuple_has<is_primary_key>::template fn,
-                                                                     column_constraints_type_t,
-                                                                     col_index_sequence>;
+                using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
+
                 if(pkcol_index_sequence::size() > 0) {
                     return create_from_tuple<std::vector<std::string>>(this->elements,
                                                                        pkcol_index_sequence{},
@@ -209,12 +206,8 @@ namespace sqlite_orm {
              */
             constexpr int non_generated_columns_count() const {
 #if SQLITE_VERSION_NUMBER >= 3031000
-                using col_index_sequence = filter_tuple_sequence_t<elements_type, is_column>;
                 using non_generated_col_index_sequence =
-                    filter_tuple_sequence_t<elements_type,
-                                            check_if_tuple_has_not<is_generated_always>::template fn,
-                                            column_constraints_type_t,
-                                            col_index_sequence>;
+                    col_index_sequence_excluding<elements_type, is_generated_always>;
                 return int(non_generated_col_index_sequence::size());
 #else
                 return this->count_columns_amount();

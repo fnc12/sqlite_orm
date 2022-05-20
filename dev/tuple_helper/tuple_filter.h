@@ -106,5 +106,16 @@ namespace sqlite_orm {
 
         template<class T, template<class...> class Fn>
         struct count_tuple : std::integral_constant<int, filter_tuple_sequence_t<T, Fn>::size()> {};
+
+        /*
+         *  Count a tuple, picking only those elements specified in the index sequence.
+         *  
+         *  Implementation note: must be distinct from `count_tuple` because legacy compilers have problems
+         *  with a default Sequence in function template parameters [SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION].
+         */
+        template<class Tpl, template<class...> class Pred, class Seq>
+        struct count_filtered_tuple
+            : std::integral_constant<size_t,
+                                     filter_tuple_sequence_t<Tpl, Pred, polyfill::type_identity_t, Seq>::size()> {};
     }
 }

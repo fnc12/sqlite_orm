@@ -902,6 +902,12 @@ namespace sqlite_orm {
         using check_if = mpl::quote_fn<TraitFn>;
 
         /*
+         *  Trait metafunction class that checks if a type doesn't have the specified trait.
+         */
+        template<template<class...> class TraitFn>
+        using check_if_not = mpl::not_<mpl::quote_fn<TraitFn>>;
+
+        /*
          *  Trait metafunction class that checks if a type is the same as the specified type.
          */
         template<class Type>
@@ -1110,6 +1116,17 @@ namespace sqlite_orm {
 
         template<class T, template<class...> class Fn>
         struct count_tuple : std::integral_constant<int, filter_tuple_sequence_t<T, Fn>::size()> {};
+
+        /*
+         *  Count a tuple, picking only those elements specified in the index sequence.
+         *  
+         *  Implementation note: must be distinct from `count_tuple` because legacy compilers have problems
+         *  with a default Sequence in function template parameters [SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION].
+         */
+        template<class Tpl, template<class...> class Pred, class Seq>
+        struct count_filtered_tuple
+            : std::integral_constant<size_t,
+                                     filter_tuple_sequence_t<Tpl, Pred, polyfill::type_identity_t, Seq>::size()> {};
     }
 }
 
@@ -1551,9 +1568,6 @@ namespace sqlite_orm {
 
             static_assert(tuple_has<is_primary_key, constraints_type_t<T>>::value, "an unexpected type was passed");
         };
-
-        template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_primary_key_insertable_v = is_primary_key_insertable<T>::value;
 
         template<class T>
         using is_constraint =
@@ -2123,6 +2137,13 @@ namespace sqlite_orm {
              */
             SQLITE_ORM_NOUNIQUEADDRESS
             const setter_type setter;
+
+            /**
+             *  Simplified interface for `NOT NULL` constraint
+             */
+            constexpr bool is_not_null() const {
+                return !type_is_nullable<field_type>::value;
+            }
         };
 
         template<class... Op>
@@ -2131,26 +2152,6 @@ namespace sqlite_orm {
 
             SQLITE_ORM_NOUNIQUEADDRESS
             const constraints_type constraints;
-        };
-
-        /**
-         *  This class stores information about a single column.
-         *  column_t is a pair of [column_name:member_pointer] mapped to a storage.
-         *  
-         *  O is a mapped class, e.g. User
-         *  T is a mapped class'es field type, e.g. &User::name
-         *  Op... is a constraints pack, e.g. primary_key_t, autoincrement_t etc
-         */
-        template<class G, class S, class... Op>
-        struct column_t : basic_column, field_access_closure<G, S>, column_constraints<Op...> {
-            using field_type = typename field_access_closure<G, S>::field_type;
-            using constraints_type = typename column_constraints<Op...>::constraints_type;
-
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            column_t(std::string name, G memberPointer, S setter, std::tuple<Op...> op) :
-                basic_column{move(name)}, field_access_closure<G, S>{memberPointer, setter}, column_constraints<Op...>{
-                                                                                                 move(op)} {}
-#endif
 
             /**
              *  Checks whether contraints are of trait `Trait`
@@ -2158,13 +2159,6 @@ namespace sqlite_orm {
             template<template<class...> class Trait>
             constexpr bool is() const {
                 return tuple_has<Trait, constraints_type>::value;
-            }
-
-            /**
-             *  Simplified interface for `NOT NULL` constraint
-             */
-            constexpr bool is_not_null() const {
-                return !type_is_nullable<field_type>::value;
             }
 
             constexpr bool is_generated() const {
@@ -2182,41 +2176,28 @@ namespace sqlite_orm {
             std::unique_ptr<std::string> default_value() const;
         };
 
+        /**
+         *  This class stores information about a single column.
+         *  column_t is a pair of [column_name:member_pointer] mapped to a storage.
+         *  
+         *  O is a mapped class, e.g. User
+         *  T is a mapped class'es field type, e.g. &User::name
+         *  Op... is a constraints pack, e.g. primary_key_t, autoincrement_t etc
+         */
+        template<class G, class S, class... Op>
+        struct column_t : basic_column, field_access_closure<G, S>, column_constraints<Op...> {
+#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
+            column_t(std::string name, G memberPointer, S setter, std::tuple<Op...> op) :
+                basic_column{move(name)}, field_access_closure<G, S>{memberPointer, setter}, column_constraints<Op...>{
+                                                                                                 move(op)} {}
+#endif
+        };
+
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_column_v = polyfill::is_specialization_of_v<T, column_t>;
 
         template<class T>
         using is_column = polyfill::bool_constant<is_column_v<T>>;
-
-        /**
-         *  Column with insertable primary key traits. Common case.
-         */
-        template<class T, class SFINAE = void>
-        struct is_column_with_insertable_primary_key : std::false_type {};
-
-        /**
-         *  Column with insertable primary key traits. Specialized case case.
-         */
-        template<class C>
-        struct is_column_with_insertable_primary_key<
-            C,
-            std::enable_if_t<tuple_has<is_primary_key, typename C::constraints_type>::value>>
-            : is_primary_key_insertable<C> {};
-
-        /**
-         *  Column with noninsertable primary key traits. Common case.
-         */
-        template<class T, class SFINAE = void>
-        struct is_column_with_noninsertable_primary_key : std::false_type {};
-
-        /**
-         *  Column with noninsertable primary key traits. Specialized case case.
-         */
-        template<class C>
-        struct is_column_with_noninsertable_primary_key<
-            C,
-            std::enable_if_t<tuple_has<is_primary_key, typename C::constraints_type>::value>>
-            : polyfill::negation<is_primary_key_insertable<C>> {};
 
         template<class T>
         struct column_field_type {
@@ -2244,6 +2225,17 @@ namespace sqlite_orm {
         template<class T>
         using column_constraints_type_t = typename column_constraints_type<T>::type;
 
+        template<class Elements, template<class...> class TraitFn>
+        using col_index_sequence_with = filter_tuple_sequence_t<Elements,
+                                                                check_if_tuple_has<TraitFn>::template fn,
+                                                                column_constraints_type_t,
+                                                                filter_tuple_sequence_t<Elements, is_column>>;
+
+        template<class Elements, template<class...> class TraitFn>
+        using col_index_sequence_excluding = filter_tuple_sequence_t<Elements,
+                                                                     check_if_tuple_has_not<TraitFn>::template fn,
+                                                                     column_constraints_type_t,
+                                                                     filter_tuple_sequence_t<Elements, is_column>>;
     }
 
     /**
@@ -10385,10 +10377,10 @@ namespace sqlite_orm {
                 bool res = false;
                 this->for_each_primary_key([&column, &res](auto& primaryKey) {
                     using colrefs_tuple = decltype(primaryKey.columns);
-                    using check_if_same_field_type = mpl::bind_front_fn<std::is_same, typename C::field_type>;
-                    using same_type_index_sequence = filter_tuple_sequence_t<colrefs_tuple,
-                                                                             check_if_same_field_type::template fn,
-                                                                             member_field_type_t>;
+                    using same_type_index_sequence =
+                        filter_tuple_sequence_t<colrefs_tuple,
+                                                check_if_is_type<field_type_t<C>>::template fn,
+                                                member_field_type_t>;
                     iterate_tuple(primaryKey.columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
                         if(compare_any(memberPointer, column.member_pointer) ||
                            compare_any(memberPointer, column.setter)) {
@@ -10417,11 +10409,8 @@ namespace sqlite_orm {
             }
 
             std::vector<std::string> primary_key_column_names() const {
-                using col_index_sequence = filter_tuple_sequence_t<elements_type, is_column>;
-                using pkcol_index_sequence = filter_tuple_sequence_t<elements_type,
-                                                                     check_if_tuple_has<is_primary_key>::template fn,
-                                                                     column_constraints_type_t,
-                                                                     col_index_sequence>;
+                using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
+
                 if(pkcol_index_sequence::size() > 0) {
                     return create_from_tuple<std::vector<std::string>>(this->elements,
                                                                        pkcol_index_sequence{},
@@ -10480,12 +10469,8 @@ namespace sqlite_orm {
              */
             constexpr int non_generated_columns_count() const {
 #if SQLITE_VERSION_NUMBER >= 3031000
-                using col_index_sequence = filter_tuple_sequence_t<elements_type, is_column>;
                 using non_generated_col_index_sequence =
-                    filter_tuple_sequence_t<elements_type,
-                                            check_if_tuple_has_not<is_generated_always>::template fn,
-                                            column_constraints_type_t,
-                                            col_index_sequence>;
+                    col_index_sequence_excluding<elements_type, is_generated_always>;
                 return int(non_generated_col_index_sequence::size());
 #else
                 return this->count_columns_amount();
@@ -17349,28 +17334,33 @@ namespace sqlite_orm {
             void assert_insertable_type() const {
                 auto& tImpl = this->get_impl<O>();
                 using table_type = std::decay_t<decltype(tImpl.table)>;
-                using elements_type = std::decay_t<decltype(tImpl.table.elements)>;
 
 #ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
                 if constexpr(!table_type::is_without_rowid_v) {
 #else
-                    static_if<!table_type::is_without_rowid_v>(
+                    call_if_constexpr<!table_type::is_without_rowid_v>(
                         [](auto& tImpl) {  // unfortunately, this static_assert's can't see any composite keys((
-                            std::ignore = tImpl;
 #endif
-                    static_assert(count_tuple<elements_type, is_column_with_insertable_primary_key>::value <= 1,
-                                  "Attempting to execute 'insert' request into an noninsertable table was detected. "
-                                  "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
-                                  "'insert', or you can use 'insert' with explicit column listing.");
+                    using elements_type = std::decay_t<decltype(tImpl.table.elements)>;
+                    using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
                     static_assert(
-                        count_tuple<elements_type, is_column_with_noninsertable_primary_key>::value == 0,
+                        count_filtered_tuple<elements_type, is_primary_key_insertable, pkcol_index_sequence>::value <=
+                            1,
+                        "Attempting to execute 'insert' request into an noninsertable table was detected. "
+                        "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
+                        "'insert', or you can use 'insert' with explicit column listing.");
+                    static_assert(
+                        count_filtered_tuple<elements_type,
+                                             check_if_not<is_primary_key_insertable>::template fn,
+                                             pkcol_index_sequence>::value == 0,
                         "Attempting to execute 'insert' request into an noninsertable table was detected. "
                         "Insertable table cannot contain non-standard primary keys. Please use 'replace' instead "
                         "of 'insert', or you can use 'insert' with explicit column listing.");
 #ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
                 }
 #else
-                        })(tImpl);
+                        },
+                        tImpl);
 #endif
             }
 
@@ -18383,7 +18373,7 @@ namespace sqlite_orm {
                     using is_without_rowid = typename table_type::is_without_rowid;
                     tImpl.table.template for_each_column_excluding<
                         mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
-                                         mpl::disjunction_fn<is_generated_always, is_primary_key>>>(
+                                         mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
                         [&tImpl, &bind_value, &object](auto& column) {
                             if(!tImpl.table.exists_in_composite_primary_key(column)) {
                                 bind_value(polyfill::invoke(column.member_pointer, object));
@@ -18437,7 +18427,7 @@ namespace sqlite_orm {
                 field_value_binder bind_value{stmt};
                 auto& object = get_object(statement.expression);
                 tImpl.table
-                    .template for_each_column_excluding<mpl::disjunction_fn<is_generated_always, is_primary_key>>(
+                    .template for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
                         [&tImpl, &bind_value, &object](auto& column) {
                             if(!tImpl.table.exists_in_composite_primary_key(column)) {
                                 bind_value(polyfill::invoke(column.member_pointer, object));
@@ -19319,8 +19309,8 @@ namespace sqlite_orm {
 namespace sqlite_orm {
     namespace internal {
 
-        template<class G, class S, class... Op>
-        std::unique_ptr<std::string> column_t<G, S, Op...>::default_value() const {
+        template<class... Op>
+        std::unique_ptr<std::string> column_constraints<Op...>::default_value() const {
             using default_op_index_sequence =
                 filter_tuple_sequence_t<constraints_type, check_if_is_template<default_t>::template fn>;
 

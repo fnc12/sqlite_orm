@@ -250,6 +250,12 @@ namespace sqlite_orm {
         using check_if = mpl::quote_fn<TraitFn>;
 
         /*
+         *  Trait metafunction class that checks if a type doesn't have the specified trait.
+         */
+        template<template<class...> class TraitFn>
+        using check_if_not = mpl::not_<mpl::quote_fn<TraitFn>>;
+
+        /*
          *  Trait metafunction class that checks if a type is the same as the specified type.
          */
         template<class Type>

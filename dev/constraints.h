@@ -414,9 +414,6 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_primary_key_insertable_v = is_primary_key_insertable<T>::value;
-
-        template<class T>
         using is_constraint =
             mpl::instantiate<mpl::disjunction<check_if<is_autoincrement>,
                                               check_if<is_primary_key>,
