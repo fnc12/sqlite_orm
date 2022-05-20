@@ -67,7 +67,8 @@ TEST_CASE("Column") {
         STATIC_REQUIRE(std::is_same<column_type::type, Token>::value);
         using field_type = column_type::field_type;
         STATIC_REQUIRE(std::is_same<field_type, decltype(&Object::id)>::value);
-        STATIC_REQUIRE(std::is_same<internal::table_type<field_type>::type, Object>::value);
+        STATIC_REQUIRE(std::is_same<internal::table_type_of<column_type>::type, Token>::value);
+        STATIC_REQUIRE(std::is_same<internal::table_type_of<field_type>::type, Object>::value);
         STATIC_REQUIRE(std::is_same<internal::column_result_t<internal::storage_t<>, field_type>::type, int>::value);
         STATIC_REQUIRE(std::is_member_pointer<field_type>::value);
         STATIC_REQUIRE(!std::is_member_function_pointer<field_type>::value);

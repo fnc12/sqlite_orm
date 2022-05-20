@@ -32,16 +32,16 @@ namespace sqlite_orm {
                 object_from_column_builder_base{stmt_}, object(object_) {}
 
             template<class C>
-            void operator()(const C& c) {
+            void operator()(const C& column) {
                 using field_type = typename C::field_type;
                 auto value = row_extractor<field_type>().extract(this->stmt, this->index++);
                 static_if<std::is_member_object_pointer<typename C::member_pointer_t>::value>(
-                    [&value, &object = this->object](const auto& c) {
-                        object.*c.member_pointer = std::move(value);
+                    [&value, &object = this->object](const auto& column) {
+                        object.*column.member_pointer = std::move(value);
                     },
-                    [&value, &object = this->object](const auto& c) {
-                        (object.*c.setter)(std::move(value));
-                    })(c);
+                    [&value, &object = this->object](const auto& column) {
+                        (object.*column.setter)(std::move(value));
+                    })(column);
             }
         };
     }

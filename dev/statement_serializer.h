@@ -41,7 +41,7 @@
 #include "statement_binder.h"
 #include "values.h"
 #include "triggers.h"
-#include "table_type.h"
+#include "table_type_of.h"
 #include "index.h"
 #include "util.h"
 
@@ -850,7 +850,7 @@ namespace sqlite_orm {
                 {
                     using references_type_t = typename std::decay_t<decltype(fk)>::references_type;
                     using first_reference_t = std::tuple_element_t<0, references_type_t>;
-                    using first_reference_mapped_type = typename internal::table_type<first_reference_t>::type;
+                    using first_reference_mapped_type = table_type_of_t<first_reference_t>;
                     auto refTableName = lookup_table_name<first_reference_mapped_type>(context.impl);
                     ss << streaming_identifier(refTableName);
                 }
@@ -1542,7 +1542,7 @@ namespace sqlite_orm {
                 }
                 using elements_type = typename std::decay_t<decltype(statement)>::elements_type;
                 using head_t = typename std::tuple_element_t<0, elements_type>::column_type;
-                using indexed_type = typename table_type<head_t>::type;
+                using indexed_type = table_type_of_t<head_t>;
                 ss << "INDEX IF NOT EXISTS " << streaming_identifier(statement.name) << " ON "
                    << streaming_identifier(lookup_table_name<indexed_type>(context.impl));
                 std::vector<std::string> columnNames;

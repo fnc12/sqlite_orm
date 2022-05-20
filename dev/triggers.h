@@ -59,7 +59,7 @@ namespace sqlite_orm {
          */
         template<class T, class... S>
         struct trigger_t : base_trigger {
-            using object_type = void;  // Not sure
+            using object_type = void;
             using elements_type = typename partial_trigger_t<T, S...>::statements_type;
 
             /**
