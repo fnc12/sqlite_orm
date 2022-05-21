@@ -678,8 +678,7 @@ namespace sqlite_orm {
 
             template<class O, class... Cols>
             int insert(const O& o, columns_t<Cols...> cols) {
-                constexpr size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
-                static_assert(colsCount > 0, "Use insert or replace with 1 argument instead");
+                static_assert(cols.count > 0, "Use insert or replace with 1 argument instead");
                 this->assert_mapped_type<O>();
                 auto statement = this->prepare(sqlite_orm::insert(std::ref(o), std::move(cols)));
                 return int(this->execute(statement));
@@ -1180,7 +1179,12 @@ namespace sqlite_orm {
                 auto processObject = [&tImpl = this->get_impl<object_type>(),
                                       bind_value = field_value_binder{stmt}](auto& object) mutable {
                     tImpl.table.template for_each_column_excluding<is_generated_always>(
-                        [&bind_value, &object](auto& column) {
+#ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
+                        [&bind_value, &object]<class G, class S>(const field_access_closure<G, S>& column)
+#else
+                        [&bind_value, &object](auto& column)
+#endif
+                        {
                             bind_value(polyfill::invoke(column.member_pointer, object));
                         });
                 };
@@ -1188,10 +1192,11 @@ namespace sqlite_orm {
                 static_if<is_replace_range_v<T>>(
                     [&processObject](auto& expression) {
 #if __cpp_lib_ranges >= 201911L
-                        std::ranges::for_each(expression.range.first,
-                                              expression.range.second,
-                                              std::ref(processObject),
-                                              std::ref(expression.transformer));
+                        std::ranges::for_each(  ///
+                            expression.range.first,
+                            expression.range.second,
+                            std::ref(processObject),
+                            std::ref(expression.transformer));
 #else
                         auto& transformer = expression.transformer;
                         std::for_each(  ///
@@ -1237,10 +1242,11 @@ namespace sqlite_orm {
                 static_if<is_insert_range_v<T>>(
                     [&processObject](auto& expression) {
 #if __cpp_lib_ranges >= 201911L
-                        std::ranges::for_each(expression.range.first,
-                                              expression.range.second,
-                                              std::ref(processObject),
-                                              std::ref(expression.transformer));
+                        std::ranges::for_each(  ///
+                            expression.range.first,
+                            expression.range.second,
+                            std::ref(processObject),
+                            std::ref(expression.transformer));
 #else
                         auto& transformer = expression.transformer;
                         std::for_each(  ///

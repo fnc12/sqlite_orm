@@ -83,11 +83,17 @@ namespace sqlite_orm {
             const member_field_type_t<M>* object_field_value(const object_type& object, M memberPointer) const {
                 using F = member_field_type_t<M>;
                 const F* res = nullptr;
-                this->for_each_column_with_field_type<F>([&res, &memberPointer, &object](auto& column) {
-                    if(compare_any(column.setter, memberPointer)) {
-                        res = &polyfill::invoke(column.member_pointer, object);
-                    }
-                });
+                this->for_each_column_with_field_type<F>(
+#ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
+                    [&res, &memberPointer, &object]<class G, class S>(const field_access_closure<G, S>& column)
+#else
+                    [&res, &memberPointer, &object](const auto& column)
+#endif
+                    {
+                        if(compare_any(column.setter, memberPointer)) {
+                            res = &polyfill::invoke(column.member_pointer, object);
+                        }
+                    });
                 return res;
             }
 
@@ -109,14 +115,14 @@ namespace sqlite_orm {
                 return result;
             }
 
-            template<class C>
-            bool exists_in_composite_primary_key(const C& column) const {
+            template<class G, class S>
+            bool exists_in_composite_primary_key(const field_access_closure<G, S>& column) const {
                 bool res = false;
                 this->for_each_primary_key([&column, &res](auto& primaryKey) {
                     using colrefs_tuple = decltype(primaryKey.columns);
                     using same_type_index_sequence =
                         filter_tuple_sequence_t<colrefs_tuple,
-                                                check_if_is_type<field_type_t<C>>::template fn,
+                                                check_if_is_type<member_field_type_t<G>>::template fn,
                                                 member_field_type_t>;
                     iterate_tuple(primaryKey.columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
                         if(compare_any(memberPointer, column.member_pointer) ||

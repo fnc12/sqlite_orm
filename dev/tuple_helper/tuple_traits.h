@@ -10,7 +10,6 @@ namespace sqlite_orm {
     namespace internal {
         /*
          *  Higher-order trait metafunction that checks whether a tuple contains a type with given trait.
-         *  
          */
         template<template<class...> class TraitFn, class Tuple>
         struct tuple_has {};

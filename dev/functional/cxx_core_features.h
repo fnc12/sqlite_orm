@@ -46,6 +46,11 @@
 #define SQLITE_ORM_INLINE_VAR
 #endif
 
+#if __cpp_generic_lambdas >= 201707L
+#define SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
+#else
+#endif
+
 #if SQLITE_ORM_HAS_CPP_ATTRIBUTE(no_unique_address) >= 201803L
 #define SQLITE_ORM_NOUNIQUEADDRESS [[no_unique_address]]
 #else

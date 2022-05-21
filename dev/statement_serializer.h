@@ -909,43 +909,13 @@ namespace sqlite_orm {
             using statement_type = column_t<G, S, Op...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
-                using column_type = std::decay_t<decltype(c)>;
-                using field_type = typename column_type::field_type;
-                using constraints_type = typename column_type::constraints_type;
+            std::string operator()(const statement_type& column, const Ctx& context) const {
+                using column_type = statement_type;
 
                 std::stringstream ss;
-                ss << streaming_identifier(c.name) << " " << type_printer<field_type>().print() << " ";
-                {
-                    std::vector<std::string> constraintsStrings;
-                    constexpr size_t constraintsCount = std::tuple_size<constraints_type>::value;
-                    constraintsStrings.reserve(constraintsCount);
-                    int primaryKeyIndex = -1;
-                    int autoincrementIndex = -1;
-                    int tupleIndex = 0;
-                    iterate_tuple(
-                        c.constraints,
-                        [&constraintsStrings, &primaryKeyIndex, &autoincrementIndex, &tupleIndex, &context](auto& v) {
-                            using constraint_type = std::decay_t<decltype(v)>;
-                            constraintsStrings.push_back(serialize(v, context));
-                            if(is_primary_key_v<constraint_type>) {
-                                primaryKeyIndex = tupleIndex;
-                            } else if(is_autoincrement_v<constraint_type>) {
-                                autoincrementIndex = tupleIndex;
-                            }
-                            ++tupleIndex;
-                        });
-                    if(primaryKeyIndex != -1 && autoincrementIndex != -1 && autoincrementIndex < primaryKeyIndex) {
-                        iter_swap(constraintsStrings.begin() + primaryKeyIndex,
-                                  constraintsStrings.begin() + autoincrementIndex);
-                    }
-                    for(auto& str: constraintsStrings) {
-                        ss << str << ' ';
-                    }
-                }
-                if(c.is_not_null()) {
-                    ss << "NOT NULL ";
-                }
+                ss << streaming_identifier(column.name) << " " << type_printer<field_type_t<column_type>>().print()
+                   << " "
+                   << streaming_column_constraints(column.as_column_constraints(), column.is_not_null(), context);
                 return ss.str();
             }
         };

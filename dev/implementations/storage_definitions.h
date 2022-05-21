@@ -6,7 +6,7 @@
 #include <type_traits>  //  std::is_same
 #include <sstream>
 #include <functional>  //  std::reference_wrapper, std::cref
-#include <algorithm>  //  std::find_if
+#include <algorithm>  //  std::find_if, std::ranges::find
 
 #include "../dbstat.h"
 #include "../util.h"
@@ -121,13 +121,17 @@ namespace sqlite_orm {
             const std::vector<const table_xinfo*>& columnsToIgnore) const {  // must ignore generated columns
             std::vector<std::reference_wrapper<const std::string>> columnNames;
             columnNames.reserve(tImpl.table.count_columns_amount());
-            tImpl.table.for_each_column([&columnNames, &columnsToIgnore](const auto& c) {
-                auto& columnName = c.name;
+            tImpl.table.for_each_column([&columnNames, &columnsToIgnore](const basic_column& column) {
+                auto& columnName = column.name;
+#if __cpp_lib_ranges >= 201911L
+                auto columnToIgnoreIt = std::ranges::find(columnsToIgnore, columnName, &table_xinfo::name);
+#else
                 auto columnToIgnoreIt = std::find_if(columnsToIgnore.begin(),
                                                      columnsToIgnore.end(),
                                                      [&columnName](const table_xinfo* tableInfo) {
                                                          return columnName == tableInfo->name;
                                                      });
+#endif
                 if(columnToIgnoreIt == columnsToIgnore.end()) {
                     columnNames.push_back(cref(columnName));
                 }
