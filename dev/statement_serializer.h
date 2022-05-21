@@ -1120,7 +1120,12 @@ namespace sqlite_orm {
                        << streaming_field_values_excluding(
                               mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                                mpl::disjunction_fn<is_primary_key, is_generated_always>>{},
-                              [&table](auto& column) {
+                              [&table]
+#ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
+                              <class G, class S>(const column_field<G, S>& column) {
+#else
+                              (auto& column) {
+#endif
                                   return table.exists_in_composite_primary_key(column);
                               },
                               context,

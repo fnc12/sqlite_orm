@@ -1190,7 +1190,7 @@ namespace sqlite_orm {
                                       bind_value = field_value_binder{stmt}](auto& object) mutable {
                     table.template for_each_column_excluding<is_generated_always>(
 #ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
-                        [&bind_value, &object]<class G, class S>(const field_access_closure<G, S>& column)
+                        [&bind_value, &object]<class G, class S>(const column_field<G, S>& column)
 #else
                         [&bind_value, &object](auto& column)
 #endif
@@ -1240,7 +1240,12 @@ namespace sqlite_orm {
                     table.template for_each_column_excluding<
                         mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                          mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
-                        [&table, &bind_value, &object](auto& column) {
+                        [&table, &bind_value, &object]
+#ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
+                        <class G, class S>(const column_field<G, S>& column) {
+#else
+                        (auto& column) {
+#endif
                             if(!table.exists_in_composite_primary_key(column)) {
                                 bind_value(polyfill::invoke(column.member_pointer, object));
                             }
@@ -1294,7 +1299,12 @@ namespace sqlite_orm {
                 field_value_binder bind_value{stmt};
                 auto& object = get_object(statement.expression);
                 table.template for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
-                    [&table, &bind_value, &object](auto& column) {
+                    [&table, &bind_value, &object]
+#ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
+                    <class G, class S>(const column_field<G, S>& column) {
+#else
+                    (auto& column) {
+#endif
                         if(!table.exists_in_composite_primary_key(column)) {
                             bind_value(polyfill::invoke(column.member_pointer, object));
                         }
@@ -1478,8 +1488,8 @@ namespace sqlite_orm {
                             std::stringstream ss;
                             ss << "SELECT COUNT(*)"
                                << " FROM " << streaming_identifier(table.name) << " WHERE ";
-                            iterate_tuple(foreignKey.columns, [&ss, &table, first = true](auto& column) mutable {
-                                auto* columnName = table.find_column_name(column);
+                            iterate_tuple(foreignKey.columns, [&ss, &table, first = true](auto& colRef) mutable {
+                                auto* columnName = table.find_column_name(colRef);
                                 if(!columnName) {
                                     throw std::system_error{orm_error_code::column_not_found};
                                 }

@@ -83,13 +83,13 @@ namespace sqlite_orm {
             const member_field_type_t<M>* object_field_value(const object_type& object, M memberPointer) const {
                 using F = member_field_type_t<M>;
                 const F* res = nullptr;
-                this->for_each_column_with_field_type<F>(
+                this->for_each_column_with_field_type<F>(  ///
+                    [&res, &memberPointer, &object]
 #ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
-                    [&res, &memberPointer, &object]<class G, class S>(const field_access_closure<G, S>& column)
+                    <class G, class S>(const column_field<G, S>& column) {
 #else
-                    [&res, &memberPointer, &object](const auto& column)
+                    (const auto& column) {
 #endif
-                    {
                         if(compare_any(column.setter, memberPointer)) {
                             res = &polyfill::invoke(column.member_pointer, object);
                         }
@@ -116,7 +116,7 @@ namespace sqlite_orm {
             }
 
             template<class G, class S>
-            bool exists_in_composite_primary_key(const field_access_closure<G, S>& column) const {
+            bool exists_in_composite_primary_key(const column_field<G, S>& column) const {
                 bool res = false;
                 this->for_each_primary_key([&column, &res](auto& primaryKey) {
                     using colrefs_tuple = decltype(primaryKey.columns);
@@ -165,9 +165,15 @@ namespace sqlite_orm {
 
             template<class L>
             void for_each_primary_key_column(L&& lambda) const {
-                this->for_each_column_with<is_primary_key>([&lambda](auto& column) {
-                    lambda(column.member_pointer);
-                });
+                this->for_each_column_with<is_primary_key>(  ///
+                    [&lambda]
+#ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
+                    <class G, class S>(const column_field<G, S>& column) {
+#else
+                    (auto& column) {
+#endif
+                        lambda(column.member_pointer);
+                    });
                 this->for_each_primary_key([this, &lambda](auto& primaryKey) {
                     this->for_each_column_in_primary_key(primaryKey, lambda);
                 });

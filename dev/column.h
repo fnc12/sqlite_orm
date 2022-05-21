@@ -29,7 +29,7 @@ namespace sqlite_orm {
         struct empty_setter {};
 
         template<class G, class S>
-        struct field_access_closure {
+        struct column_field {
             using member_pointer_t = G;
             using setter_type = S;
             using object_type = member_object_type_t<G>;
@@ -94,11 +94,11 @@ namespace sqlite_orm {
          *  Op... is a constraints pack, e.g. primary_key_t, autoincrement_t etc
          */
         template<class G, class S, class... Op>
-        struct column_t : basic_column, field_access_closure<G, S>, column_constraints<Op...> {
+        struct column_t : basic_column, column_field<G, S>, column_constraints<Op...> {
 #ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
             column_t(std::string name, G memberPointer, S setter, std::tuple<Op...> op) :
-                basic_column{move(name)}, field_access_closure<G, S>{memberPointer, setter}, column_constraints<Op...>{
-                                                                                                 move(op)} {}
+                basic_column{move(name)}, column_field<G, S>{memberPointer, setter}, column_constraints<Op...>{
+                                                                                         move(op)} {}
 #endif
             // Simplified interface for cast to base class
             constexpr const column_constraints<Op...>& as_column_constraints() const {
