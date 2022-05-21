@@ -2200,30 +2200,10 @@ namespace sqlite_orm {
         using is_column = polyfill::bool_constant<is_column_v<T>>;
 
         template<class T>
-        struct column_field_type {
-            using type = void;
-        };
-
-        template<class G, class S, class... Op>
-        struct column_field_type<column_t<G, S, Op...>> {
-            using type = typename column_t<G, S, Op...>::field_type;
-        };
+        using column_field_type_t = polyfill::detected_or_t<void, field_type_t, T>;
 
         template<class T>
-        using column_field_type_t = typename column_field_type<T>::type;
-
-        template<class T>
-        struct column_constraints_type {
-            using type = std::tuple<>;
-        };
-
-        template<class G, class S, class... Op>
-        struct column_constraints_type<column_t<G, S, Op...>> {
-            using type = typename column_t<G, S, Op...>::constraints_type;
-        };
-
-        template<class T>
-        using column_constraints_type_t = typename column_constraints_type<T>::type;
+        using column_constraints_type_t = polyfill::detected_or_t<std::tuple<>, constraints_type_t, T>;
 
         template<class Elements, template<class...> class TraitFn>
         using col_index_sequence_with = filter_tuple_sequence_t<Elements,
@@ -2243,9 +2223,8 @@ namespace sqlite_orm {
      */
     template<class M, class... Op, internal::satisfies<std::is_member_object_pointer, M> = true>
     internal::column_t<M, internal::empty_setter, Op...> make_column(std::string name, M m, Op... constraints) {
-        static_assert(internal::count_tuple<std::tuple<Op...>, internal::is_constraint>::value ==
-                          std::tuple_size<std::tuple<Op...>>::value,
-                      "Incorrect constraints pack");
+        static_assert(polyfill::conjunction_v<internal::is_constraint<Op>...>, "Incorrect constraints pack");
+
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {move(name), m, {}, std::make_tuple(constraints...)});
     }
 
@@ -2260,9 +2239,8 @@ namespace sqlite_orm {
     internal::column_t<G, S, Op...> make_column(std::string name, S setter, G getter, Op... constraints) {
         static_assert(std::is_same<internal::setter_field_type_t<S>, internal::getter_field_type_t<G>>::value,
                       "Getter and setter must get and set same data type");
-        static_assert(internal::count_tuple<std::tuple<Op...>, internal::is_constraint>::value ==
-                          std::tuple_size<std::tuple<Op...>>::value,
-                      "Incorrect constraints pack");
+        static_assert(polyfill::conjunction_v<internal::is_constraint<Op>...>, "Incorrect constraints pack");
+
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {move(name), getter, setter, std::make_tuple(constraints...)});
     }
 
@@ -2278,9 +2256,8 @@ namespace sqlite_orm {
     internal::column_t<G, S, Op...> make_column(std::string name, G getter, S setter, Op... constraints) {
         static_assert(std::is_same<internal::setter_field_type_t<S>, internal::getter_field_type_t<G>>::value,
                       "Getter and setter must get and set same data type");
-        static_assert(internal::count_tuple<std::tuple<Op...>, internal::is_constraint>::value ==
-                          std::tuple_size<std::tuple<Op...>>::value,
-                      "Incorrect constraints pack");
+        static_assert(polyfill::conjunction_v<internal::is_constraint<Op>...>, "Incorrect constraints pack");
+
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {move(name), getter, setter, std::make_tuple(constraints...)});
     }
 }
@@ -9229,12 +9206,12 @@ namespace sqlite_orm {
 namespace sqlite_orm {
     namespace internal {
 
-        template<class T, template<class...> class Fn>
+        template<class T, template<class...> class Op>
         struct tuple_transformer;
 
-        template<class... Args, template<class...> class Fn>
-        struct tuple_transformer<std::tuple<Args...>, Fn> {
-            using type = std::tuple<typename Fn<Args>::type...>;
+        template<class... Args, template<class...> class Op>
+        struct tuple_transformer<std::tuple<Args...>, Op> {
+            using type = std::tuple<Op<Args>...>;
         };
 
         template<class T, template<class...> class Fn>
@@ -9293,7 +9270,7 @@ namespace sqlite_orm {
                 using args_tuple = std::tuple<Args...>;
                 using columns_tuple = typename tuple_filter<args_tuple, is_column>::type;
 
-                using type = transform_tuple_t<columns_tuple, column_field_type>;
+                using type = transform_tuple_t<columns_tuple, column_field_type_t>;
             };
 
             /**

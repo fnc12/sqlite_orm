@@ -56,7 +56,7 @@ namespace sqlite_orm {
                 using args_tuple = std::tuple<Args...>;
                 using columns_tuple = typename tuple_filter<args_tuple, is_column>::type;
 
-                using type = transform_tuple_t<columns_tuple, column_field_type>;
+                using type = transform_tuple_t<columns_tuple, column_field_type_t>;
             };
 
             /**
