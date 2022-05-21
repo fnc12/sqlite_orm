@@ -340,9 +340,9 @@ namespace sqlite_orm {
             auto& context = get<3>(tpl);
             auto& object = get<4>(tpl);
             using object_type = polyfill::remove_cvref_t<decltype(object)>;
-            auto& tImpl = pick_impl<object_type>(context.impl);
+            auto& table = pick_table<object_type>(context.impl);
 
-            tImpl.table.template for_each_column_excluding<check_if_excluded>(
+            table.template for_each_column_excluding<check_if_excluded>(
                 [&ss, &excluded, &context, &object, first = true](auto& column) mutable {
                     if(excluded(column)) {
                         return;

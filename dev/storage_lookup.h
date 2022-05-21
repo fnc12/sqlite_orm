@@ -158,6 +158,12 @@ namespace sqlite_orm {
             return impl;
         }
 
+        template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
+        auto& pick_table(S& impl) {
+            storage_pick_impl_t<S, Lookup>& tImpl = impl;
+            return tImpl.table;
+        }
+
         /**
          *  Given a storage implementation pack, find the specific storage implementation for the given lookup type.
          * 

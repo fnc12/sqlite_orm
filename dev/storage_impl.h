@@ -57,10 +57,12 @@ namespace sqlite_orm {
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
         auto lookup_table(const S& strg) {
             const auto& tImpl = find_impl<Lookup>(strg);
-            return static_if<std::is_same<decltype(tImpl), const storage_impl<>&>::value>(empty_callable<nullptr_t>(),
-                                                                                          [](const auto& tImpl) {
-                                                                                              return &tImpl.table;
-                                                                                          })(tImpl);
+            constexpr bool isTail = std::is_same<decltype(tImpl), const storage_impl<>&>::value;
+            return static_if<isTail>(  ///
+                empty_callable<nullptr_t>(),
+                [](const auto& tImpl) {
+                    return &tImpl.table;
+                })(tImpl);
         }
 
         template<class S, satisfies<is_storage_impl, S> = true>
@@ -86,7 +88,7 @@ namespace sqlite_orm {
 
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
         const std::string& get_table_name(const S& strg) {
-            return pick_impl<Lookup>(strg).table.name;
+            return pick_table<Lookup>(strg).name;
         }
 
         /**
@@ -94,7 +96,7 @@ namespace sqlite_orm {
          */
         template<class O, class F, class S, satisfies<is_storage_impl, S> = true>
         const std::string* find_column_name(const S& strg, F O::*field) {
-            return pick_impl<O>(strg).table.find_column_name(field);
+            return pick_table<O>(strg).find_column_name(field);
         }
 
         /**
@@ -113,7 +115,7 @@ namespace sqlite_orm {
         template<class O, class F, class S, satisfies<is_storage_impl, S> = true>
         const std::string* find_column_name(const S& strg, const column_pointer<O, F>& cp) {
             auto field = materialize_column_pointer(strg, cp);
-            return pick_impl<O>(strg).table.find_column_name(field);
+            return pick_table<O>(strg).find_column_name(field);
         }
     }
 }
