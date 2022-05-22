@@ -111,7 +111,7 @@ TEST_CASE("InsertRange") {
         int id;
         std::string name;
 
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
+#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
         Object() = default;
         Object(int id, std::string name) : id{id}, name{move(name)} {}
 #endif
@@ -121,7 +121,7 @@ TEST_CASE("InsertRange") {
         int id;
         std::string name;
 
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
+#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
         ObjectWithoutRowid() = default;
         ObjectWithoutRowid(int id, std::string name) : id{id}, name{move(name)} {}
 #endif
@@ -375,7 +375,7 @@ TEST_CASE("Replace query") {
         int id;
         std::string name;
 
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
+#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
         Object() = default;
         Object(int id, std::string name) : id{id}, name{move(name)} {}
 #endif
