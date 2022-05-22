@@ -7,7 +7,7 @@ namespace {
     struct Pattern {
         std::string value;
 
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
+#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
         Pattern() = default;
         Pattern(std::string value) : value{move(value)} {}
 #endif
