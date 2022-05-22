@@ -218,16 +218,6 @@ namespace sqlite_orm {
             }
 
             template<class O>
-            auto& get_impl() const {
-                return pick_impl<O>(this->impl);
-            }
-
-            template<class O>
-            auto& get_impl() {
-                return pick_impl<O>(this->impl);
-            }
-
-            template<class O>
             auto& get_table() const {
                 return pick_impl<O>(this->impl).table;
             }
@@ -1168,11 +1158,11 @@ namespace sqlite_orm {
 
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
-                tuple_value_binder{stmt}(statement.expression.columns.columns,
-                                         [&table = this->get_impl<object_type>().table,
-                                          &object = statement.expression.obj](auto& memberPointer) {
-                                             return table.object_field_value(object, memberPointer);
-                                         });
+                tuple_value_binder{stmt}(
+                    statement.expression.columns.columns,
+                    [&table = this->get_table<object_type>(), &object = statement.expression.obj](auto& memberPointer) {
+                        return table.object_field_value(object, memberPointer);
+                    });
                 perform_step(stmt);
                 return sqlite3_last_insert_rowid(sqlite3_db_handle(stmt));
             }
@@ -1186,17 +1176,12 @@ namespace sqlite_orm {
 
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
-                auto processObject = [&table = this->get_impl<object_type>().table,
+                auto processObject = [&table = this->get_table<object_type>(),
                                       bind_value = field_value_binder{stmt}](auto& object) mutable {
                     table.template for_each_column_excluding<is_generated_always>(
-#ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
-                        [&bind_value, &object]<class G, class S>(const column_field<G, S>& column)
-#else
-                        [&bind_value, &object](auto& column)
-#endif
-                        {
+                        call_as_template_base<column_field>([&bind_value, &object](auto& column) {
                             bind_value(polyfill::invoke(column.member_pointer, object));
-                        });
+                        }));
                 };
 
                 static_if<is_replace_range_v<T>>(
@@ -1240,16 +1225,11 @@ namespace sqlite_orm {
                     table.template for_each_column_excluding<
                         mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                          mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
-                        [&table, &bind_value, &object]
-#ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
-                        <class G, class S>(const column_field<G, S>& column) {
-#else
-                        (auto& column) {
-#endif
+                        call_as_template_base<column_field>([&table, &bind_value, &object](auto& column) {
                             if(!table.exists_in_composite_primary_key(column)) {
                                 bind_value(polyfill::invoke(column.member_pointer, object));
                             }
-                        });
+                        }));
                 };
 
                 static_if<is_insert_range_v<T>>(
@@ -1299,16 +1279,11 @@ namespace sqlite_orm {
                 field_value_binder bind_value{stmt};
                 auto& object = get_object(statement.expression);
                 table.template for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
-                    [&table, &bind_value, &object]
-#ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
-                    <class G, class S>(const column_field<G, S>& column) {
-#else
-                    (auto& column) {
-#endif
+                    call_as_template_base<column_field>([&table, &bind_value, &object](auto& column) {
                         if(!table.exists_in_composite_primary_key(column)) {
                             bind_value(polyfill::invoke(column.member_pointer, object));
                         }
-                    });
+                    }));
                 table.for_each_column([&table, &bind_value, &object](auto& column) {
                     if(column.template is<is_primary_key>() || table.exists_in_composite_primary_key(column)) {
                         bind_value(polyfill::invoke(column.member_pointer, object));

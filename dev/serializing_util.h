@@ -13,6 +13,7 @@
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_polyfill.h"
+#include "tuple_helper/tuple_iteration.h"
 #include "error_code.h"
 #include "serializer_context.h"
 #include "util.h"
@@ -342,16 +343,17 @@ namespace sqlite_orm {
             using object_type = polyfill::remove_cvref_t<decltype(object)>;
             auto& table = pick_table<object_type>(context.impl);
 
-            table.template for_each_column_excluding<check_if_excluded>(
-                [&ss, &excluded, &context, &object, first = true](auto& column) mutable {
-                    if(excluded(column)) {
-                        return;
-                    }
+            table.template for_each_column_excluding<check_if_excluded>(  ///
+                call_as_template_base<column_field>(
+                    [&ss, &excluded, &context, &object, first = true](auto& column) mutable {
+                        if(excluded(column)) {
+                            return;
+                        }
 
-                    constexpr std::array<const char*, 2> sep = {", ", ""};
-                    ss << sep[std::exchange(first, false)]  ///
-                       << serialize(polyfill::invoke(column.member_pointer, object), context);
-                });
+                        constexpr std::array<const char*, 2> sep = {", ", ""};
+                        ss << sep[std::exchange(first, false)]  ///
+                           << serialize(polyfill::invoke(column.member_pointer, object), context);
+                    }));
             return ss;
         }
 

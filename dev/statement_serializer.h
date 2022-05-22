@@ -915,7 +915,10 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << streaming_identifier(column.name) << " " << type_printer<field_type_t<column_type>>().print()
                    << " "
-                   << streaming_column_constraints(column.as_column_constraints(), column.is_not_null(), context);
+                   << streaming_column_constraints(
+                          call_as_template_base<column_constraints>(polyfill::identity{})(column),
+                          column.is_not_null(),
+                          context);
                 return ss.str();
             }
         };
@@ -948,13 +951,10 @@ namespace sqlite_orm {
                 ss << "REPLACE INTO " << streaming_identifier(table.name)  ///
                    << " (" << streaming_non_generated_column_names(table) << ")"  ///
                    << " VALUES ("
-                   << streaming_field_values_excluding(
-                          mpl::quote_fn<is_generated_always>{},
-                          [](auto& /*column*/) {
-                              return false;  //  don't exclude
-                          },
-                          context,
-                          get_ref(statement.object))
+                   << streaming_field_values_excluding(check_if<is_generated_always>{},
+                                                       empty_callable<std::false_type>(),  //  don't exclude
+                                                       context,
+                                                       get_ref(statement.object))
                    << ")";
                 return ss.str();
             }
@@ -1120,12 +1120,7 @@ namespace sqlite_orm {
                        << streaming_field_values_excluding(
                               mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                                mpl::disjunction_fn<is_primary_key, is_generated_always>>{},
-                              [&table]
-#ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
-                              <class G, class S>(const column_field<G, S>& column) {
-#else
-                              (auto& column) {
-#endif
+                              [&table](auto& column) {
                                   return table.exists_in_composite_primary_key(column);
                               },
                               context,

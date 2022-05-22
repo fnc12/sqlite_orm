@@ -1998,7 +1998,7 @@ namespace sqlite_orm {
 #include <tuple>  //  std::tuple
 #include <string>  //  std::string
 #include <memory>  //  std::unique_ptr
-#include <type_traits>  //  std::false_type, std::is_same, std::enable_if
+#include <type_traits>  //  std::is_same, std::is_member_object_pointer
 
 // #include "functional/cxx_universal.h"
 
@@ -2123,6 +2123,13 @@ namespace sqlite_orm {
 
         struct empty_setter {};
 
+        /*
+         *  Encapsulates object member pointers that are used as column fields,
+         *  and whose object is mapped to storage.
+         *  
+         *  G is a member object pointer or member function pointer
+         *  S is a member function pointer or `empty_setter`
+         */
         template<class G, class S>
         struct column_field {
             using member_pointer_t = G;
@@ -2150,6 +2157,11 @@ namespace sqlite_orm {
             }
         };
 
+        /*
+         *  Encapsulates a tuple of column constraints.
+         *  
+         *  Op... is a constraints pack, e.g. primary_key_t, autoincrement_t etc
+         */
         template<class... Op>
         struct column_constraints {
             using constraints_type = std::tuple<Op...>;
@@ -2181,12 +2193,9 @@ namespace sqlite_orm {
         };
 
         /**
-         *  This class stores information about a single column.
-         *  column_t is a pair of [column_name:member_pointer] mapped to a storage.
+         *  Column definition.
          *  
-         *  G is a member object pointer or member function pointer
-         *  S is a member function pointer or `empty_setter`
-         *  Op... is a constraints pack, e.g. primary_key_t, autoincrement_t etc
+         *  It is a composition of orthogonal information stored in different base classes.
          */
         template<class G, class S, class... Op>
         struct column_t : basic_column, column_field<G, S>, column_constraints<Op...> {
@@ -2195,10 +2204,6 @@ namespace sqlite_orm {
                 basic_column{move(name)}, column_field<G, S>{memberPointer, setter}, column_constraints<Op...>{
                                                                                          move(op)} {}
 #endif
-            // Simplified interface for cast to base class
-            constexpr const column_constraints<Op...>& as_column_constraints() const {
-                return *this;
-            }
         };
 
         template<class T>
@@ -10258,6 +10263,35 @@ namespace sqlite_orm {
                 std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
                 std::forward<Projection>(project));
         }
+
+        template<template<class...> class Base, class L>
+        struct lambda_as_template_base {
+            lambda_as_template_base(L&& lambda) : lambda{std::forward<L>(lambda)} {}
+
+            template<class... T>
+            decltype(auto) operator()(const Base<T...>& object) const {
+                return lambda(object);
+            }
+
+            // note: store by reference, such that above call operator is independent of callable's const-qualification
+            L&& lambda;
+        };
+
+        /*
+         *  This method wraps the specified callable in another function object,
+         *  which in turn implicitly casts its single argument to the specified template base class,
+         *  then passes the converted argument to the lambda.
+         *  
+         *  Note: This method is useful for reducing combinatorial instantiation of template lambdas,
+         *  as long as this library supports compilers that do not implement
+         *  explicit template parameters in generic lambdas [SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED].
+         *  Unfortunately it doesn't work with user-defined conversion operators in order to extract
+         *  parts of a base class. I.e. Base must be a direct template base class.
+         */
+        template<template<class...> class Base, class L>
+        lambda_as_template_base<Base, L> call_as_template_base(L&& lambda) {
+            return std::forward<L>(lambda);
+        }
     }
 }
 
@@ -12848,6 +12882,8 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_polyfill.h"
 
+// #include "tuple_helper/tuple_iteration.h"
+
 // #include "error_code.h"
 
 // #include "serializer_context.h"
@@ -13179,16 +13215,17 @@ namespace sqlite_orm {
             using object_type = polyfill::remove_cvref_t<decltype(object)>;
             auto& table = pick_table<object_type>(context.impl);
 
-            table.template for_each_column_excluding<check_if_excluded>(
-                [&ss, &excluded, &context, &object, first = true](auto& column) mutable {
-                    if(excluded(column)) {
-                        return;
-                    }
+            table.template for_each_column_excluding<check_if_excluded>(  ///
+                call_as_template_base<column_field>(
+                    [&ss, &excluded, &context, &object, first = true](auto& column) mutable {
+                        if(excluded(column)) {
+                            return;
+                        }
 
-                    constexpr std::array<const char*, 2> sep = {", ", ""};
-                    ss << sep[std::exchange(first, false)]  ///
-                       << serialize(polyfill::invoke(column.member_pointer, object), context);
-                });
+                        constexpr std::array<const char*, 2> sep = {", ", ""};
+                        ss << sep[std::exchange(first, false)]  ///
+                           << serialize(polyfill::invoke(column.member_pointer, object), context);
+                    }));
             return ss;
         }
 
@@ -16108,7 +16145,10 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << streaming_identifier(column.name) << " " << type_printer<field_type_t<column_type>>().print()
                    << " "
-                   << streaming_column_constraints(column.as_column_constraints(), column.is_not_null(), context);
+                   << streaming_column_constraints(
+                          call_as_template_base<column_constraints>(polyfill::identity{})(column),
+                          column.is_not_null(),
+                          context);
                 return ss.str();
             }
         };
@@ -16141,13 +16181,10 @@ namespace sqlite_orm {
                 ss << "REPLACE INTO " << streaming_identifier(table.name)  ///
                    << " (" << streaming_non_generated_column_names(table) << ")"  ///
                    << " VALUES ("
-                   << streaming_field_values_excluding(
-                          mpl::quote_fn<is_generated_always>{},
-                          [](auto& /*column*/) {
-                              return false;  //  don't exclude
-                          },
-                          context,
-                          get_ref(statement.object))
+                   << streaming_field_values_excluding(check_if<is_generated_always>{},
+                                                       empty_callable<std::false_type>(),  //  don't exclude
+                                                       context,
+                                                       get_ref(statement.object))
                    << ")";
                 return ss.str();
             }
@@ -16313,12 +16350,7 @@ namespace sqlite_orm {
                        << streaming_field_values_excluding(
                               mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                                mpl::disjunction_fn<is_primary_key, is_generated_always>>{},
-                              [&table]
-#ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
-                              <class G, class S>(const column_field<G, S>& column) {
-#else
-                                  (auto& column) {
-#endif
+                              [&table](auto& column) {
                                   return table.exists_in_composite_primary_key(column);
                               },
                               context,
@@ -17390,16 +17422,6 @@ namespace sqlite_orm {
             }
 
             template<class O>
-            auto& get_impl() const {
-                return pick_impl<O>(this->impl);
-            }
-
-            template<class O>
-            auto& get_impl() {
-                return pick_impl<O>(this->impl);
-            }
-
-            template<class O>
             auto& get_table() const {
                 return pick_impl<O>(this->impl).table;
             }
@@ -18340,11 +18362,11 @@ namespace sqlite_orm {
 
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
-                tuple_value_binder{stmt}(statement.expression.columns.columns,
-                                         [&table = this->get_impl<object_type>().table,
-                                          &object = statement.expression.obj](auto& memberPointer) {
-                                             return table.object_field_value(object, memberPointer);
-                                         });
+                tuple_value_binder{stmt}(
+                    statement.expression.columns.columns,
+                    [&table = this->get_table<object_type>(), &object = statement.expression.obj](auto& memberPointer) {
+                        return table.object_field_value(object, memberPointer);
+                    });
                 perform_step(stmt);
                 return sqlite3_last_insert_rowid(sqlite3_db_handle(stmt));
             }
@@ -18358,17 +18380,12 @@ namespace sqlite_orm {
 
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
-                auto processObject = [&table = this->get_impl<object_type>().table,
+                auto processObject = [&table = this->get_table<object_type>(),
                                       bind_value = field_value_binder{stmt}](auto& object) mutable {
                     table.template for_each_column_excluding<is_generated_always>(
-#ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
-                        [&bind_value, &object]<class G, class S>(const column_field<G, S>& column)
-#else
-                            [&bind_value, &object](auto& column)
-#endif
-                        {
+                        call_as_template_base<column_field>([&bind_value, &object](auto& column) {
                             bind_value(polyfill::invoke(column.member_pointer, object));
-                        });
+                        }));
                 };
 
                 static_if<is_replace_range_v<T>>(
@@ -18412,16 +18429,11 @@ namespace sqlite_orm {
                     table.template for_each_column_excluding<
                         mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                          mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
-                        [&table, &bind_value, &object]
-#ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
-                        <class G, class S>(const column_field<G, S>& column) {
-#else
-                            (auto& column) {
-#endif
+                        call_as_template_base<column_field>([&table, &bind_value, &object](auto& column) {
                             if(!table.exists_in_composite_primary_key(column)) {
                                 bind_value(polyfill::invoke(column.member_pointer, object));
                             }
-                        });
+                        }));
                 };
 
                 static_if<is_insert_range_v<T>>(
@@ -18471,16 +18483,11 @@ namespace sqlite_orm {
                 field_value_binder bind_value{stmt};
                 auto& object = get_object(statement.expression);
                 table.template for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
-                    [&table, &bind_value, &object]
-#ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
-                    <class G, class S>(const column_field<G, S>& column) {
-#else
-                        (auto& column) {
-#endif
+                    call_as_template_base<column_field>([&table, &bind_value, &object](auto& column) {
                         if(!table.exists_in_composite_primary_key(column)) {
                             bind_value(polyfill::invoke(column.member_pointer, object));
                         }
-                    });
+                    }));
                 table.for_each_column([&table, &bind_value, &object](auto& column) {
                     if(column.template is<is_primary_key>() || table.exists_in_composite_primary_key(column)) {
                         bind_value(polyfill::invoke(column.member_pointer, object));

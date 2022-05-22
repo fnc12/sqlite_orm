@@ -3,7 +3,7 @@
 #include <tuple>  //  std::tuple
 #include <string>  //  std::string
 #include <memory>  //  std::unique_ptr
-#include <type_traits>  //  std::false_type, std::is_same, std::enable_if
+#include <type_traits>  //  std::is_same, std::is_member_object_pointer
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_polyfill.h"
@@ -28,6 +28,13 @@ namespace sqlite_orm {
 
         struct empty_setter {};
 
+        /*
+         *  Encapsulates object member pointers that are used as column fields,
+         *  and whose object is mapped to storage.
+         *  
+         *  G is a member object pointer or member function pointer
+         *  S is a member function pointer or `empty_setter`
+         */
         template<class G, class S>
         struct column_field {
             using member_pointer_t = G;
@@ -55,6 +62,11 @@ namespace sqlite_orm {
             }
         };
 
+        /*
+         *  Encapsulates a tuple of column constraints.
+         *  
+         *  Op... is a constraints pack, e.g. primary_key_t, autoincrement_t etc
+         */
         template<class... Op>
         struct column_constraints {
             using constraints_type = std::tuple<Op...>;
@@ -86,12 +98,9 @@ namespace sqlite_orm {
         };
 
         /**
-         *  This class stores information about a single column.
-         *  column_t is a pair of [column_name:member_pointer] mapped to a storage.
+         *  Column definition.
          *  
-         *  G is a member object pointer or member function pointer
-         *  S is a member function pointer or `empty_setter`
-         *  Op... is a constraints pack, e.g. primary_key_t, autoincrement_t etc
+         *  It is a composition of orthogonal information stored in different base classes.
          */
         template<class G, class S, class... Op>
         struct column_t : basic_column, column_field<G, S>, column_constraints<Op...> {
@@ -100,10 +109,6 @@ namespace sqlite_orm {
                 basic_column{move(name)}, column_field<G, S>{memberPointer, setter}, column_constraints<Op...>{
                                                                                          move(op)} {}
 #endif
-            // Simplified interface for cast to base class
-            constexpr const column_constraints<Op...>& as_column_constraints() const {
-                return *this;
-            }
         };
 
         template<class T>

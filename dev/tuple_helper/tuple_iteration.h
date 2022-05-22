@@ -95,5 +95,34 @@ namespace sqlite_orm {
                 std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
                 std::forward<Projection>(project));
         }
+
+        template<template<class...> class Base, class L>
+        struct lambda_as_template_base {
+            lambda_as_template_base(L&& lambda) : lambda{std::forward<L>(lambda)} {}
+
+            template<class... T>
+            decltype(auto) operator()(const Base<T...>& object) const {
+                return lambda(object);
+            }
+
+            // note: store by reference, such that above call operator is independent of callable's const-qualification
+            L&& lambda;
+        };
+
+        /*
+         *  This method wraps the specified callable in another function object,
+         *  which in turn implicitly casts its single argument to the specified template base class,
+         *  then passes the converted argument to the lambda.
+         *  
+         *  Note: This method is useful for reducing combinatorial instantiation of template lambdas,
+         *  as long as this library supports compilers that do not implement
+         *  explicit template parameters in generic lambdas [SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED].
+         *  Unfortunately it doesn't work with user-defined conversion operators in order to extract
+         *  parts of a base class. I.e. Base must be a direct template base class.
+         */
+        template<template<class...> class Base, class L>
+        lambda_as_template_base<Base, L> call_as_template_base(L&& lambda) {
+            return std::forward<L>(lambda);
+        }
     }
 }
