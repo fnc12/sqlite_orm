@@ -394,9 +394,11 @@ TEST_CASE("statement_serializer insert/replace") {
                 SECTION("projected") {
                     auto expression =
                         insert_range<User>(userRefs.begin(), userRefs.end(), &std::reference_wrapper<User>::get);
+#ifdef _MSC_VER /* `&std::reference_wrapper<long>::get` is only invocable with Microsoft STL */
                     // deduced object type
                     assert_same(insert_range(userRefs.begin(), userRefs.end(), &std::reference_wrapper<User>::get),
                                 expression);
+#endif
                     value = serialize(expression, context);
                     expected = R"(INSERT INTO "users" ("id", "name") VALUES (?, ?))";
                 }
