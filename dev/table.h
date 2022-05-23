@@ -83,17 +83,12 @@ namespace sqlite_orm {
             const member_field_type_t<M>* object_field_value(const object_type& object, M memberPointer) const {
                 using F = member_field_type_t<M>;
                 const F* res = nullptr;
-                this->for_each_column_with_field_type<F>(  ///
-                    [&res, &memberPointer, &object]
-#ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
-                    <class G, class S>(const column_field<G, S>& column) {
-#else
-                    (const auto& column) {
-#endif
+                this->for_each_column_with_field_type<F>(
+                    call_as_template_base<column_field>([&res, &memberPointer, &object](const auto& column) {
                         if(compare_any(column.setter, memberPointer)) {
                             res = &polyfill::invoke(column.member_pointer, object);
                         }
-                    });
+                    }));
                 return res;
             }
 
@@ -165,15 +160,10 @@ namespace sqlite_orm {
 
             template<class L>
             void for_each_primary_key_column(L&& lambda) const {
-                this->for_each_column_with<is_primary_key>(  ///
-                    [&lambda]
-#ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
-                    <class G, class S>(const column_field<G, S>& column) {
-#else
-                    (auto& column) {
-#endif
+                this->for_each_column_with<is_primary_key>(
+                    call_as_template_base<column_field>([&lambda](const auto& column) {
                         lambda(column.member_pointer);
-                    });
+                    }));
                 this->for_each_primary_key([this, &lambda](auto& primaryKey) {
                     this->for_each_column_in_primary_key(primaryKey, lambda);
                 });
