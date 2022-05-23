@@ -4,7 +4,6 @@
 #include <tuple>  //  std::tuple
 
 #include "../functional/cxx_universal.h"
-#include "../functional/mpl.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -20,32 +19,16 @@ namespace sqlite_orm {
         template<class... Args>
         using conc_tuple_t = typename conc_tuple<Args...>::type;
 
-        template<class T, template<class... C> class Fn>
-        struct tuple_filter;
+        template<class Tpl, class Seq>
+        struct tuple_from_index_sequence;
 
-#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
-        template<class... Types, template<class... C> class Fn>
-        struct tuple_filter<std::tuple<Types...>, Fn>
-            : conc_tuple<std::conditional_t<Fn<Types>::value, std::tuple<Types>, std::tuple<>>...> {};
-#else
-        template<class T, template<class... C> class Fn, class SFINAE = void>
-        struct tuple_filter_single;
-
-        template<class T, template<class... C> class Fn>
-        struct tuple_filter_single<T, Fn, std::enable_if_t<!Fn<T>::value>> {
-            using type = std::tuple<>;
+        template<class Tpl, size_t... Idx>
+        struct tuple_from_index_sequence<Tpl, std::index_sequence<Idx...>> {
+            using type = std::tuple<std::tuple_element_t<Idx, Tpl>...>;
         };
 
-        template<class T, template<class... C> class Fn>
-        struct tuple_filter_single<T, Fn, std::enable_if_t<Fn<T>::value>> {
-            using type = std::tuple<T>;
-        };
-
-        template<class... Types, template<class... C> class Fn>
-        struct tuple_filter<std::tuple<Types...>, Fn> : conc_tuple<typename tuple_filter_single<Types, Fn>::type...> {};
-#endif
-        template<class Tpl, template<class... C> class Fn>
-        using filter_tuple_t = typename tuple_filter<Tpl, Fn>::type;
+        template<class Tpl, class Seq>
+        using tuple_from_index_sequence_t = typename tuple_from_index_sequence<Tpl, Seq>::type;
 
         /**
          *  Get the first value of an index_sequence.
@@ -79,22 +62,22 @@ namespace sqlite_orm {
                                                 std::index_sequence<Idx>,
                                                 std::index_sequence<>>...> {};
 #else
-        template<size_t Idx, class T, template<class...> class Pred, template<class...> class Proj, class SFINAE = void>
+        template<size_t Idx, class T, template<class...> class Pred, class SFINAE = void>
         struct tuple_seq_single;
 
-        template<size_t Idx, class T, template<class...> class Pred, template<class...> class Proj>
-        struct tuple_seq_single<Idx, T, Pred, Proj, std::enable_if_t<!Pred<Proj<T>>::value>> {
+        template<size_t Idx, class T, template<class...> class Pred>
+        struct tuple_seq_single<Idx, T, Pred, std::enable_if_t<!Pred<T>::value>> {
             using type = std::index_sequence<>;
         };
 
-        template<size_t Idx, class T, template<class...> class Pred, template<class...> class Proj>
-        struct tuple_seq_single<Idx, T, Pred, Proj, std::enable_if_t<Pred<Proj<T>>::value>> {
+        template<size_t Idx, class T, template<class...> class Pred>
+        struct tuple_seq_single<Idx, T, Pred, std::enable_if_t<Pred<T>::value>> {
             using type = std::index_sequence<Idx>;
         };
 
         template<class Tpl, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
         struct filter_tuple_sequence<Tpl, Pred, Proj, std::index_sequence<Idx...>>
-            : concat_idx_seq<typename tuple_seq_single<Idx, std::tuple_element_t<Idx, Tpl>, Pred, Proj>::type...> {};
+            : concat_idx_seq<typename tuple_seq_single<Idx, Proj<std::tuple_element_t<Idx, Tpl>>, Pred>::type...> {};
 #endif
 
         template<class Tpl,
@@ -104,8 +87,14 @@ namespace sqlite_orm {
                  class Seq = std::make_index_sequence<std::tuple_size<Tpl>::value>>
         using filter_tuple_sequence_t = typename filter_tuple_sequence<Tpl, Pred, Proj, Seq>::type;
 
-        template<class T, template<class...> class Fn>
-        struct count_tuple : std::integral_constant<int, filter_tuple_sequence_t<T, Fn>::size()> {};
+        template<class Tpl,
+                 template<class...>
+                 class Pred,
+                 template<class...> class FilterProj = polyfill::type_identity_t>
+        using filter_tuple_t = tuple_from_index_sequence_t<Tpl, filter_tuple_sequence_t<Tpl, Pred, FilterProj>>;
+
+        template<class Tpl, template<class...> class Pred>
+        struct count_tuple : std::integral_constant<int, filter_tuple_sequence_t<Tpl, Pred>::size()> {};
 
         /*
          *  Count a tuple, picking only those elements specified in the index sequence.

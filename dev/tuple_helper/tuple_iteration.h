@@ -118,7 +118,7 @@ namespace sqlite_orm {
          *  as long as this library supports compilers that do not implement
          *  explicit template parameters in generic lambdas [SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED].
          *  Unfortunately it doesn't work with user-defined conversion operators in order to extract
-         *  parts of a base class. I.e. Base must be a direct template base class.
+         *  parts of a class. In other words, the destination type must be a direct template base class.
          */
         template<template<class...> class Base, class L>
         lambda_as_template_base<Base, L> call_as_template_base(L&& lambda) {

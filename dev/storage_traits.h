@@ -54,7 +54,7 @@ namespace sqlite_orm {
             template<class T, bool WithoutRowId, class... Args>
             struct table_types<table_t<T, WithoutRowId, Args...>> {
                 using args_tuple = std::tuple<Args...>;
-                using columns_tuple = typename tuple_filter<args_tuple, is_column>::type;
+                using columns_tuple = filter_tuple_t<args_tuple, is_column>;
 
                 using type = transform_tuple_t<columns_tuple, column_field_type_t>;
             };
@@ -93,15 +93,15 @@ namespace sqlite_orm {
              *  C is any column type: column_t or constraint type
              *  O - object type references in FOREIGN KEY
              */
-            template<class C, class O>
+            template<class C, class O, class SFINAE = void>
             struct column_foreign_keys_count : std::integral_constant<int, 0> {};
 
             template<class A, class B, class O>
-            struct column_foreign_keys_count<foreign_key_t<A, B>, O> {
-                using target_type = typename foreign_key_t<A, B>::target_type;
-
-                static constexpr int value = std::is_same<O, target_type>::value ? 1 : 0;
-            };
+            struct column_foreign_keys_count<
+                foreign_key_t<A, B>,
+                O,
+                std::enable_if_t<std::is_same<O, typename foreign_key_t<A, B>::target_type>::value>>
+                : std::integral_constant<int, 1> {};
 
             /**
              * O - object type references in FOREIGN KEY

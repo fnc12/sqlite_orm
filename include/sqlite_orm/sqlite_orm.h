@@ -1018,8 +1018,6 @@ namespace sqlite_orm {
 
 // #include "../functional/cxx_universal.h"
 
-// #include "../functional/mpl.h"
-
 namespace sqlite_orm {
     namespace internal {
 
@@ -1034,32 +1032,16 @@ namespace sqlite_orm {
         template<class... Args>
         using conc_tuple_t = typename conc_tuple<Args...>::type;
 
-        template<class T, template<class... C> class Fn>
-        struct tuple_filter;
+        template<class Tpl, class Seq>
+        struct tuple_from_index_sequence;
 
-#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
-        template<class... Types, template<class... C> class Fn>
-        struct tuple_filter<std::tuple<Types...>, Fn>
-            : conc_tuple<std::conditional_t<Fn<Types>::value, std::tuple<Types>, std::tuple<>>...> {};
-#else
-        template<class T, template<class... C> class Fn, class SFINAE = void>
-        struct tuple_filter_single;
-
-        template<class T, template<class... C> class Fn>
-        struct tuple_filter_single<T, Fn, std::enable_if_t<!Fn<T>::value>> {
-            using type = std::tuple<>;
+        template<class Tpl, size_t... Idx>
+        struct tuple_from_index_sequence<Tpl, std::index_sequence<Idx...>> {
+            using type = std::tuple<std::tuple_element_t<Idx, Tpl>...>;
         };
 
-        template<class T, template<class... C> class Fn>
-        struct tuple_filter_single<T, Fn, std::enable_if_t<Fn<T>::value>> {
-            using type = std::tuple<T>;
-        };
-
-        template<class... Types, template<class... C> class Fn>
-        struct tuple_filter<std::tuple<Types...>, Fn> : conc_tuple<typename tuple_filter_single<Types, Fn>::type...> {};
-#endif
-        template<class Tpl, template<class... C> class Fn>
-        using filter_tuple_t = typename tuple_filter<Tpl, Fn>::type;
+        template<class Tpl, class Seq>
+        using tuple_from_index_sequence_t = typename tuple_from_index_sequence<Tpl, Seq>::type;
 
         /**
          *  Get the first value of an index_sequence.
@@ -1093,22 +1075,22 @@ namespace sqlite_orm {
                                                 std::index_sequence<Idx>,
                                                 std::index_sequence<>>...> {};
 #else
-        template<size_t Idx, class T, template<class...> class Pred, template<class...> class Proj, class SFINAE = void>
+        template<size_t Idx, class T, template<class...> class Pred, class SFINAE = void>
         struct tuple_seq_single;
 
-        template<size_t Idx, class T, template<class...> class Pred, template<class...> class Proj>
-        struct tuple_seq_single<Idx, T, Pred, Proj, std::enable_if_t<!Pred<Proj<T>>::value>> {
+        template<size_t Idx, class T, template<class...> class Pred>
+        struct tuple_seq_single<Idx, T, Pred, std::enable_if_t<!Pred<T>::value>> {
             using type = std::index_sequence<>;
         };
 
-        template<size_t Idx, class T, template<class...> class Pred, template<class...> class Proj>
-        struct tuple_seq_single<Idx, T, Pred, Proj, std::enable_if_t<Pred<Proj<T>>::value>> {
+        template<size_t Idx, class T, template<class...> class Pred>
+        struct tuple_seq_single<Idx, T, Pred, std::enable_if_t<Pred<T>::value>> {
             using type = std::index_sequence<Idx>;
         };
 
         template<class Tpl, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
         struct filter_tuple_sequence<Tpl, Pred, Proj, std::index_sequence<Idx...>>
-            : concat_idx_seq<typename tuple_seq_single<Idx, std::tuple_element_t<Idx, Tpl>, Pred, Proj>::type...> {};
+            : concat_idx_seq<typename tuple_seq_single<Idx, Proj<std::tuple_element_t<Idx, Tpl>>, Pred>::type...> {};
 #endif
 
         template<class Tpl,
@@ -1118,8 +1100,14 @@ namespace sqlite_orm {
                  class Seq = std::make_index_sequence<std::tuple_size<Tpl>::value>>
         using filter_tuple_sequence_t = typename filter_tuple_sequence<Tpl, Pred, Proj, Seq>::type;
 
-        template<class T, template<class...> class Fn>
-        struct count_tuple : std::integral_constant<int, filter_tuple_sequence_t<T, Fn>::size()> {};
+        template<class Tpl,
+                 template<class...>
+                 class Pred,
+                 template<class...> class FilterProj = polyfill::type_identity_t>
+        using filter_tuple_t = tuple_from_index_sequence_t<Tpl, filter_tuple_sequence_t<Tpl, Pred, FilterProj>>;
+
+        template<class Tpl, template<class...> class Pred>
+        struct count_tuple : std::integral_constant<int, filter_tuple_sequence_t<Tpl, Pred>::size()> {};
 
         /*
          *  Count a tuple, picking only those elements specified in the index sequence.
@@ -8158,11 +8146,8 @@ namespace sqlite_orm {
             }
         };
 
-        template<class T>
-        struct bindable_filter;
-
-        template<class... Args>
-        struct bindable_filter<std::tuple<Args...>> : tuple_filter<std::tuple<Args...>, is_bindable> {};
+        template<class Tpl>
+        using bindable_filter_t = filter_tuple_t<Tpl, is_bindable>;
     }
 }
 #pragma once
@@ -9287,7 +9272,7 @@ namespace sqlite_orm {
             template<class T, bool WithoutRowId, class... Args>
             struct table_types<table_t<T, WithoutRowId, Args...>> {
                 using args_tuple = std::tuple<Args...>;
-                using columns_tuple = typename tuple_filter<args_tuple, is_column>::type;
+                using columns_tuple = filter_tuple_t<args_tuple, is_column>;
 
                 using type = transform_tuple_t<columns_tuple, column_field_type_t>;
             };
@@ -9326,15 +9311,15 @@ namespace sqlite_orm {
              *  C is any column type: column_t or constraint type
              *  O - object type references in FOREIGN KEY
              */
-            template<class C, class O>
+            template<class C, class O, class SFINAE = void>
             struct column_foreign_keys_count : std::integral_constant<int, 0> {};
 
             template<class A, class B, class O>
-            struct column_foreign_keys_count<foreign_key_t<A, B>, O> {
-                using target_type = typename foreign_key_t<A, B>::target_type;
-
-                static constexpr int value = std::is_same<O, target_type>::value ? 1 : 0;
-            };
+            struct column_foreign_keys_count<
+                foreign_key_t<A, B>,
+                O,
+                std::enable_if_t<std::is_same<O, typename foreign_key_t<A, B>::target_type>::value>>
+                : std::integral_constant<int, 1> {};
 
             /**
              * O - object type references in FOREIGN KEY
@@ -10286,7 +10271,7 @@ namespace sqlite_orm {
          *  as long as this library supports compilers that do not implement
          *  explicit template parameters in generic lambdas [SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED].
          *  Unfortunately it doesn't work with user-defined conversion operators in order to extract
-         *  parts of a base class. I.e. Base must be a direct template base class.
+         *  parts of a class. In other words, the destination type must be a direct template base class.
          */
         template<template<class...> class Base, class L>
         lambda_as_template_base<Base, L> call_as_template_base(L&& lambda) {
@@ -10371,17 +10356,12 @@ namespace sqlite_orm {
             const member_field_type_t<M>* object_field_value(const object_type& object, M memberPointer) const {
                 using F = member_field_type_t<M>;
                 const F* res = nullptr;
-                this->for_each_column_with_field_type<F>(  ///
-                    [&res, &memberPointer, &object]
-#ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
-                    <class G, class S>(const column_field<G, S>& column) {
-#else
-                    (const auto& column) {
-#endif
+                this->for_each_column_with_field_type<F>(
+                    call_as_template_base<column_field>([&res, &memberPointer, &object](const auto& column) {
                         if(compare_any(column.setter, memberPointer)) {
                             res = &polyfill::invoke(column.member_pointer, object);
                         }
-                    });
+                    }));
                 return res;
             }
 
@@ -10453,15 +10433,10 @@ namespace sqlite_orm {
 
             template<class L>
             void for_each_primary_key_column(L&& lambda) const {
-                this->for_each_column_with<is_primary_key>(  ///
-                    [&lambda]
-#ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
-                    <class G, class S>(const column_field<G, S>& column) {
-#else
-                    (auto& column) {
-#endif
+                this->for_each_column_with<is_primary_key>(
+                    call_as_template_base<column_field>([&lambda](const auto& column) {
                         lambda(column.member_pointer);
-                    });
+                    }));
                 this->for_each_primary_key([this, &lambda](auto& primaryKey) {
                     this->for_each_column_in_primary_key(primaryKey, lambda);
                 });
@@ -17400,16 +17375,15 @@ namespace sqlite_orm {
 #endif
                     using elements_type = std::decay_t<decltype(table.elements)>;
                     using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
+                    static_assert(count_tuple<elements_type, is_primary_key_insertable, pkcol_index_sequence>::value <=
+                                      1,
+                                  "Attempting to execute 'insert' request into an noninsertable table was detected. "
+                                  "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
+                                  "'insert', or you can use 'insert' with explicit column listing.");
                     static_assert(
-                        count_filtered_tuple<elements_type, is_primary_key_insertable, pkcol_index_sequence>::value <=
-                            1,
-                        "Attempting to execute 'insert' request into an noninsertable table was detected. "
-                        "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
-                        "'insert', or you can use 'insert' with explicit column listing.");
-                    static_assert(
-                        count_filtered_tuple<elements_type,
-                                             check_if_not<is_primary_key_insertable>::template fn,
-                                             pkcol_index_sequence>::value == 0,
+                        count_tuple<elements_type,
+                                    check_if_not<is_primary_key_insertable>::template fn,
+                                    pkcol_index_sequence>::value == 0,
                         "Attempting to execute 'insert' request into an noninsertable table was detected. "
                         "Insertable table cannot contain non-standard primary keys. Please use 'replace' instead "
                         "of 'insert', or you can use 'insert' with explicit column listing.");
@@ -19174,7 +19148,7 @@ namespace sqlite_orm {
         using statement_type = std::decay_t<decltype(statement)>;
         using expression_type = typename statement_type::expression_type;
         using node_tuple = internal::node_tuple_t<expression_type>;
-        using bind_tuple = typename internal::bindable_filter<node_tuple>::type;
+        using bind_tuple = internal::bindable_filter_t<node_tuple>;
         using result_type = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
         const result_type* result = nullptr;
         internal::iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
@@ -19199,7 +19173,7 @@ namespace sqlite_orm {
         using statement_type = std::decay_t<decltype(statement)>;
         using expression_type = typename statement_type::expression_type;
         using node_tuple = internal::node_tuple_t<expression_type>;
-        using bind_tuple = typename internal::bindable_filter<node_tuple>::type;
+        using bind_tuple = internal::bindable_filter_t<node_tuple>;
         using result_type = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
         result_type* result = nullptr;
 

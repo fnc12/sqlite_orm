@@ -354,10 +354,7 @@ namespace sqlite_orm {
             }
         };
 
-        template<class T>
-        struct bindable_filter;
-
-        template<class... Args>
-        struct bindable_filter<std::tuple<Args...>> : tuple_filter<std::tuple<Args...>, is_bindable> {};
+        template<class Tpl>
+        using bindable_filter_t = filter_tuple_t<Tpl, is_bindable>;
     }
 }
