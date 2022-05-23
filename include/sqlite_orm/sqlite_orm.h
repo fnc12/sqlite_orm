@@ -17375,15 +17375,16 @@ namespace sqlite_orm {
 #endif
                     using elements_type = std::decay_t<decltype(table.elements)>;
                     using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
-                    static_assert(count_tuple<elements_type, is_primary_key_insertable, pkcol_index_sequence>::value <=
-                                      1,
-                                  "Attempting to execute 'insert' request into an noninsertable table was detected. "
-                                  "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
-                                  "'insert', or you can use 'insert' with explicit column listing.");
                     static_assert(
-                        count_tuple<elements_type,
-                                    check_if_not<is_primary_key_insertable>::template fn,
-                                    pkcol_index_sequence>::value == 0,
+                        count_filtered_tuple<elements_type, is_primary_key_insertable, pkcol_index_sequence>::value <=
+                            1,
+                        "Attempting to execute 'insert' request into an noninsertable table was detected. "
+                        "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
+                        "'insert', or you can use 'insert' with explicit column listing.");
+                    static_assert(
+                        count_filtered_tuple<elements_type,
+                                             check_if_not<is_primary_key_insertable>::template fn,
+                                             pkcol_index_sequence>::value == 0,
                         "Attempting to execute 'insert' request into an noninsertable table was detected. "
                         "Insertable table cannot contain non-standard primary keys. Please use 'replace' instead "
                         "of 'insert', or you can use 'insert' with explicit column listing.");
