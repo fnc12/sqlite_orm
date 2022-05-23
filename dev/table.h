@@ -176,15 +176,15 @@ namespace sqlite_orm {
 
             template<class... Args>
             std::vector<std::string> composite_key_columns_names(const primary_key_t<Args...>& primaryKey) const {
-                return create_from_tuple<std::vector<std::string>>(  ///
-                    primaryKey.columns,
-                    [this, empty = std::string{}](auto& memberPointer) {
-                        if(const std::string* columnName = this->find_column_name(memberPointer)) {
-                            return *columnName;
-                        } else {
-                            return empty;
-                        }
-                    });
+                return create_from_tuple<std::vector<std::string>>(primaryKey.columns,
+                                                                   [this, empty = std::string{}](auto& memberPointer) {
+                                                                       if(const std::string* columnName =
+                                                                              this->find_column_name(memberPointer)) {
+                                                                           return *columnName;
+                                                                       } else {
+                                                                           return empty;
+                                                                       }
+                                                                   });
             }
 
             /**

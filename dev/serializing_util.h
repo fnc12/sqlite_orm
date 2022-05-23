@@ -169,8 +169,7 @@ namespace sqlite_orm {
 
             iterate_tuple(actions, [&ss, &context, first = true](auto& action) mutable {
                 constexpr std::array<const char*, 2> sep = {" ", ""};
-                ss << sep[std::exchange(first, false)]  ///
-                   << serialize(action, context);
+                ss << sep[std::exchange(first, false)] << serialize(action, context);
             });
             return ss;
         }
@@ -185,8 +184,7 @@ namespace sqlite_orm {
 
             iterate_tuple(args, [&ss, &context, first = true](auto& arg) mutable {
                 constexpr std::array<const char*, 2> sep = {", ", ""};
-                ss << sep[std::exchange(first, false)]  ///
-                   << serialize(arg, context);
+                ss << sep[std::exchange(first, false)] << serialize(arg, context);
             });
             return ss;
         }
@@ -202,8 +200,7 @@ namespace sqlite_orm {
 
             iterate_tuple(args, [&ss, &context, first = true](auto& arg) mutable {
                 constexpr std::array<const char*, 2> sep = {", ", ""};
-                ss << sep[std::exchange(first, false)]  ///
-                   << serialize_order_by(arg, context);
+                ss << sep[std::exchange(first, false)] << serialize_order_by(arg, context);
             });
             return ss;
         }
@@ -218,8 +215,7 @@ namespace sqlite_orm {
 
             constexpr std::array<const char*, 2> sep = {", ", ""};
             for(size_t i = 0, first = true; i < args.size(); ++i) {
-                ss << sep[std::exchange(first, false)]  ///
-                   << serialize(args[i], context);
+                ss << sep[std::exchange(first, false)] << serialize(args[i], context);
             }
             return ss;
         }
@@ -232,8 +228,7 @@ namespace sqlite_orm {
 
             constexpr std::array<const char*, 2> sep = {", ", ""};
             for(size_t i = 0, first = true; i < strings.size(); ++i) {
-                ss << sep[std::exchange(first, false)]  ///
-                   << strings[i];
+                ss << sep[std::exchange(first, false)] << strings[i];
             }
             return ss;
         }
@@ -343,17 +338,16 @@ namespace sqlite_orm {
             using object_type = polyfill::remove_cvref_t<decltype(object)>;
             auto& table = pick_table<object_type>(context.impl);
 
-            table.template for_each_column_excluding<check_if_excluded>(  ///
-                call_as_template_base<column_field>(
-                    [&ss, &excluded, &context, &object, first = true](auto& column) mutable {
-                        if(excluded(column)) {
-                            return;
-                        }
+            table.template for_each_column_excluding<check_if_excluded>(call_as_template_base<column_field>(
+                [&ss, &excluded, &context, &object, first = true](auto& column) mutable {
+                    if(excluded(column)) {
+                        return;
+                    }
 
-                        constexpr std::array<const char*, 2> sep = {", ", ""};
-                        ss << sep[std::exchange(first, false)]  ///
-                           << serialize(polyfill::invoke(column.member_pointer, object), context);
-                    }));
+                    constexpr std::array<const char*, 2> sep = {", ", ""};
+                    ss << sep[std::exchange(first, false)]
+                       << serialize(polyfill::invoke(column.member_pointer, object), context);
+                }));
             return ss;
         }
 

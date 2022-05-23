@@ -948,8 +948,8 @@ namespace sqlite_orm {
                 using object_type = typename expression_object_type<expression_type>::type;
                 auto& table = pick_table<object_type>(context.impl);
                 std::stringstream ss;
-                ss << "REPLACE INTO " << streaming_identifier(table.name)  ///
-                   << " (" << streaming_non_generated_column_names(table) << ")"  ///
+                ss << "REPLACE INTO " << streaming_identifier(table.name) << " ("
+                   << streaming_non_generated_column_names(table) << ")"
                    << " VALUES ("
                    << streaming_field_values_excluding(check_if<is_generated_always>{},
                                                        empty_callable<std::false_type>(),  //  don't exclude
@@ -982,7 +982,7 @@ namespace sqlite_orm {
                                                 "Unable to use setter within insert explicit");
 
                                   constexpr std::array<const char*, 2> sep = {", ", ""};
-                                  ss << sep[std::exchange(first, false)]  ///
+                                  ss << sep[std::exchange(first, false)]
                                      << serialize(polyfill::invoke(memberPointer, object), context);
                               });
                 ss << ")";
@@ -1009,8 +1009,7 @@ namespace sqlite_orm {
                         }
 
                         constexpr std::array<const char*, 2> sep = {", ", ""};
-                        ss << sep[std::exchange(first, false)]  ///
-                           << streaming_identifier(column.name) << " = "
+                        ss << sep[std::exchange(first, false)] << streaming_identifier(column.name) << " = "
                            << serialize(polyfill::invoke(column.member_pointer, object), context);
                     });
                 ss << " WHERE ";
@@ -1021,8 +1020,7 @@ namespace sqlite_orm {
                         }
 
                         constexpr std::array<const char*, 2> sep = {" AND ", ""};
-                        ss << sep[std::exchange(first, false)]  ///
-                           << streaming_identifier(column.name) << " = "
+                        ss << sep[std::exchange(first, false)] << streaming_identifier(column.name) << " = "
                            << serialize(polyfill::invoke(column.member_pointer, object), context);
                     });
                 return ss.str();
@@ -1041,9 +1039,8 @@ namespace sqlite_orm {
                 leftContext.skip_table_name = true;
                 iterate_tuple(statement.assigns, [&ss, &context, &leftContext, first = true](auto& value) mutable {
                     constexpr std::array<const char*, 2> sep = {", ", ""};
-                    ss << sep[std::exchange(first, false)]  ///
-                       << serialize(value.lhs, leftContext) << ' ' << value.serialize() << ' '
-                       << serialize(value.rhs, context);
+                    ss << sep[std::exchange(first, false)] << serialize(value.lhs, leftContext) << ' '
+                       << value.serialize() << ' ' << serialize(value.rhs, context);
                 });
                 return ss.str();
             }

@@ -1187,20 +1187,18 @@ namespace sqlite_orm {
                 static_if<is_replace_range_v<T>>(
                     [&processObject](auto& expression) {
 #if __cpp_lib_ranges >= 201911L
-                        std::ranges::for_each(  ///
-                            expression.range.first,
-                            expression.range.second,
-                            std::ref(processObject),
-                            std::ref(expression.transformer));
+                        std::ranges::for_each(expression.range.first,
+                                              expression.range.second,
+                                              std::ref(processObject),
+                                              std::ref(expression.transformer));
 #else
                         auto& transformer = expression.transformer;
-                        std::for_each(  ///
-                            expression.range.first,
-                            expression.range.second,
-                            [&processObject, &transformer](auto& item) {
-                                const object_type& object = polyfill::invoke(transformer, item);
-                                processObject(object);
-                            });
+                        std::for_each(expression.range.first,
+                                      expression.range.second,
+                                      [&processObject, &transformer](auto& item) {
+                                          const object_type& object = polyfill::invoke(transformer, item);
+                                          processObject(object);
+                                      });
 #endif
                     },
                     [&processObject](auto& expression) {
@@ -1235,20 +1233,18 @@ namespace sqlite_orm {
                 static_if<is_insert_range_v<T>>(
                     [&processObject](auto& expression) {
 #if __cpp_lib_ranges >= 201911L
-                        std::ranges::for_each(  ///
-                            expression.range.first,
-                            expression.range.second,
-                            std::ref(processObject),
-                            std::ref(expression.transformer));
+                        std::ranges::for_each(expression.range.first,
+                                              expression.range.second,
+                                              std::ref(processObject),
+                                              std::ref(expression.transformer));
 #else
                         auto& transformer = expression.transformer;
-                        std::for_each(  ///
-                            expression.range.first,
-                            expression.range.second,
-                            [&processObject, &transformer](auto& item) {
-                                const object_type& object = polyfill::invoke(transformer, item);
-                                processObject(object);
-                            });
+                        std::for_each(expression.range.first,
+                                      expression.range.second,
+                                      [&processObject, &transformer](auto& item) {
+                                          const object_type& object = polyfill::invoke(transformer, item);
+                                          processObject(object);
+                                      });
 #endif
                     },
                     [&processObject](auto& expression) {

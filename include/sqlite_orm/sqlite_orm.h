@@ -10449,15 +10449,15 @@ namespace sqlite_orm {
 
             template<class... Args>
             std::vector<std::string> composite_key_columns_names(const primary_key_t<Args...>& primaryKey) const {
-                return create_from_tuple<std::vector<std::string>>(  ///
-                    primaryKey.columns,
-                    [this, empty = std::string{}](auto& memberPointer) {
-                        if(const std::string* columnName = this->find_column_name(memberPointer)) {
-                            return *columnName;
-                        } else {
-                            return empty;
-                        }
-                    });
+                return create_from_tuple<std::vector<std::string>>(primaryKey.columns,
+                                                                   [this, empty = std::string{}](auto& memberPointer) {
+                                                                       if(const std::string* columnName =
+                                                                              this->find_column_name(memberPointer)) {
+                                                                           return *columnName;
+                                                                       } else {
+                                                                           return empty;
+                                                                       }
+                                                                   });
             }
 
             /**
@@ -10667,11 +10667,9 @@ namespace sqlite_orm {
         auto lookup_table(const S& strg) {
             const auto& tImpl = find_impl<Lookup>(strg);
             constexpr bool isTail = std::is_same<decltype(tImpl), const storage_impl<>&>::value;
-            return static_if<isTail>(  ///
-                empty_callable<nullptr_t>(),
-                [](const auto& tImpl) {
-                    return &tImpl.table;
-                })(tImpl);
+            return static_if<isTail>(empty_callable<nullptr_t>(), [](const auto& tImpl) {
+                return &tImpl.table;
+            })(tImpl);
         }
 
         template<class S, satisfies<is_storage_impl, S> = true>
@@ -13016,8 +13014,7 @@ namespace sqlite_orm {
 
             iterate_tuple(actions, [&ss, &context, first = true](auto& action) mutable {
                 constexpr std::array<const char*, 2> sep = {" ", ""};
-                ss << sep[std::exchange(first, false)]  ///
-                   << serialize(action, context);
+                ss << sep[std::exchange(first, false)] << serialize(action, context);
             });
             return ss;
         }
@@ -13032,8 +13029,7 @@ namespace sqlite_orm {
 
             iterate_tuple(args, [&ss, &context, first = true](auto& arg) mutable {
                 constexpr std::array<const char*, 2> sep = {", ", ""};
-                ss << sep[std::exchange(first, false)]  ///
-                   << serialize(arg, context);
+                ss << sep[std::exchange(first, false)] << serialize(arg, context);
             });
             return ss;
         }
@@ -13049,8 +13045,7 @@ namespace sqlite_orm {
 
             iterate_tuple(args, [&ss, &context, first = true](auto& arg) mutable {
                 constexpr std::array<const char*, 2> sep = {", ", ""};
-                ss << sep[std::exchange(first, false)]  ///
-                   << serialize_order_by(arg, context);
+                ss << sep[std::exchange(first, false)] << serialize_order_by(arg, context);
             });
             return ss;
         }
@@ -13065,8 +13060,7 @@ namespace sqlite_orm {
 
             constexpr std::array<const char*, 2> sep = {", ", ""};
             for(size_t i = 0, first = true; i < args.size(); ++i) {
-                ss << sep[std::exchange(first, false)]  ///
-                   << serialize(args[i], context);
+                ss << sep[std::exchange(first, false)] << serialize(args[i], context);
             }
             return ss;
         }
@@ -13079,8 +13073,7 @@ namespace sqlite_orm {
 
             constexpr std::array<const char*, 2> sep = {", ", ""};
             for(size_t i = 0, first = true; i < strings.size(); ++i) {
-                ss << sep[std::exchange(first, false)]  ///
-                   << strings[i];
+                ss << sep[std::exchange(first, false)] << strings[i];
             }
             return ss;
         }
@@ -13190,17 +13183,16 @@ namespace sqlite_orm {
             using object_type = polyfill::remove_cvref_t<decltype(object)>;
             auto& table = pick_table<object_type>(context.impl);
 
-            table.template for_each_column_excluding<check_if_excluded>(  ///
-                call_as_template_base<column_field>(
-                    [&ss, &excluded, &context, &object, first = true](auto& column) mutable {
-                        if(excluded(column)) {
-                            return;
-                        }
+            table.template for_each_column_excluding<check_if_excluded>(call_as_template_base<column_field>(
+                [&ss, &excluded, &context, &object, first = true](auto& column) mutable {
+                    if(excluded(column)) {
+                        return;
+                    }
 
-                        constexpr std::array<const char*, 2> sep = {", ", ""};
-                        ss << sep[std::exchange(first, false)]  ///
-                           << serialize(polyfill::invoke(column.member_pointer, object), context);
-                    }));
+                    constexpr std::array<const char*, 2> sep = {", ", ""};
+                    ss << sep[std::exchange(first, false)]
+                       << serialize(polyfill::invoke(column.member_pointer, object), context);
+                }));
             return ss;
         }
 
@@ -16153,8 +16145,8 @@ namespace sqlite_orm {
                 using object_type = typename expression_object_type<expression_type>::type;
                 auto& table = pick_table<object_type>(context.impl);
                 std::stringstream ss;
-                ss << "REPLACE INTO " << streaming_identifier(table.name)  ///
-                   << " (" << streaming_non_generated_column_names(table) << ")"  ///
+                ss << "REPLACE INTO " << streaming_identifier(table.name) << " ("
+                   << streaming_non_generated_column_names(table) << ")"
                    << " VALUES ("
                    << streaming_field_values_excluding(check_if<is_generated_always>{},
                                                        empty_callable<std::false_type>(),  //  don't exclude
@@ -16187,7 +16179,7 @@ namespace sqlite_orm {
                                                 "Unable to use setter within insert explicit");
 
                                   constexpr std::array<const char*, 2> sep = {", ", ""};
-                                  ss << sep[std::exchange(first, false)]  ///
+                                  ss << sep[std::exchange(first, false)]
                                      << serialize(polyfill::invoke(memberPointer, object), context);
                               });
                 ss << ")";
@@ -16214,8 +16206,7 @@ namespace sqlite_orm {
                         }
 
                         constexpr std::array<const char*, 2> sep = {", ", ""};
-                        ss << sep[std::exchange(first, false)]  ///
-                           << streaming_identifier(column.name) << " = "
+                        ss << sep[std::exchange(first, false)] << streaming_identifier(column.name) << " = "
                            << serialize(polyfill::invoke(column.member_pointer, object), context);
                     });
                 ss << " WHERE ";
@@ -16226,8 +16217,7 @@ namespace sqlite_orm {
                         }
 
                         constexpr std::array<const char*, 2> sep = {" AND ", ""};
-                        ss << sep[std::exchange(first, false)]  ///
-                           << streaming_identifier(column.name) << " = "
+                        ss << sep[std::exchange(first, false)] << streaming_identifier(column.name) << " = "
                            << serialize(polyfill::invoke(column.member_pointer, object), context);
                     });
                 return ss.str();
@@ -16246,9 +16236,8 @@ namespace sqlite_orm {
                 leftContext.skip_table_name = true;
                 iterate_tuple(statement.assigns, [&ss, &context, &leftContext, first = true](auto& value) mutable {
                     constexpr std::array<const char*, 2> sep = {", ", ""};
-                    ss << sep[std::exchange(first, false)]  ///
-                       << serialize(value.lhs, leftContext) << ' ' << value.serialize() << ' '
-                       << serialize(value.rhs, context);
+                    ss << sep[std::exchange(first, false)] << serialize(value.lhs, leftContext) << ' '
+                       << value.serialize() << ' ' << serialize(value.rhs, context);
                 });
                 return ss.str();
             }
@@ -18366,20 +18355,18 @@ namespace sqlite_orm {
                 static_if<is_replace_range_v<T>>(
                     [&processObject](auto& expression) {
 #if __cpp_lib_ranges >= 201911L
-                        std::ranges::for_each(  ///
-                            expression.range.first,
-                            expression.range.second,
-                            std::ref(processObject),
-                            std::ref(expression.transformer));
+                        std::ranges::for_each(expression.range.first,
+                                              expression.range.second,
+                                              std::ref(processObject),
+                                              std::ref(expression.transformer));
 #else
                             auto& transformer = expression.transformer;
-                            std::for_each(  ///
-                                expression.range.first,
-                                expression.range.second,
-                                [&processObject, &transformer](auto& item) {
-                                    const object_type& object = polyfill::invoke(transformer, item);
-                                    processObject(object);
-                                });
+                            std::for_each(expression.range.first,
+                                          expression.range.second,
+                                          [&processObject, &transformer](auto& item) {
+                                              const object_type& object = polyfill::invoke(transformer, item);
+                                              processObject(object);
+                                          });
 #endif
                     },
                     [&processObject](auto& expression) {
@@ -18414,20 +18401,18 @@ namespace sqlite_orm {
                 static_if<is_insert_range_v<T>>(
                     [&processObject](auto& expression) {
 #if __cpp_lib_ranges >= 201911L
-                        std::ranges::for_each(  ///
-                            expression.range.first,
-                            expression.range.second,
-                            std::ref(processObject),
-                            std::ref(expression.transformer));
+                        std::ranges::for_each(expression.range.first,
+                                              expression.range.second,
+                                              std::ref(processObject),
+                                              std::ref(expression.transformer));
 #else
                             auto& transformer = expression.transformer;
-                            std::for_each(  ///
-                                expression.range.first,
-                                expression.range.second,
-                                [&processObject, &transformer](auto& item) {
-                                    const object_type& object = polyfill::invoke(transformer, item);
-                                    processObject(object);
-                                });
+                            std::for_each(expression.range.first,
+                                          expression.range.second,
+                                          [&processObject, &transformer](auto& item) {
+                                              const object_type& object = polyfill::invoke(transformer, item);
+                                              processObject(object);
+                                          });
 #endif
                     },
                     [&processObject](auto& expression) {
