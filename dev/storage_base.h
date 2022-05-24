@@ -152,7 +152,7 @@ namespace sqlite_orm {
             /**
              *  Returns libsqlite3 version, not sqlite_orm
              */
-            static std::string libversion() {
+            std::string libversion() {
                 return sqlite3_libversion();
             }
 
