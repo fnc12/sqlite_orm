@@ -6,6 +6,7 @@
 
 #include <memory>  //  std::make_unique
 
+#include "../functional/cxx_core_features.h"
 #include "../functional/static_magic.h"
 #include "../tuple_helper/tuple_filter.h"
 #include "../tuple_helper/tuple_traits.h"
