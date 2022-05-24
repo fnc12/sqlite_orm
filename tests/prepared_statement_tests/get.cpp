@@ -79,6 +79,9 @@ TEST_CASE("Prepared get") {
     {
         auto statement = storage.prepare(get<User>(3));
         testSerializing(statement);
+        SECTION("nothing") {
+            //..
+        }
         SECTION("execute") {
             auto user = storage.execute(statement);
             REQUIRE(user == User{3, "Maître Gims"});
@@ -87,6 +90,9 @@ TEST_CASE("Prepared get") {
     {
         auto statement = storage.prepare(get<User>(4));
         testSerializing(statement);
+        SECTION("nothing") {
+            //..
+        }
         SECTION("execute") {
             REQUIRE_THROWS_WITH(storage.execute(statement), Contains("Not found"));
         }
