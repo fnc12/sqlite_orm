@@ -121,7 +121,7 @@ namespace sqlite_orm {
             const std::vector<const table_xinfo*>& columnsToIgnore) const {  // must ignore generated columns
             std::vector<std::reference_wrapper<const std::string>> columnNames;
             columnNames.reserve(tImpl.table.count_columns_amount());
-            tImpl.table.for_each_column([&columnNames, &columnsToIgnore](const basic_column& column) {
+            tImpl.table.for_each_column([&columnNames, &columnsToIgnore](const column_identifier& column) {
                 auto& columnName = column.name;
 #if __cpp_lib_ranges >= 201911L
                 auto columnToIgnoreIt = std::ranges::find(columnsToIgnore, columnName, &table_xinfo::name);

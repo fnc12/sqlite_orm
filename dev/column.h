@@ -18,10 +18,10 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        struct basic_column {
+        struct column_identifier {
 
             /**
-             *  Column name. Specified during construction in `make_column()`.
+             *  Column name.
              */
             const std::string name;
         };
@@ -103,11 +103,11 @@ namespace sqlite_orm {
          *  It is a composition of orthogonal information stored in different base classes.
          */
         template<class G, class S, class... Op>
-        struct column_t : basic_column, column_field<G, S>, column_constraints<Op...> {
+        struct column_t : column_identifier, column_field<G, S>, column_constraints<Op...> {
 #ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
             column_t(std::string name, G memberPointer, S setter, std::tuple<Op...> op) :
-                basic_column{move(name)}, column_field<G, S>{memberPointer, setter}, column_constraints<Op...>{
-                                                                                         move(op)} {}
+                column_identifier{move(name)}, column_field<G, S>{memberPointer, setter}, column_constraints<Op...>{
+                                                                                              move(op)} {}
 #endif
         };
 

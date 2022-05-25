@@ -152,7 +152,7 @@ namespace sqlite_orm {
                 if(pkcol_index_sequence::size() > 0) {
                     return create_from_tuple<std::vector<std::string>>(this->elements,
                                                                        pkcol_index_sequence{},
-                                                                       &basic_column::name);
+                                                                       &column_identifier::name);
                 } else {
                     return this->composite_key_columns_names();
                 }

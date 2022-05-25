@@ -2101,10 +2101,10 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        struct basic_column {
+        struct column_identifier {
 
             /**
-             *  Column name. Specified during construction in `make_column()`.
+             *  Column name.
              */
             const std::string name;
         };
@@ -2186,11 +2186,11 @@ namespace sqlite_orm {
          *  It is a composition of orthogonal information stored in different base classes.
          */
         template<class G, class S, class... Op>
-        struct column_t : basic_column, column_field<G, S>, column_constraints<Op...> {
+        struct column_t : column_identifier, column_field<G, S>, column_constraints<Op...> {
 #ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
             column_t(std::string name, G memberPointer, S setter, std::tuple<Op...> op) :
-                basic_column{move(name)}, column_field<G, S>{memberPointer, setter}, column_constraints<Op...>{
-                                                                                         move(op)} {}
+                column_identifier{move(name)}, column_field<G, S>{memberPointer, setter}, column_constraints<Op...>{
+                                                                                              move(op)} {}
 #endif
         };
 
@@ -10153,7 +10153,7 @@ namespace sqlite_orm {
 
 #include <tuple>  //  std::tuple, std::get, std::tuple_element, std::tuple_size
 #include <type_traits>  //  std::index_sequence, std::make_index_sequence
-#include <utility>  //  std::forward
+#include <utility>  //  std::forward, std::move
 
 // #include "../functional/cxx_universal.h"
 
@@ -10250,16 +10250,14 @@ namespace sqlite_orm {
         }
 
         template<template<class...> class Base, class L>
-        struct lambda_as_template_base {
-            lambda_as_template_base(L&& lambda) : lambda{std::forward<L>(lambda)} {}
-
+        struct lambda_as_template_base : L {
+#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
+            lambda_as_template_base(L&& lambda) : L{std::move(lambda)} {}
+#endif
             template<class... T>
-            decltype(auto) operator()(const Base<T...>& object) const {
-                return lambda(object);
+            decltype(auto) operator()(const Base<T...>& object) {
+                return L::operator()(object);
             }
-
-            // note: store by reference, such that above call operator is independent of callable's const-qualification
-            L&& lambda;
         };
 
         /*
@@ -10274,8 +10272,8 @@ namespace sqlite_orm {
          *  parts of a class. In other words, the destination type must be a direct template base class.
          */
         template<template<class...> class Base, class L>
-        lambda_as_template_base<Base, L> call_as_template_base(L&& lambda) {
-            return std::forward<L>(lambda);
+        lambda_as_template_base<Base, L> call_as_template_base(L lambda) {
+            return {std::move(lambda)};
         }
     }
 }
@@ -10425,7 +10423,7 @@ namespace sqlite_orm {
                 if(pkcol_index_sequence::size() > 0) {
                     return create_from_tuple<std::vector<std::string>>(this->elements,
                                                                        pkcol_index_sequence{},
-                                                                       &basic_column::name);
+                                                                       &column_identifier::name);
                 } else {
                     return this->composite_key_columns_names();
                 }
@@ -13146,7 +13144,7 @@ namespace sqlite_orm {
             const bool& qualified = get<2>(tpl);
 
             table.for_each_column([&ss, &tableName = qualified ? table.name : std::string{}, first = true](
-                                      const basic_column& column) mutable {
+                                      const column_identifier& column) mutable {
                 constexpr std::array<const char*, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)];
                 stream_identifier(ss, tableName, column.name, std::string{});
@@ -13162,7 +13160,7 @@ namespace sqlite_orm {
             const auto& table = get<1>(tpl);
 
             table.template for_each_column_excluding<is_generated_always>(
-                [&ss, first = true](const basic_column& column) mutable {
+                [&ss, first = true](const column_identifier& column) mutable {
                     constexpr std::array<const char*, 2> sep = {", ", ""};
                     ss << sep[std::exchange(first, false)];
                     stream_identifier(ss, column.name);
@@ -19531,7 +19529,7 @@ namespace sqlite_orm {
             const std::vector<const table_xinfo*>& columnsToIgnore) const {  // must ignore generated columns
             std::vector<std::reference_wrapper<const std::string>> columnNames;
             columnNames.reserve(tImpl.table.count_columns_amount());
-            tImpl.table.for_each_column([&columnNames, &columnsToIgnore](const basic_column& column) {
+            tImpl.table.for_each_column([&columnNames, &columnsToIgnore](const column_identifier& column) {
                 auto& columnName = column.name;
 #if __cpp_lib_ranges >= 201911L
                 auto columnToIgnoreIt = std::ranges::find(columnsToIgnore, columnName, &table_xinfo::name);

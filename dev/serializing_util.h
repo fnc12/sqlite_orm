@@ -301,7 +301,7 @@ namespace sqlite_orm {
             const bool& qualified = get<2>(tpl);
 
             table.for_each_column([&ss, &tableName = qualified ? table.name : std::string{}, first = true](
-                                      const basic_column& column) mutable {
+                                      const column_identifier& column) mutable {
                 constexpr std::array<const char*, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)];
                 stream_identifier(ss, tableName, column.name, std::string{});
@@ -317,7 +317,7 @@ namespace sqlite_orm {
             const auto& table = get<1>(tpl);
 
             table.template for_each_column_excluding<is_generated_always>(
-                [&ss, first = true](const basic_column& column) mutable {
+                [&ss, first = true](const column_identifier& column) mutable {
                     constexpr std::array<const char*, 2> sep = {", ", ""};
                     ss << sep[std::exchange(first, false)];
                     stream_identifier(ss, column.name);
