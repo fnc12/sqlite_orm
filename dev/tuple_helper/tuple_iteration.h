@@ -2,7 +2,7 @@
 
 #include <tuple>  //  std::tuple, std::get, std::tuple_element, std::tuple_size
 #include <type_traits>  //  std::index_sequence, std::make_index_sequence
-#include <utility>  //  std::forward
+#include <utility>  //  std::forward, std::move
 
 #include "../functional/cxx_universal.h"
 #include "../functional/cxx_polyfill.h"
@@ -97,16 +97,14 @@ namespace sqlite_orm {
         }
 
         template<template<class...> class Base, class L>
-        struct lambda_as_template_base {
-            lambda_as_template_base(L&& lambda) : lambda{std::forward<L>(lambda)} {}
-
+        struct lambda_as_template_base : L {
+#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
+            lambda_as_template_base(L&& lambda) : L{std::move(lambda)} {}
+#endif
             template<class... T>
-            decltype(auto) operator()(const Base<T...>& object) const {
-                return lambda(object);
+            decltype(auto) operator()(const Base<T...>& object) {
+                return L::operator()(object);
             }
-
-            // note: store by reference, such that above call operator is independent of callable's const-qualification
-            L&& lambda;
         };
 
         /*
@@ -121,8 +119,8 @@ namespace sqlite_orm {
          *  parts of a class. In other words, the destination type must be a direct template base class.
          */
         template<template<class...> class Base, class L>
-        lambda_as_template_base<Base, L> call_as_template_base(L&& lambda) {
-            return std::forward<L>(lambda);
+        lambda_as_template_base<Base, L> call_as_template_base(L lambda) {
+            return {std::move(lambda)};
         }
     }
 }
