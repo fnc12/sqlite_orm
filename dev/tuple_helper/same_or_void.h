@@ -1,5 +1,9 @@
 #pragma once
 
+#include <type_traits>  //  std::conditional
+
+#include "../type_traits.h"
+
 namespace sqlite_orm {
     namespace internal {
 
@@ -11,18 +15,8 @@ namespace sqlite_orm {
             using type = void;
         };
 
-        template<class A>
-        struct same_or_void<A> {
-            using type = A;
-        };
-
-        template<class A>
-        struct same_or_void<A, A> {
-            using type = A;
-        };
-
-        template<class A, class... Args>
-        struct same_or_void<A, A, Args...> : same_or_void<A, Args...> {};
+        template<class A, class... Rest>
+        struct same_or_void<A, Rest...> : std::conditional<is_all_of<A, Rest...>::value, A, void> {};
 
     }
 }

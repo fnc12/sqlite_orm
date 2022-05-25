@@ -130,6 +130,17 @@ namespace sqlite_orm {
             };
 
             /*
+             *  Metafunction class that invokes the specified metafunction operation,
+             *  and passes its result on to the next metafunction class.
+             */
+            template<template<class...> class Op, class FnCls>
+            struct pass_result_to {
+                // call Op, pass on its result
+                template<class... Args>
+                struct fn : FnCls::template fn<Op<Args...>> {};
+            };
+
+            /*
              *  Bind arguments at the front of a metafunction class.
              *  Metafunction class equivalent to std::bind_front().
              */

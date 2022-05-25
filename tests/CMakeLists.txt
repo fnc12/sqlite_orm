@@ -20,7 +20,6 @@ add_executable(unit_tests
     static_tests/select_return_type.cpp
     static_tests/column.cpp
     static_tests/foreign_key.cpp
-    static_tests/storage_traits.cpp
     static_tests/function_static_tests.cpp
     static_tests/aggregate_function_return_types.cpp
     static_tests/core_function_return_types.cpp

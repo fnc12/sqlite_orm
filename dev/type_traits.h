@@ -12,6 +12,9 @@ namespace sqlite_orm {
         using is_any_of = polyfill::disjunction<std::is_same<T, Types>...>;
 
         template<class T, class... Types>
+        using is_all_of = polyfill::conjunction<std::is_same<T, Types>...>;
+
+        template<class T, class... Types>
         SQLITE_ORM_INLINE_VAR constexpr bool is_any_of_v = polyfill::disjunction_v<std::is_same<T, Types>...>;
 
         // enable_if for types
@@ -56,7 +59,16 @@ namespace sqlite_orm {
         template<typename T>
         using table_type_t = typename T::table_type;
 
+        template<typename T>
+        using elements_type_t = typename T::elements_type;
+
         template<typename S>
         using storage_object_type_t = typename S::table_type::object_type;
+
+        template<typename T>
+        using source_type_t = typename T::source_type;
+
+        template<typename T>
+        using target_type_t = typename T::target_type;
     }
 }

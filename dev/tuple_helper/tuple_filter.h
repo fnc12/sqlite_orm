@@ -11,13 +11,13 @@ namespace sqlite_orm {
         template<typename... input_t>
         using tuple_cat_t = decltype(std::tuple_cat(std::declval<input_t>()...));
 
-        template<class... Args>
+        template<class... Tpl>
         struct conc_tuple {
-            using type = tuple_cat_t<Args...>;
+            using type = tuple_cat_t<Tpl...>;
         };
 
-        template<class... Args>
-        using conc_tuple_t = typename conc_tuple<Args...>::type;
+        template<class... Tpl>
+        using conc_tuple_t = typename conc_tuple<Tpl...>::type;
 
         template<class Tpl, class Seq>
         struct tuple_from_index_sequence;
@@ -63,10 +63,7 @@ namespace sqlite_orm {
                                                 std::index_sequence<>>...> {};
 #else
         template<size_t Idx, class T, template<class...> class Pred, class SFINAE = void>
-        struct tuple_seq_single;
-
-        template<size_t Idx, class T, template<class...> class Pred>
-        struct tuple_seq_single<Idx, T, Pred, std::enable_if_t<!Pred<T>::value>> {
+        struct tuple_seq_single {
             using type = std::index_sequence<>;
         };
 
@@ -90,11 +87,15 @@ namespace sqlite_orm {
         template<class Tpl,
                  template<class...>
                  class Pred,
-                 template<class...> class FilterProj = polyfill::type_identity_t>
-        using filter_tuple_t = tuple_from_index_sequence_t<Tpl, filter_tuple_sequence_t<Tpl, Pred, FilterProj>>;
+                 template<class...> class FilterProj = polyfill::type_identity_t,
+                 class Seq = std::make_index_sequence<std::tuple_size<Tpl>::value>>
+        using filter_tuple_t = tuple_from_index_sequence_t<Tpl, filter_tuple_sequence_t<Tpl, Pred, FilterProj, Seq>>;
 
-        template<class Tpl, template<class...> class Pred>
-        struct count_tuple : std::integral_constant<int, filter_tuple_sequence_t<Tpl, Pred>::size()> {};
+        template<class Tpl,
+                 template<class...>
+                 class Pred,
+                 template<class...> class FilterProj = polyfill::type_identity_t>
+        struct count_tuple : std::integral_constant<int, filter_tuple_sequence_t<Tpl, Pred, FilterProj>::size()> {};
 
         /*
          *  Count a tuple, picking only those elements specified in the index sequence.
@@ -102,9 +103,12 @@ namespace sqlite_orm {
          *  Implementation note: must be distinct from `count_tuple` because legacy compilers have problems
          *  with a default Sequence in function template parameters [SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION].
          */
-        template<class Tpl, template<class...> class Pred, class Seq>
+        template<class Tpl,
+                 template<class...>
+                 class Pred,
+                 class Seq,
+                 template<class...> class FilterProj = polyfill::type_identity_t>
         struct count_filtered_tuple
-            : std::integral_constant<size_t,
-                                     filter_tuple_sequence_t<Tpl, Pred, polyfill::type_identity_t, Seq>::size()> {};
+            : std::integral_constant<size_t, filter_tuple_sequence_t<Tpl, Pred, FilterProj, Seq>::size()> {};
     }
 }
