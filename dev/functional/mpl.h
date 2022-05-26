@@ -13,7 +13,8 @@
  *  2. A 'metafunction class' is a certain form of metafunction representation that enables higher-order metaprogramming.
  *     More precisely, it's a class with a nested metafunction called "fn"
  *     Correspondingly, a metafunction class invocation is defined as invocation of its nested "fn" metafunction.
- *  
+ *  3. A 'metafunction operation' is an alias template that represents a function whose instantiation already yields a type.
+ *
  *  Conventions:
  *  - "Fn" is the name for a metafunction template template parameter.
  *  - "FnCls" is the name for a metafunction class template parameter.
@@ -53,6 +54,28 @@ namespace sqlite_orm {
              */
             template<template<class...> class Fn, class... Args>
             using invoke_fn_t = typename Fn<Args...>::type;
+
+#ifdef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+            template<template<class...> class Op, class... Args>
+            struct wrap_op {
+                using type = Op<Args...>;
+            };
+
+            /*
+             *  Invoke metafunction operation.
+             *  
+             *  Note: legacy compilers need an extra layer of indirection, otherwise type replacement may fail
+             *  if alias template `Op` has a dependent expression in it.
+             */
+            template<template<class...> class Op, class... Args>
+            using invoke_op_t = typename wrap_op<Op, Args...>::type;
+#else
+            /*
+             *  Invoke metafunction operation.
+             */
+            template<template<class...> class Op, class... Args>
+            using invoke_op_t = Op<Args...>;
+#endif
 
             /*
              *  Invoke metafunction class by invoking its nested metafunction.

@@ -117,22 +117,16 @@ namespace sqlite_orm {
         template<class T>
         using is_column = polyfill::bool_constant<is_column_v<T>>;
 
-        template<class T>
-        using column_field_type_t = polyfill::detected_or_t<void, field_type_t, T>;
-
-        template<class T>
-        using column_constraints_type_t = polyfill::detected_or_t<std::tuple<>, constraints_type_t, T>;
-
         template<class Elements, template<class...> class TraitFn>
         using col_index_sequence_with = filter_tuple_sequence_t<Elements,
                                                                 check_if_tuple_has<TraitFn>::template fn,
-                                                                column_constraints_type_t,
+                                                                constraints_type_t,
                                                                 filter_tuple_sequence_t<Elements, is_column>>;
 
         template<class Elements, template<class...> class TraitFn>
         using col_index_sequence_excluding = filter_tuple_sequence_t<Elements,
                                                                      check_if_tuple_has_not<TraitFn>::template fn,
-                                                                     column_constraints_type_t,
+                                                                     constraints_type_t,
                                                                      filter_tuple_sequence_t<Elements, is_column>>;
     }
 

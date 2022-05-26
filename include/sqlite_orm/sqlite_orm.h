@@ -8,9 +8,13 @@ __pragma(push_macro("max"))
 #endif  // defined(_MSC_VER)
 #pragma once
 
+#include <type_traits>  //  std::enable_if, std::is_same
+
+// #include "functional/cxx_polyfill.h"
+
 #include <type_traits>
 
-// #include "functional/cxx_universal.h"
+// #include "cxx_universal.h"
 
 /*
  *  This header makes central C++ functionality on which sqlite_orm depends universally available:
@@ -141,12 +145,6 @@ using std::nullptr_t;
 #if defined(_MSC_VER) && (_MSC_VER < 1920)
 #define SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
 #endif
-
-// #include "functional/cxx_polyfill.h"
-
-#include <type_traits>
-
-// #include "cxx_universal.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -298,9 +296,6 @@ namespace sqlite_orm {
         template<class T, class... Types>
         using is_all_of = polyfill::conjunction<std::is_same<T, Types>...>;
 
-        template<class T, class... Types>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_any_of_v = polyfill::disjunction_v<std::is_same<T, Types>...>;
-
         // enable_if for types
         template<template<typename...> class Op, class... Args>
         using match_if = std::enable_if_t<Op<Args...>::value>;
@@ -338,22 +333,13 @@ namespace sqlite_orm {
         using constraints_type_t = typename T::constraints_type;
 
         template<typename T>
-        using object_type_t = typename T::object_type;
-
-        template<typename T>
         using table_type_t = typename T::table_type;
 
-        template<typename T>
-        using elements_type_t = typename T::elements_type;
+        template<typename S>
+        using storage_elements_type_t = typename S::table_type::elements_type;
 
         template<typename S>
         using storage_object_type_t = typename S::table_type::object_type;
-
-        template<typename T>
-        using source_type_t = typename T::source_type;
-
-        template<typename T>
-        using target_type_t = typename T::target_type;
     }
 }
 #pragma once
@@ -681,7 +667,8 @@ namespace sqlite_orm {
  *  2. A 'metafunction class' is a certain form of metafunction representation that enables higher-order metaprogramming.
  *     More precisely, it's a class with a nested metafunction called "fn"
  *     Correspondingly, a metafunction class invocation is defined as invocation of its nested "fn" metafunction.
- *  
+ *  3. A 'metafunction operation' is an alias template that represents a function whose instantiation already yields a type.
+ *
  *  Conventions:
  *  - "Fn" is the name for a metafunction template template parameter.
  *  - "FnCls" is the name for a metafunction class template parameter.
@@ -722,6 +709,28 @@ namespace sqlite_orm {
              */
             template<template<class...> class Fn, class... Args>
             using invoke_fn_t = typename Fn<Args...>::type;
+
+#ifdef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+            template<template<class...> class Op, class... Args>
+            struct wrap_op {
+                using type = Op<Args...>;
+            };
+
+            /*
+             *  Invoke metafunction operation.
+             *  
+             *  Note: legacy compilers need an extra layer of indirection, otherwise type replacement may fail
+             *  if alias template `Op` has a dependent expression in it.
+             */
+            template<template<class...> class Op, class... Args>
+            using invoke_op_t = typename wrap_op<Op, Args...>::type;
+#else
+            /*
+             *  Invoke metafunction operation.
+             */
+            template<template<class...> class Op, class... Args>
+            using invoke_op_t = Op<Args...>;
+#endif
 
             /*
              *  Invoke metafunction class by invoking its nested metafunction.
@@ -2221,22 +2230,16 @@ namespace sqlite_orm {
         template<class T>
         using is_column = polyfill::bool_constant<is_column_v<T>>;
 
-        template<class T>
-        using column_field_type_t = polyfill::detected_or_t<void, field_type_t, T>;
-
-        template<class T>
-        using column_constraints_type_t = polyfill::detected_or_t<std::tuple<>, constraints_type_t, T>;
-
         template<class Elements, template<class...> class TraitFn>
         using col_index_sequence_with = filter_tuple_sequence_t<Elements,
                                                                 check_if_tuple_has<TraitFn>::template fn,
-                                                                column_constraints_type_t,
+                                                                constraints_type_t,
                                                                 filter_tuple_sequence_t<Elements, is_column>>;
 
         template<class Elements, template<class...> class TraitFn>
         using col_index_sequence_excluding = filter_tuple_sequence_t<Elements,
                                                                      check_if_tuple_has_not<TraitFn>::template fn,
-                                                                     column_constraints_type_t,
+                                                                     constraints_type_t,
                                                                      filter_tuple_sequence_t<Elements, is_column>>;
     }
 
@@ -9039,28 +9042,19 @@ namespace sqlite_orm {
 
 // #include "tuple_helper/tuple_transformer.h"
 
-#include <type_traits>  //  std::index_sequence, std::make_index_sequence
 #include <tuple>  //  std::tuple
+
+// #include "../functional/mpl.h"
 
 namespace sqlite_orm {
     namespace internal {
 
-        /*
-         *  Implementation note for tuple_transformer:
-         *  tuple_transformer is implemented in terms of index sequences instead of argument packs,
-         *  otherwise type replacement may fail for legacy compilers
-         *  if alias template `Op` has a dependent expression in it [SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION].
-         */
-
-        template<class Tpl,
-                 template<class...>
-                 class Op,
-                 class Seq = std::make_index_sequence<std::tuple_size<Tpl>::value>>
+        template<class Tpl, template<class...> class Op>
         struct tuple_transformer;
 
-        template<class Tpl, template<class...> class Op, size_t... Idx>
-        struct tuple_transformer<Tpl, Op, std::index_sequence<Idx...>> {
-            using type = std::tuple<Op<std::tuple_element_t<Idx, Tpl>>...>;
+        template<class... Types, template<class...> class Op>
+        struct tuple_transformer<std::tuple<Types...>, Op> {
+            using type = std::tuple<mpl::invoke_op_t<Op, Types>...>;
         };
 
         /*
@@ -9068,11 +9062,8 @@ namespace sqlite_orm {
          *  
          *  `Op` is a metafunction operation.
          */
-        template<class Tpl,
-                 template<class...>
-                 class Op,
-                 class Seq = std::make_index_sequence<std::tuple_size<Tpl>::value>>
-        using transform_tuple_t = typename tuple_transformer<Tpl, Op, Seq>::type;
+        template<class Tpl, template<class...> class Op>
+        using transform_tuple_t = typename tuple_transformer<Tpl, Op>::type;
     }
 }
 
@@ -9287,8 +9278,7 @@ namespace sqlite_orm {
              */
             template<class S>
             struct storage_mapped_columns_impl
-                : tuple_transformer<filter_tuple_t<elements_type_t<table_type_t<S>>, is_column>, column_field_type_t> {
-            };
+                : tuple_transformer<filter_tuple_t<storage_elements_type_t<S>, is_column>, field_type_t> {};
 
             template<>
             struct storage_mapped_columns_impl<storage_impl<>> {
@@ -10079,7 +10069,6 @@ namespace sqlite_orm {
 
             static constexpr bool is_without_rowid_v = WithoutRowId;
             using is_without_rowid = polyfill::bool_constant<is_without_rowid_v>;
-            static constexpr int elements_count = static_cast<int>(std::tuple_size<elements_type>::value);
 
             elements_type elements;
 
@@ -10132,8 +10121,8 @@ namespace sqlite_orm {
             find_column_generated_storage_type(const std::string& name) const {
                 const basic_generated_always::storage_type* result = nullptr;
 #if SQLITE_VERSION_NUMBER >= 3031000
-                this->for_each_column<column_constraints_type_t,
-                                      check_if_tuple_has<is_generated_always>>([&result, &name](auto& column) {
+                this->for_each_column<constraints_type_t, check_if_tuple_has<is_generated_always>>([&result, &name](
+                                                                                                       auto& column) {
                     if(column.name != name) {
                         return;
                     }
@@ -10310,7 +10299,7 @@ namespace sqlite_orm {
              */
             template<class F, class L>
             void for_each_column_with_field_type(L&& lambda) const {
-                this->for_each_column<column_field_type_t, check_if_is_type<F>>(lambda);
+                this->for_each_column<field_type_t, check_if_is_type<F>>(lambda);
             }
 
             /**
@@ -10319,7 +10308,7 @@ namespace sqlite_orm {
              */
             template<template<class...> class OpTraitFn, class L>
             void for_each_column_with(L&& lambda) const {
-                this->for_each_column<column_constraints_type_t, check_if_tuple_has<OpTraitFn>>(lambda);
+                this->for_each_column<constraints_type_t, check_if_tuple_has<OpTraitFn>>(lambda);
             }
 
             /**
@@ -10328,7 +10317,7 @@ namespace sqlite_orm {
              */
             template<template<class...> class OpTraitFn, class L>
             void for_each_column_excluding(L&& lambda) const {
-                this->for_each_column<column_constraints_type_t, check_if_tuple_has_not<OpTraitFn>>(lambda);
+                this->for_each_column<constraints_type_t, check_if_tuple_has_not<OpTraitFn>>(lambda);
             }
 
             /**

@@ -29,8 +29,7 @@ namespace sqlite_orm {
              */
             template<class S>
             struct storage_mapped_columns_impl
-                : tuple_transformer<filter_tuple_t<elements_type_t<table_type_t<S>>, is_column>, column_field_type_t> {
-            };
+                : tuple_transformer<filter_tuple_t<storage_elements_type_t<S>, is_column>, field_type_t> {};
 
             template<>
             struct storage_mapped_columns_impl<storage_impl<>> {

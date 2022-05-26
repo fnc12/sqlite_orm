@@ -13,10 +13,20 @@ namespace sqlite_orm {
 
     namespace internal {
 
+        template<typename T>
+        using elements_type_t = typename T::elements_type;
+
+        template<typename T>
+        using source_type_t = typename T::source_type;
+
+        template<typename T>
+        using target_type_t = typename T::target_type;
+
         namespace storage_traits {
 
             template<class S>
-            struct storage_columns_count_impl : std::integral_constant<int, S::table_type::elements_count> {};
+            struct storage_columns_count_impl
+                : std::integral_constant<int, std::tuple_size<storage_elements_type_t<S>>::value> {};
 
             template<>
             struct storage_columns_count_impl<storage_impl<>> : std::integral_constant<int, 0> {};

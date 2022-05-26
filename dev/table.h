@@ -43,7 +43,6 @@ namespace sqlite_orm {
 
             static constexpr bool is_without_rowid_v = WithoutRowId;
             using is_without_rowid = polyfill::bool_constant<is_without_rowid_v>;
-            static constexpr int elements_count = static_cast<int>(std::tuple_size<elements_type>::value);
 
             elements_type elements;
 
@@ -96,8 +95,8 @@ namespace sqlite_orm {
             find_column_generated_storage_type(const std::string& name) const {
                 const basic_generated_always::storage_type* result = nullptr;
 #if SQLITE_VERSION_NUMBER >= 3031000
-                this->for_each_column<column_constraints_type_t,
-                                      check_if_tuple_has<is_generated_always>>([&result, &name](auto& column) {
+                this->for_each_column<constraints_type_t, check_if_tuple_has<is_generated_always>>([&result, &name](
+                                                                                                       auto& column) {
                     if(column.name != name) {
                         return;
                     }
@@ -274,7 +273,7 @@ namespace sqlite_orm {
              */
             template<class F, class L>
             void for_each_column_with_field_type(L&& lambda) const {
-                this->for_each_column<column_field_type_t, check_if_is_type<F>>(lambda);
+                this->for_each_column<field_type_t, check_if_is_type<F>>(lambda);
             }
 
             /**
@@ -283,7 +282,7 @@ namespace sqlite_orm {
              */
             template<template<class...> class OpTraitFn, class L>
             void for_each_column_with(L&& lambda) const {
-                this->for_each_column<column_constraints_type_t, check_if_tuple_has<OpTraitFn>>(lambda);
+                this->for_each_column<constraints_type_t, check_if_tuple_has<OpTraitFn>>(lambda);
             }
 
             /**
@@ -292,7 +291,7 @@ namespace sqlite_orm {
              */
             template<template<class...> class OpTraitFn, class L>
             void for_each_column_excluding(L&& lambda) const {
-                this->for_each_column<column_constraints_type_t, check_if_tuple_has_not<OpTraitFn>>(lambda);
+                this->for_each_column<constraints_type_t, check_if_tuple_has_not<OpTraitFn>>(lambda);
             }
 
             /**
