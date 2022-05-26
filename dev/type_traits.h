@@ -10,9 +10,6 @@ namespace sqlite_orm {
         template<class T, class... Types>
         using is_any_of = polyfill::disjunction<std::is_same<T, Types>...>;
 
-        template<class T, class... Types>
-        using is_all_of = polyfill::conjunction<std::is_same<T, Types>...>;
-
         // enable_if for types
         template<template<typename...> class Op, class... Args>
         using match_if = std::enable_if_t<Op<Args...>::value>;

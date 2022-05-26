@@ -293,9 +293,6 @@ namespace sqlite_orm {
         template<class T, class... Types>
         using is_any_of = polyfill::disjunction<std::is_same<T, Types>...>;
 
-        template<class T, class... Types>
-        using is_all_of = polyfill::conjunction<std::is_same<T, Types>...>;
-
         // enable_if for types
         template<template<typename...> class Op, class... Args>
         using match_if = std::enable_if_t<Op<Args...>::value>;
@@ -962,10 +959,6 @@ namespace sqlite_orm {
 
 // #include "tuple_helper/same_or_void.h"
 
-#include <type_traits>  //  std::conditional
-
-// #include "../type_traits.h"
-
 namespace sqlite_orm {
     namespace internal {
 
@@ -977,8 +970,18 @@ namespace sqlite_orm {
             using type = void;
         };
 
-        template<class A, class... Rest>
-        struct same_or_void<A, Rest...> : std::conditional<is_all_of<A, Rest...>::value, A, void> {};
+        template<class A>
+        struct same_or_void<A> {
+            using type = A;
+        };
+
+        template<class A>
+        struct same_or_void<A, A> {
+            using type = A;
+        };
+
+        template<class A, class... Args>
+        struct same_or_void<A, A, Args...> : same_or_void<A, Args...> {};
 
     }
 }
