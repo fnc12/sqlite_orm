@@ -13144,7 +13144,7 @@ namespace sqlite_orm {
                             ++index;
                             auto pk = std::atoi(argv[index++]);
                             auto hidden = std::atoi(argv[index++]);
-                            res.emplace_back(cid, name, type, notnull, dflt_value, pk, hidden);
+                            res.emplace_back(cid, move(name), move(type), notnull, move(dflt_value), pk, hidden);
                         }
                         return 0;
                     },
@@ -13530,7 +13530,10 @@ namespace sqlite_orm {
 // #include "values_to_tuple.h"
 
 #include <sqlite3.h>
-#include <tuple>  //  std::get, std::tuple_element
+#include <type_traits>  //  std::index_sequence, std::make_index_sequence
+#include <tuple>  //  std::tuple, std::tuple_size, std::get
+
+// #include "functional/cxx_universal.h"
 
 // #include "row_extractor.h"
 
@@ -13684,32 +13687,34 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        /**
-         *  T is a std::tuple type
-         *  I is index to extract value from values C array to tuple. I must me < std::tuple_size<T>::value
-         */
-        template<class T, size_t I>
         struct values_to_tuple {
-
-            void extract(sqlite3_value** values, T& tuple, int argsCount) const {
-                using element_type = std::tuple_element_t<I, T>;
-                std::get<I>(tuple) = row_extractor<element_type>().extract(values[I]);
-
-                values_to_tuple<T, I - 1>().extract(values, tuple, argsCount);
+            template<class Tpl>
+            void operator()(sqlite3_value** values, Tpl& tuple, int /*argsCount*/) const {
+                (*this)(values, tuple, std::make_index_sequence<std::tuple_size<Tpl>::value>{});
             }
-        };
 
-        template<class T>
-        struct values_to_tuple<T, size_t(-1)> {
-            void extract(sqlite3_value** /*values*/, T& /*tuple*/, int /*argsCount*/) const {
-                //..
-            }
-        };
-
-        template<>
-        struct values_to_tuple<std::tuple<arg_values>, 0> {
-            void extract(sqlite3_value** values, std::tuple<arg_values>& tuple, int argsCount) const {
+            void operator()(sqlite3_value** values, std::tuple<arg_values>& tuple, int argsCount) const {
                 std::get<0>(tuple) = arg_values(argsCount, values);
+            }
+
+          private:
+#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
+            template<class Tpl, size_t... Idx>
+            void operator()(sqlite3_value** values, Tpl& tuple, std::index_sequence<Idx...>) const {
+                (this->extract(values[Idx], std::get<Idx>(tuple)), ...);
+            }
+#else
+                template<class Tpl, size_t I, size_t... Idx>
+                void operator()(sqlite3_value** values, Tpl& tuple, std::index_sequence<I, Idx...>) const {
+                    this->extract(values[I], std::get<I>(tuple));
+                    (*this)(values, tuple, std::index_sequence<Idx...>{});
+                }
+                template<class Tpl, size_t... Idx>
+                void operator()(sqlite3_value** values, Tpl& tuple, std::index_sequence<Idx...>) const {}
+#endif
+            template<class T>
+            void extract(sqlite3_value* value, T& t) const {
+                t = row_extractor<T>{}.extract(value);
             }
         };
     }
@@ -13948,7 +13953,7 @@ namespace sqlite_orm {
                         auto& function = *static_cast<F*>(functionVoidPointer);
                         args_tuple argsTuple;
                         using tuple_size = std::tuple_size<args_tuple>;
-                        values_to_tuple<args_tuple, tuple_size::value - 1>().extract(values, argsTuple, argsCount);
+                        values_to_tuple{}(values, argsTuple, argsCount);
                         auto result = call(function, std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
                     },
@@ -14012,7 +14017,7 @@ namespace sqlite_orm {
                         auto& function = *static_cast<F*>(functionVoidPointer);
                         args_tuple argsTuple;
                         using tuple_size = std::tuple_size<args_tuple>;
-                        values_to_tuple<args_tuple, tuple_size::value - 1>().extract(values, argsTuple, argsCount);
+                        values_to_tuple{}(values, argsTuple, argsCount);
                         call(function, &F::step, move(argsTuple));
                     },
                     /* finalCall = */
