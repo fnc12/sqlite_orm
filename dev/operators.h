@@ -1,6 +1,7 @@
 #pragma once
 
 #include <type_traits>  //  std::false_type, std::true_type
+#include <utility>  //  std::move
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>  //  std::nullopt
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
