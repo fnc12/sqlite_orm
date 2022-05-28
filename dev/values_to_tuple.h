@@ -35,7 +35,7 @@ namespace sqlite_orm {
                 (*this)(values, tuple, std::index_sequence<Idx...>{});
             }
             template<class Tpl, size_t... Idx>
-            void operator()(sqlite3_value** values, Tpl& tuple, std::index_sequence<Idx...>) const {}
+            void operator()(sqlite3_value** /*values*/, Tpl&, std::index_sequence<Idx...>) const {}
 #endif
             template<class T>
             void extract(sqlite3_value* value, T& t) const {
