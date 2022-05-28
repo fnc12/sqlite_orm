@@ -2,7 +2,7 @@
 
 #include <type_traits>  //  std::enable_if, std::is_same
 
-#include "functional/cxx_polyfill.h"
+#include "functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
     // C++ generic traits used throughout the library

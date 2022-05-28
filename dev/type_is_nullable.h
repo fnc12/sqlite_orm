@@ -3,7 +3,7 @@
 #include <memory>  //  std::shared_ptr, std::unique_ptr
 #include "functional/cxx_optional.h"
 
-#include "functional/cxx_polyfill.h"
+#include "functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
 

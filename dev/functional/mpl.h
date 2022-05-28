@@ -25,7 +25,7 @@
 #include <type_traits>  //  std::false_type, std::true_type
 
 #include "cxx_universal.h"
-#include "cxx_polyfill.h"
+#include "cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
     namespace internal {
