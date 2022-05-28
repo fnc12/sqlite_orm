@@ -16,6 +16,21 @@
 
 namespace sqlite_orm {
 
+    /*
+     *  Specifies the expected order of the result columns when they are selected with an asterisk.
+     *  The default is the implicit order as returned by SQLite, which may differ from the defined order
+     *  if the schema of a table has been changed.
+     *  By specifying the defined order, the columns are written out in the resulting select SQL string.
+     *  
+     *  In pseudo code:
+     *  select(asterisk<User>(selected_order::implicit)) -> SELECT * from User
+     *  select(asterisk<User>(selected_order::defined))  -> SELECT id, name from User
+     */
+    enum class selected_order : bool {
+        implicit = false,
+        defined = true,
+    };
+
     namespace internal {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T>
@@ -251,11 +266,15 @@ namespace sqlite_orm {
         template<class T>
         struct asterisk_t {
             using type = T;
+
+            selected_order selected_order;
         };
 
         template<class T>
         struct object_t {
             using type = T;
+
+            selected_order selected_order;
         };
 
         template<class T>
@@ -434,26 +453,33 @@ namespace sqlite_orm {
     }
 
     /**
-     * SELECT * FROM T function.
-     * T is typed mapped to a storage.
-     * Example: auto rows = storage.select(asterisk<User>());
-     * // decltype(rows) is std::vector<std::tuple<...all column typed in declared in make_table order...>>
-     * If you need to fetch result as objects not tuple please use `object<T>` instead.
+     *   `SELECT * FROM T` expression that fetches results as tuples.
+     *   T is a type mapped to a storage, or an alias of it.
+     *   The `select_order` parameter denotes the expected order of result columns, see `select_order`.
+     *   
+     *   Example: auto rows = storage.select(asterisk<User>());
+     *   // decltype(rows) is std::vector<std::tuple<...all columns in implicitly stored order...>>
+     *   Example: auto rows = storage.select(asterisk<User>(selected_order::defined));
+     *   // decltype(rows) is std::vector<std::tuple<...all columns in declared make_table order...>>
+     *   
+     *   If you need to fetch results as objects instead of tuples please use `object<T>()`.
      */
     template<class T>
-    internal::asterisk_t<T> asterisk() {
-        return {};
+    internal::asterisk_t<T> asterisk(selected_order order = selected_order::implicit) {
+        return {order};
     }
 
     /**
-     * SELECT * FROM T function.
-     * T is typed mapped to a storage.
-     * Example: auto rows = storage.select(object<User>());
-     * // decltype(rows) is std::vector<User>
-     * If you need to fetch result as tuples not objects please use `asterisk<T>` instead.
+     *   `SELECT * FROM T` expression that fetches results as objects of type T.
+     *   T is a type mapped to a storage, or an alias of it.
+     *   
+     *   Example: auto rows = storage.select(object<User>());
+     *   // decltype(rows) is std::vector<User>
+     *  
+     *   If you need to fetch results as tuples instead of objects please use `asterisk<T>()`.
      */
     template<class T>
-    internal::object_t<T> object() {
-        return {};
+    internal::object_t<T> object(selected_order order = selected_order::implicit) {
+        return {order};
     }
 }
