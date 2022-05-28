@@ -3,9 +3,7 @@
 #include <string>  //  std::string
 #include <utility>  //  std::declval
 #include <tuple>  //  std::tuple, std::get, std::tuple_size
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>  // std::optional
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+#include "functional/cxx_optional.h"
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_polyfill.h"

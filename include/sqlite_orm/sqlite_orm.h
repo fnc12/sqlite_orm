@@ -105,16 +105,6 @@ using std::nullptr_t;
 #define SQLITE_ORM_CONCEPTS_SUPPORTED
 #endif
 
-#if __cplusplus >= 201703L  // C++17 or later
-#if __has_include(<optional>)
-#define SQLITE_ORM_OPTIONAL_SUPPORTED
-#endif
-
-#if __has_include(<string_view>)
-#define SQLITE_ORM_STRING_VIEW_SUPPORTED
-#endif
-#endif
-
 // #include "cxx_compiler_quirks.h"
 
 #ifdef __clang__
@@ -513,9 +503,17 @@ namespace sqlite_orm {
 #include <string>  //  std::string
 #include <memory>  //  std::shared_ptr, std::unique_ptr
 #include <vector>  //  std::vector
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>  // std::optional
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+// #include "functional/cxx_optional.h"
+
+// #include "cxx_core_features.h"
+
+#if SQLITE_ORM_HAS_INCLUDE(<optional>)
+#include <optional>
+#endif
+
+#if __cpp_lib_optional >= 201606L
+#define SQLITE_ORM_OPTIONAL_SUPPORTED
+#endif
 
 // #include "functional/cxx_polyfill.h"
 
@@ -1684,9 +1682,7 @@ namespace sqlite_orm {
 #pragma once
 
 #include <memory>  //  std::shared_ptr, std::unique_ptr
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>  // std::optional
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+// #include "functional/cxx_optional.h"
 
 // #include "functional/cxx_polyfill.h"
 
@@ -1711,9 +1707,9 @@ namespace sqlite_orm {
 #pragma once
 
 #include <type_traits>  //  std::false_type, std::true_type
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>  //  std::nullopt
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <utility>  //  std::move
+// #include "functional/cxx_optional.h"
+
 // #include "tags.h"
 
 namespace sqlite_orm {
@@ -1729,9 +1725,19 @@ namespace sqlite_orm {
 
 // #include "serialize_result_type.h"
 
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-#include <string_view>  //  string_view
-#else
+// #include "functional/cxx_string_view.h"
+
+// #include "cxx_core_features.h"
+
+#if SQLITE_ORM_HAS_INCLUDE(<string_view>)
+#include <string_view>
+#endif
+
+#if __cpp_lib_string_view >= 201606L
+#define SQLITE_ORM_STRING_VIEW_SUPPORTED
+#endif
+
+#ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <string>  //  std::string
 #endif
 
@@ -2296,12 +2302,10 @@ namespace sqlite_orm {
 #include <sstream>  //  std::stringstream
 #include <vector>  //  std::vector
 #include <memory>  //  std::shared_ptr, std::unique_ptr
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>  // std::optional
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <codecvt>  //  std::codecvt_utf8_utf16
 #endif  //  SQLITE_ORM_OMITS_CODECVT
+// #include "functional/cxx_optional.h"
 
 // #include "functional/cxx_universal.h"
 
@@ -2549,9 +2553,7 @@ namespace sqlite_orm {
 
 #include <tuple>
 #include <utility>  //  std::move, std::forward
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>
-#endif
+// #include "functional/cxx_optional.h"
 
 // #include "functional/cxx_universal.h"
 
@@ -6350,9 +6352,7 @@ namespace sqlite_orm {
 #include <string>  //  std::string
 #include <utility>  //  std::declval
 #include <tuple>  //  std::tuple, std::get, std::tuple_size
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>  // std::optional
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+// #include "functional/cxx_optional.h"
 
 // #include "functional/cxx_universal.h"
 
@@ -7739,6 +7739,8 @@ namespace sqlite_orm {
 #include <string>  //  std::string, std::wstring
 #include <vector>  //  std::vector
 #include <cstring>  //  ::strncpy, ::strlen
+// #include "functional/cxx_string_view.h"
+
 #ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <cwchar>  //  ::wcsncpy, ::wcslen
 #endif
@@ -10525,10 +10527,7 @@ namespace sqlite_orm {
 #include <tuple>  //  std::tuple_size, std::tuple, std::make_tuple
 #include <utility>  //  std::forward, std::pair
 #include <algorithm>  //  std::for_each, std::ranges::for_each
-
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>  // std::optional
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+// #include "functional/cxx_optional.h"
 
 // #include "functional/cxx_universal.h"
 
@@ -14661,9 +14660,7 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ORM_OMITS_CODECVT
 #include <memory>
 #include <array>
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-#include <string_view>
-#endif
+// #include "functional/cxx_string_view.h"
 
 // #include "functional/cxx_universal.h"
 
@@ -18440,9 +18437,7 @@ namespace sqlite_orm {
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::pair
 #include <functional>  //  std::reference_wrapper
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>  // std::optional
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+// #include "functional/cxx_optional.h"
 
 // #include "tuple_helper/tuple_filter.h"
 

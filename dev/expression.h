@@ -2,9 +2,7 @@
 
 #include <tuple>
 #include <utility>  //  std::move, std::forward
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>
-#endif
+#include "functional/cxx_optional.h"
 
 #include "functional/cxx_universal.h"
 #include "operators.h"

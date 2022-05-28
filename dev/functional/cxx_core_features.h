@@ -70,13 +70,3 @@
 #if __cpp_concepts >= 201907L
 #define SQLITE_ORM_CONCEPTS_SUPPORTED
 #endif
-
-#if __cplusplus >= 201703L  // C++17 or later
-#if __has_include(<optional>)
-#define SQLITE_ORM_OPTIONAL_SUPPORTED
-#endif
-
-#if __has_include(<string_view>)
-#define SQLITE_ORM_STRING_VIEW_SUPPORTED
-#endif
-#endif

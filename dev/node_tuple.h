@@ -3,9 +3,7 @@
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::pair
 #include <functional>  //  std::reference_wrapper
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>  // std::optional
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+#include "functional/cxx_optional.h"
 
 #include "tuple_helper/tuple_filter.h"
 #include "conditions.h"
