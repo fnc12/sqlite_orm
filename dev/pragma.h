@@ -139,7 +139,7 @@ namespace sqlite_orm {
                             ++index;
                             auto pk = std::atoi(argv[index++]);
                             auto hidden = std::atoi(argv[index++]);
-                            res.emplace_back(cid, name, type, notnull, dflt_value, pk, hidden);
+                            res.emplace_back(cid, move(name), move(type), notnull, move(dflt_value), pk, hidden);
                         }
                         return 0;
                     },

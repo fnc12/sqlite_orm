@@ -4,7 +4,7 @@
 #include <type_traits>  //  std::false_type, std::true_type
 #include <utility>  //  std::forward, std::move
 
-#include "../functional/cxx_polyfill.h"
+#include "../functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
     namespace internal {

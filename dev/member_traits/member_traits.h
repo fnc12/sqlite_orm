@@ -3,7 +3,7 @@
 #include <type_traits>  //  std::enable_if, std::is_function, std::true_type, std::false_type
 
 #include "../functional/cxx_universal.h"
-#include "../functional/cxx_polyfill.h"
+#include "../functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
     namespace internal {

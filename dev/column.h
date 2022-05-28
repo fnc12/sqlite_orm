@@ -6,7 +6,7 @@
 #include <type_traits>  //  std::is_same, std::is_member_object_pointer
 
 #include "functional/cxx_universal.h"
-#include "functional/cxx_polyfill.h"
+#include "functional/cxx_type_traits_polyfill.h"
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_filter.h"
 #include "type_traits.h"

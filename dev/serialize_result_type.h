@@ -1,8 +1,7 @@
 #pragma once
 
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-#include <string_view>  //  string_view
-#else
+#include "functional/cxx_string_view.h"
+#ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <string>  //  std::string
 #endif
 

@@ -10,7 +10,7 @@ __pragma(push_macro("max"))
 
 #include <type_traits>  //  std::enable_if, std::is_same
 
-// #include "functional/cxx_polyfill.h"
+// #include "functional/cxx_type_traits_polyfill.h"
 
 #include <type_traits>
 
@@ -103,16 +103,6 @@ using std::nullptr_t;
 
 #if __cpp_concepts >= 201907L
 #define SQLITE_ORM_CONCEPTS_SUPPORTED
-#endif
-
-#if __cplusplus >= 201703L  // C++17 or later
-#if __has_include(<optional>)
-#define SQLITE_ORM_OPTIONAL_SUPPORTED
-#endif
-
-#if __has_include(<string_view>)
-#define SQLITE_ORM_STRING_VIEW_SUPPORTED
-#endif
 #endif
 
 // #include "cxx_compiler_quirks.h"
@@ -513,11 +503,19 @@ namespace sqlite_orm {
 #include <string>  //  std::string
 #include <memory>  //  std::shared_ptr, std::unique_ptr
 #include <vector>  //  std::vector
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>  // std::optional
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+// #include "functional/cxx_optional.h"
 
-// #include "functional/cxx_polyfill.h"
+// #include "cxx_core_features.h"
+
+#if SQLITE_ORM_HAS_INCLUDE(<optional>)
+#include <optional>
+#endif
+
+#if __cpp_lib_optional >= 201606L
+#define SQLITE_ORM_OPTIONAL_SUPPORTED
+#endif
+
+// #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "type_traits.h"
 
@@ -647,7 +645,7 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_universal.h"
 
-// #include "functional/cxx_polyfill.h"
+// #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "functional/mpl.h"
 
@@ -677,7 +675,7 @@ namespace sqlite_orm {
 
 // #include "cxx_universal.h"
 
-// #include "cxx_polyfill.h"
+// #include "cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -991,7 +989,7 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::is_same
 #include <tuple>
 
-// #include "../functional/cxx_polyfill.h"
+// #include "../functional/cxx_type_traits_polyfill.h"
 
 // #include "../functional/mpl.h"
 
@@ -1684,11 +1682,9 @@ namespace sqlite_orm {
 #pragma once
 
 #include <memory>  //  std::shared_ptr, std::unique_ptr
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>  // std::optional
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+// #include "functional/cxx_optional.h"
 
-// #include "functional/cxx_polyfill.h"
+// #include "functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
 
@@ -1711,9 +1707,9 @@ namespace sqlite_orm {
 #pragma once
 
 #include <type_traits>  //  std::false_type, std::true_type
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>  //  std::nullopt
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <utility>  //  std::move
+// #include "functional/cxx_optional.h"
+
 // #include "tags.h"
 
 namespace sqlite_orm {
@@ -1729,9 +1725,19 @@ namespace sqlite_orm {
 
 // #include "serialize_result_type.h"
 
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-#include <string_view>  //  string_view
-#else
+// #include "functional/cxx_string_view.h"
+
+// #include "cxx_core_features.h"
+
+#if SQLITE_ORM_HAS_INCLUDE(<string_view>)
+#include <string_view>
+#endif
+
+#if __cpp_lib_string_view >= 201606L
+#define SQLITE_ORM_STRING_VIEW_SUPPORTED
+#endif
+
+#ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <string>  //  std::string
 #endif
 
@@ -2023,7 +2029,7 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_universal.h"
 
-// #include "functional/cxx_polyfill.h"
+// #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "tuple_helper/tuple_traits.h"
 
@@ -2037,7 +2043,7 @@ namespace sqlite_orm {
 
 // #include "../functional/cxx_universal.h"
 
-// #include "../functional/cxx_polyfill.h"
+// #include "../functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -2296,16 +2302,14 @@ namespace sqlite_orm {
 #include <sstream>  //  std::stringstream
 #include <vector>  //  std::vector
 #include <memory>  //  std::shared_ptr, std::unique_ptr
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>  // std::optional
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <codecvt>  //  std::codecvt_utf8_utf16
 #endif  //  SQLITE_ORM_OMITS_CODECVT
+// #include "functional/cxx_optional.h"
 
 // #include "functional/cxx_universal.h"
 
-// #include "functional/cxx_polyfill.h"
+// #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "is_std_ptr.h"
 
@@ -2462,7 +2466,7 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_universal.h"
 
-// #include "functional/cxx_polyfill.h"
+// #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "type_traits.h"
 
@@ -2549,9 +2553,7 @@ namespace sqlite_orm {
 
 #include <tuple>
 #include <utility>  //  std::move, std::forward
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>
-#endif
+// #include "functional/cxx_optional.h"
 
 // #include "functional/cxx_universal.h"
 
@@ -4178,7 +4180,7 @@ namespace sqlite_orm {
 #include <memory>  //  std::unique_ptr
 #include <vector>  //  std::vector
 
-// #include "functional/cxx_polyfill.h"
+// #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "conditions.h"
 
@@ -4229,7 +4231,7 @@ namespace sqlite_orm {
 
 // #include "ast/into.h"
 
-// #include "../functional/cxx_polyfill.h"
+// #include "../functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -6350,13 +6352,11 @@ namespace sqlite_orm {
 #include <string>  //  std::string
 #include <utility>  //  std::declval
 #include <tuple>  //  std::tuple, std::get, std::tuple_size
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>  // std::optional
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+// #include "functional/cxx_optional.h"
 
 // #include "functional/cxx_universal.h"
 
-// #include "functional/cxx_polyfill.h"
+// #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "is_base_of_template.h"
 
@@ -6371,7 +6371,7 @@ namespace sqlite_orm {
 
 // #include "../functional/cxx_universal.h"
 
-// #include "../functional/cxx_polyfill.h"
+// #include "../functional/cxx_type_traits_polyfill.h"
 
 // #include "../serialize_result_type.h"
 
@@ -6426,7 +6426,7 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::true_type, std::false_type
 #include <utility>  //  std::forward, std::move
 
-// #include "../functional/cxx_polyfill.h"
+// #include "../functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -7331,7 +7331,7 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_universal.h"
 
-// #include "functional/cxx_polyfill.h"
+// #include "functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
 
@@ -7739,13 +7739,15 @@ namespace sqlite_orm {
 #include <string>  //  std::string, std::wstring
 #include <vector>  //  std::vector
 #include <cstring>  //  ::strncpy, ::strlen
+// #include "functional/cxx_string_view.h"
+
 #ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <cwchar>  //  ::wcsncpy, ::wcslen
 #endif
 
 // #include "functional/cxx_universal.h"
 
-// #include "functional/cxx_polyfill.h"
+// #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "functional/cxx_functional_polyfill.h"
 
@@ -7756,7 +7758,7 @@ namespace sqlite_orm {
 #include <utility>  //  std::forward
 
 #if __cpp_lib_invoke < 201411L
-// #include "cxx_polyfill.h"
+// #include "cxx_type_traits_polyfill.h"
 
 #endif
 // #include "../member_traits/member_traits.h"
@@ -9039,7 +9041,7 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_universal.h"
 
-// #include "functional/cxx_polyfill.h"
+// #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "tuple_helper/tuple_filter.h"
 
@@ -9076,7 +9078,7 @@ namespace sqlite_orm {
 
 #include <type_traits>
 
-// #include "functional/cxx_polyfill.h"
+// #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "type_traits.h"
 
@@ -9310,7 +9312,7 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_universal.h"
 
-// #include "functional/cxx_polyfill.h"
+// #include "functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
 
@@ -9825,7 +9827,7 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_universal.h"
 
-// #include "functional/cxx_polyfill.h"
+// #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "functional/cxx_functional_polyfill.h"
 
@@ -9915,7 +9917,7 @@ namespace sqlite_orm {
 
 // #include "../functional/cxx_universal.h"
 
-// #include "../functional/cxx_polyfill.h"
+// #include "../functional/cxx_type_traits_polyfill.h"
 
 // #include "../functional/cxx_functional_polyfill.h"
 
@@ -10525,10 +10527,7 @@ namespace sqlite_orm {
 #include <tuple>  //  std::tuple_size, std::tuple, std::make_tuple
 #include <utility>  //  std::forward, std::pair
 #include <algorithm>  //  std::for_each, std::ranges::for_each
-
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>  // std::optional
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+// #include "functional/cxx_optional.h"
 
 // #include "functional/cxx_universal.h"
 
@@ -10831,7 +10830,7 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_universal.h"
 
-// #include "functional/cxx_polyfill.h"
+// #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "functional/cxx_functional_polyfill.h"
 
@@ -10924,7 +10923,7 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_universal.h"
 
-// #include "functional/cxx_polyfill.h"
+// #include "functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
 
@@ -10968,7 +10967,7 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::false_type, std::true_type
 #include <utility>  //  std::forward, std::move
 
-// #include "../functional/cxx_polyfill.h"
+// #include "../functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -12608,7 +12607,7 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_universal.h"
 
-// #include "functional/cxx_polyfill.h"
+// #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "tuple_helper/tuple_iteration.h"
 
@@ -13144,7 +13143,7 @@ namespace sqlite_orm {
                             ++index;
                             auto pk = std::atoi(argv[index++]);
                             auto hidden = std::atoi(argv[index++]);
-                            res.emplace_back(cid, name, type, notnull, dflt_value, pk, hidden);
+                            res.emplace_back(cid, move(name), move(type), notnull, move(dflt_value), pk, hidden);
                         }
                         return 0;
                     },
@@ -13530,7 +13529,10 @@ namespace sqlite_orm {
 // #include "values_to_tuple.h"
 
 #include <sqlite3.h>
-#include <tuple>  //  std::get, std::tuple_element
+#include <type_traits>  //  std::index_sequence, std::make_index_sequence
+#include <tuple>  //  std::tuple, std::tuple_size, std::get
+
+// #include "functional/cxx_universal.h"
 
 // #include "row_extractor.h"
 
@@ -13684,32 +13686,34 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        /**
-         *  T is a std::tuple type
-         *  I is index to extract value from values C array to tuple. I must me < std::tuple_size<T>::value
-         */
-        template<class T, size_t I>
         struct values_to_tuple {
-
-            void extract(sqlite3_value** values, T& tuple, int argsCount) const {
-                using element_type = std::tuple_element_t<I, T>;
-                std::get<I>(tuple) = row_extractor<element_type>().extract(values[I]);
-
-                values_to_tuple<T, I - 1>().extract(values, tuple, argsCount);
+            template<class Tpl>
+            void operator()(sqlite3_value** values, Tpl& tuple, int /*argsCount*/) const {
+                (*this)(values, tuple, std::make_index_sequence<std::tuple_size<Tpl>::value>{});
             }
-        };
 
-        template<class T>
-        struct values_to_tuple<T, size_t(-1)> {
-            void extract(sqlite3_value** /*values*/, T& /*tuple*/, int /*argsCount*/) const {
-                //..
-            }
-        };
-
-        template<>
-        struct values_to_tuple<std::tuple<arg_values>, 0> {
-            void extract(sqlite3_value** values, std::tuple<arg_values>& tuple, int argsCount) const {
+            void operator()(sqlite3_value** values, std::tuple<arg_values>& tuple, int argsCount) const {
                 std::get<0>(tuple) = arg_values(argsCount, values);
+            }
+
+          private:
+#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
+            template<class Tpl, size_t... Idx>
+            void operator()(sqlite3_value** values, Tpl& tuple, std::index_sequence<Idx...>) const {
+                (this->extract(values[Idx], std::get<Idx>(tuple)), ...);
+            }
+#else
+                template<class Tpl, size_t I, size_t... Idx>
+                void operator()(sqlite3_value** values, Tpl& tuple, std::index_sequence<I, Idx...>) const {
+                    this->extract(values[I], std::get<I>(tuple));
+                    (*this)(values, tuple, std::index_sequence<Idx...>{});
+                }
+                template<class Tpl, size_t... Idx>
+                void operator()(sqlite3_value** values, Tpl& tuple, std::index_sequence<Idx...>) const {}
+#endif
+            template<class T>
+            void extract(sqlite3_value* value, T& t) const {
+                t = row_extractor<T>{}.extract(value);
             }
         };
     }
@@ -13948,7 +13952,7 @@ namespace sqlite_orm {
                         auto& function = *static_cast<F*>(functionVoidPointer);
                         args_tuple argsTuple;
                         using tuple_size = std::tuple_size<args_tuple>;
-                        values_to_tuple<args_tuple, tuple_size::value - 1>().extract(values, argsTuple, argsCount);
+                        values_to_tuple{}(values, argsTuple, argsCount);
                         auto result = call(function, std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
                     },
@@ -14012,7 +14016,7 @@ namespace sqlite_orm {
                         auto& function = *static_cast<F*>(functionVoidPointer);
                         args_tuple argsTuple;
                         using tuple_size = std::tuple_size<args_tuple>;
-                        values_to_tuple<args_tuple, tuple_size::value - 1>().extract(values, argsTuple, argsCount);
+                        values_to_tuple{}(values, argsTuple, argsCount);
                         call(function, &F::step, move(argsTuple));
                     },
                     /* finalCall = */
@@ -14656,9 +14660,7 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ORM_OMITS_CODECVT
 #include <memory>
 #include <array>
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-#include <string_view>
-#endif
+// #include "functional/cxx_string_view.h"
 
 // #include "functional/cxx_universal.h"
 
@@ -14707,7 +14709,7 @@ namespace sqlite_orm {
 #include <functional>  //  std::function
 #include <typeindex>  //  std::type_index
 
-// #include "functional/cxx_polyfill.h"
+// #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "type_traits.h"
 
@@ -18435,9 +18437,7 @@ namespace sqlite_orm {
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::pair
 #include <functional>  //  std::reference_wrapper
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>  // std::optional
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+// #include "functional/cxx_optional.h"
 
 // #include "tuple_helper/tuple_filter.h"
 

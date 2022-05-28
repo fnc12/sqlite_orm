@@ -10,9 +10,7 @@
 #endif  //  SQLITE_ORM_OMITS_CODECVT
 #include <memory>
 #include <array>
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-#include <string_view>
-#endif
+#include "functional/cxx_string_view.h"
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_functional_polyfill.h"

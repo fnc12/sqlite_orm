@@ -3,11 +3,9 @@
 #include <string>  //  std::string
 #include <memory>  //  std::shared_ptr, std::unique_ptr
 #include <vector>  //  std::vector
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>  // std::optional
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+#include "functional/cxx_optional.h"
 
-#include "functional/cxx_polyfill.h"
+#include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"
 #include "is_std_ptr.h"
 

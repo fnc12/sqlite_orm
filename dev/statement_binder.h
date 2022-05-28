@@ -6,12 +6,13 @@
 #include <string>  //  std::string, std::wstring
 #include <vector>  //  std::vector
 #include <cstring>  //  ::strncpy, ::strlen
+#include "functional/cxx_string_view.h"
 #ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <cwchar>  //  ::wcsncpy, ::wcslen
 #endif
 
 #include "functional/cxx_universal.h"
-#include "functional/cxx_polyfill.h"
+#include "functional/cxx_type_traits_polyfill.h"
 #include "functional/cxx_functional_polyfill.h"
 #include "is_std_ptr.h"
 #include "tuple_helper/tuple_filter.h"

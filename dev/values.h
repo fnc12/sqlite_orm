@@ -5,7 +5,7 @@
 #include <utility>  //  std::forward
 
 #include "functional/cxx_universal.h"
-#include "functional/cxx_polyfill.h"
+#include "functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
 

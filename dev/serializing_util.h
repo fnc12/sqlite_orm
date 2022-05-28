@@ -12,7 +12,7 @@
 #endif
 
 #include "functional/cxx_universal.h"
-#include "functional/cxx_polyfill.h"
+#include "functional/cxx_type_traits_polyfill.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "error_code.h"
 #include "serializer_context.h"
