@@ -322,6 +322,9 @@ namespace sqlite_orm {
         template<typename T>
         using table_type_t = typename T::table_type;
 
+        template<typename T>
+        using target_type_t = typename T::target_type;
+
         template<typename S>
         using storage_elements_type_t = typename S::table_type::elements_type;
 
@@ -2238,6 +2241,13 @@ namespace sqlite_orm {
 
         template<class T>
         using is_column = polyfill::bool_constant<is_column_v<T>>;
+
+        template<class Elements, class F>
+        using col_index_sequence_with_field_type =
+            filter_tuple_sequence_t<Elements,
+                                    check_if_is_type<F>::template fn,
+                                    field_type_t,
+                                    filter_tuple_sequence_t<Elements, is_column>>;
 
         template<class Elements, template<class...> class TraitFn>
         using col_index_sequence_with = filter_tuple_sequence_t<Elements,
@@ -10134,14 +10144,15 @@ namespace sqlite_orm {
 
             template<class M, satisfies<is_setter, M> = true>
             const member_field_type_t<M>* object_field_value(const object_type& object, M memberPointer) const {
-                using F = member_field_type_t<M>;
-                const F* res = nullptr;
-                this->for_each_column_with_field_type<F>(
-                    call_as_template_base<column_field>([&res, &memberPointer, &object](const auto& column) {
-                        if(compare_any(column.setter, memberPointer)) {
-                            res = &polyfill::invoke(column.member_pointer, object);
-                        }
-                    }));
+                using field_type = member_field_type_t<M>;
+                const field_type* res = nullptr;
+                iterate_tuple(this->elements,
+                              col_index_sequence_with_field_type<elements_type, field_type>{},
+                              call_as_template_base<column_field>([&res, &memberPointer, &object](const auto& column) {
+                                  if(compare_any(column.setter, memberPointer)) {
+                                      res = &polyfill::invoke(column.member_pointer, object);
+                                  }
+                              }));
                 return res;
             }
 
@@ -10149,16 +10160,18 @@ namespace sqlite_orm {
             find_column_generated_storage_type(const std::string& name) const {
                 const basic_generated_always::storage_type* result = nullptr;
 #if SQLITE_VERSION_NUMBER >= 3031000
-                this->for_each_column<constraints_type_t, check_if_tuple_has<is_generated_always>>([&result, &name](
-                                                                                                       auto& column) {
-                    if(column.name != name) {
-                        return;
-                    }
-                    using generated_op_index_sequence =
-                        filter_tuple_sequence_t<std::remove_const_t<decltype(column.constraints)>, is_generated_always>;
-                    constexpr size_t opIndex = first_index_sequence_value(generated_op_index_sequence{});
-                    result = &get<opIndex>(column.constraints).storage;
-                });
+                iterate_tuple(this->elements,
+                              col_index_sequence_with<elements_type, is_generated_always>{},
+                              [&result, &name](auto& column) {
+                                  if(column.name != name) {
+                                      return;
+                                  }
+                                  using generated_op_index_sequence =
+                                      filter_tuple_sequence_t<std::remove_const_t<decltype(column.constraints)>,
+                                                              is_generated_always>;
+                                  constexpr size_t opIndex = first_index_sequence_value(generated_op_index_sequence{});
+                                  result = &get<opIndex>(column.constraints).storage;
+                              });
 #endif
                 return result;
             }
@@ -10213,18 +10226,14 @@ namespace sqlite_orm {
 
             template<class L>
             void for_each_primary_key_column(L&& lambda) const {
-                this->for_each_column_with<is_primary_key>(
-                    call_as_template_base<column_field>([&lambda](const auto& column) {
-                        lambda(column.member_pointer);
-                    }));
+                iterate_tuple(this->elements,
+                              col_index_sequence_with<elements_type, is_primary_key>{},
+                              call_as_template_base<column_field>([&lambda](const auto& column) {
+                                  lambda(column.member_pointer);
+                              }));
                 this->for_each_primary_key([this, &lambda](auto& primaryKey) {
-                    this->for_each_column_in_primary_key(primaryKey, lambda);
+                    iterate_tuple(primaryKey.columns, lambda);
                 });
-            }
-
-            template<class L, class... Args>
-            void for_each_column_in_primary_key(const primary_key_t<Args...>& primaryKey, L&& lambda) const {
-                iterate_tuple(primaryKey.columns, lambda);
             }
 
             template<class... Args>
@@ -10248,11 +10257,13 @@ namespace sqlite_orm {
             const std::string* find_column_name(M m) const {
                 const std::string* res = nullptr;
                 using field_type = member_field_type_t<M>;
-                this->for_each_column_with_field_type<field_type>([&res, m](auto& c) {
-                    if(compare_any(c.member_pointer, m) || compare_any(c.setter, m)) {
-                        res = &c.name;
-                    }
-                });
+                iterate_tuple(this->elements,
+                              col_index_sequence_with_field_type<elements_type, field_type>{},
+                              [&res, m](auto& c) {
+                                  if(compare_any(c.member_pointer, m) || compare_any(c.setter, m)) {
+                                      res = &c.name;
+                                  }
+                              });
                 return res;
             }
 
@@ -10287,6 +10298,16 @@ namespace sqlite_orm {
                 iterate_tuple(this->elements, fk_index_sequence{}, lambda);
             }
 
+            template<class O, class L>
+            void for_each_foreign_key_to(L&& lambda) const {
+                using fk_index_sequence = filter_tuple_sequence_t<elements_type, is_foreign_key>;
+                using filtered_index_sequence = filter_tuple_sequence_t<elements_type,
+                                                                        check_if_is_type<O>::template fn,
+                                                                        target_type_t,
+                                                                        fk_index_sequence>;
+                iterate_tuple(this->elements, filtered_index_sequence{}, lambda);
+            }
+
             /**
              *  Call passed lambda with all defined columns.
              *  @param lambda Lambda called for each column. Function signature: `void(auto& column)`
@@ -10298,54 +10319,12 @@ namespace sqlite_orm {
             }
 
             /**
-             *  Call passed lambda with columns filtered on `PredicateFn(TransformFn(column_t))`.
-             *  @param lambda Lambda called for each column. Function signature: `void(auto& column)`
-             */
-            template<template<class...> class TransformFn, template<class...> class PredicateFn, class L>
-            void for_each_column(L&& lambda) const {
-                using col_index_sequence = filter_tuple_sequence_t<elements_type, is_column>;
-                using filtered_index_sequence =
-                    filter_tuple_sequence_t<elements_type, PredicateFn, TransformFn, col_index_sequence>;
-                iterate_tuple(this->elements, filtered_index_sequence{}, lambda);
-            }
-
-            /**
-             *  Call passed lambda with columns filtered on `PredicateFn(TransformFn(column_t))`.
-             *  @param lambda Lambda called for each column. Function signature: `void(auto& column)`
-             */
-            template<template<class...> class TransformFn,
-                     class PredicateFnCls,
-                     class L,
-                     satisfies<mpl::is_metafunction_class, PredicateFnCls> = true>
-            void for_each_column(L&& lambda) const {
-                return this->for_each_column<TransformFn, PredicateFnCls::template fn>(lambda);
-            }
-
-            /**
-             *  Call passed lambda with columns having the specified field type `F`.
-             *  @param lambda Lambda called for each column. Function signature: `void(auto& column)`
-             */
-            template<class F, class L>
-            void for_each_column_with_field_type(L&& lambda) const {
-                this->for_each_column<field_type_t, check_if_is_type<F>>(lambda);
-            }
-
-            /**
-             *  Call passed lambda with columns having the specified constraint trait `OpTrait`.
-             *  @param lambda Lambda called for each column. Function signature: `void(auto& column)`
-             */
-            template<template<class...> class OpTraitFn, class L>
-            void for_each_column_with(L&& lambda) const {
-                this->for_each_column<constraints_type_t, check_if_tuple_has<OpTraitFn>>(lambda);
-            }
-
-            /**
              *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
              *  @param lambda Lambda called for each column.
              */
             template<template<class...> class OpTraitFn, class L>
             void for_each_column_excluding(L&& lambda) const {
-                this->for_each_column<constraints_type_t, check_if_tuple_has_not<OpTraitFn>>(lambda);
+                iterate_tuple(this->elements, col_index_sequence_excluding<elements_type, OpTraitFn>{}, lambda);
             }
 
             /**
@@ -13732,7 +13711,7 @@ namespace sqlite_orm {
                     (*this)(values, tuple, std::index_sequence<Idx...>{});
                 }
                 template<class Tpl, size_t... Idx>
-                void operator()(sqlite3_value** values, Tpl& tuple, std::index_sequence<Idx...>) const {}
+                void operator()(sqlite3_value** /*values*/, Tpl&, std::index_sequence<Idx...>) const {}
 #endif
             template<class T>
             void extract(sqlite3_value* value, T& t) const {
@@ -18408,48 +18387,33 @@ namespace sqlite_orm {
                         return;
                     }
                     auto& table = tImpl.table;
-                    table.for_each_foreign_key([this, &table, &object, &res](auto& foreignKey) {
-                        using ForeignKey = std::decay_t<decltype(foreignKey)>;
-                        using TargetType = typename ForeignKey::target_type;
+                    table.for_each_foreign_key_to<O>([this, &table, &object, &res](auto& foreignKey) {
+                        std::stringstream ss;
+                        ss << "SELECT COUNT(*)"
+                           << " FROM " << streaming_identifier(table.name) << " WHERE ";
+                        iterate_tuple(foreignKey.columns, [&ss, &table, first = true](auto& colRef) mutable {
+                            auto* columnName = table.find_column_name(colRef);
+                            if(!columnName) {
+                                throw std::system_error{orm_error_code::column_not_found};
+                            }
 
-#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
-                        if constexpr(std::is_same<TargetType, O>::value) {
-#else
-                            call_if_constexpr<std::is_same<TargetType, O>::value>(
-                                [this, &table, &res, &object](auto& foreignKey) {
-#endif
-                            std::stringstream ss;
-                            ss << "SELECT COUNT(*)"
-                               << " FROM " << streaming_identifier(table.name) << " WHERE ";
-                            iterate_tuple(foreignKey.columns, [&ss, &table, first = true](auto& colRef) mutable {
-                                auto* columnName = table.find_column_name(colRef);
-                                if(!columnName) {
-                                    throw std::system_error{orm_error_code::column_not_found};
-                                }
+                            constexpr std::array<const char*, 2> sep = {" AND ", ""};
+                            ss << sep[std::exchange(first, false)] << streaming_identifier(*columnName) << " = ?";
+                        });
+                        ss.flush();
 
-                                constexpr std::array<const char*, 2> sep = {" AND ", ""};
-                                ss << sep[std::exchange(first, false)] << streaming_identifier(*columnName) << " = ?";
-                            });
-                            ss.flush();
+                        auto con = this->get_connection();
+                        sqlite3_stmt* stmt = prepare_stmt(con.get(), ss.str());
+                        statement_finalizer finalizer{stmt};
 
-                            auto con = this->get_connection();
-                            sqlite3_stmt* stmt = prepare_stmt(con.get(), ss.str());
-                            statement_finalizer finalizer{stmt};
-
-                            auto& table = this->get_table<O>();
-                            tuple_value_binder{stmt}(foreignKey.references, [&table, &object](auto& memberPointer) {
-                                return table.object_field_value(object, memberPointer);
-                            });
-                            perform_step<SQLITE_ROW>(stmt);
-                            auto countResult = sqlite3_column_int(stmt, 0);
-                            res = countResult > 0;
-                            perform_step(stmt);
-#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
-                        }
-#else
-                                },
-                                foreignKey);
-#endif
+                        auto& table = this->get_table<O>();
+                        tuple_value_binder{stmt}(foreignKey.references, [&table, &object](auto& memberPointer) {
+                            return table.object_field_value(object, memberPointer);
+                        });
+                        perform_step<SQLITE_ROW>(stmt);
+                        auto countResult = sqlite3_column_int(stmt, 0);
+                        res = countResult > 0;
+                        perform_step(stmt);
                     });
                 });
                 return res;
