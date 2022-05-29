@@ -138,7 +138,7 @@ namespace sqlite_orm {
             };
 
             /*
-             *  Metafunction class that extracts a the nested metafunction of its metafunction class argument,
+             *  Metafunction class that extracts the nested metafunction of its metafunction class argument,
              *  quotes the extracted metafunction and passes it on to the next metafunction class
              *  (kind of the inverse of quoting).
              */
