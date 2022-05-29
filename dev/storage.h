@@ -830,7 +830,7 @@ namespace sqlite_orm {
 
           protected:
             template<class... Tss, class... Cols>
-            sync_schema_result schema_status(const storage_impl<index_t<Cols...>, Tss...>&, sqlite3*, bool) {
+            sync_schema_result schema_status(const storage_impl<index_t<Cols...>, Tss...>&, sqlite3*, bool, bool*) {
                 return sync_schema_result::already_in_sync;
             }
 
