@@ -24,7 +24,7 @@ namespace sqlite_orm {
             template<class L>
             void for_each(const L& l) const {
                 this->super::for_each(l);
-                l(*this);
+                l(this->table);
             }
         };
 
@@ -50,9 +50,6 @@ namespace sqlite_orm {
 // interface functions
 namespace sqlite_orm {
     namespace internal {
-
-        template<class S>
-        using table_type_or_none_t = polyfill::detected_t<table_type_t, S>;
 
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
         auto lookup_table(const S& strg) {

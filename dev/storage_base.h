@@ -745,15 +745,15 @@ namespace sqlite_orm {
             static int foreign_keys_count(const S& storageImpl) {
                 auto res = 0;
 
-                storageImpl.for_each([&res](const auto& tImpl) {
-                    using qualified_type = std::decay_t<decltype(tImpl)>;
-                    constexpr bool c = std::is_base_of<basic_table, table_type_or_none_t<qualified_type>>::value;
+                storageImpl.for_each([&res](const auto& schemaObject) {
+                    using type = std::decay_t<decltype(schemaObject)>;
+                    constexpr bool c = std::is_base_of<basic_table, type>::value;
 
                     call_if_constexpr<c>(
-                        [&res](const auto& tImpl) {
-                            res += tImpl.table.foreign_keys_count();
+                        [&res](const auto& table) {
+                            res += table.foreign_keys_count();
                         },
-                        tImpl);
+                        schemaObject);
                 });
                 return res;
             }
