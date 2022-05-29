@@ -166,7 +166,7 @@ TEST_CASE("insert") {
 
         //  test empty container
         std::vector<Object> emptyVector;
-        storage.insert_range(emptyVector.begin(), emptyVector.end());
+        REQUIRE_NOTHROW(storage.insert_range(emptyVector.begin(), emptyVector.end()));
     }
     SECTION("pointers") {
         std::vector<unique_ptr<Object>> pointers;
@@ -174,19 +174,12 @@ TEST_CASE("insert") {
         std::transform(initList.begin(), initList.end(), std::back_inserter(pointers), [](const Object &object) {
             return std::make_unique<Object>(Object{object});
         });
-        storage.insert_range<Object>(pointers.begin(),
-                                     pointers.end(),
-                                     [](const unique_ptr<Object> &pointer) -> const Object & {
-                                         return *pointer;
-                                     });
+        storage.insert_range(pointers.begin(), pointers.end(), &std::unique_ptr<Object>::operator*);
 
         //  test empty container
         std::vector<unique_ptr<Object>> emptyVector;
-        storage.insert_range<Object>(emptyVector.begin(),
-                                     emptyVector.end(),
-                                     [](const unique_ptr<Object> &pointer) -> const Object & {
-                                         return *pointer;
-                                     });
+        REQUIRE_NOTHROW(
+            storage.insert_range(emptyVector.begin(), emptyVector.end(), &std::unique_ptr<Object>::operator*));
     }
 
     //  test insert without rowid
@@ -364,6 +357,8 @@ int FirstFunction::objectsCount = 0;
 int FirstFunction::callsCount = 0;
 
 TEST_CASE("custom functions") {
+    using Catch::Matchers::Contains;
+
     SqrtFunction::callsCount = 0;
     HasPrefixFunction::callsCount = 0;
     FirstFunction::callsCount = 0;
@@ -386,14 +381,8 @@ TEST_CASE("custom functions") {
     };
     auto storage = make_storage(path, make_table("users", make_column("id", &User::id)));
     storage.sync_schema();
-    {  //   call before creation
-        try {
-            auto rows = storage.select(func<SqrtFunction>(4));
-            REQUIRE(false);
-        } catch(const std::system_error &) {
-            //..
-        }
-    }
+    //   call before creation
+    REQUIRE_THROWS_WITH(storage.select(func<SqrtFunction>(4)), Contains("no such function"));
 
     //  create function
     REQUIRE(SqrtFunction::callsCount == 0);

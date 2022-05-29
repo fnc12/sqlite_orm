@@ -4,6 +4,7 @@
 using namespace sqlite_orm;
 
 TEST_CASE("Unique") {
+    using Catch::Matchers::Contains;
 
     struct Contact {
         int id = 0;
@@ -55,28 +56,13 @@ TEST_CASE("Unique") {
 
     storage.insert(Contact{0, "John", "Doe", "john.doe@gmail.com"});
 
-    try {
-        storage.insert(Contact{0, "Johnny", "Doe", "john.doe@gmail.com"});
-        REQUIRE(false);
-    } catch(const std::system_error&) {
-        //..
-    } catch(...) {
-        REQUIRE(false);
-    }
+    REQUIRE_THROWS_WITH(storage.insert(Contact{0, "Johnny", "Doe", "john.doe@gmail.com"}),
+                        Contains("constraint failed"));
 
     storage.insert(Shape{0, "red", "green"});
     storage.insert(Shape{0, "red", "blue"});
-    try {
-        storage.insert(Shape{0, "red", "green"});
-        REQUIRE(false);
-    } catch(const std::system_error&) {
-        //..
-    } catch(...) {
-        REQUIRE(false);
-    }
+    REQUIRE_THROWS_WITH(storage.insert(Shape{0, "red", "green"}), Contains("constraint failed"));
 
-    std::vector<List> lists;
-    lists.push_back(List{0, nullptr});
-    lists.push_back(List{0, nullptr});
-    storage.insert_range(lists.begin(), lists.end());
+    std::vector<List> lists(2);
+    REQUIRE_NOTHROW(storage.insert_range(lists.begin(), lists.end()));
 }

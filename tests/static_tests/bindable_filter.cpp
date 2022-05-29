@@ -24,7 +24,7 @@ TEST_CASE("bindable_filter") {
         std::string name;
     };
 
-    using internal::bindable_filter;
+    using internal::bindable_filter_t;
     using std::is_same;
     {
         using Tuple = std::tuple<bool,
@@ -70,18 +70,18 @@ TEST_CASE("bindable_filter") {
 #endif
                                  Custom,
                                  std::unique_ptr<Custom>>;
-        using Res = bindable_filter<Tuple>::type;
+        using Res = bindable_filter_t<Tuple>;
         STATIC_REQUIRE(is_same<Res, Tuple>::value);
     }
     {
         using Tuple = std::tuple<decltype(&User::id), decltype(&User::name), int>;
-        using Res = bindable_filter<Tuple>::type;
+        using Res = bindable_filter_t<Tuple>;
         using Expected = std::tuple<int>;
         STATIC_REQUIRE(is_same<Res, Expected>::value);
     }
     {
         using Tuple = std::tuple<std::string, decltype(&User::name), float, decltype(&User::id), short>;
-        using Res = bindable_filter<Tuple>::type;
+        using Res = bindable_filter_t<Tuple>;
         using Expected = std::tuple<std::string, float, short>;
         STATIC_REQUIRE(is_same<Res, Expected>::value);
     }

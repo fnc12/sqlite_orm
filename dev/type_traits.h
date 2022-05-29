@@ -1,18 +1,14 @@
 #pragma once
 
-#include <type_traits>
+#include <type_traits>  //  std::enable_if, std::is_same
 
-#include "functional/cxx_universal.h"
-#include "functional/cxx_polyfill.h"
+#include "functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
     // C++ generic traits used throughout the library
     namespace internal {
         template<class T, class... Types>
         using is_any_of = polyfill::disjunction<std::is_same<T, Types>...>;
-
-        template<class T, class... Types>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_any_of_v = polyfill::disjunction_v<std::is_same<T, Types>...>;
 
         // enable_if for types
         template<template<typename...> class Op, class... Args>
@@ -48,10 +44,13 @@ namespace sqlite_orm {
         using field_type_t = typename T::field_type;
 
         template<typename T>
-        using object_type_t = typename T::object_type;
+        using constraints_type_t = typename T::constraints_type;
 
         template<typename T>
         using table_type_t = typename T::table_type;
+
+        template<typename S>
+        using storage_elements_type_t = typename S::table_type::elements_type;
 
         template<typename S>
         using storage_object_type_t = typename S::table_type::object_type;

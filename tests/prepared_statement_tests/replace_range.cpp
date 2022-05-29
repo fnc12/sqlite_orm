@@ -44,24 +44,18 @@ TEST_CASE("Prepared replace range") {
         return *pointer;
     };
     SECTION("empty") {
+        using namespace Catch::Matchers;
+
         expected.push_back(User{1, "Team BS"});
         expected.push_back(User{2, "Shy'm"});
         expected.push_back(User{3, "Maître Gims"});
         SECTION("straight") {
-            try {
-                auto statement = storage.prepare(replace_range(users.begin(), users.end()));
-                REQUIRE(false);
-            } catch(const std::system_error&) {
-                //..
-            }
+            REQUIRE_THROWS_WITH(storage.prepare(replace_range(users.begin(), users.end())),
+                                Contains("incomplete input"));
         }
         SECTION("pointers") {
-            try {
-                auto statement = storage.prepare(replace_range<User>(userPointers.begin(), userPointers.end(), lambda));
-                REQUIRE(false);
-            } catch(const std::system_error&) {
-                //..
-            }
+            REQUIRE_THROWS_WITH(storage.prepare(replace_range<User>(userPointers.begin(), userPointers.end(), lambda)),
+                                Contains("incomplete input"));
         }
     }
     SECTION("one existing") {

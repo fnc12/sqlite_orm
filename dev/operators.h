@@ -1,9 +1,9 @@
 #pragma once
 
 #include <type_traits>  //  std::false_type, std::true_type
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>  //  std::nullopt
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <utility>  //  std::move
+#include "functional/cxx_optional.h"
+
 #include "tags.h"
 #include "serialize_result_type.h"
 

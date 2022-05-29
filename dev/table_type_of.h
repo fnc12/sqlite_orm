@@ -12,21 +12,24 @@ namespace sqlite_orm {
          *  T - member pointer
          *  `type` is a type which is mapped.
          *  E.g.
-         *  -   `table_type<decltype(&User::id)>::type` is `User`
-         *  -   `table_type<decltype(&User::getName)>::type` is `User`
-         *  -   `table_type<decltype(&User::setName)>::type` is `User`
+         *  -   `table_type_of<decltype(&User::id)>::type` is `User`
+         *  -   `table_type_of<decltype(&User::getName)>::type` is `User`
+         *  -   `table_type_of<decltype(&User::setName)>::type` is `User`
          */
-        template<class T, class SFINAE = void>
-        struct table_type;
+        template<class T>
+        struct table_type_of;
 
         template<class O, class F>
-        struct table_type<F O::*, void> {
+        struct table_type_of<F O::*> {
             using type = O;
         };
 
         template<class T, class F>
-        struct table_type<column_pointer<T, F>, void> {
+        struct table_type_of<column_pointer<T, F>> {
             using type = T;
         };
+
+        template<class T>
+        using table_type_of_t = typename table_type_of<T>::type;
     }
 }

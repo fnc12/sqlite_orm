@@ -4,29 +4,29 @@ option(SQLITE_ORM_OMITS_CODECVT "Omits codec testing" OFF)
 
 add_executable(unit_tests
     static_tests/functional/static_if_tests.cpp
+    static_tests/functional/mpl.cpp
+    static_tests/functional/same_or_void.cpp
+    static_tests/functional/tuple_conc.cpp
+    static_tests/functional/tuple_filter.cpp
+    static_tests/functional/tuple_traits.cpp
+    static_tests/functional/tuple_transform.cpp
     static_tests/is_printable.cpp
     static_tests/is_bindable.cpp
     static_tests/iterator_t.cpp
     static_tests/arithmetic_operators_result_type.cpp
-    static_tests/tuple_conc.cpp
     static_tests/node_tuple.cpp
     static_tests/bindable_filter.cpp
-    static_tests/count_tuple.cpp
     static_tests/member_traits_tests.cpp
     static_tests/select_return_type.cpp
     static_tests/column.cpp
-    static_tests/same_or_void.cpp
     static_tests/foreign_key.cpp
-    static_tests/tuple_filter.cpp
-    static_tests/storage_traits.cpp
-    static_tests/tuple_helper.cpp
     static_tests/function_static_tests.cpp
     static_tests/aggregate_function_return_types.cpp
     static_tests/core_function_return_types.cpp
     static_tests/column_result_t.cpp
-    static_tests/has_some_type.cpp
     static_tests/is_primary_key_insertable.cpp
     static_tests/is_column_with_insertable_primary_key.cpp
+    tuple_iteration.cpp
     sync_schema_tests.cpp
     tests.cpp
     tests2.cpp
@@ -105,6 +105,7 @@ add_executable(unit_tests
     statement_serializer_tests/statements/remove.cpp
     statement_serializer_tests/statements/update_all.cpp
     statement_serializer_tests/aggregate_functions.cpp
+    statement_serializer_tests/alias_extractor.cpp
     storage_tests.cpp
     storage_non_crud_tests.cpp
     unique_cases/get_all_with_two_tables.cpp
@@ -121,7 +122,6 @@ add_executable(unit_tests
     backup_tests.cpp
     transaction_tests.cpp
     json.cpp
-    tuple_helper_tests.cpp
     row_id.cpp
     trigger_tests.cpp
     ast_iterator_tests.cpp

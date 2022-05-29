@@ -58,11 +58,11 @@ TEST_CASE("Prepared get all optional") {
         using Statement = decltype(statement);
         using Expression = Statement::expression_type;
         using NodeTuple = internal::node_tuple<Expression>::type;
-        using BindTuple = typename internal::bindable_filter<NodeTuple>::type;
+        using BindTuple = internal::bindable_filter_t<NodeTuple>;
         {
             STATIC_REQUIRE(std::tuple_size<BindTuple>::value == 1);
             {
-                using Arg0 = std::tuple_element<0, BindTuple>::type;
+                using Arg0 = std::tuple_element_t<0, BindTuple>;
                 STATIC_REQUIRE(std::is_same<Arg0, int>::value);
             }
         }
@@ -98,11 +98,11 @@ TEST_CASE("Prepared get all optional") {
         using Statement = decltype(statement);
         using Expression = Statement::expression_type;
         using NodeTuple = internal::node_tuple<Expression>::type;
-        using BindTuple = typename internal::bindable_filter<NodeTuple>::type;
+        using BindTuple = internal::bindable_filter_t<NodeTuple>;
         {
             STATIC_REQUIRE(std::tuple_size<BindTuple>::value == 1);
             {
-                using Arg0 = std::tuple_element<0, BindTuple>::type;
+                using Arg0 = std::tuple_element_t<0, BindTuple>;
                 STATIC_REQUIRE(std::is_same<Arg0, int>::value);
             }
         }

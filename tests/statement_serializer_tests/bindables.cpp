@@ -75,9 +75,7 @@ array<string, N> single_value_array(const char* s) {
 }
 
 template<class T>
-struct wrap_in_literal {
-    using type = internal::literal_holder<T>;
-};
+using wrap_in_literal = internal::literal_holder<T>;
 
 inline void require_string(const string& value, const string& expected) {
     REQUIRE(value == expected);
@@ -194,7 +192,7 @@ TEST_CASE("bindables") {
         }
         SECTION("non-bindable literals") {
             context.replace_bindable_with_question = true;
-            constexpr auto t = make_default_tuple<internal::tuple_transformer<Tuple, wrap_in_literal>::type>();
+            constexpr auto t = make_default_tuple<internal::transform_tuple_t<Tuple, wrap_in_literal>>();
             test_tuple(t, context, e);
         }
     }
@@ -256,7 +254,7 @@ TEST_CASE("bindables") {
         }
         SECTION("non-bindable literals") {
             context.replace_bindable_with_question = true;
-            auto t = make_default_tuple<internal::tuple_transformer<Tuple, wrap_in_literal>::type>();
+            auto t = make_default_tuple<internal::transform_tuple_t<Tuple, wrap_in_literal>>();
             test_tuple(t, context, e);
         }
     }

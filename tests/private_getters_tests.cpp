@@ -5,7 +5,6 @@
 using namespace sqlite_orm;
 
 TEST_CASE("Issue 343") {
-
     class A {
       public:
         A() = default;

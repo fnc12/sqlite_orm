@@ -107,6 +107,8 @@ TEST_CASE("Limits") {
 }
 
 TEST_CASE("Custom collate") {
+    using Catch::Matchers::Contains;
+
     struct Item {
         int id;
         std::string name;
@@ -190,24 +192,12 @@ TEST_CASE("Custom collate") {
     } else {
         storage.delete_collation<OtotoCollation>();
     }
-    try {
-        rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo")));
-        REQUIRE(false);
-    } catch(const std::system_error&) {
-        //        cout << e.what() << endl;
-    }
-    try {
-        rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate<OtotoCollation>()));
-        REQUIRE(false);
-    } catch(const std::system_error&) {
-        //        cout << e.what() << endl;
-    }
-    try {
-        rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo2")));
-        REQUIRE(false);
-    } catch(const std::system_error&) {
-        //        cout << e.what() << endl;
-    }
+    REQUIRE_THROWS_WITH(storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo"))),
+                        Contains("no such collation sequence"));
+    REQUIRE_THROWS_WITH(storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate<OtotoCollation>())),
+                        Contains("no such collation sequence"));
+    REQUIRE_THROWS_WITH(storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo2"))),
+                        Contains("no such collation sequence"));
 
     rows = storage.select(&Item::name,
                           where(is_equal(&Item::name, "Mercury").collate("alwaysequal")),

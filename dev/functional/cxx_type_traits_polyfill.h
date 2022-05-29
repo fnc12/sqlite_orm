@@ -1,8 +1,7 @@
 #pragma once
-
 #include <type_traits>
 
-#include "functional/cxx_universal.h"
+#include "cxx_universal.h"
 
 namespace sqlite_orm {
     namespace internal {

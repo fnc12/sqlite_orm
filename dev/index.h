@@ -1,6 +1,6 @@
 #pragma once
 
-#include <tuple>  //  std::tuple, std::make_tuple
+#include <tuple>  //  std::tuple, std::make_tuple, std::declval
 #include <string>  //  std::string
 #include <utility>  //  std::forward
 
@@ -36,8 +36,8 @@ namespace sqlite_orm {
     }
 
     template<class... Cols>
-    internal::index_t<typename internal::indexed_column_maker<Cols>::type...> make_index(const std::string& name,
-                                                                                         Cols... cols) {
+    internal::index_t<decltype(internal::make_indexed_column(std::declval<Cols>()))...>
+    make_index(const std::string& name, Cols... cols) {
         using cols_tuple = std::tuple<Cols...>;
         static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
                       "amount of where arguments can be 0 or 1");
@@ -46,8 +46,8 @@ namespace sqlite_orm {
     }
 
     template<class... Cols>
-    internal::index_t<typename internal::indexed_column_maker<Cols>::type...> make_unique_index(const std::string& name,
-                                                                                                Cols... cols) {
+    internal::index_t<decltype(internal::make_indexed_column(std::declval<Cols>()))...>
+    make_unique_index(const std::string& name, Cols... cols) {
         using cols_tuple = std::tuple<Cols...>;
         static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
                       "amount of where arguments can be 0 or 1");

@@ -10,14 +10,14 @@
 #include <memory>  //  std::make_shared, std::shared_ptr
 #include <map>  //  std::map
 #include <type_traits>  //  std::decay, std::is_same
+#include <algorithm>  //  std::find_if
 
 #include "functional/cxx_universal.h"
 #include "functional/static_magic.h"
+#include "tuple_helper/tuple_iteration.h"
 #include "pragma.h"
 #include "limit_accessor.h"
 #include "transaction_guard.h"
-#include "statement_finalizer.h"
-#include "tuple_helper/tuple_helper.h"
 #include "row_extractor.h"
 #include "connection_holder.h"
 #include "backup.h"
@@ -78,15 +78,25 @@ namespace sqlite_orm {
           protected:
             void rename_table(sqlite3* db, const std::string& oldName, const std::string& newName) const {
                 std::stringstream ss;
-                ss << "ALTER TABLE " << quote_identifier(oldName) << " RENAME TO " << quote_identifier(newName)
+                ss << "ALTER TABLE " << streaming_identifier(oldName) << " RENAME TO " << streaming_identifier(newName)
                    << std::flush;
                 perform_void_exec(db, ss.str());
+            }
+
+            /**
+             *  Checks whether table exists in db. Doesn't check storage itself - works only with actual database.
+             *  Note: table can be not mapped to a storage
+             *  @return true if table with a given name exists in db, false otherwise.
+             */
+            bool table_exists(const std::string& tableName) {
+                auto con = this->get_connection();
+                return this->table_exists(con.get(), tableName);
             }
 
             bool table_exists(sqlite3* db, const std::string& tableName) const {
                 bool result = false;
                 std::stringstream ss;
-                ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal("table")
+                ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << streaming_identifier("table")
                    << " AND name = " << quote_string_literal(tableName) << std::flush;
                 perform_exec(
                     db,
@@ -100,6 +110,16 @@ namespace sqlite_orm {
                     },
                     &result);
                 return result;
+            }
+
+            void add_generated_cols(std::vector<const table_xinfo*>& columnsToAdd,
+                                    const std::vector<table_xinfo>& storageTableInfo) {
+                //  iterate through storage columns
+                for(const table_xinfo& storageColumnInfo: storageTableInfo) {
+                    if(storageColumnInfo.hidden) {
+                        columnsToAdd.push_back(&storageColumnInfo);
+                    }
+                }
             }
 
           public:
@@ -130,7 +150,7 @@ namespace sqlite_orm {
             }
 
             /**
-             *  Returns libsqltie3 lib version, not sqlite_orm
+             *  Returns libsqlite3 version, not sqlite_orm
              */
             std::string libversion() {
                 return sqlite3_libversion();
@@ -234,7 +254,7 @@ namespace sqlite_orm {
                         auto& function = *static_cast<F*>(functionVoidPointer);
                         args_tuple argsTuple;
                         using tuple_size = std::tuple_size<args_tuple>;
-                        values_to_tuple<args_tuple, tuple_size::value - 1>().extract(values, argsTuple, argsCount);
+                        values_to_tuple{}(values, argsTuple, argsCount);
                         auto result = call(function, std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
                     },
@@ -298,7 +318,7 @@ namespace sqlite_orm {
                         auto& function = *static_cast<F*>(functionVoidPointer);
                         args_tuple argsTuple;
                         using tuple_size = std::tuple_size<args_tuple>;
-                        values_to_tuple<args_tuple, tuple_size::value - 1>().extract(values, argsTuple, argsCount);
+                        values_to_tuple{}(values, argsTuple, argsCount);
                         call(function, &F::step, move(argsTuple));
                     },
                     /* finalCall = */

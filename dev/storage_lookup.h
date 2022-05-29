@@ -2,7 +2,7 @@
 
 #include <type_traits>
 
-#include "functional/cxx_polyfill.h"
+#include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"
 
 namespace sqlite_orm {
@@ -156,6 +156,12 @@ namespace sqlite_orm {
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
         storage_pick_impl_t<S, Lookup>& pick_impl(S& impl) {
             return impl;
+        }
+
+        template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
+        auto& pick_table(S& impl) {
+            storage_pick_impl_t<S, Lookup>& tImpl = impl;
+            return tImpl.table;
         }
 
         /**

@@ -50,8 +50,17 @@ namespace sqlite_orm {
 
     namespace internal {
         // Wrapper to reduce boiler-plate code
-        inline sqlite3_stmt* reset(sqlite3_stmt* stmt) {
+        inline sqlite3_stmt* reset_stmt(sqlite3_stmt* stmt) {
             sqlite3_reset(stmt);
+            return stmt;
+        }
+
+        // note: query is deliberately taken by value, such that it is thrown away early
+        inline sqlite3_stmt* prepare_stmt(sqlite3* db, std::string query) {
+            sqlite3_stmt* stmt;
+            if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+                throw_translated_sqlite_error(db);
+            }
             return stmt;
         }
 
@@ -79,9 +88,10 @@ namespace sqlite_orm {
             return perform_exec(db, query.c_str(), callback, user_data);
         }
 
-        inline void perform_step(sqlite3_stmt* stmt) {
+        template<int expected = SQLITE_DONE>
+        void perform_step(sqlite3_stmt* stmt) {
             int rc = sqlite3_step(stmt);
-            if(rc != SQLITE_DONE) {
+            if(rc != expected) {
                 throw_translated_sqlite_error(stmt);
             }
         }

@@ -262,11 +262,11 @@ namespace sqlite_orm {
             return nullptr;
         }
 
-        nullptr_t extract(sqlite3_stmt* /*stmt*/, int /*columnIndex*/) const {
+        nullptr_t extract(sqlite3_stmt*, int /*columnIndex*/) const {
             return nullptr;
         }
 
-        nullptr_t extract(sqlite3_value* /*value*/) const {
+        nullptr_t extract(sqlite3_value*) const {
             return nullptr;
         }
     };
@@ -276,36 +276,19 @@ namespace sqlite_orm {
     template<>
     struct row_extractor<std::vector<char>> {
         std::vector<char> extract(const char* row_value) const {
-            if(row_value) {
-                auto len = ::strlen(row_value);
-                return this->go(row_value, len);
-            } else {
-                return {};
-            }
+            return {row_value, row_value + (row_value ? ::strlen(row_value) : 0)};
         }
 
         std::vector<char> extract(sqlite3_stmt* stmt, int columnIndex) const {
             auto bytes = static_cast<const char*>(sqlite3_column_blob(stmt, columnIndex));
             auto len = static_cast<size_t>(sqlite3_column_bytes(stmt, columnIndex));
-            return this->go(bytes, len);
+            return {bytes, bytes + len};
         }
 
         std::vector<char> extract(sqlite3_value* value) const {
             auto bytes = static_cast<const char*>(sqlite3_value_blob(value));
             auto len = static_cast<size_t>(sqlite3_value_bytes(value));
-            return this->go(bytes, len);
-        }
-
-      protected:
-        std::vector<char> go(const char* bytes, size_t len) const {
-            if(len) {
-                std::vector<char> res;
-                res.reserve(len);
-                std::copy(bytes, bytes + len, std::back_inserter(res));
-                return res;
-            } else {
-                return {};
-            }
+            return {bytes, bytes + len};
         }
     };
 
@@ -313,40 +296,22 @@ namespace sqlite_orm {
     struct row_extractor<std::tuple<Args...>> {
 
         std::tuple<Args...> extract(char** argv) const {
-            std::tuple<Args...> res;
-            this->extract<std::tuple_size<decltype(res)>::value>(res, argv);
-            return res;
+            return this->extract(argv, std::make_index_sequence<sizeof...(Args)>{});
         }
 
         std::tuple<Args...> extract(sqlite3_stmt* stmt, int /*columnIndex*/) const {
-            std::tuple<Args...> res;
-            this->extract<std::tuple_size<decltype(res)>::value>(res, stmt);
-            return res;
+            return this->extract(stmt, std::make_index_sequence<sizeof...(Args)>{});
         }
 
       protected:
-        template<size_t I, std::enable_if_t<I != 0, bool> = true>
-        void extract(std::tuple<Args...>& t, sqlite3_stmt* stmt) const {
-            using tuple_type = std::tuple_element_t<I - 1, std::tuple<Args...>>;
-            std::get<I - 1>(t) = row_extractor<tuple_type>().extract(stmt, I - 1);
-            this->extract<I - 1>(t, stmt);
+        template<size_t... Idx>
+        std::tuple<Args...> extract(sqlite3_stmt* stmt, std::index_sequence<Idx...>) const {
+            return std::tuple<Args...>{row_extractor<Args>{}.extract(stmt, Idx)...};
         }
 
-        template<size_t I, std::enable_if_t<I == 0, bool> = true>
-        void extract(std::tuple<Args...>&, sqlite3_stmt*) const {
-            //..
-        }
-
-        template<size_t I, std::enable_if_t<I != 0, bool> = true>
-        void extract(std::tuple<Args...>& t, char** argv) const {
-            using tuple_type = std::tuple_element_t<I - 1, std::tuple<Args...>>;
-            std::get<I - 1>(t) = row_extractor<tuple_type>().extract(argv[I - 1]);
-            this->extract<I - 1>(t, argv);
-        }
-
-        template<size_t I, std::enable_if_t<I == 0, bool> = true>
-        void extract(std::tuple<Args...>&, char**) const {
-            //..
+        template<size_t... Idx>
+        std::tuple<Args...> extract(char** argv, std::index_sequence<Idx...>) const {
+            return std::tuple<Args...>{row_extractor<Args>{}.extract(argv[Idx])...};
         }
     };
 
