@@ -9236,15 +9236,10 @@ namespace sqlite_orm {
 namespace sqlite_orm {
     namespace internal {
         /**
-         *  Given a storage implementation pack, pick the specific storage implementation for the given lookup type.
+         *  Given a storage implementation pack, pick the specific schema object for the given lookup type.
          * 
          *  Note: This function requires Lookup to be mapped, otherwise it is removed from the overload resolution set.
          */
-        template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
-        storage_pick_impl_t<S, Lookup>& pick_impl(S& impl) {
-            return impl;
-        }
-
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
         auto& pick_table(S& impl) {
             storage_pick_impl_t<S, Lookup>& tImpl = impl;
@@ -10361,20 +10356,10 @@ namespace sqlite_orm {
             storage_impl(H h, Ts... ts) : super{std::forward<Ts>(ts)...}, table{std::move(h)} {}
 
             table_type table;
-
-            template<class L>
-            void for_each(const L& l) const {
-                this->super::for_each(l);
-                l(this->table);
-            }
         };
 
         template<>
-        struct storage_impl<> {
-
-            template<class L>
-            void for_each(const L&) const {}
-        };
+        struct storage_impl<> {};
     }
 }
 
@@ -10424,11 +10409,6 @@ namespace sqlite_orm {
                                                                                           [](const auto& tImpl) {
                                                                                               return tImpl.table.name;
                                                                                           })(tImpl);
-        }
-
-        template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
-        const std::string& get_table_name(const S& strg) {
-            return pick_table<Lookup>(strg).name;
         }
 
         /**
@@ -10500,7 +10480,7 @@ namespace sqlite_orm {
 #include <sstream>  //  std::stringstream
 #include <map>  //  std::map
 #include <vector>  //  std::vector
-#include <tuple>  //  std::tuple_size, std::tuple, std::make_tuple
+#include <tuple>  //  std::tuple_size, std::tuple, std::make_tuple, std::tie
 #include <utility>  //  std::forward, std::pair
 #include <algorithm>  //  std::for_each, std::ranges::for_each
 // #include "functional/cxx_optional.h"
@@ -14414,24 +14394,6 @@ namespace sqlite_orm {
                 }
             }
 
-            //  returns foreign keys count in storage definition
-            template<class S>
-            static int foreign_keys_count(const S& storageImpl) {
-                auto res = 0;
-
-                storageImpl.for_each([&res](const auto& schemaObject) {
-                    using type = std::decay_t<decltype(schemaObject)>;
-                    constexpr bool c = std::is_base_of<basic_table, type>::value;
-
-                    call_if_constexpr<c>(
-                        [&res](const auto& table) {
-                            res += table.foreign_keys_count();
-                        },
-                        schemaObject);
-                });
-                return res;
-            }
-
             bool calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,
                                               std::vector<table_xinfo>& storageTableInfo,
                                               std::vector<table_xinfo>& dbTableInfo) const {
@@ -16983,9 +16945,37 @@ namespace sqlite_orm {
              *  @param impl_ storage_impl head
              */
             storage_t(const std::string& filename, impl_type impl_) :
-                storage_base{filename, foreign_keys_count(impl_)}, impl(std::move(impl_)) {}
+                storage_base{filename, self::foreign_keys_count(impl_)}, impl(std::move(impl_)) {}
 
             storage_t(const storage_t& other) : storage_base(other), impl(other.impl) {}
+
+          private:
+            template<class L>
+            static void for_each(const impl_type& impl, L&& lambda) {
+#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
+                (lambda(pick_table<Ts>(impl)), ...);
+#else
+                    auto tpl = std::tie(pick_table<Ts>(impl)...);
+                    iterate_tuple(tpl, lambda);
+#endif
+            }
+
+            //  returns foreign keys count in storage definition
+            static int foreign_keys_count(const impl_type& storageImpl) {
+                auto res = 0;
+
+                for_each(storageImpl, [&res](const auto& schemaObject) {
+                    using type = std::decay_t<decltype(schemaObject)>;
+                    constexpr bool c = std::is_base_of<basic_table, type>::value;
+
+                    call_if_constexpr<c>(
+                        [&res](const auto& table) {
+                            res += table.foreign_keys_count();
+                        },
+                        schemaObject);
+                });
+                return res;
+            }
 
           protected:
             impl_type impl;
@@ -17120,12 +17110,12 @@ namespace sqlite_orm {
 
             template<class O>
             auto& get_table() const {
-                return pick_impl<O>(this->impl).table;
+                return pick_table<O>(this->impl);
             }
 
             template<class O>
             auto& get_table() {
-                return pick_impl<O>(this->impl).table;
+                return pick_table<O>(this->impl);
             }
 
           public:
@@ -17901,7 +17891,7 @@ namespace sqlite_orm {
             std::map<std::string, sync_schema_result> sync_schema(bool preserve = false) {
                 auto con = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
-                this->impl.for_each([this, db = con.get(), preserve, &result](auto& schemaObject) {
+                for_each(impl, [this, db = con.get(), preserve, &result](auto& schemaObject) {
                     auto res = this->sync_table(schemaObject, db, preserve);
                     result.insert({schemaObject.name, res});
                 });
@@ -17916,7 +17906,7 @@ namespace sqlite_orm {
             std::map<std::string, sync_schema_result> sync_schema_simulate(bool preserve = false) {
                 auto con = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
-                this->impl.for_each([this, db = con.get(), preserve, &result](auto& schemaObject) {
+                for_each(impl, [this, db = con.get(), preserve, &result](auto& schemaObject) {
                     auto schemaStatus = this->schema_status(schemaObject, db, preserve, nullptr);
                     result.insert({schemaObject.name, schemaStatus});
                 });
@@ -18340,7 +18330,7 @@ namespace sqlite_orm {
             template<class O>
             bool has_dependent_rows(const O& object) {
                 auto res = false;
-                this->impl.for_each([this, &object, &res](auto& table) {
+                for_each(impl, [this, &object, &res](auto& table) {
                     if(res) {
                         return;
                     }

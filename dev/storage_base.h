@@ -740,24 +740,6 @@ namespace sqlite_orm {
                 }
             }
 
-            //  returns foreign keys count in storage definition
-            template<class S>
-            static int foreign_keys_count(const S& storageImpl) {
-                auto res = 0;
-
-                storageImpl.for_each([&res](const auto& schemaObject) {
-                    using type = std::decay_t<decltype(schemaObject)>;
-                    constexpr bool c = std::is_base_of<basic_table, type>::value;
-
-                    call_if_constexpr<c>(
-                        [&res](const auto& table) {
-                            res += table.foreign_keys_count();
-                        },
-                        schemaObject);
-                });
-                return res;
-            }
-
             bool calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,
                                               std::vector<table_xinfo>& storageTableInfo,
                                               std::vector<table_xinfo>& dbTableInfo) const {

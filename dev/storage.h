@@ -9,7 +9,7 @@
 #include <sstream>  //  std::stringstream
 #include <map>  //  std::map
 #include <vector>  //  std::vector
-#include <tuple>  //  std::tuple_size, std::tuple, std::make_tuple
+#include <tuple>  //  std::tuple_size, std::tuple, std::make_tuple, std::tie
 #include <utility>  //  std::forward, std::pair
 #include <algorithm>  //  std::for_each, std::ranges::for_each
 #include "functional/cxx_optional.h"
@@ -79,9 +79,37 @@ namespace sqlite_orm {
              *  @param impl_ storage_impl head
              */
             storage_t(const std::string& filename, impl_type impl_) :
-                storage_base{filename, foreign_keys_count(impl_)}, impl(std::move(impl_)) {}
+                storage_base{filename, self::foreign_keys_count(impl_)}, impl(std::move(impl_)) {}
 
             storage_t(const storage_t& other) : storage_base(other), impl(other.impl) {}
+
+          private:
+            template<class L>
+            static void for_each(const impl_type& impl, L&& lambda) {
+#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
+                (lambda(pick_table<Ts>(impl)), ...);
+#else
+                auto tpl = std::tie(pick_table<Ts>(impl)...);
+                iterate_tuple(tpl, lambda);
+#endif
+            }
+
+            //  returns foreign keys count in storage definition
+            static int foreign_keys_count(const impl_type& storageImpl) {
+                auto res = 0;
+
+                for_each(storageImpl, [&res](const auto& schemaObject) {
+                    using type = std::decay_t<decltype(schemaObject)>;
+                    constexpr bool c = std::is_base_of<basic_table, type>::value;
+
+                    call_if_constexpr<c>(
+                        [&res](const auto& table) {
+                            res += table.foreign_keys_count();
+                        },
+                        schemaObject);
+                });
+                return res;
+            }
 
           protected:
             impl_type impl;
@@ -216,12 +244,12 @@ namespace sqlite_orm {
 
             template<class O>
             auto& get_table() const {
-                return pick_impl<O>(this->impl).table;
+                return pick_table<O>(this->impl);
             }
 
             template<class O>
             auto& get_table() {
-                return pick_impl<O>(this->impl).table;
+                return pick_table<O>(this->impl);
             }
 
           public:
@@ -997,7 +1025,7 @@ namespace sqlite_orm {
             std::map<std::string, sync_schema_result> sync_schema(bool preserve = false) {
                 auto con = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
-                this->impl.for_each([this, db = con.get(), preserve, &result](auto& schemaObject) {
+                for_each(impl, [this, db = con.get(), preserve, &result](auto& schemaObject) {
                     auto res = this->sync_table(schemaObject, db, preserve);
                     result.insert({schemaObject.name, res});
                 });
@@ -1012,7 +1040,7 @@ namespace sqlite_orm {
             std::map<std::string, sync_schema_result> sync_schema_simulate(bool preserve = false) {
                 auto con = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
-                this->impl.for_each([this, db = con.get(), preserve, &result](auto& schemaObject) {
+                for_each(impl, [this, db = con.get(), preserve, &result](auto& schemaObject) {
                     auto schemaStatus = this->schema_status(schemaObject, db, preserve, nullptr);
                     result.insert({schemaObject.name, schemaStatus});
                 });
@@ -1436,7 +1464,7 @@ namespace sqlite_orm {
             template<class O>
             bool has_dependent_rows(const O& object) {
                 auto res = false;
-                this->impl.for_each([this, &object, &res](auto& table) {
+                for_each(impl, [this, &object, &res](auto& table) {
                     if(res) {
                         return;
                     }

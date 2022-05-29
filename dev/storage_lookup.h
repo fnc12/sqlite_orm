@@ -149,15 +149,10 @@ namespace sqlite_orm {
 namespace sqlite_orm {
     namespace internal {
         /**
-         *  Given a storage implementation pack, pick the specific storage implementation for the given lookup type.
+         *  Given a storage implementation pack, pick the specific schema object for the given lookup type.
          * 
          *  Note: This function requires Lookup to be mapped, otherwise it is removed from the overload resolution set.
          */
-        template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
-        storage_pick_impl_t<S, Lookup>& pick_impl(S& impl) {
-            return impl;
-        }
-
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
         auto& pick_table(S& impl) {
             storage_pick_impl_t<S, Lookup>& tImpl = impl;

@@ -20,20 +20,10 @@ namespace sqlite_orm {
             storage_impl(H h, Ts... ts) : super{std::forward<Ts>(ts)...}, table{std::move(h)} {}
 
             table_type table;
-
-            template<class L>
-            void for_each(const L& l) const {
-                this->super::for_each(l);
-                l(this->table);
-            }
         };
 
         template<>
-        struct storage_impl<> {
-
-            template<class L>
-            void for_each(const L&) const {}
-        };
+        struct storage_impl<> {};
     }
 }
 
@@ -79,11 +69,6 @@ namespace sqlite_orm {
                                                                                           [](const auto& tImpl) {
                                                                                               return tImpl.table.name;
                                                                                           })(tImpl);
-        }
-
-        template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
-        const std::string& get_table_name(const S& strg) {
-            return pick_table<Lookup>(strg).name;
         }
 
         /**
