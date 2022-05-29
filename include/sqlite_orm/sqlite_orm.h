@@ -791,7 +791,7 @@ namespace sqlite_orm {
             };
 
             /*
-             *  Metafunction class that extracts a the nested metafunction of its metafunction class argument,
+             *  Metafunction class that extracts the nested metafunction of its metafunction class argument,
              *  quotes the extracted metafunction and passes it on to the next metafunction class
              *  (kind of the inverse of quoting).
              */
@@ -17774,7 +17774,7 @@ namespace sqlite_orm {
 
           protected:
             template<class... Tss, class... Cols>
-            sync_schema_result schema_status(const storage_impl<index_t<Cols...>, Tss...>&, sqlite3*, bool) {
+            sync_schema_result schema_status(const storage_impl<index_t<Cols...>, Tss...>&, sqlite3*, bool, bool*) {
                 return sync_schema_result::already_in_sync;
             }
 
@@ -18387,7 +18387,7 @@ namespace sqlite_orm {
                         return;
                     }
                     auto& table = tImpl.table;
-                    table.for_each_foreign_key_to<O>([this, &table, &object, &res](auto& foreignKey) {
+                    table.template for_each_foreign_key_to<O>([this, &table, &object, &res](auto& foreignKey) {
                         std::stringstream ss;
                         ss << "SELECT COUNT(*)"
                            << " FROM " << streaming_identifier(table.name) << " WHERE ";
@@ -18406,9 +18406,9 @@ namespace sqlite_orm {
                         sqlite3_stmt* stmt = prepare_stmt(con.get(), ss.str());
                         statement_finalizer finalizer{stmt};
 
-                        auto& table = this->get_table<O>();
-                        tuple_value_binder{stmt}(foreignKey.references, [&table, &object](auto& memberPointer) {
-                            return table.object_field_value(object, memberPointer);
+                        auto& targetTable = this->get_table<O>();
+                        tuple_value_binder{stmt}(foreignKey.references, [&targetTable, &object](auto& memberPointer) {
+                            return targetTable.object_field_value(object, memberPointer);
                         });
                         perform_step<SQLITE_ROW>(stmt);
                         auto countResult = sqlite3_column_int(stmt, 0);
