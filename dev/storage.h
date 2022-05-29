@@ -1491,8 +1491,8 @@ namespace sqlite_orm {
     }
 
     template<class... Ts>
-    internal::storage_t<Ts...> make_storage(const std::string& filename, Ts... tables) {
-        return {filename, internal::storage_impl<Ts...>{std::forward<Ts>(tables)...}};
+    internal::storage_t<Ts...> make_storage(std::string filename, Ts... tables) {
+        return {move(filename), internal::storage_impl<Ts...>{std::forward<Ts>(tables)...}};
     }
 
     /**
