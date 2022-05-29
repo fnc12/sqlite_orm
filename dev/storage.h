@@ -78,10 +78,8 @@ namespace sqlite_orm {
              *  @param filename database filename.
              *  @param impl_ storage_impl head
              */
-            storage_t(const std::string& filename, impl_type impl_) :
-                storage_base{filename, self::foreign_keys_count(impl_)}, impl(std::move(impl_)) {}
-
-            storage_t(const storage_t& other) : storage_base(other), impl(other.impl) {}
+            storage_t(std::string filename, impl_type impl_) :
+                storage_base{move(filename), self::foreign_keys_count(impl_)}, impl{std::move(impl_)} {}
 
           private:
             template<class L>
@@ -208,38 +206,28 @@ namespace sqlite_orm {
                               "type is not mapped to a storage");
             }
 
-            template<class O>
-            void assert_insertable_type() const {
-                auto& table = this->get_table<O>();
-                using table_type = std::decay_t<decltype(table)>;
+            template<class O,
+                     class Table = table_type_t<storage_pick_impl_t<self, O>>,
+                     std::enable_if_t<Table::is_without_rowid_v, bool> = true>
+            void assert_insertable_type() const {}
 
-#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
-                if constexpr(!table_type::is_without_rowid_v) {
-#else
-                call_if_constexpr<!table_type::is_without_rowid_v>(
-                    [](auto& table) {  // unfortunately, this static_assert's can't see any composite keys((
-#endif
-                    using elements_type = std::decay_t<decltype(table.elements)>;
-                    using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
-                    static_assert(
-                        count_filtered_tuple<elements_type, is_primary_key_insertable, pkcol_index_sequence>::value <=
-                            1,
-                        "Attempting to execute 'insert' request into an noninsertable table was detected. "
-                        "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
-                        "'insert', or you can use 'insert' with explicit column listing.");
-                    static_assert(
-                        count_filtered_tuple<elements_type,
-                                             check_if_not<is_primary_key_insertable>::template fn,
-                                             pkcol_index_sequence>::value == 0,
-                        "Attempting to execute 'insert' request into an noninsertable table was detected. "
-                        "Insertable table cannot contain non-standard primary keys. Please use 'replace' instead "
-                        "of 'insert', or you can use 'insert' with explicit column listing.");
-#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
-                }
-#else
-                    },
-                    table);
-#endif
+            template<class O,
+                     class Table = table_type_t<storage_pick_impl_t<self, O>>,
+                     std::enable_if_t<!Table::is_without_rowid_v, bool> = true>
+            void assert_insertable_type() const {
+                using elements_type = elements_type_t<Table>;
+                using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
+                static_assert(
+                    count_filtered_tuple<elements_type, is_primary_key_insertable, pkcol_index_sequence>::value <= 1,
+                    "Attempting to execute 'insert' request into an noninsertable table was detected. "
+                    "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
+                    "'insert', or you can use 'insert' with explicit column listing.");
+                static_assert(count_filtered_tuple<elements_type,
+                                                   check_if_not<is_primary_key_insertable>::template fn,
+                                                   pkcol_index_sequence>::value == 0,
+                              "Attempting to execute 'insert' request into an noninsertable table was detected. "
+                              "Insertable table cannot contain non-standard primary keys. Please use 'replace' instead "
+                              "of 'insert', or you can use 'insert' with explicit column listing.");
             }
 
             template<class O>
