@@ -10346,10 +10346,10 @@ namespace sqlite_orm {
     namespace internal {
 
         /**
-         *  This is a generic implementation. Used as a tail in storage_impl inheritance chain
+         *  A chain of schema objects
          */
         template<class... Ts>
-        struct storage_impl;
+        struct storage_impl {};
 
         template<class H, class... Ts>
         struct storage_impl<H, Ts...> : storage_impl<Ts...> {
@@ -10360,9 +10360,6 @@ namespace sqlite_orm {
 
             table_type table;
         };
-
-        template<>
-        struct storage_impl<> {};
     }
 }
 
