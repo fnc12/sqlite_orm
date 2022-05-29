@@ -19,7 +19,7 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
         template<bool B, typename T, typename F>
-        decltype(auto) static_if(T&& trueFn, F&& falseFn) {
+        decltype(auto) static_if([[maybe_unused]] T&& trueFn, [[maybe_unused]] F&& falseFn) {
             if constexpr(B) {
                 return std::forward<T>(trueFn);
             } else {
@@ -28,7 +28,7 @@ namespace sqlite_orm {
         }
 
         template<bool B, typename T>
-        decltype(auto) static_if(T&& trueFn) {
+        decltype(auto) static_if([[maybe_unused]] T&& trueFn) {
             if constexpr(B) {
                 return std::forward<T>(trueFn);
             } else {
@@ -37,7 +37,7 @@ namespace sqlite_orm {
         }
 
         template<bool B, typename L, typename... Args>
-        void call_if_constexpr(L&& lambda, Args&&... args) {
+        void call_if_constexpr([[maybe_unused]] L&& lambda, [[maybe_unused]] Args&&... args) {
             if constexpr(B) {
                 lambda(std::forward<Args>(args)...);
             }
