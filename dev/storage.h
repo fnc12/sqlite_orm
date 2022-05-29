@@ -830,7 +830,7 @@ namespace sqlite_orm {
 
           protected:
             template<class... Tss, class... Cols>
-            sync_schema_result schema_status(const storage_impl<index_t<Cols...>, Tss...>&, sqlite3*, bool) {
+            sync_schema_result schema_status(const storage_impl<index_t<Cols...>, Tss...>&, sqlite3*, bool, bool*) {
                 return sync_schema_result::already_in_sync;
             }
 
@@ -1443,48 +1443,33 @@ namespace sqlite_orm {
                         return;
                     }
                     auto& table = tImpl.table;
-                    table.for_each_foreign_key([this, &table, &object, &res](auto& foreignKey) {
-                        using ForeignKey = std::decay_t<decltype(foreignKey)>;
-                        using TargetType = typename ForeignKey::target_type;
+                    table.template for_each_foreign_key_to<O>([this, &table, &object, &res](auto& foreignKey) {
+                        std::stringstream ss;
+                        ss << "SELECT COUNT(*)"
+                           << " FROM " << streaming_identifier(table.name) << " WHERE ";
+                        iterate_tuple(foreignKey.columns, [&ss, &table, first = true](auto& colRef) mutable {
+                            auto* columnName = table.find_column_name(colRef);
+                            if(!columnName) {
+                                throw std::system_error{orm_error_code::column_not_found};
+                            }
 
-#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
-                        if constexpr(std::is_same<TargetType, O>::value) {
-#else
-                        call_if_constexpr<std::is_same<TargetType, O>::value>(
-                            [this, &table, &res, &object](auto& foreignKey) {
-#endif
-                            std::stringstream ss;
-                            ss << "SELECT COUNT(*)"
-                               << " FROM " << streaming_identifier(table.name) << " WHERE ";
-                            iterate_tuple(foreignKey.columns, [&ss, &table, first = true](auto& colRef) mutable {
-                                auto* columnName = table.find_column_name(colRef);
-                                if(!columnName) {
-                                    throw std::system_error{orm_error_code::column_not_found};
-                                }
+                            constexpr std::array<const char*, 2> sep = {" AND ", ""};
+                            ss << sep[std::exchange(first, false)] << streaming_identifier(*columnName) << " = ?";
+                        });
+                        ss.flush();
 
-                                constexpr std::array<const char*, 2> sep = {" AND ", ""};
-                                ss << sep[std::exchange(first, false)] << streaming_identifier(*columnName) << " = ?";
-                            });
-                            ss.flush();
+                        auto con = this->get_connection();
+                        sqlite3_stmt* stmt = prepare_stmt(con.get(), ss.str());
+                        statement_finalizer finalizer{stmt};
 
-                            auto con = this->get_connection();
-                            sqlite3_stmt* stmt = prepare_stmt(con.get(), ss.str());
-                            statement_finalizer finalizer{stmt};
-
-                            auto& table = this->get_table<O>();
-                            tuple_value_binder{stmt}(foreignKey.references, [&table, &object](auto& memberPointer) {
-                                return table.object_field_value(object, memberPointer);
-                            });
-                            perform_step<SQLITE_ROW>(stmt);
-                            auto countResult = sqlite3_column_int(stmt, 0);
-                            res = countResult > 0;
-                            perform_step(stmt);
-#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
-                        }
-#else
-                            },
-                            foreignKey);
-#endif
+                        auto& targetTable = this->get_table<O>();
+                        tuple_value_binder{stmt}(foreignKey.references, [&targetTable, &object](auto& memberPointer) {
+                            return targetTable.object_field_value(object, memberPointer);
+                        });
+                        perform_step<SQLITE_ROW>(stmt);
+                        auto countResult = sqlite3_column_int(stmt, 0);
+                        res = countResult > 0;
+                        perform_step(stmt);
                     });
                 });
                 return res;
