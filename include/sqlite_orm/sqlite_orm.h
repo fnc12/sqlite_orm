@@ -18350,7 +18350,7 @@ namespace sqlite_orm {
                         return;
                     }
                     auto& table = tImpl.table;
-                    table.for_each_foreign_key_to<O>([this, &table, &object, &res](auto& foreignKey) {
+                    table.template for_each_foreign_key_to<O>([this, &table, &object, &res](auto& foreignKey) {
                         std::stringstream ss;
                         ss << "SELECT COUNT(*)"
                            << " FROM " << streaming_identifier(table.name) << " WHERE ";
