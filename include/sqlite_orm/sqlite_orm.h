@@ -18369,9 +18369,9 @@ namespace sqlite_orm {
                         sqlite3_stmt* stmt = prepare_stmt(con.get(), ss.str());
                         statement_finalizer finalizer{stmt};
 
-                        auto& table = this->get_table<O>();
-                        tuple_value_binder{stmt}(foreignKey.references, [&table, &object](auto& memberPointer) {
-                            return table.object_field_value(object, memberPointer);
+                        auto& targetTable = this->get_table<O>();
+                        tuple_value_binder{stmt}(foreignKey.references, [&targetTable, &object](auto& memberPointer) {
+                            return targetTable.object_field_value(object, memberPointer);
                         });
                         perform_step<SQLITE_ROW>(stmt);
                         auto countResult = sqlite3_column_int(stmt, 0);
