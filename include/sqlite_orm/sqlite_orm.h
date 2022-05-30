@@ -9232,6 +9232,14 @@ namespace sqlite_orm {
         template<class S, class Lookup>
         using storage_find_impl_t =
             reapply_const_of_t<S, type_t<storage_find_impl_type<std::remove_const_t<S>, Lookup>>>;
+
+        template<class S, class O, class SFINAE = void>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_mapped_v = false;
+        template<class S, class O>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_mapped_v<S, O, polyfill::void_t<storage_pick_impl_t<S, O>>> = true;
+
+        template<class S, class O>
+        using is_mapped = polyfill::bool_constant<is_mapped_v<S, O>>;
     }
 }
 
@@ -9248,16 +9256,6 @@ namespace sqlite_orm {
             storage_pick_impl_t<S, Lookup>& tImpl = impl;
             return tImpl.table;
         }
-
-        /**
-         *  Given a storage implementation pack, find the specific storage implementation for the given lookup type.
-         * 
-         *  Note: This function returns the empty `storage_impl<>` if Lookup isn't mapped.
-         */
-        template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
-        storage_find_impl_t<S, Lookup>& find_impl(S& impl) {
-            return impl;
-        }
     }
 }
 
@@ -9266,14 +9264,6 @@ namespace sqlite_orm {
     namespace internal {
 
         namespace storage_traits {
-
-            template<class S, class O, class SFINAE = void>
-            SQLITE_ORM_INLINE_VAR constexpr bool is_mapped_v = false;
-            template<class S, class O>
-            SQLITE_ORM_INLINE_VAR constexpr bool is_mapped_v<S, O, polyfill::void_t<storage_pick_impl_t<S, O>>> = true;
-
-            template<class S, class O>
-            using is_mapped = polyfill::bool_constant<is_mapped_v<S, O>>;
 
             /**
              *  S - storage_impl type
@@ -10378,16 +10368,14 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
-        auto lookup_table(const S& strg) {
-            const auto& tImpl = find_impl<Lookup>(strg);
-            constexpr bool isTail = std::is_same<decltype(tImpl), const storage_impl<>&>::value;
-            return static_if<isTail>(empty_callable<nullptr_t>(), [](const auto& tImpl) {
-                return &tImpl.table;
-            })(tImpl);
+        auto lookup_table(const S& impl) {
+            return static_if<!is_mapped_v<S, Lookup>>(empty_callable<nullptr_t>(), [](const auto& impl) {
+                return &pick_table<Lookup>(impl);
+            })(impl);
         }
 
         template<class S, satisfies<is_storage_impl, S> = true>
-        std::string find_table_name(const S& strg, const std::type_index& ti) {
+        std::string find_table_name(const S& impl, const std::type_index& ti) {
             return static_if<std::is_same<S, storage_impl<>>::value>(
                 empty_callable<std::string>(),
                 [&ti](const auto& tImpl) {
@@ -10395,24 +10383,22 @@ namespace sqlite_orm {
                     return ti == typeid(storage_object_type_t<qualified_type>)
                                ? tImpl.table.name
                                : find_table_name<typename qualified_type::super>(tImpl, ti);
-                })(strg);
+                })(impl);
         }
 
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
-        std::string lookup_table_name(const S& strg) {
-            const auto& tImpl = find_impl<Lookup>(strg);
-            constexpr bool isTail = std::is_same<decltype(tImpl), const storage_impl<>&>::value;
-            return static_if<isTail>(empty_callable<std::string>(), [](const auto& tImpl) {
-                return tImpl.table.name;
-            })(tImpl);
+        std::string lookup_table_name(const S& impl) {
+            return static_if<!is_mapped_v<S, Lookup>>(empty_callable<std::string>(), [](const auto& impl) {
+                return pick_table<Lookup>(impl).name;
+            })(impl);
         }
 
         /**
          *  Find column name by its type and member pointer.
          */
         template<class O, class F, class S, satisfies<is_storage_impl, S> = true>
-        const std::string* find_column_name(const S& strg, F O::*field) {
-            return pick_table<O>(strg).find_column_name(field);
+        const std::string* find_column_name(const S& impl, F O::*field) {
+            return pick_table<O>(impl).find_column_name(field);
         }
 
         /**
@@ -10429,9 +10415,9 @@ namespace sqlite_orm {
          *  1. by explicit object type and member pointer.
          */
         template<class O, class F, class S, satisfies<is_storage_impl, S> = true>
-        const std::string* find_column_name(const S& strg, const column_pointer<O, F>& cp) {
-            auto field = materialize_column_pointer(strg, cp);
-            return pick_table<O>(strg).find_column_name(field);
+        const std::string* find_column_name(const S& impl, const column_pointer<O, F>& cp) {
+            auto field = materialize_column_pointer(impl, cp);
+            return pick_table<O>(impl).find_column_name(field);
         }
     }
 }
@@ -17473,10 +17459,9 @@ namespace sqlite_orm {
                 return this->dump(preparedStatement.expression, parametrized);
             }
 
-            template<
-                class E,
-                class Ex = polyfill::remove_cvref_t<E>,
-                std::enable_if_t<!is_prepared_statement_v<Ex> && !storage_traits::is_mapped_v<self, Ex>, bool> = true>
+            template<class E,
+                     class Ex = polyfill::remove_cvref_t<E>,
+                     std::enable_if_t<!is_prepared_statement_v<Ex> && !is_mapped_v<self, Ex>, bool> = true>
             std::string dump(E&& expression, bool parametrized = false) const {
                 static_assert(is_preparable_v<self, Ex>, "Expression must be a high-level statement");
 
@@ -17500,7 +17485,7 @@ namespace sqlite_orm {
              *  Returns a string representation of object of a class mapped to the storage.
              *  Type of string has json-like style.
              */
-            template<class O, satisfies<storage_traits::is_mapped, self, O> = true>
+            template<class O, satisfies<is_mapped, self, O> = true>
             std::string dump(const O& object) const {
                 auto& table = this->get_table<O>();
                 std::stringstream ss;

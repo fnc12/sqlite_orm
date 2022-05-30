@@ -15,14 +15,6 @@ namespace sqlite_orm {
 
         namespace storage_traits {
 
-            template<class S, class O, class SFINAE = void>
-            SQLITE_ORM_INLINE_VAR constexpr bool is_mapped_v = false;
-            template<class S, class O>
-            SQLITE_ORM_INLINE_VAR constexpr bool is_mapped_v<S, O, polyfill::void_t<storage_pick_impl_t<S, O>>> = true;
-
-            template<class S, class O>
-            using is_mapped = polyfill::bool_constant<is_mapped_v<S, O>>;
-
             /**
              *  S - storage_impl type
              *  T - mapped or not mapped data type

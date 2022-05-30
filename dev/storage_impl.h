@@ -39,16 +39,14 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
-        auto lookup_table(const S& strg) {
-            const auto& tImpl = find_impl<Lookup>(strg);
-            constexpr bool isTail = std::is_same<decltype(tImpl), const storage_impl<>&>::value;
-            return static_if<isTail>(empty_callable<nullptr_t>(), [](const auto& tImpl) {
-                return &tImpl.table;
-            })(tImpl);
+        auto lookup_table(const S& impl) {
+            return static_if<!is_mapped_v<S, Lookup>>(empty_callable<nullptr_t>(), [](const auto& impl) {
+                return &pick_table<Lookup>(impl);
+            })(impl);
         }
 
         template<class S, satisfies<is_storage_impl, S> = true>
-        std::string find_table_name(const S& strg, const std::type_index& ti) {
+        std::string find_table_name(const S& impl, const std::type_index& ti) {
             return static_if<std::is_same<S, storage_impl<>>::value>(
                 empty_callable<std::string>(),
                 [&ti](const auto& tImpl) {
@@ -56,24 +54,22 @@ namespace sqlite_orm {
                     return ti == typeid(storage_object_type_t<qualified_type>)
                                ? tImpl.table.name
                                : find_table_name<typename qualified_type::super>(tImpl, ti);
-                })(strg);
+                })(impl);
         }
 
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
-        std::string lookup_table_name(const S& strg) {
-            const auto& tImpl = find_impl<Lookup>(strg);
-            constexpr bool isTail = std::is_same<decltype(tImpl), const storage_impl<>&>::value;
-            return static_if<isTail>(empty_callable<std::string>(), [](const auto& tImpl) {
-                return tImpl.table.name;
-            })(tImpl);
+        std::string lookup_table_name(const S& impl) {
+            return static_if<!is_mapped_v<S, Lookup>>(empty_callable<std::string>(), [](const auto& impl) {
+                return pick_table<Lookup>(impl).name;
+            })(impl);
         }
 
         /**
          *  Find column name by its type and member pointer.
          */
         template<class O, class F, class S, satisfies<is_storage_impl, S> = true>
-        const std::string* find_column_name(const S& strg, F O::*field) {
-            return pick_table<O>(strg).find_column_name(field);
+        const std::string* find_column_name(const S& impl, F O::*field) {
+            return pick_table<O>(impl).find_column_name(field);
         }
 
         /**
@@ -90,9 +86,9 @@ namespace sqlite_orm {
          *  1. by explicit object type and member pointer.
          */
         template<class O, class F, class S, satisfies<is_storage_impl, S> = true>
-        const std::string* find_column_name(const S& strg, const column_pointer<O, F>& cp) {
-            auto field = materialize_column_pointer(strg, cp);
-            return pick_table<O>(strg).find_column_name(field);
+        const std::string* find_column_name(const S& impl, const column_pointer<O, F>& cp) {
+            auto field = materialize_column_pointer(impl, cp);
+            return pick_table<O>(impl).find_column_name(field);
         }
     }
 }

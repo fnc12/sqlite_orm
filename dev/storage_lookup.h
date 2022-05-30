@@ -142,6 +142,14 @@ namespace sqlite_orm {
         template<class S, class Lookup>
         using storage_find_impl_t =
             reapply_const_of_t<S, type_t<storage_find_impl_type<std::remove_const_t<S>, Lookup>>>;
+
+        template<class S, class O, class SFINAE = void>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_mapped_v = false;
+        template<class S, class O>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_mapped_v<S, O, polyfill::void_t<storage_pick_impl_t<S, O>>> = true;
+
+        template<class S, class O>
+        using is_mapped = polyfill::bool_constant<is_mapped_v<S, O>>;
     }
 }
 
@@ -157,16 +165,6 @@ namespace sqlite_orm {
         auto& pick_table(S& impl) {
             storage_pick_impl_t<S, Lookup>& tImpl = impl;
             return tImpl.table;
-        }
-
-        /**
-         *  Given a storage implementation pack, find the specific storage implementation for the given lookup type.
-         * 
-         *  Note: This function returns the empty `storage_impl<>` if Lookup isn't mapped.
-         */
-        template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
-        storage_find_impl_t<S, Lookup>& find_impl(S& impl) {
-            return impl;
         }
     }
 }
