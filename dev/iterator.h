@@ -41,11 +41,10 @@ namespace sqlite_orm {
             std::shared_ptr<value_type> current;
 
             void extract_value() {
-                auto& storage = this->view->storage;
-                auto& impl = pick_const_impl<value_type>(storage);
+                auto& impl = obtain_const_impl(this->view->storage);
                 this->current = std::make_shared<value_type>();
                 object_from_column_builder<value_type> builder{*this->current, this->stmt.get()};
-                impl.table.for_each_column(builder);
+                pick_table<value_type>(impl).for_each_column(builder);
             }
 
             void next() {

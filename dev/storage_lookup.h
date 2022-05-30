@@ -168,15 +168,5 @@ namespace sqlite_orm {
         storage_find_impl_t<S, Lookup>& find_impl(S& impl) {
             return impl;
         }
-
-        /**
-         *  Given a storage, pick the specific const-qualified storage implementation for the lookup type.
-         * 
-         *  Note: This function requires Lookup to be mapped, otherwise it is removed from the overload resolution set.
-         */
-        template<class Lookup, class S, satisfies<is_storage, S> = true>
-        storage_pick_impl_t<const S, Lookup>& pick_const_impl(S& storage) {
-            return obtain_const_impl(storage);
-        }
     }
 }

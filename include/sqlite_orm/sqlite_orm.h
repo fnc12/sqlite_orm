@@ -9258,16 +9258,6 @@ namespace sqlite_orm {
         storage_find_impl_t<S, Lookup>& find_impl(S& impl) {
             return impl;
         }
-
-        /**
-         *  Given a storage, pick the specific const-qualified storage implementation for the lookup type.
-         * 
-         *  Note: This function requires Lookup to be mapped, otherwise it is removed from the overload resolution set.
-         */
-        template<class Lookup, class S, satisfies<is_storage, S> = true>
-        storage_pick_impl_t<const S, Lookup>& pick_const_impl(S& storage) {
-            return obtain_const_impl(storage);
-        }
     }
 }
 
@@ -10411,10 +10401,10 @@ namespace sqlite_orm {
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
         std::string lookup_table_name(const S& strg) {
             const auto& tImpl = find_impl<Lookup>(strg);
-            return static_if<std::is_same<decltype(tImpl), const storage_impl<>&>::value>(empty_callable<std::string>(),
-                                                                                          [](const auto& tImpl) {
-                                                                                              return tImpl.table.name;
-                                                                                          })(tImpl);
+            constexpr bool isTail = std::is_same<decltype(tImpl), const storage_impl<>&>::value;
+            return static_if<isTail>(empty_callable<std::string>(), [](const auto& tImpl) {
+                return tImpl.table.name;
+            })(tImpl);
         }
 
         /**
@@ -10706,11 +10696,10 @@ namespace sqlite_orm {
             std::shared_ptr<value_type> current;
 
             void extract_value() {
-                auto& storage = this->view->storage;
-                auto& impl = pick_const_impl<value_type>(storage);
+                auto& impl = obtain_const_impl(this->view->storage);
                 this->current = std::make_shared<value_type>();
                 object_from_column_builder<value_type> builder{*this->current, this->stmt.get()};
-                impl.table.for_each_column(builder);
+                pick_table<value_type>(impl).for_each_column(builder);
             }
 
             void next() {
