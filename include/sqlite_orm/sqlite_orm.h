@@ -320,13 +320,16 @@ namespace sqlite_orm {
         using constraints_type_t = typename T::constraints_type;
 
         template<typename T>
-        using table_type_t = typename T::table_type;
+        using object_type_t = typename T::object_type;
 
         template<typename T>
         using elements_type_t = typename T::elements_type;
 
         template<typename T>
         using target_type_t = typename T::target_type;
+
+        template<typename T>
+        using table_type_t = typename T::table_type;
 
         template<typename S>
         using storage_elements_type_t = typename S::table_type::elements_type;
@@ -9104,6 +9107,14 @@ namespace sqlite_orm {
         template<class... Ts>
         struct storage_impl;
 
+        template<class S>
+        struct schema_objects_tuple;
+        template<class... Ts>
+        struct schema_objects_tuple<storage_impl<Ts...>> : polyfill::type_identity<std::tuple<Ts...>> {};
+
+        template<class S>
+        using schema_objects_tuple_t = typename schema_objects_tuple<S>::type;
+
         template<class T>
         struct is_storage : std::false_type {};
 
@@ -9141,7 +9152,7 @@ namespace sqlite_orm {
         /**
          *  std::true_type if given lookup type ('table' type, object) is mapped, std::false_type otherwise.
          * 
-         *  Note: we allow lookup via S::table_type because it allows us to walk the storage_impl chain (in storage_impl_cat()).
+         *  Note: we allow lookup via S::table_type because it allows us to walk the storage_impl chain.
          */
         template<typename S, typename Lookup>
         using lookup_type_matches =
@@ -9931,9 +9942,12 @@ namespace sqlite_orm {
 
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
         template<bool reversed = false, class Tpl, size_t... Idx, class L>
-        void iterate_tuple(const Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
+        void iterate_tuple(const Tpl& tpl, [[maybe_unused]] std::index_sequence<Idx...> seq, L&& lambda) {
             if constexpr(reversed && sizeof...(Idx) > 0) {
-                (lambda(std::get<sizeof...(Idx) - 1u - Idx>(tpl)), ...);
+                // reversed iteration (using a properly reversed variadic index sequence)
+                constexpr size_t nTypes = std::tuple_size<Tpl>::value;
+                constexpr size_t baseIndex = first_index_sequence_value(seq);
+                (lambda(std::get<nTypes - 1u - Idx + baseIndex>(tpl)), ...);
             } else {
                 (lambda(std::get<Idx>(tpl)), ...);
             }
@@ -10351,7 +10365,7 @@ namespace sqlite_orm {
 
 #include <typeindex>  //  std::type_index
 #include <string>  //  std::string
-#include <type_traits>  //  std::is_same, std::decay
+#include <type_traits>  //  std::is_same, std::decay, std::make_index_sequence, std::index_sequence
 
 // #include "functional/cxx_universal.h"
 
@@ -10367,30 +10381,82 @@ namespace sqlite_orm {
 namespace sqlite_orm {
     namespace internal {
 
+#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
+        template<class S, size_t... Idx, class L, satisfies<is_storage_impl, S> = true>
+        void for_each([[maybe_unused]] const S& impl,
+                      [[maybe_unused]] std::index_sequence<Idx...> seq,
+                      [[maybe_unused]] L& lambda) {
+            if constexpr(sizeof...(Idx) > 0) {
+                using types = schema_objects_tuple_t<S>;
+                // reversed iteration (using a properly reversed variadic index sequence)
+                constexpr size_t nTypes = std::tuple_size<types>::value;
+                constexpr size_t baseIndex = first_index_sequence_value(seq);
+                (lambda(pick_table<std::tuple_element_t<nTypes - 1u - Idx + baseIndex, types>>(impl)), ...);
+            }
+        }
+#else
+        template<class S, class L, satisfies<is_storage_impl, S> = true>
+        void for_each(const S&, std::index_sequence<>, L& /*lambda*/) {}
+
+        template<class S, size_t I, size_t... Idx, class L, satisfies<is_storage_impl, S> = true>
+        void for_each(const S& impl, std::index_sequence<I, Idx...>, L& lambda) {
+            using types = schema_objects_tuple_t<S>;
+            // reversed iteration
+            for_each(impl, std::index_sequence<Idx...>{}, lambda);
+            lambda(pick_table<std::tuple_element_t<I, types>>(impl));
+        }
+#endif
+
+        template<class S, class L, satisfies<is_storage_impl, S> = true>
+        void for_each(const S& impl, L lambda) {
+            using all_index_sequence = std::make_index_sequence<std::tuple_size<schema_objects_tuple_t<S>>::value>;
+            for_each(impl, all_index_sequence{}, lambda);
+        }
+
+        template<template<class...> class is_type, class S, class L, satisfies<is_storage_impl, S> = true>
+        void for_each(const S& impl, L lambda) {
+            using filtered_index_sequence =
+                filter_tuple_sequence_t<schema_objects_tuple_t<S>, check_if<is_type>::template fn>;
+            for_each(impl, filtered_index_sequence{}, lambda);
+        }
+
+        template<class S, satisfies<is_storage_impl, S> = true>
+        int foreign_keys_count(const S& impl) {
+            int res = 0;
+            for_each<is_table>(impl, [&res](const auto& table) {
+                res += table.foreign_keys_count();
+            });
+            return res;
+        }
+
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
         auto lookup_table(const S& impl) {
-            return static_if<!is_mapped_v<S, Lookup>>(empty_callable<nullptr_t>(), [](const auto& impl) {
-                return &pick_table<Lookup>(impl);
-            })(impl);
+            return static_if<is_mapped_v<S, Lookup>>(
+                [](const auto& impl) {
+                    return &pick_table<Lookup>(impl);
+                },
+                empty_callable<nullptr_t>())(impl);
         }
 
         template<class S, satisfies<is_storage_impl, S> = true>
         std::string find_table_name(const S& impl, const std::type_index& ti) {
-            return static_if<std::is_same<S, storage_impl<>>::value>(
-                empty_callable<std::string>(),
-                [&ti](const auto& tImpl) {
-                    using qualified_type = std::decay_t<decltype(tImpl)>;
-                    return ti == typeid(storage_object_type_t<qualified_type>)
-                               ? tImpl.table.name
-                               : find_table_name<typename qualified_type::super>(tImpl, ti);
-                })(impl);
+            std::string res;
+            for_each<is_table>(impl, [&ti, &res](const auto& table) {
+                using table_type = std::decay_t<decltype(table)>;
+                if(ti == typeid(object_type_t<table_type>)) {
+                    res = table.name;
+                }
+            });
+            return res;
         }
 
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
         std::string lookup_table_name(const S& impl) {
-            return static_if<!is_mapped_v<S, Lookup>>(empty_callable<std::string>(), [](const auto& impl) {
-                return pick_table<Lookup>(impl).name;
-            })(impl);
+            return static_if<is_mapped_v<S, Lookup>>(
+                [](const auto& impl) {
+                    return pick_table<Lookup>(impl).name;
+                },
+                empty_callable<std::string>())(impl);
         }
 
         /**
@@ -16921,14 +16987,13 @@ namespace sqlite_orm {
         struct storage_t : storage_base {
             using self = storage_t<Ts...>;
             using impl_type = storage_impl<Ts...>;
-            using schema_objects_tuple = std::tuple<Ts...>;
 
             /**
              *  @param filename database filename.
              *  @param impl_ storage_impl head
              */
             storage_t(std::string filename, impl_type impl_) :
-                storage_base{move(filename), self::foreign_keys_count(impl_)}, impl{std::move(impl_)} {}
+                storage_base{move(filename), foreign_keys_count(impl_)}, impl{std::move(impl_)} {}
 
           private:
             impl_type impl;
@@ -16947,37 +17012,6 @@ namespace sqlite_orm {
              */
             friend const impl_type& obtain_const_impl(const self& storage) noexcept {
                 return storage.impl;
-            }
-
-            template<class L>
-            static void for_each(const impl_type&, std::index_sequence<>, L&& /*lambda*/) {}
-
-            template<size_t I, size_t... Idx, class L>
-            static void for_each(const impl_type& impl, std::index_sequence<I, Idx...>, L&& lambda) {
-                // reversed iteration
-                for_each(impl, std::index_sequence<Idx...>{}, lambda);
-                lambda(pick_table<std::tuple_element_t<I, schema_objects_tuple>>(impl));
-            }
-
-            template<class L>
-            static void for_each(const impl_type& impl, L lambda) {
-                for_each(impl, std::make_index_sequence<std::tuple_size<schema_objects_tuple>::value>{}, lambda);
-            }
-
-            template<template<class...> class is_x, class L>
-            static void for_each(const impl_type& impl, L lambda) {
-                using filtered_index_sequence =
-                    filter_tuple_sequence_t<schema_objects_tuple, check_if<is_x>::template fn>;
-                for_each(impl, filtered_index_sequence{}, lambda);
-            }
-
-            //  returns foreign keys count in storage definition
-            static int foreign_keys_count(const impl_type& impl) {
-                int res = 0;
-                for_each<is_table>(impl, [&res](const auto& table) {
-                    res += table.foreign_keys_count();
-                });
-                return res;
             }
 
             template<class I>

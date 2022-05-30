@@ -73,14 +73,13 @@ namespace sqlite_orm {
         struct storage_t : storage_base {
             using self = storage_t<Ts...>;
             using impl_type = storage_impl<Ts...>;
-            using schema_objects_tuple = std::tuple<Ts...>;
 
             /**
              *  @param filename database filename.
              *  @param impl_ storage_impl head
              */
             storage_t(std::string filename, impl_type impl_) :
-                storage_base{move(filename), self::foreign_keys_count(impl_)}, impl{std::move(impl_)} {}
+                storage_base{move(filename), foreign_keys_count(impl_)}, impl{std::move(impl_)} {}
 
           private:
             impl_type impl;
@@ -99,37 +98,6 @@ namespace sqlite_orm {
              */
             friend const impl_type& obtain_const_impl(const self& storage) noexcept {
                 return storage.impl;
-            }
-
-            template<class L>
-            static void for_each(const impl_type&, std::index_sequence<>, L&& /*lambda*/) {}
-
-            template<size_t I, size_t... Idx, class L>
-            static void for_each(const impl_type& impl, std::index_sequence<I, Idx...>, L&& lambda) {
-                // reversed iteration
-                for_each(impl, std::index_sequence<Idx...>{}, lambda);
-                lambda(pick_table<std::tuple_element_t<I, schema_objects_tuple>>(impl));
-            }
-
-            template<class L>
-            static void for_each(const impl_type& impl, L lambda) {
-                for_each(impl, std::make_index_sequence<std::tuple_size<schema_objects_tuple>::value>{}, lambda);
-            }
-
-            template<template<class...> class is_x, class L>
-            static void for_each(const impl_type& impl, L lambda) {
-                using filtered_index_sequence =
-                    filter_tuple_sequence_t<schema_objects_tuple, check_if<is_x>::template fn>;
-                for_each(impl, filtered_index_sequence{}, lambda);
-            }
-
-            //  returns foreign keys count in storage definition
-            static int foreign_keys_count(const impl_type& impl) {
-                int res = 0;
-                for_each<is_table>(impl, [&res](const auto& table) {
-                    res += table.foreign_keys_count();
-                });
-                return res;
             }
 
             template<class I>

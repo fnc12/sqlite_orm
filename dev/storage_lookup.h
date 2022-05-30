@@ -14,6 +14,14 @@ namespace sqlite_orm {
         template<class... Ts>
         struct storage_impl;
 
+        template<class S>
+        struct schema_objects_tuple;
+        template<class... Ts>
+        struct schema_objects_tuple<storage_impl<Ts...>> : polyfill::type_identity<std::tuple<Ts...>> {};
+
+        template<class S>
+        using schema_objects_tuple_t = typename schema_objects_tuple<S>::type;
+
         template<class T>
         struct is_storage : std::false_type {};
 
@@ -51,7 +59,7 @@ namespace sqlite_orm {
         /**
          *  std::true_type if given lookup type ('table' type, object) is mapped, std::false_type otherwise.
          * 
-         *  Note: we allow lookup via S::table_type because it allows us to walk the storage_impl chain (in storage_impl_cat()).
+         *  Note: we allow lookup via S::table_type because it allows us to walk the storage_impl chain.
          */
         template<typename S, typename Lookup>
         using lookup_type_matches =
