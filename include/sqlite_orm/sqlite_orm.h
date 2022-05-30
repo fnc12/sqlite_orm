@@ -17899,8 +17899,8 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
                 for_each(this->impl, [this, db = con.get(), preserve, &result](auto& schemaObject) {
-                    auto res = this->sync_table(schemaObject, db, preserve);
-                    result.insert({schemaObject.name, res});
+                    sync_schema_result status = this->sync_table(schemaObject, db, preserve);
+                    result.emplace(schemaObject.name, status);
                 });
                 return result;
             }
@@ -17914,8 +17914,8 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
                 for_each(this->impl, [this, db = con.get(), preserve, &result](auto& schemaObject) {
-                    auto schemaStatus = this->schema_status(schemaObject, db, preserve, nullptr);
-                    result.insert({schemaObject.name, schemaStatus});
+                    sync_schema_result status = this->schema_status(schemaObject, db, preserve, nullptr);
+                    result.emplace(schemaObject.name, status);
                 });
                 return result;
             }
