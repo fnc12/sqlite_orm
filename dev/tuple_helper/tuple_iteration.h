@@ -31,7 +31,7 @@ namespace sqlite_orm {
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
         template<bool reversed = false, class Tpl, size_t... Idx, class L>
         void iterate_tuple(const Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
-            if constexpr(reversed) {
+            if constexpr(reversed && sizeof...(Idx) > 0) {
                 (lambda(std::get<sizeof...(Idx) - 1u - Idx>(tpl)), ...);
             } else {
                 (lambda(std::get<Idx>(tpl)), ...);

@@ -73,6 +73,7 @@ namespace sqlite_orm {
         struct storage_t : storage_base {
             using self = storage_t<Ts...>;
             using impl_type = storage_impl<Ts...>;
+            using schema_objects_tuple = std::tuple<Ts...>;
 
             /**
              *  @param filename database filename.
@@ -82,39 +83,11 @@ namespace sqlite_orm {
                 storage_base{move(filename), self::foreign_keys_count(impl_)}, impl{std::move(impl_)} {}
 
           private:
-            template<class L>
-            static void for_each(const impl_type& impl, L&& lambda) {
-#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
-                (lambda(pick_table<Ts>(impl)), ...);
-#else
-                auto tpl = std::tie(pick_table<Ts>(impl)...);
-                iterate_tuple(tpl, lambda);
-#endif
-            }
-
-            //  returns foreign keys count in storage definition
-            static int foreign_keys_count(const impl_type& storageImpl) {
-                auto res = 0;
-
-                for_each(storageImpl, [&res](const auto& schemaObject) {
-                    using type = std::decay_t<decltype(schemaObject)>;
-                    constexpr bool c = std::is_base_of<basic_table, type>::value;
-
-                    call_if_constexpr<c>(
-                        [&res](const auto& table) {
-                            res += table.foreign_keys_count();
-                        },
-                        schemaObject);
-                });
-                return res;
-            }
-
-          protected:
             impl_type impl;
 
             /**
              *  Obtain a storage_t's const storage_impl.
-             *  
+             *
              *  @note Historically, `serializer_context_builder` was declared friend, along with
              *  a few other library stock objects, in order limit access to the storage_impl.
              *  However, one could gain access to a storage_t's storage_impl through
@@ -126,6 +99,37 @@ namespace sqlite_orm {
              */
             friend const impl_type& obtain_const_impl(const self& storage) noexcept {
                 return storage.impl;
+            }
+
+            template<class L>
+            static void for_each(const impl_type&, std::index_sequence<>, L&& /*lambda*/) {}
+
+            template<size_t I, size_t... Idx, class L>
+            static void for_each(const impl_type& impl, std::index_sequence<I, Idx...>, L&& lambda) {
+                // reversed iteration
+                for_each(impl, std::index_sequence<Idx...>{}, lambda);
+                lambda(pick_table<std::tuple_element_t<I, schema_objects_tuple>>(impl));
+            }
+
+            template<class L>
+            static void for_each(const impl_type& impl, L lambda) {
+                for_each(impl, std::make_index_sequence<std::tuple_size<schema_objects_tuple>::value>{}, lambda);
+            }
+
+            template<template<class...> class is_x, class L>
+            static void for_each(const impl_type& impl, L lambda) {
+                using filtered_index_sequence =
+                    filter_tuple_sequence_t<schema_objects_tuple, check_if<is_x>::template fn>;
+                for_each(impl, filtered_index_sequence{}, lambda);
+            }
+
+            //  returns foreign keys count in storage definition
+            static int foreign_keys_count(const impl_type& impl) {
+                int res = 0;
+                for_each<is_table>(impl, [&res](const auto& table) {
+                    res += table.foreign_keys_count();
+                });
+                return res;
             }
 
             template<class I>
@@ -1013,7 +1017,7 @@ namespace sqlite_orm {
             std::map<std::string, sync_schema_result> sync_schema(bool preserve = false) {
                 auto con = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
-                for_each(impl, [this, db = con.get(), preserve, &result](auto& schemaObject) {
+                for_each(this->impl, [this, db = con.get(), preserve, &result](auto& schemaObject) {
                     auto res = this->sync_table(schemaObject, db, preserve);
                     result.insert({schemaObject.name, res});
                 });
@@ -1028,7 +1032,7 @@ namespace sqlite_orm {
             std::map<std::string, sync_schema_result> sync_schema_simulate(bool preserve = false) {
                 auto con = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
-                for_each(impl, [this, db = con.get(), preserve, &result](auto& schemaObject) {
+                for_each(this->impl, [this, db = con.get(), preserve, &result](auto& schemaObject) {
                     auto schemaStatus = this->schema_status(schemaObject, db, preserve, nullptr);
                     result.insert({schemaObject.name, schemaStatus});
                 });
@@ -1452,7 +1456,7 @@ namespace sqlite_orm {
             template<class O>
             bool has_dependent_rows(const O& object) {
                 auto res = false;
-                for_each(impl, [this, &object, &res](auto& table) {
+                for_each<is_table>(this->impl, [this, &object, &res](auto& table) {
                     if(res) {
                         return;
                     }
