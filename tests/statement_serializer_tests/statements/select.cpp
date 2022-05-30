@@ -109,13 +109,13 @@ TEST_CASE("statement_serializer select_t") {
                 expected = R"(SELECT * FROM "users")";
             }
             SECTION("mapped, implicit select order") {
-                auto expression = select(asterisk<User>(selected_order::implicit));
+                auto expression = select(asterisk<User>(false));
                 expression.highest_level = true;
                 stringValue = serialize(expression, context);
                 expected = R"(SELECT * FROM "users")";
             }
             SECTION("mapped, defined select order") {
-                auto expression = select(asterisk<User>(selected_order::defined));
+                auto expression = select(asterisk<User>(true));
                 expression.highest_level = true;
                 stringValue = serialize(expression, context);
                 expected = R"(SELECT "id", "name" FROM "users")";
@@ -131,19 +131,25 @@ TEST_CASE("statement_serializer select_t") {
             SECTION("alias, defined select order") {
                 using als_u = alias_u<User>;
 
-                auto expression = select(asterisk<als_u>(selected_order::defined));
+                auto expression = select(asterisk<als_u>(true));
                 expression.highest_level = true;
                 stringValue = serialize(expression, context);
                 expected = R"(SELECT "u"."id", "u"."name" FROM "users" "u")";
             }
-            SECTION("object, implicit select order") {
+            SECTION("object") {
                 auto expression = select(object<User>());
                 expression.highest_level = true;
                 stringValue = serialize(expression, context);
                 expected = R"(SELECT * FROM "users")";
             }
+            SECTION("object, implicit select order") {
+                auto expression = select(object<User>(false));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT * FROM "users")";
+            }
             SECTION("object, defined select order") {
-                auto expression = select(object<User>(selected_order::defined));
+                auto expression = select(object<User>(true));
                 expression.highest_level = true;
                 stringValue = serialize(expression, context);
                 expected = R"(SELECT "id", "name" FROM "users")";

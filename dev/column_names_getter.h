@@ -42,8 +42,8 @@ namespace sqlite_orm {
         }
 
         template<class T, class Ctx>
-        std::vector<std::string> collect_table_column_names(selected_order order, const Ctx& context) {
-            if(order == selected_order::defined) {
+        std::vector<std::string> collect_table_column_names(bool definedOrder, const Ctx& context) {
+            if(definedOrder) {
                 std::vector<std::string> quotedNames;
                 auto& table = pick_table<mapped_type_proxy_t<T>>(context.impl);
                 quotedNames.reserve(table.count_columns_amount());
@@ -79,7 +79,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::vector<std::string> operator()(const expression_type& expression, const Ctx& context) const {
-                return collect_table_column_names<T>(expression.selected_order, context);
+                return collect_table_column_names<T>(expression.defined_order, context);
             }
         };
 
@@ -89,7 +89,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::vector<std::string> operator()(const expression_type& expression, const Ctx& context) const {
-                return collect_table_column_names<T>(expression.selected_order, context);
+                return collect_table_column_names<T>(expression.defined_order, context);
             }
         };
 
