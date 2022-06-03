@@ -510,11 +510,12 @@ namespace sqlite_orm {
             }
 
           protected:
-            storage_base(const std::string& filename_, int foreignKeysCount) :
+            storage_base(std::string filename, int foreignKeysCount) :
                 pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
-                inMemory(filename_.empty() || filename_ == ":memory:"),
-                connection(std::make_unique<connection_holder>(filename_)), cachedForeignKeysCount(foreignKeysCount) {
+                inMemory(filename.empty() || filename == ":memory:"),
+                connection(std::make_unique<connection_holder>(move(filename))),
+                cachedForeignKeysCount(foreignKeysCount) {
                 if(this->inMemory) {
                     this->connection->retain();
                     this->on_open_internal(this->connection->get());
@@ -738,24 +739,6 @@ namespace sqlite_orm {
                 } else {
                     return 0;
                 }
-            }
-
-            //  returns foreign keys count in storage definition
-            template<class S>
-            static int foreign_keys_count(const S& storageImpl) {
-                auto res = 0;
-
-                storageImpl.for_each([&res](const auto& tImpl) {
-                    using qualified_type = std::decay_t<decltype(tImpl)>;
-                    constexpr bool c = std::is_base_of<basic_table, table_type_or_none_t<qualified_type>>::value;
-
-                    call_if_constexpr<c>(
-                        [&res](const auto& tImpl) {
-                            res += tImpl.table.foreign_keys_count();
-                        },
-                        tImpl);
-                });
-                return res;
             }
 
             bool calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,

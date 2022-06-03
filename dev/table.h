@@ -274,6 +274,12 @@ namespace sqlite_orm {
 
             std::vector<table_xinfo> get_table_info() const;
         };
+
+        template<class T>
+        struct is_table : std::false_type {};
+
+        template<class O, bool W, class... Cs>
+        struct is_table<table_t<O, W, Cs...>> : std::true_type {};
     }
 
     /**
