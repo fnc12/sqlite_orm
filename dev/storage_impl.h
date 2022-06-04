@@ -27,6 +27,9 @@ namespace sqlite_orm {
 #include <typeindex>  //  std::type_index
 #include <string>  //  std::string
 #include <type_traits>  //  std::is_same, std::decay, std::make_index_sequence, std::index_sequence
+#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
+#include <algorithm>  //  std::min, std::max
+#endif
 
 #include "functional/cxx_universal.h"
 #include "functional/static_magic.h"
@@ -40,15 +43,15 @@ namespace sqlite_orm {
 
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
         template<class S, size_t... Idx, class L, satisfies<is_storage_impl, S> = true>
-        void for_each([[maybe_unused]] const S& impl,
+        void for_each([[maybe_unused]] const S& impl, std::index_sequence<Idx...>, [[maybe_unused]] L& lambda) {
                       [[maybe_unused]] std::index_sequence<Idx...> seq,
                       [[maybe_unused]] L& lambda) {
             if constexpr(sizeof...(Idx) > 0) {
                 using types = schema_objects_tuple_t<S>;
-                // reversed iteration (using a properly reversed variadic index sequence)
-                constexpr size_t nTypes = std::tuple_size<types>::value;
-                constexpr size_t baseIndex = first_index_sequence_value(seq);
-                (lambda(pick_table<std::tuple_element_t<nTypes - 1u - Idx + baseIndex, types>>(impl)), ...);
+                constexpr size_t lowerIndex = std::min(std::initializer_list<size_t>{Idx...});
+                constexpr size_t upperIndex = std::max(std::initializer_list<size_t>{Idx...});
+                constexpr float pivot = sizeof...(Idx) > 1 ? (upperIndex + lowerIndex) / 2.f : lowerIndex;
+                (lambda(pick_table<std::tuple_element_t<size_t(pivot + (pivot - Idx)), types>>(impl)), ...);
             }
         }
 #else
@@ -70,17 +73,18 @@ namespace sqlite_orm {
             for_each(impl, all_index_sequence{}, lambda);
         }
 
-        template<template<class...> class is_type, class S, class L, satisfies<is_storage_impl, S> = true>
+        template<template<class...> class SeqOp, class S, class L, satisfies<is_storage_impl, S> = true>
         void for_each(const S& impl, L lambda) {
-            using filtered_index_sequence =
-                filter_tuple_sequence_t<schema_objects_tuple_t<S>, check_if<is_type>::template fn>;
-            for_each(impl, filtered_index_sequence{}, lambda);
+            for_each(impl, SeqOp<schema_objects_tuple_t<S>>{}, lambda);
         }
+
+        template<class SOs>
+        using tables_index_sequence = filter_tuple_sequence_t<SOs, is_table>;
 
         template<class S, satisfies<is_storage_impl, S> = true>
         int foreign_keys_count(const S& impl) {
             int res = 0;
-            for_each<is_table>(impl, [&res](const auto& table) {
+            for_each<tables_index_sequence>(impl, [&res](const auto& table) {
                 res += table.foreign_keys_count();
             });
             return res;
@@ -98,7 +102,7 @@ namespace sqlite_orm {
         template<class S, satisfies<is_storage_impl, S> = true>
         std::string find_table_name(const S& impl, const std::type_index& ti) {
             std::string res;
-            for_each<is_table>(impl, [&ti, &res](const auto& table) {
+            for_each<tables_index_sequence>(impl, [&ti, &res](const auto& table) {
                 using table_type = std::decay_t<decltype(table)>;
                 if(ti == typeid(object_type_t<table_type>)) {
                     res = table.name;

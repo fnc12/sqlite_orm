@@ -1423,7 +1423,7 @@ namespace sqlite_orm {
             template<class O>
             bool has_dependent_rows(const O& object) {
                 auto res = false;
-                for_each<is_table>(this->impl, [this, &object, &res](auto& table) {
+                for_each<tables_index_sequence>(this->impl, [this, &object, &res](auto& table) {
                     if(res) {
                         return;
                     }
