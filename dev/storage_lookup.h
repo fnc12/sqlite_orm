@@ -37,14 +37,14 @@ namespace sqlite_orm {
          *  Note: unlike table_t<>, index_t<>::object_type is always void.
          */
         template<typename SO, typename O>
-        using object_type_matches = polyfill::conjunction<polyfill::negation<std::is_void<object_type_t<SO>>>,
-                                                          std::is_same<O, object_type_t<SO>>>;
+        struct object_type_matches : polyfill::conjunction<polyfill::negation<std::is_void<object_type_t<SO>>>,
+                                                           std::is_same<O, object_type_t<SO>>> {};
 
         /**
          *  std::true_type if given lookup type (object) is mapped, std::false_type otherwise.
          */
         template<typename SO, typename Lookup>
-        using lookup_type_matches = polyfill::disjunction<object_type_matches<SO, Lookup>>;
+        struct lookup_type_matches : polyfill::disjunction<object_type_matches<SO, Lookup>> {};
     }
 
     // pick/lookup metafunctions
@@ -57,8 +57,13 @@ namespace sqlite_orm {
         template<class O, class... SOs>
         struct storage_pick_table : std::enable_if<lookup_type_matches<SOs, O>::value, SOs>... {};
 
+#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
         template<class O, class... SOs>
         struct storage_pick_table<O, schema_objects<SOs...>> : storage_pick_table<O, SOs...> {};
+#else
+        template<class O, class... SOs>
+        struct storage_pick_table<O, std::tuple<SOs...>> : storage_pick_table<O, SOs...> {};
+#endif
 
         /**
          *  S - schema_objects type, possibly const-qualified
@@ -74,8 +79,13 @@ namespace sqlite_orm {
         template<class O, class... SOs>
         struct storage_find_table : polyfill::detected_or<polyfill::nonesuch, storage_pick_table_t, O, SOs...> {};
 
+#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
         template<class O, class... SOs>
         struct storage_find_table<O, schema_objects<SOs...>> : storage_find_table<O, SOs...> {};
+#else
+        template<class O, class... SOs>
+        struct storage_find_table<O, std::tuple<SOs...>> : storage_find_table<O, SOs...> {};
+#endif
 
         /**
          *  S - schema_objects type, possibly const-qualified

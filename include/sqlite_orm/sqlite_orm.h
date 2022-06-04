@@ -9119,14 +9119,14 @@ namespace sqlite_orm {
          *  Note: unlike table_t<>, index_t<>::object_type is always void.
          */
         template<typename SO, typename O>
-        using object_type_matches = polyfill::conjunction<polyfill::negation<std::is_void<object_type_t<SO>>>,
-                                                          std::is_same<O, object_type_t<SO>>>;
+        struct object_type_matches : polyfill::conjunction<polyfill::negation<std::is_void<object_type_t<SO>>>,
+                                                           std::is_same<O, object_type_t<SO>>> {};
 
         /**
          *  std::true_type if given lookup type (object) is mapped, std::false_type otherwise.
          */
         template<typename SO, typename Lookup>
-        using lookup_type_matches = polyfill::disjunction<object_type_matches<SO, Lookup>>;
+        struct lookup_type_matches : polyfill::disjunction<object_type_matches<SO, Lookup>> {};
     }
 
     // pick/lookup metafunctions
@@ -9139,8 +9139,13 @@ namespace sqlite_orm {
         template<class O, class... SOs>
         struct storage_pick_table : std::enable_if<lookup_type_matches<SOs, O>::value, SOs>... {};
 
+#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
         template<class O, class... SOs>
         struct storage_pick_table<O, schema_objects<SOs...>> : storage_pick_table<O, SOs...> {};
+#else
+        template<class O, class... SOs>
+        struct storage_pick_table<O, std::tuple<SOs...>> : storage_pick_table<O, SOs...> {};
+#endif
 
         /**
          *  S - schema_objects type, possibly const-qualified
@@ -9156,8 +9161,13 @@ namespace sqlite_orm {
         template<class O, class... SOs>
         struct storage_find_table : polyfill::detected_or<polyfill::nonesuch, storage_pick_table_t, O, SOs...> {};
 
+#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
         template<class O, class... SOs>
         struct storage_find_table<O, schema_objects<SOs...>> : storage_find_table<O, SOs...> {};
+#else
+        template<class O, class... SOs>
+        struct storage_find_table<O, std::tuple<SOs...>> : storage_find_table<O, SOs...> {};
+#endif
 
         /**
          *  S - schema_objects type, possibly const-qualified
@@ -10262,21 +10272,7 @@ namespace sqlite_orm {
 }
 #pragma once
 
-#include <tuple>
-
-namespace sqlite_orm {
-
-    namespace internal {
-
-        /**
-         *  A chain of schema objects
-         */
-        template<class... Ts>
-        using schema_objects = std::tuple<Ts...>;
-
-    }
-}
-
+#include <tuple>  //  std::tuple_size
 #include <typeindex>  //  std::type_index
 #include <string>  //  std::string
 #include <type_traits>  //  std::is_same, std::decay, std::make_index_sequence, std::index_sequence
@@ -14625,7 +14621,7 @@ namespace sqlite_orm {
 
         struct table_name_collector {
             using table_name_set = std::set<std::pair<std::string, std::string>>;
-            using find_table_name_t = std::function<std::string(std::type_index)>;
+            using find_table_name_t = std::function<std::string(const std::type_index&)>;
 
             find_table_name_t find_table_name;
             mutable table_name_set table_names;

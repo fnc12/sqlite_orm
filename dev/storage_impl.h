@@ -1,20 +1,6 @@
 #pragma once
 
-#include <tuple>
-
-namespace sqlite_orm {
-
-    namespace internal {
-
-        /**
-         *  A chain of schema objects
-         */
-        template<class... Ts>
-        using schema_objects = std::tuple<Ts...>;
-
-    }
-}
-
+#include <tuple>  //  std::tuple_size
 #include <typeindex>  //  std::type_index
 #include <string>  //  std::string
 #include <type_traits>  //  std::is_same, std::decay, std::make_index_sequence, std::index_sequence
