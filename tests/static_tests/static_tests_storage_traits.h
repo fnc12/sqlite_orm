@@ -20,17 +20,18 @@ namespace sqlite_orm {
 
             template<class S>
             struct storage_columns_count_impl
-                : std::integral_constant<int, std::tuple_size<storage_elements_type_t<S>>::value> {};
+                : std::integral_constant<int, std::tuple_size<elements_type_t<S>>::value> {};
 
             template<>
-            struct storage_columns_count_impl<storage_impl<>> : std::integral_constant<int, 0> {};
+            struct storage_columns_count_impl<polyfill::nonesuch> : std::integral_constant<int, 0> {};
 
             /**
              *  S - storage
              *  O - mapped or not mapped data type
              */
             template<class S, class O>
-            struct storage_columns_count : storage_columns_count_impl<storage_find_impl_t<S, O>> {};
+            struct storage_columns_count
+                : storage_columns_count_impl<storage_find_table_t<O, typename S::schema_objects_type>> {};
 
             /**
              *  Table A `table_t<>`
@@ -52,14 +53,14 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
             template<class... Ts, class O>
-            struct storage_foreign_keys_count_impl<storage_impl<Ts...>, O> {
+            struct storage_foreign_keys_count_impl<schema_objects<Ts...>, O> {
                 static constexpr int value = (table_foreign_keys_count<Ts, O>::value + ...);
             };
 #else
             template<class H, class... Ts, class O>
-            struct storage_foreign_keys_count_impl<storage_impl<H, Ts...>, O> {
+            struct storage_foreign_keys_count_impl<schema_objects<H, Ts...>, O> {
                 static constexpr int value = table_foreign_keys_count<H, O>::value +
-                                             storage_foreign_keys_count_impl<storage_impl<Ts...>, O>::value;
+                                             storage_foreign_keys_count_impl<schema_objects<Ts...>, O>::value;
             };
 #endif
 
@@ -69,7 +70,7 @@ namespace sqlite_orm {
              * This class tells how many types mapped to S have foreign keys to O
              */
             template<class S, class O>
-            struct storage_foreign_keys_count : storage_foreign_keys_count_impl<typename S::impl_type, O> {};
+            struct storage_foreign_keys_count : storage_foreign_keys_count_impl<typename S::schema_objects_type, O> {};
 
             template<class Table, class O>
             using table_foreign_keys_t =
@@ -101,11 +102,11 @@ namespace sqlite_orm {
             struct storage_foreign_keys_impl;
 
             template<class... Ts, class O>
-            struct storage_fk_references_impl<storage_impl<Ts...>, O>
+            struct storage_fk_references_impl<schema_objects<Ts...>, O>
                 : conc_tuple<typename table_fk_references<Ts, O>::type...> {};
 
             template<class... Ts, class O>
-            struct storage_foreign_keys_impl<storage_impl<Ts...>, O> : conc_tuple<table_foreign_keys_t<Ts, O>...> {};
+            struct storage_foreign_keys_impl<schema_objects<Ts...>, O> : conc_tuple<table_foreign_keys_t<Ts, O>...> {};
 
             /**
              *  S - storage class
@@ -113,10 +114,10 @@ namespace sqlite_orm {
              *  type holds `std::tuple` with types that has references to O as  foreign keys
              */
             template<class S, class O>
-            struct storage_fk_references : storage_fk_references_impl<typename S::impl_type, O> {};
+            struct storage_fk_references : storage_fk_references_impl<typename S::schema_objects_type, O> {};
 
             template<class S, class O>
-            struct storage_foreign_keys : storage_foreign_keys_impl<typename S::impl_type, O> {};
+            struct storage_foreign_keys : storage_foreign_keys_impl<typename S::schema_objects_type, O> {};
         }
     }
 }

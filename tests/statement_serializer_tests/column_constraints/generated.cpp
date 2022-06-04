@@ -35,9 +35,9 @@ TEST_CASE("statement_serializer generated") {
         make_column("c", &Type::c),
         make_column("d", &Type::d, generated_always_as(&Type::a * sqlite_orm::abs(&Type::b)).virtual_()),
         make_column("e", &Type::e, generated_always_as(substr(&Type::c, &Type::b, add(&Type::b, 1))).stored()));
-    using storage_impl_t = internal::storage_impl<decltype(table)>;
-    auto storageImpl = storage_impl_t{table};
-    using context_t = internal::serializer_context<storage_impl_t>;
+    using schema_objects_t = internal::schema_objects<decltype(table)>;
+    auto storageImpl = schema_objects_t{table};
+    using context_t = internal::serializer_context<schema_objects_t>;
     context_t context{storageImpl};
     std::string value;
     decltype(value) expected;

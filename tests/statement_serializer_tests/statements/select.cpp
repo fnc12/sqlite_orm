@@ -10,9 +10,9 @@ TEST_CASE("statement_serializer select_t") {
         std::string name;
     };
     auto table = make_table("users", make_column("id", &User::id), make_column("name", &User::name));
-    using storage_impl_t = internal::storage_impl<decltype(table)>;
-    storage_impl_t storageImpl{table};
-    internal::serializer_context<storage_impl_t> context{storageImpl};
+    using schema_objects_t = internal::schema_objects<decltype(table)>;
+    schema_objects_t storageImpl{table};
+    internal::serializer_context<schema_objects_t> context{storageImpl};
     std::string stringValue;
     decltype(stringValue) expected;
     SECTION("simple") {
@@ -140,8 +140,8 @@ TEST_CASE("statement_serializer select_t") {
                 auto t2 =
                     make_table("Dept", make_column("deptno", &Department::m_deptno, primary_key(), autoincrement()));
 
-                using storage_impl_t = internal::storage_impl<decltype(t1), decltype(t2)>;
-                storage_impl_t storage{t1, t2};
+                using schema_objects_t = internal::schema_objects<decltype(t1), decltype(t2)>;
+                schema_objects_t storage{t1, t2};
 
                 using als_d = alias_d<Department>;
                 using als_e = alias_e<Employee>;
@@ -151,7 +151,7 @@ TEST_CASE("statement_serializer select_t") {
                                                              alias_column<als_e>(&Employee::m_deptno))),
                                          where(is_null(alias_column<als_e>(&Employee::m_deptno))));
                 expression.highest_level = true;
-                internal::serializer_context<storage_impl_t> context{storage};
+                internal::serializer_context<schema_objects_t> context{storage};
                 context.skip_table_name = false;
                 stringValue = serialize(expression, context);
                 expected =

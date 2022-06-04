@@ -1,6 +1,6 @@
 #pragma once
 
-#include <utility>  //  std::forward, std::move
+#include <tuple>
 
 namespace sqlite_orm {
 
@@ -10,17 +10,8 @@ namespace sqlite_orm {
          *  A chain of schema objects
          */
         template<class... Ts>
-        struct storage_impl {};
+        using schema_objects = std::tuple<Ts...>;
 
-        template<class H, class... Ts>
-        struct storage_impl<H, Ts...> : storage_impl<Ts...> {
-            using super = storage_impl<Ts...>;
-            using table_type = H;
-
-            storage_impl(H h, Ts... ts) : super{std::forward<Ts>(ts)...}, table{std::move(h)} {}
-
-            table_type table;
-        };
     }
 }
 
@@ -44,14 +35,11 @@ namespace sqlite_orm {
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
         template<class S, size_t... Idx, class L, satisfies<is_storage_impl, S> = true>
         void for_each([[maybe_unused]] const S& impl, std::index_sequence<Idx...>, [[maybe_unused]] L& lambda) {
-                      [[maybe_unused]] std::index_sequence<Idx...> seq,
-                      [[maybe_unused]] L& lambda) {
             if constexpr(sizeof...(Idx) > 0) {
-                using types = schema_objects_tuple_t<S>;
                 constexpr size_t lowerIndex = std::min(std::initializer_list<size_t>{Idx...});
                 constexpr size_t upperIndex = std::max(std::initializer_list<size_t>{Idx...});
                 constexpr float pivot = sizeof...(Idx) > 1 ? (upperIndex + lowerIndex) / 2.f : lowerIndex;
-                (lambda(pick_table<std::tuple_element_t<size_t(pivot + (pivot - Idx)), types>>(impl)), ...);
+                (lambda(std::get<size_t(pivot + (pivot - Idx))>(impl)), ...);
             }
         }
 #else
@@ -60,22 +48,21 @@ namespace sqlite_orm {
 
         template<class S, size_t I, size_t... Idx, class L, satisfies<is_storage_impl, S> = true>
         void for_each(const S& impl, std::index_sequence<I, Idx...>, L& lambda) {
-            using types = schema_objects_tuple_t<S>;
             // reversed iteration
             for_each(impl, std::index_sequence<Idx...>{}, lambda);
-            lambda(pick_table<std::tuple_element_t<I, types>>(impl));
+            lambda(std::get<I>(impl));
         }
 #endif
 
         template<class S, class L, satisfies<is_storage_impl, S> = true>
         void for_each(const S& impl, L lambda) {
-            using all_index_sequence = std::make_index_sequence<std::tuple_size<schema_objects_tuple_t<S>>::value>;
+            using all_index_sequence = std::make_index_sequence<std::tuple_size<S>::value>;
             for_each(impl, all_index_sequence{}, lambda);
         }
 
         template<template<class...> class SeqOp, class S, class L, satisfies<is_storage_impl, S> = true>
         void for_each(const S& impl, L lambda) {
-            for_each(impl, SeqOp<schema_objects_tuple_t<S>>{}, lambda);
+            for_each(impl, SeqOp<S>{}, lambda);
         }
 
         template<class SOs>

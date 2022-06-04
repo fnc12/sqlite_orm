@@ -7,8 +7,8 @@ TEST_CASE("statement_serializer primary key") {
     std::string value;
     decltype(value) expected;
     SECTION("empty") {
-        internal::storage_impl<> storage;
-        internal::serializer_context<internal::storage_impl<>> context{storage};
+        internal::schema_objects<> storage;
+        internal::serializer_context<internal::schema_objects<>> context{storage};
         auto pk = primary_key();
         value = serialize(pk, context);
         expected = "PRIMARY KEY";
@@ -19,9 +19,9 @@ TEST_CASE("statement_serializer primary key") {
             std::string name;
         };
         auto table = make_table("users", make_column("id", &User::id), make_column("name", &User::name));
-        using storage_impl_t = internal::storage_impl<decltype(table)>;
-        auto storageImpl = storage_impl_t{table};
-        using context_t = internal::serializer_context<storage_impl_t>;
+        using schema_objects_t = internal::schema_objects<decltype(table)>;
+        auto storageImpl = schema_objects_t{table};
+        using context_t = internal::serializer_context<schema_objects_t>;
         context_t context{storageImpl};
         SECTION("single column pk") {
             auto pk = primary_key(&User::id);

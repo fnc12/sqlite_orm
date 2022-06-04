@@ -21,9 +21,9 @@ TEST_CASE("upsert_clause") {
                                  make_column("id", &User::id, primary_key()),
                                  make_column("firstname", &User::firstname),
                                  make_column("lastname", &User::lastname));
-    using storage_impl_t = internal::storage_impl<decltype(vocabularyTable), decltype(usersTable)>;
-    auto storageImpl = storage_impl_t{vocabularyTable, usersTable};
-    using context_t = internal::serializer_context<storage_impl_t>;
+    using schema_objects_t = internal::schema_objects<decltype(vocabularyTable), decltype(usersTable)>;
+    auto storageImpl = schema_objects_t{vocabularyTable, usersTable};
+    using context_t = internal::serializer_context<schema_objects_t>;
     context_t context{storageImpl};
 
     std::string value;

@@ -40,7 +40,7 @@ namespace sqlite_orm {
                 storage(stor), connection(std::move(conn)), args{std::make_tuple(std::forward<Args>(args_)...)} {}
 
             size_t size() {
-                return this->storage.template count<T>();
+                return this->storage.count<T>();
             }
 
             bool empty() {
@@ -48,8 +48,8 @@ namespace sqlite_orm {
             }
 
             iterator_t<self> begin() {
-                using context_t = serializer_context<typename storage_type::impl_type>;
-                context_t context{obtain_const_impl(this->storage)};
+                using context_t = serializer_context<typename storage_type::schema_objects_type>;
+                context_t context{obtain_schema_objects(this->storage)};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
 

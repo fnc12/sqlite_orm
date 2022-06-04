@@ -4,8 +4,8 @@
 using namespace sqlite_orm;
 
 TEST_CASE("statement_serializer collate") {
-    internal::storage_impl<> storage;
-    internal::serializer_context<internal::storage_impl<>> context{storage};
+    internal::schema_objects<> storage;
+    internal::serializer_context<internal::schema_objects<>> context{storage};
     {
         auto col = collate_nocase();
         auto value = serialize(col, context);

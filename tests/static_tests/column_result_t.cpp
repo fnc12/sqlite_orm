@@ -6,7 +6,7 @@ using namespace sqlite_orm;
 
 template<class St, class E, class V>
 void runTest(V /*value*/) {
-    using Type = internal::column_result_of_t<St, V>;
+    using Type = internal::column_result_of_t<typename St::schema_objects_type, V>;
     STATIC_REQUIRE(std::is_same<Type, E>::value);
 }
 

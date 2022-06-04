@@ -26,6 +26,7 @@ namespace sqlite_orm {
          *  for different types. E.g. specialization for internal::length_t has `type` int cause
          *  LENGTH returns INTEGER in sqlite. Every column_result_t must have `type` type that equals
          *  c++ SELECT return type for T
+         *  St - schema_objects type
          *  T - C++ type
          *  SFINAE - sfinae argument
          */

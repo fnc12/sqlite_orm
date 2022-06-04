@@ -5,8 +5,8 @@ using namespace sqlite_orm;
 
 TEST_CASE("statement_serializer rowid") {
     {
-        internal::storage_impl<> storage;
-        internal::serializer_context<internal::storage_impl<>> context{storage};
+        internal::schema_objects<> storage;
+        internal::serializer_context<internal::schema_objects<>> context{storage};
         auto value = serialize(rowid(), context);
         REQUIRE(value == "rowid");
     }
