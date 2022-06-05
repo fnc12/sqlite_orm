@@ -40,7 +40,7 @@ namespace sqlite_orm {
                 storage(stor), connection(std::move(conn)), args{std::make_tuple(std::forward<Args>(args_)...)} {}
 
             size_t size() {
-                return this->storage.count<T>();
+                return this->storage.template count<T>();
             }
 
             bool empty() {
