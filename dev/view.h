@@ -48,8 +48,8 @@ namespace sqlite_orm {
             }
 
             iterator_t<self> begin() {
-                using context_t = serializer_context<typename storage_type::schema_objects_type>;
-                context_t context{obtain_schema_objects(this->storage)};
+                using context_t = serializer_context<typename storage_type::db_objects_type>;
+                context_t context{obtain_db_objects(this->storage)};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
 

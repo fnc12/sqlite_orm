@@ -7,7 +7,7 @@
 #include <utility>  //  std::move
 #include <system_error>  //  std::system_error
 #include <vector>  //  std::vector
-#include <memory>  //  std::make_shared, std::shared_ptr
+#include <memory>  //  std::make_unique, std::unique_ptr
 #include <map>  //  std::map
 #include <type_traits>  //  std::decay, std::is_same
 #include <algorithm>  //  std::find_if

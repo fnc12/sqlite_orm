@@ -16,10 +16,9 @@
 namespace sqlite_orm {
     namespace internal {
 
-        template<class... Ts>
-        template<class T, bool WithoutRowId, class... Args>
-        sync_schema_result
-        storage_t<Ts...>::sync_table(const table_t<T, WithoutRowId, Args...>& table, sqlite3* db, bool preserve) {
+        template<class... DBO>
+        template<class Table, satisfies<is_table, Table>>
+        sync_schema_result storage_t<DBO...>::sync_table(const Table& table, sqlite3* db, bool preserve) {
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
             if(std::is_same<T, dbstat>::value) {
                 return sync_schema_result::already_in_sync;
@@ -107,13 +106,13 @@ namespace sqlite_orm {
             return res;
         }
 
-        template<class... Ts>
-        template<class I>
-        void storage_t<Ts...>::copy_table(
+        template<class... DBO>
+        template<class Table>
+        void storage_t<DBO...>::copy_table(
             sqlite3* db,
             const std::string& sourceTableName,
             const std::string& destinationTableName,
-            const I& table,
+            const Table& table,
             const std::vector<const table_xinfo*>& columnsToIgnore) const {  // must ignore generated columns
             std::vector<std::reference_wrapper<const std::string>> columnNames;
             columnNames.reserve(table.count_columns_amount());

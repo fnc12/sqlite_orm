@@ -18,64 +18,64 @@ namespace sqlite_orm {
 
         namespace storage_traits {
 
-            template<class S>
+            template<class DBOs>
             struct storage_columns_count_impl
-                : std::integral_constant<int, std::tuple_size<elements_type_t<S>>::value> {};
+                : std::integral_constant<int, std::tuple_size<elements_type_t<DBOs>>::value> {};
 
             template<>
             struct storage_columns_count_impl<polyfill::nonesuch> : std::integral_constant<int, 0> {};
 
             /**
-             *  S - storage
-             *  O - mapped or not mapped data type
+             *  S - storage_t
+             *  Lookup - mapped or not mapped data type
              */
-            template<class S, class O>
+            template<class S, class Lookup>
             struct storage_columns_count
-                : storage_columns_count_impl<storage_find_table_t<O, typename S::schema_objects_type>> {};
+                : storage_columns_count_impl<storage_find_table_t<Lookup, typename S::db_objects_type>> {};
 
             /**
              *  Table A `table_t<>`
-             *  O is object type which is the reference target (e.g. foreign_key(&Visit::userId).references(&User::id) has O = User)
+             *  Lookup is object type which is the reference target (e.g. foreign_key(&Visit::userId).references(&User::id) has Lookup = User)
              */
-            template<class Table, class O>
+            template<class Table, class Lookup>
             struct table_foreign_keys_count
                 : count_filtered_tuple<elements_type_t<Table>,
-                                       check_if_is_type<O>::template fn,
+                                       check_if_is_type<Lookup>::template fn,
                                        filter_tuple_sequence_t<elements_type_t<Table>, is_foreign_key>,
                                        target_type_t> {};
 
             /**
-             *  S - storage class
-             *  O - type mapped to S
+             *  DBOs - db_objects_tuple
+             *  Lookup - type mapped to storage
              */
-            template<class S, class O>
+            template<class DBOs, class Lookup>
             struct storage_foreign_keys_count_impl : std::integral_constant<int, 0> {};
 
 #ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
-            template<class... Ts, class O>
-            struct storage_foreign_keys_count_impl<schema_objects<Ts...>, O> {
-                static constexpr int value = (table_foreign_keys_count<Ts, O>::value + ...);
+            template<class... DBO, class Lookup>
+            struct storage_foreign_keys_count_impl<db_objects_tuple<DBO...>, Lookup> {
+                static constexpr int value = (table_foreign_keys_count<DBO, Lookup>::value + ...);
             };
 #else
-            template<class H, class... Ts, class O>
-            struct storage_foreign_keys_count_impl<schema_objects<H, Ts...>, O> {
-                static constexpr int value = table_foreign_keys_count<H, O>::value +
-                                             storage_foreign_keys_count_impl<schema_objects<Ts...>, O>::value;
+            template<class H, class... DBO, class Lookup>
+            struct storage_foreign_keys_count_impl<db_objects_tuple<H, DBO...>, Lookup> {
+                static constexpr int value = table_foreign_keys_count<H, Lookup>::value +
+                                             storage_foreign_keys_count_impl<db_objects_tuple<DBO...>, Lookup>::value;
             };
 #endif
 
             /**
              * S - storage class
-             * O - type mapped to S
-             * This class tells how many types mapped to S have foreign keys to O
+             * Lookup - type mapped to storage
+             * This class tells how many types mapped to DBOs have foreign keys to Lookup
              */
-            template<class S, class O>
-            struct storage_foreign_keys_count : storage_foreign_keys_count_impl<typename S::schema_objects_type, O> {};
+            template<class S, class Lookup>
+            struct storage_foreign_keys_count : storage_foreign_keys_count_impl<typename S::db_objects_type, Lookup> {};
 
-            template<class Table, class O>
+            template<class Table, class Lookup>
             using table_foreign_keys_t =
                 filter_tuple_t<elements_type_t<Table>,
-                               check_if_is_type<O>::template fn,
+                               check_if_is_type<Lookup>::template fn,
                                target_type_t,
                                filter_tuple_sequence_t<elements_type_t<Table>, is_foreign_key>>;
 
@@ -84,40 +84,41 @@ namespace sqlite_orm {
              *  must be hoisted into a named alias, otherwise type replacement may fail for legacy compilers
              *  if an alias template has a dependent expression in it [SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION].
              */
-            template<class Table, class O>
+            template<class Table, class Lookup>
             struct table_fk_references {
-                using foreign_keys = table_foreign_keys_t<Table, O>;
+                using foreign_keys = table_foreign_keys_t<Table, Lookup>;
 
                 using type = transform_tuple_t<foreign_keys, source_type_t>;
             };
 
             /**
-             *  S - storage class
-             *  O - type mapped to S
+             *  DBOs - db_objects_tuple
+             *  Lookup - type mapped to storage
              */
-            template<class S, class O>
+            template<class DBOs, class Lookup>
             struct storage_fk_references_impl;
 
-            template<class S, class O>
+            template<class DBOs, class Lookup>
             struct storage_foreign_keys_impl;
 
-            template<class... Ts, class O>
-            struct storage_fk_references_impl<schema_objects<Ts...>, O>
-                : conc_tuple<typename table_fk_references<Ts, O>::type...> {};
+            template<class... DBO, class Lookup>
+            struct storage_fk_references_impl<db_objects_tuple<DBO...>, Lookup>
+                : conc_tuple<typename table_fk_references<DBO, Lookup>::type...> {};
 
-            template<class... Ts, class O>
-            struct storage_foreign_keys_impl<schema_objects<Ts...>, O> : conc_tuple<table_foreign_keys_t<Ts, O>...> {};
+            template<class... DBO, class Lookup>
+            struct storage_foreign_keys_impl<db_objects_tuple<DBO...>, Lookup>
+                : conc_tuple<table_foreign_keys_t<DBO, Lookup>...> {};
 
             /**
              *  S - storage class
-             *  O - type mapped to S
-             *  type holds `std::tuple` with types that has references to O as  foreign keys
+             *  Lookup - type mapped to storage
+             *  type holds `std::tuple` with types that has references to Lookup as foreign keys
              */
-            template<class S, class O>
-            struct storage_fk_references : storage_fk_references_impl<typename S::schema_objects_type, O> {};
+            template<class S, class Lookup>
+            struct storage_fk_references : storage_fk_references_impl<typename S::db_objects_type, Lookup> {};
 
-            template<class S, class O>
-            struct storage_foreign_keys : storage_foreign_keys_impl<typename S::schema_objects_type, O> {};
+            template<class S, class Lookup>
+            struct storage_foreign_keys : storage_foreign_keys_impl<typename S::db_objects_type, Lookup> {};
         }
     }
 }

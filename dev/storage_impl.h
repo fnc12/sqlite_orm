@@ -19,63 +19,63 @@ namespace sqlite_orm {
     namespace internal {
 
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
-        template<class S, size_t... Idx, class L, satisfies<is_storage_impl, S> = true>
-        void for_each([[maybe_unused]] const S& impl, std::index_sequence<Idx...>, [[maybe_unused]] L& lambda) {
+        template<class DBOs, size_t... Idx, class L, satisfies<is_db_objects, DBOs> = true>
+        void for_each([[maybe_unused]] const DBOs& dbObjects, std::index_sequence<Idx...>, [[maybe_unused]] L& lambda) {
             if constexpr(sizeof...(Idx) > 0) {
                 constexpr size_t lowerIndex = std::min(std::initializer_list<size_t>{Idx...});
                 constexpr size_t upperIndex = std::max(std::initializer_list<size_t>{Idx...});
                 constexpr float pivot = sizeof...(Idx) > 1 ? (upperIndex + lowerIndex) / 2.f : lowerIndex;
-                (lambda(std::get<size_t(pivot + (pivot - Idx))>(impl)), ...);
+                (lambda(std::get<size_t(pivot + (pivot - Idx))>(dbObjects)), ...);
             }
         }
 #else
-        template<class S, class L, satisfies<is_storage_impl, S> = true>
-        void for_each(const S&, std::index_sequence<>, L& /*lambda*/) {}
+        template<class DBOs, class L, satisfies<is_db_objects, DBOs> = true>
+        void for_each(const DBOs&, std::index_sequence<>, L& /*lambda*/) {}
 
-        template<class S, size_t I, size_t... Idx, class L, satisfies<is_storage_impl, S> = true>
-        void for_each(const S& impl, std::index_sequence<I, Idx...>, L& lambda) {
+        template<class DBOs, size_t I, size_t... Idx, class L, satisfies<is_db_objects, DBOs> = true>
+        void for_each(const DBOs& dbObjects, std::index_sequence<I, Idx...>, L& lambda) {
             // reversed iteration
-            for_each(impl, std::index_sequence<Idx...>{}, lambda);
-            lambda(std::get<I>(impl));
+            for_each(dbObjects, std::index_sequence<Idx...>{}, lambda);
+            lambda(std::get<I>(dbObjects));
         }
 #endif
 
-        template<class S, class L, satisfies<is_storage_impl, S> = true>
-        void for_each(const S& impl, L lambda) {
-            using all_index_sequence = std::make_index_sequence<std::tuple_size<S>::value>;
-            for_each(impl, all_index_sequence{}, lambda);
+        template<class DBOs, class L, satisfies<is_db_objects, DBOs> = true>
+        void for_each(const DBOs& dbObjects, L lambda) {
+            using all_index_sequence = std::make_index_sequence<std::tuple_size<DBOs>::value>;
+            for_each(dbObjects, all_index_sequence{}, lambda);
         }
 
-        template<template<class...> class SeqOp, class S, class L, satisfies<is_storage_impl, S> = true>
-        void for_each(const S& impl, L lambda) {
-            for_each(impl, SeqOp<S>{}, lambda);
+        template<template<class...> class SeqOp, class DBOs, class L, satisfies<is_db_objects, DBOs> = true>
+        void for_each(const DBOs& dbObjects, L lambda) {
+            for_each(dbObjects, SeqOp<DBOs>{}, lambda);
         }
 
-        template<class SOs>
-        using tables_index_sequence = filter_tuple_sequence_t<SOs, is_table>;
+        template<class DBOs>
+        using tables_index_sequence = filter_tuple_sequence_t<DBOs, is_table>;
 
-        template<class S, satisfies<is_storage_impl, S> = true>
-        int foreign_keys_count(const S& impl) {
+        template<class DBOs, satisfies<is_db_objects, DBOs> = true>
+        int foreign_keys_count(const DBOs& dbObjects) {
             int res = 0;
-            for_each<tables_index_sequence>(impl, [&res](const auto& table) {
+            for_each<tables_index_sequence>(dbObjects, [&res](const auto& table) {
                 res += table.foreign_keys_count();
             });
             return res;
         }
 
-        template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
-        auto lookup_table(const S& impl) {
-            return static_if<is_mapped_v<S, Lookup>>(
-                [](const auto& impl) {
-                    return &pick_table<Lookup>(impl);
+        template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs> = true>
+        auto lookup_table(const DBOs& dbObjects) {
+            return static_if<is_mapped_v<DBOs, Lookup>>(
+                [](const auto& dbObjects) {
+                    return &pick_table<Lookup>(dbObjects);
                 },
-                empty_callable<nullptr_t>())(impl);
+                empty_callable<nullptr_t>())(dbObjects);
         }
 
-        template<class S, satisfies<is_storage_impl, S> = true>
-        std::string find_table_name(const S& impl, const std::type_index& ti) {
+        template<class DBOs, satisfies<is_db_objects, DBOs> = true>
+        std::string find_table_name(const DBOs& dbObjects, const std::type_index& ti) {
             std::string res;
-            for_each<tables_index_sequence>(impl, [&ti, &res](const auto& table) {
+            for_each<tables_index_sequence>(dbObjects, [&ti, &res](const auto& table) {
                 using table_type = std::decay_t<decltype(table)>;
                 if(ti == typeid(object_type_t<table_type>)) {
                     res = table.name;
@@ -84,29 +84,29 @@ namespace sqlite_orm {
             return res;
         }
 
-        template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
-        std::string lookup_table_name(const S& impl) {
-            return static_if<is_mapped_v<S, Lookup>>(
-                [](const auto& impl) {
-                    return pick_table<Lookup>(impl).name;
+        template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs> = true>
+        std::string lookup_table_name(const DBOs& dbObjects) {
+            return static_if<is_mapped_v<DBOs, Lookup>>(
+                [](const auto& dbObjects) {
+                    return pick_table<Lookup>(dbObjects).name;
                 },
-                empty_callable<std::string>())(impl);
+                empty_callable<std::string>())(dbObjects);
         }
 
         /**
          *  Find column name by its type and member pointer.
          */
-        template<class O, class F, class S, satisfies<is_storage_impl, S> = true>
-        const std::string* find_column_name(const S& impl, F O::*field) {
-            return pick_table<O>(impl).find_column_name(field);
+        template<class O, class F, class DBOs, satisfies<is_db_objects, DBOs> = true>
+        const std::string* find_column_name(const DBOs& dbObjects, F O::*field) {
+            return pick_table<O>(dbObjects).find_column_name(field);
         }
 
         /**
          *  Materialize column pointer:
          *  1. by explicit object type and member pointer.
          */
-        template<class O, class F, class S, satisfies<is_storage_impl, S> = true>
-        constexpr decltype(auto) materialize_column_pointer(const S&, const column_pointer<O, F>& cp) {
+        template<class O, class F, class DBOs, satisfies<is_db_objects, DBOs> = true>
+        constexpr decltype(auto) materialize_column_pointer(const DBOs&, const column_pointer<O, F>& cp) {
             return cp.field;
         }
 
@@ -114,10 +114,10 @@ namespace sqlite_orm {
          *  Find column name by:
          *  1. by explicit object type and member pointer.
          */
-        template<class O, class F, class S, satisfies<is_storage_impl, S> = true>
-        const std::string* find_column_name(const S& impl, const column_pointer<O, F>& cp) {
-            auto field = materialize_column_pointer(impl, cp);
-            return pick_table<O>(impl).find_column_name(field);
+        template<class O, class F, class DBOs, satisfies<is_db_objects, DBOs> = true>
+        const std::string* find_column_name(const DBOs& dbObjects, const column_pointer<O, F>& cp) {
+            auto field = materialize_column_pointer(dbObjects, cp);
+            return pick_table<O>(dbObjects).find_column_name(field);
         }
     }
 }

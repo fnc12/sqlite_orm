@@ -120,9 +120,9 @@ TEST_CASE("bindables") {
 
     struct Dummy {};
     auto table = make_table<Dummy>("dummy");
-    using schema_objects_t = internal::schema_objects<decltype(table)>;
-    auto storageImpl = schema_objects_t{table};
-    using context_t = internal::serializer_context<schema_objects_t>;
+    using db_objects_t = internal::db_objects_tuple<decltype(table)>;
+    auto storageImpl = db_objects_t{table};
+    using context_t = internal::serializer_context<db_objects_t>;
     context_t context{storageImpl};
 
     SECTION("bindable_builtin_types") {

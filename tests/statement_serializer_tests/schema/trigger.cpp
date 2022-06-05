@@ -18,9 +18,9 @@ TEST_CASE("statement_serializer trigger") {
                             make_column("last_name", &Lead::lastName),
                             make_column("email", &Lead::email),
                             make_column("phone", &Lead::phone));
-    using schema_objects_t = internal::schema_objects<decltype(table)>;
-    auto storageImpl = schema_objects_t{table};
-    using context_t = internal::serializer_context<schema_objects_t>;
+    using db_objects_t = internal::db_objects_tuple<decltype(table)>;
+    auto storageImpl = db_objects_t{table};
+    using context_t = internal::serializer_context<db_objects_t>;
     context_t context{storageImpl};
     std::string value;
     decltype(value) expected;

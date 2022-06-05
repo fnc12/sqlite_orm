@@ -39,11 +39,11 @@ TEST_CASE("statement_serializer foreign key") {
                                           make_column("time", &Visit::time),
                                           fk);
 
-            using schema_objects_t = internal::schema_objects<decltype(usersTable), decltype(visitsTable)>;
+            using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
 
-            schema_objects_t storageImpl{usersTable, visitsTable};
+            db_objects_t storageImpl{usersTable, visitsTable};
 
-            using context_t = internal::serializer_context<schema_objects_t>;
+            using context_t = internal::serializer_context<db_objects_t>;
 
             context_t context{storageImpl};
             auto value = serialize(fk, context);
@@ -63,11 +63,11 @@ TEST_CASE("statement_serializer foreign key") {
                                               make_column("time", &Visit::time),
                                               fk);
 
-                using schema_objects_t = internal::schema_objects<decltype(usersTable), decltype(visitsTable)>;
+                using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
 
-                schema_objects_t storageImpl{usersTable, visitsTable};
+                db_objects_t storageImpl{usersTable, visitsTable};
 
-                using context_t = internal::serializer_context<schema_objects_t>;
+                using context_t = internal::serializer_context<db_objects_t>;
 
                 context_t context{storageImpl};
                 auto value = serialize(fk, context);
@@ -86,11 +86,11 @@ TEST_CASE("statement_serializer foreign key") {
                                               make_column("time", &Visit::time),
                                               fk);
 
-                using schema_objects_t = internal::schema_objects<decltype(usersTable), decltype(visitsTable)>;
+                using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
 
-                schema_objects_t storageImpl{usersTable, visitsTable};
+                db_objects_t storageImpl{usersTable, visitsTable};
 
-                using context_t = internal::serializer_context<schema_objects_t>;
+                using context_t = internal::serializer_context<db_objects_t>;
 
                 context_t context{storageImpl};
                 auto value = serialize(fk, context);
@@ -109,11 +109,11 @@ TEST_CASE("statement_serializer foreign key") {
                                               make_column("time", &Visit::time),
                                               fk);
 
-                using schema_objects_t = internal::schema_objects<decltype(usersTable), decltype(visitsTable)>;
+                using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
 
-                schema_objects_t storageImpl{usersTable, visitsTable};
+                db_objects_t storageImpl{usersTable, visitsTable};
 
-                using context_t = internal::serializer_context<schema_objects_t>;
+                using context_t = internal::serializer_context<db_objects_t>;
 
                 context_t context{storageImpl};
                 auto value = serialize(fk, context);
@@ -132,11 +132,11 @@ TEST_CASE("statement_serializer foreign key") {
                                               make_column("time", &Visit::time),
                                               fk);
 
-                using schema_objects_t = internal::schema_objects<decltype(usersTable), decltype(visitsTable)>;
+                using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
 
-                schema_objects_t storageImpl{usersTable, visitsTable};
+                db_objects_t storageImpl{usersTable, visitsTable};
 
-                using context_t = internal::serializer_context<schema_objects_t>;
+                using context_t = internal::serializer_context<db_objects_t>;
 
                 context_t context{storageImpl};
                 auto value = serialize(fk, context);
@@ -155,11 +155,11 @@ TEST_CASE("statement_serializer foreign key") {
                                               make_column("time", &Visit::time),
                                               fk);
 
-                using schema_objects_t = internal::schema_objects<decltype(usersTable), decltype(visitsTable)>;
+                using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
 
-                schema_objects_t storageImpl{usersTable, visitsTable};
+                db_objects_t storageImpl{usersTable, visitsTable};
 
-                using context_t = internal::serializer_context<schema_objects_t>;
+                using context_t = internal::serializer_context<db_objects_t>;
 
                 context_t context{storageImpl};
                 auto value = serialize(fk, context);
@@ -180,11 +180,11 @@ TEST_CASE("statement_serializer foreign key") {
                                               make_column("time", &Visit::time),
                                               fk);
 
-                using schema_objects_t = internal::schema_objects<decltype(usersTable), decltype(visitsTable)>;
+                using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
 
-                schema_objects_t storageImpl{usersTable, visitsTable};
+                db_objects_t storageImpl{usersTable, visitsTable};
 
-                using context_t = internal::serializer_context<schema_objects_t>;
+                using context_t = internal::serializer_context<db_objects_t>;
 
                 context_t context{storageImpl};
                 auto value = serialize(fk, context);
@@ -203,11 +203,11 @@ TEST_CASE("statement_serializer foreign key") {
                                               make_column("time", &Visit::time),
                                               fk);
 
-                using schema_objects_t = internal::schema_objects<decltype(usersTable), decltype(visitsTable)>;
+                using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
 
-                schema_objects_t storageImpl{usersTable, visitsTable};
+                db_objects_t storageImpl{usersTable, visitsTable};
 
-                using context_t = internal::serializer_context<schema_objects_t>;
+                using context_t = internal::serializer_context<db_objects_t>;
 
                 context_t context{storageImpl};
                 auto value = serialize(fk, context);
@@ -226,11 +226,11 @@ TEST_CASE("statement_serializer foreign key") {
                                               make_column("time", &Visit::time),
                                               fk);
 
-                using schema_objects_t = internal::schema_objects<decltype(usersTable), decltype(visitsTable)>;
+                using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
 
-                schema_objects_t storageImpl{usersTable, visitsTable};
+                db_objects_t storageImpl{usersTable, visitsTable};
 
-                using context_t = internal::serializer_context<schema_objects_t>;
+                using context_t = internal::serializer_context<db_objects_t>;
 
                 context_t context{storageImpl};
                 auto value = serialize(fk, context);
@@ -249,11 +249,11 @@ TEST_CASE("statement_serializer foreign key") {
                                               make_column("time", &Visit::time),
                                               fk);
 
-                using schema_objects_t = internal::schema_objects<decltype(usersTable), decltype(visitsTable)>;
+                using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
 
-                schema_objects_t storageImpl{usersTable, visitsTable};
+                db_objects_t storageImpl{usersTable, visitsTable};
 
-                using context_t = internal::serializer_context<schema_objects_t>;
+                using context_t = internal::serializer_context<db_objects_t>;
 
                 context_t context{storageImpl};
                 auto value = serialize(fk, context);
@@ -272,11 +272,11 @@ TEST_CASE("statement_serializer foreign key") {
                                               make_column("time", &Visit::time),
                                               fk);
 
-                using schema_objects_t = internal::schema_objects<decltype(usersTable), decltype(visitsTable)>;
+                using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
 
-                schema_objects_t storageImpl{usersTable, visitsTable};
+                db_objects_t storageImpl{usersTable, visitsTable};
 
-                using context_t = internal::serializer_context<schema_objects_t>;
+                using context_t = internal::serializer_context<db_objects_t>;
 
                 context_t context{storageImpl};
                 auto value = serialize(fk, context);
@@ -321,11 +321,11 @@ TEST_CASE("statement_serializer foreign key") {
                                              make_column("user_id", &Token::usedId),
                                              fk);
 
-        using schema_objects_t = internal::schema_objects<decltype(usersTable), decltype(tokensTable)>;
+        using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(tokensTable)>;
 
-        schema_objects_t storageImpl{usersTable, tokensTable};
+        db_objects_t storageImpl{usersTable, tokensTable};
 
-        using context_t = internal::serializer_context<schema_objects_t>;
+        using context_t = internal::serializer_context<db_objects_t>;
 
         context_t context{storageImpl};
         auto value = serialize(fk, context);
@@ -369,11 +369,11 @@ TEST_CASE("statement_serializer foreign key") {
         STATIC_REQUIRE(table_foreign_keys_count<decltype(visitsTable), User>::value == 1);
         STATIC_REQUIRE(table_foreign_keys_count<decltype(visitsTable), UserVisit>::value == 0);
 
-        using schema_objects_t = internal::schema_objects<decltype(usersTable), decltype(visitsTable)>;
+        using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
 
-        schema_objects_t storageImpl{usersTable, visitsTable};
+        db_objects_t storageImpl{usersTable, visitsTable};
 
-        using context_t = internal::serializer_context<schema_objects_t>;
+        using context_t = internal::serializer_context<db_objects_t>;
 
         context_t context{storageImpl};
         auto value = serialize(fk, context);

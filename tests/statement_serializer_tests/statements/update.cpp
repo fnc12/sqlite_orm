@@ -25,9 +25,9 @@ TEST_CASE("statement_serializer update") {
                                     make_column("type", &A::type),
                                     make_column("idx", &A::index),
                                     make_column("value", &A::value));
-            using schema_objects_t = internal::schema_objects<decltype(table)>;
-            auto storageImpl = schema_objects_t{table};
-            using context_t = internal::serializer_context<schema_objects_t>;
+            using db_objects_t = internal::db_objects_tuple<decltype(table)>;
+            auto storageImpl = db_objects_t{table};
+            using context_t = internal::serializer_context<db_objects_t>;
             context_t context{storageImpl};
             SECTION("update") {
                 SECTION("with question marks") {
@@ -63,9 +63,9 @@ TEST_CASE("statement_serializer update") {
                                     make_column("idx", &A::index),
                                     make_column("value", &A::value),
                                     primary_key(&A::address));
-            using schema_objects_t = internal::schema_objects<decltype(table)>;
-            auto storageImpl = schema_objects_t{table};
-            using context_t = internal::serializer_context<schema_objects_t>;
+            using db_objects_t = internal::db_objects_tuple<decltype(table)>;
+            auto storageImpl = db_objects_t{table};
+            using context_t = internal::serializer_context<db_objects_t>;
             context_t context{storageImpl};
             SECTION("with question marks") {
                 context.replace_bindable_with_question = true;
@@ -88,9 +88,9 @@ TEST_CASE("statement_serializer update") {
                                 make_column("idx", &A::index),
                                 make_column("value", &A::value),
                                 primary_key(&A::address, &A::type));
-        using schema_objects_t = internal::schema_objects<decltype(table)>;
-        auto storageImpl = schema_objects_t{table};
-        using context_t = internal::serializer_context<schema_objects_t>;
+        using db_objects_t = internal::db_objects_tuple<decltype(table)>;
+        auto storageImpl = db_objects_t{table};
+        using context_t = internal::serializer_context<db_objects_t>;
         context_t context{storageImpl};
         SECTION("with question marks") {
             context.replace_bindable_with_question = true;
@@ -112,9 +112,9 @@ TEST_CASE("statement_serializer update") {
                                 make_column("idx", &A::index),
                                 make_column("value", &A::value),
                                 primary_key(&A::address, &A::type, &A::index));
-        using schema_objects_t = internal::schema_objects<decltype(table)>;
-        auto storageImpl = schema_objects_t{table};
-        using context_t = internal::serializer_context<schema_objects_t>;
+        using db_objects_t = internal::db_objects_tuple<decltype(table)>;
+        auto storageImpl = db_objects_t{table};
+        using context_t = internal::serializer_context<db_objects_t>;
         context_t context{storageImpl};
         SECTION("question marks") {
             context.replace_bindable_with_question = true;

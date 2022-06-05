@@ -16,11 +16,11 @@ TEST_CASE("statement_serializer check") {
                                 make_column("col2", &Table::col2),
                                 make_column("col3", &Table::col3, ch));
 
-        using schema_objects_t = internal::schema_objects<decltype(table)>;
+        using db_objects_t = internal::db_objects_tuple<decltype(table)>;
 
-        schema_objects_t storageImpl{table};
+        db_objects_t storageImpl{table};
 
-        using context_t = internal::serializer_context<schema_objects_t>;
+        using context_t = internal::serializer_context<db_objects_t>;
 
         context_t context{storageImpl};
         std::string value;
@@ -50,11 +50,11 @@ TEST_CASE("statement_serializer check") {
                                 make_column("Book_name", &Book::name),
                                 make_column("Pub_name", &Book::pubName),
                                 make_column("PRICE", &Book::price, ch));
-        using schema_objects_t = internal::schema_objects<decltype(table)>;
+        using db_objects_t = internal::db_objects_tuple<decltype(table)>;
 
-        schema_objects_t storageImpl{table};
+        db_objects_t storageImpl{table};
 
-        using context_t = internal::serializer_context<schema_objects_t>;
+        using context_t = internal::serializer_context<db_objects_t>;
 
         context_t context{storageImpl};
         std::string value;

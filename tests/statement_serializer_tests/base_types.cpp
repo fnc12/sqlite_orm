@@ -4,8 +4,8 @@
 using namespace sqlite_orm;
 
 TEST_CASE("statement_serializer base types") {
-    internal::schema_objects<> storage;
-    internal::serializer_context<internal::schema_objects<>> context{storage};
+    internal::db_objects_tuple<> storage;
+    internal::serializer_context<internal::db_objects_tuple<>> context{storage};
     std::string stringValue;
     decltype(stringValue) expected;
     SECTION("std::string") {

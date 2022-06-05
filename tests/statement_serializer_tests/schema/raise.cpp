@@ -9,8 +9,8 @@ TEST_CASE("statement_serializer raise") {
     std::string value;
     decltype(value) expected;
 
-    internal::schema_objects<> storage;
-    internal::serializer_context<internal::schema_objects<>> context{storage};
+    internal::db_objects_tuple<> storage;
+    internal::serializer_context<internal::db_objects_tuple<>> context{storage};
     SECTION("ignore") {
         auto expression = raise_ignore();
         value = serialize(expression, context);

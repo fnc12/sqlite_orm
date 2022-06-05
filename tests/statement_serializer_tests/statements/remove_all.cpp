@@ -10,9 +10,9 @@ TEST_CASE("statement_serializer remove_all") {
         std::string name;
     };
     auto table = make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name));
-    using schema_objects_t = internal::schema_objects<decltype(table)>;
-    schema_objects_t storageImpl{table};
-    using context_t = internal::serializer_context<schema_objects_t>;
+    using db_objects_t = internal::db_objects_tuple<decltype(table)>;
+    db_objects_t storageImpl{table};
+    using context_t = internal::serializer_context<db_objects_t>;
     context_t context{storageImpl};
 
     std::string value;

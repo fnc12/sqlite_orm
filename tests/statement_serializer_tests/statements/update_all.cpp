@@ -46,9 +46,9 @@ TEST_CASE("statement_serializer update_all") {
                                      make_column("Fax", &Customer::fax),
                                      make_column("Email", &Customer::email),
                                      make_column("SupportRepId", &Customer::supportRepId));
-    using schema_objects_t = internal::schema_objects<decltype(contactsTable), decltype(customersTable)>;
-    auto storageImpl = schema_objects_t{contactsTable, customersTable};
-    using context_t = internal::serializer_context<schema_objects_t>;
+    using db_objects_t = internal::db_objects_tuple<decltype(contactsTable), decltype(customersTable)>;
+    auto storageImpl = db_objects_t{contactsTable, customersTable};
+    using context_t = internal::serializer_context<db_objects_t>;
     context_t context{storageImpl};
 
     auto statement =

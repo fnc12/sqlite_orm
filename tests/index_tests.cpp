@@ -96,9 +96,9 @@ TEST_CASE("Compound index") {
     };
     auto table = make_table("users", make_column("id", &User::id), make_column("name", &User::name));
 
-    using schema_objects_t = internal::schema_objects<decltype(table)>;
-    auto storageImpl = schema_objects_t{table};
-    using context_t = internal::serializer_context<schema_objects_t>;
+    using db_objects_t = internal::db_objects_tuple<decltype(table)>;
+    auto storageImpl = db_objects_t{table};
+    using context_t = internal::serializer_context<db_objects_t>;
     context_t context{storageImpl};
     std::string value;
     decltype(value) expected;
