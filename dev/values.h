@@ -4,8 +4,8 @@
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::forward
 
-#include "start_macros.h"
-#include "cxx_polyfill.h"
+#include "functional/cxx_universal.h"
+#include "functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
 

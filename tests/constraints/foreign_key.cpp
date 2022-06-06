@@ -3,6 +3,8 @@
 
 #include <type_traits>  //  std::is_same
 
+#include "../static_tests/static_tests_storage_traits.h"
+
 using namespace sqlite_orm;
 
 TEST_CASE("Foreign key") {
@@ -39,7 +41,7 @@ TEST_CASE("Foreign key") {
                                            make_column("mark", &Visit::mark),
                                            foreign_key(&Visit::location).references(&Location::id)));
     {
-        using namespace internal::storage_traits;
+        using namespace sqlite_orm::internal::storage_traits;
 
         using Storage = decltype(storage);
         STATIC_REQUIRE(storage_foreign_keys_count<Storage, Location>::value == 1);

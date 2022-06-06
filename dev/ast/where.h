@@ -3,8 +3,8 @@
 #include <type_traits>  //  std::false_type, std::true_type
 #include <utility>  //  std::move
 
-#include "../start_macros.h"
-#include "../cxx_polyfill.h"
+#include "../functional/cxx_universal.h"
+#include "../functional/cxx_type_traits_polyfill.h"
 #include "../serialize_result_type.h"
 
 namespace sqlite_orm {

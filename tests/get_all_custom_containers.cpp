@@ -6,39 +6,41 @@
 
 using namespace sqlite_orm;
 
-struct User {
-    int id = 0;
-    std::string name;
+namespace {
+    struct User {
+        int id = 0;
+        std::string name;
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-    User() = default;
-    User(int id, std::string name) : id{id}, name{move(name)} {}
+        User() = default;
+        User(int id, std::string name) : id{id}, name{move(name)} {}
 #endif
-};
+    };
 
-struct Comparator {
+    struct Comparator {
 
-    bool operator()(const User& lhs, const User& rhs) const {
-        return lhs.id == rhs.id && lhs.name == rhs.name;
-    }
-
-    bool operator()(const std::unique_ptr<User>& lhs, const User& rhs) const {
-        if(lhs) {
-            return this->operator()(*lhs, rhs);
-        } else {
-            return false;
+        bool operator()(const User& lhs, const User& rhs) const {
+            return lhs.id == rhs.id && lhs.name == rhs.name;
         }
-    }
+
+        bool operator()(const std::unique_ptr<User>& lhs, const User& rhs) const {
+            if(lhs) {
+                return this->operator()(*lhs, rhs);
+            } else {
+                return false;
+            }
+        }
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-    bool operator()(const std::optional<User>& lhs, const User& rhs) const {
-        if(lhs.has_value()) {
-            return this->operator()(*lhs, rhs);
-        } else {
-            return false;
+        bool operator()(const std::optional<User>& lhs, const User& rhs) const {
+            if(lhs.has_value()) {
+                return this->operator()(*lhs, rhs);
+            } else {
+                return false;
+            }
         }
-    }
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
-};
+    };
+}
 
 struct Tester {
     const std::vector<User>& expected;

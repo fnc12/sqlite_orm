@@ -7,6 +7,7 @@ using namespace sqlite_orm;
 
 TEST_CASE("Prepared get") {
     using namespace PreparedStatementTests;
+    using Catch::Matchers::Contains;
     using Catch::Matchers::UnorderedEquals;
 
     const int defaultVisitTime = 50;
@@ -71,13 +72,7 @@ TEST_CASE("Prepared get") {
             }
             {
                 get<0>(statement) = 4;
-                try {
-                    auto user = storage.execute(statement);
-                    std::ignore = user;
-                    REQUIRE(false);
-                } catch(const std::system_error&) {
-                    REQUIRE(true);
-                }
+                REQUIRE_THROWS_WITH(storage.execute(statement), Contains("Not found"));
             }
         }
     }
@@ -99,12 +94,7 @@ TEST_CASE("Prepared get") {
             //..
         }
         SECTION("execute") {
-            try {
-                auto user = storage.execute(statement);
-                REQUIRE(false);
-            } catch(const std::system_error&) {
-                //..
-            }
+            REQUIRE_THROWS_WITH(storage.execute(statement), Contains("Not found"));
         }
     }
     {

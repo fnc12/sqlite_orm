@@ -6,7 +6,7 @@
 #include <memory>  //  std::unique_ptr
 #include <vector>  //  std::vector
 
-#include "cxx_polyfill.h"
+#include "functional/cxx_type_traits_polyfill.h"
 #include "conditions.h"
 #include "is_base_of_template.h"
 #include "tuple_helper/tuple_filter.h"

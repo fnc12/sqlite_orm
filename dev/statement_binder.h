@@ -1,18 +1,19 @@
 #pragma once
 
 #include <sqlite3.h>
-#include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::true_type, std::false_type
+#include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::true_type, std::false_type, std::make_index_sequence, std::index_sequence
 #include <memory>  //  std::default_delete
 #include <string>  //  std::string, std::wstring
 #include <vector>  //  std::vector
-#include <cstddef>  //  std::nullptr_t
-#ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <cstring>  //  ::strncpy, ::strlen
+#include "functional/cxx_string_view.h"
+#ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <cwchar>  //  ::wcsncpy, ::wcslen
 #endif
 
-#include "start_macros.h"
-#include "cxx_polyfill.h"
+#include "functional/cxx_universal.h"
+#include "functional/cxx_type_traits_polyfill.h"
+#include "functional/cxx_functional_polyfill.h"
 #include "is_std_ptr.h"
 #include "tuple_helper/tuple_filter.h"
 #include "error_code.h"
@@ -189,15 +190,15 @@ namespace sqlite_orm {
 #endif
 
     /**
-     *  Specialization for std::nullptr_t.
+     *  Specialization for nullptr_t.
      */
     template<>
-    struct statement_binder<std::nullptr_t, void> {
-        int bind(sqlite3_stmt* stmt, int index, const std::nullptr_t&) const {
+    struct statement_binder<nullptr_t, void> {
+        int bind(sqlite3_stmt* stmt, int index, const nullptr_t&) const {
             return sqlite3_bind_null(stmt, index);
         }
 
-        void result(sqlite3_context* context, const std::nullptr_t&) const {
+        void result(sqlite3_context* context, const nullptr_t&) const {
             sqlite3_result_null(context);
         }
     };
@@ -228,7 +229,7 @@ namespace sqlite_orm {
             if(value) {
                 return statement_binder<unqualified_type>().bind(stmt, index, *value);
             } else {
-                return statement_binder<std::nullptr_t>().bind(stmt, index, nullptr);
+                return statement_binder<nullptr_t>().bind(stmt, index, nullptr);
             }
         }
     };
@@ -292,10 +293,69 @@ namespace sqlite_orm {
             void operator()(const T&) const {}
         };
 
-        template<class T>
-        struct bindable_filter;
+        struct field_value_binder : conditional_binder {
+            using conditional_binder::conditional_binder;
+            using conditional_binder::operator();
 
-        template<class... Args>
-        struct bindable_filter<std::tuple<Args...>> : tuple_filter<std::tuple<Args...>, is_bindable> {};
+            template<class T, satisfies_not<is_bindable, T> = true>
+            void operator()(const T&) const = delete;
+
+            template<class T>
+            void operator()(const T* value) {
+                if(!value) {
+                    throw std::system_error{orm_error_code::value_is_null};
+                }
+                (*this)(*value);
+            }
+        };
+
+        struct tuple_value_binder {
+            sqlite3_stmt* stmt = nullptr;
+
+            explicit tuple_value_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
+
+            template<class Tpl, class Projection>
+            void operator()(const Tpl& tpl, Projection project) const {
+                (*this)(tpl,
+                        std::make_index_sequence<std::tuple_size<Tpl>::value>{},
+                        std::forward<Projection>(project));
+            }
+
+          private:
+#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
+            template<class Tpl, size_t... Idx, class Projection>
+            void operator()(const Tpl& tpl, std::index_sequence<Idx...>, Projection project) const {
+                (this->bind(polyfill::invoke(project, std::get<Idx>(tpl)), Idx), ...);
+            }
+#else
+            template<class Tpl, size_t I, size_t... Idx, class Projection>
+            void operator()(const Tpl& tpl, std::index_sequence<I, Idx...>, Projection project) const {
+                this->bind(polyfill::invoke(project, std::get<I>(tpl)), I);
+                (*this)(tpl, std::index_sequence<Idx...>{}, std::forward<Projection>(project));
+            }
+
+            template<class Tpl, class Projection>
+            void operator()(const Tpl&, std::index_sequence<>, Projection) const {}
+#endif
+
+            template<class T>
+            void bind(const T& t, size_t idx) const {
+                int rc = statement_binder<T>{}.bind(this->stmt, int(idx + 1), t);
+                if(SQLITE_OK != rc) {
+                    throw_translated_sqlite_error(stmt);
+                }
+            }
+
+            template<class T>
+            void bind(const T* value, size_t idx) const {
+                if(!value) {
+                    throw std::system_error{orm_error_code::value_is_null};
+                }
+                (*this)(*value, idx);
+            }
+        };
+
+        template<class Tpl>
+        using bindable_filter_t = filter_tuple_t<Tpl, is_bindable>;
     }
 }

@@ -5,6 +5,8 @@
 #include <string>  //  std::string
 #include <type_traits>  //  std::is_same
 
+#include "static_tests_storage_traits.h"
+
 using namespace sqlite_orm;
 
 TEST_CASE("foreign key static") {

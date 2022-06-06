@@ -4,17 +4,14 @@
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
 #include <vector>  //  std::vector
-#include <cstddef>  //  std::nullptr_t
 #include <memory>  //  std::shared_ptr, std::unique_ptr
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>  // std::optional
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <codecvt>  //  std::codecvt_utf8_utf16
 #endif  //  SQLITE_ORM_OMITS_CODECVT
+#include "functional/cxx_optional.h"
 
-#include "start_macros.h"
-#include "cxx_polyfill.h"
+#include "functional/cxx_universal.h"
+#include "functional/cxx_type_traits_polyfill.h"
 #include "is_std_ptr.h"
 
 namespace sqlite_orm {
@@ -113,8 +110,8 @@ namespace sqlite_orm {
     };
 #endif  //  SQLITE_ORM_OMITS_CODECVT
     template<>
-    struct field_printer<std::nullptr_t, void> {
-        std::string operator()(const std::nullptr_t&) const {
+    struct field_printer<nullptr_t, void> {
+        std::string operator()(const nullptr_t&) const {
             return "null";
         }
     };
@@ -137,7 +134,7 @@ namespace sqlite_orm {
             if(t) {
                 return field_printer<unqualified_type>()(*t);
             } else {
-                return field_printer<std::nullptr_t>{}(nullptr);
+                return field_printer<nullptr_t>{}(nullptr);
             }
         }
     };

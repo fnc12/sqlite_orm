@@ -3,6 +3,30 @@ cmake_minimum_required (VERSION 3.2)
 option(SQLITE_ORM_OMITS_CODECVT "Omits codec testing" OFF)
 
 add_executable(unit_tests
+    static_tests/functional/static_if_tests.cpp
+    static_tests/functional/mpl.cpp
+    static_tests/functional/same_or_void.cpp
+    static_tests/functional/tuple_conc.cpp
+    static_tests/functional/tuple_filter.cpp
+    static_tests/functional/tuple_traits.cpp
+    static_tests/functional/tuple_transform.cpp
+    static_tests/is_printable.cpp
+    static_tests/is_bindable.cpp
+    static_tests/iterator_t.cpp
+    static_tests/arithmetic_operators_result_type.cpp
+    static_tests/node_tuple.cpp
+    static_tests/bindable_filter.cpp
+    static_tests/member_traits_tests.cpp
+    static_tests/select_return_type.cpp
+    static_tests/column.cpp
+    static_tests/foreign_key.cpp
+    static_tests/function_static_tests.cpp
+    static_tests/aggregate_function_return_types.cpp
+    static_tests/core_function_return_types.cpp
+    static_tests/column_result_t.cpp
+    static_tests/is_primary_key_insertable.cpp
+    static_tests/is_column_with_insertable_primary_key.cpp
+    tuple_iteration.cpp
     sync_schema_tests.cpp
     tests.cpp
     tests2.cpp
@@ -45,29 +69,6 @@ add_executable(unit_tests
     prepared_statement_tests/insert_explicit.cpp
     pragma_tests.cpp
     simple_query.cpp
-    static_tests/is_printable.cpp
-    static_tests/is_bindable.cpp
-    static_tests/iterator_t.cpp
-    static_tests/arithmetic_operators_result_type.cpp
-    static_tests/tuple_conc.cpp
-    static_tests/node_tuple.cpp
-    static_tests/bindable_filter.cpp
-    static_tests/count_tuple.cpp
-    static_tests/member_traits_tests.cpp
-    static_tests/select_return_type.cpp
-    static_tests/column.cpp
-    static_tests/same_or_void.cpp
-    static_tests/foreign_key.cpp
-    static_tests/tuple_filter.cpp
-    static_tests/storage_traits.cpp
-    static_tests/tuple_helper.cpp
-    static_tests/function_static_tests.cpp
-    static_tests/aggregate_function_return_types.cpp
-    static_tests/core_function_return_types.cpp
-    static_tests/column_result_t.cpp
-    static_tests/has_some_type.cpp
-    static_tests/is_primary_key_insertable.cpp
-    static_tests/is_column_with_insertable_primary_key.cpp
     constraints/default.cpp
     constraints/unique.cpp
     constraints/foreign_key.cpp
@@ -104,6 +105,7 @@ add_executable(unit_tests
     statement_serializer_tests/statements/remove.cpp
     statement_serializer_tests/statements/update_all.cpp
     statement_serializer_tests/aggregate_functions.cpp
+    statement_serializer_tests/alias_extractor.cpp
     storage_tests.cpp
     storage_non_crud_tests.cpp
     unique_cases/get_all_with_two_tables.cpp
@@ -114,16 +116,16 @@ add_executable(unit_tests
     unique_cases/join_iterator_ctor_compilation_error.cpp
     unique_cases/issue86.cpp
     unique_cases/issue937.cpp
+    unique_cases/issue663.cpp
     get_all_custom_containers.cpp
     select_constraints_tests.cpp
     backup_tests.cpp
     transaction_tests.cpp
     json.cpp
-    tuple_helper_tests.cpp
     row_id.cpp
     trigger_tests.cpp
     ast_iterator_tests.cpp
-    unique_cases/issue663.cpp
+    pointer_passing_interface.cpp
 )
 
 if(SQLITE_ORM_OMITS_CODECVT)
@@ -132,13 +134,25 @@ if(SQLITE_ORM_OMITS_CODECVT)
 endif()
 
 if (MSVC)
-    target_compile_options(unit_tests PUBLIC /MP) # multi-processor compilation
+    target_compile_options(unit_tests PUBLIC
+        # multi-processor compilation
+        /MP)
     if (MSVC_VERSION LESS_EQUAL 1900)
         target_compile_options(unit_tests PUBLIC
-			# C4503: decorated name length exceeded
+            # C4503: decorated name length exceeded
             /wd"4503"
-			# C4800: forcing value to bool (performance warning)
-			/wd"4800")
+            # C4800: forcing value to bool (performance warning)
+            /wd"4800")
+    else()
+        target_compile_options(unit_tests PUBLIC
+            # warning-level 4
+            /W4
+            # C4127: conditional expression is constant
+            /wd"4127"
+            # C4456: declaration of 'symbol' hides previous local declaration
+            /wd"4456"
+            # C4458: declaration of 'symbol' hides class member
+            /wd"4458")
     endif()
 endif()
 

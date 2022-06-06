@@ -12,9 +12,15 @@
 using namespace sqlite_orm;
 using internal::is_printable_v;
 
-struct Custom {};
-template<class Elem>
-class StringVeneer : public std::basic_string<Elem> {};
+namespace {
+    struct Custom {};
+    template<class Elem>
+    class StringVeneer : public std::basic_string<Elem> {};
+
+    struct User {
+        int id;
+    };
+}
 
 namespace sqlite_orm {
     template<>
@@ -22,9 +28,6 @@ namespace sqlite_orm {
 }
 
 TEST_CASE("is_printable") {
-    struct User {
-        int id;
-    };
     STATIC_REQUIRE(is_printable_v<bool>);
     STATIC_REQUIRE(is_printable_v<char>);
     STATIC_REQUIRE(is_printable_v<signed char>);
@@ -61,7 +64,7 @@ TEST_CASE("is_printable") {
     STATIC_REQUIRE(!is_printable_v<std::optional<User>>);
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 #ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
-    STATIC_REQUIRE(!is_printable_v<static_pointer_binding<nullptr_t, carray_pvt>>);
+    STATIC_REQUIRE(!is_printable_v<static_pointer_binding<std::nullptr_t, carray_pvt>>);
 #endif
 
     STATIC_REQUIRE(is_printable_v<Custom>);

@@ -3,10 +3,10 @@
 #include <vector>  //  std::vector
 #include <functional>  //  std::reference_wrapper
 
+#include "tuple_helper/tuple_iteration.h"
 #include "conditions.h"
 #include "select_constraints.h"
 #include "operators.h"
-#include "tuple_helper/tuple_helper.h"
 #include "core_functions.h"
 #include "prepared_statement.h"
 #include "values.h"
@@ -207,7 +207,7 @@ namespace sqlite_orm {
             using node_type = into_t<T>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            void operator()(const node_type& /*node*/, L& /*lambda*/) const {
                 //..
             }
         };

@@ -20,12 +20,8 @@ namespace sqlite_orm {
         struct storage_base;
 
         template<class T>
-        int getPragmaCallback(void* data, int argc, char** argv, char**) {
-            auto& res = *(T*)data;
-            if(argc) {
-                res = row_extractor<T>().extract(argv[0]);
-            }
-            return 0;
+        int getPragmaCallback(void* data, int argc, char** argv, char** x) {
+            return extract_single_value<T>(data, argc, argv, x);
         }
 
         template<>
@@ -143,7 +139,7 @@ namespace sqlite_orm {
                             ++index;
                             auto pk = std::atoi(argv[index++]);
                             auto hidden = std::atoi(argv[index++]);
-                            res.emplace_back(cid, name, type, notnull, dflt_value, pk, hidden);
+                            res.emplace_back(cid, move(name), move(type), notnull, move(dflt_value), pk, hidden);
                         }
                         return 0;
                     },

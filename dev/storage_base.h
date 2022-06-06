@@ -10,12 +10,14 @@
 #include <memory>  //  std::make_shared, std::shared_ptr
 #include <map>  //  std::map
 #include <type_traits>  //  std::decay, std::is_same
+#include <algorithm>  //  std::find_if
 
+#include "functional/cxx_universal.h"
+#include "functional/static_magic.h"
+#include "tuple_helper/tuple_iteration.h"
 #include "pragma.h"
 #include "limit_accessor.h"
 #include "transaction_guard.h"
-#include "statement_finalizer.h"
-#include "tuple_helper/tuple_helper.h"
 #include "row_extractor.h"
 #include "connection_holder.h"
 #include "backup.h"
@@ -76,15 +78,25 @@ namespace sqlite_orm {
           protected:
             void rename_table(sqlite3* db, const std::string& oldName, const std::string& newName) const {
                 std::stringstream ss;
-                ss << "ALTER TABLE " << quote_identifier(oldName) << " RENAME TO " << quote_identifier(newName)
+                ss << "ALTER TABLE " << streaming_identifier(oldName) << " RENAME TO " << streaming_identifier(newName)
                    << std::flush;
                 perform_void_exec(db, ss.str());
+            }
+
+            /**
+             *  Checks whether table exists in db. Doesn't check storage itself - works only with actual database.
+             *  Note: table can be not mapped to a storage
+             *  @return true if table with a given name exists in db, false otherwise.
+             */
+            bool table_exists(const std::string& tableName) {
+                auto con = this->get_connection();
+                return this->table_exists(con.get(), tableName);
             }
 
             bool table_exists(sqlite3* db, const std::string& tableName) const {
                 bool result = false;
                 std::stringstream ss;
-                ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal("table")
+                ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << streaming_identifier("table")
                    << " AND name = " << quote_string_literal(tableName) << std::flush;
                 perform_exec(
                     db,
@@ -98,6 +110,16 @@ namespace sqlite_orm {
                     },
                     &result);
                 return result;
+            }
+
+            void add_generated_cols(std::vector<const table_xinfo*>& columnsToAdd,
+                                    const std::vector<table_xinfo>& storageTableInfo) {
+                //  iterate through storage columns
+                for(const table_xinfo& storageColumnInfo: storageTableInfo) {
+                    if(storageColumnInfo.hidden) {
+                        columnsToAdd.push_back(&storageColumnInfo);
+                    }
+                }
             }
 
           public:
@@ -128,7 +150,7 @@ namespace sqlite_orm {
             }
 
             /**
-             *  Returns libsqltie3 lib version, not sqlite_orm
+             *  Returns libsqlite3 version, not sqlite_orm
              */
             std::string libversion() {
                 return sqlite3_libversion();
@@ -229,11 +251,11 @@ namespace sqlite_orm {
                     },
                     /* call = */
                     [](sqlite3_context* context, void* functionVoidPointer, int argsCount, sqlite3_value** values) {
-                        auto& functionPointer = *static_cast<F*>(functionVoidPointer);
+                        auto& function = *static_cast<F*>(functionVoidPointer);
                         args_tuple argsTuple;
                         using tuple_size = std::tuple_size<args_tuple>;
-                        values_to_tuple<args_tuple, tuple_size::value - 1>().extract(values, argsTuple, argsCount);
-                        auto result = call(functionPointer, std::move(argsTuple));
+                        values_to_tuple{}(values, argsTuple, argsCount);
+                        auto result = call(function, std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
                     },
                     delete_function_callback<F>,
@@ -292,17 +314,17 @@ namespace sqlite_orm {
                         return (int*)(new F());
                     },
                     /* step = */
-                    [](sqlite3_context* context, void* functionVoidPointer, int argsCount, sqlite3_value** values) {
-                        auto& functionPointer = *static_cast<F*>(functionVoidPointer);
+                    [](sqlite3_context*, void* functionVoidPointer, int argsCount, sqlite3_value** values) {
+                        auto& function = *static_cast<F*>(functionVoidPointer);
                         args_tuple argsTuple;
                         using tuple_size = std::tuple_size<args_tuple>;
-                        values_to_tuple<args_tuple, tuple_size::value - 1>().extract(values, argsTuple, argsCount);
-                        call(functionPointer, &F::step, move(argsTuple));
+                        values_to_tuple{}(values, argsTuple, argsCount);
+                        call(function, &F::step, move(argsTuple));
                     },
                     /* finalCall = */
                     [](sqlite3_context* context, void* functionVoidPointer) {
-                        auto& functionPointer = *static_cast<F*>(functionVoidPointer);
-                        auto result = functionPointer.fin();
+                        auto& function = *static_cast<F*>(functionVoidPointer);
+                        auto result = function.fin();
                         statement_binder<return_type>().result(context, result);
                     },
                     delete_function_callback<F>,
@@ -350,10 +372,10 @@ namespace sqlite_orm {
             }
 
             void create_collation(const std::string& name, collating_function f) {
-                collating_function* functionPointer = nullptr;
+                collating_function* function = nullptr;
                 const auto functionExists = bool(f);
                 if(functionExists) {
-                    functionPointer = &(collatingFunctions[name] = std::move(f));
+                    function = &(collatingFunctions[name] = std::move(f));
                 } else {
                     collatingFunctions.erase(name);
                 }
@@ -364,7 +386,7 @@ namespace sqlite_orm {
                     auto resultCode = sqlite3_create_collation(db,
                                                                name.c_str(),
                                                                SQLITE_UTF8,
-                                                               functionPointer,
+                                                               function,
                                                                functionExists ? collate_callback : nullptr);
                     if(resultCode != SQLITE_OK) {
                         throw_translated_sqlite_error(db);
@@ -488,11 +510,12 @@ namespace sqlite_orm {
             }
 
           protected:
-            storage_base(const std::string& filename_, int foreignKeysCount) :
+            storage_base(std::string filename, int foreignKeysCount) :
                 pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
-                inMemory(filename_.empty() || filename_ == ":memory:"),
-                connection(std::make_unique<connection_holder>(filename_)), cachedForeignKeysCount(foreignKeysCount) {
+                inMemory(filename.empty() || filename == ":memory:"),
+                connection(std::make_unique<connection_holder>(move(filename))),
+                cachedForeignKeysCount(foreignKeysCount) {
                 if(this->inMemory) {
                     this->connection->retain();
                     this->on_open_internal(this->connection->get());
@@ -546,17 +569,7 @@ namespace sqlite_orm {
 
             bool foreign_keys(sqlite3* db) {
                 bool result = false;
-                perform_exec(
-                    db,
-                    "PRAGMA foreign_keys",
-                    [](void* data, int argc, char** argv, char**) -> int {
-                        auto& res = *(bool*)data;
-                        if(argc) {
-                            res = row_extractor<bool>().extract(argv[0]);
-                        }
-                        return 0;
-                    },
-                    &result);
+                perform_exec(db, "PRAGMA foreign_keys", extract_single_value<bool>, &result);
                 return result;
             }
 
@@ -704,19 +717,7 @@ namespace sqlite_orm {
 
             std::string current_timestamp(sqlite3* db) {
                 std::string result;
-                perform_exec(
-                    db,
-                    "SELECT CURRENT_TIMESTAMP",
-                    [](void* data, int argc, char** argv, char**) -> int {
-                        auto& res = *(std::string*)data;
-                        if(argc) {
-                            if(argv[0]) {
-                                res = row_extractor<std::string>().extract(argv[0]);
-                            }
-                        }
-                        return 0;
-                    },
-                    &result);
+                perform_exec(db, "SELECT CURRENT_TIMESTAMP", extract_single_value<std::string>, &result);
                 return result;
             }
 
@@ -738,21 +739,6 @@ namespace sqlite_orm {
                 } else {
                     return 0;
                 }
-            }
-
-            //  returns foreign keys count in storage definition
-            template<class S>
-            static int foreign_keys_count(const S& storageImpl) {
-                auto res = 0;
-
-                storageImpl.for_each([&res](const auto& tImpl) {
-                    using qualified_type = std::decay_t<decltype(tImpl)>;
-                    static_if<std::is_base_of<basic_table, table_type_or_none_t<qualified_type>>::value>(
-                        [&res](const auto& tImpl) {
-                            res += tImpl.table.foreign_keys_count();
-                        })(tImpl);
-                });
-                return res;
             }
 
             bool calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,

@@ -6,10 +6,10 @@
 #include <tuple>  //  std::tuple
 #include <functional>  //  std::function
 #include <algorithm>  //  std::min
-#include <cstddef>
+#include <utility>  //  std::move, std::forward
 
-#include "start_macros.h"
-#include "cxx_polyfill.h"
+#include "functional/cxx_universal.h"
+#include "functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
 
@@ -159,7 +159,7 @@ namespace sqlite_orm {
 
         // Always allow binding nullptr to a pointer argument
         template<size_t I, class PointerArg>
-        constexpr bool is_same_pvt_v<I, PointerArg, std::nullptr_t, polyfill::void_t<typename PointerArg::tag>> = true;
+        constexpr bool is_same_pvt_v<I, PointerArg, nullptr_t, polyfill::void_t<typename PointerArg::tag>> = true;
 
 #if __cplusplus >= 201703L  // using C++17 or higher
         template<size_t I, const char *PointerArg, const char *Binding>

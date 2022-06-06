@@ -18,16 +18,49 @@ configuration:
   - Release
 
 environment:
+  appveyor_yml_disable_ps_linux: true
   matrix:
-    - job_name: Visual Studio 2015 Update 3, x64
+    - job_name: clang, C++14
+      appveyor_build_worker_image: Ubuntu
+      CC: clang
+      CXX: clang++
+      SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_14=ON"
+
+    - job_name: gcc, C++14
+      appveyor_build_worker_image: Ubuntu
+      CC: gcc
+      CXX: g++
+      SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_14=ON"
+
+    # Representative for C++14
+    - job_name: Visual Studio 2015 Update 3, x64, C++14
       appveyor_build_worker_image: Visual Studio 2015
       platform: x64
       SQLITE_ORM_CXX_STANDARD: ""
 
-    - job_name: Visual Studio 2022, x64, C++14
-      appveyor_build_worker_image: Visual Studio 2022
-      platform: x64
-      SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_14=ON"
+    - job_name: clang, C++17
+      appveyor_build_worker_image: Ubuntu
+      CC: clang
+      CXX: clang++
+      SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
+
+    - job_name: clang, C++20
+      appveyor_build_worker_image: Ubuntu
+      CC: clang
+      CXX: clang++
+      SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
+
+    - job_name: gcc, C++17
+      appveyor_build_worker_image: Ubuntu
+      CC: gcc
+      CXX: g++
+      SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
+
+    - job_name: gcc, C++20
+      appveyor_build_worker_image: Ubuntu
+      CC: gcc
+      CXX: g++
+      SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
 
     - job_name: Visual Studio 2022, x64, C++17
       appveyor_build_worker_image: Visual Studio 2022
@@ -47,26 +80,82 @@ environment:
 matrix:
   fast_finish: true
 
-init:
-  - echo %appveyor_build_worker_image% - %platform% - %configuration%
-  - if "%platform%"=="x64" (set architecture=-A x64)
-  - if "%platform%"=="x86" (set architecture=-A Win32)
-  - if "%appveyor_build_worker_image%"=="Visual Studio 2022" (set generator="Visual Studio 17 2022" %architecture%)
-  - if "%appveyor_build_worker_image%"=="Visual Studio 2019" (set generator="Visual Studio 16 2019" %architecture%)
-  - if "%appveyor_build_worker_image%"=="Visual Studio 2017" (set generator="Visual Studio 15 2017" %architecture%)
-  - if "%appveyor_build_worker_image%"=="Visual Studio 2015" (set generator="Visual Studio 14 2015" %architecture%)
+for:
+-
+  # Windows
+  matrix:
+    only:
+      - appveyor_build_worker_image: Visual Studio 2015
+      - appveyor_build_worker_image: Visual Studio 2022
+  init:
+    - |-
+      echo %appveyor_build_worker_image% - %platform% - %configuration%
+      if "%platform%"=="x64" (set architecture=-A x64)
+      if "%platform%"=="x86" (set architecture=-A Win32)
+      if "%appveyor_build_worker_image%"=="Visual Studio 2022" (set generator="Visual Studio 17 2022" %architecture%)
+      if "%appveyor_build_worker_image%"=="Visual Studio 2015" (set generator="Visual Studio 14 2015" %architecture%)
+  install:
+    - |-
+      C:\Tools\vcpkg\vcpkg integrate install
+      vcpkg install sqlite3:%platform%-windows
+  before_build:
+    - |-
+      mkdir compile
+      cd compile
+      cmake %SQLITE_ORM_CXX_STANDARD% -DSqliteOrm_BuildTests=ON .. -G %generator% -DCMAKE_TOOLCHAIN_FILE=C:/Tools/vcpkg/scripts/buildsystems/vcpkg.cmake
+  # build examples, and run tests (ie make & make test)
+  build_script:
+    - |-
+      cmake --build . --config %configuration%
+      ctest --verbose --output-on-failure --build-config %configuration%
 
-install:
-  - C:\Tools\vcpkg\vcpkg integrate install
-  - vcpkg install sqlite3:%platform%-windows
-
-# scripts to run before build
-before_build:
-  - mkdir compile
-  - cd compile
-  - cmake %SQLITE_ORM_CXX_STANDARD% -DSqliteOrm_BuildTests=ON .. -G %generator% -DCMAKE_TOOLCHAIN_FILE=C:/Tools/vcpkg/scripts/buildsystems/vcpkg.cmake
-
-# build examples, and run tests (ie make & make test)
-build_script:
-  - cmake --build . --config %configuration%
-  - ctest --verbose --output-on-failure --build-config %configuration%
+-
+  # Linux
+  matrix:
+    only:
+      - appveyor_build_worker_image: Ubuntu
+  init:
+    - |-
+      echo $appveyor_build_worker_image
+      $CXX --version
+  # using custom vcpkg triplets for building and linking dynamic dependent libraries
+  install:
+    - |-
+      $HOME/vcpkg/vcpkg integrate install --overlay-triplets=vcpkg/triplets
+      vcpkg install sqlite3 --overlay-triplets=vcpkg/triplets
+  before_build:
+    - |-
+      mkdir compile
+      cd compile
+      cmake $SQLITE_ORM_CXX_STANDARD -DSqliteOrm_BuildTests=ON .. -DCMAKE_TOOLCHAIN_FILE=$HOME/vcpkg/scripts/buildsystems/vcpkg.cmake
+  # build examples, and run tests (ie make & make test)
+  build_script:
+    - |-
+      cmake --build .
+      ctest --verbose --output-on-failure
+-
+  # macOS
+  matrix:
+    only:
+      - appveyor_build_worker_image: macOS
+  init:
+    - |-
+      echo $appveyor_build_worker_image
+      $CXX --version
+  # using custom vcpkg triplets for building and linking dynamic dependent libraries
+  install:
+    - |-
+      git clone --depth 1 --branch 2022.05.10 https://github.com/microsoft/vcpkg.git $HOME/vcpkg
+      $HOME/vcpkg/booststrap.sh
+      $HOME/vcpkg/vcpkg integrate install --overlay-triplets=vcpkg/triplets
+      vcpkg install sqlite3 --overlay-triplets=vcpkg/triplets
+  before_build:
+    - |-
+      mkdir compile
+      cd compile
+      cmake $SQLITE_ORM_CXX_STANDARD -DSqliteOrm_BuildTests=ON .. -DCMAKE_TOOLCHAIN_FILE=$HOME/vcpkg/scripts/buildsystems/vcpkg.cmake
+  # build examples, and run tests (ie make & make test)
+  build_script:
+    - |-
+      cmake --build .
+      ctest --verbose --output-on-failure

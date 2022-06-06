@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../dev/start_macros.h"
+#include "../../dev/functional/start_macros.h"
 #include "../../dev/type_traits.h"
 #include "../../dev/error_code.h"
 #include "../../dev/type_printer.h"
@@ -14,7 +14,6 @@
 #include "../../dev/alias.h"
 #include "../../dev/join_iterator.h"
 #include "../../dev/core_functions.h"
-#include "../../dev/typed_comparator.h"
 #include "../../dev/select_constraints.h"
 #include "../../dev/table_info.h"
 #include "../../dev/triggers.h"
@@ -23,7 +22,6 @@
 #include "../../dev/pointer_value.h"
 #include "../../dev/statement_binder.h"
 #include "../../dev/row_extractor.h"
-#include "../../dev/util.h"
 #include "../../dev/sync_schema_result.h"
 #include "../../dev/index.h"
 #include "../../dev/mapped_type_proxy.h"
@@ -38,4 +36,4 @@
 #include "../../dev/carray.h"
 #include "../../dev/dbstat.h"
 #include "../../dev/interface_definitions.h"
-#include "../../dev/finish_macros.h"
+#include "../../dev/functional/finish_macros.h"
