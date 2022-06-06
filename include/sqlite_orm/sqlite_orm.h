@@ -1076,6 +1076,17 @@ namespace sqlite_orm {
             return std::index_sequence<values[sizeof...(Value) - 1u - IdxOfValue]...>{};
         }
 
+        template<size_t Value, size_t IdxOfValue>
+        SQLITE_ORM_CONSTEVAL std::index_sequence<Value> reorder_index_sequence(std::index_sequence<Value>,
+                                                                               std::index_sequence<IdxOfValue>) {
+            return {};
+        }
+
+        inline SQLITE_ORM_CONSTEVAL std::index_sequence<> reorder_index_sequence(std::index_sequence<>,
+                                                                                 std::index_sequence<>) {
+            return {};
+        }
+
         /**
          *  Reverse the values of an index_sequence.
          */
