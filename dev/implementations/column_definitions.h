@@ -8,6 +8,7 @@
 
 #include "../functional/cxx_core_features.h"
 #include "../functional/static_magic.h"
+#include "../tuple_helper/index_sequence_util.h"
 #include "../tuple_helper/tuple_filter.h"
 #include "../tuple_helper/tuple_traits.h"
 #include "../default_value_extractor.h"

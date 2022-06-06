@@ -1045,6 +1045,48 @@ namespace sqlite_orm {
 
 // #include "../functional/cxx_universal.h"
 
+// #include "index_sequence_util.h"
+
+#include <type_traits>  //  std::index_sequence, std::make_index_sequence
+
+// #include "../functional/cxx_universal.h"
+
+#ifdef SQLITE_ORM_RELAXED_CONSTEXPR
+#include <array>
+#endif
+
+namespace sqlite_orm {
+    namespace internal {
+        /**
+         *  Get the first value of an index_sequence.
+         */
+        template<size_t I, size_t... Idx>
+        SQLITE_ORM_CONSTEVAL size_t first_index_sequence_value(std::index_sequence<I, Idx...>) {
+            return I;
+        }
+
+#ifdef SQLITE_ORM_RELAXED_CONSTEXPR
+        /**
+         *  Reorder the values of an index_sequence according to the positions from a second sequence.
+         */
+        template<size_t... Value, size_t... IdxOfValue>
+        SQLITE_ORM_CONSTEVAL auto reorder_index_sequence(std::index_sequence<Value...>,
+                                                         std::index_sequence<IdxOfValue...>) {
+            constexpr std::array<size_t, sizeof...(Value)> values{Value...};
+            return std::index_sequence<values[sizeof...(Value) - 1u - IdxOfValue]...>{};
+        }
+
+        /**
+         *  Reverse the values of an index_sequence.
+         */
+        template<size_t... Idx>
+        SQLITE_ORM_CONSTEVAL auto reverse_index_sequence(std::index_sequence<Idx...>) {
+            return reorder_index_sequence(std::index_sequence<Idx...>{}, std::make_index_sequence<sizeof...(Idx)>{});
+        }
+#endif
+    }
+}
+
 namespace sqlite_orm {
     namespace internal {
 
@@ -1069,14 +1111,6 @@ namespace sqlite_orm {
 
         template<class Tpl, class Seq>
         using tuple_from_index_sequence_t = typename tuple_from_index_sequence<Tpl, Seq>::type;
-
-        /**
-         *  Get the first value of an index_sequence.
-         */
-        template<size_t I, size_t... Idx>
-        SQLITE_ORM_CONSTEVAL size_t first_index_sequence_value(std::index_sequence<I, Idx...>) {
-            return I;
-        }
 
         template<class... Seq>
         struct concat_idx_seq {
@@ -9854,6 +9888,12 @@ namespace sqlite_orm {
 
 // #include "typed_comparator.h"
 
+// #include "tuple_helper/index_sequence_util.h"
+
+// #include "tuple_helper/tuple_filter.h"
+
+// #include "tuple_helper/tuple_traits.h"
+
 // #include "tuple_helper/tuple_iteration.h"
 
 #include <tuple>  //  std::tuple, std::get, std::tuple_element, std::tuple_size
@@ -9865,6 +9905,8 @@ namespace sqlite_orm {
 // #include "../functional/cxx_type_traits_polyfill.h"
 
 // #include "../functional/cxx_functional_polyfill.h"
+
+// #include "index_sequence_util.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -9888,12 +9930,9 @@ namespace sqlite_orm {
 
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
         template<bool reversed = false, class Tpl, size_t... Idx, class L>
-        void iterate_tuple(const Tpl& tpl, [[maybe_unused]] std::index_sequence<Idx...> seq, L&& lambda) {
-            if constexpr(reversed && sizeof...(Idx) > 0) {
-                // reversed iteration (using a properly reversed variadic index sequence)
-                constexpr size_t nTypes = std::tuple_size<Tpl>::value;
-                constexpr size_t baseIndex = first_index_sequence_value(seq);
-                (lambda(std::get<nTypes - 1u - Idx + baseIndex>(tpl)), ...);
+        void iterate_tuple(const Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
+            if constexpr(reversed) {
+                iterate_tuple(tpl, reverse_index_sequence(std::index_sequence<Idx...>{}), std::forward<L>(lambda));
             } else {
                 (lambda(std::get<Idx>(tpl)), ...);
             }
@@ -9985,10 +10024,6 @@ namespace sqlite_orm {
         }
     }
 }
-
-// #include "tuple_helper/tuple_traits.h"
-
-// #include "tuple_helper/tuple_filter.h"
 
 // #include "member_traits/member_traits.h"
 
@@ -10289,13 +10324,12 @@ namespace sqlite_orm {
 #include <typeindex>  //  std::type_index
 #include <string>  //  std::string
 #include <type_traits>  //  std::is_same, std::decay, std::make_index_sequence, std::index_sequence
-#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
-#include <algorithm>  //  std::min, std::max
-#endif
 
 // #include "functional/cxx_universal.h"
 
 // #include "functional/static_magic.h"
+
+// #include "tuple_helper/tuple_iteration.h"
 
 // #include "type_traits.h"
 
@@ -10307,37 +10341,20 @@ namespace sqlite_orm {
 namespace sqlite_orm {
     namespace internal {
 
-#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
-        template<class DBOs, size_t... Idx, class L, satisfies<is_db_objects, DBOs> = true>
-        void for_each([[maybe_unused]] const DBOs& dbObjects, std::index_sequence<Idx...>, [[maybe_unused]] L& lambda) {
-            if constexpr(sizeof...(Idx) > 0) {
-                constexpr size_t lowerIndex = std::min(std::initializer_list<size_t>{Idx...});
-                constexpr size_t upperIndex = std::max(std::initializer_list<size_t>{Idx...});
-                constexpr float pivot = sizeof...(Idx) > 1 ? (upperIndex + lowerIndex) / 2.f : lowerIndex;
-                (lambda(std::get<size_t(pivot + (pivot - Idx))>(dbObjects)), ...);
-            }
-        }
-#else
-        template<class DBOs, class L, satisfies<is_db_objects, DBOs> = true>
-        void for_each(const DBOs&, std::index_sequence<>, L& /*lambda*/) {}
-
-        template<class DBOs, size_t I, size_t... Idx, class L, satisfies<is_db_objects, DBOs> = true>
-        void for_each(const DBOs& dbObjects, std::index_sequence<I, Idx...>, L& lambda) {
-            // reversed iteration
-            for_each(dbObjects, std::index_sequence<Idx...>{}, lambda);
-            lambda(std::get<I>(dbObjects));
-        }
-#endif
-
+        /**
+         *  Call lambda for all specified database objects (in reverse order).
+         */
         template<class DBOs, class L, satisfies<is_db_objects, DBOs> = true>
         void for_each(const DBOs& dbObjects, L lambda) {
-            using all_index_sequence = std::make_index_sequence<std::tuple_size<DBOs>::value>;
-            for_each(dbObjects, all_index_sequence{}, lambda);
+            iterate_tuple<true>(dbObjects, lambda);
         }
 
-        template<template<class...> class SeqOp, class DBOs, class L, satisfies<is_db_objects, DBOs> = true>
+        /**
+         *  Call lambda for database objects specified in the index sequence filter (in reverse order).
+         */
+        template<template<class...> class FilterSeqOp, class DBOs, class L, satisfies<is_db_objects, DBOs> = true>
         void for_each(const DBOs& dbObjects, L lambda) {
-            for_each(dbObjects, SeqOp<DBOs>{}, lambda);
+            iterate_tuple<true>(dbObjects, FilterSeqOp<DBOs>{}, lambda);
         }
 
         template<class DBOs>
@@ -18950,6 +18967,8 @@ namespace sqlite_orm {
 // #include "../functional/cxx_core_features.h"
 
 // #include "../functional/static_magic.h"
+
+// #include "../tuple_helper/index_sequence_util.h"
 
 // #include "../tuple_helper/tuple_filter.h"
 

@@ -4,6 +4,7 @@
 #include <tuple>  //  std::tuple
 
 #include "../functional/cxx_universal.h"
+#include "index_sequence_util.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -29,14 +30,6 @@ namespace sqlite_orm {
 
         template<class Tpl, class Seq>
         using tuple_from_index_sequence_t = typename tuple_from_index_sequence<Tpl, Seq>::type;
-
-        /**
-         *  Get the first value of an index_sequence.
-         */
-        template<size_t I, size_t... Idx>
-        SQLITE_ORM_CONSTEVAL size_t first_index_sequence_value(std::index_sequence<I, Idx...>) {
-            return I;
-        }
 
         template<class... Seq>
         struct concat_idx_seq {

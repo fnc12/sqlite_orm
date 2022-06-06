@@ -7,6 +7,7 @@
 #include "../functional/cxx_universal.h"
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/cxx_functional_polyfill.h"
+#include "index_sequence_util.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -30,12 +31,9 @@ namespace sqlite_orm {
 
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
         template<bool reversed = false, class Tpl, size_t... Idx, class L>
-        void iterate_tuple(const Tpl& tpl, [[maybe_unused]] std::index_sequence<Idx...> seq, L&& lambda) {
-            if constexpr(reversed && sizeof...(Idx) > 0) {
-                // reversed iteration (using a properly reversed variadic index sequence)
-                constexpr size_t nTypes = std::tuple_size<Tpl>::value;
-                constexpr size_t baseIndex = first_index_sequence_value(seq);
-                (lambda(std::get<nTypes - 1u - Idx + baseIndex>(tpl)), ...);
+        void iterate_tuple(const Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
+            if constexpr(reversed) {
+                iterate_tuple(tpl, reverse_index_sequence(std::index_sequence<Idx...>{}), std::forward<L>(lambda));
             } else {
                 (lambda(std::get<Idx>(tpl)), ...);
             }
