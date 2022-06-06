@@ -16,9 +16,9 @@ namespace sqlite_orm {
          * V is value type just like regular `row_extractor` has
          * T is table info class `table_t`
          */
-        template<class V, class T>
+        template<class V, class Table>
         struct mapped_row_extractor {
-            using table_info_t = T;
+            using table_type = Table;
 
             V extract(sqlite3_stmt* stmt, int /*columnIndex*/) const {
                 V res;
@@ -27,7 +27,7 @@ namespace sqlite_orm {
                 return res;
             }
 
-            const table_info_t& tableInfo;
+            const table_type& tableInfo;
         };
 
     }

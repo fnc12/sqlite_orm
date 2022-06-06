@@ -13,9 +13,9 @@ namespace sqlite_orm {
             return {};
         }
 
-        template<class T, class I>
-        mapped_row_extractor<T, I> make_row_extractor(const I* tableInfo) {
-            return {*tableInfo};
+        template<class T, class Table>
+        mapped_row_extractor<T, Table> make_row_extractor(const Table* table) {
+            return {*table};
         }
     }
 

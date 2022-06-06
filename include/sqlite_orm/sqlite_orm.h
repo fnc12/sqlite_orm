@@ -9135,6 +9135,8 @@ namespace sqlite_orm {
     namespace internal {
 
         /**
+         *  SFINAE friendly facility to pick a table definition (`table_t`) from a tuple of database objects.
+         *  
          *  DBOs - db_objects_tuple type
          *  Lookup - mapped data type
          */
@@ -9150,6 +9152,8 @@ namespace sqlite_orm {
 #endif
 
         /**
+         *  SFINAE friendly facility to pick a table definition (`table_t`) from a tuple of database objects.
+         *
          *  DBOs - db_objects_tuple type, possibly const-qualified
          *  Lookup - 'table' type, mapped data type
          */
@@ -9157,6 +9161,9 @@ namespace sqlite_orm {
         using storage_pick_table_t = typename storage_pick_table<Lookup, std::remove_const_t<DBOs>>::type;
 
         /**
+         *  Find a table definition (`table_t`) from a tuple of database objects;
+         *  `std::nonesuch` if not found.
+         *
          *  DBOs - db_objects_tuple type
          *  Lookup - mapped data type
          */
@@ -9172,6 +9179,9 @@ namespace sqlite_orm {
 #endif
 
         /**
+         *  Find a table definition (`table_t`) from a tuple of database objects;
+         *  `std::nonesuch` if not found.
+         *
          *  DBOs - db_objects_tuple type, possibly const-qualified
          *  Lookup - mapped data type
          */
@@ -10535,9 +10545,9 @@ namespace sqlite_orm {
          * V is value type just like regular `row_extractor` has
          * T is table info class `table_t`
          */
-        template<class V, class T>
+        template<class V, class Table>
         struct mapped_row_extractor {
-            using table_info_t = T;
+            using table_type = Table;
 
             V extract(sqlite3_stmt* stmt, int /*columnIndex*/) const {
                 V res;
@@ -10546,7 +10556,7 @@ namespace sqlite_orm {
                 return res;
             }
 
-            const table_info_t& tableInfo;
+            const table_type& tableInfo;
         };
 
     }
@@ -10562,9 +10572,9 @@ namespace sqlite_orm {
             return {};
         }
 
-        template<class T, class I>
-        mapped_row_extractor<T, I> make_row_extractor(const I* tableInfo) {
-            return {*tableInfo};
+        template<class T, class Table>
+        mapped_row_extractor<T, Table> make_row_extractor(const Table* table) {
+            return {*table};
         }
     }
 
@@ -18343,15 +18353,12 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class T, class SFINAE = void>
-        struct node_tuple;
-
-        template<class T>
-        using node_tuple_t = typename node_tuple<T>::type;
-
-        template<class T, class SFINAE>
         struct node_tuple {
             using type = std::tuple<T>;
         };
+
+        template<class T>
+        using node_tuple_t = typename node_tuple<T>::type;
 
         template<>
         struct node_tuple<void, void> {

@@ -52,6 +52,8 @@ namespace sqlite_orm {
     namespace internal {
 
         /**
+         *  SFINAE friendly facility to pick a table definition (`table_t`) from a tuple of database objects.
+         *  
          *  DBOs - db_objects_tuple type
          *  Lookup - mapped data type
          */
@@ -67,6 +69,8 @@ namespace sqlite_orm {
 #endif
 
         /**
+         *  SFINAE friendly facility to pick a table definition (`table_t`) from a tuple of database objects.
+         *
          *  DBOs - db_objects_tuple type, possibly const-qualified
          *  Lookup - 'table' type, mapped data type
          */
@@ -74,6 +78,9 @@ namespace sqlite_orm {
         using storage_pick_table_t = typename storage_pick_table<Lookup, std::remove_const_t<DBOs>>::type;
 
         /**
+         *  Find a table definition (`table_t`) from a tuple of database objects;
+         *  `std::nonesuch` if not found.
+         *
          *  DBOs - db_objects_tuple type
          *  Lookup - mapped data type
          */
@@ -89,6 +96,9 @@ namespace sqlite_orm {
 #endif
 
         /**
+         *  Find a table definition (`table_t`) from a tuple of database objects;
+         *  `std::nonesuch` if not found.
+         *
          *  DBOs - db_objects_tuple type, possibly const-qualified
          *  Lookup - mapped data type
          */

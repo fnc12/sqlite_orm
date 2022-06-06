@@ -24,15 +24,12 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class T, class SFINAE = void>
-        struct node_tuple;
-
-        template<class T>
-        using node_tuple_t = typename node_tuple<T>::type;
-
-        template<class T, class SFINAE>
         struct node_tuple {
             using type = std::tuple<T>;
         };
+
+        template<class T>
+        using node_tuple_t = typename node_tuple<T>::type;
 
         template<>
         struct node_tuple<void, void> {
