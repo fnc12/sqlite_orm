@@ -4,7 +4,6 @@
 #include <tuple>  //  std::tuple
 
 #include "../functional/cxx_universal.h"
-#include "index_sequence_util.h"
 
 namespace sqlite_orm {
     namespace internal {

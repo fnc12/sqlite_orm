@@ -16,29 +16,13 @@
 namespace sqlite_orm {
     namespace internal {
 
-        /**
-         *  Call lambda for all specified database objects (in reverse order).
-         */
-        template<class DBOs, class L, satisfies<is_db_objects, DBOs> = true>
-        void for_each(const DBOs& dbObjects, L lambda) {
-            iterate_tuple<true>(dbObjects, lambda);
-        }
-
-        /**
-         *  Call lambda for database objects specified in the index sequence filter (in reverse order).
-         */
-        template<template<class...> class FilterSeqOp, class DBOs, class L, satisfies<is_db_objects, DBOs> = true>
-        void for_each(const DBOs& dbObjects, L lambda) {
-            iterate_tuple<true>(dbObjects, FilterSeqOp<DBOs>{}, lambda);
-        }
-
         template<class DBOs>
         using tables_index_sequence = filter_tuple_sequence_t<DBOs, is_table>;
 
         template<class DBOs, satisfies<is_db_objects, DBOs> = true>
         int foreign_keys_count(const DBOs& dbObjects) {
             int res = 0;
-            for_each<tables_index_sequence>(dbObjects, [&res](const auto& table) {
+            iterate_tuple<true>(dbObjects, tables_index_sequence<DBOs>{}, [&res](const auto& table) {
                 res += table.foreign_keys_count();
             });
             return res;
@@ -56,7 +40,7 @@ namespace sqlite_orm {
         template<class DBOs, satisfies<is_db_objects, DBOs> = true>
         std::string find_table_name(const DBOs& dbObjects, const std::type_index& ti) {
             std::string res;
-            for_each<tables_index_sequence>(dbObjects, [&ti, &res](const auto& table) {
+            iterate_tuple<true>(dbObjects, tables_index_sequence<DBOs>{}, [&ti, &res](const auto& table) {
                 using table_type = std::decay_t<decltype(table)>;
                 if(ti == typeid(object_type_t<table_type>)) {
                     res = table.name;

@@ -984,7 +984,7 @@ namespace sqlite_orm {
             std::map<std::string, sync_schema_result> sync_schema(bool preserve = false) {
                 auto con = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
-                for_each(this->db_objects, [this, db = con.get(), preserve, &result](auto& schemaObject) {
+                iterate_tuple<true>(this->db_objects, [this, db = con.get(), preserve, &result](auto& schemaObject) {
                     sync_schema_result status = this->sync_table(schemaObject, db, preserve);
                     result.emplace(schemaObject.name, status);
                 });
@@ -999,7 +999,7 @@ namespace sqlite_orm {
             std::map<std::string, sync_schema_result> sync_schema_simulate(bool preserve = false) {
                 auto con = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
-                for_each(this->db_objects, [this, db = con.get(), preserve, &result](auto& schemaObject) {
+                iterate_tuple<true>(this->db_objects, [this, db = con.get(), preserve, &result](auto& schemaObject) {
                     sync_schema_result status = this->schema_status(schemaObject, db, preserve, nullptr);
                     result.emplace(schemaObject.name, status);
                 });
@@ -1423,39 +1423,43 @@ namespace sqlite_orm {
             template<class O>
             bool has_dependent_rows(const O& object) {
                 auto res = false;
-                for_each<tables_index_sequence>(this->db_objects, [this, &object, &res](auto& table) {
-                    if(res) {
-                        return;
-                    }
-                    table.template for_each_foreign_key_to<O>([this, &table, &object, &res](auto& foreignKey) {
-                        std::stringstream ss;
-                        ss << "SELECT COUNT(*)"
-                           << " FROM " << streaming_identifier(table.name) << " WHERE ";
-                        iterate_tuple(foreignKey.columns, [&ss, &table, first = true](auto& colRef) mutable {
-                            auto* columnName = table.find_column_name(colRef);
-                            if(!columnName) {
-                                throw std::system_error{orm_error_code::column_not_found};
-                            }
+                iterate_tuple<true>(
+                    this->db_objects,
+                    tables_index_sequence<db_objects_type>{},
+                    [this, &object, &res](auto& table) {
+                        if(res) {
+                            return;
+                        }
+                        table.template for_each_foreign_key_to<O>([this, &table, &object, &res](auto& foreignKey) {
+                            std::stringstream ss;
+                            ss << "SELECT COUNT(*)"
+                               << " FROM " << streaming_identifier(table.name) << " WHERE ";
+                            iterate_tuple(foreignKey.columns, [&ss, &table, first = true](auto& colRef) mutable {
+                                auto* columnName = table.find_column_name(colRef);
+                                if(!columnName) {
+                                    throw std::system_error{orm_error_code::column_not_found};
+                                }
 
-                            constexpr std::array<const char*, 2> sep = {" AND ", ""};
-                            ss << sep[std::exchange(first, false)] << streaming_identifier(*columnName) << " = ?";
+                                constexpr std::array<const char*, 2> sep = {" AND ", ""};
+                                ss << sep[std::exchange(first, false)] << streaming_identifier(*columnName) << " = ?";
+                            });
+                            ss.flush();
+
+                            auto con = this->get_connection();
+                            sqlite3_stmt* stmt = prepare_stmt(con.get(), ss.str());
+                            statement_finalizer finalizer{stmt};
+
+                            auto& targetTable = this->get_table<O>();
+                            tuple_value_binder{stmt}(foreignKey.references,
+                                                     [&targetTable, &object](auto& memberPointer) {
+                                                         return targetTable.object_field_value(object, memberPointer);
+                                                     });
+                            perform_step<SQLITE_ROW>(stmt);
+                            auto countResult = sqlite3_column_int(stmt, 0);
+                            res = countResult > 0;
+                            perform_step(stmt);
                         });
-                        ss.flush();
-
-                        auto con = this->get_connection();
-                        sqlite3_stmt* stmt = prepare_stmt(con.get(), ss.str());
-                        statement_finalizer finalizer{stmt};
-
-                        auto& targetTable = this->get_table<O>();
-                        tuple_value_binder{stmt}(foreignKey.references, [&targetTable, &object](auto& memberPointer) {
-                            return targetTable.object_field_value(object, memberPointer);
-                        });
-                        perform_step<SQLITE_ROW>(stmt);
-                        auto countResult = sqlite3_column_int(stmt, 0);
-                        res = countResult > 0;
-                        perform_step(stmt);
                     });
-                });
                 return res;
             }
         };  // struct storage_t

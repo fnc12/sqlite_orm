@@ -1045,59 +1045,6 @@ namespace sqlite_orm {
 
 // #include "../functional/cxx_universal.h"
 
-// #include "index_sequence_util.h"
-
-#include <type_traits>  //  std::index_sequence, std::make_index_sequence
-
-// #include "../functional/cxx_universal.h"
-
-#ifdef SQLITE_ORM_RELAXED_CONSTEXPR
-#include <array>
-#endif
-
-namespace sqlite_orm {
-    namespace internal {
-        /**
-         *  Get the first value of an index_sequence.
-         */
-        template<size_t I, size_t... Idx>
-        SQLITE_ORM_CONSTEVAL size_t first_index_sequence_value(std::index_sequence<I, Idx...>) {
-            return I;
-        }
-
-#ifdef SQLITE_ORM_RELAXED_CONSTEXPR
-        /**
-         *  Reorder the values of an index_sequence according to the positions from a second sequence.
-         */
-        template<size_t... Value, size_t... IdxOfValue>
-        SQLITE_ORM_CONSTEVAL auto reorder_index_sequence(std::index_sequence<Value...>,
-                                                         std::index_sequence<IdxOfValue...>) {
-            constexpr std::array<size_t, sizeof...(Value)> values{Value...};
-            return std::index_sequence<values[sizeof...(Value) - 1u - IdxOfValue]...>{};
-        }
-
-        template<size_t Value, size_t IdxOfValue>
-        SQLITE_ORM_CONSTEVAL std::index_sequence<Value> reorder_index_sequence(std::index_sequence<Value>,
-                                                                               std::index_sequence<IdxOfValue>) {
-            return {};
-        }
-
-        inline SQLITE_ORM_CONSTEVAL std::index_sequence<> reorder_index_sequence(std::index_sequence<>,
-                                                                                 std::index_sequence<>) {
-            return {};
-        }
-
-        /**
-         *  Reverse the values of an index_sequence.
-         */
-        template<size_t... Idx>
-        SQLITE_ORM_CONSTEVAL auto reverse_index_sequence(std::index_sequence<Idx...>) {
-            return reorder_index_sequence(std::index_sequence<Idx...>{}, std::make_index_sequence<sizeof...(Idx)>{});
-        }
-#endif
-    }
-}
-
 namespace sqlite_orm {
     namespace internal {
 
@@ -9901,6 +9848,57 @@ namespace sqlite_orm {
 
 // #include "tuple_helper/index_sequence_util.h"
 
+#include <type_traits>  //  std::index_sequence, std::make_index_sequence
+
+// #include "../functional/cxx_universal.h"
+
+#ifdef SQLITE_ORM_RELAXED_CONSTEXPR
+#include <array>
+#endif
+
+namespace sqlite_orm {
+    namespace internal {
+        /**
+         *  Get the first value of an index_sequence.
+         */
+        template<size_t I, size_t... Idx>
+        SQLITE_ORM_CONSTEVAL size_t first_index_sequence_value(std::index_sequence<I, Idx...>) {
+            return I;
+        }
+
+#ifdef SQLITE_ORM_RELAXED_CONSTEXPR
+        /**
+         *  Reorder the values of an index_sequence according to the positions from a second sequence.
+         */
+        template<size_t... Value, size_t... IdxOfValue>
+        SQLITE_ORM_CONSTEVAL auto reorder_index_sequence(std::index_sequence<Value...>,
+                                                         std::index_sequence<IdxOfValue...>) {
+            constexpr std::array<size_t, sizeof...(Value)> values{Value...};
+            return std::index_sequence<values[sizeof...(Value) - 1u - IdxOfValue]...>{};
+        }
+
+        template<size_t Value, size_t IdxOfValue>
+        SQLITE_ORM_CONSTEVAL std::index_sequence<Value> reorder_index_sequence(std::index_sequence<Value>,
+                                                                               std::index_sequence<IdxOfValue>) {
+            return {};
+        }
+
+        inline SQLITE_ORM_CONSTEVAL std::index_sequence<> reorder_index_sequence(std::index_sequence<>,
+                                                                                 std::index_sequence<>) {
+            return {};
+        }
+
+        /**
+         *  Reverse the values of an index_sequence.
+         */
+        template<size_t... Idx>
+        SQLITE_ORM_CONSTEVAL auto reverse_index_sequence(std::index_sequence<Idx...>) {
+            return reorder_index_sequence(std::index_sequence<Idx...>{}, std::make_index_sequence<sizeof...(Idx)>{});
+        }
+#endif
+    }
+}
+
 // #include "tuple_helper/tuple_filter.h"
 
 // #include "tuple_helper/tuple_traits.h"
@@ -10352,29 +10350,13 @@ namespace sqlite_orm {
 namespace sqlite_orm {
     namespace internal {
 
-        /**
-         *  Call lambda for all specified database objects (in reverse order).
-         */
-        template<class DBOs, class L, satisfies<is_db_objects, DBOs> = true>
-        void for_each(const DBOs& dbObjects, L lambda) {
-            iterate_tuple<true>(dbObjects, lambda);
-        }
-
-        /**
-         *  Call lambda for database objects specified in the index sequence filter (in reverse order).
-         */
-        template<template<class...> class FilterSeqOp, class DBOs, class L, satisfies<is_db_objects, DBOs> = true>
-        void for_each(const DBOs& dbObjects, L lambda) {
-            iterate_tuple<true>(dbObjects, FilterSeqOp<DBOs>{}, lambda);
-        }
-
         template<class DBOs>
         using tables_index_sequence = filter_tuple_sequence_t<DBOs, is_table>;
 
         template<class DBOs, satisfies<is_db_objects, DBOs> = true>
         int foreign_keys_count(const DBOs& dbObjects) {
             int res = 0;
-            for_each<tables_index_sequence>(dbObjects, [&res](const auto& table) {
+            iterate_tuple<true>(dbObjects, tables_index_sequence<DBOs>{}, [&res](const auto& table) {
                 res += table.foreign_keys_count();
             });
             return res;
@@ -10392,7 +10374,7 @@ namespace sqlite_orm {
         template<class DBOs, satisfies<is_db_objects, DBOs> = true>
         std::string find_table_name(const DBOs& dbObjects, const std::type_index& ti) {
             std::string res;
-            for_each<tables_index_sequence>(dbObjects, [&ti, &res](const auto& table) {
+            iterate_tuple<true>(dbObjects, tables_index_sequence<DBOs>{}, [&ti, &res](const auto& table) {
                 using table_type = std::decay_t<decltype(table)>;
                 if(ti == typeid(object_type_t<table_type>)) {
                     res = table.name;
@@ -17851,7 +17833,7 @@ namespace sqlite_orm {
             std::map<std::string, sync_schema_result> sync_schema(bool preserve = false) {
                 auto con = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
-                for_each(this->db_objects, [this, db = con.get(), preserve, &result](auto& schemaObject) {
+                iterate_tuple<true>(this->db_objects, [this, db = con.get(), preserve, &result](auto& schemaObject) {
                     sync_schema_result status = this->sync_table(schemaObject, db, preserve);
                     result.emplace(schemaObject.name, status);
                 });
@@ -17866,7 +17848,7 @@ namespace sqlite_orm {
             std::map<std::string, sync_schema_result> sync_schema_simulate(bool preserve = false) {
                 auto con = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
-                for_each(this->db_objects, [this, db = con.get(), preserve, &result](auto& schemaObject) {
+                iterate_tuple<true>(this->db_objects, [this, db = con.get(), preserve, &result](auto& schemaObject) {
                     sync_schema_result status = this->schema_status(schemaObject, db, preserve, nullptr);
                     result.emplace(schemaObject.name, status);
                 });
@@ -18290,39 +18272,43 @@ namespace sqlite_orm {
             template<class O>
             bool has_dependent_rows(const O& object) {
                 auto res = false;
-                for_each<tables_index_sequence>(this->db_objects, [this, &object, &res](auto& table) {
-                    if(res) {
-                        return;
-                    }
-                    table.template for_each_foreign_key_to<O>([this, &table, &object, &res](auto& foreignKey) {
-                        std::stringstream ss;
-                        ss << "SELECT COUNT(*)"
-                           << " FROM " << streaming_identifier(table.name) << " WHERE ";
-                        iterate_tuple(foreignKey.columns, [&ss, &table, first = true](auto& colRef) mutable {
-                            auto* columnName = table.find_column_name(colRef);
-                            if(!columnName) {
-                                throw std::system_error{orm_error_code::column_not_found};
-                            }
+                iterate_tuple<true>(
+                    this->db_objects,
+                    tables_index_sequence<db_objects_type>{},
+                    [this, &object, &res](auto& table) {
+                        if(res) {
+                            return;
+                        }
+                        table.template for_each_foreign_key_to<O>([this, &table, &object, &res](auto& foreignKey) {
+                            std::stringstream ss;
+                            ss << "SELECT COUNT(*)"
+                               << " FROM " << streaming_identifier(table.name) << " WHERE ";
+                            iterate_tuple(foreignKey.columns, [&ss, &table, first = true](auto& colRef) mutable {
+                                auto* columnName = table.find_column_name(colRef);
+                                if(!columnName) {
+                                    throw std::system_error{orm_error_code::column_not_found};
+                                }
 
-                            constexpr std::array<const char*, 2> sep = {" AND ", ""};
-                            ss << sep[std::exchange(first, false)] << streaming_identifier(*columnName) << " = ?";
+                                constexpr std::array<const char*, 2> sep = {" AND ", ""};
+                                ss << sep[std::exchange(first, false)] << streaming_identifier(*columnName) << " = ?";
+                            });
+                            ss.flush();
+
+                            auto con = this->get_connection();
+                            sqlite3_stmt* stmt = prepare_stmt(con.get(), ss.str());
+                            statement_finalizer finalizer{stmt};
+
+                            auto& targetTable = this->get_table<O>();
+                            tuple_value_binder{stmt}(foreignKey.references,
+                                                     [&targetTable, &object](auto& memberPointer) {
+                                                         return targetTable.object_field_value(object, memberPointer);
+                                                     });
+                            perform_step<SQLITE_ROW>(stmt);
+                            auto countResult = sqlite3_column_int(stmt, 0);
+                            res = countResult > 0;
+                            perform_step(stmt);
                         });
-                        ss.flush();
-
-                        auto con = this->get_connection();
-                        sqlite3_stmt* stmt = prepare_stmt(con.get(), ss.str());
-                        statement_finalizer finalizer{stmt};
-
-                        auto& targetTable = this->get_table<O>();
-                        tuple_value_binder{stmt}(foreignKey.references, [&targetTable, &object](auto& memberPointer) {
-                            return targetTable.object_field_value(object, memberPointer);
-                        });
-                        perform_step<SQLITE_ROW>(stmt);
-                        auto countResult = sqlite3_column_int(stmt, 0);
-                        res = countResult > 0;
-                        perform_step(stmt);
                     });
-                });
                 return res;
             }
         };  // struct storage_t
