@@ -6,7 +6,8 @@
 #include <tuple>  //  std::tuple, std::tuple_size
 #include <sstream>  //  std::stringstream
 
-#include "cxx_polyfill.h"
+#include "functional/cxx_universal.h"
+#include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"
 #include "collate_argument.h"
 #include "constraints.h"
@@ -57,10 +58,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct is_offset : std::false_type {};
-
-        template<class T>
-        struct is_offset<offset_t<T>> : std::true_type {};
+        using is_offset = polyfill::is_specialization_of<T, offset_t>;
 
         /**
          *  Collated something
@@ -208,10 +206,8 @@ namespace sqlite_orm {
             template<class C>
             named_collate<self> collate() const {
                 std::stringstream ss;
-                ss << C::name();
-                auto name = ss.str();
-                ss.flush();
-                return {*this, std::move(name)};
+                ss << C::name() << std::flush;
+                return {*this, ss.str()};
             }
         };
 
@@ -357,6 +353,10 @@ namespace sqlite_orm {
 
         struct in_base {
             bool negative = false;  //  used in not_in
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            in_base(bool negative) : negative{negative} {}
+#endif
         };
 
         /**
@@ -422,10 +422,12 @@ namespace sqlite_orm {
             int asc_desc = 0;  //  1: asc, -1: desc
             std::string _collate_argument;
 
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
             order_by_base() = default;
 
             order_by_base(decltype(asc_desc) asc_desc_, decltype(_collate_argument) _collate_argument_) :
                 asc_desc(asc_desc_), _collate_argument(move(_collate_argument_)) {}
+#endif
         };
 
         struct order_by_string {
@@ -460,22 +462,19 @@ namespace sqlite_orm {
 
             self collate_binary() const {
                 auto res = *this;
-                res._collate_argument =
-                    collate_constraint_t::string_from_collate_argument(sqlite_orm::internal::collate_argument::binary);
+                res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::binary);
                 return res;
             }
 
             self collate_nocase() const {
                 auto res = *this;
-                res._collate_argument =
-                    collate_constraint_t::string_from_collate_argument(sqlite_orm::internal::collate_argument::nocase);
+                res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::nocase);
                 return res;
             }
 
             self collate_rtrim() const {
                 auto res = *this;
-                res._collate_argument =
-                    collate_constraint_t::string_from_collate_argument(sqlite_orm::internal::collate_argument::rtrim);
+                res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::rtrim);
                 return res;
             }
 
@@ -488,10 +487,8 @@ namespace sqlite_orm {
             template<class C>
             self collate() const {
                 std::stringstream ss;
-                ss << C::name();
-                auto name = ss.str();
-                ss.flush();
-                return this->collate(move(name));
+                ss << C::name() << std::flush;
+                return this->collate(ss.str());
             }
         };
 
@@ -504,7 +501,7 @@ namespace sqlite_orm {
 
             args_type args;
 
-            multi_order_by_t(args_type&& args_) : args(std::move(args_)) {}
+            multi_order_by_t(args_type args_) : args{std::move(args_)} {}
         };
 
         struct dynamic_order_by_entry_t : order_by_base {
@@ -551,16 +548,13 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct is_order_by : std::false_type {};
+        SQLITE_ORM_INLINE_VAR constexpr bool is_order_by_v =
+            polyfill::disjunction_v<polyfill::is_specialization_of<T, order_by_t>,
+                                    polyfill::is_specialization_of<T, multi_order_by_t>,
+                                    polyfill::is_specialization_of<T, dynamic_order_by_t>>;
 
-        template<class O>
-        struct is_order_by<order_by_t<O>> : std::true_type {};
-
-        template<class... Args>
-        struct is_order_by<multi_order_by_t<Args...>> : std::true_type {};
-
-        template<class C>
-        struct is_order_by<dynamic_order_by_t<C>> : std::true_type {};
+        template<class T>
+        using is_order_by = polyfill::bool_constant<is_order_by_v<T>>;
 
         struct between_string {
             operator std::string() const {
@@ -806,10 +800,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct is_from : std::false_type {};
-
-        template<class... Args>
-        struct is_from<from_t<Args...>> : std::true_type {};
+        using is_from = polyfill::is_specialization_of<T, from_t>;
     }
 
     /**
@@ -822,7 +813,7 @@ namespace sqlite_orm {
         return {};
     }
 
-    template<class T, typename = typename std::enable_if<std::is_base_of<internal::negatable_t, T>::value>::type>
+    template<class T, internal::satisfies<std::is_base_of, internal::negatable_t, T> = true>
     internal::negated_condition_t<T> operator!(T arg) {
         return {std::move(arg)};
     }
@@ -1034,9 +1025,8 @@ namespace sqlite_orm {
         return {std::move(lim)};
     }
 
-    template<class T, class O>
-    typename std::enable_if<!internal::is_offset<T>::value, internal::limit_t<T, true, true, O>>::type limit(O off,
-                                                                                                             T lim) {
+    template<class T, class O, internal::satisfies_not<internal::is_offset, T> = true>
+    internal::limit_t<T, true, true, O> limit(O off, T lim) {
         return {std::move(lim), {std::move(off)}};
     }
 
@@ -1047,8 +1037,9 @@ namespace sqlite_orm {
 
     template<class L,
              class R,
-             typename = typename std::enable_if<std::is_base_of<internal::condition_t, L>::value ||
-                                                std::is_base_of<internal::condition_t, R>::value>::type>
+             std::enable_if_t<polyfill::disjunction_v<std::is_base_of<internal::condition_t, L>,
+                                                      std::is_base_of<internal::condition_t, R>>,
+                              bool> = true>
     auto operator&&(L l, R r) {
         using internal::get_from_expression;
         return internal::make_and_condition(std::move(get_from_expression(l)), std::move(get_from_expression(r)));
@@ -1062,8 +1053,9 @@ namespace sqlite_orm {
 
     template<class L,
              class R,
-             typename = typename std::enable_if<std::is_base_of<internal::condition_t, L>::value ||
-                                                std::is_base_of<internal::condition_t, R>::value>::type>
+             std::enable_if_t<polyfill::disjunction_v<std::is_base_of<internal::condition_t, L>,
+                                                      std::is_base_of<internal::condition_t, R>>,
+                              bool> = true>
     auto operator||(L l, R r) {
         using internal::get_from_expression;
         return internal::make_or_condition(std::move(get_from_expression(l)), std::move(get_from_expression(r)));

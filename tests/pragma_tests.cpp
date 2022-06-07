@@ -17,7 +17,7 @@ TEST_CASE("Journal mode") {
         stor = &storageCopy;
     }
     auto jm = stor->pragma.journal_mode();
-    REQUIRE(jm == decltype(jm)::DELETE);
+    REQUIRE(jm == journal_mode::DELETE);
 
     for(auto i = 0; i < 2; ++i) {
         if(i == 0) {
@@ -25,26 +25,26 @@ TEST_CASE("Journal mode") {
         }
         stor->pragma.journal_mode(journal_mode::MEMORY);
         jm = stor->pragma.journal_mode();
-        REQUIRE(jm == decltype(jm)::MEMORY);
+        REQUIRE(jm == journal_mode::MEMORY);
 
         if(i == 1) {  //  WAL cannot be set within a transaction
             stor->pragma.journal_mode(journal_mode::WAL);
             jm = stor->pragma.journal_mode();
-            REQUIRE(jm == decltype(jm)::WAL);
+            REQUIRE(jm == journal_mode::WAL);
         }
 
         stor->pragma.journal_mode(journal_mode::OFF);
         jm = stor->pragma.journal_mode();
-        //        REQUIRE(jm == decltype(jm)::OFF);
+        //        REQUIRE(jm == journal_mode::OFF);
         //  fnc12: dunno why it doesn't work. Probably journal_mode::OFF cannot be set. Anyway its SQLite's issue not sqlite_orm's
 
         stor->pragma.journal_mode(journal_mode::PERSIST);
         jm = stor->pragma.journal_mode();
-        REQUIRE(jm == decltype(jm)::PERSIST);
+        REQUIRE(jm == journal_mode::PERSIST);
 
         stor->pragma.journal_mode(journal_mode::TRUNCATE);
         jm = stor->pragma.journal_mode();
-        REQUIRE(jm == decltype(jm)::TRUNCATE);
+        REQUIRE(jm == journal_mode::TRUNCATE);
 
         if(i == 0) {
             stor->rollback();

@@ -1,6 +1,10 @@
 #pragma once
 
 #include <string>  //  std::string
+#include <utility>  //  std::move
+
+#include "functional/cxx_universal.h"
+#include "ast/where.h"
 
 namespace sqlite_orm {
 
@@ -10,8 +14,10 @@ namespace sqlite_orm {
         struct indexed_column_t {
             using column_type = C;
 
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
             indexed_column_t(column_type _column_or_expression) :
                 column_or_expression(std::move(_column_or_expression)) {}
+#endif
 
             column_type column_or_expression;
             std::string _collation_name;
@@ -37,38 +43,19 @@ namespace sqlite_orm {
         };
 
         template<class C>
-        struct indexed_column_maker {
-            using type = indexed_column_t<C>;
-
-            indexed_column_t<C> operator()(C col) const {
-                return {std::move(col)};
-            }
-        };
-
-        template<class C>
-        struct indexed_column_maker<where_t<C>> {
-            using type = where_t<C>;
-
-            type operator()(type wher) const {
-                return {std::move(wher)};
-            }
-        };
-
-        template<class C>
-        struct indexed_column_maker<indexed_column_t<C>> {
-            using type = indexed_column_t<C>;
-
-            indexed_column_t<C> operator()(indexed_column_t<C> col) const {
-                return std::move(col);
-            }
-        };
-
-        template<class C>
-        auto make_indexed_column(C col) {
-            indexed_column_maker<C> maker;
-            return maker(std::move(col));
+        indexed_column_t<C> make_indexed_column(C col) {
+            return {std::move(col)};
         }
 
+        template<class C>
+        where_t<C> make_indexed_column(where_t<C> wher) {
+            return std::move(wher);
+        }
+
+        template<class C>
+        indexed_column_t<C> make_indexed_column(indexed_column_t<C> col) {
+            return std::move(col);
+        }
     }
 
     /**

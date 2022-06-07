@@ -36,17 +36,13 @@ namespace sqlite_orm {
             using column_type = C;
 
             column_type column;
-
-            alias_column_t() {}
-
-            alias_column_t(column_type column_) : column(std::move(column_)) {}
         };
 
         template<class T, class SFINAE = void>
         struct alias_extractor;
 
         template<class T>
-        struct alias_extractor<T, typename std::enable_if<std::is_base_of<alias_tag, T>::value>::type> {
+        struct alias_extractor<T, std::enable_if_t<std::is_base_of<alias_tag, T>::value>> {
             static std::string get() {
                 std::stringstream ss;
                 ss << T::get();
@@ -55,7 +51,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct alias_extractor<T, typename std::enable_if<!std::is_base_of<alias_tag, T>::value>::type> {
+        struct alias_extractor<T, std::enable_if_t<!std::is_base_of<alias_tag, T>::value>> {
             static std::string get() {
                 return {};
             }

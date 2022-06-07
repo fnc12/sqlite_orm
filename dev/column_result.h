@@ -1,10 +1,12 @@
 #pragma once
 
-#include <type_traits>  //  std::enable_if, std::is_same, std::decay, std::is_arithmetic
+#include <type_traits>  //  std::enable_if, std::is_same, std::decay, std::is_arithmetic, std::is_base_of
 #include <tuple>  //  std::tuple
 #include <functional>  //  std::reference_wrapper
 
+#include "functional/cxx_universal.h"
 #include "type_traits.h"
+#include "member_traits/member_traits.h"
 #include "core_functions.h"
 #include "select_constraints.h"
 #include "operators.h"
@@ -45,14 +47,6 @@ namespace sqlite_orm {
         };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
-        template<class St, class O, class F>
-        struct column_result_t<St,
-                               F O::*,
-                               typename std::enable_if<std::is_member_pointer<F O::*>::value &&
-                                                       !std::is_member_function_pointer<F O::*>::value>::type> {
-            using type = F;
-        };
-
         template<class St, class L, class A>
         struct column_result_t<St, dynamic_in_t<L, A>, void> {
             using type = bool;
@@ -63,21 +57,8 @@ namespace sqlite_orm {
             using type = bool;
         };
 
-        /**
-         *  Common case for all getter types. Getter types are defined in column.h file
-         */
         template<class St, class T>
-        struct column_result_t<St, T, match_if<is_getter, T>> {
-            using type = typename getter_traits<T>::field_type;
-        };
-
-        /**
-         *  Common case for all setter types. Setter types are defined in column.h file
-         */
-        template<class St, class T>
-        struct column_result_t<St, T, match_if<is_setter, T>> {
-            using type = typename setter_traits<T>::field_type;
-        };
+        struct column_result_t<St, T, match_if<std::is_member_pointer, T>> : member_field_type<T> {};
 
         template<class St, class R, class S, class... Args>
         struct column_result_t<St, built_in_function_t<R, S, Args...>, void> {
@@ -96,12 +77,12 @@ namespace sqlite_orm {
 
         template<class St, class X, class... Rest, class S>
         struct column_result_t<St, built_in_function_t<internal::unique_ptr_result_of<X>, S, X, Rest...>, void> {
-            using type = std::unique_ptr<typename column_result_t<St, X>::type>;
+            using type = std::unique_ptr<column_result_of_t<St, X>>;
         };
 
         template<class St, class X, class S>
         struct column_result_t<St, built_in_aggregate_function_t<internal::unique_ptr_result_of<X>, S, X>, void> {
-            using type = std::unique_ptr<typename column_result_t<St, X>::type>;
+            using type = std::unique_ptr<column_result_of_t<St, X>>;
         };
 
         template<class St, class T>
@@ -110,8 +91,8 @@ namespace sqlite_orm {
         };
 
         template<class St>
-        struct column_result_t<St, std::nullptr_t, void> {
-            using type = std::nullptr_t;
+        struct column_result_t<St, nullptr_t, void> {
+            using type = nullptr_t;
         };
 
         template<class St>
@@ -120,14 +101,10 @@ namespace sqlite_orm {
         };
 
         template<class St, class T>
-        struct column_result_t<St, distinct_t<T>, void> {
-            using type = typename column_result_t<St, T>::type;
-        };
+        struct column_result_t<St, distinct_t<T>, void> : column_result_t<St, T> {};
 
         template<class St, class T>
-        struct column_result_t<St, all_t<T>, void> {
-            using type = typename column_result_t<St, T>::type;
-        };
+        struct column_result_t<St, all_t<T>, void> : column_result_t<St, T> {};
 
         template<class St, class L, class R>
         struct column_result_t<St, conc_t<L, R>, void> {
@@ -229,18 +206,16 @@ namespace sqlite_orm {
         struct column_result_t<St, select_t<T, Args...>> : column_result_t<St, T> {};
 
         template<class St, class T>
-        struct column_result_t<St, T, std::enable_if_t<is_base_of_template<T, compound_operator>::value>> {
-            using left_type = typename T::left_type;
-            using right_type = typename T::right_type;
-            using left_result = column_result_of_t<St, left_type>;
-            using right_result = column_result_of_t<St, right_type>;
+        struct column_result_t<St, T, std::enable_if_t<is_base_of_template_v<T, compound_operator>>> {
+            using left_result = column_result_of_t<St, typename T::left_type>;
+            using right_result = column_result_of_t<St, typename T::right_type>;
             static_assert(std::is_same<left_result, right_result>::value,
                           "Compound subselect queries must return same types");
             using type = left_result;
         };
 
         template<class St, class T>
-        struct column_result_t<St, T, std::enable_if_t<is_base_of_template<T, binary_condition>::value>> {
+        struct column_result_t<St, T, std::enable_if_t<is_base_of_template_v<T, binary_condition>>> {
             using type = typename T::result_type;
         };
 
@@ -269,14 +244,12 @@ namespace sqlite_orm {
         struct column_result_t<St, as_t<T, E>, void> : column_result_t<St, std::decay_t<E>> {};
 
         template<class St, class T>
-        struct column_result_t<St, asterisk_t<T>, match_if_not<std::is_base_of, alias_tag, T>> {
-            using type = typename storage_traits::storage_mapped_columns<St, T>::type;
-        };
+        struct column_result_t<St, asterisk_t<T>, match_if_not<std::is_base_of, alias_tag, T>>
+            : storage_traits::storage_mapped_columns<St, T> {};
 
         template<class St, class A>
-        struct column_result_t<St, asterisk_t<A>, match_if<std::is_base_of, alias_tag, A>> {
-            using type = typename storage_traits::storage_mapped_columns<St, type_t<A>>::type;
-        };
+        struct column_result_t<St, asterisk_t<A>, match_if<std::is_base_of, alias_tag, A>>
+            : storage_traits::storage_mapped_columns<St, type_t<A>> {};
 
         template<class St, class T>
         struct column_result_t<St, object_t<T>, void> {

@@ -75,9 +75,7 @@ array<string, N> single_value_array(const char* s) {
 }
 
 template<class T>
-struct wrap_in_literal {
-    using type = internal::literal_holder<T>;
-};
+using wrap_in_literal = internal::literal_holder<T>;
 
 inline void require_string(const string& value, const string& expected) {
     REQUIRE(value == expected);
@@ -97,12 +95,14 @@ void test_tuple(const tuple<Ts...>& t, const Ctx& ctx, const array<string, sizeo
     require_strings({internal::serialize(get<Ts>(t), ctx)...}, expected, index_sequence_for<Ts...>{});
 }
 
-struct Custom {};
-template<class Elem>
-class StringVeneer : public std::basic_string<Elem> {
-  public:
-    using std::basic_string<Elem>::basic_string;
-};
+namespace {
+    struct Custom {};
+    template<class Elem>
+    class StringVeneer : public std::basic_string<Elem> {
+      public:
+        using std::basic_string<Elem>::basic_string;
+    };
+}
 
 namespace sqlite_orm {
     template<>
@@ -153,7 +153,7 @@ TEST_CASE("bindables") {
 #endif
                             >;
 
-        constexpr Tuple t = make_default_tuple<Tuple>();
+        constexpr Tuple tpl = make_default_tuple<Tuple>();
 
         array<string, tuple_size<Tuple>::value> e{"0",
                                                   "0",
@@ -184,15 +184,15 @@ TEST_CASE("bindables") {
 
         SECTION("dump") {
             context.replace_bindable_with_question = false;
-            test_tuple(t, context, e);
+            test_tuple(tpl, context, e);
         }
         SECTION("parametrized") {
             context.replace_bindable_with_question = true;
-            test_tuple(t, context, single_value_array<tuple_size<Tuple>::value>("?"));
+            test_tuple(tpl, context, single_value_array<tuple_size<Tuple>::value>("?"));
         }
         SECTION("non-bindable literals") {
             context.replace_bindable_with_question = true;
-            constexpr auto t = make_default_tuple<internal::tuple_transformer<Tuple, wrap_in_literal>::type>();
+            constexpr auto t = make_default_tuple<internal::transform_tuple_t<Tuple, wrap_in_literal>>();
             test_tuple(t, context, e);
         }
     }
@@ -220,7 +220,7 @@ TEST_CASE("bindables") {
                             Custom,
                             unique_ptr<Custom>>;
 
-        Tuple t = make_default_tuple<Tuple>();
+        Tuple tpl = make_default_tuple<Tuple>();
 
         array<string, tuple_size<Tuple>::value> e{"''",
 #ifndef SQLITE_ORM_OMITS_CODECVT
@@ -246,19 +246,20 @@ TEST_CASE("bindables") {
 
         SECTION("dump") {
             context.replace_bindable_with_question = false;
-            test_tuple(t, context, e);
+            test_tuple(tpl, context, e);
         }
         SECTION("parametrized") {
             context.replace_bindable_with_question = true;
-            test_tuple(t, context, single_value_array<tuple_size<Tuple>::value>("?"));
+            test_tuple(tpl, context, single_value_array<tuple_size<Tuple>::value>("?"));
         }
         SECTION("non-bindable literals") {
             context.replace_bindable_with_question = true;
-            auto t = make_default_tuple<internal::tuple_transformer<Tuple, wrap_in_literal>::type>();
+            auto t = make_default_tuple<internal::transform_tuple_t<Tuple, wrap_in_literal>>();
             test_tuple(t, context, e);
         }
     }
 
+#ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
     SECTION("bindable_pointer") {
         string value, expected;
         context.replace_bindable_with_question = false;
@@ -292,4 +293,5 @@ TEST_CASE("bindables") {
 
         REQUIRE(value == expected);
     }
+#endif
 }

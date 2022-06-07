@@ -1,10 +1,9 @@
 #pragma once
 
-#include <type_traits>  //  std::false_type, std::true_type
 #include <memory>  //  std::shared_ptr, std::unique_ptr
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>  // std::optional
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+#include "functional/cxx_optional.h"
+
+#include "functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
 
@@ -16,42 +15,11 @@ namespace sqlite_orm {
      *  of type_is_nullable for your type and derive from `std::true_type`.
      */
     template<class T>
-    struct type_is_nullable : public std::false_type {
-        bool operator()(const T&) const {
-            return true;
-        }
-    };
-
-    /**
-     *  This is a specialization for std::shared_ptr. std::shared_ptr is nullable in sqlite_orm.
-     */
-    template<class T>
-    struct type_is_nullable<std::shared_ptr<T>> : public std::true_type {
-        bool operator()(const std::shared_ptr<T>& t) const {
-            return static_cast<bool>(t);
-        }
-    };
-
-    /**
-     *  This is a specialization for std::unique_ptr. std::unique_ptr is nullable too.
-     */
-    template<class T>
-    struct type_is_nullable<std::unique_ptr<T>> : public std::true_type {
-        bool operator()(const std::unique_ptr<T>& t) const {
-            return static_cast<bool>(t);
-        }
-    };
-
+    using type_is_nullable = polyfill::disjunction<
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-    /**
-     *  This is a specialization for std::optional. std::optional is nullable.
-     */
-    template<class T>
-    struct type_is_nullable<std::optional<T>> : public std::true_type {
-        bool operator()(const std::optional<T>& t) const {
-            return t.has_value();
-        }
-    };
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+        polyfill::is_specialization_of<T, std::optional>,
+#endif
+        polyfill::is_specialization_of<T, std::unique_ptr>,
+        polyfill::is_specialization_of<T, std::shared_ptr>>;
 
 }

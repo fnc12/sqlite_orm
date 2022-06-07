@@ -155,11 +155,21 @@ TEST_CASE("has_dependent_rows") {
     struct User {
         int id = 0;
         std::string name;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        User() = default;
+        User(int id, std::string name) : id{id}, name{move(name)} {}
+#endif
     };
     struct Visit {
         int id = 0;
         int userId = 0;
         int date = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        Visit() = default;
+        Visit(int id, int userId, int date) : id{id}, userId{userId}, date{date} {}
+#endif
     };
     auto storage =
         make_storage({},
@@ -211,10 +221,15 @@ TEST_CASE("column_name") {
 
 TEST_CASE("issue880") {
     struct Fondo {
-        int id = 0;
+        int id = 5;
         std::string abreviacion;
         std::string nombre;
         int tipo_cupon = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        Fondo() = default;
+        Fondo(int id) : id{id} {}
+#endif
 
         enum TipoCupon { mensual = 1, trimestral = 3 };
     };

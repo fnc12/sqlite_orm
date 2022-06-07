@@ -2,14 +2,9 @@
 	"project": "SQLite ORM",
 	"target": "include/sqlite_orm/sqlite_orm.h",
   "sources": [
-    "dev/start_macros.h",
+    "dev/functional/start_macros.h",
     "dev/type_traits.h",
     "dev/error_code.h",
-    "dev/tuple_helper/tuple_helper.h",
-    "dev/tuple_helper/find_in_tuple.h",
-    "dev/tuple_helper/tuple_transformer.h",
-    "dev/tuple_helper/count_tuple.h",
-    "dev/tuple_helper/same_or_void.h",
     "dev/type_printer.h",
     "dev/collate_argument.h",
     "dev/constraints.h",
@@ -45,7 +40,7 @@
     "dev/carray.h",
     "dev/dbstat.h",
     "dev/interface_definitions.h",
-    "dev/finish_macros.h"
+    "dev/functional/finish_macros.h"
   ],
 	"include_paths": ["dev"]
 }

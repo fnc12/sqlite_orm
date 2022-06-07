@@ -3,6 +3,8 @@
 #include <type_traits>  //  std::false_type, std::true_type
 #include <utility>  //  std::move
 
+#include "../functional/cxx_universal.h"
+#include "../functional/cxx_type_traits_polyfill.h"
 #include "../serialize_result_type.h"
 
 namespace sqlite_orm {
@@ -29,10 +31,10 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct is_where : std::false_type {};
+        SQLITE_ORM_INLINE_VAR constexpr bool is_where_v = polyfill::is_specialization_of_v<T, where_t>;
 
         template<class T>
-        struct is_where<where_t<T>> : std::true_type {};
+        using is_where = polyfill::bool_constant<is_where_v<T>>;
     }
 
     /**

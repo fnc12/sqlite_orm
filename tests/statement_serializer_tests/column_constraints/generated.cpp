@@ -3,6 +3,7 @@
 
 using namespace sqlite_orm;
 
+#if SQLITE_VERSION_NUMBER >= 3031000
 TEST_CASE("issue893") {
     struct Object {
         std::string name;
@@ -18,7 +19,6 @@ TEST_CASE("issue893") {
     storage.sync_schema();
 }
 
-#if SQLITE_VERSION_NUMBER >= 3031000
 TEST_CASE("statement_serializer generated") {
     using internal::serialize;
     struct Type {

@@ -1,18 +1,17 @@
 #pragma once
 
-#include <memory>  //  std::shared_ptr
+#include <sqlite3.h>
 #include <string>  //  std::string
 #include <utility>  //  std::forward, std::move
-#include <sqlite3.h>
 #include <tuple>  //  std::tuple, std::make_tuple
 
 #include "row_extractor.h"
-#include "statement_finalizer.h"
 #include "error_code.h"
 #include "iterator.h"
 #include "ast_iterator.h"
 #include "prepared_statement.h"
 #include "connection_holder.h"
+#include "util.h"
 
 namespace sqlite_orm {
 
@@ -49,27 +48,14 @@ namespace sqlite_orm {
             }
 
             iterator_t<self> begin() {
-                sqlite3_stmt* stmt = nullptr;
-                auto db = this->connection.get();
                 using context_t = serializer_context<typename storage_type::impl_type>;
                 context_t context{obtain_const_impl(this->storage)};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
-                auto query = serialize(this->args, context);
-                auto ret = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
-                if(ret == SQLITE_OK) {
-                    auto index = 1;
-                    iterate_ast(this->args.conditions, [&index, stmt, db](auto& node) {
-                        using node_type = typename std::decay<decltype(node)>::type;
-                        conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
-                        if(SQLITE_OK != binder(node)) {
-                            throw_translated_sqlite_error(db);
-                        }
-                    });
-                    return {stmt, *this};
-                } else {
-                    throw_translated_sqlite_error(db);
-                }
+
+                statement_finalizer stmt{prepare_stmt(this->connection.get(), serialize(this->args, context))};
+                iterate_ast(this->args.conditions, conditional_binder{stmt.get()});
+                return {move(stmt), *this};
             }
 
             iterator_t<self> end() {
