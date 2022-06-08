@@ -13,6 +13,7 @@
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
+#include "functional/type_at.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "error_code.h"
 #include "serializer_context.h"
@@ -331,7 +332,7 @@ namespace sqlite_orm {
         std::ostream&
         operator<<(std::ostream& ss,
                    std::tuple<const streaming<stream_as::field_values_excluding>&, PredFnCls, L, Ctx, Obj> tpl) {
-            using check_if_excluded = polyfill::remove_cvref_t<std::tuple_element_t<1, decltype(tpl)>>;
+            using check_if_excluded = polyfill::remove_cvref_t<mpl::element_at_t<1, decltype(tpl)>>;
             auto& excluded = get<2>(tpl);
             auto& context = get<3>(tpl);
             auto& object = get<4>(tpl);

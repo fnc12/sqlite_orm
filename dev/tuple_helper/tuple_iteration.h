@@ -15,18 +15,18 @@ namespace sqlite_orm {
         //  got it form here https://stackoverflow.com/questions/7858817/unpacking-a-tuple-to-call-a-matching-function-pointer
         template<class Function, class FunctionPointer, class Tuple, size_t... I>
         auto call_impl(Function& f, FunctionPointer functionPointer, Tuple t, std::index_sequence<I...>) {
-            return (f.*functionPointer)(std::get<I>(move(t))...);
+            return (f.*functionPointer)(std::get<I>(std::move(t))...);
         }
 
         template<class Function, class FunctionPointer, class Tuple>
         auto call(Function& f, FunctionPointer functionPointer, Tuple t) {
             constexpr size_t size = std::tuple_size<Tuple>::value;
-            return call_impl(f, functionPointer, move(t), std::make_index_sequence<size>{});
+            return call_impl(f, functionPointer, std::move(t), std::make_index_sequence<size>{});
         }
 
         template<class Function, class Tuple>
         auto call(Function& f, Tuple t) {
-            return call(f, &Function::operator(), move(t));
+            return call(f, &Function::operator(), std::move(t));
         }
 
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
@@ -67,7 +67,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
         template<class Tpl, size_t... Idx, class L>
         void iterate_tuple(std::index_sequence<Idx...>, L&& lambda) {
-            (lambda((std::tuple_element_t<Idx, Tpl>*)nullptr), ...);
+            (lambda((mpl::element_at_t<Idx, Tpl>*)nullptr), ...);
         }
 #else
         template<class Tpl, class L>
@@ -75,7 +75,7 @@ namespace sqlite_orm {
 
         template<class Tpl, size_t I, size_t... Idx, class L>
         void iterate_tuple(std::index_sequence<I, Idx...>, L&& lambda) {
-            lambda((std::tuple_element_t<I, Tpl>*)nullptr);
+            lambda((mpl::element_at_t<I, Tpl>*)nullptr);
             iterate_tuple<Tpl>(std::index_sequence<Idx...>{}, std::forward<L>(lambda));
         }
 #endif

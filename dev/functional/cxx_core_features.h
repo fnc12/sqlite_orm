@@ -12,6 +12,13 @@
 #define SQLITE_ORM_HAS_INCLUDE(file) 0L
 #endif
 
+// If possible, use an intrinsic provided by Clang
+#if defined(__has_builtin)
+#if __has_builtin(__type_pack_element)
+#define SQLITE_ORM_HAS_TYPE_PACK_ELEMENT_INTRINSIC
+#endif
+#endif
+
 #if __cpp_aggregate_nsdmi >= 201304L
 #define SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
 #endif

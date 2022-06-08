@@ -11,6 +11,8 @@
 #include "functional/cxx_functional_polyfill.h"
 #include "functional/static_magic.h"
 #include "functional/mpl.h"
+#include "functional/type_at.h"
+#include "functional/unique_tuple.h"
 #include "typed_comparator.h"
 #include "tuple_helper/index_sequence_util.h"
 #include "tuple_helper/tuple_filter.h"
@@ -107,7 +109,7 @@ namespace sqlite_orm {
                                       filter_tuple_sequence_t<std::remove_const_t<decltype(column.constraints)>,
                                                               is_generated_always>;
                                   constexpr size_t opIndex = first_index_sequence_value(generated_op_index_sequence{});
-                                  result = &get<opIndex>(column.constraints).storage;
+                                  result = &std::get<opIndex>(column.constraints).storage;
                               });
 #endif
                 return result;
@@ -288,7 +290,7 @@ namespace sqlite_orm {
      *
      *  The mapped object type is determined implicitly from the first column definition.
      */
-    template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
+    template<class... Cs, class T = typename mpl::type_at_t<0, Cs...>::object_type>
     internal::table_t<T, false, Cs...> make_table(std::string name, Cs... args) {
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
             return {move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)});

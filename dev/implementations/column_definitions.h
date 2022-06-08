@@ -27,7 +27,7 @@ namespace sqlite_orm {
                 [&value](auto& constraints, auto op_index_sequence) {
                     using default_op_index_sequence = decltype(op_index_sequence);
                     constexpr size_t opIndex = first_index_sequence_value(default_op_index_sequence{});
-                    value = std::make_unique<std::string>(serialize_default_value(get<opIndex>(constraints)));
+                    value = std::make_unique<std::string>(serialize_default_value(std::get<opIndex>(constraints)));
                 },
                 this->constraints,
                 default_op_index_sequence{});

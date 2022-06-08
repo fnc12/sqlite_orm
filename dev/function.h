@@ -10,6 +10,8 @@
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
+#include "functional/type_at.h"
+#include "functional/unique_tuple.h"
 
 namespace sqlite_orm {
 
@@ -203,13 +205,13 @@ namespace sqlite_orm {
         }
         template<class FnArgs, class CallArgs, size_t I>
         SQLITE_ORM_CONSTEVAL bool validate_pointer_value_types(polyfill::index_constant<I>) {
-            using func_arg_t = std::tuple_element_t<I, FnArgs>;
-            using passed_arg_t = unpacked_arg_t<std::tuple_element_t<I, CallArgs>>;
+            using func_arg_t = mpl::element_at_t<I, FnArgs>;
+            using passed_arg_t = unpacked_arg_t<mpl::element_at_t<I, CallArgs>>;
 
 #ifdef SQLITE_ORM_RELAXED_CONSTEXPR
             constexpr bool valid = validate_pointer_value_type<I,
-                                                               std::tuple_element_t<I, FnArgs>,
-                                                               unpacked_arg_t<std::tuple_element_t<I, CallArgs>>>(
+                                                               mpl::element_at_t<I, FnArgs>,
+                                                               unpacked_arg_t<mpl::element_at_t<I, CallArgs>>>(
                 polyfill::bool_constant < (polyfill::is_specialization_of_v<func_arg_t, pointer_arg>) ||
                 (polyfill::is_specialization_of_v<passed_arg_t, pointer_binding>) > {});
 
@@ -217,8 +219,8 @@ namespace sqlite_orm {
 #else
             return validate_pointer_value_types<FnArgs, CallArgs>(polyfill::index_constant<I - 1>{}) &&
                    validate_pointer_value_type<I,
-                                               std::tuple_element_t<I, FnArgs>,
-                                               unpacked_arg_t<std::tuple_element_t<I, CallArgs>>>(
+                                               mpl::element_at_t<I, FnArgs>,
+                                               unpacked_arg_t<mpl::element_at_t<I, CallArgs>>>(
                        polyfill::bool_constant < (polyfill::is_specialization_of_v<func_arg_t, pointer_arg>) ||
                        (polyfill::is_specialization_of_v<passed_arg_t, pointer_binding>) > {});
 #endif
@@ -230,13 +232,14 @@ namespace sqlite_orm {
      */
     template<class F, class... Args>
     internal::function_call<F, Args...> func(Args... args) {
-        using args_tuple = std::tuple<Args...>;
-        using function_args_tuple = typename internal::callable_arguments<F>::args_tuple;
-        constexpr auto argsCount = std::tuple_size<args_tuple>::value;
+        using namespace internal;
+        using args_pack = mpl::pack<Args...>;
+        using function_args_tuple = typename callable_arguments<F>::args_tuple;
+        constexpr auto argsCount = args_pack::size();
         constexpr auto functionArgsCount = std::tuple_size<function_args_tuple>::value;
         static_assert((argsCount == functionArgsCount &&
                        !std::is_same<function_args_tuple, std::tuple<arg_values>>::value &&
-                       internal::validate_pointer_value_types<function_args_tuple, args_tuple>(
+                       internal::validate_pointer_value_types<mpl::pack<function_args_tuple>, args_pack>(
                            polyfill::index_constant<std::min<>(functionArgsCount, argsCount) - 1>{})) ||
                           std::is_same<function_args_tuple, std::tuple<arg_values>>::value,
                       "Number of arguments does not match");

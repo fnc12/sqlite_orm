@@ -15,6 +15,7 @@
 #include "functional/cxx_universal.h"
 #include "functional/cxx_functional_polyfill.h"
 #include "functional/mpl.h"
+#include "functional/type_at.h"
 #include "tuple_helper/tuple_filter.h"
 #include "ast/upsert_clause.h"
 #include "ast/excluded.h"
@@ -699,9 +700,7 @@ namespace sqlite_orm {
                     ss << "NOT IN";
                 }
                 ss << " ";
-                using args_type = std::tuple<Args...>;
-                const bool theOnlySelect =
-                    std::tuple_size<args_type>::value == 1 && is_select_v<std::tuple_element_t<0, args_type>>;
+                constexpr bool theOnlySelect = sizeof...(Args) == 1 && is_select_v<mpl::type_at_t<0, Args...>>;
                 if(!theOnlySelect) {
                     ss << "(";
                 }
@@ -847,7 +846,7 @@ namespace sqlite_orm {
                 ss << "FOREIGN KEY(" << streaming_mapped_columns_expressions(fk.columns, context) << ") REFERENCES ";
                 {
                     using references_type_t = typename std::decay_t<decltype(fk)>::references_type;
-                    using first_reference_t = std::tuple_element_t<0, references_type_t>;
+                    using first_reference_t = mpl::element_at_t<0, references_type_t>;
                     using first_reference_mapped_type = table_type_of_t<first_reference_t>;
                     auto refTableName = lookup_table_name<first_reference_mapped_type>(context.db_objects);
                     ss << streaming_identifier(refTableName);
@@ -1503,7 +1502,7 @@ namespace sqlite_orm {
                     ss << "UNIQUE ";
                 }
                 using elements_type = typename std::decay_t<decltype(statement)>::elements_type;
-                using head_t = typename std::tuple_element_t<0, elements_type>::column_type;
+                using head_t = typename mpl::element_at_t<0, elements_type>::column_type;
                 using indexed_type = table_type_of_t<head_t>;
                 ss << "INDEX IF NOT EXISTS " << streaming_identifier(statement.name) << " ON "
                    << streaming_identifier(lookup_table_name<indexed_type>(context.db_objects));

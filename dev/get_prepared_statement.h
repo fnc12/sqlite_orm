@@ -3,6 +3,7 @@
 #include <type_traits>  //  std::is_same, std::decay, std::remove_reference
 
 #include "functional/static_magic.h"
+#include "functional/type_at.h"
 #include "prepared_statement.h"
 #include "ast_iterator.h"
 #include "expression_object_type.h"
@@ -125,7 +126,7 @@ namespace sqlite_orm {
         using expression_type = typename statement_type::expression_type;
         using node_tuple = internal::node_tuple_t<expression_type>;
         using bind_tuple = internal::bindable_filter_t<node_tuple>;
-        using result_type = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
+        using result_type = mpl::element_at_t<static_cast<size_t>(N), bind_tuple>;
         const result_type* result = nullptr;
         internal::iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
             using node_type = std::decay_t<decltype(node)>;
@@ -150,7 +151,7 @@ namespace sqlite_orm {
         using expression_type = typename statement_type::expression_type;
         using node_tuple = internal::node_tuple_t<expression_type>;
         using bind_tuple = internal::bindable_filter_t<node_tuple>;
-        using result_type = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
+        using result_type = mpl::element_at_t<static_cast<size_t>(N), bind_tuple>;
         result_type* result = nullptr;
 
         internal::iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
