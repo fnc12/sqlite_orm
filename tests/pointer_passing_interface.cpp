@@ -29,6 +29,8 @@ namespace {
 }
 
 TEST_CASE("pointer-passing") {
+    polyfill::conjunction_v<std::is_constructible<int64>>;
+    polyfill::conjunction_v<std::is_constructible<carray_pointer_arg<int64>>>;
     // accept and return a pointer of type "carray"
     struct pass_thru_pointer_fn {
         using bindable_carray_ptr_t = static_carray_pointer_binding<int64>;

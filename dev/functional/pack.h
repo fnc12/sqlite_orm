@@ -5,7 +5,7 @@
 namespace _sqlite_orm {
     // short names defined in a short namespace to reduce symbol lengths,
     // since those types are used as a building block;
-    // (seen in boost hana)
+    // (as seen in boost hana)
 
     template<size_t I, typename T>
     struct indexed_type {

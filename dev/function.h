@@ -3,7 +3,6 @@
 #include <sqlite3.h>
 #include <type_traits>
 #include <string>  //  std::string
-#include <tuple>  //  std::tuple
 #include <functional>  //  std::function
 #include <algorithm>  //  std::min
 #include <utility>  //  std::move, std::forward
@@ -11,7 +10,7 @@
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/type_at.h"
-#include "functional/unique_tuple.h"
+#include "functional/tuple.h"
 
 namespace sqlite_orm {
 
@@ -102,14 +101,14 @@ namespace sqlite_orm {
         template<class O, class R, class... Args>
         struct member_function_arguments<R (O::*)(Args...) const> {
             using member_function_type = R (O::*)(Args...) const;
-            using tuple_type = std::tuple<std::decay_t<Args>...>;
+            using tuple_type = mpl::tuple<std::decay_t<Args>...>;
             using return_type = R;
         };
 
         template<class O, class R, class... Args>
         struct member_function_arguments<R (O::*)(Args...)> {
             using member_function_type = R (O::*)(Args...);
-            using tuple_type = std::tuple<std::decay_t<Args>...>;
+            using tuple_type = mpl::tuple<std::decay_t<Args>...>;
             using return_type = R;
         };
 
@@ -134,7 +133,7 @@ namespace sqlite_orm {
         template<class F, class... Args>
         struct function_call {
             using function_type = F;
-            using args_tuple = std::tuple<Args...>;
+            using args_tuple = mpl::tuple<Args...>;
 
             args_tuple args;
         };
@@ -238,12 +237,12 @@ namespace sqlite_orm {
         constexpr auto argsCount = args_pack::size();
         constexpr auto functionArgsCount = std::tuple_size<function_args_tuple>::value;
         static_assert((argsCount == functionArgsCount &&
-                       !std::is_same<function_args_tuple, std::tuple<arg_values>>::value &&
+                       !std::is_same<function_args_tuple, mpl::tuple<arg_values>>::value &&
                        internal::validate_pointer_value_types<mpl::pack<function_args_tuple>, args_pack>(
                            polyfill::index_constant<std::min<>(functionArgsCount, argsCount) - 1>{})) ||
-                          std::is_same<function_args_tuple, std::tuple<arg_values>>::value,
+                          std::is_same<function_args_tuple, mpl::tuple<arg_values>>::value,
                       "Number of arguments does not match");
-        return {std::make_tuple(std::forward<Args>(args)...)};
+        return {mpl::make_tuple(std::forward<Args>(args)...)};
     }
 
 }

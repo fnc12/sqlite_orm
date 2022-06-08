@@ -1,16 +1,17 @@
 #pragma once
 
-#include <type_traits>  //  std::integral_constant, std::decay, std::is_constructible, std::enable_if
+#include <type_traits>  //  std::integral_constant, std::decay, std::is_constructible, std::is_default_constructible, std::enable_if
 #include <utility>  //  std::move, std::forward
 
 #include "cxx_universal.h"
 #include "cxx_type_traits_polyfill.h"
+#include "fast_and.h"
 #include "type_at.h"
 
 namespace _sqlite_orm {
     // short names defined in a short namespace to reduce symbol lengths,
     // since those types are used as a building block;
-    // (seen in boost hana)
+    // (as seen in boost hana)
 
     /*
      *  element of a unique tuple
@@ -18,6 +19,11 @@ namespace _sqlite_orm {
     template<class X>
     struct uplem {
         SQLITE_ORM_NOUNIQUEADDRESS X element;
+
+        constexpr uplem() = default;
+
+        template<class Y>
+        constexpr uplem(Y&& y) : element(std::forward<Y>(y)) {}
     };
 }
 
@@ -27,27 +33,48 @@ namespace sqlite_orm {
             using ::_sqlite_orm::uplem;
 
             /*
-             *  unique tuple
+             *  unique tuple, which allows only distinct types.
              */
             template<class... X>
             struct SQLITE_ORM_MSVC_EMPTYBASES uple final : uplem<X>... {
+              private:
+                template<class Other, size_t... Idx>
+                constexpr uple(std::index_sequence<Idx...>, Other&& other) :
+                    base_type{std::get<Idx>(std::forward<Other>(other))...} {}
+
+              public:
 #ifdef SQLITE_ORM_CONDITIONAL_EXPLICIT_SUPPORTED
-                constexpr explicit(!polyfill::conjunction_v<std::is_default_constructible<X>...>) uple() = default;
+                template<class... Void,
+                         std::enable_if_t<polyfill::conjunction_v<std::is_constructible<X, Void...>...>, bool> = true>
+                constexpr explicit(!SQLITE_ORM_FAST_AND(std::is_default_constructible<X>)) uple() {}
 #else
-                constexpr uple() = default;
+                template<class... Void,
+                         std::enable_if_t<SQLITE_ORM_FAST_AND(std::is_constructible<X, Void...>), bool> = true>
+                constexpr uple() {}
 #endif
 
-                template<class... U,
-                         std::enable_if_t<polyfill::conjunction_v<std::is_constructible<X, U&&>...>, bool> = true>
-                constexpr uple(U&&... t) : uplem<X>{std::forward<U>(t)}... {}
+                template<class... Y, std::enable_if_t<SQLITE_ORM_FAST_AND(std::is_constructible<X, Y&&>), bool> = true>
+                constexpr uple(Y&&... y) : uplem<X>(std::forward<Y>(y))... {}
 
                 constexpr uple(const uple& other) = default;
                 constexpr uple(uple&& other) = default;
+
+                template<class... Y,
+                         std::enable_if_t<SQLITE_ORM_FAST_AND(std::is_constructible<X, const Y&>), bool> = true>
+                constexpr uple(const uple<Y...>& other) : uple{std::make_index_sequence<sizeof...(Y)>, other} {}
+
+                template<class... Y, std::enable_if_t<SQLITE_ORM_FAST_AND(std::is_constructible<X, Y&&>), bool> = true>
+                constexpr uple(uple<Y...>&& other) : uple{std::make_index_sequence<sizeof...(Y)>, std::move(other)} {}
+            };
+
+            template<>
+            struct uple<> final {
+                constexpr uple() = default;
             };
 
             template<class... X>
-            auto make_unique_tuple(X&&... t) {
-                return uple<std::decay_t<X>...>{std::forward<X>(t)...};
+            constexpr auto make_unique_tuple(X&&... x) {
+                return uple<std::decay_t<X>...>{std::forward<X>(x)...};
             }
 
             template<size_t n, typename... X>

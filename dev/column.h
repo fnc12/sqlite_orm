@@ -23,7 +23,7 @@ namespace sqlite_orm {
             /**
              *  Column name.
              */
-            const std::string name;
+            std::string name;
         };
 
         struct empty_setter {};
@@ -70,7 +70,7 @@ namespace sqlite_orm {
         struct column_constraints {
             using constraints_type = mpl::uple<Op...>;
 
-            SQLITE_ORM_NOUNIQUEADDRESS const constraints_type constraints;
+            SQLITE_ORM_NOUNIQUEADDRESS constraints_type constraints;
 
             /**
              *  Checks whether contraints are of trait `Trait`

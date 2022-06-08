@@ -5,6 +5,8 @@
 #include <functional>  //  std::reference_wrapper
 #include "functional/cxx_optional.h"
 
+#include "functional/type_at.h"
+#include "functional/tuple.h"
 #include "tuple_helper/tuple_filter.h"
 #include "conditions.h"
 #include "operators.h"
@@ -43,18 +45,18 @@ namespace sqlite_orm {
         struct node_tuple<std::reference_wrapper<T>, void> : node_tuple<T> {};
 
         template<class... Args>
-        struct node_tuple<group_by_t<Args...>, void> : node_tuple<std::tuple<Args...>> {};
+        struct node_tuple<group_by_t<Args...>, void> : node_tuple<mpl::pack<Args...>> {};
 
         template<class T, class... Args>
         struct node_tuple<group_by_with_having<T, Args...>, void> {
-            using args_tuple = node_tuple_t<std::tuple<Args...>>;
+            using args_tuple = node_tuple_t<mpl::pack<Args...>>;
             using expression_tuple = node_tuple_t<T>;
             using type = conc_tuple_t<args_tuple, expression_tuple>;
         };
 
         template<class... TargetArgs, class... ActionsArgs>
         struct node_tuple<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void>
-            : node_tuple<std::tuple<ActionsArgs...>> {};
+            : node_tuple<mpl::pack<ActionsArgs...>> {};
 
         template<class... Args>
         struct node_tuple<set_t<Args...>, void> {
@@ -158,6 +160,11 @@ namespace sqlite_orm {
 
         template<class... Args>
         struct node_tuple<std::tuple<Args...>, void> {
+            using type = conc_tuple_t<node_tuple_t<Args>...>;
+        };
+
+        template<class... Args>
+        struct node_tuple<mpl::pack<Args...>, void> {
             using type = conc_tuple_t<node_tuple_t<Args>...>;
         };
 

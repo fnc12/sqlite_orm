@@ -1,6 +1,6 @@
 #pragma once
 
-#include <tuple>  //  std::tuple, std::make_tuple, std::declval
+#include <type_traits>  //  std::declval
 #include <string>  //  std::string
 #include <utility>  //  std::forward
 
@@ -29,7 +29,7 @@ namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
             index_t(std::string name_, bool unique_, elements_type elements_) :
-                index_base{move(name_), unique_}, elements(move(elements_)) {}
+                index_base{move(name_), unique_}, elements(std::move(elements_)) {}
 #endif
 
             elements_type elements;

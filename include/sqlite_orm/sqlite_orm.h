@@ -1012,12 +1012,37 @@ namespace sqlite_orm {
 
 // #include "../functional/unique_tuple.h"
 
-#include <type_traits>  //  std::integral_constant, std::decay, std::is_constructible, std::enable_if
+#include <type_traits>  //  std::integral_constant, std::decay, std::is_constructible, std::is_default_constructible, std::enable_if
 #include <utility>  //  std::move, std::forward
 
 // #include "cxx_universal.h"
 
 // #include "cxx_type_traits_polyfill.h"
+
+// #include "fast_and.h"
+
+// #include "cxx_universal.h"
+
+#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+#include <type_traits>
+#else
+// #include "cxx_type_traits_polyfill.h"
+
+#endif
+
+#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+namespace sqlite_orm {
+    namespace internal {
+
+        template<bool... v>
+        struct fast_and : std::is_same<fast_and<v...>, fast_and<(v, true)...>> {};
+    }
+}
+
+#define SQLITE_ORM_FAST_AND(...) ::sqlite_orm::internal::fast_and<__VA_ARGS__::value...>::value
+#else
+#define SQLITE_ORM_FAST_AND(...) polyfill::conjunction_v<__VA_ARGS__...>
+#endif
 
 // #include "type_at.h"
 
@@ -1033,7 +1058,7 @@ namespace sqlite_orm {
 namespace _sqlite_orm {
     // short names defined in a short namespace to reduce symbol lengths,
     // since those types are used as a building block;
-    // (seen in boost hana)
+    // (as seen in boost hana)
 
     template<size_t I, typename T>
     struct indexed_type {
@@ -1117,7 +1142,7 @@ namespace std {
 namespace _sqlite_orm {
     // short names defined in a short namespace to reduce symbol lengths,
     // since those types are used as a building block;
-    // (seen in boost hana)
+    // (as seen in boost hana)
 
     /*
      *  element of a unique tuple
@@ -1125,6 +1150,11 @@ namespace _sqlite_orm {
     template<class X>
     struct uplem {
         SQLITE_ORM_NOUNIQUEADDRESS X element;
+
+        constexpr uplem() = default;
+
+        template<class Y>
+        constexpr uplem(Y&& y) : element(std::forward<Y>(y)) {}
     };
 }
 
@@ -1134,27 +1164,48 @@ namespace sqlite_orm {
             using ::_sqlite_orm::uplem;
 
             /*
-             *  unique tuple
+             *  unique tuple, which allows only distinct types.
              */
             template<class... X>
             struct SQLITE_ORM_MSVC_EMPTYBASES uple final : uplem<X>... {
+              private:
+                template<class Other, size_t... Idx>
+                constexpr uple(std::index_sequence<Idx...>, Other&& other) :
+                    base_type{std::get<Idx>(std::forward<Other>(other))...} {}
+
+              public:
 #ifdef SQLITE_ORM_CONDITIONAL_EXPLICIT_SUPPORTED
-                constexpr explicit(!polyfill::conjunction_v<std::is_default_constructible<X>...>) uple() = default;
+                template<class... Void,
+                         std::enable_if_t<polyfill::conjunction_v<std::is_constructible<X, Void...>...>, bool> = true>
+                constexpr explicit(!SQLITE_ORM_FAST_AND(std::is_default_constructible<X>)) uple() {}
 #else
-                constexpr uple() = default;
+                template<class... Void,
+                         std::enable_if_t<SQLITE_ORM_FAST_AND(std::is_constructible<X, Void...>), bool> = true>
+                constexpr uple() {}
 #endif
 
-                template<class... U,
-                         std::enable_if_t<polyfill::conjunction_v<std::is_constructible<X, U&&>...>, bool> = true>
-                constexpr uple(U&&... t) : uplem<X>{std::forward<U>(t)}... {}
+                template<class... Y, std::enable_if_t<SQLITE_ORM_FAST_AND(std::is_constructible<X, Y&&>), bool> = true>
+                constexpr uple(Y&&... y) : uplem<X>(std::forward<Y>(y))... {}
 
                 constexpr uple(const uple& other) = default;
                 constexpr uple(uple&& other) = default;
+
+                template<class... Y,
+                         std::enable_if_t<SQLITE_ORM_FAST_AND(std::is_constructible<X, const Y&>), bool> = true>
+                constexpr uple(const uple<Y...>& other) : uple{std::make_index_sequence<sizeof...(Y)>, other} {}
+
+                template<class... Y, std::enable_if_t<SQLITE_ORM_FAST_AND(std::is_constructible<X, Y&&>), bool> = true>
+                constexpr uple(uple<Y...>&& other) : uple{std::make_index_sequence<sizeof...(Y)>, std::move(other)} {}
+            };
+
+            template<>
+            struct uple<> final {
+                constexpr uple() = default;
             };
 
             template<class... X>
-            auto make_unique_tuple(X&&... t) {
-                return uple<std::decay_t<X>...>{std::forward<X>(t)...};
+            constexpr auto make_unique_tuple(X&&... x) {
+                return uple<std::decay_t<X>...>{std::forward<X>(x)...};
             }
 
             template<size_t n, typename... X>
@@ -1215,12 +1266,14 @@ namespace std {
 
 // #include "../functional/tuple.h"
 
-#include <type_traits>  //  std::integral_constant, std::decay, std::is_constructible, std::enable_if
+#include <type_traits>  //  std::integral_constant, std::decay, std::is_constructible, std::is_default_constructible, std::enable_if
 #include <utility>  //  std::move, std::forward
 
 // #include "cxx_universal.h"
 
 // #include "cxx_type_traits_polyfill.h"
+
+// #include "fast_and.h"
 
 // #include "pack.h"
 
@@ -1229,7 +1282,7 @@ namespace std {
 namespace _sqlite_orm {
     // short names defined in a short namespace to reduce symbol lengths,
     // since those types are used as a building block;
-    // (seen in boost hana)
+    // (as seen in boost hana)
 
     /*
      *  element of a tuple
@@ -1238,7 +1291,10 @@ namespace _sqlite_orm {
     struct tuplem : indexed_type<I, X> {
         SQLITE_ORM_NOUNIQUEADDRESS X element;
 
-        tuplem(X t) : element{std::move(t)} {}
+        constexpr tuplem() = default;
+
+        template<class Y>
+        constexpr tuplem(Y&& y) : element(std::forward<Y>(y)) {}
     };
 }
 
@@ -1255,9 +1311,14 @@ namespace sqlite_orm {
 #ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
                 constexpr basic_tuple() = default;
 
-                template<class... U,
-                         std::enable_if_t<polyfill::conjunction_v<std::is_constructible<X, U&&>...>, bool> = true>
-                constexpr basic_tuple(U&&... t) : tuplem<Idx, X>{std::forward<U>(t)}... {}
+#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+                template<class... Y>
+                constexpr basic_tuple(Y&&... y) : tuplem<Idx, X>(std::forward<Y>(y))... {}
+#else
+                template<class... Y>
+                constexpr basic_tuple(bool /*force instantiation of ctor*/, Y&&... y) :
+                    tuplem<Idx, X>(std::forward<Y>(y))... {}
+#endif
 #endif
             };
 
@@ -1265,24 +1326,54 @@ namespace sqlite_orm {
              *  tuple
              */
             template<class... X>
-            struct SQLITE_ORM_MSVC_EMPTYBASES tuple final : basic_tuple<std::index_sequence_for<X...>, X...> {
+            struct SQLITE_ORM_MSVC_EMPTYBASES tuple final : basic_tuple<std::make_index_sequence<sizeof...(X)>, X...> {
+              private:
+                using base_type = basic_tuple<std::make_index_sequence<sizeof...(X)>, X...>;
+
+                template<class Other, size_t... Idx>
+                constexpr tuple(std::index_sequence<Idx...>, Other&& other) :
+                    base_type{std::get<Idx>(std::forward<Other>(other))...} {}
+
+              public:
 #ifdef SQLITE_ORM_CONDITIONAL_EXPLICIT_SUPPORTED
-                constexpr explicit(!polyfill::conjunction_v<std::is_default_constructible<X>...>) tuple() = default;
+                template<class... Void,
+                         std::enable_if_t<polyfill::conjunction_v<std::is_constructible<X, Void...>...>, bool> = true>
+                constexpr explicit(!SQLITE_ORM_FAST_AND(std::is_default_constructible<X>)) tuple() : base_type{} {}
 #else
-                constexpr tuple() = default;
+                template<class... Void,
+                         std::enable_if_t<polyfill::conjunction_v<std::is_constructible<X, Void...>...>, bool> = true>
+                constexpr tuple() : base_type{} {}
 #endif
 
-                template<class... U,
-                         std::enable_if_t<polyfill::conjunction_v<std::is_constructible<X, U&&>...>, bool> = true>
-                constexpr tuple(U&&... t) : basic_tuple<std::index_sequence_for<X...>, X...>{std::forward<U>(t)...} {}
+                template<class... Y, std::enable_if_t<SQLITE_ORM_FAST_AND(std::is_constructible<X, Y&&>), bool> = true>
+#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+                constexpr tuple(Y&&... y) : base_type{std::forward<Y>(y)...} {
+                }
+#else
+                constexpr tuple(Y&&... y) : base_type{true, std::forward<Y>(y)...} {
+                }
+#endif
 
                 constexpr tuple(const tuple& other) = default;
                 constexpr tuple(tuple&& other) = default;
+
+                template<class... Y,
+                         std::enable_if_t<SQLITE_ORM_FAST_AND(std::is_constructible<X, const Y&>), bool> = true>
+                constexpr tuple(const tuple<Y...>& other) : tuple{std::make_index_sequence<sizeof...(Y)>, other} {}
+
+                template<class... Y, std::enable_if_t<SQLITE_ORM_FAST_AND(std::is_constructible<X, Y&&>), bool> = true>
+                constexpr tuple(tuple<Y...>&& other) :
+                    tuple{std::make_index_sequence<sizeof...(Y)>, std::move(other)} {}
+            };
+
+            template<>
+            struct tuple<> final {
+                constexpr tuple() = default;
             };
 
             template<class... X>
-            auto make_tuple(X&&... t) {
-                return tuple<std::decay_t<X>...>{std::forward<X>(t)...};
+            constexpr auto make_tuple(X&&... x) {
+                return tuple<std::decay_t<X>...>{std::forward<X>(x)...};
             }
 
             template<size_t n, typename... X>
@@ -1418,17 +1509,17 @@ namespace sqlite_orm {
 
         template<class... T, size_t... Idx>
         struct tuple_from_index_sequence<std::tuple<T...>, std::index_sequence<Idx...>> {
-            using type = std::tuple<mpl::type_at_t<Idx, T...>...>;
+            using type = std::tuple<mpl::element_at_t<Idx, std::tuple<T...>>...>;
         };
 
         template<class... T, size_t... Idx>
         struct tuple_from_index_sequence<mpl::uple<T...>, std::index_sequence<Idx...>> {
-            using type = mpl::uple<mpl::type_at_t<Idx, T...>...>;
+            using type = mpl::uple<mpl::element_at_t<Idx, mpl::uple<T...>>...>;
         };
 
         template<class... T, size_t... Idx>
         struct tuple_from_index_sequence<mpl::tuple<T...>, std::index_sequence<Idx...>> {
-            using type = mpl::tuple<mpl::type_at_t<Idx, T...>...>;
+            using type = mpl::tuple<mpl::element_at_t<Idx, mpl::tuple<T...>>...>;
         };
 
         template<class Tpl, class Seq>
@@ -1452,27 +1543,9 @@ namespace sqlite_orm {
         struct filter_tuple_sequence;
 
 #ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
-        template<class... T, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
-        struct filter_tuple_sequence<std::tuple<T...>, Pred, Proj, std::index_sequence<Idx...>>
-            : concat_idx_seq<std::conditional_t<Pred<Proj<mpl::element_at_t<Idx, std::tuple<T...>>>>::value,
-                                                std::index_sequence<Idx>,
-                                                std::index_sequence<>>...> {};
-
-        template<class... T, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
-        struct filter_tuple_sequence<mpl::uple<T...>, Pred, Proj, std::index_sequence<Idx...>>
-            : concat_idx_seq<std::conditional_t<Pred<Proj<mpl::element_at_t<Idx, mpl::uple<T...>>>>::value,
-                                                std::index_sequence<Idx>,
-                                                std::index_sequence<>>...> {};
-
-        template<class... T, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
-        struct filter_tuple_sequence<mpl::tuple<T...>, Pred, Proj, std::index_sequence<Idx...>>
-            : concat_idx_seq<std::conditional_t<Pred<Proj<mpl::element_at_t<Idx, mpl::tuple<T...>>>>::value,
-                                                std::index_sequence<Idx>,
-                                                std::index_sequence<>>...> {};
-
-        template<class... T, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
-        struct filter_tuple_sequence<mpl::pack<T...>, Pred, Proj, std::index_sequence<Idx...>>
-            : concat_idx_seq<std::conditional_t<Pred<Proj<mpl::element_at_t<Idx, mpl::pack<T...>>>>::value,
+        template<class Tpl, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
+        struct filter_tuple_sequence<Tpl, Pred, Proj, std::index_sequence<Idx...>>
+            : concat_idx_seq<std::conditional_t<Pred<Proj<mpl::element_at_t<Idx, Tpl>>>::value,
                                                 std::index_sequence<Idx>,
                                                 std::index_sequence<>>...> {};
 #else
@@ -1486,21 +1559,9 @@ namespace sqlite_orm {
             using type = std::index_sequence<Idx>;
         };
 
-        template<class... T, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
-        struct filter_tuple_sequence<std::tuple<T...>, Pred, Proj, std::index_sequence<Idx...>>
-            : concat_idx_seq<typename tuple_seq_single<Idx, Proj<mpl::type_at_t<Idx, T...>>, Pred>::type...> {};
-
-        template<class... T, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
-        struct filter_tuple_sequence<mpl::uple<T...>, Pred, Proj, std::index_sequence<Idx...>>
-            : concat_idx_seq<typename tuple_seq_single<Idx, Proj<mpl::type_at_t<Idx, T...>>, Pred>::type...> {};
-
-        template<class... T, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
-        struct filter_tuple_sequence<mpl::tuple<T...>, Pred, Proj, std::index_sequence<Idx...>>
-            : concat_idx_seq<typename tuple_seq_single<Idx, Proj<mpl::type_at_t<Idx, T...>>, Pred>::type...> {};
-
-        template<class... T, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
-        struct filter_tuple_sequence<mpl::pack<T...>, Pred, Proj, std::index_sequence<Idx...>>
-            : concat_idx_seq<typename tuple_seq_single<Idx, Proj<mpl::type_at_t<Idx, T...>>, Pred>::type...> {};
+        template<class Tpl, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
+        struct filter_tuple_sequence<Tpl, Pred, Proj, std::index_sequence<Idx...>>
+            : concat_idx_seq<typename tuple_seq_single<Idx, Proj<mpl::element_at_t<Idx, Tpl>>, Pred>::type...> {};
 #endif
 
         template<class Tpl,
@@ -2531,7 +2592,7 @@ namespace sqlite_orm {
             /**
              *  Column name.
              */
-            const std::string name;
+            std::string name;
         };
 
         struct empty_setter {};
@@ -2578,7 +2639,7 @@ namespace sqlite_orm {
         struct column_constraints {
             using constraints_type = mpl::uple<Op...>;
 
-            SQLITE_ORM_NOUNIQUEADDRESS const constraints_type constraints;
+            SQLITE_ORM_NOUNIQUEADDRESS constraints_type constraints;
 
             /**
              *  Checks whether contraints are of trait `Trait`
@@ -9181,7 +9242,7 @@ namespace sqlite_orm {
 }
 #pragma once
 
-#include <tuple>  //  std::tuple, std::make_tuple, std::declval
+#include <type_traits>  //  std::declval
 #include <string>  //  std::string
 #include <utility>  //  std::forward
 
@@ -9283,7 +9344,7 @@ namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
             index_t(std::string name_, bool unique_, elements_type elements_) :
-                index_base{move(name_), unique_}, elements(move(elements_)) {}
+                index_base{move(name_), unique_}, elements(std::move(elements_)) {}
 #endif
 
             elements_type elements;
@@ -9642,7 +9703,6 @@ namespace sqlite_orm {
 #include <sqlite3.h>
 #include <type_traits>
 #include <string>  //  std::string
-#include <tuple>  //  std::tuple
 #include <functional>  //  std::function
 #include <algorithm>  //  std::min
 #include <utility>  //  std::move, std::forward
@@ -9653,7 +9713,7 @@ namespace sqlite_orm {
 
 // #include "functional/type_at.h"
 
-// #include "functional/unique_tuple.h"
+// #include "functional/tuple.h"
 
 namespace sqlite_orm {
 
@@ -9744,14 +9804,14 @@ namespace sqlite_orm {
         template<class O, class R, class... Args>
         struct member_function_arguments<R (O::*)(Args...) const> {
             using member_function_type = R (O::*)(Args...) const;
-            using tuple_type = std::tuple<std::decay_t<Args>...>;
+            using tuple_type = mpl::tuple<std::decay_t<Args>...>;
             using return_type = R;
         };
 
         template<class O, class R, class... Args>
         struct member_function_arguments<R (O::*)(Args...)> {
             using member_function_type = R (O::*)(Args...);
-            using tuple_type = std::tuple<std::decay_t<Args>...>;
+            using tuple_type = mpl::tuple<std::decay_t<Args>...>;
             using return_type = R;
         };
 
@@ -9776,7 +9836,7 @@ namespace sqlite_orm {
         template<class F, class... Args>
         struct function_call {
             using function_type = F;
-            using args_tuple = std::tuple<Args...>;
+            using args_tuple = mpl::tuple<Args...>;
 
             args_tuple args;
         };
@@ -9880,12 +9940,12 @@ namespace sqlite_orm {
         constexpr auto argsCount = args_pack::size();
         constexpr auto functionArgsCount = std::tuple_size<function_args_tuple>::value;
         static_assert((argsCount == functionArgsCount &&
-                       !std::is_same<function_args_tuple, std::tuple<arg_values>>::value &&
+                       !std::is_same<function_args_tuple, mpl::tuple<arg_values>>::value &&
                        internal::validate_pointer_value_types<mpl::pack<function_args_tuple>, args_pack>(
                            polyfill::index_constant<std::min<>(functionArgsCount, argsCount) - 1>{})) ||
-                          std::is_same<function_args_tuple, std::tuple<arg_values>>::value,
+                          std::is_same<function_args_tuple, mpl::tuple<arg_values>>::value,
                       "Number of arguments does not match");
-        return {std::make_tuple(std::forward<Args>(args)...)};
+        return {mpl::make_tuple(std::forward<Args>(args)...)};
     }
 
 }
@@ -10480,7 +10540,8 @@ namespace sqlite_orm {
             elements_type elements;
 
 #ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            table_t(std::string name_, elements_type elements_) : basic_table{move(name_)}, elements{move(elements_)} {}
+            table_t(std::string name_, elements_type elements_) :
+                basic_table{move(name_)}, elements{std::move(elements_)} {}
 #endif
 
             table_t<T, true, Cs...> without_rowid() const {
@@ -12466,6 +12527,18 @@ namespace sqlite_orm {
             }
         };
 
+        template<class... Args>
+        struct ast_iterator<mpl::tuple<Args...>, void> {
+            using node_type = mpl::tuple<Args...>;
+
+            template<class L>
+            void operator()(const node_type& node, L& lambda) const {
+                iterate_tuple(node, [&lambda](auto& v) {
+                    iterate_ast(v, lambda);
+                });
+            }
+        };
+
         template<class T, class... Args>
         struct ast_iterator<group_by_with_having<T, Args...>, void> {
             using node_type = group_by_with_having<T, Args...>;
@@ -13882,6 +13955,8 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_universal.h"
 
+// #include "functional/tuple.h"
+
 // #include "row_extractor.h"
 
 // #include "arg_values.h"
@@ -14040,7 +14115,7 @@ namespace sqlite_orm {
                 (*this)(values, tuple, std::make_index_sequence<std::tuple_size<Tpl>::value>{});
             }
 
-            void operator()(sqlite3_value** values, std::tuple<arg_values>& tuple, int argsCount) const {
+            void operator()(sqlite3_value** values, mpl::tuple<arg_values>& tuple, int argsCount) const {
                 std::get<0>(tuple) = arg_values(argsCount, values);
             }
 
@@ -14285,10 +14360,9 @@ namespace sqlite_orm {
                 auto name = ss.str();
                 using args_tuple = typename callable_arguments<F>::args_tuple;
                 using return_type = typename callable_arguments<F>::return_type;
-                auto argsCount = int(std::tuple_size<args_tuple>::value);
-                if(std::is_same<args_tuple, std::tuple<arg_values>>::value) {
-                    argsCount = -1;
-                }
+                constexpr auto argsCount = std::is_same<args_tuple, mpl::tuple<arg_values>>::value
+                                               ? -1
+                                               : int(std::tuple_size<args_tuple>::value);
                 this->scalarFunctions.emplace_back(new user_defined_scalar_function_t{
                     move(name),
                     argsCount,
@@ -14348,10 +14422,9 @@ namespace sqlite_orm {
                 auto name = ss.str();
                 using args_tuple = typename callable_arguments<F>::args_tuple;
                 using return_type = typename callable_arguments<F>::return_type;
-                auto argsCount = int(std::tuple_size<args_tuple>::value);
-                if(std::is_same<args_tuple, std::tuple<arg_values>>::value) {
-                    argsCount = -1;
-                }
+                constexpr auto argsCount = std::is_same<args_tuple, mpl::tuple<arg_values>>::value
+                                               ? -1
+                                               : int(std::tuple_size<args_tuple>::value);
                 this->aggregateFunctions.emplace_back(new user_defined_aggregate_function_t{
                     move(name),
                     argsCount,
@@ -14365,7 +14438,7 @@ namespace sqlite_orm {
                         args_tuple argsTuple;
                         using tuple_size = std::tuple_size<args_tuple>;
                         values_to_tuple{}(values, argsTuple, argsCount);
-                        call(function, &F::step, move(argsTuple));
+                        call(function, &F::step, std::move(argsTuple));
                     },
                     /* finalCall = */
                     [](sqlite3_context* context, void* functionVoidPointer) {
@@ -18748,6 +18821,10 @@ namespace sqlite_orm {
 #include <functional>  //  std::reference_wrapper
 // #include "functional/cxx_optional.h"
 
+// #include "functional/type_at.h"
+
+// #include "functional/tuple.h"
+
 // #include "tuple_helper/tuple_filter.h"
 
 // #include "conditions.h"
@@ -18798,18 +18875,18 @@ namespace sqlite_orm {
         struct node_tuple<std::reference_wrapper<T>, void> : node_tuple<T> {};
 
         template<class... Args>
-        struct node_tuple<group_by_t<Args...>, void> : node_tuple<std::tuple<Args...>> {};
+        struct node_tuple<group_by_t<Args...>, void> : node_tuple<mpl::pack<Args...>> {};
 
         template<class T, class... Args>
         struct node_tuple<group_by_with_having<T, Args...>, void> {
-            using args_tuple = node_tuple_t<std::tuple<Args...>>;
+            using args_tuple = node_tuple_t<mpl::pack<Args...>>;
             using expression_tuple = node_tuple_t<T>;
             using type = conc_tuple_t<args_tuple, expression_tuple>;
         };
 
         template<class... TargetArgs, class... ActionsArgs>
         struct node_tuple<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void>
-            : node_tuple<std::tuple<ActionsArgs...>> {};
+            : node_tuple<mpl::pack<ActionsArgs...>> {};
 
         template<class... Args>
         struct node_tuple<set_t<Args...>, void> {
@@ -18913,6 +18990,11 @@ namespace sqlite_orm {
 
         template<class... Args>
         struct node_tuple<std::tuple<Args...>, void> {
+            using type = conc_tuple_t<node_tuple_t<Args>...>;
+        };
+
+        template<class... Args>
+        struct node_tuple<mpl::pack<Args...>, void> {
             using type = conc_tuple_t<node_tuple_t<Args>...>;
         };
 

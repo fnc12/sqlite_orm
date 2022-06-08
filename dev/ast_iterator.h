@@ -318,6 +318,18 @@ namespace sqlite_orm {
             }
         };
 
+        template<class... Args>
+        struct ast_iterator<mpl::tuple<Args...>, void> {
+            using node_type = mpl::tuple<Args...>;
+
+            template<class L>
+            void operator()(const node_type& node, L& lambda) const {
+                iterate_tuple(node, [&lambda](auto& v) {
+                    iterate_ast(v, lambda);
+                });
+            }
+        };
+
         template<class T, class... Args>
         struct ast_iterator<group_by_with_having<T, Args...>, void> {
             using node_type = group_by_with_having<T, Args...>;
