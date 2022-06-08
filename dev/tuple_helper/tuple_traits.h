@@ -6,6 +6,7 @@
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/mpl.h"
 #include "../functional/unique_tuple.h"
+#include "../functional/tuple.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -14,10 +15,15 @@ namespace sqlite_orm {
          */
         template<template<class...> class TraitFn, class Tuple>
         struct tuple_has {};
+
         template<template<class...> class TraitFn, class... Types>
         struct tuple_has<TraitFn, std::tuple<Types...>> : polyfill::disjunction<TraitFn<Types>...> {};
+
         template<template<class...> class TraitFn, class... Types>
         struct tuple_has<TraitFn, mpl::uple<Types...>> : polyfill::disjunction<TraitFn<Types>...> {};
+
+        template<template<class...> class TraitFn, class... Types>
+        struct tuple_has<TraitFn, mpl::tuple<Types...>> : polyfill::disjunction<TraitFn<Types>...> {};
 
         /*
          *  Trait metafunction class that checks whether a tuple contains a type with given trait.

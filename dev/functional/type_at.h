@@ -10,9 +10,6 @@ namespace sqlite_orm {
     namespace internal {
         namespace mpl {
 
-            template<typename... T>
-            struct pack<std::tuple<T...>> : pack<T...> {};
-
 #ifndef SQLITE_ORM_HAS_TYPE_PACK_ELEMENT_INTRINSIC
             namespace td {
                 template<typename Indices, typename... T>
@@ -20,9 +17,6 @@ namespace sqlite_orm {
 
                 template<size_t... Idx, typename... T>
                 struct indexer<std::index_sequence<Idx...>, T...> : indexed_type<Idx, T>... {};
-
-                template<size_t I, typename T>
-                indexed_type<I, T> get_indexed_type(const indexed_type<I, T>&);
             }
 #endif
 
@@ -33,7 +27,7 @@ namespace sqlite_orm {
 #else
                 using Indexer = td::indexer<std::make_index_sequence<sizeof...(T)>, T...>;
                 // implementation note: needs to be aliased on its own [SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION]
-                using indexed_t = decltype(td::get_indexed_type<n>(Indexer{}));
+                using indexed_t = decltype(get_indexed_type<n>(Indexer{}));
                 using type = typename indexed_t::type;
 #endif
             };
@@ -49,8 +43,17 @@ namespace sqlite_orm {
 
             template<size_t n, typename Tpl>
             using element_at_t = typename type_at<n, Tpl>::type;
+
+            template<typename... T>
+            struct pack<std::tuple<T...>> : pack<T...> {};
         }
     }
 
     namespace mpl = internal::mpl;
+}
+
+// retain stl tuple interface for `tuple`
+namespace std {
+    template<class... X>
+    struct tuple_size<sqlite_orm::mpl::pack<X...>> : integral_constant<size_t, sizeof...(X)> {};
 }

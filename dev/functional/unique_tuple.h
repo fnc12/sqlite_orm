@@ -31,19 +31,23 @@ namespace sqlite_orm {
              */
             template<class... X>
             struct SQLITE_ORM_MSVC_EMPTYBASES uple final : uplem<X>... {
+#ifdef SQLITE_ORM_CONDITIONAL_EXPLICIT_SUPPORTED
+                constexpr explicit(!polyfill::conjunction_v<std::is_default_constructible<X>...>) uple() = default;
+#else
                 constexpr uple() = default;
+#endif
 
                 template<class... U,
                          std::enable_if_t<polyfill::conjunction_v<std::is_constructible<X, U&&>...>, bool> = true>
                 constexpr uple(U&&... t) : uplem<X>{std::forward<U>(t)}... {}
 
-                constexpr uple(uple&& other) = default;
                 constexpr uple(const uple& other) = default;
+                constexpr uple(uple&& other) = default;
             };
 
             template<class... X>
-            uple<std::decay_t<X>...> make_unique_tuple(X&&... t) {
-                return {std::forward<X>(t)...};
+            auto make_unique_tuple(X&&... t) {
+                return uple<std::decay_t<X>...>{std::forward<X>(t)...};
             }
 
             template<size_t n, typename... X>

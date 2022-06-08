@@ -3,6 +3,7 @@
 #include <tuple>  //  std::tuple
 
 #include "../functional/mpl.h"
+#include "../functional/tuple.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -12,6 +13,11 @@ namespace sqlite_orm {
 
         template<class... Types, template<class...> class Op>
         struct tuple_transformer<std::tuple<Types...>, Op> {
+            using type = std::tuple<mpl::invoke_op_t<Op, Types>...>;
+        };
+
+        template<class... Types, template<class...> class Op>
+        struct tuple_transformer<mpl::tuple<Types...>, Op> {
             using type = std::tuple<mpl::invoke_op_t<Op, Types>...>;
         };
 

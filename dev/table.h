@@ -12,7 +12,7 @@
 #include "functional/static_magic.h"
 #include "functional/mpl.h"
 #include "functional/type_at.h"
-#include "functional/unique_tuple.h"
+#include "functional/tuple.h"
 #include "typed_comparator.h"
 #include "tuple_helper/index_sequence_util.h"
 #include "tuple_helper/tuple_filter.h"
@@ -42,7 +42,7 @@ namespace sqlite_orm {
         template<class T, bool WithoutRowId, class... Cs>
         struct table_t : basic_table {
             using object_type = T;
-            using elements_type = std::tuple<Cs...>;
+            using elements_type = mpl::tuple<Cs...>;
 
             static constexpr bool is_without_rowid_v = WithoutRowId;
             using is_without_rowid = polyfill::bool_constant<is_without_rowid_v>;
@@ -293,7 +293,7 @@ namespace sqlite_orm {
     template<class... Cs, class T = typename mpl::type_at_t<0, Cs...>::object_type>
     internal::table_t<T, false, Cs...> make_table(std::string name, Cs... args) {
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
+            return {move(name), mpl::make_tuple<Cs...>(std::forward<Cs>(args)...)});
     }
 
     /**
@@ -304,6 +304,6 @@ namespace sqlite_orm {
     template<class T, class... Cs>
     internal::table_t<T, false, Cs...> make_table(std::string name, Cs... args) {
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
+            return {move(name), mpl::make_tuple<Cs...>(std::forward<Cs>(args)...)});
     }
 }

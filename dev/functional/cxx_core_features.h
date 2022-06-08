@@ -64,6 +64,10 @@
 #define SQLITE_ORM_NOUNIQUEADDRESS
 #endif
 
+#if __cpp_conditional_explicit >= 201806L
+#define SQLITE_ORM_CONDITIONAL_EXPLICIT_SUPPORTED
+#endif
+
 #if __cpp_consteval >= 201811L
 #define SQLITE_ORM_CONSTEVAL consteval
 #else

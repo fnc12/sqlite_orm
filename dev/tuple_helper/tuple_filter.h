@@ -5,7 +5,9 @@
 
 #include "../functional/cxx_universal.h"
 #include "../functional/type_at.h"
+#include "../functional/pack.h"
 #include "../functional/unique_tuple.h"
+#include "../functional/tuple.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -34,6 +36,11 @@ namespace sqlite_orm {
             using type = mpl::uple<mpl::type_at_t<Idx, T...>...>;
         };
 
+        template<class... T, size_t... Idx>
+        struct tuple_from_index_sequence<mpl::tuple<T...>, std::index_sequence<Idx...>> {
+            using type = mpl::tuple<mpl::type_at_t<Idx, T...>...>;
+        };
+
         template<class Tpl, class Seq>
         using tuple_from_index_sequence_t = typename tuple_from_index_sequence<Tpl, Seq>::type;
 
@@ -57,13 +64,25 @@ namespace sqlite_orm {
 #ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
         template<class... T, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
         struct filter_tuple_sequence<std::tuple<T...>, Pred, Proj, std::index_sequence<Idx...>>
-            : concat_idx_seq<std::conditional_t<Pred<Proj<mpl::type_at_t<Idx, T...>>>::value,
+            : concat_idx_seq<std::conditional_t<Pred<Proj<mpl::element_at_t<Idx, std::tuple<T...>>>>::value,
                                                 std::index_sequence<Idx>,
                                                 std::index_sequence<>>...> {};
 
         template<class... T, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
         struct filter_tuple_sequence<mpl::uple<T...>, Pred, Proj, std::index_sequence<Idx...>>
-            : concat_idx_seq<std::conditional_t<Pred<Proj<mpl::type_at_t<Idx, T...>>>::value,
+            : concat_idx_seq<std::conditional_t<Pred<Proj<mpl::element_at_t<Idx, mpl::uple<T...>>>>::value,
+                                                std::index_sequence<Idx>,
+                                                std::index_sequence<>>...> {};
+
+        template<class... T, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
+        struct filter_tuple_sequence<mpl::tuple<T...>, Pred, Proj, std::index_sequence<Idx...>>
+            : concat_idx_seq<std::conditional_t<Pred<Proj<mpl::element_at_t<Idx, mpl::tuple<T...>>>>::value,
+                                                std::index_sequence<Idx>,
+                                                std::index_sequence<>>...> {};
+
+        template<class... T, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
+        struct filter_tuple_sequence<mpl::pack<T...>, Pred, Proj, std::index_sequence<Idx...>>
+            : concat_idx_seq<std::conditional_t<Pred<Proj<mpl::element_at_t<Idx, mpl::pack<T...>>>>::value,
                                                 std::index_sequence<Idx>,
                                                 std::index_sequence<>>...> {};
 #else
@@ -83,6 +102,14 @@ namespace sqlite_orm {
 
         template<class... T, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
         struct filter_tuple_sequence<mpl::uple<T...>, Pred, Proj, std::index_sequence<Idx...>>
+            : concat_idx_seq<typename tuple_seq_single<Idx, Proj<mpl::type_at_t<Idx, T...>>, Pred>::type...> {};
+
+        template<class... T, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
+        struct filter_tuple_sequence<mpl::tuple<T...>, Pred, Proj, std::index_sequence<Idx...>>
+            : concat_idx_seq<typename tuple_seq_single<Idx, Proj<mpl::type_at_t<Idx, T...>>, Pred>::type...> {};
+
+        template<class... T, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
+        struct filter_tuple_sequence<mpl::pack<T...>, Pred, Proj, std::index_sequence<Idx...>>
             : concat_idx_seq<typename tuple_seq_single<Idx, Proj<mpl::type_at_t<Idx, T...>>, Pred>::type...> {};
 #endif
 

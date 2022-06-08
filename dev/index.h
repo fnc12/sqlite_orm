@@ -5,6 +5,7 @@
 #include <utility>  //  std::forward
 
 #include "functional/cxx_universal.h"
+#include "functional/tuple.h"
 #include "tuple_helper/tuple_filter.h"
 #include "indexed_column.h"
 
@@ -23,7 +24,7 @@ namespace sqlite_orm {
 
         template<class... Els>
         struct index_t : index_base {
-            using elements_type = std::tuple<Els...>;
+            using elements_type = mpl::tuple<Els...>;
             using object_type = void;
 
 #ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
@@ -38,20 +39,18 @@ namespace sqlite_orm {
     template<class... Cols>
     internal::index_t<decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
                                                                                                    Cols... cols) {
-        using cols_tuple = std::tuple<Cols...>;
-        static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
+        static_assert(internal::count_tuple<mpl::pack<Cols...>, internal::is_where>::value <= 1,
                       "amount of where arguments can be 0 or 1");
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {move(name), false, std::make_tuple(internal::make_indexed_column(std::move(cols))...)});
+            return {move(name), false, mpl::make_tuple(internal::make_indexed_column(std::move(cols))...)});
     }
 
     template<class... Cols>
     internal::index_t<decltype(internal::make_indexed_column(std::declval<Cols>()))...>
     make_unique_index(std::string name, Cols... cols) {
-        using cols_tuple = std::tuple<Cols...>;
-        static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
+        static_assert(internal::count_tuple<mpl::pack<Cols...>, internal::is_where>::value <= 1,
                       "amount of where arguments can be 0 or 1");
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {move(name), true, std::make_tuple(internal::make_indexed_column(std::move(cols))...)});
+            return {move(name), true, mpl::make_tuple(internal::make_indexed_column(std::move(cols))...)});
     }
 }
