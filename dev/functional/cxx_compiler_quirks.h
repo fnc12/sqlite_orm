@@ -27,10 +27,17 @@
 
 #if defined(_MSC_VER) && (_MSC_VER < 1920)
 #define SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+#define SQLITE_ORM_BROKEN_CONSTEXPR_DELEGATING_CTORS
 #endif
 
 #if defined(_MSC_VER) && !defined(__clang__)  // MSVC
 #define SQLITE_ORM_MSVC_EMPTYBASES __declspec(empty_bases)
 #else
 #define SQLITE_ORM_MSVC_EMPTYBASES
+#endif
+
+#ifndef SQLITE_ORM_BROKEN_CONSTEXPR_DELEGATING_CTORS
+#define SQLITE_ORM_DELEGATING_CONSTEXPR constexpr
+#else
+#define SQLITE_ORM_DELEGATING_CONSTEXPR
 #endif

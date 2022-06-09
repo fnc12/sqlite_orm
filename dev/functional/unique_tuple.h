@@ -37,12 +37,6 @@ namespace sqlite_orm {
              */
             template<class... X>
             struct SQLITE_ORM_MSVC_EMPTYBASES uple final : uplem<X>... {
-              private:
-                template<class Other, size_t... Idx>
-                constexpr uple(std::index_sequence<Idx...>, Other&& other) :
-                    base_type{std::get<Idx>(std::forward<Other>(other))...} {}
-
-              public:
 #ifdef SQLITE_ORM_CONDITIONAL_EXPLICIT_SUPPORTED
                 template<class... Void,
                          std::enable_if_t<polyfill::conjunction_v<std::is_constructible<X, Void...>...>, bool> = true>
@@ -56,15 +50,27 @@ namespace sqlite_orm {
                 template<class... Y, std::enable_if_t<SQLITE_ORM_FAST_AND(std::is_constructible<X, Y&&>), bool> = true>
                 constexpr uple(Y&&... y) : uplem<X>(std::forward<Y>(y))... {}
 
-                constexpr uple(const uple& other) = default;
-                constexpr uple(uple&& other) = default;
-
                 template<class... Y,
                          std::enable_if_t<SQLITE_ORM_FAST_AND(std::is_constructible<X, const Y&>), bool> = true>
-                constexpr uple(const uple<Y...>& other) : uple{std::make_index_sequence<sizeof...(Y)>, other} {}
+                constexpr uple(const uple<Y...>& other) : uplem<X>(std::get<Y>(other))... {}
 
                 template<class... Y, std::enable_if_t<SQLITE_ORM_FAST_AND(std::is_constructible<X, Y&&>), bool> = true>
-                constexpr uple(uple<Y...>&& other) : uple{std::make_index_sequence<sizeof...(Y)>, std::move(other)} {}
+                constexpr uple(uple<Y...>&& other) : uplem<X>(std::get<Y>(std::move(other)))... {}
+
+                // The two following constructors are required to make sure that
+                // the tuple(Y&&...) constructor is _not_ preferred over the copy
+                // constructor for unary tuples containing a type that is constructible
+                // from uple<...>.
+
+                template<class... Void,
+                         std::enable_if_t<polyfill::conjunction_v<std::is_constructible<X, const X&, Void...>...>,
+                                          bool> = true>
+                constexpr uple(const uple& other) : uplem<X>(std::get<X>(other))... {}
+
+                template<
+                    class... Void,
+                    std::enable_if_t<polyfill::conjunction_v<std::is_constructible<X, X&&, Void...>...>, bool> = true>
+                constexpr uple(uple&& other) : uplem<X>(std::get<X>(std::move(other)))... {}
             };
 
             template<>
