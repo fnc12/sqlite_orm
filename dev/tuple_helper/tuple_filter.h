@@ -1,7 +1,6 @@
 #pragma once
 
 #include <type_traits>  //  std::integral_constant, std::index_sequence, std::make_index_sequence, std::conditional, std::declval
-#include <tuple>  //  std::tuple
 
 #include "../functional/cxx_universal.h"
 #include "../functional/type_at.h"
@@ -26,19 +25,9 @@ namespace sqlite_orm {
         template<class Tpl, class Seq>
         struct tuple_from_index_sequence;
 
-        template<class... T, size_t... Idx>
-        struct tuple_from_index_sequence<std::tuple<T...>, std::index_sequence<Idx...>> {
-            using type = std::tuple<mpl::element_at_t<Idx, std::tuple<T...>>...>;
-        };
-
-        template<class... T, size_t... Idx>
-        struct tuple_from_index_sequence<mpl::uple<T...>, std::index_sequence<Idx...>> {
-            using type = mpl::uple<mpl::element_at_t<Idx, mpl::uple<T...>>...>;
-        };
-
-        template<class... T, size_t... Idx>
-        struct tuple_from_index_sequence<mpl::tuple<T...>, std::index_sequence<Idx...>> {
-            using type = mpl::tuple<mpl::element_at_t<Idx, mpl::tuple<T...>>...>;
+        template<template<class...> class Tuple, class... T, size_t... Idx>
+        struct tuple_from_index_sequence<Tuple<T...>, std::index_sequence<Idx...>> {
+            using type = Tuple<mpl::element_at_t<Idx, Tuple<T...>>...>;
         };
 
         template<class Tpl, class Seq>

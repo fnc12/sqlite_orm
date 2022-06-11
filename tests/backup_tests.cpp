@@ -26,6 +26,11 @@ namespace {
     };
 
     auto initStorageMarvel(const std::string& path) {
+        auto table = make_table("marvel",
+                                make_column("id", &MarvelHero::id, primary_key()),
+                                make_column("name", &MarvelHero::name),
+                                make_column("abilities", &MarvelHero::abilities));
+        auto table2 = table;
         auto storage = make_storage(path,
                                     make_table("marvel",
                                                make_column("id", &MarvelHero::id, primary_key()),

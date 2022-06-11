@@ -18,5 +18,5 @@ namespace sqlite_orm {
 
 #define SQLITE_ORM_FAST_AND(...) ::sqlite_orm::internal::fast_and<__VA_ARGS__::value...>::value
 #else
-#define SQLITE_ORM_FAST_AND(...) polyfill::conjunction_v<__VA_ARGS__...>
+#define SQLITE_ORM_FAST_AND(...) polyfill::conjunction<__VA_ARGS__...>::value
 #endif

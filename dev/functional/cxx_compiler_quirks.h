@@ -25,6 +25,10 @@
 // Because we know what we are doing, we suppress the diagnostic message
 #define SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(...) SQLITE_ORM_CLANG_SUPPRESS("-Wmissing-braces", __VA_ARGS__)
 
+#if defined(_MSC_VER) && (_MSC_VER < 1915)
+#define SQLITE_ORM_WORKAROUND_MSVC_MULTIPLECTOR_106654
+#endif
+
 #if defined(_MSC_VER) && (_MSC_VER < 1920)
 #define SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
 #define SQLITE_ORM_BROKEN_CONSTEXPR_DELEGATING_CTORS
@@ -34,10 +38,4 @@
 #define SQLITE_ORM_MSVC_EMPTYBASES __declspec(empty_bases)
 #else
 #define SQLITE_ORM_MSVC_EMPTYBASES
-#endif
-
-#ifndef SQLITE_ORM_BROKEN_CONSTEXPR_DELEGATING_CTORS
-#define SQLITE_ORM_DELEGATING_CONSTEXPR constexpr
-#else
-#define SQLITE_ORM_DELEGATING_CONSTEXPR
 #endif

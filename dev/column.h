@@ -46,7 +46,7 @@ namespace sqlite_orm {
              *  Member pointer used to read a field value.
              *  If it is a object member pointer it is also used to write a field value.
              */
-            const member_pointer_t member_pointer;
+            member_pointer_t member_pointer;
 
             /**
              *  Setter member function to write a field value
