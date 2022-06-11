@@ -3,7 +3,6 @@
 #include <sqlite3.h>
 #include <string>  //  std::string
 #include <utility>  //  std::forward, std::move
-#include <tuple>  //  std::tuple, std::make_tuple
 
 #include "row_extractor.h"
 #include "error_code.h"

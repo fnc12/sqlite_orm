@@ -127,6 +127,9 @@ namespace sqlite_orm {
 
 // retain stl tuple interface for `tuple`
 namespace std {
+    template<class Tpl>
+    struct tuple_size;
+
     template<class... X>
     struct tuple_size<sqlite_orm::mpl::tuple<X...>> : integral_constant<size_t, sizeof...(X)> {};
 
@@ -234,7 +237,13 @@ namespace sqlite_orm {
                 constexpr auto make_tuple(X&&... x) {
                     return tuple<std::decay_t<X>...>{std::forward<X>(x)...};
                 }
+
+                template<class... X>
+                constexpr tuple<X&&...> forward_as_tuple(X&&... args) noexcept {
+                    return tuple<X&&...>(_STD forward<X>(args)...);
+                }
             }
+            using adl::forward_as_tuple;
             using adl::make_tuple;
 
             // implementation note: we could derive from `type_at<n, X...>` but leverage the fact that `tuple` is derived from `indexed_type`

@@ -1,11 +1,11 @@
 #pragma once
 
 #include <vector>  //  std::vector
-#include <tuple>  //  std::tuple
 #include <utility>  //  std::forward
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
+#include "functional/tuple.h"
 
 namespace sqlite_orm {
 
@@ -13,7 +13,7 @@ namespace sqlite_orm {
 
         template<class... Args>
         struct values_t {
-            using args_tuple = std::tuple<Args...>;
+            using args_tuple = mpl::tuple<Args...>;
 
             args_tuple tuple;
         };

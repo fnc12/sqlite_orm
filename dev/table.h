@@ -3,7 +3,6 @@
 #include <string>  //  std::string
 #include <type_traits>  //  std::remove_reference, std::is_same, std::decay
 #include <vector>  //  std::vector
-#include <tuple>  //  std::tuple_size, std::tuple_element
 #include <utility>  //  std::forward, std::move
 
 #include "functional/cxx_universal.h"

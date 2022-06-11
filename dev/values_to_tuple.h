@@ -2,7 +2,6 @@
 
 #include <sqlite3.h>
 #include <type_traits>  //  std::index_sequence, std::make_index_sequence
-#include <tuple>  //  std::tuple, std::tuple_size, std::get
 
 #include "functional/cxx_universal.h"
 #include "functional/tuple.h"

@@ -49,9 +49,3 @@ namespace sqlite_orm {
 
     namespace mpl = internal::mpl;
 }
-
-// retain stl tuple interface for `tuple`
-namespace std {
-    template<class... X>
-    struct tuple_size<sqlite_orm::mpl::pack<X...>> : integral_constant<size_t, sizeof...(X)> {};
-}

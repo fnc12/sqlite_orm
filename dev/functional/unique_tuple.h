@@ -111,6 +111,9 @@ namespace sqlite_orm {
 
 // retain stl tuple interface for `uple`
 namespace std {
+    template<class Tpl>
+    struct tuple_size;
+
     template<class... X>
     struct tuple_size<sqlite_orm::mpl::uple<X...>> : integral_constant<size_t, sizeof...(X)> {};
 
@@ -211,6 +214,11 @@ namespace sqlite_orm {
             template<class... X>
             constexpr auto make_unique_tuple(X&&... x) {
                 return uple<std::decay_t<X>...>{std::forward<X>(x)...};
+            }
+
+            template<class... X>
+            constexpr uple<X&&...> forward_as_unique_tuple(X&&... args) noexcept {
+                return uple<X&&...>(_STD forward<X>(args)...);
             }
 
             template<size_t n, typename... X>

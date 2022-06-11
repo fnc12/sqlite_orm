@@ -1,17 +1,16 @@
 #pragma once
 
-#include <tuple>  //  std::tuple, std::make_tuple
-#include <type_traits>  //  std::true_type, std::false_type
 #include <utility>  //  std::forward, std::move
 
 #include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/tuple.h"
 
 namespace sqlite_orm {
     namespace internal {
 
         template<class T, class... Args>
         struct group_by_with_having {
-            using args_type = std::tuple<Args...>;
+            using args_type = mpl::tuple<Args...>;
             using expression_type = T;
 
             args_type args;
@@ -23,7 +22,7 @@ namespace sqlite_orm {
          */
         template<class... Args>
         struct group_by_t {
-            using args_type = std::tuple<Args...>;
+            using args_type = mpl::tuple<Args...>;
 
             args_type args;
 
@@ -58,7 +57,7 @@ namespace sqlite_orm {
      */
     template<class... Args>
     internal::group_by_t<Args...> group_by(Args&&... args) {
-        return {std::make_tuple(std::forward<Args>(args)...)};
+        return {mpl::make_tuple(std::forward<Args>(args)...)};
     }
 
     /**

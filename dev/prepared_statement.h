@@ -373,7 +373,7 @@ namespace sqlite_orm {
      */
     template<class... Args>
     internal::insert_raw_t<Args...> insert(Args... args) {
-        using args_tuple = mpl::tuple<Args...>;
+        using args_tuple = mpl::pack<Args...>;
         using internal::count_tuple;
         using internal::is_columns;
         using internal::is_insert_constraint;
