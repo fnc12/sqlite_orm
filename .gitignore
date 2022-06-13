@@ -6,3 +6,11 @@ cmake-build-debug/
 .idea/
 
 /compile
+
+_binary2022_/
+_binary2015_/
+
+
+_binary2022plain_/
+_binary2015plain_/
+
