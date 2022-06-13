@@ -1,7 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch.hpp>
 
-
 using namespace sqlite_orm;
 
 #if defined(SQLITE_ORM_THREE_WAY_COMPARISON_SUPPORTED)
