@@ -126,7 +126,6 @@ add_executable(unit_tests
     trigger_tests.cpp
     ast_iterator_tests.cpp
     pointer_passing_interface.cpp
-    chrono_binding.cpp
 )
 
 if(SQLITE_ORM_OMITS_CODECVT)
