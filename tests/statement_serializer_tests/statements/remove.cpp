@@ -11,9 +11,9 @@ TEST_CASE("statement_serializer remove") {
     };
     auto table = make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name));
     using db_objects_t = internal::db_objects_tuple<decltype(table)>;
-    db_objects_t storageImpl{table};
+    db_objects_t dbObjects{table};
     using context_t = internal::serializer_context<db_objects_t>;
-    context_t context{storageImpl};
+    context_t context{dbObjects};
 
     std::string value;
     decltype(value) expected;

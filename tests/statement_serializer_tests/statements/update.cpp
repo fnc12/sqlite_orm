@@ -26,9 +26,9 @@ TEST_CASE("statement_serializer update") {
                                     make_column("idx", &A::index),
                                     make_column("value", &A::value));
             using db_objects_t = internal::db_objects_tuple<decltype(table)>;
-            auto storageImpl = db_objects_t{table};
+            auto dbObjects = db_objects_t{table};
             using context_t = internal::serializer_context<db_objects_t>;
-            context_t context{storageImpl};
+            context_t context{dbObjects};
             SECTION("update") {
                 SECTION("with question marks") {
                     context.replace_bindable_with_question = true;
@@ -64,9 +64,9 @@ TEST_CASE("statement_serializer update") {
                                     make_column("value", &A::value),
                                     primary_key(&A::address));
             using db_objects_t = internal::db_objects_tuple<decltype(table)>;
-            auto storageImpl = db_objects_t{table};
+            auto dbObjects = db_objects_t{table};
             using context_t = internal::serializer_context<db_objects_t>;
-            context_t context{storageImpl};
+            context_t context{dbObjects};
             SECTION("with question marks") {
                 context.replace_bindable_with_question = true;
                 expected = R"(UPDATE "table" SET "type" = ?, "idx" = ?, "value" = ? WHERE "address" = ?)";
@@ -89,9 +89,9 @@ TEST_CASE("statement_serializer update") {
                                 make_column("value", &A::value),
                                 primary_key(&A::address, &A::type));
         using db_objects_t = internal::db_objects_tuple<decltype(table)>;
-        auto storageImpl = db_objects_t{table};
+        auto dbObjects = db_objects_t{table};
         using context_t = internal::serializer_context<db_objects_t>;
-        context_t context{storageImpl};
+        context_t context{dbObjects};
         SECTION("with question marks") {
             context.replace_bindable_with_question = true;
             expected = R"(UPDATE "table" SET "idx" = ?, "value" = ? WHERE "address" = ? AND "type" = ?)";
@@ -113,9 +113,9 @@ TEST_CASE("statement_serializer update") {
                                 make_column("value", &A::value),
                                 primary_key(&A::address, &A::type, &A::index));
         using db_objects_t = internal::db_objects_tuple<decltype(table)>;
-        auto storageImpl = db_objects_t{table};
+        auto dbObjects = db_objects_t{table};
         using context_t = internal::serializer_context<db_objects_t>;
-        context_t context{storageImpl};
+        context_t context{dbObjects};
         SECTION("question marks") {
             context.replace_bindable_with_question = true;
             expected = R"(UPDATE "table" SET "value" = ? WHERE "address" = ? AND "type" = ? AND "idx" = ?)";

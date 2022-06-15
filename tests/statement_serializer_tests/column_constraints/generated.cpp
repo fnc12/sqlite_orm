@@ -36,9 +36,9 @@ TEST_CASE("statement_serializer generated") {
         make_column("d", &Type::d, generated_always_as(&Type::a * sqlite_orm::abs(&Type::b)).virtual_()),
         make_column("e", &Type::e, generated_always_as(substr(&Type::c, &Type::b, add(&Type::b, 1))).stored()));
     using db_objects_t = internal::db_objects_tuple<decltype(table)>;
-    auto storageImpl = db_objects_t{table};
+    auto dbObjects = db_objects_t{table};
     using context_t = internal::serializer_context<db_objects_t>;
-    context_t context{storageImpl};
+    context_t context{dbObjects};
     std::string value;
     decltype(value) expected;
     SECTION("full") {

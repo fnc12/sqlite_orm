@@ -18,11 +18,11 @@ TEST_CASE("statement_serializer check") {
 
         using db_objects_t = internal::db_objects_tuple<decltype(table)>;
 
-        db_objects_t storageImpl{table};
+        db_objects_t dbObjects{table};
 
         using context_t = internal::serializer_context<db_objects_t>;
 
-        context_t context{storageImpl};
+        context_t context{dbObjects};
         std::string value;
         std::string expected;
         SECTION("with parentheses") {
@@ -52,11 +52,11 @@ TEST_CASE("statement_serializer check") {
                                 make_column("PRICE", &Book::price, ch));
         using db_objects_t = internal::db_objects_tuple<decltype(table)>;
 
-        db_objects_t storageImpl{table};
+        db_objects_t dbObjects{table};
 
         using context_t = internal::serializer_context<db_objects_t>;
 
-        context_t context{storageImpl};
+        context_t context{dbObjects};
         std::string value;
         std::string expected;
         SECTION("with parentheses") {

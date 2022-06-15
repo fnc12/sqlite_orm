@@ -47,9 +47,9 @@ TEST_CASE("statement_serializer update_all") {
                                      make_column("Email", &Customer::email),
                                      make_column("SupportRepId", &Customer::supportRepId));
     using db_objects_t = internal::db_objects_tuple<decltype(contactsTable), decltype(customersTable)>;
-    auto storageImpl = db_objects_t{contactsTable, customersTable};
+    auto dbObjects = db_objects_t{contactsTable, customersTable};
     using context_t = internal::serializer_context<db_objects_t>;
-    context_t context{storageImpl};
+    context_t context{dbObjects};
 
     auto statement =
         update_all(set(c(&Contact::phone) = select(&Customer::phone, from<Customer>(), where(c(&Customer::id) == 1))));

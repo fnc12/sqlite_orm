@@ -11,9 +11,9 @@ TEST_CASE("statement_serializer aggregate functions") {
     };
     auto table = make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name));
     using db_objects_t = internal::db_objects_tuple<decltype(table)>;
-    auto storageImpl = db_objects_t{table};
+    auto dbObjects = db_objects_t{table};
     using context_t = internal::serializer_context<db_objects_t>;
-    context_t context{storageImpl};
+    context_t context{dbObjects};
 
     std::string value;
     decltype(value) expected;
