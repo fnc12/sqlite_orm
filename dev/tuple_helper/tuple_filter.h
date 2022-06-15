@@ -16,9 +16,6 @@ namespace sqlite_orm {
             using type = tuple_cat_t<Tpl...>;
         };
 
-        template<class... Tpl>
-        using conc_tuple_t = typename conc_tuple<Tpl...>::type;
-
         template<class Tpl, class Seq>
         struct tuple_from_index_sequence;
 
