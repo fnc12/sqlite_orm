@@ -6742,14 +6742,22 @@ namespace sqlite_orm {
         struct asterisk_t {
             using type = T;
 
-            bool defined_order;
+            bool defined_order = false;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            asterisk_t(bool definedOrder) : defined_order{definedOrder} {}
+#endif
         };
 
         template<class T>
         struct object_t {
             using type = T;
 
-            bool defined_order;
+            bool defined_order = false;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            object_t(bool definedOrder) : defined_order{definedOrder} {}
+#endif
         };
 
         template<class T>
@@ -10501,8 +10509,8 @@ namespace sqlite_orm {
          */
         template<class T>
         std::string serialize_default_value(const default_t<T>& dft) {
-            storage_impl<> impl;
-            serializer_context<storage_impl<>> context{impl};
+            storage_impl<> storage;
+            serializer_context<storage_impl<>> context{storage};
             return serialize(dft.value, context);
         }
 

@@ -252,14 +252,22 @@ namespace sqlite_orm {
         struct asterisk_t {
             using type = T;
 
-            bool defined_order;
+            bool defined_order = false;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            asterisk_t(bool definedOrder) : defined_order{definedOrder} {}
+#endif
         };
 
         template<class T>
         struct object_t {
             using type = T;
 
-            bool defined_order;
+            bool defined_order = false;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            object_t(bool definedOrder) : defined_order{definedOrder} {}
+#endif
         };
 
         template<class T>
