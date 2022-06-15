@@ -1,6 +1,6 @@
 #pragma once
 
-#include "functional/cxx_core_features.h"
+#include "../dev/functional/cxx_core_features.h"
 
 // need support for #include <compare> for advanced std::chrono members
 #if defined(SQLITE_ORM_THREE_WAY_COMPARISON_SUPPORTED)
@@ -10,7 +10,7 @@
 #include <regex>
 #include <format>
 
-inline std::chrono::sys_days Today() {
+inline std::chrono::sys_days today() {
     const auto today = std::chrono::sys_days{floor<std::chrono::days>(std::chrono::system_clock::now())};
     return today;
 }

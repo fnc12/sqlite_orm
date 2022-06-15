@@ -5,7 +5,7 @@
 
 #if defined(SQLITE_ORM_THREE_WAY_COMPARISON_SUPPORTED)
 
-#include "..\dev/date_binding.h"
+#include "date_binding.h"
 
 using namespace sqlite_orm;
 using std::cout;
