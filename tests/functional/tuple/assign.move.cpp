@@ -38,39 +38,29 @@ namespace {
 template<template<class...> class Tuple>
 static void template_template_test_case() {
     {
-        using T = mpl::tuple<>;
+        using T = Tuple<>;
         T t0;
-        T t = std::move(t0);
-        (void)t;
+        T t;
+        t = std::move(t0);
     }
     {
-        using T = mpl::tuple<MoveOnly1>;
+        using T = Tuple<MoveOnly1>;
         T t0(MoveOnly1(0));
-        T t = std::move(t0);
-        (void)t;
+        T t;
+        t = std::move(t0);
         REQUIRE(std::get<0>(t) == 0);
     }
     {
-        using T = mpl::tuple<MoveOnly1, MoveOnly2>;
+        using T = Tuple<MoveOnly1, MoveOnly2>;
         T t0(MoveOnly1(0), MoveOnly2(1));
-        T t = std::move(t0);
-        (void)t;
+        T t;
+        t = std::move(t0);
         REQUIRE(std::get<0>(t) == 0);
         REQUIRE(std::get<1>(t) == 1);
     }
-    {
-        // Check for SFINAE-friendliness
-        STATIC_REQUIRE(!std::is_constructible<mpl::tuple<MoveOnly1>, MoveOnly1 const&>{});
-
-        STATIC_REQUIRE(!std::is_constructible<mpl::tuple<MoveOnly1>, MoveOnly1&>{});
-
-        STATIC_REQUIRE(std::is_constructible<mpl::tuple<MoveOnly1>, MoveOnly1>{});
-
-        STATIC_REQUIRE(std::is_constructible<mpl::tuple<MoveOnly2>, MoveOnly2&&>{});
-    }
 }
 
-TEST_CASE("tuple - move construction") {
+TEST_CASE("tuple - move assignment") {
     {
         INFO("mpl::tuple");
         template_template_test_case<mpl::tuple>();

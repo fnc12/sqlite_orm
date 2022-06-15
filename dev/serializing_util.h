@@ -13,6 +13,7 @@
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
+#include "functional/tuple.h"
 #include "functional/type_at.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "error_code.h"
@@ -195,7 +196,7 @@ namespace sqlite_orm {
         template<class... Os, class Ctx>
         std::ostream& operator<<(
             std::ostream& ss,
-            mpl::tuple<const streaming<stream_as::expressions_tuple>&, const std::tuple<order_by_t<Os>...>&, Ctx> tpl) {
+            mpl::tuple<const streaming<stream_as::expressions_tuple>&, const mpl::tuple<order_by_t<Os>...>&, Ctx> tpl) {
             const auto& args = std::get<1>(tpl);
             auto& context = std::get<2>(tpl);
 

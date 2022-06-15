@@ -4,6 +4,7 @@
 #include <tuple>
 
 #include "cxx_universal.h"
+#include "indexed_type.h"
 #include "pack.h"
 
 namespace sqlite_orm {
@@ -14,8 +15,11 @@ namespace sqlite_orm {
             template<typename Indices, typename... T>
             struct indexer;
 
-            template<size_t... Idx, typename... T>
-            struct indexer<std::index_sequence<Idx...>, T...> : indexed_type<Idx, T>... {};
+            template<size_t... Ix, typename... T>
+            struct indexer<std::index_sequence<Ix...>, T...> : indexed_type<Ix, T>... {};
+
+            template<size_t I, typename T>
+            indexed_type<I, T> get_indexed_type(const indexed_type<I, T>&);
 #endif
 
             template<size_t n, typename... T>

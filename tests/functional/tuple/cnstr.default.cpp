@@ -132,7 +132,7 @@ static void template_template_test_case() {
     }
 }
 
-TEST_CASE("tuple - default") {
+TEST_CASE("tuple - default construction") {
     {
         INFO("mpl::tuple");
         template_template_test_case<mpl::tuple>();

@@ -1,12 +1,14 @@
 #pragma once
 
-#include <type_traits>  //  std::integral_constant, std::decay, std::is_constructible, std::is_default_constructible, std::enable_if
+#include <type_traits>  //  std::integral_constant, std::decay, std::is_constructible, std::is_default_constructible, std::enable_if, std::declval
 #include <utility>  //  std::move, std::forward
 
 #include "cxx_universal.h"
 #include "cxx_type_traits_polyfill.h"
 #include "fast_and.h"
+#include "indexed_type.h"
 #include "type_at.h"
+#include "tuple_common.h"
 
 namespace _sqlite_orm {
     // short names defined in a short namespace to reduce symbol lengths,
@@ -16,8 +18,8 @@ namespace _sqlite_orm {
     /*
      *  storage element of a tuple
      */
-    template<size_t I, class X, bool UseEBO = std::is_empty<X>::value && !std::is_final<X>::value>
-    struct SQLITE_ORM_MSVC_EMPTYBASES tuplem : indexed_type<I, X> {
+    template<size_t n, class X, bool EBOable = std::is_empty<X>::value && !std::is_final<X>::value>
+    struct SQLITE_ORM_MSVC_EMPTYBASES tuplem : indexed_type<n, X> {
         X data;
 
         constexpr tuplem() : data() {}
@@ -29,8 +31,8 @@ namespace _sqlite_orm {
     /*
      *  storage element of a tuple, using EBO
      */
-    template<size_t I, class X>
-    struct SQLITE_ORM_MSVC_EMPTYBASES tuplem<I, X, true> : X, indexed_type<I, X> {
+    template<size_t n, class X>
+    struct SQLITE_ORM_MSVC_EMPTYBASES tuplem<n, X, true> : X, indexed_type<n, X> {
 
         constexpr tuplem() = default;
 
@@ -38,28 +40,28 @@ namespace _sqlite_orm {
         constexpr tuplem(Y&& y) : X(std::forward<Y>(y)) {}
     };
 
-    template<size_t I, class X>
-    constexpr const X& ebo_get(const tuplem<I, X, false>& elem) {
+    template<size_t n, class X>
+    constexpr const X& ebo_get(const tuplem<n, X, false>& elem) {
         return (elem.data);
     }
-    template<size_t I, class X>
-    constexpr X& ebo_get(tuplem<I, X, false>& elem) {
+    template<size_t n, class X>
+    constexpr X& ebo_get(tuplem<n, X, false>& elem) {
         return (elem.data);
     }
-    template<size_t I, class X>
-    constexpr X&& ebo_get(tuplem<I, X, false>&& elem) {
+    template<size_t n, class X>
+    constexpr X&& ebo_get(tuplem<n, X, false>&& elem) {
         return std::forward<X>(elem.data);
     }
-    template<size_t I, class X>
-    constexpr const X& ebo_get(const tuplem<I, X, true>& elem) {
+    template<size_t n, class X>
+    constexpr const X& ebo_get(const tuplem<n, X, true>& elem) {
         return elem;
     }
-    template<size_t I, class X>
-    constexpr X& ebo_get(tuplem<I, X, true>& elem) {
+    template<size_t n, class X>
+    constexpr X& ebo_get(tuplem<n, X, true>& elem) {
         return elem;
     }
-    template<size_t I, class X>
-    constexpr X&& ebo_get(tuplem<I, X, true>&& elem) {
+    template<size_t n, class X>
+    constexpr X&& ebo_get(tuplem<n, X, true>&& elem) {
         return std::forward<X>(elem);
     }
 }
@@ -76,22 +78,6 @@ namespace sqlite_orm {
             template<class... X>
             struct tuple;
 
-            template<class T>
-            struct remove_rvalue_reference {
-                using type = T;
-            };
-            template<class T>
-            struct remove_rvalue_reference<T&&> {
-                using type = T;
-            };
-            template<class T>
-            using remove_rvalue_reference_t = typename remove_rvalue_reference<T>::type;
-
-            struct from_variadic_t {};
-
-            template<bool DefaultOrDirect, class Tuple, class... Void>
-            struct enable_tuple_ctor;
-
             template<class... X, class... Void>
             struct enable_tuple_ctor<true, tuple<X...>, Void...>
                 : std::enable_if<SQLITE_ORM_FAST_AND(std::is_constructible<X, Void...>), bool> {};
@@ -100,15 +86,9 @@ namespace sqlite_orm {
             struct enable_tuple_ctor<false, tuple<X...>, Void...>
                 : std::enable_if<SQLITE_ORM_FAST_AND(std::is_constructible<X, const X&, Void...>), bool> {};
 
-            template<bool SameNumberOfElements, class Tuple, class... Y>
-            struct enable_tuple_variadic_ctor;
-
             template<class... X, class... Y>
             struct enable_tuple_variadic_ctor<true, tuple<X...>, Y...>
                 : std::enable_if<SQLITE_ORM_FAST_AND(std::is_constructible<X, Y&&>), bool> {};
-
-            template<class Tuple, class Other, class... Void>
-            struct enable_tuple_nonconst_copy_ctor;
 
 #ifdef SQLITE_ORM_WORKAROUND_MSVC_MULTIPLECTOR_106654
             template<class... X, class... Void>
@@ -122,7 +102,7 @@ namespace sqlite_orm {
         }
     }
 
-    namespace mpl = mpl;
+    namespace mpl = internal::mpl;
 }
 
 // retain stl tuple interface for `tuple`
@@ -130,8 +110,15 @@ namespace std {
     template<class Tpl>
     struct tuple_size;
 
+    template<size_t n, class Tpl>
+    struct tuple_element;
+
     template<class... X>
     struct tuple_size<sqlite_orm::mpl::tuple<X...>> : integral_constant<size_t, sizeof...(X)> {};
+
+    template<size_t n, class... X>
+    struct tuple_element<n, sqlite_orm::mpl::tuple<X...>> : sqlite_orm::mpl::type_at<n, sqlite_orm::mpl::tuple<X...>> {
+    };
 
     template<size_t n, class... X>
     constexpr decltype(auto) get(const sqlite_orm::mpl::tuple<X...>& tpl) noexcept {
@@ -165,20 +152,34 @@ namespace sqlite_orm {
     namespace internal {
         namespace mpl {
 
-            template<size_t... Idx, class... X>
-            struct SQLITE_ORM_MSVC_EMPTYBASES basic_tuple<std::index_sequence<Idx...>, X...> : tuplem<Idx, X>... {
+            template<size_t... Ix, class... X>
+            struct SQLITE_ORM_MSVC_EMPTYBASES basic_tuple<std::index_sequence<Ix...>, X...> : tuplem<Ix, X>... {
                 constexpr basic_tuple() = default;
 
                 // variadic constructor
                 template<class... Y>
-                constexpr basic_tuple(from_variadic_t, Y&&... y) : tuplem<Idx, X>(std::forward<Y>(y))... {}
+                constexpr basic_tuple(from_variadic_t, Y&&... y) : tuplem<Ix, X>(std::forward<Y>(y))... {}
 
                 // converting copy/move constructor
                 template<class Other>
-                constexpr basic_tuple(Other&& other) : tuplem<Idx, X>(std::get<Idx>(std::forward<Other>(other)))... {}
+                constexpr basic_tuple(Other&& other) : tuplem<Ix, X>(ebo_get<Ix>(std::forward<Other>(other)))... {}
 
+                // default copy constructor
                 constexpr basic_tuple(const basic_tuple&) = default;
+                // default move constructor
                 constexpr basic_tuple(basic_tuple&&) = default;
+
+                // converting copy/move assignment
+                template<class Other>
+                SQLITE_ORM_NONCONST_CONSTEXPR void operator=(Other&& other) {
+                    int poormansfold[] = {(ebo_get<Ix>(*this) = ebo_get<Ix>(std::forward<Other>(other)), int{})...};
+                    (void)poormansfold;
+                }
+
+                // default copy assignment
+                SQLITE_ORM_NONCONST_CONSTEXPR basic_tuple& operator=(const basic_tuple&) = default;
+                // default move assignment
+                SQLITE_ORM_NONCONST_CONSTEXPR basic_tuple& operator=(basic_tuple&&) = default;
             };
 
             template<>
@@ -191,10 +192,8 @@ namespace sqlite_orm {
              */
             template<class... X>
             struct tuple final : basic_tuple<std::make_index_sequence<sizeof...(X)>, X...> {
-              private:
                 using base_type = basic_tuple<std::make_index_sequence<sizeof...(X)>, X...>;
 
-              public:
                 // default constructor
                 template<class... Void, typename enable_tuple_ctor<true, tuple, Void...>::type = true>
                 constexpr tuple() : base_type{} {}
@@ -217,19 +216,41 @@ namespace sqlite_orm {
                 template<class... Y, std::enable_if_t<SQLITE_ORM_FAST_AND(std::is_constructible<X, Y&&>), bool> = true>
                 constexpr tuple(tuple<Y...>&& other) : base_type{std::move(other)} {}
 
-#ifndef SQLITE_ORM_WORKAROUND_MSVC_MULTIPLECTOR_106654
+                // default copy constructor
                 constexpr tuple(const tuple&) = default;
+                // default move constructor
                 constexpr tuple(tuple&&) = default;
 
                 // non-const copy constructor.
                 // The non-const copy constructor is required to make sure that
                 // the converting tuple(Y&&...) constructor is _not_ preferred over the copy
                 // constructor for unary tuples containing a type that is constructible from tuple<...>.
+#ifndef SQLITE_ORM_WORKAROUND_MSVC_MULTIPLECTOR_106654
                 constexpr tuple(tuple& other) : base_type{const_cast<const tuple&>(other)} {}
 #else
                 template<class Other, typename enable_tuple_nonconst_copy_ctor<tuple, Other>::type = true>
                 constexpr tuple(Other& other) : base_type{const_cast<const tuple&>(other)} {}
 #endif
+
+                // converting copy assignment
+                template<class... Y,
+                         std::enable_if_t<SQLITE_ORM_FAST_AND(std::is_assignable<X&, const Y&>), bool> = true>
+                SQLITE_ORM_NONCONST_CONSTEXPR tuple& operator=(const tuple<Y...>& other) {
+                    base_type::operator=(other);
+                    return *this;
+                }
+
+                // converting move assignment
+                template<class... Y, std::enable_if_t<SQLITE_ORM_FAST_AND(std::is_assignable<X&, Y&&>), bool> = true>
+                SQLITE_ORM_NONCONST_CONSTEXPR tuple& operator=(tuple<Y...>&& other) {
+                    base_type::operator=(std::move(other));
+                    return *this;
+                }
+
+                // default copy assignment
+                SQLITE_ORM_NONCONST_CONSTEXPR tuple& operator=(const tuple&) = default;
+                // default move assignment
+                SQLITE_ORM_NONCONST_CONSTEXPR tuple& operator=(tuple&&) = default;
             };
 
             namespace adl {
@@ -240,11 +261,25 @@ namespace sqlite_orm {
 
                 template<class... X>
                 constexpr tuple<X&&...> forward_as_tuple(X&&... args) noexcept {
-                    return tuple<X&&...>(_STD forward<X>(args)...);
+                    return tuple<X&&...>{std::forward<X>(args)...};
+                }
+
+                template<class... X>
+                constexpr tuple<X&...> tie(X&... args) noexcept {
+                    return tuple<X&>{args...};
                 }
             }
             using adl::forward_as_tuple;
             using adl::make_tuple;
+            using adl::tie;
+        }
+    }
+}
+
+// ops
+namespace sqlite_orm {
+    namespace internal {
+        namespace mpl {
 
             // implementation note: we could derive from `type_at<n, X...>` but leverage the fact that `tuple` is derived from `indexed_type`
             template<size_t n, class... X>
@@ -253,6 +288,38 @@ namespace sqlite_orm {
                 using forwarded_t = decltype(ebo_get<n>(std::declval<tuple<X...>>()));
                 using type = remove_rvalue_reference_t<forwarded_t>;
             };
+
+#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
+            template<size_t... Ix, class... X, class... Y>
+            constexpr bool equal_indexable([[maybe_unused]] const tuple<X...>& left,
+                                           [[maybe_unused]] const tuple<Y...>& right,
+                                           std::index_sequence<Ix...>) {
+                return ((ebo_get<Ix>(left) == ebo_get<Ix>(right)) && ...);
+            }
+#else
+            template<class... X, class... Y>
+            constexpr bool equal_indexable(const tuple<X...>&, const tuple<Y...>&, std::index_sequence<>) {
+                return true;
+            }
+            template<size_t n, size_t... Ix, class... X, class... Y>
+            constexpr bool
+            equal_indexable(const tuple<X...>& left, const tuple<Y...>& right, std::index_sequence<n, Ix...>) {
+                return (ebo_get<n>(left) == ebo_get<n>(right)) &&
+                       equal_indexable(left, right, std::index_sequence<Ix...>{});
+            }
+#endif
+
+            template<class... X, class... Y>
+            constexpr bool operator==(const tuple<X...>& left, const tuple<Y...>& right) {
+                static_assert(sizeof...(X) == sizeof...(Y), "cannot compare tuples of different sizes");
+                return equal_indexable(left, right, std::make_index_sequence<sizeof...(X)>{});
+            }
+
+            template<class... X, class... Y>
+            constexpr bool operator!=(const tuple<X...>& left, const tuple<Y...>& right) {
+                static_assert(sizeof...(X) == sizeof...(Y), "cannot compare tuples of different sizes");
+                return !equal_indexable(left, right, std::make_index_sequence<sizeof...(X)>{});
+            }
         }
     }
 }

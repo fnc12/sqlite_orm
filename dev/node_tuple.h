@@ -55,7 +55,7 @@ namespace sqlite_orm {
         };
 
         template<class... TargetArgs, class... ActionsArgs>
-        struct node_tuple<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void>
+        struct node_tuple<upsert_clause<mpl::tuple<TargetArgs...>, mpl::tuple<ActionsArgs...>>, void>
             : node_tuple<mpl::pack<ActionsArgs...>> {};
 
         template<class... Args>

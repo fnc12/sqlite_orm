@@ -1,21 +1,39 @@
 #pragma once
+#include <type_traits>  //  std::is_empty, std::is_final
 
-#include <type_traits>  //  std::enable_if, std::is_constructible
-
-#include "fast_and.h"
+namespace _sqlite_orm {
+    template<class T>
+    constexpr bool is_ebo_able_v = std::is_empty<T>::value && !std::is_final<T>::value;
+}
 
 namespace sqlite_orm {
     namespace internal {
         namespace mpl {
+            using _sqlite_orm::is_ebo_able_v;
 
             template<bool SameNumberOfElements, class Tuple, class... Y>
-            struct enable_tuple_variadic_ctor {};
+            struct enable_tuple_variadic_ctor;
 
-            template<class... X, class... Y>
-            struct enable_tuple_variadic_ctor<true, tuple<X...>, Y...>
-                : std::enable_if<SQLITE_ORM_FAST_AND(std::is_constructible<X, Y&&>), bool> {};
+            template<bool DefaultOrDirect, class Tuple, class... Void>
+            struct enable_tuple_ctor;
+
+            template<class Tuple, class Other, class... Void>
+            struct enable_tuple_nonconst_copy_ctor;
+
+            struct from_variadic_t {};
+
+            template<class T>
+            struct remove_rvalue_reference {
+                using type = T;
+            };
+            template<class T>
+            struct remove_rvalue_reference<T&&> {
+                using type = T;
+            };
+            template<class T>
+            using remove_rvalue_reference_t = typename remove_rvalue_reference<T>::type;
         }
     }
 
-    namespace mpl = mpl;
+    namespace mpl = internal::mpl;
 }

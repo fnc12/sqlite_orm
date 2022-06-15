@@ -15,6 +15,7 @@
 #include "functional/cxx_universal.h"
 #include "functional/cxx_functional_polyfill.h"
 #include "functional/mpl.h"
+#include "functional/pack.h"
 #include "functional/type_at.h"
 #include "tuple_helper/tuple_filter.h"
 #include "ast/upsert_clause.h"
@@ -212,9 +213,9 @@ namespace sqlite_orm {
             }
         };
 
-        template<class... TargetArgs, class... ActionsArgs>
-        struct statement_serializer<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void> {
-            using statement_type = upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>;
+        template<class T>
+        struct statement_serializer<T, match_if<is_upsert_clause, T>> {
+            using statement_type = T;
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
@@ -836,9 +837,9 @@ namespace sqlite_orm {
             }
         };
 
-        template<class... Cs, class... Rs>
-        struct statement_serializer<foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>>, void> {
-            using statement_type = foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>>;
+        template<class FK>
+        struct statement_serializer<FK, match_specialization_of<FK, foreign_key_t>> {
+            using statement_type = FK;
 
             template<class Ctx>
             std::string operator()(const statement_type& fk, const Ctx& context) const {
@@ -1436,7 +1437,7 @@ namespace sqlite_orm {
                 table_name_collector collector([&context](const std::type_index& ti) {
                     return find_table_name(context.db_objects, ti);
                 });
-                constexpr bool explicitFromItemsCount = count_tuple<std::tuple<Args...>, is_from>::value;
+                constexpr bool explicitFromItemsCount = count_tuple<mpl::pack<Args...>, is_from>::value;
                 if(!explicitFromItemsCount) {
                     iterate_ast(sel.col, collector);
                     iterate_ast(sel.conditions, collector);
@@ -1528,17 +1529,15 @@ namespace sqlite_orm {
             }
         };
 
-        template<class... Args>
-        struct statement_serializer<from_t<Args...>, void> {
-            using statement_type = from_t<Args...>;
+        template<class T>
+        struct statement_serializer<T, match_if<is_from, T>> {
+            using statement_type = T;
 
             template<class Ctx>
             std::string operator()(const statement_type&, const Ctx& context) const {
-                using tuple = std::tuple<Args...>;
-
                 std::stringstream ss;
                 ss << "FROM ";
-                iterate_tuple<tuple>([&context, &ss, first = true](auto* item) mutable {
+                iterate_tuple<typename statement_type::tuple_type>([&context, &ss, first = true](auto* item) mutable {
                     using from_type = std::remove_pointer_t<decltype(item)>;
 
                     constexpr std::array<const char*, 2> sep = {", ", ""};

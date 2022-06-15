@@ -3,12 +3,12 @@
 #include <system_error>  //  std::system_error
 #include <ostream>  //  std::ostream
 #include <string>  //  std::string
-#include <tuple>  //  std::tuple, std::make_tuple
-#include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
+#include <type_traits>  //  std::is_base_of, std::false_type
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/mpl.h"
+#include "functional/tuple.h"
 #include "tuple_helper/same_or_void.h"
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_filter.h"
@@ -60,11 +60,11 @@ namespace sqlite_orm {
         template<class... Cs>
         struct primary_key_t : primary_key_base {
             using order_by = primary_key_base::order_by;
-            using columns_tuple = std::tuple<Cs...>;
+            using columns_tuple = mpl::tuple<Cs...>;
 
             columns_tuple columns;
 
-            primary_key_t(decltype(columns) c) : columns(move(c)) {}
+            primary_key_t(decltype(columns) c) : columns(std::move(c)) {}
 
             primary_key_t<Cs...> asc() const {
                 auto res = *this;
@@ -90,11 +90,11 @@ namespace sqlite_orm {
          */
         template<class... Args>
         struct unique_t : unique_base {
-            using columns_tuple = std::tuple<Args...>;
+            using columns_tuple = mpl::tuple<Args...>;
 
             columns_tuple columns;
 
-            unique_t(columns_tuple columns_) : columns(move(columns_)) {}
+            unique_t(columns_tuple columns_) : columns(std::move(columns_)) {}
         };
 
         /**
@@ -243,9 +243,9 @@ namespace sqlite_orm {
         }
 
         template<class... Cs, class... Rs>
-        struct foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> {
-            using columns_type = std::tuple<Cs...>;
-            using references_type = std::tuple<Rs...>;
+        struct foreign_key_t<mpl::tuple<Cs...>, mpl::tuple<Rs...>> {
+            using columns_type = mpl::tuple<Cs...>;
+            using references_type = mpl::tuple<Rs...>;
             using self = foreign_key_t<columns_type, references_type>;
 
             /**
@@ -269,7 +269,7 @@ namespace sqlite_orm {
             static_assert(!std::is_same<target_type, void>::value, "All references must have the same type");
 
             foreign_key_t(columns_type columns_, references_type references_) :
-                columns(move(columns_)), references(move(references_)),
+                columns(std::move(columns_)), references(std::move(references_)),
                 on_update(*this, true, foreign_key_action::none), on_delete(*this, false, foreign_key_action::none) {}
 
             foreign_key_t(const self& other) :
@@ -298,13 +298,13 @@ namespace sqlite_orm {
          */
         template<class... Cs>
         struct foreign_key_intermediate_t {
-            using tuple_type = std::tuple<Cs...>;
+            using tuple_type = mpl::tuple<Cs...>;
 
             tuple_type columns;
 
             template<class... Rs>
-            foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> references(Rs... refs) {
-                return {std::move(this->columns), std::make_tuple(std::forward<Rs>(refs)...)};
+            foreign_key_t<mpl::tuple<Cs...>, mpl::tuple<Rs...>> references(Rs... refs) {
+                return {std::move(this->columns), mpl::make_tuple(std::forward<Rs>(refs)...)};
             }
         };
 #endif
@@ -449,7 +449,7 @@ namespace sqlite_orm {
      */
     template<class... Cs>
     internal::foreign_key_intermediate_t<Cs...> foreign_key(Cs... columns) {
-        return {std::make_tuple(std::forward<Cs>(columns)...)};
+        return {mpl::make_tuple(std::forward<Cs>(columns)...)};
     }
 #endif
 
@@ -458,7 +458,7 @@ namespace sqlite_orm {
      */
     template<class... Args>
     internal::unique_t<Args...> unique(Args... args) {
-        return {std::make_tuple(std::forward<Args>(args)...)};
+        return {mpl::make_tuple(std::forward<Args>(args)...)};
     }
 
     inline internal::unique_t<> unique() {
@@ -471,7 +471,7 @@ namespace sqlite_orm {
 
     template<class... Cs>
     internal::primary_key_t<Cs...> primary_key(Cs... cs) {
-        return {std::make_tuple(std::forward<Cs>(cs)...)};
+        return {mpl::make_tuple(std::forward<Cs>(cs)...)};
     }
 
     inline internal::primary_key_t<> primary_key() {

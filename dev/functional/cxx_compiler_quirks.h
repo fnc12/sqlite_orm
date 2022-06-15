@@ -25,8 +25,10 @@
 // Because we know what we are doing, we suppress the diagnostic message
 #define SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(...) SQLITE_ORM_CLANG_SUPPRESS("-Wmissing-braces", __VA_ARGS__)
 
-#if defined(_MSC_VER) && (_MSC_VER < 1915)
+#if defined(_MSC_VER) && !defined(__clang__)  // MSVC
+#if __cplusplus < 202002L
 #define SQLITE_ORM_WORKAROUND_MSVC_MULTIPLECTOR_106654
+#endif
 #endif
 
 #if defined(_MSC_VER) && (_MSC_VER < 1920)

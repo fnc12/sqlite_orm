@@ -3,7 +3,7 @@
 #include <type_traits>  //  std::index_sequence, std::make_index_sequence
 
 #include "../functional/cxx_universal.h"
-#ifdef SQLITE_ORM_RELAXED_CONSTEXPR
+#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
 #include <array>
 #endif
 
@@ -17,7 +17,7 @@ namespace sqlite_orm {
             return I;
         }
 
-#ifdef SQLITE_ORM_RELAXED_CONSTEXPR
+#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
         /**
          *  Reorder the values of an index_sequence according to the positions from a second sequence.
          */
