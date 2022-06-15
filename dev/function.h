@@ -206,7 +206,7 @@ namespace sqlite_orm {
             using func_arg_t = std::tuple_element_t<I, FnArgs>;
             using passed_arg_t = unpacked_arg_t<std::tuple_element_t<I, CallArgs>>;
 
-#ifdef SQLITE_ORM_RELAXED_CONSTEXPR
+#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
             constexpr bool valid = validate_pointer_value_type<I,
                                                                std::tuple_element_t<I, FnArgs>,
                                                                unpacked_arg_t<std::tuple_element_t<I, CallArgs>>>(

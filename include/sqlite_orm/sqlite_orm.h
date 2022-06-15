@@ -51,7 +51,7 @@ using std::nullptr_t;
 #endif
 
 #if __cpp_constexpr >= 201304L
-#define SQLITE_ORM_RELAXED_CONSTEXPR
+#define SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
 #endif
 
 #if __cpp_noexcept_function_type >= 201510L
@@ -6776,8 +6776,7 @@ namespace sqlite_orm {
             simple_case_builder<R, T, E, Args..., std::pair<W, Th>> when(W w, then_t<Th> t) {
                 using result_args_type = std::tuple<Args..., std::pair<W, Th>>;
                 std::pair<W, Th> newPair{std::move(w), std::move(t.expression)};
-                result_args_type result_args =
-                    std::tuple_cat(std::move(this->args), std::move(std::make_tuple(newPair)));
+                result_args_type result_args = std::tuple_cat(std::move(this->args), std::make_tuple(newPair));
                 std::get<std::tuple_size<result_args_type>::value - 1>(result_args) = std::move(newPair);
                 return {std::move(this->case_expression), std::move(result_args), std::move(this->else_expression)};
             }
@@ -9442,7 +9441,7 @@ namespace sqlite_orm {
             using func_arg_t = std::tuple_element_t<I, FnArgs>;
             using passed_arg_t = unpacked_arg_t<std::tuple_element_t<I, CallArgs>>;
 
-#ifdef SQLITE_ORM_RELAXED_CONSTEXPR
+#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
             constexpr bool valid = validate_pointer_value_type<I,
                                                                std::tuple_element_t<I, FnArgs>,
                                                                unpacked_arg_t<std::tuple_element_t<I, CallArgs>>>(
@@ -9849,7 +9848,7 @@ namespace sqlite_orm {
 
 // #include "../functional/cxx_universal.h"
 
-#ifdef SQLITE_ORM_RELAXED_CONSTEXPR
+#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
 #include <array>
 #endif
 
@@ -9863,7 +9862,7 @@ namespace sqlite_orm {
             return I;
         }
 
-#ifdef SQLITE_ORM_RELAXED_CONSTEXPR
+#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
         /**
          *  Reorder the values of an index_sequence according to the positions from a second sequence.
          */
@@ -13870,10 +13869,9 @@ namespace sqlite_orm {
                 auto name = ss.str();
                 using args_tuple = typename callable_arguments<F>::args_tuple;
                 using return_type = typename callable_arguments<F>::return_type;
-                auto argsCount = int(std::tuple_size<args_tuple>::value);
-                if(std::is_same<args_tuple, std::tuple<arg_values>>::value) {
-                    argsCount = -1;
-                }
+                constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
+                                               ? -1
+                                               : int(std::tuple_size<args_tuple>::value);
                 this->scalarFunctions.emplace_back(new user_defined_scalar_function_t{
                     move(name),
                     argsCount,
@@ -13933,10 +13931,9 @@ namespace sqlite_orm {
                 auto name = ss.str();
                 using args_tuple = typename callable_arguments<F>::args_tuple;
                 using return_type = typename callable_arguments<F>::return_type;
-                auto argsCount = int(std::tuple_size<args_tuple>::value);
-                if(std::is_same<args_tuple, std::tuple<arg_values>>::value) {
-                    argsCount = -1;
-                }
+                constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
+                                               ? -1
+                                               : int(std::tuple_size<args_tuple>::value);
                 this->aggregateFunctions.emplace_back(new user_defined_aggregate_function_t{
                     move(name),
                     argsCount,
@@ -15572,7 +15569,7 @@ namespace sqlite_orm {
                 }
                 ss << " ";
                 using args_type = std::tuple<Args...>;
-                const bool theOnlySelect =
+                constexpr bool theOnlySelect =
                     std::tuple_size<args_type>::value == 1 && is_select_v<std::tuple_element_t<0, args_type>>;
                 if(!theOnlySelect) {
                     ss << "(";

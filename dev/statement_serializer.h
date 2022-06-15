@@ -700,7 +700,7 @@ namespace sqlite_orm {
                 }
                 ss << " ";
                 using args_type = std::tuple<Args...>;
-                const bool theOnlySelect =
+                constexpr bool theOnlySelect =
                     std::tuple_size<args_type>::value == 1 && is_select_v<std::tuple_element_t<0, args_type>>;
                 if(!theOnlySelect) {
                     ss << "(";
