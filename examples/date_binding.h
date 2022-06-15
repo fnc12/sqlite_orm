@@ -21,7 +21,7 @@ inline std::chrono::sys_days today() {
   */
 
 //  also we need transform functions to make string from enum..
-inline std::string SysDaysToString(std::chrono::sys_days pt) {
+inline std::string sysDaysToString(std::chrono::sys_days pt) {
     auto r = std::format("{:%F}", pt);
     return r;
 }
@@ -38,7 +38,7 @@ constexpr auto null_sys_day = std::chrono::sys_days{std::chrono::days{0}};
  *  that's why I placed it separatedly. You can use any transformation type/form
  *  (for example BETTER_ENUM https://github.com/aantron/better-enums)
  */
-inline std::chrono::sys_days SysDaysFromString(const std::string& s) {
+inline std::chrono::sys_days sysDaysFromString(const std::string& s) {
     using namespace std::literals;
     using namespace std::chrono;
 
@@ -80,7 +80,7 @@ namespace sqlite_orm {
     struct statement_binder<std::chrono::sys_days> {
 
         int bind(sqlite3_stmt* stmt, int index, const std::chrono::sys_days& value) const {
-            return statement_binder<std::string>().bind(stmt, index, SysDaysToString(value));
+            return statement_binder<std::string>().bind(stmt, index, sysDaysToString(value));
         }
     };
 
@@ -91,7 +91,7 @@ namespace sqlite_orm {
     template<>
     struct field_printer<std::chrono::sys_days> {
         std::string operator()(const std::chrono::sys_days& t) const {
-            return SysDaysToString(t);
+            return sysDaysToString(t);
         }
     };
 
@@ -105,7 +105,7 @@ namespace sqlite_orm {
     template<>
     struct row_extractor<std::chrono::sys_days> {
         std::chrono::sys_days extract(const char* row_value) const {
-            auto sd = SysDaysFromString(row_value);
+            auto sd = sysDaysFromString(row_value);
             if(sd != null_sys_day) {
                 return sd;
             } else {
