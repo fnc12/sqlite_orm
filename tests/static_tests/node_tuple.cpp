@@ -20,8 +20,8 @@ TEST_CASE("Node tuple") {
     using internal::bindable_filter_t;
     using internal::node_tuple;
     using internal::node_tuple_t;
+    using mpl::tuple;
     using std::is_same;
-    using std::tuple;
 
     struct User {
         int id = 0;
@@ -463,7 +463,7 @@ TEST_CASE("Node tuple") {
                               where(greater_or_equal(&User::id, 10) and lesser_or_equal(&User::id, 20)));
             using Sel = decltype(sel);
             using Tuple = node_tuple_t<Sel>;
-            using Expected = std::
+            using Expected =
                 tuple<decltype(&User::id), decltype(&User::name), decltype(&User::id), int, decltype(&User::id), int>;
             static_assert(is_same<Tuple, Expected>::value,
                           "select(columns(&User::id, &User::name), where(greater_or_equal(&User::id, 10) and "

@@ -1769,22 +1769,23 @@ namespace sqlite_orm {
 // #include "tuple_helper/tuple_filter.h"
 
 #include <type_traits>  //  std::integral_constant, std::index_sequence, std::make_index_sequence, std::conditional, std::declval
-#include <tuple>
 
 // #include "../functional/cxx_universal.h"
 
 // #include "../functional/index_sequence_util.h"
 
+// #include "../functional/pack_util.h"
+
+// #include "../functional/tuple.h"
+
 namespace sqlite_orm {
     namespace internal {
 
-        template<typename... input_t>
-        using tuple_cat_t = mpl::flatten_types_t<std::tuple, input_t...>;
+        template<typename... Tpl>
+        using tuple_cat_t = mpl::flatten_types_t<mpl::tuple, Tpl...>;
 
         template<class... Tpl>
-        struct conc_tuple {
-            using type = tuple_cat_t<Tpl...>;
-        };
+        struct conc_tuple : mpl::flatten_types<mpl::tuple, Tpl...> {};
 
         template<class Tpl, class Seq>
         struct tuple_from_index_sequence;
@@ -19360,7 +19361,7 @@ namespace sqlite_orm {
 
         template<class T, class SFINAE = void>
         struct node_tuple {
-            using type = std::tuple<T>;
+            using type = mpl::tuple<T>;
         };
 
         template<class T>
@@ -19368,7 +19369,7 @@ namespace sqlite_orm {
 
         template<>
         struct node_tuple<void, void> {
-            using type = std::tuple<>;
+            using type = mpl::tuple<>;
         };
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T>

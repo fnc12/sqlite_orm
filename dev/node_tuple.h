@@ -27,7 +27,7 @@ namespace sqlite_orm {
 
         template<class T, class SFINAE = void>
         struct node_tuple {
-            using type = std::tuple<T>;
+            using type = mpl::tuple<T>;
         };
 
         template<class T>
@@ -35,7 +35,7 @@ namespace sqlite_orm {
 
         template<>
         struct node_tuple<void, void> {
-            using type = std::tuple<>;
+            using type = mpl::tuple<>;
         };
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T>

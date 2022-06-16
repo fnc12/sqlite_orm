@@ -1,21 +1,20 @@
 #pragma once
 
 #include <type_traits>  //  std::integral_constant, std::index_sequence, std::make_index_sequence, std::conditional, std::declval
-#include <tuple>
 
 #include "../functional/cxx_universal.h"
 #include "../functional/index_sequence_util.h"
+#include "../functional/pack_util.h"
+#include "../functional/tuple.h"
 
 namespace sqlite_orm {
     namespace internal {
 
-        template<typename... input_t>
-        using tuple_cat_t = mpl::flatten_types_t<std::tuple, input_t...>;
+        template<typename... Tpl>
+        using tuple_cat_t = mpl::flatten_types_t<mpl::tuple, Tpl...>;
 
         template<class... Tpl>
-        struct conc_tuple {
-            using type = tuple_cat_t<Tpl...>;
-        };
+        struct conc_tuple : mpl::flatten_types<mpl::tuple, Tpl...> {};
 
         template<class Tpl, class Seq>
         struct tuple_from_index_sequence;
