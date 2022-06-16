@@ -44,7 +44,7 @@ namespace sqlite_orm {
 
           protected:
             sqlite3* db = nullptr;
-            std::atomic_int _retain_count = 0;
+            std::atomic_int _retain_count{};
         };
 
         struct connection_ref {
