@@ -232,17 +232,17 @@ namespace sqlite_orm {
 
             template<class... X>
             constexpr auto make_unique_tuple(X&&... x) {
-                return uple<std::decay_t<X>...>{std::forward<X>(x)...};
+                return uple<polyfill::unwrap_ref_decay_t<X>...>{std::forward<X>(x)...};
             }
 
             template<class... X>
             constexpr uple<X&&...> forward_as_unique_tuple(X&&... args) noexcept {
-                return uple<X&&...>{std::forward<X>(args)...};
+                return {std::forward<X>(args)...};
             }
 
             template<class... X>
             constexpr uple<X&...> tie_unique(X&... args) noexcept {
-                return uple<X&>{args...};
+                return {args...};
             }
         }
     }

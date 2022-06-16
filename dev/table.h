@@ -11,9 +11,9 @@
 #include "functional/static_magic.h"
 #include "functional/mpl.h"
 #include "functional/type_at.h"
+#include "functional/index_sequence_util.h"
 #include "functional/tuple.h"
 #include "typed_comparator.h"
-#include "tuple_helper/index_sequence_util.h"
 #include "tuple_helper/tuple_filter.h"
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_iteration.h"
@@ -108,7 +108,8 @@ namespace sqlite_orm {
                                   using generated_op_index_sequence =
                                       filter_tuple_sequence_t<std::remove_const_t<decltype(column.constraints)>,
                                                               is_generated_always>;
-                                  constexpr size_t opIndex = first_index_sequence_value(generated_op_index_sequence{});
+                                  constexpr size_t opIndex =
+                                      mpl::first_index_sequence_value(generated_op_index_sequence{});
                                   result = &std::get<opIndex>(column.constraints).storage;
                               });
 #endif

@@ -48,10 +48,10 @@ TEST_CASE("Foreign key") {
         STATIC_REQUIRE(storage_foreign_keys_count<Storage, Visit>::value == 0);
 
         using LocationFks = storage_fk_references<Storage, Location>::type;
-        STATIC_REQUIRE(std::is_same<LocationFks, std::tuple<Visit>>::value);
+        STATIC_REQUIRE(std::is_same<LocationFks, mpl::tuple<Visit>>::value);
 
         using VisitFks = storage_fk_references<Storage, Visit>::type;
-        STATIC_REQUIRE(std::is_same<VisitFks, std::tuple<>>::value);
+        STATIC_REQUIRE(std::is_same<VisitFks, mpl::tuple<>>::value);
     }
     storage.sync_schema();
 

@@ -1,12 +1,14 @@
 #pragma once
 
-#include <type_traits>  //  std::integral_constant, std::decay, std::is_constructible, std::is_default_constructible, std::enable_if, std::declval
+#include <type_traits>  //  std::integral_constant, std::decay, std::remove_reference, std::is_constructible, std::is_default_constructible, std::enable_if, std::declval
 #include <utility>  //  std::move, std::forward
 
 #include "cxx_universal.h"
 #include "cxx_type_traits_polyfill.h"
 #include "fast_and.h"
 #include "indexed_type.h"
+#include "index_sequence_util.h"
+#include "pack_util.h"
 #include "type_at.h"
 #include "tuple_common.h"
 
@@ -256,22 +258,49 @@ namespace sqlite_orm {
             namespace adl {
                 template<class... X>
                 constexpr auto make_tuple(X&&... x) {
-                    return tuple<std::decay_t<X>...>{std::forward<X>(x)...};
+                    return tuple<polyfill::unwrap_ref_decay_t<X>...>{std::forward<X>(x)...};
                 }
 
                 template<class... X>
                 constexpr tuple<X&&...> forward_as_tuple(X&&... args) noexcept {
-                    return tuple<X&&...>{std::forward<X>(args)...};
+                    return {std::forward<X>(args)...};
                 }
 
                 template<class... X>
                 constexpr tuple<X&...> tie(X&... args) noexcept {
-                    return tuple<X&>{args...};
+                    return {args...};
+                }
+
+                template<class... Tuples, size_t... Ix, size_t... Jx>
+                constexpr flatten_types_t<tuple, std::remove_reference_t<Tuples>...>
+                tuple_cat_helper(std::index_sequence<Ix...>, std::index_sequence<Jx...>, Tuples&&... tuples) {
+                    return {ebo_get<Jx>(std::get<Ix>(adl::forward_as_tuple(std::forward<Tuples>(tuples)...)))...};
+                }
+
+                template<class... Tuples>
+                constexpr auto tuple_cat(Tuples&&... tuples) {
+                    using tuples_seq = std::make_index_sequence<sizeof...(Tuples)>;
+                    // -> index_sequence<tuple_size...>
+                    using sizes_seq = std::index_sequence<std::tuple_size<std::remove_reference_t<Tuples>>::value...>;
+                    using inner = flatten_idxseq_t<
+                        // -> pack<index_sequence<tuple0_idx_0..., tuple0_idx_1...>, index_sequence<tuple1_idx_0...>, ...>
+                        spread_idxseq_t<tuples_seq, sizes_seq>>;
+                    using outer = typename flatten_idxseq<
+#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+                        // index_sequence<tuple_size>, ...
+                        std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tuples>>::value>...
+#else
+                        typename make_idxseq_helper<std::remove_reference_t<Tuples>>::type...
+#endif
+                        >::type;
+
+                    return tuple_cat_helper(inner{}, outer{}, std::forward<Tuples>(tuples)...);
                 }
             }
             using adl::forward_as_tuple;
             using adl::make_tuple;
             using adl::tie;
+            using adl::tuple_cat;
         }
     }
 }

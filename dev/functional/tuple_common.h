@@ -32,6 +32,13 @@ namespace sqlite_orm {
             };
             template<class T>
             using remove_rvalue_reference_t = typename remove_rvalue_reference<T>::type;
+
+#ifdef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+            template<class Tpl>
+            struct make_idxseq_helper {
+                using type = std::make_index_sequence<std::tuple_size<Tpl>::value>;
+            };
+#endif
         }
     }
 

@@ -271,7 +271,7 @@ namespace sqlite_orm {
         struct simple_case_t {
             using return_type = R;
             using case_expression_type = T;
-            using args_type = std::tuple<Args...>;
+            using args_type = mpl::tuple<Args...>;
             using else_expression_type = E;
 
             optional_container<case_expression_type> case_expression;
@@ -288,7 +288,7 @@ namespace sqlite_orm {
         struct simple_case_builder {
             using return_type = R;
             using case_expression_type = T;
-            using args_type = std::tuple<Args...>;
+            using args_type = mpl::tuple<Args...>;
             using else_expression_type = E;
 
             optional_container<case_expression_type> case_expression;
@@ -297,9 +297,9 @@ namespace sqlite_orm {
 
             template<class W, class Th>
             simple_case_builder<R, T, E, Args..., std::pair<W, Th>> when(W w, then_t<Th> t) {
-                using result_args_type = std::tuple<Args..., std::pair<W, Th>>;
+                using result_args_type = mpl::tuple<Args..., std::pair<W, Th>>;
                 std::pair<W, Th> newPair{std::move(w), std::move(t.expression)};
-                result_args_type result_args = std::tuple_cat(std::move(this->args), std::make_tuple(newPair));
+                result_args_type result_args = mpl::tuple_cat(std::move(this->args), mpl::make_tuple(newPair));
                 std::get<std::tuple_size<result_args_type>::value - 1>(result_args) = std::move(newPair);
                 return {std::move(this->case_expression), std::move(result_args), std::move(this->else_expression)};
             }
@@ -394,7 +394,7 @@ namespace sqlite_orm {
      */
     template<class T, class... Args>
     internal::select_t<T, Args...> select(T t, Args... args) {
-        using args_tuple = std::tuple<Args...>;
+        using args_tuple = mpl::pack<Args...>;
         internal::validate_conditions<args_tuple>();
         return {std::move(t), mpl::make_tuple(std::forward<Args>(args)...)};
     }

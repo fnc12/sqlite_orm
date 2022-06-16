@@ -7,8 +7,6 @@
 
 #include <type_traits>  //  std::integral_constant
 
-#include <sqlite_orm/sqlite_orm.h>
-
 namespace sqlite_orm {
 
     namespace internal {
@@ -103,11 +101,11 @@ namespace sqlite_orm {
 
             template<class... DBO, class Lookup>
             struct storage_fk_references_impl<db_objects_tuple<DBO...>, Lookup>
-                : conc_tuple<typename table_fk_references<DBO, Lookup>::type...> {};
+                : mpl::flatten_types<mpl::tuple, typename table_fk_references<DBO, Lookup>::type...> {};
 
             template<class... DBO, class Lookup>
             struct storage_foreign_keys_impl<db_objects_tuple<DBO...>, Lookup>
-                : conc_tuple<table_foreign_keys_t<DBO, Lookup>...> {};
+                : mpl::flatten_types<mpl::tuple, table_foreign_keys_t<DBO, Lookup>...> {};
 
             /**
              *  S - storage class

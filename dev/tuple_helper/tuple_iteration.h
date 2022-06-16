@@ -6,7 +6,7 @@
 #include "../functional/cxx_universal.h"
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/cxx_functional_polyfill.h"
-#include "index_sequence_util.h"
+#include "../functional/index_sequence_util.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -32,7 +32,7 @@ namespace sqlite_orm {
         template<bool reversed = false, class Tpl, size_t... Idx, class L>
         void iterate_tuple(const Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
             if constexpr(reversed) {
-                iterate_tuple(tpl, reverse_index_sequence(std::index_sequence<Idx...>{}), std::forward<L>(lambda));
+                iterate_tuple(tpl, mpl::reverse_index_sequence(std::index_sequence<Idx...>{}), std::forward<L>(lambda));
             } else {
                 (lambda(std::get<Idx>(tpl)), ...);
             }

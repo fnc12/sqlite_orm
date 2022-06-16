@@ -7,7 +7,7 @@ namespace _sqlite_orm {
     // since those types are used as a building block;
     // (as seen in boost hana)
 
-    template<size_t I, typename T>
+    template<size_t I, class T>
     struct indexed_type {
         using type = T;
     };
