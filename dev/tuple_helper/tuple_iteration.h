@@ -51,8 +51,8 @@ namespace sqlite_orm {
                 iterate_tuple<reversed>(tpl, std::index_sequence<Idx...>{}, std::forward<L>(lambda));
                 lambda(std::get<I>(tpl));
             } else {
-                lambda(std::get<I>(tpl));
-                iterate_tuple<reversed>(tpl, std::index_sequence<Idx...>{}, std::forward<L>(lambda));
+                int poormansfold[] = {(lambda(std::get<I>(tpl)), int{}), (lambda(std::get<Idx>(tpl)), int{})...};
+                (void)poormansfold;
             }
         }
 #endif
@@ -69,13 +69,10 @@ namespace sqlite_orm {
             (lambda((mpl::element_at_t<Idx, Tpl>*)nullptr), ...);
         }
 #else
-        template<class Tpl, class L>
-        void iterate_tuple(std::index_sequence<>, L&& /*lambda*/) {}
-
-        template<class Tpl, size_t I, size_t... Idx, class L>
-        void iterate_tuple(std::index_sequence<I, Idx...>, L&& lambda) {
-            lambda((mpl::element_at_t<I, Tpl>*)nullptr);
-            iterate_tuple<Tpl>(std::index_sequence<Idx...>{}, std::forward<L>(lambda));
+        template<class Tpl, size_t... Idx, class L>
+        void iterate_tuple(std::index_sequence<Idx...>, L&& lambda) {
+            int poormansfold[] = {int{}, (lambda((mpl::element_at_t<Idx, Tpl>*)nullptr), int{})...};
+            (void)poormansfold;
         }
 #endif
         template<class Tpl, class L>
