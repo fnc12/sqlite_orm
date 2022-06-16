@@ -30,8 +30,8 @@ TEST_CASE("Select return types") {
         };
 
         //  test is_mapped
-        STATIC_REQUIRE(is_mapped_v<decltype(storage), User>);
-        STATIC_REQUIRE(!is_mapped_v<decltype(storage), Visit>);
+        STATIC_REQUIRE(internal::is_mapped_v<decltype(storage), User>);
+        STATIC_REQUIRE(!internal::is_mapped_v<decltype(storage), Visit>);
 
         //  test is_storage
         STATIC_REQUIRE(internal::is_storage<decltype(storage)>::value);

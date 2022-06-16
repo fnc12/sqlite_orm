@@ -14,6 +14,14 @@ namespace sqlite_orm {
         template<class... Ts>
         struct storage_impl;
 
+        template<class S>
+        struct schema_objects_tuple;
+        template<class... Ts>
+        struct schema_objects_tuple<storage_impl<Ts...>> : polyfill::type_identity<std::tuple<Ts...>> {};
+
+        template<class S>
+        using schema_objects_tuple_t = typename schema_objects_tuple<S>::type;
+
         template<class T>
         struct is_storage : std::false_type {};
 
@@ -51,7 +59,7 @@ namespace sqlite_orm {
         /**
          *  std::true_type if given lookup type ('table' type, object) is mapped, std::false_type otherwise.
          * 
-         *  Note: we allow lookup via S::table_type because it allows us to walk the storage_impl chain (in storage_impl_cat()).
+         *  Note: we allow lookup via S::table_type because it allows us to walk the storage_impl chain.
          */
         template<typename S, typename Lookup>
         using lookup_type_matches =
@@ -142,6 +150,14 @@ namespace sqlite_orm {
         template<class S, class Lookup>
         using storage_find_impl_t =
             reapply_const_of_t<S, type_t<storage_find_impl_type<std::remove_const_t<S>, Lookup>>>;
+
+        template<class S, class O, class SFINAE = void>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_mapped_v = false;
+        template<class S, class O>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_mapped_v<S, O, polyfill::void_t<storage_pick_impl_t<S, O>>> = true;
+
+        template<class S, class O>
+        using is_mapped = polyfill::bool_constant<is_mapped_v<S, O>>;
     }
 }
 
@@ -149,39 +165,14 @@ namespace sqlite_orm {
 namespace sqlite_orm {
     namespace internal {
         /**
-         *  Given a storage implementation pack, pick the specific storage implementation for the given lookup type.
+         *  Given a storage implementation pack, pick the specific schema object for the given lookup type.
          * 
          *  Note: This function requires Lookup to be mapped, otherwise it is removed from the overload resolution set.
          */
-        template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
-        storage_pick_impl_t<S, Lookup>& pick_impl(S& impl) {
-            return impl;
-        }
-
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
         auto& pick_table(S& impl) {
             storage_pick_impl_t<S, Lookup>& tImpl = impl;
             return tImpl.table;
-        }
-
-        /**
-         *  Given a storage implementation pack, find the specific storage implementation for the given lookup type.
-         * 
-         *  Note: This function returns the empty `storage_impl<>` if Lookup isn't mapped.
-         */
-        template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
-        storage_find_impl_t<S, Lookup>& find_impl(S& impl) {
-            return impl;
-        }
-
-        /**
-         *  Given a storage, pick the specific const-qualified storage implementation for the lookup type.
-         * 
-         *  Note: This function requires Lookup to be mapped, otherwise it is removed from the overload resolution set.
-         */
-        template<class Lookup, class S, satisfies<is_storage, S> = true>
-        storage_pick_impl_t<const S, Lookup>& pick_const_impl(S& storage) {
-            return obtain_const_impl(storage);
         }
     }
 }

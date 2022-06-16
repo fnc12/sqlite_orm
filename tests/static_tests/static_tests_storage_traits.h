@@ -14,9 +14,6 @@ namespace sqlite_orm {
     namespace internal {
 
         template<typename T>
-        using elements_type_t = typename T::elements_type;
-
-        template<typename T>
         using source_type_t = typename T::source_type;
 
         namespace storage_traits {
