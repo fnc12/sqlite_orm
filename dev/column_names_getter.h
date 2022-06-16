@@ -45,7 +45,7 @@ namespace sqlite_orm {
         std::vector<std::string> collect_table_column_names(bool definedOrder, const Ctx& context) {
             if(definedOrder) {
                 std::vector<std::string> quotedNames;
-                auto& table = pick_table<mapped_type_proxy_t<T>>(context.impl);
+                auto& table = pick_table<mapped_type_proxy_t<T>>(context.db_objects);
                 quotedNames.reserve(table.count_columns_amount());
                 table.for_each_column([&quotedNames](const column_identifier& column) {
                     if(std::is_base_of<alias_tag, T>::value) {

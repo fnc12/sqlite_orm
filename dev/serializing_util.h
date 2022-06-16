@@ -336,7 +336,7 @@ namespace sqlite_orm {
             auto& context = get<3>(tpl);
             auto& object = get<4>(tpl);
             using object_type = polyfill::remove_cvref_t<decltype(object)>;
-            auto& table = pick_table<object_type>(context.impl);
+            auto& table = pick_table<object_type>(context.db_objects);
 
             table.template for_each_column_excluding<check_if_excluded>(call_as_template_base<column_field>(
                 [&ss, &excluded, &context, &object, first = true](auto& column) mutable {
@@ -360,7 +360,7 @@ namespace sqlite_orm {
             auto& context = get<2>(tpl);
 
             iterate_tuple(columns, [&ss, &context, first = true](auto& colRef) mutable {
-                const std::string* columnName = find_column_name(context.impl, colRef);
+                const std::string* columnName = find_column_name(context.db_objects, colRef);
                 if(!columnName) {
                     throw std::system_error{orm_error_code::column_not_found};
                 }
