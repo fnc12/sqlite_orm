@@ -1,163 +1,118 @@
 #pragma once
 
-#include <type_traits>
+#include <type_traits>  //  std::true_type, std::false_type, std::remove_const, std::enable_if
+#include <tuple>
 
+#include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"
 
 namespace sqlite_orm {
     namespace internal {
 
-        template<class... Ts>
+        template<class... DBO>
         struct storage_t;
 
-        template<class... Ts>
-        struct storage_impl;
-
-        template<class S>
-        struct schema_objects_tuple;
-        template<class... Ts>
-        struct schema_objects_tuple<storage_impl<Ts...>> : polyfill::type_identity<std::tuple<Ts...>> {};
-
-        template<class S>
-        using schema_objects_tuple_t = typename schema_objects_tuple<S>::type;
+        template<class... DBO>
+        using db_objects_tuple = std::tuple<DBO...>;
 
         template<class T>
         struct is_storage : std::false_type {};
 
-        template<class... Ts>
-        struct is_storage<storage_t<Ts...>> : std::true_type {};
-        template<class... Ts>
-        struct is_storage<const storage_t<Ts...>> : std::true_type {};
+        template<class... DBO>
+        struct is_storage<storage_t<DBO...>> : std::true_type {};
+        template<class... DBO>
+        struct is_storage<const storage_t<DBO...>> : std::true_type {};
 
         template<class T>
-        struct is_storage_impl : std::false_type {};
+        struct is_db_objects : std::false_type {};
 
-        template<class... Ts>
-        struct is_storage_impl<storage_impl<Ts...>> : std::true_type {};
-        template<class... Ts>
-        struct is_storage_impl<const storage_impl<Ts...>> : std::true_type {};
-
-        /**
-         *  std::true_type if given 'table' type matches, std::false_type otherwise.
-         *  
-         *  A 'table' type is one of: table_t<>, index_t<>
-         */
-        template<typename S, typename T>
-        using table_type_matches = std::is_same<T, table_type_t<S>>;
+        template<class... DBO>
+        struct is_db_objects<db_objects_tuple<DBO...>> : std::true_type {};
+        template<class... DBO>
+        struct is_db_objects<const db_objects_tuple<DBO...>> : std::true_type {};
 
         /**
          *  std::true_type if given object is mapped, std::false_type otherwise.
          * 
-         *  Note: unlike table_t<>, index_t<>::object_type is always void.
+         *  Note: unlike table_t<>, index_t<>::object_type and trigger_t<>::object_type is always void.
          */
-        template<typename S, typename O>
-        using object_type_matches =
-            typename polyfill::conjunction<polyfill::negation<std::is_void<storage_object_type_t<S>>>,
-                                           std::is_same<O, storage_object_type_t<S>>>::type;
+        template<typename DBO, typename Lookup>
+        struct object_type_matches : polyfill::conjunction<polyfill::negation<std::is_void<object_type_t<DBO>>>,
+                                                           std::is_same<Lookup, object_type_t<DBO>>> {};
 
         /**
-         *  std::true_type if given lookup type ('table' type, object) is mapped, std::false_type otherwise.
-         * 
-         *  Note: we allow lookup via S::table_type because it allows us to walk the storage_impl chain.
+         *  std::true_type if given lookup type (object) is mapped, std::false_type otherwise.
          */
-        template<typename S, typename Lookup>
-        using lookup_type_matches =
-            typename polyfill::disjunction<table_type_matches<S, Lookup>, object_type_matches<S, Lookup>>::type;
+        template<typename DBO, typename Lookup>
+        struct lookup_type_matches : polyfill::disjunction<object_type_matches<DBO, Lookup>> {};
     }
 
     // pick/lookup metafunctions
     namespace internal {
 
         /**
-         *  S - storage_impl type
-         *  O - mapped data type
+         *  SFINAE friendly facility to pick a table definition (`table_t`) from a tuple of database objects.
+         *  
+         *  DBOs - db_objects_tuple type
+         *  Lookup - mapped data type
          */
-        template<class S, class O, class SFINAE = void>
-        struct storage_pick_impl_type;
+        template<class Lookup, class... DBO>
+        struct storage_pick_table : std::enable_if<lookup_type_matches<DBO, Lookup>::value, DBO>... {};
 
-        template<class S, class O>
-        struct storage_pick_impl_type<S, O, match_if<lookup_type_matches, S, O>> {
-            using type = S;
-        };
-
-        template<class S, class O>
-        struct storage_pick_impl_type<S, O, match_if_not<lookup_type_matches, S, O>>
-            : storage_pick_impl_type<typename S::super, O> {};
+#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+        template<class Lookup, class... DBO>
+        struct storage_pick_table<Lookup, db_objects_tuple<DBO...>> : storage_pick_table<Lookup, DBO...> {};
+#else
+        template<class Lookup, class... DBO>
+        struct storage_pick_table<Lookup, std::tuple<DBO...>> : storage_pick_table<Lookup, DBO...> {};
+#endif
 
         /**
-         *  Final specialisation
-         */
-        template<class O>
-        struct storage_pick_impl_type<storage_impl<>, O, void> {};
-
-        /**
-         *  storage_t specialization
-         */
-        template<class... Ts, class O>
-        struct storage_pick_impl_type<storage_t<Ts...>, O, void>
-            : storage_pick_impl_type<typename storage_t<Ts...>::impl_type, O> {};
-
-        /**
-         *  S - storage_impl type
-         *  O - mapped data type
-         */
-        template<class S, class O, class SFINAE = void>
-        struct storage_find_impl_type;
-
-        template<class S, class O>
-        struct storage_find_impl_type<S, O, match_if<lookup_type_matches, S, O>> {
-            using type = S;
-        };
-
-        template<class S, class O>
-        struct storage_find_impl_type<S, O, match_if_not<lookup_type_matches, S, O>>
-            : storage_find_impl_type<typename S::super, O> {};
-
-        /**
-         *  Final specialisation
-         */
-        template<class O>
-        struct storage_find_impl_type<storage_impl<>, O, void> {
-            using type = storage_impl<>;
-        };
-
-        /**
-         *  storage_t specialization
-         */
-        template<class... Ts, class O>
-        struct storage_find_impl_type<storage_t<Ts...>, O, void>
-            : storage_find_impl_type<typename storage_t<Ts...>::impl_type, O> {};
-    }
-
-    namespace internal {
-
-        template<typename T, typename U>
-        using reapply_const_of_t = std::conditional_t<std::is_const<T>::value, std::add_const_t<U>, U>;
-
-        /**
-         *  S - storage_t or storage_impl type, possibly const-qualified
+         *  SFINAE friendly facility to pick a table definition (`table_t`) from a tuple of database objects.
+         *
+         *  DBOs - db_objects_tuple type, possibly const-qualified
          *  Lookup - 'table' type, mapped data type
          */
-        template<class S, class Lookup>
-        using storage_pick_impl_t =
-            reapply_const_of_t<S, type_t<storage_pick_impl_type<std::remove_const_t<S>, Lookup>>>;
+        template<class Lookup, class DBOs>
+        using storage_pick_table_t = typename storage_pick_table<Lookup, std::remove_const_t<DBOs>>::type;
 
         /**
-         *  S - storage_t or storage_impl type, possibly const-qualified
-         *  Lookup - 'table' type, mapped data type
+         *  Find a table definition (`table_t`) from a tuple of database objects;
+         *  `std::nonesuch` if not found.
+         *
+         *  DBOs - db_objects_tuple type
+         *  Lookup - mapped data type
          */
-        template<class S, class Lookup>
-        using storage_find_impl_t =
-            reapply_const_of_t<S, type_t<storage_find_impl_type<std::remove_const_t<S>, Lookup>>>;
+        template<class Lookup, class... DBO>
+        struct storage_find_table : polyfill::detected_or<polyfill::nonesuch, storage_pick_table_t, Lookup, DBO...> {};
 
-        template<class S, class O, class SFINAE = void>
+#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+        template<class Lookup, class... DBO>
+        struct storage_find_table<Lookup, db_objects_tuple<DBO...>> : storage_find_table<Lookup, DBO...> {};
+#else
+        template<class Lookup, class... DBO>
+        struct storage_find_table<Lookup, std::tuple<DBO...>> : storage_find_table<Lookup, DBO...> {};
+#endif
+
+        /**
+         *  Find a table definition (`table_t`) from a tuple of database objects;
+         *  `std::nonesuch` if not found.
+         *
+         *  DBOs - db_objects_tuple type, possibly const-qualified
+         *  Lookup - mapped data type
+         */
+        template<class Lookup, class DBOs>
+        using storage_find_table_t = typename storage_find_table<Lookup, std::remove_const_t<DBOs>>::type;
+
+        template<class DBOs, class Lookup, class SFINAE = void>
         SQLITE_ORM_INLINE_VAR constexpr bool is_mapped_v = false;
-        template<class S, class O>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_mapped_v<S, O, polyfill::void_t<storage_pick_impl_t<S, O>>> = true;
+        template<class DBOs, class Lookup>
+        SQLITE_ORM_INLINE_VAR constexpr bool
+            is_mapped_v<DBOs, Lookup, polyfill::void_t<storage_pick_table_t<Lookup, DBOs>>> = true;
 
-        template<class S, class O>
-        using is_mapped = polyfill::bool_constant<is_mapped_v<S, O>>;
+        template<class DBOs, class Lookup>
+        using is_mapped = polyfill::bool_constant<is_mapped_v<DBOs, Lookup>>;
     }
 }
 
@@ -165,14 +120,14 @@ namespace sqlite_orm {
 namespace sqlite_orm {
     namespace internal {
         /**
-         *  Given a storage implementation pack, pick the specific schema object for the given lookup type.
+         *  Pick the table definition for the specified lookup type from the given tuple of schema objects.
          * 
          *  Note: This function requires Lookup to be mapped, otherwise it is removed from the overload resolution set.
          */
-        template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
-        auto& pick_table(S& impl) {
-            storage_pick_impl_t<S, Lookup>& tImpl = impl;
-            return tImpl.table;
+        template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs> = true>
+        auto& pick_table(DBOs& dbObjects) {
+            using table_type = storage_pick_table_t<Lookup, DBOs>;
+            return std::get<table_type>(dbObjects);
         }
     }
 }

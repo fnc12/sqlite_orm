@@ -31,10 +31,10 @@ TEST_CASE("statement_serializer insert/replace") {
     auto table = make_table("users", make_column("id", &User::id), make_column("name", &User::name));
     auto table2 =
         make_table("users_backup", make_column("id", &UserBackup::id), make_column("name", &UserBackup::name));
-    using storage_impl_t = internal::storage_impl<decltype(table), decltype(table2)>;
-    auto storageImpl = storage_impl_t{table, table2};
-    using context_t = internal::serializer_context<storage_impl_t>;
-    context_t context{storageImpl};
+    using db_objects_t = internal::db_objects_tuple<decltype(table), decltype(table2)>;
+    auto dbObjects = db_objects_t{table, table2};
+    using context_t = internal::serializer_context<db_objects_t>;
+    context_t context{dbObjects};
     std::string value;
     decltype(value) expected;
     SECTION("replace") {

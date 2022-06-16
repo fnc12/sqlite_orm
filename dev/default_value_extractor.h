@@ -18,8 +18,8 @@ namespace sqlite_orm {
          */
         template<class T>
         std::string serialize_default_value(const default_t<T>& dft) {
-            storage_impl<> storage;
-            serializer_context<storage_impl<>> context{storage};
+            db_objects_tuple<> dbObjects;
+            serializer_context<db_objects_tuple<>> context{dbObjects};
             return serialize(dft.value, context);
         }
 

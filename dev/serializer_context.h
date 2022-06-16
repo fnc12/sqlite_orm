@@ -10,24 +10,24 @@ namespace sqlite_orm {
             bool use_parentheses = true;
         };
 
-        template<class I>
+        template<class DBOs>
         struct serializer_context : serializer_context_base {
-            using impl_type = I;
+            using db_objects_type = DBOs;
 
-            const impl_type& impl;
+            const db_objects_type& db_objects;
 
-            serializer_context(const impl_type& impl_) : impl(impl_) {}
+            serializer_context(const db_objects_type& dbObjects) : db_objects{dbObjects} {}
         };
 
         template<class S>
         struct serializer_context_builder {
             using storage_type = S;
-            using impl_type = typename storage_type::impl_type;
+            using db_objects_type = typename storage_type::db_objects_type;
 
-            serializer_context_builder(const storage_type& storage_) : storage(storage_) {}
+            serializer_context_builder(const storage_type& storage_) : storage{storage_} {}
 
-            serializer_context<impl_type> operator()() const {
-                return {obtain_const_impl(this->storage)};
+            serializer_context<db_objects_type> operator()() const {
+                return {obtain_db_objects(this->storage)};
             }
 
             const storage_type& storage;

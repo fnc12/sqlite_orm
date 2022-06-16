@@ -7,7 +7,7 @@
 #include <utility>  //  std::move
 #include <system_error>  //  std::system_error
 #include <vector>  //  std::vector
-#include <memory>  //  std::make_shared, std::shared_ptr
+#include <memory>  //  std::make_unique, std::unique_ptr
 #include <map>  //  std::map
 #include <type_traits>  //  std::decay, std::is_same
 #include <algorithm>  //  std::find_if
@@ -239,10 +239,9 @@ namespace sqlite_orm {
                 auto name = ss.str();
                 using args_tuple = typename callable_arguments<F>::args_tuple;
                 using return_type = typename callable_arguments<F>::return_type;
-                auto argsCount = int(std::tuple_size<args_tuple>::value);
-                if(std::is_same<args_tuple, std::tuple<arg_values>>::value) {
-                    argsCount = -1;
-                }
+                constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
+                                               ? -1
+                                               : int(std::tuple_size<args_tuple>::value);
                 this->scalarFunctions.emplace_back(new user_defined_scalar_function_t{
                     move(name),
                     argsCount,
@@ -302,10 +301,9 @@ namespace sqlite_orm {
                 auto name = ss.str();
                 using args_tuple = typename callable_arguments<F>::args_tuple;
                 using return_type = typename callable_arguments<F>::return_type;
-                auto argsCount = int(std::tuple_size<args_tuple>::value);
-                if(std::is_same<args_tuple, std::tuple<arg_values>>::value) {
-                    argsCount = -1;
-                }
+                constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
+                                               ? -1
+                                               : int(std::tuple_size<args_tuple>::value);
                 this->aggregateFunctions.emplace_back(new user_defined_aggregate_function_t{
                     move(name),
                     argsCount,

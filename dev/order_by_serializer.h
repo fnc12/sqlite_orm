@@ -42,9 +42,9 @@ namespace sqlite_orm {
             }
         };
 
-        template<class S>
-        struct order_by_serializer<dynamic_order_by_t<S>, void> {
-            using statement_type = dynamic_order_by_t<S>;
+        template<class C>
+        struct order_by_serializer<dynamic_order_by_t<C>, void> {
+            using statement_type = dynamic_order_by_t<C>;
 
             template<class Ctx>
             std::string operator()(const statement_type& orderBy, const Ctx&) const {

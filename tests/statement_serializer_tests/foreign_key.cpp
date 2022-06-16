@@ -39,13 +39,13 @@ TEST_CASE("statement_serializer foreign key") {
                                           make_column("time", &Visit::time),
                                           fk);
 
-            using storage_impl_t = internal::storage_impl<decltype(usersTable), decltype(visitsTable)>;
+            using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
 
-            storage_impl_t storageImpl{usersTable, visitsTable};
+            db_objects_t dbObjects{usersTable, visitsTable};
 
-            using context_t = internal::serializer_context<storage_impl_t>;
+            using context_t = internal::serializer_context<db_objects_t>;
 
-            context_t context{storageImpl};
+            context_t context{dbObjects};
             auto value = serialize(fk, context);
             REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id"))");
         }
@@ -63,13 +63,13 @@ TEST_CASE("statement_serializer foreign key") {
                                               make_column("time", &Visit::time),
                                               fk);
 
-                using storage_impl_t = internal::storage_impl<decltype(usersTable), decltype(visitsTable)>;
+                using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
 
-                storage_impl_t storageImpl{usersTable, visitsTable};
+                db_objects_t dbObjects{usersTable, visitsTable};
 
-                using context_t = internal::serializer_context<storage_impl_t>;
+                using context_t = internal::serializer_context<db_objects_t>;
 
-                context_t context{storageImpl};
+                context_t context{dbObjects};
                 auto value = serialize(fk, context);
                 REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON UPDATE NO ACTION)");
             }
@@ -86,13 +86,13 @@ TEST_CASE("statement_serializer foreign key") {
                                               make_column("time", &Visit::time),
                                               fk);
 
-                using storage_impl_t = internal::storage_impl<decltype(usersTable), decltype(visitsTable)>;
+                using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
 
-                storage_impl_t storageImpl{usersTable, visitsTable};
+                db_objects_t dbObjects{usersTable, visitsTable};
 
-                using context_t = internal::serializer_context<storage_impl_t>;
+                using context_t = internal::serializer_context<db_objects_t>;
 
-                context_t context{storageImpl};
+                context_t context{dbObjects};
                 auto value = serialize(fk, context);
                 REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON UPDATE RESTRICT)");
             }
@@ -109,13 +109,13 @@ TEST_CASE("statement_serializer foreign key") {
                                               make_column("time", &Visit::time),
                                               fk);
 
-                using storage_impl_t = internal::storage_impl<decltype(usersTable), decltype(visitsTable)>;
+                using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
 
-                storage_impl_t storageImpl{usersTable, visitsTable};
+                db_objects_t dbObjects{usersTable, visitsTable};
 
-                using context_t = internal::serializer_context<storage_impl_t>;
+                using context_t = internal::serializer_context<db_objects_t>;
 
-                context_t context{storageImpl};
+                context_t context{dbObjects};
                 auto value = serialize(fk, context);
                 REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON UPDATE SET NULL)");
             }
@@ -132,13 +132,13 @@ TEST_CASE("statement_serializer foreign key") {
                                               make_column("time", &Visit::time),
                                               fk);
 
-                using storage_impl_t = internal::storage_impl<decltype(usersTable), decltype(visitsTable)>;
+                using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
 
-                storage_impl_t storageImpl{usersTable, visitsTable};
+                db_objects_t dbObjects{usersTable, visitsTable};
 
-                using context_t = internal::serializer_context<storage_impl_t>;
+                using context_t = internal::serializer_context<db_objects_t>;
 
-                context_t context{storageImpl};
+                context_t context{dbObjects};
                 auto value = serialize(fk, context);
                 REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON UPDATE SET DEFAULT)");
             }
@@ -155,13 +155,13 @@ TEST_CASE("statement_serializer foreign key") {
                                               make_column("time", &Visit::time),
                                               fk);
 
-                using storage_impl_t = internal::storage_impl<decltype(usersTable), decltype(visitsTable)>;
+                using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
 
-                storage_impl_t storageImpl{usersTable, visitsTable};
+                db_objects_t dbObjects{usersTable, visitsTable};
 
-                using context_t = internal::serializer_context<storage_impl_t>;
+                using context_t = internal::serializer_context<db_objects_t>;
 
-                context_t context{storageImpl};
+                context_t context{dbObjects};
                 auto value = serialize(fk, context);
                 REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON UPDATE CASCADE)");
             }
@@ -180,13 +180,13 @@ TEST_CASE("statement_serializer foreign key") {
                                               make_column("time", &Visit::time),
                                               fk);
 
-                using storage_impl_t = internal::storage_impl<decltype(usersTable), decltype(visitsTable)>;
+                using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
 
-                storage_impl_t storageImpl{usersTable, visitsTable};
+                db_objects_t dbObjects{usersTable, visitsTable};
 
-                using context_t = internal::serializer_context<storage_impl_t>;
+                using context_t = internal::serializer_context<db_objects_t>;
 
-                context_t context{storageImpl};
+                context_t context{dbObjects};
                 auto value = serialize(fk, context);
                 REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON DELETE NO ACTION)");
             }
@@ -203,13 +203,13 @@ TEST_CASE("statement_serializer foreign key") {
                                               make_column("time", &Visit::time),
                                               fk);
 
-                using storage_impl_t = internal::storage_impl<decltype(usersTable), decltype(visitsTable)>;
+                using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
 
-                storage_impl_t storageImpl{usersTable, visitsTable};
+                db_objects_t dbObjects{usersTable, visitsTable};
 
-                using context_t = internal::serializer_context<storage_impl_t>;
+                using context_t = internal::serializer_context<db_objects_t>;
 
-                context_t context{storageImpl};
+                context_t context{dbObjects};
                 auto value = serialize(fk, context);
                 REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON DELETE RESTRICT)");
             }
@@ -226,13 +226,13 @@ TEST_CASE("statement_serializer foreign key") {
                                               make_column("time", &Visit::time),
                                               fk);
 
-                using storage_impl_t = internal::storage_impl<decltype(usersTable), decltype(visitsTable)>;
+                using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
 
-                storage_impl_t storageImpl{usersTable, visitsTable};
+                db_objects_t dbObjects{usersTable, visitsTable};
 
-                using context_t = internal::serializer_context<storage_impl_t>;
+                using context_t = internal::serializer_context<db_objects_t>;
 
-                context_t context{storageImpl};
+                context_t context{dbObjects};
                 auto value = serialize(fk, context);
                 REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON DELETE SET NULL)");
             }
@@ -249,13 +249,13 @@ TEST_CASE("statement_serializer foreign key") {
                                               make_column("time", &Visit::time),
                                               fk);
 
-                using storage_impl_t = internal::storage_impl<decltype(usersTable), decltype(visitsTable)>;
+                using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
 
-                storage_impl_t storageImpl{usersTable, visitsTable};
+                db_objects_t dbObjects{usersTable, visitsTable};
 
-                using context_t = internal::serializer_context<storage_impl_t>;
+                using context_t = internal::serializer_context<db_objects_t>;
 
-                context_t context{storageImpl};
+                context_t context{dbObjects};
                 auto value = serialize(fk, context);
                 REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON DELETE SET DEFAULT)");
             }
@@ -272,13 +272,13 @@ TEST_CASE("statement_serializer foreign key") {
                                               make_column("time", &Visit::time),
                                               fk);
 
-                using storage_impl_t = internal::storage_impl<decltype(usersTable), decltype(visitsTable)>;
+                using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
 
-                storage_impl_t storageImpl{usersTable, visitsTable};
+                db_objects_t dbObjects{usersTable, visitsTable};
 
-                using context_t = internal::serializer_context<storage_impl_t>;
+                using context_t = internal::serializer_context<db_objects_t>;
 
-                context_t context{storageImpl};
+                context_t context{dbObjects};
                 auto value = serialize(fk, context);
                 REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON DELETE CASCADE)");
             }
@@ -321,13 +321,13 @@ TEST_CASE("statement_serializer foreign key") {
                                              make_column("user_id", &Token::usedId),
                                              fk);
 
-        using storage_impl_t = internal::storage_impl<decltype(usersTable), decltype(tokensTable)>;
+        using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(tokensTable)>;
 
-        storage_impl_t storageImpl{usersTable, tokensTable};
+        db_objects_t dbObjects{usersTable, tokensTable};
 
-        using context_t = internal::serializer_context<storage_impl_t>;
+        using context_t = internal::serializer_context<db_objects_t>;
 
-        context_t context{storageImpl};
+        context_t context{dbObjects};
         auto value = serialize(fk, context);
         REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id"))");
     }
@@ -369,13 +369,13 @@ TEST_CASE("statement_serializer foreign key") {
         STATIC_REQUIRE(table_foreign_keys_count<decltype(visitsTable), User>::value == 1);
         STATIC_REQUIRE(table_foreign_keys_count<decltype(visitsTable), UserVisit>::value == 0);
 
-        using storage_impl_t = internal::storage_impl<decltype(usersTable), decltype(visitsTable)>;
+        using db_objects_t = internal::db_objects_tuple<decltype(usersTable), decltype(visitsTable)>;
 
-        storage_impl_t storageImpl{usersTable, visitsTable};
+        db_objects_t dbObjects{usersTable, visitsTable};
 
-        using context_t = internal::serializer_context<storage_impl_t>;
+        using context_t = internal::serializer_context<db_objects_t>;
 
-        context_t context{storageImpl};
+        context_t context{dbObjects};
         auto value = serialize(fk, context);
         REQUIRE(value == R"(FOREIGN KEY("user_id", "user_first_name") REFERENCES "users"("id", "first_name"))");
     }
