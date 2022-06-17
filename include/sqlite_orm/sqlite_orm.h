@@ -11416,7 +11416,7 @@ namespace sqlite_orm {
         std::string find_table_name(const DBOs& dbObjects, const std::type_index& ti) {
             std::string res;
             iterate_tuple<true>(dbObjects, tables_index_sequence<DBOs>{}, [&ti, &res](const auto& table) {
-                using table_type = std::decay_t<decltype(table)>;
+                using table_type = std::remove_reference_t<decltype(table)>;
                 if(ti == typeid(object_type_t<table_type>)) {
                     res = table.name;
                 }
@@ -11800,7 +11800,7 @@ namespace sqlite_orm {
 #include <memory>  //  std::unique_ptr
 #include <iterator>  //  std::iterator_traits
 #include <string>  //  std::string
-#include <type_traits>  //  std::integral_constant, std::declval
+#include <type_traits>  //  std::integral_constant, std::declval, std::decay
 #include <utility>  //  std::pair
 
 // #include "functional/cxx_universal.h"
@@ -13583,7 +13583,7 @@ namespace sqlite_orm {
 
 // #include "serializing_util.h"
 
-#include <type_traits>  //  std::index_sequence
+#include <type_traits>  //  std::index_sequence, std::remove_reference
 #include <tuple>
 #include <array>
 #include <string>
@@ -13985,7 +13985,7 @@ namespace sqlite_orm {
                 iterate_tuple(column.constraints,
                               [&constraintsStrings, &primaryKeyIndex, &autoincrementIndex, &tupleIndex, &context](
                                   auto& constraint) {
-                                  using constraint_type = std::decay_t<decltype(constraint)>;
+                                  using constraint_type = polyfill::remove_cvref_t<decltype(constraint)>;
                                   constraintsStrings.push_back(serialize(constraint, context));
                                   if(is_primary_key_v<constraint_type>) {
                                       primaryKeyIndex = tupleIndex;
@@ -16155,7 +16155,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "ON CONFLICT";
                 iterate_tuple(statement.target_args, [&ss, &context](auto& value) {
-                    using value_type = std::decay_t<decltype(value)>;
+                    using value_type = std::remove_reference_t<decltype(value)>;
                     auto needParenthesis = std::is_member_pointer<value_type>::value;
                     ss << ' ';
                     if(needParenthesis) {
@@ -16779,7 +16779,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "FOREIGN KEY(" << streaming_mapped_columns_expressions(fk.columns, context) << ") REFERENCES ";
                 {
-                    using references_type_t = typename std::decay_t<decltype(fk)>::references_type;
+                    using references_type_t = typename std::remove_reference_t<decltype(fk)>::references_type;
                     using first_reference_t = mpl::element_at_t<0, references_type_t>;
                     using first_reference_mapped_type = table_type_of_t<first_reference_t>;
                     auto refTableName = lookup_table_name<first_reference_mapped_type>(context.db_objects);
@@ -16875,8 +16875,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
-                using expression_type = std::decay_t<decltype(statement)>;
-                using object_type = typename expression_object_type<expression_type>::type;
+                using object_type = typename expression_object_type<statement_type>::type;
                 auto& table = pick_table<object_type>(context.db_objects);
                 std::stringstream ss;
                 ss << "REPLACE INTO " << streaming_identifier(table.name) << " ("
@@ -16899,8 +16898,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& ins, const Ctx& context) const {
                 constexpr size_t colsCount = sizeof...(Cols);
                 static_assert(colsCount > 0, "Use insert or replace with 1 argument instead");
-                using expression_type = std::decay_t<decltype(ins)>;
-                using object_type = typename expression_object_type<expression_type>::type;
+                using object_type = typename expression_object_type<statement_type>::type;
                 auto& table = pick_table<object_type>(context.db_objects);
                 std::stringstream ss;
                 ss << "INSERT INTO " << streaming_identifier(table.name) << " ";
@@ -16908,7 +16906,7 @@ namespace sqlite_orm {
                    << "VALUES (";
                 iterate_tuple(ins.columns.columns,
                               [&ss, &context, &object = get_ref(ins.obj), first = true](auto& memberPointer) mutable {
-                                  using member_pointer_type = std::decay_t<decltype(memberPointer)>;
+                                  using member_pointer_type = polyfill::remove_cvref_t<decltype(memberPointer)>;
                                   static_assert(!is_setter_v<member_pointer_type>,
                                                 "Unable to use setter within insert explicit");
 
@@ -16927,8 +16925,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
-                using expression_type = std::decay_t<decltype(statement)>;
-                using object_type = typename expression_object_type<expression_type>::type;
+                using object_type = typename expression_object_type<statement_type>::type;
                 auto& table = pick_table<object_type>(context.db_objects);
 
                 std::stringstream ss;
@@ -17020,7 +17017,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 using object_type = typename expression_object_type<statement_type>::type;
                 auto& table = pick_table<object_type>(context.db_objects);
-                using is_without_rowid = typename std::decay_t<decltype(table)>::is_without_rowid;
+                using is_without_rowid = typename std::remove_reference_t<decltype(table)>::is_without_rowid;
 
                 std::vector<std::reference_wrapper<const std::string>> columnNames;
                 table.template for_each_column_excluding<
@@ -17105,7 +17102,7 @@ namespace sqlite_orm {
                     ss << "REPLACE";
                 }
                 iterate_tuple(statement.args, [&context, &ss](auto& value) {
-                    using value_type = std::decay_t<decltype(value)>;
+                    using value_type = polyfill::remove_cvref_t<decltype(value)>;
                     ss << ' ';
                     if(is_columns_v<value_type>) {
                         auto newContext = context;
@@ -17159,8 +17156,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& rep, const Ctx& context) const {
-                using expression_type = std::decay_t<decltype(rep)>;
-                using object_type = typename expression_object_type<expression_type>::type;
+                using object_type = typename expression_object_type<statement_type>::type;
                 auto& table = pick_table<object_type>(context.db_objects);
 
                 std::stringstream ss;
@@ -17181,7 +17177,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 using object_type = typename expression_object_type<statement_type>::type;
                 auto& table = pick_table<object_type>(context.db_objects);
-                using is_without_rowid = typename std::decay_t<decltype(table)>::is_without_rowid;
+                using is_without_rowid = typename std::remove_reference_t<decltype(table)>::is_without_rowid;
 
                 std::vector<std::reference_wrapper<const std::string>> columnNames;
                 table.template for_each_column_excluding<
@@ -17375,7 +17371,7 @@ namespace sqlite_orm {
                     iterate_ast(sel.col, collector);
                     iterate_ast(sel.conditions, collector);
                     join_iterator<Args...>()([&collector, &context](const auto& c) {
-                        using original_join_type = typename std::decay_t<decltype(c)>::join_type::type;
+                        using original_join_type = typename std::remove_reference_t<decltype(c)>::join_type::type;
                         using cross_join_type = mapped_type_proxy_t<original_join_type>;
                         auto crossJoinedTableName = lookup_table_name<cross_join_type>(context.db_objects);
                         auto tableAliasString = alias_extractor<original_join_type>::get();
@@ -17435,7 +17431,7 @@ namespace sqlite_orm {
                 if(statement.unique) {
                     ss << "UNIQUE ";
                 }
-                using elements_type = typename std::decay_t<decltype(statement)>::elements_type;
+                using elements_type = typename std::remove_reference_t<decltype(statement)>::elements_type;
                 using head_t = typename mpl::element_at_t<0, elements_type>::column_type;
                 using indexed_type = table_type_of_t<head_t>;
                 ss << "INDEX IF NOT EXISTS " << streaming_identifier(statement.name) << " ON "
@@ -17443,7 +17439,7 @@ namespace sqlite_orm {
                 std::vector<std::string> columnNames;
                 std::string whereString;
                 iterate_tuple(statement.elements, [&columnNames, &context, &whereString](auto& value) {
-                    using value_type = std::decay_t<decltype(value)>;
+                    using value_type = polyfill::remove_cvref_t<decltype(value)>;
                     if(!is_where_v<value_type>) {
                         auto newContext = context;
                         newContext.use_parentheses = false;
@@ -17631,7 +17627,7 @@ namespace sqlite_orm {
                    << serialize(statement.base, context);
                 ss << " BEGIN ";
                 iterate_tuple(statement.elements, [&ss, &context](auto& element) {
-                    using element_type = std::decay_t<decltype(element)>;
+                    using element_type = polyfill::remove_cvref_t<decltype(element)>;
                     if(is_select_v<element_type>) {
                         auto newContext = context;
                         newContext.use_parentheses = false;
@@ -18007,7 +18003,7 @@ namespace sqlite_orm {
 
             template<class Table>
             void create_table(sqlite3* db, const std::string& tableName, const Table& table) {
-                using table_type = std::decay_t<decltype(table)>;
+                using table_type = std::remove_reference_t<decltype(table)>;
                 using context_t = serializer_context<db_objects_type>;
 
                 std::stringstream ss;
@@ -18511,7 +18507,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "{ ";
                 table.for_each_column([&ss, &object, first = true](auto& column) mutable {
-                    using column_type = std::decay_t<decltype(column)>;
+                    using column_type = std::remove_reference_t<decltype(column)>;
                     using field_type = typename column_type::field_type;
                     constexpr std::array<const char*, 2> sep = {", ", ""};
 
@@ -19034,7 +19030,7 @@ namespace sqlite_orm {
 
             template<class T, class... Cols>
             int64 execute(const prepared_statement_t<insert_explicit<T, Cols...>>& statement) {
-                using statement_type = std::decay_t<decltype(statement)>;
+                using statement_type = std::remove_reference_t<decltype(statement)>;
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
 
@@ -19052,7 +19048,7 @@ namespace sqlite_orm {
             template<class T,
                      std::enable_if_t<polyfill::disjunction_v<is_replace<T>, is_replace_range<T>>, bool> = true>
             void execute(const prepared_statement_t<T>& statement) {
-                using statement_type = std::decay_t<decltype(statement)>;
+                using statement_type = std::remove_reference_t<decltype(statement)>;
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
 
@@ -19093,7 +19089,7 @@ namespace sqlite_orm {
 
             template<class T, std::enable_if_t<polyfill::disjunction_v<is_insert<T>, is_insert_range<T>>, bool> = true>
             int64 execute(const prepared_statement_t<T>& statement) {
-                using statement_type = std::decay_t<decltype(statement)>;
+                using statement_type = std::remove_reference_t<decltype(statement)>;
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
 
@@ -19101,7 +19097,7 @@ namespace sqlite_orm {
 
                 auto processObject = [&table = this->get_table<object_type>(),
                                       bind_value = field_value_binder{stmt}](auto& object) mutable {
-                    using is_without_rowid = typename std::decay_t<decltype(table)>::is_without_rowid;
+                    using is_without_rowid = typename std::remove_reference_t<decltype(table)>::is_without_rowid;
                     table.template for_each_column_excluding<
                         mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                          mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
@@ -19147,7 +19143,7 @@ namespace sqlite_orm {
 
             template<class T>
             void execute(const prepared_statement_t<update_t<T>>& statement) {
-                using statement_type = std::decay_t<decltype(statement)>;
+                using statement_type = std::remove_reference_t<decltype(statement)>;
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
 
@@ -19720,6 +19716,8 @@ namespace sqlite_orm {
 
 // #include "functional/static_magic.h"
 
+// #include "functional/cxx_type_traits_polyfill.h"
+
 // #include "functional/type_at.h"
 
 // #include "prepared_statement.h"
@@ -19842,14 +19840,14 @@ namespace sqlite_orm {
 
     template<int N, class T>
     const auto& get(const internal::prepared_statement_t<T>& statement) {
-        using statement_type = std::decay_t<decltype(statement)>;
+        using statement_type = std::remove_reference_t<decltype(statement)>;
         using expression_type = typename statement_type::expression_type;
         using node_tuple = internal::node_tuple_t<expression_type>;
         using bind_tuple = internal::bindable_filter_t<node_tuple>;
         using result_type = mpl::element_at_t<static_cast<size_t>(N), bind_tuple>;
         const result_type* result = nullptr;
         internal::iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
-            using node_type = std::decay_t<decltype(node)>;
+            using node_type = polyfill::remove_cvref_t<decltype(node)>;
             if(internal::is_bindable_v<node_type>) {
                 ++index;
                 if(index == N) {
@@ -19867,7 +19865,7 @@ namespace sqlite_orm {
 
     template<int N, class T>
     auto& get(internal::prepared_statement_t<T>& statement) {
-        using statement_type = std::decay_t<decltype(statement)>;
+        using statement_type = std::remove_reference_t<decltype(statement)>;
         using expression_type = typename statement_type::expression_type;
         using node_tuple = internal::node_tuple_t<expression_type>;
         using bind_tuple = internal::bindable_filter_t<node_tuple>;
@@ -19875,7 +19873,7 @@ namespace sqlite_orm {
         result_type* result = nullptr;
 
         internal::iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
-            using node_type = std::decay_t<decltype(node)>;
+            using node_type = polyfill::remove_cvref_t<decltype(node)>;
             if(internal::is_bindable_v<node_type>) {
                 ++index;
                 if(index == N) {
@@ -20066,7 +20064,7 @@ namespace sqlite_orm {
  *  this file is also used to provide definitions of interface methods 'hitting the database'.
  */
 
-#include <type_traits>  //  std::decay_t
+#include <type_traits>  //  std::remove_reference
 #include <utility>  //  std::move
 #include <algorithm>  //  std::find_if, std::ranges::find
 
@@ -20084,7 +20082,7 @@ namespace sqlite_orm {
             std::vector<table_xinfo> res;
             res.reserve(size_t(filter_tuple_sequence_t<elements_type, is_column>::size()));
             this->for_each_column([&res](auto& column) {
-                using field_type = field_type_t<std::decay_t<decltype(column)>>;
+                using field_type = field_type_t<std::remove_reference_t<decltype(column)>>;
                 std::string dft;
                 if(auto d = column.default_value()) {
                     dft = move(*d);

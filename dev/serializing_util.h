@@ -1,6 +1,6 @@
 #pragma once
 
-#include <type_traits>  //  std::index_sequence
+#include <type_traits>  //  std::index_sequence, std::remove_reference
 #include <tuple>
 #include <array>
 #include <string>
@@ -395,7 +395,7 @@ namespace sqlite_orm {
                 iterate_tuple(column.constraints,
                               [&constraintsStrings, &primaryKeyIndex, &autoincrementIndex, &tupleIndex, &context](
                                   auto& constraint) {
-                                  using constraint_type = std::decay_t<decltype(constraint)>;
+                                  using constraint_type = polyfill::remove_cvref_t<decltype(constraint)>;
                                   constraintsStrings.push_back(serialize(constraint, context));
                                   if(is_primary_key_v<constraint_type>) {
                                       primaryKeyIndex = tupleIndex;

@@ -4,7 +4,7 @@
 #include <memory>  //  std::unique_ptr
 #include <iterator>  //  std::iterator_traits
 #include <string>  //  std::string
-#include <type_traits>  //  std::integral_constant, std::declval
+#include <type_traits>  //  std::integral_constant, std::declval, std::decay
 #include <utility>  //  std::pair
 
 #include "functional/cxx_universal.h"
