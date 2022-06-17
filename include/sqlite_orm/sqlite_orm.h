@@ -147,20 +147,34 @@ using std::nullptr_t;
 #define SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(...) SQLITE_ORM_CLANG_SUPPRESS("-Wmissing-braces", __VA_ARGS__)
 
 #if defined(_MSC_VER) && !defined(__clang__)  // MSVC
+#define SQLITE_ORM_MSVC_EMPTYBASES __declspec(empty_bases)
+#else
+#define SQLITE_ORM_MSVC_EMPTYBASES
+#endif
+
+#if defined(_MSC_VER) && !defined(__clang__)  // MSVC
+
 #if __cplusplus < 202002L
 #define SQLITE_ORM_WORKAROUND_MSVC_MULTIPLECTOR_106654
 #endif
-#endif
 
-#if defined(_MSC_VER) && (_MSC_VER < 1920)
+#if _MSC_VER < 1920
 #define SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
 #define SQLITE_ORM_BROKEN_CONSTEXPR_DELEGATING_CTORS
 #endif
 
-#if defined(_MSC_VER) && !defined(__clang__)  // MSVC
-#define SQLITE_ORM_MSVC_EMPTYBASES __declspec(empty_bases)
-#else
-#define SQLITE_ORM_MSVC_EMPTYBASES
+#elif defined(__clang__) && defined(_MSC_VER)  // Clang-cl (Clang for Windows)
+
+#elif defined(__clang__)  // genuine Clang
+
+#elif defined(__clang__) && defined(__apple_build_version__)  // Apple's Clang
+
+#elif defined(__GNUC__)  // GCC
+
+#if __GNUC__ < 11 || (__GNUC__ == 11 && __GNUC_MINOR__ < 3)
+#define SQLITE_ORM_BROKEN_GCC_ALIAS_TARGS_84785
+#endif
+
 #endif
 
 namespace sqlite_orm {
@@ -1066,7 +1080,8 @@ namespace sqlite_orm {
 
 // #include "index_sequence_util.h"
 
-#include <type_traits>  //  std::index_sequence, std::make_index_sequence
+#include <type_traits>  //  std::integral_constant, std::declval
+#include <utility>  //  std::index_sequence, std::make_index_sequence
 
 // #include "cxx_universal.h"
 
@@ -1170,7 +1185,7 @@ namespace sqlite_orm {
             template<size_t n, class Times>
             using expand_n_t = decltype(expand_n<n>(Times{}));
 
-#ifdef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+#if defined(SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION) || defined(SQLITE_ORM_BROKEN_GCC_ALIAS_TARGS_84785)
             template<size_t x, size_t n>
             struct spread_idxseq_helper {
                 using type = expand_n_t<x, std::make_index_sequence<n>>;
@@ -1179,7 +1194,7 @@ namespace sqlite_orm {
 
             template<size_t... Ix, size_t... N>
             constexpr auto spread_idxseq(std::index_sequence<Ix...>, std::index_sequence<N...>) {
-#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+#if !defined(SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION) && !defined(SQLITE_ORM_BROKEN_GCC_ALIAS_TARGS_84785)
                 using type = pack<expand_n_t<Ix, std::make_index_sequence<N>>...>;
 #else
                 using type = pack<typename spread_idxseq_helper<Ix, N>::type...>;

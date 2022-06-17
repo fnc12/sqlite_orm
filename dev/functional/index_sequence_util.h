@@ -1,6 +1,7 @@
 #pragma once
 
-#include <type_traits>  //  std::index_sequence, std::make_index_sequence
+#include <type_traits>  //  std::integral_constant, std::declval
+#include <utility>  //  std::index_sequence, std::make_index_sequence
 
 #include "cxx_universal.h"
 #ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
@@ -71,7 +72,7 @@ namespace sqlite_orm {
             template<size_t n, class Times>
             using expand_n_t = decltype(expand_n<n>(Times{}));
 
-#ifdef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+#if defined(SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION) || defined(SQLITE_ORM_BROKEN_GCC_ALIAS_TARGS_84785)
             template<size_t x, size_t n>
             struct spread_idxseq_helper {
                 using type = expand_n_t<x, std::make_index_sequence<n>>;
@@ -80,7 +81,7 @@ namespace sqlite_orm {
 
             template<size_t... Ix, size_t... N>
             constexpr auto spread_idxseq(std::index_sequence<Ix...>, std::index_sequence<N...>) {
-#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+#if !defined(SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION) && !defined(SQLITE_ORM_BROKEN_GCC_ALIAS_TARGS_84785)
                 using type = pack<expand_n_t<Ix, std::make_index_sequence<N>>...>;
 #else
                 using type = pack<typename spread_idxseq_helper<Ix, N>::type...>;
