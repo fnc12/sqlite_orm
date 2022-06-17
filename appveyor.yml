@@ -77,8 +77,8 @@ environment:
       platform: x86
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
 
-matrix:
-  fast_finish: true
+#matrix:
+  #fast_finish: true
 
 for:
 -
