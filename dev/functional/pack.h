@@ -8,6 +8,9 @@ namespace sqlite_orm {
     namespace internal {
         namespace mpl {
 
+            /*
+             *  Type list
+             */
             template<typename... T>
             struct pack {
                 static constexpr size_t size() {
@@ -20,7 +23,7 @@ namespace sqlite_orm {
     namespace mpl = internal::mpl;
 }
 
-// retain stl tuple interface for `tuple`
+// retain stl tuple interface for `pack`
 namespace std {
     template<class Tpl>
     struct tuple_size;

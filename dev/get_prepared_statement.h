@@ -132,14 +132,14 @@ namespace sqlite_orm {
             using node_type = std::decay_t<decltype(node)>;
             if(internal::is_bindable_v<node_type>) {
                 ++index;
-            }
-            if(index == N) {
-                internal::call_if_constexpr<std::is_same<result_type, node_type>::value>(
-                    [](auto& r, auto& n) {
-                        r = &n;
-                    },
-                    result,
-                    node);
+                if(index == N) {
+                    internal::call_if_constexpr<std::is_same<result_type, node_type>::value>(
+                        [](auto& r, auto& n) {
+                            r = &n;
+                        },
+                        result,
+                        node);
+                }
             }
         });
         return internal::get_ref(*result);
@@ -158,14 +158,14 @@ namespace sqlite_orm {
             using node_type = std::decay_t<decltype(node)>;
             if(internal::is_bindable_v<node_type>) {
                 ++index;
-            }
-            if(index == N) {
-                internal::call_if_constexpr<std::is_same<result_type, node_type>::value>(
-                    [](auto& r, auto& n) {
-                        r = const_cast<std::remove_reference_t<decltype(r)>>(&n);
-                    },
-                    result,
-                    node);
+                if(index == N) {
+                    internal::call_if_constexpr<std::is_same<result_type, node_type>::value>(
+                        [](auto& r, auto& n) {
+                            r = const_cast<std::remove_reference_t<decltype(r)>>(&n);
+                        },
+                        result,
+                        node);
+                }
             }
         });
         return internal::get_ref(*result);

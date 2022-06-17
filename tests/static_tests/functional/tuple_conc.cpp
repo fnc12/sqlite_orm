@@ -21,7 +21,7 @@ TEST_CASE("Tuple conc") {
         STATIC_REQUIRE(std::is_same<IntFloatTuple, tuple<int, float>>::value);
     }
     {
-        using TupleL = std::tuple<>;
+        using TupleL = tuple<>;
         using TupleR = tuple<float>;
         using NoneFloatTuple = tuple_cat_t<TupleL, TupleR>;
         STATIC_REQUIRE(std::is_same<NoneFloatTuple, tuple<float>>::value);

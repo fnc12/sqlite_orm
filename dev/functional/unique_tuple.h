@@ -2,6 +2,7 @@
 
 #include <type_traits>  //  std::integral_constant, std::decay, std::is_constructible, std::is_default_constructible, std::enable_if
 #include <utility>  //  std::move, std::forward
+#include <functional>  //  std::equal_to
 
 #include "cxx_universal.h"
 #include "cxx_type_traits_polyfill.h"
@@ -268,7 +269,8 @@ namespace sqlite_orm {
             constexpr bool equal_indexable([[maybe_unused]] const uple<X...>& left,
                                            [[maybe_unused]] const uple<Y...>& right,
                                            std::index_sequence<Ix...>) {
-                return ((std::get<Ix>(left) == std::get<Ix>(right)) && ...);
+                constexpr std::equal_to<> predicate = {};
+                return (predicate(std::get<Ix>(left), std::get<Ix>(right)) && ...);
             }
 #else
             template<class... X, class... Y>
@@ -278,7 +280,7 @@ namespace sqlite_orm {
             template<size_t n, size_t... Ix, class... X, class... Y>
             constexpr bool
             equal_indexable(const uple<X...>& left, const uple<Y...>& right, std::index_sequence<n, Ix...>) {
-                return (std::get<n>(left) == std::get<n>(right)) &&
+                return std::equal_to<>{}(std::get<n>(left), std::get<n>(right)) &&
                        equal_indexable(left, right, std::index_sequence<Ix...>{});
             }
 #endif

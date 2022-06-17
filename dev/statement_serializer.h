@@ -1537,7 +1537,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type&, const Ctx& context) const {
                 std::stringstream ss;
                 ss << "FROM ";
-                iterate_tuple<typename statement_type::tuple_type>([&context, &ss, first = true](auto* item) mutable {
+                iterate_pack(typename statement_type::pack_type{}, [&context, &ss, first = true](auto* item) mutable {
                     using from_type = std::remove_pointer_t<decltype(item)>;
 
                     constexpr std::array<const char*, 2> sep = {", ", ""};

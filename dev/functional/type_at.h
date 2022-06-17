@@ -1,7 +1,6 @@
 #pragma once
 
 #include <type_traits>  //  std::integral_constant, std::index_sequence, std::make_index_sequence
-#include <tuple>
 
 #include "cxx_universal.h"
 #include "indexed_type.h"
@@ -35,9 +34,6 @@ namespace sqlite_orm {
             };
 
             template<size_t n, typename... T>
-            struct type_at<n, std::tuple<T...>> : type_at<n, T...> {};
-
-            template<size_t n, typename... T>
             struct type_at<n, pack<T...>> : type_at<n, T...> {};
 
             template<size_t n, typename... T>
@@ -45,9 +41,6 @@ namespace sqlite_orm {
 
             template<size_t n, typename Tpl>
             using element_at_t = typename type_at<n, Tpl>::type;
-
-            template<typename... T>
-            struct pack<std::tuple<T...>> : pack<T...> {};
         }
     }
 

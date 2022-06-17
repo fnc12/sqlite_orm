@@ -6,6 +6,7 @@
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
+#include "functional/fast_and.h"
 #include "functional/unique_tuple.h"
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_filter.h"
@@ -140,7 +141,7 @@ namespace sqlite_orm {
      */
     template<class M, class... Op, internal::satisfies<std::is_member_object_pointer, M> = true>
     internal::column_t<M, internal::empty_setter, Op...> make_column(std::string name, M m, Op... constraints) {
-        static_assert(polyfill::conjunction_v<internal::is_constraint<Op>...>, "Incorrect constraints pack");
+        static_assert(SQLITE_ORM_FAST_AND(internal::is_constraint<Op>), "Incorrect constraints pack");
 
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {move(name), m, {}, mpl::make_unique_tuple(constraints...)});
     }
@@ -156,7 +157,7 @@ namespace sqlite_orm {
     internal::column_t<G, S, Op...> make_column(std::string name, S setter, G getter, Op... constraints) {
         static_assert(std::is_same<internal::setter_field_type_t<S>, internal::getter_field_type_t<G>>::value,
                       "Getter and setter must get and set same data type");
-        static_assert(polyfill::conjunction_v<internal::is_constraint<Op>...>, "Incorrect constraints pack");
+        static_assert(SQLITE_ORM_FAST_AND(internal::is_constraint<Op>), "Incorrect constraints pack");
 
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
             return {move(name), getter, setter, mpl::make_unique_tuple(constraints...)});
@@ -174,7 +175,7 @@ namespace sqlite_orm {
     internal::column_t<G, S, Op...> make_column(std::string name, G getter, S setter, Op... constraints) {
         static_assert(std::is_same<internal::setter_field_type_t<S>, internal::getter_field_type_t<G>>::value,
                       "Getter and setter must get and set same data type");
-        static_assert(polyfill::conjunction_v<internal::is_constraint<Op>...>, "Incorrect constraints pack");
+        static_assert(SQLITE_ORM_FAST_AND(internal::is_constraint<Op>), "Incorrect constraints pack");
 
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
             return {move(name), getter, setter, mpl::make_unique_tuple(constraints...)});

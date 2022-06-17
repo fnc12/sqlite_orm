@@ -10,8 +10,8 @@ using internal::is_primary_key;
 using internal::primary_key_t;
 
 TEST_CASE("tuple traits") {
-    using empty_tuple_type = std::tuple<>;
-    using tuple_type = std::tuple<int, char, default_t<int>, primary_key_t<>, std::string>;
+    using empty_tuple_type = mpl::tuple<>;
+    using tuple_type = mpl::tuple<int, char, default_t<int>, primary_key_t<>, std::string>;
 
     STATIC_REQUIRE(mpl::invoke_t<check_if_tuple_has<is_primary_key>, tuple_type>::value);
     STATIC_REQUIRE(mpl::invoke_t<check_if_tuple_has_type<int>, tuple_type>::value);

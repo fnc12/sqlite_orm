@@ -8,6 +8,7 @@
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
+#include "functional/pack.h"
 #include "functional/tuple.h"
 #include "type_traits.h"
 #include "collate_argument.h"
@@ -797,7 +798,7 @@ namespace sqlite_orm {
 
         template<class... Args>
         struct from_t {
-            using tuple_type = mpl::tuple<Args...>;
+            using pack_type = mpl::pack<Args...>;
         };
 
         template<class T>

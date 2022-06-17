@@ -14,8 +14,8 @@ namespace sqlite_orm {
             /**
              *  Get the first value of an index_sequence.
              */
-            template<size_t I, size_t... Idx>
-            SQLITE_ORM_CONSTEVAL size_t first_index_sequence_value(std::index_sequence<I, Idx...>) {
+            template<size_t I, size_t... Ix>
+            SQLITE_ORM_CONSTEVAL size_t first_index_sequence_value(std::index_sequence<I, Ix...>) {
                 return I;
             }
 
@@ -44,10 +44,9 @@ namespace sqlite_orm {
             /**
              *  Reverse the values of an index_sequence.
              */
-            template<size_t... Idx>
-            SQLITE_ORM_CONSTEVAL auto reverse_index_sequence(std::index_sequence<Idx...>) {
-                return reorder_index_sequence(std::index_sequence<Idx...>{},
-                                              std::make_index_sequence<sizeof...(Idx)>{});
+            template<size_t... Ix>
+            SQLITE_ORM_CONSTEVAL auto reverse_index_sequence(std::index_sequence<Ix...>) {
+                return reorder_index_sequence(std::index_sequence<Ix...>{}, std::make_index_sequence<sizeof...(Ix)>{});
             }
 #endif
 
@@ -56,12 +55,15 @@ namespace sqlite_orm {
             using comma_expression_helper = std::integral_constant<size_t, c>;
 #endif
 
-            template<size_t n, size_t... Times>
-            constexpr auto expand_n(std::index_sequence<Times...>) {
+            /*
+             *  Duplicate specified number x times into an index sequence (using the size of the variadic argument x)
+             */
+            template<size_t n, size_t... x>
+            constexpr auto expand_n(std::index_sequence<x...>) {
 #ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
-                using type = std::index_sequence<(Times, n)...>;
+                using type = std::index_sequence<(x, n)...>;
 #else
-                using type = std::index_sequence<comma_expression_helper<Times, n>::value...>;
+                using type = std::index_sequence<comma_expression_helper<x, n>::value...>;
 #endif
                 return type{};
             }
@@ -94,9 +96,9 @@ namespace sqlite_orm {
                 using type = std::index_sequence<>;
             };
 
-            template<size_t... Idx>
-            struct flatten_idxseq<std::index_sequence<Idx...>> {
-                using type = std::index_sequence<Idx...>;
+            template<size_t... Ix>
+            struct flatten_idxseq<std::index_sequence<Ix...>> {
+                using type = std::index_sequence<Ix...>;
             };
 
             template<size_t... As, size_t... Bs, class... Seq>

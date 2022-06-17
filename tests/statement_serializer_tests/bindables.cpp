@@ -1,6 +1,5 @@
 #include <type_traits>
 #include <array>
-#include <tuple>
 #include <algorithm>  //  std::fill_n
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch.hpp>
@@ -12,7 +11,6 @@ using std::make_index_sequence;
 using std::nullptr_t;
 using std::shared_ptr;
 using std::string;
-using std::tuple;
 using std::tuple_element_t;
 using std::tuple_size;
 using std::unique_ptr;
@@ -91,8 +89,8 @@ void require_strings(const array<string, sizeof...(Idx)>& values,
 }
 
 template<typename Ctx, typename... Ts>
-void test_tuple(const tuple<Ts...>& t, const Ctx& ctx, const array<string, sizeof...(Ts)>& expected) {
-    require_strings({internal::serialize(get<Ts>(t), ctx)...}, expected, index_sequence_for<Ts...>{});
+void test_tuple(const mpl::uple<Ts...>& t, const Ctx& ctx, const array<string, sizeof...(Ts)>& expected) {
+    require_strings({internal::serialize(std::get<Ts>(t), ctx)...}, expected, index_sequence_for<Ts...>{});
 }
 
 namespace {
@@ -126,32 +124,32 @@ TEST_CASE("bindables") {
     context_t context{dbObjects};
 
     SECTION("bindable_builtin_types") {
-        using Tuple = tuple<bool,
-                            char,
-                            unsigned char,
-                            signed char,
-                            short,
-                            unsigned short,
-                            int,
-                            unsigned int,
-                            long,
-                            unsigned long,
-                            long long,
-                            unsigned long long,
-                            float,
-                            double,
-                            long double,
-                            const char*,
-                            nullptr_t
+        using Tuple = mpl::uple<bool,
+                                char,
+                                unsigned char,
+                                signed char,
+                                short,
+                                unsigned short,
+                                int,
+                                unsigned int,
+                                long,
+                                unsigned long,
+                                long long,
+                                unsigned long long,
+                                float,
+                                double,
+                                long double,
+                                const char*,
+                                nullptr_t
 #ifndef SQLITE_ORM_OMITS_CODECVT
-                            ,
-                            const wchar_t*
+                                ,
+                                const wchar_t*
 #endif
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-                            ,
-                            std::nullopt_t
+                                ,
+                                std::nullopt_t
 #endif
-                            >;
+                                >;
 
         constexpr Tuple tpl = make_default_tuple<Tuple>();
 
@@ -192,33 +190,33 @@ TEST_CASE("bindables") {
         }
         SECTION("non-bindable literals") {
             context.replace_bindable_with_question = true;
-            constexpr auto t = make_default_tuple<internal::transform_tuple_t<Tuple, wrap_in_literal>>();
+            constexpr auto t = make_default_tuple<mpl::transform_types_t<mpl::uple, Tuple, wrap_in_literal>>();
             test_tuple(t, context, e);
         }
     }
 
     SECTION("bindable_types") {
-        using Tuple = tuple<string,
+        using Tuple = mpl::uple<string,
 #ifndef SQLITE_ORM_OMITS_CODECVT
-                            wstring,
-                            StringVeneer<wchar_t>,
+                                wstring,
+                                StringVeneer<wchar_t>,
 #endif
-                            unique_ptr<int>,
-                            shared_ptr<int>,
-                            vector<char>,
+                                unique_ptr<int>,
+                                shared_ptr<int>,
+                                vector<char>,
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-                            std::optional<int>,
-                            std::optional<Custom>,
+                                std::optional<int>,
+                                std::optional<Custom>,
 #endif
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                            std::string_view,
+                                std::string_view,
 #ifndef SQLITE_ORM_OMITS_CODECVT
-                            std::wstring_view,
+                                std::wstring_view,
 #endif
 #endif
-                            StringVeneer<char>,
-                            Custom,
-                            unique_ptr<Custom>>;
+                                StringVeneer<char>,
+                                Custom,
+                                unique_ptr<Custom>>;
 
         Tuple tpl = make_default_tuple<Tuple>();
 
@@ -254,7 +252,7 @@ TEST_CASE("bindables") {
         }
         SECTION("non-bindable literals") {
             context.replace_bindable_with_question = true;
-            auto t = make_default_tuple<internal::transform_tuple_t<Tuple, wrap_in_literal>>();
+            auto t = make_default_tuple<mpl::transform_types_t<mpl::uple, Tuple, wrap_in_literal>>();
             test_tuple(t, context, e);
         }
     }

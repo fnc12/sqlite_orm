@@ -2,6 +2,7 @@
 
 #include <type_traits>  //  std::integral_constant, std::decay, std::remove_reference, std::is_constructible, std::is_default_constructible, std::enable_if, std::declval
 #include <utility>  //  std::move, std::forward
+#include <functional>  //  std::equal_to
 
 #include "cxx_universal.h"
 #include "cxx_type_traits_polyfill.h"
@@ -274,20 +275,46 @@ namespace sqlite_orm {
                 template<class... Tuples, size_t... Ix, size_t... Jx>
                 constexpr flatten_types_t<tuple, std::remove_reference_t<Tuples>...>
                 tuple_cat_helper(std::index_sequence<Ix...>, std::index_sequence<Jx...>, Tuples&&... tuples) {
+                    // Note that for each element in a tuple we have a coordinate pair (i, j),
+                    // that is, the length of the lists containing the Is and the Js must be equal:
+                    static_assert(sizeof...(Ix) == sizeof...(Jx), "");
+                    // It then explodes the tuple of tuples into the return type using the coordinates (i, j) for each element:
                     return {ebo_get<Jx>(std::get<Ix>(adl::forward_as_tuple(std::forward<Tuples>(tuples)...)))...};
                 }
 
+                /*
+                 *  This implementation of `tuple_cat` takes advantage of treating the specified tuples and
+                 *  their elements as a two-dimensional array.
+                 *  In order for this to work, the number of all elements combined (Jx) has to match
+                 *  a sequence of numbers produced using the number of specified tuples (Ix).
+                 *  Hence, each index in the sequence of tuples is duplicated by the number of elements of each respective tuple.
+                 *  
+                 *  Example, using 3 tuples:
+                 *  tuple0<char, int, float>
+                 *  tuple1<double>
+                 *  tuple0<string, size_t>
+                 *
+                 *  outer sequence Jx (denoting which element to access):
+                 *  for tuple0: <0, 1, 2>
+                 *  for tuple1: <0>
+                 *  for tuple2: <0, 1>
+                 *  flattened -> <0, 1, 2, 0, 0, 1>
+                 *
+                 *  inner sequence Ix (denoting which tuple to access):
+                 *  tuples as index sequence: <0, 1, 2>
+                 *  sizes as number sequence: <3, 1, 2>
+                 *  for tuple0: <0, 0, 0>
+                 *  for tuple1: <1>
+                 *  for tuple2: <2, 2>
+                 *  flattened -> <0, 0, 0, 1, 2, 2>
+                 */
                 template<class... Tuples>
                 constexpr auto tuple_cat(Tuples&&... tuples) {
                     using tuples_seq = std::make_index_sequence<sizeof...(Tuples)>;
-                    // -> index_sequence<tuple_size...>
                     using sizes_seq = std::index_sequence<std::tuple_size<std::remove_reference_t<Tuples>>::value...>;
-                    using inner = flatten_idxseq_t<
-                        // -> pack<index_sequence<tuple0_idx_0..., tuple0_idx_1...>, index_sequence<tuple1_idx_0...>, ...>
-                        spread_idxseq_t<tuples_seq, sizes_seq>>;
+                    using inner = flatten_idxseq_t<spread_idxseq_t<tuples_seq, sizes_seq>>;
                     using outer = typename flatten_idxseq<
 #ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
-                        // index_sequence<tuple_size>, ...
                         std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tuples>>::value>...
 #else
                         typename make_idxseq_helper<std::remove_reference_t<Tuples>>::type...
@@ -323,7 +350,8 @@ namespace sqlite_orm {
             constexpr bool equal_indexable([[maybe_unused]] const tuple<X...>& left,
                                            [[maybe_unused]] const tuple<Y...>& right,
                                            std::index_sequence<Ix...>) {
-                return ((ebo_get<Ix>(left) == ebo_get<Ix>(right)) && ...);
+                constexpr std::equal_to<> predicate = {};
+                return (predicate(ebo_get<Ix>(left), ebo_get<Ix>(right)) && ...);
             }
 #else
             template<class... X, class... Y>
@@ -333,7 +361,7 @@ namespace sqlite_orm {
             template<size_t n, size_t... Ix, class... X, class... Y>
             constexpr bool
             equal_indexable(const tuple<X...>& left, const tuple<Y...>& right, std::index_sequence<n, Ix...>) {
-                return (ebo_get<n>(left) == ebo_get<n>(right)) &&
+                return std::equal_to<>{}(ebo_get<n>(left), ebo_get<n>(right)) &&
                        equal_indexable(left, right, std::index_sequence<Ix...>{});
             }
 #endif

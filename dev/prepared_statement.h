@@ -10,6 +10,7 @@
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/cxx_functional_polyfill.h"
+#include "functional/pack.h"
 #include "functional/tuple.h"
 #include "tuple_helper/tuple_filter.h"
 #include "connection_holder.h"
