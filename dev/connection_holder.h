@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sqlite3.h>
+#include <atomic>
 #include <string>  //  std::string
 
 #include "error_code.h"
@@ -14,8 +15,7 @@ namespace sqlite_orm {
             connection_holder(std::string filename_) : filename(move(filename_)) {}
 
             void retain() {
-                ++this->_retain_count;
-                if(1 == this->_retain_count) {
+                if(1 == ++this->_retain_count) {
                     auto rc = sqlite3_open(this->filename.c_str(), &this->db);
                     if(rc != SQLITE_OK) {
                         throw_translated_sqlite_error(db);
@@ -24,8 +24,7 @@ namespace sqlite_orm {
             }
 
             void release() {
-                --this->_retain_count;
-                if(0 == this->_retain_count) {
+                if(0 == --this->_retain_count) {
                     auto rc = sqlite3_close(this->db);
                     if(rc != SQLITE_OK) {
                         throw_translated_sqlite_error(db);
@@ -45,7 +44,7 @@ namespace sqlite_orm {
 
           protected:
             sqlite3* db = nullptr;
-            int _retain_count = 0;
+            std::atomic_int _retain_count{};
         };
 
         struct connection_ref {

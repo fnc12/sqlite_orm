@@ -10,9 +10,9 @@ TEST_CASE("statement_serializer select_t") {
         std::string name;
     };
     auto table = make_table("users", make_column("id", &User::id), make_column("name", &User::name));
-    using storage_impl_t = internal::storage_impl<decltype(table)>;
-    storage_impl_t storageImpl{table};
-    internal::serializer_context<storage_impl_t> context{storageImpl};
+    using db_objects_t = internal::db_objects_tuple<decltype(table)>;
+    db_objects_t dbObjects{table};
+    internal::serializer_context<db_objects_t> context{dbObjects};
     std::string stringValue;
     decltype(stringValue) expected;
     SECTION("simple") {
@@ -102,13 +102,25 @@ TEST_CASE("statement_serializer select_t") {
             }
         }
         SECTION("asterisk") {
-            SECTION("asterisk") {
+            SECTION("mapped") {
                 auto expression = select(asterisk<User>());
                 expression.highest_level = true;
                 stringValue = serialize(expression, context);
                 expected = R"(SELECT * FROM "users")";
             }
-            SECTION("alias") {
+            SECTION("mapped, implicit select order") {
+                auto expression = select(asterisk<User>(false));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT * FROM "users")";
+            }
+            SECTION("mapped, defined select order") {
+                auto expression = select(asterisk<User>(true));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT "id", "name" FROM "users")";
+            }
+            SECTION("alias, implicit select order") {
                 using als_u = alias_u<User>;
 
                 auto expression = select(asterisk<als_u>());
@@ -116,11 +128,31 @@ TEST_CASE("statement_serializer select_t") {
                 stringValue = serialize(expression, context);
                 expected = R"(SELECT "u".* FROM "users" "u")";
             }
+            SECTION("alias, defined select order") {
+                using als_u = alias_u<User>;
+
+                auto expression = select(asterisk<als_u>(true));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT "u"."id", "u"."name" FROM "users" "u")";
+            }
             SECTION("object") {
                 auto expression = select(object<User>());
                 expression.highest_level = true;
                 stringValue = serialize(expression, context);
                 expected = R"(SELECT * FROM "users")";
+            }
+            SECTION("object, implicit select order") {
+                auto expression = select(object<User>(false));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT * FROM "users")";
+            }
+            SECTION("object, defined select order") {
+                auto expression = select(object<User>(true));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT "id", "name" FROM "users")";
             }
             SECTION("issue #945") {
                 struct Employee {
@@ -140,8 +172,8 @@ TEST_CASE("statement_serializer select_t") {
                 auto t2 =
                     make_table("Dept", make_column("deptno", &Department::m_deptno, primary_key(), autoincrement()));
 
-                using storage_impl_t = internal::storage_impl<decltype(t1), decltype(t2)>;
-                storage_impl_t storage{t1, t2};
+                using db_objects_t = internal::db_objects_tuple<decltype(t1), decltype(t2)>;
+                db_objects_t storage{t1, t2};
 
                 using als_d = alias_d<Department>;
                 using als_e = alias_e<Employee>;
@@ -151,7 +183,7 @@ TEST_CASE("statement_serializer select_t") {
                                                              alias_column<als_e>(&Employee::m_deptno))),
                                          where(is_null(alias_column<als_e>(&Employee::m_deptno))));
                 expression.highest_level = true;
-                internal::serializer_context<storage_impl_t> context{storage};
+                internal::serializer_context<db_objects_t> context{storage};
                 context.skip_table_name = false;
                 stringValue = serialize(expression, context);
                 expected =

@@ -17,7 +17,7 @@
 #endif
 
 #if __cpp_constexpr >= 201304L
-#define SQLITE_ORM_RELAXED_CONSTEXPR
+#define SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
 #endif
 
 #if __cpp_noexcept_function_type >= 201510L

@@ -16,9 +16,6 @@ namespace sqlite_orm {
             using type = tuple_cat_t<Tpl...>;
         };
 
-        template<class... Tpl>
-        using conc_tuple_t = typename conc_tuple<Tpl...>::type;
-
         template<class Tpl, class Seq>
         struct tuple_from_index_sequence;
 
@@ -29,14 +26,6 @@ namespace sqlite_orm {
 
         template<class Tpl, class Seq>
         using tuple_from_index_sequence_t = typename tuple_from_index_sequence<Tpl, Seq>::type;
-
-        /**
-         *  Get the first value of an index_sequence.
-         */
-        template<size_t I, size_t... Idx>
-        SQLITE_ORM_CONSTEVAL size_t first_index_sequence_value(std::index_sequence<I, Idx...>) {
-            return I;
-        }
 
         template<class... Seq>
         struct concat_idx_seq {

@@ -12,10 +12,10 @@ TEST_CASE("statement_serializer conditions") {
         };
 
         auto t1 = make_table("user", make_column("id", &User::id));
-        auto storage = internal::storage_impl<decltype(t1)>{t1};
-        using storage_impl = decltype(storage);
+        auto storage = internal::db_objects_tuple<decltype(t1)>{t1};
+        using db_objects_tuple = decltype(storage);
 
-        internal::serializer_context<storage_impl> ctx{storage};
+        internal::serializer_context<db_objects_tuple> ctx{storage};
 
         SECTION("using column") {
             auto expression = using_(&User::id);
@@ -29,10 +29,10 @@ TEST_CASE("statement_serializer conditions") {
         }
     }
     SECTION("order by") {
-        auto storage = internal::storage_impl<>{};
-        using storage_impl = decltype(storage);
+        auto storage = internal::db_objects_tuple<>{};
+        using db_objects_tuple = decltype(storage);
 
-        internal::serializer_context<storage_impl> ctx{storage};
+        internal::serializer_context<db_objects_tuple> ctx{storage};
 
         SECTION("positional ordinal") {
             auto expression = order_by(1);

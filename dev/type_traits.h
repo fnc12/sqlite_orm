@@ -54,14 +54,5 @@ namespace sqlite_orm {
 
         template<typename T>
         using target_type_t = typename T::target_type;
-
-        template<typename T>
-        using table_type_t = typename T::table_type;
-
-        template<typename S>
-        using storage_elements_type_t = typename S::table_type::elements_type;
-
-        template<typename S>
-        using storage_object_type_t = typename S::table_type::object_type;
     }
 }

@@ -1,5 +1,5 @@
 /** @file Mainly existing to disentangle implementation details from circular and cross dependencies
- *  (e.g. column_t -> default_value_extractor -> serializer_context -> storage_impl -> table_t -> column_t)
+ *  (e.g. column_t -> default_value_extractor -> serializer_context -> db_objects_tuple -> table_t -> column_t)
  *  this file is also used to provide definitions of interface methods 'hitting the database'.
  */
 #pragma once
@@ -8,6 +8,7 @@
 
 #include "../functional/cxx_core_features.h"
 #include "../functional/static_magic.h"
+#include "../tuple_helper/index_sequence_util.h"
 #include "../tuple_helper/tuple_filter.h"
 #include "../tuple_helper/tuple_traits.h"
 #include "../default_value_extractor.h"
