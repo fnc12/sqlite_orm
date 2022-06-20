@@ -44,9 +44,9 @@
 
 #elif defined(__clang__) && defined(_MSC_VER)  // Clang-cl (Clang for Windows)
 
-#elif defined(__clang__)  // genuine Clang
-
 #elif defined(__clang__) && defined(__apple_build_version__)  // Apple's Clang
+
+#elif defined(__clang__)  // genuine Clang
 
 #elif defined(__GNUC__)  // GCC
 
