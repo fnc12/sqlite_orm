@@ -31,19 +31,16 @@ inline std::string sysDaysToString(std::chrono::sys_days pt) {
     return r;
 }
 
-constexpr auto null_sys_day = std::chrono::sys_days{std::chrono::days{0}};
-
 /**
  *  and sys_days from string. This function has nullable result cause
- *  string can be neither `male` nor `female`. i have taken null_sys_day to
- *  correspond to null. Don't know if should use std::optional as return case??
+ *  string can be an invalid sys_days. 
  *  Of course we won't allow this to happen but as developers we must have
  *  a scenario for this case.
  *  These functions are just helpers. They will be called from several places
  *  that's why I placed it separatedly. You can use any transformation type/form
  *  (for example BETTER_ENUM https://github.com/aantron/better-enums)
  */
-inline std::chrono::sys_days sysDaysFromString(const std::string& s) {
+inline std::optional<std::chrono::sys_days> sysDaysFromString(const std::string& s) {
     using namespace std::literals;
     using namespace std::chrono;
 
@@ -51,9 +48,9 @@ inline std::chrono::sys_days sysDaysFromString(const std::string& s) {
     std::chrono::sys_days tt;
     ss >> std::chrono::parse("%F"s, tt);
     if(!ss.fail()) {
-        return tt;
+        return {tt};
     }
-    return null_sys_day;
+    return std::nullopt;
 }
 
 /**
@@ -102,8 +99,8 @@ namespace sqlite_orm {
 
     /**
      *  This is a reverse operation: here we have to specify a way to transform string received from
-     *  database to our sysdays object. Here we call `SysDaysFromString` and throw `std::runtime_error` if it returns
-     *  null_sys_day. Every `row_extractor` specialization must have `extract(const char*)`, `extract(sqlite3_stmt *stmt, int columnIndex)`
+     *  database to our sysdays object. Here we call `sysDaysFromString` and throw `std::runtime_error` if it returns null.
+     *  Every `row_extractor` specialization must have `extract(const char*)`, `extract(sqlite3_stmt *stmt, int columnIndex)`
      *	and `extract(sqlite3_value* value)`
      *  functions which return a mapped type value.
      */
@@ -111,8 +108,8 @@ namespace sqlite_orm {
     struct row_extractor<std::chrono::sys_days> {
         std::chrono::sys_days extract(const char* row_value) const {
             auto sd = sysDaysFromString(row_value);
-            if(sd != null_sys_day) {
-                return sd;
+            if(sd) {
+                return sd.value();
             } else {
                 throw std::runtime_error("incorrect date string (" + std::string(row_value) + ")");
             }
