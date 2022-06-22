@@ -3,12 +3,12 @@
 #include <string>
 #include <iostream>
 
-#if defined(SQLITE_ORM_THREE_WAY_COMPARISON_SUPPORTED)
+#if __cpp_lib_chrono >= 201907L
 
 ///////////////////////////////
 /// sys_days binding as TEXT
 /// ///////////////////////////
-#if defined(SQLITE_ORM_THREE_WAY_COMPARISON_SUPPORTED)
+#if __cpp_lib_chrono >= 201907L
 
 #include <chrono>
 #include <sstream>
@@ -107,11 +107,16 @@ namespace sqlite_orm {
     template<>
     struct row_extractor<std::chrono::sys_days> {
         std::chrono::sys_days extract(const char* row_value) const {
-            auto sd = sysDaysFromString(row_value);
-            if(sd) {
-                return sd.value();
+            if(row_value) {
+                auto sd = sysDaysFromString(row_value);
+                if(sd) {
+                    return sd.value();
+                } else {
+                    throw std::runtime_error("incorrect date string (" + std::string(row_value) + ")");
+                }
             } else {
-                throw std::runtime_error("incorrect date string (" + std::string(row_value) + ")");
+                // ! row_value
+                throw std::runtime_error("incorrect date string (nullptr)");
             }
         }
 
@@ -120,7 +125,7 @@ namespace sqlite_orm {
             return this->extract((const char*)str);
         }
         std::chrono::sys_days extract(sqlite3_value* row_value) const {
-            auto characters = reinterpret_cast<const char*>(sqlite3_value_text(row_value));
+            auto characters = (const char*)(sqlite3_value_text(row_value));
             return extract(characters);
         }
     };

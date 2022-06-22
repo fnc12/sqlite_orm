@@ -105,10 +105,6 @@ using std::nullptr_t;
 #define SQLITE_ORM_CONCEPTS_SUPPORTED
 #endif
 
-#if __cpp_lib_three_way_comparison >= 201907L
-#define SQLITE_ORM_THREE_WAY_COMPARISON_SUPPORTED
-#endif
-
 // #include "cxx_compiler_quirks.h"
 
 #ifdef __clang__
