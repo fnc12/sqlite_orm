@@ -8,7 +8,6 @@
 ///////////////////////////////
 /// sys_days binding as TEXT
 /// ///////////////////////////
-#if __cpp_lib_chrono >= 201907L
 
 #include <chrono>
 #include <sstream>
@@ -22,8 +21,8 @@ inline std::chrono::sys_days today() {
 
 /**
  *  This is the date we want to map to our sqlite db.
-  *  Let's make it `TEXT`
-  */
+ *  Let's make it `TEXT`
+ */
 
 //  also we need transform functions to make string from enum..
 inline std::string sysDaysToString(std::chrono::sys_days pt) {
@@ -130,7 +129,7 @@ namespace sqlite_orm {
         }
     };
 }
-#endif
+
 ////////////////////////////////
 /// end sys_days binding as TEXT
 ////////////////////////////////
