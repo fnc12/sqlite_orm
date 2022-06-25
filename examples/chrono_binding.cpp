@@ -2,17 +2,17 @@
 #include <cassert>
 #include <string>
 #include <iostream>
+#include <chrono>
+#include <format>
 
-#if __cpp_lib_chrono >= 201907L
+#if __cpp_lib_chrono >= 201907L && __cpp_lib_format >= 202110L
 
 ///////////////////////////////
 /// sys_days binding as TEXT
 /// ///////////////////////////
 
-#include <chrono>
 #include <sstream>
 #include <regex>
-#include <format>
 
 inline std::chrono::sys_days today() {
     const auto today = std::chrono::sys_days{floor<std::chrono::days>(std::chrono::system_clock::now())};
