@@ -14,7 +14,7 @@
 #include <sstream>
 #include <regex>
 
-inline std::chrono::sys_days today() {
+static std::chrono::sys_days today() {
     const auto today = std::chrono::sys_days{floor<std::chrono::days>(std::chrono::system_clock::now())};
     return today;
 }
