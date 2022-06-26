@@ -5,7 +5,7 @@
 #include <chrono>
 #include <format>
 
-#if __cpp_lib_chrono >= 201907L && __cpp_lib_format >= 202110L
+#if __cpp_lib_chrono >= 201907L && __cpp_lib_format >= 201907L
 
 ///////////////////////////////
 /// sys_days binding as TEXT
@@ -25,7 +25,7 @@ inline std::chrono::sys_days today() {
  */
 
 //  also we need transform functions to make string from enum..
-inline std::string sysDaysToString(std::chrono::sys_days pt) {
+static std::string sysDaysToString(std::chrono::sys_days pt) {
     auto r = std::format("{:%F}", pt);
     return r;
 }
@@ -39,7 +39,7 @@ inline std::string sysDaysToString(std::chrono::sys_days pt) {
  *  that's why I placed it separatedly. You can use any transformation type/form
  *  (for example BETTER_ENUM https://github.com/aantron/better-enums)
  */
-inline std::optional<std::chrono::sys_days> sysDaysFromString(const std::string& s) {
+static std::optional<std::chrono::sys_days> sysDaysFromString(const std::string& s) {
     using namespace std::literals;
     using namespace std::chrono;
 
