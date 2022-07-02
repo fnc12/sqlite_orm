@@ -67,6 +67,7 @@ add_executable(unit_tests
     prepared_statement_tests/insert_range.cpp
     prepared_statement_tests/replace_range.cpp
     prepared_statement_tests/insert_explicit.cpp
+    prepared_statement_tests/column_names.cpp
     pragma_tests.cpp
     simple_query.cpp
     constraints/default.cpp
