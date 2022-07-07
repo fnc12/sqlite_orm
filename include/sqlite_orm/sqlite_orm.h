@@ -5030,7 +5030,11 @@ namespace sqlite_orm {
         };
 
         template<class T, class SFINAE = void>
-        struct alias_extractor;
+        struct alias_extractor {
+            static std::string get() {
+                return {};
+            }
+        };
 
         template<class T>
         struct alias_extractor<T, std::enable_if_t<std::is_base_of<alias_tag, T>::value>> {
@@ -5038,13 +5042,6 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << T::get();
                 return ss.str();
-            }
-        };
-
-        template<class T>
-        struct alias_extractor<T, std::enable_if_t<!std::is_base_of<alias_tag, T>::value>> {
-            static std::string get() {
-                return {};
             }
         };
 
@@ -7825,11 +7822,23 @@ namespace sqlite_orm {
         template<class T>
         struct asterisk_t {
             using type = T;
+
+            bool defined_order = false;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            asterisk_t(bool definedOrder) : defined_order{definedOrder} {}
+#endif
         };
 
         template<class T>
         struct object_t {
             using type = T;
+
+            bool defined_order = false;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            object_t(bool definedOrder) : defined_order{definedOrder} {}
+#endif
         };
 
         template<class T>
@@ -8007,27 +8016,43 @@ namespace sqlite_orm {
     }
 
     /**
-     * SELECT * FROM T function.
-     * T is typed mapped to a storage.
-     * Example: auto rows = storage.select(asterisk<User>());
-     * // decltype(rows) is std::vector<std::tuple<...all column typed in declared in make_table order...>>
-     * If you need to fetch result as objects not tuple please use `object<T>` instead.
+     *   `SELECT * FROM T` expression that fetches results as tuples.
+     *   T is a type mapped to a storage, or an alias of it.
+     *   The `definedOrder` parameter denotes the expected order of result columns.
+     *   The default is the implicit order as returned by SQLite, which may differ from the defined order
+     *   if the schema of a table has been changed.
+     *   By specifying the defined order, the columns are written out in the resulting select SQL string.
+     *
+     *   In pseudo code:
+     *   select(asterisk<User>(false)) -> SELECT * from User
+     *   select(asterisk<User>(true))  -> SELECT id, name from User
+     *
+     *   Example: auto rows = storage.select(asterisk<User>());
+     *   // decltype(rows) is std::vector<std::tuple<...all columns in implicitly stored order...>>
+     *   Example: auto rows = storage.select(asterisk<User>(true));
+     *   // decltype(rows) is std::vector<std::tuple<...all columns in declared make_table order...>>
+     *   
+     *   If you need to fetch results as objects instead of tuples please use `object<T>()`.
      */
     template<class T>
-    internal::asterisk_t<T> asterisk() {
-        return {};
+    internal::asterisk_t<T> asterisk(bool definedOrder = false) {
+        return {definedOrder};
     }
 
     /**
-     * SELECT * FROM T function.
-     * T is typed mapped to a storage.
-     * Example: auto rows = storage.select(object<User>());
-     * // decltype(rows) is std::vector<User>
-     * If you need to fetch result as tuples not objects please use `asterisk<T>` instead.
+     *   `SELECT * FROM T` expression that fetches results as objects of type T.
+     *   T is a type mapped to a storage, or an alias of it.
+     *   
+     *   Example: auto rows = storage.select(object<User>());
+     *   // decltype(rows) is std::vector<User>, where the User objects are constructed from columns in implicitly stored order
+     *   Example: auto rows = storage.select(object<User>(true));
+     *   // decltype(rows) is std::vector<User>, where the User objects are constructed from columns in declared make_table order
+     *
+     *   If you need to fetch results as tuples instead of objects please use `asterisk<T>()`.
      */
     template<class T>
-    internal::object_t<T> object() {
-        return {};
+    internal::object_t<T> object(bool definedOrder = false) {
+        return {definedOrder};
     }
 }
 #pragma once
@@ -12064,6 +12089,12 @@ namespace sqlite_orm {
                 }
             }
 #endif
+
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+            std::string_view column_name(int index) const {
+                return sqlite3_column_name(stmt, index);
+            }
+#endif
         };
 
         template<class T>
@@ -15807,6 +15838,8 @@ namespace sqlite_orm {
 
 // #include "select_constraints.h"
 
+// #include "serializing_util.h"
+
 // #include "util.h"
 
 namespace sqlite_orm {
@@ -15839,6 +15872,28 @@ namespace sqlite_orm {
             return serializer(t, context);
         }
 
+        template<class T, class Ctx>
+        std::vector<std::string> collect_table_column_names(bool definedOrder, const Ctx& context) {
+            if(definedOrder) {
+                std::vector<std::string> quotedNames;
+                auto& table = pick_table<mapped_type_proxy_t<T>>(context.db_objects);
+                quotedNames.reserve(table.count_columns_amount());
+                table.for_each_column([&quotedNames](const column_identifier& column) {
+                    if(std::is_base_of<alias_tag, T>::value) {
+                        quotedNames.push_back(quote_identifier(alias_extractor<T>::get()) + "." +
+                                              quote_identifier(column.name));
+                    } else {
+                        quotedNames.push_back(quote_identifier(column.name));
+                    }
+                });
+                return quotedNames;
+            } else if(std::is_base_of<alias_tag, T>::value) {
+                return {quote_identifier(alias_extractor<T>::get()) + ".*"};
+            } else {
+                return {"*"};
+            }
+        }
+
         template<class T>
         struct column_names_getter<std::reference_wrapper<T>, void> {
             using expression_type = std::reference_wrapper<T>;
@@ -15850,22 +15905,12 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct column_names_getter<asterisk_t<T>, match_if_not<std::is_base_of, alias_tag, T>> {
+        struct column_names_getter<asterisk_t<T>> {
             using expression_type = asterisk_t<T>;
 
             template<class Ctx>
-            std::vector<std::string> operator()(const expression_type&, const Ctx&) const {
-                return {"*"};
-            }
-        };
-
-        template<class A>
-        struct column_names_getter<asterisk_t<A>, match_if<std::is_base_of, alias_tag, A>> {
-            using expression_type = asterisk_t<A>;
-
-            template<class Ctx>
-            std::vector<std::string> operator()(const expression_type&, const Ctx&) const {
-                return {quote_identifier(alias_extractor<A>::get()) + ".*"};
+            std::vector<std::string> operator()(const expression_type& expression, const Ctx& context) const {
+                return collect_table_column_names<T>(expression.defined_order, context);
             }
         };
 
@@ -15874,8 +15919,8 @@ namespace sqlite_orm {
             using expression_type = object_t<T>;
 
             template<class Ctx>
-            std::vector<std::string> operator()(const expression_type&, const Ctx&) const {
-                return {"*"};
+            std::vector<std::string> operator()(const expression_type& expression, const Ctx& context) const {
+                return collect_table_column_names<T>(expression.defined_order, context);
             }
         };
 
