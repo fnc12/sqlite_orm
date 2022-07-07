@@ -62,6 +62,12 @@ namespace sqlite_orm {
                 }
             }
 #endif
+
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+            std::string_view column_name(int index) const {
+                return sqlite3_column_name(stmt, index);
+            }
+#endif
         };
 
         template<class T>
