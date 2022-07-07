@@ -64,8 +64,7 @@ namespace sqlite_orm {
     class pointer_binding {
 
         P* p_;
-        SQLITE_ORM_NOUNIQUEADDRESS
-        D d_;
+        SQLITE_ORM_NOUNIQUEADDRESS D d_;
 
       protected:
         // Constructing pointer bindings must go through bindable_pointer()

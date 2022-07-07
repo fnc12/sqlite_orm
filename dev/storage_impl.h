@@ -41,7 +41,7 @@ namespace sqlite_orm {
         std::string find_table_name(const DBOs& dbObjects, const std::type_index& ti) {
             std::string res;
             iterate_tuple<true>(dbObjects, tables_index_sequence<DBOs>{}, [&ti, &res](const auto& table) {
-                using table_type = std::decay_t<decltype(table)>;
+                using table_type = std::remove_reference_t<decltype(table)>;
                 if(ti == typeid(object_type_t<table_type>)) {
                     res = table.name;
                 }

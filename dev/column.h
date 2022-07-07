@@ -1,12 +1,13 @@
 #pragma once
 
-#include <tuple>  //  std::tuple
 #include <string>  //  std::string
 #include <memory>  //  std::unique_ptr
 #include <type_traits>  //  std::is_same, std::is_member_object_pointer
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
+#include "functional/fast_and.h"
+#include "functional/unique_tuple.h"
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_filter.h"
 #include "type_traits.h"
@@ -46,13 +47,12 @@ namespace sqlite_orm {
              *  Member pointer used to read a field value.
              *  If it is a object member pointer it is also used to write a field value.
              */
-            const member_pointer_t member_pointer;
+            member_pointer_t member_pointer;
 
             /**
              *  Setter member function to write a field value
              */
-            SQLITE_ORM_NOUNIQUEADDRESS
-            const setter_type setter;
+            SQLITE_ORM_NOUNIQUEADDRESS const setter_type setter;
 
             /**
              *  Simplified interface for `NOT NULL` constraint
@@ -69,10 +69,9 @@ namespace sqlite_orm {
          */
         template<class... Op>
         struct column_constraints {
-            using constraints_type = std::tuple<Op...>;
+            using constraints_type = mpl::uple<Op...>;
 
-            SQLITE_ORM_NOUNIQUEADDRESS
-            constraints_type constraints;
+            SQLITE_ORM_NOUNIQUEADDRESS constraints_type constraints;
 
             /**
              *  Checks whether contraints are of trait `Trait`
@@ -105,9 +104,9 @@ namespace sqlite_orm {
         template<class G, class S, class... Op>
         struct column_t : column_identifier, column_field<G, S>, column_constraints<Op...> {
 #ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            column_t(std::string name, G memberPointer, S setter, std::tuple<Op...> op) :
+            column_t(std::string name, G memberPointer, S setter, mpl::uple<Op...> op) :
                 column_identifier{move(name)}, column_field<G, S>{memberPointer, setter}, column_constraints<Op...>{
-                                                                                              move(op)} {}
+                                                                                              std::move(op)} {}
 #endif
         };
 
@@ -142,9 +141,9 @@ namespace sqlite_orm {
      */
     template<class M, class... Op, internal::satisfies<std::is_member_object_pointer, M> = true>
     internal::column_t<M, internal::empty_setter, Op...> make_column(std::string name, M m, Op... constraints) {
-        static_assert(polyfill::conjunction_v<internal::is_constraint<Op>...>, "Incorrect constraints pack");
+        static_assert(SQLITE_ORM_FAST_AND(internal::is_constraint<Op>), "Incorrect constraints pack");
 
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {move(name), m, {}, std::make_tuple(constraints...)});
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {move(name), m, {}, mpl::make_unique_tuple(constraints...)});
     }
 
     /**
@@ -158,9 +157,10 @@ namespace sqlite_orm {
     internal::column_t<G, S, Op...> make_column(std::string name, S setter, G getter, Op... constraints) {
         static_assert(std::is_same<internal::setter_field_type_t<S>, internal::getter_field_type_t<G>>::value,
                       "Getter and setter must get and set same data type");
-        static_assert(polyfill::conjunction_v<internal::is_constraint<Op>...>, "Incorrect constraints pack");
+        static_assert(SQLITE_ORM_FAST_AND(internal::is_constraint<Op>), "Incorrect constraints pack");
 
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {move(name), getter, setter, std::make_tuple(constraints...)});
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
+            return {move(name), getter, setter, mpl::make_unique_tuple(constraints...)});
     }
 
     /**
@@ -175,8 +175,9 @@ namespace sqlite_orm {
     internal::column_t<G, S, Op...> make_column(std::string name, G getter, S setter, Op... constraints) {
         static_assert(std::is_same<internal::setter_field_type_t<S>, internal::getter_field_type_t<G>>::value,
                       "Getter and setter must get and set same data type");
-        static_assert(polyfill::conjunction_v<internal::is_constraint<Op>...>, "Incorrect constraints pack");
+        static_assert(SQLITE_ORM_FAST_AND(internal::is_constraint<Op>), "Incorrect constraints pack");
 
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {move(name), getter, setter, std::make_tuple(constraints...)});
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
+            return {move(name), getter, setter, mpl::make_unique_tuple(constraints...)});
     }
 }

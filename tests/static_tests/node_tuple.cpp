@@ -14,14 +14,14 @@ template<class T>
 struct is_tuple : std::false_type {};
 
 template<class... Args>
-struct is_tuple<std::tuple<Args...>> : std::true_type {};
+struct is_tuple<mpl::tuple<Args...>> : std::true_type {};
 
 TEST_CASE("Node tuple") {
     using internal::bindable_filter_t;
     using internal::node_tuple;
     using internal::node_tuple_t;
+    using mpl::tuple;
     using std::is_same;
-    using std::tuple;
 
     struct User {
         int id = 0;
@@ -463,7 +463,7 @@ TEST_CASE("Node tuple") {
                               where(greater_or_equal(&User::id, 10) and lesser_or_equal(&User::id, 20)));
             using Sel = decltype(sel);
             using Tuple = node_tuple_t<Sel>;
-            using Expected = std::
+            using Expected =
                 tuple<decltype(&User::id), decltype(&User::name), decltype(&User::id), int, decltype(&User::id), int>;
             static_assert(is_same<Tuple, Expected>::value,
                           "select(columns(&User::id, &User::name), where(greater_or_equal(&User::id, 10) and "
@@ -869,8 +869,8 @@ TEST_CASE("Node tuple") {
         using CaseExpressionTuple = node_tuple<Case::case_expression_type>::type;
         STATIC_REQUIRE(is_same<CaseExpressionTuple, tuple<decltype(&User::name)>>::value);
 
-        STATIC_REQUIRE(is_tuple<tuple<>>::value);
-        STATIC_REQUIRE(is_tuple<tuple<int, std::string>>::value);
+        STATIC_REQUIRE(is_tuple<mpl::tuple<>>::value);
+        STATIC_REQUIRE(is_tuple<mpl::tuple<int, std::string>>::value);
         STATIC_REQUIRE(!is_tuple<int>::value);
         STATIC_REQUIRE(is_pair<std::pair<int, std::string>>::value);
         STATIC_REQUIRE(!is_pair<int>::value);
@@ -885,7 +885,7 @@ TEST_CASE("Node tuple") {
         STATIC_REQUIRE(is_same<Arg0First, const char*>::value);
         using Arg0Second = Arg0::second_type;
         STATIC_REQUIRE(is_same<Arg0Second, const char*>::value);
-        STATIC_REQUIRE(is_same<ArgsType, tuple<std::pair<const char*, const char*>>>::value);
+        STATIC_REQUIRE(is_same<ArgsType, mpl::tuple<std::pair<const char*, const char*>>>::value);
 
         using ElseExpressionTuple = node_tuple<Case::else_expression_type>::type;
         STATIC_REQUIRE(is_same<ElseExpressionTuple, tuple<const char*>>::value);

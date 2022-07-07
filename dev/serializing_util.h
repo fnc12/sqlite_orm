@@ -1,6 +1,6 @@
 #pragma once
 
-#include <type_traits>  //  std::index_sequence
+#include <type_traits>  //  std::index_sequence, std::remove_reference
 #include <tuple>
 #include <array>
 #include <string>
@@ -13,6 +13,8 @@
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
+#include "functional/tuple.h"
+#include "functional/type_at.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "error_code.h"
 #include "serializer_context.h"
@@ -124,7 +126,7 @@ namespace sqlite_orm {
         struct streaming {
             template<class... Ts>
             auto operator()(const Ts&... ts) const {
-                return std::forward_as_tuple(*this, ts...);
+                return mpl::forward_as_tuple(*this, ts...);
             }
 
             template<size_t... Idx>
@@ -150,9 +152,9 @@ namespace sqlite_orm {
         // space + space-separated
         template<class T, class Ctx>
         std::ostream& operator<<(std::ostream& ss,
-                                 std::tuple<const streaming<stream_as::conditions_tuple>&, T, Ctx> tpl) {
-            const auto& conditions = get<1>(tpl);
-            auto& context = get<2>(tpl);
+                                 mpl::tuple<const streaming<stream_as::conditions_tuple>&, T, Ctx> tpl) {
+            const auto& conditions = std::get<1>(tpl);
+            auto& context = std::get<2>(tpl);
 
             iterate_tuple(conditions, [&ss, &context](auto& c) {
                 ss << " " << serialize(c, context);
@@ -163,9 +165,9 @@ namespace sqlite_orm {
         // serialize and stream a tuple of action expressions;
         // space-separated
         template<class T, class Ctx>
-        std::ostream& operator<<(std::ostream& ss, std::tuple<const streaming<stream_as::actions_tuple>&, T, Ctx> tpl) {
-            const auto& actions = get<1>(tpl);
-            auto& context = get<2>(tpl);
+        std::ostream& operator<<(std::ostream& ss, mpl::tuple<const streaming<stream_as::actions_tuple>&, T, Ctx> tpl) {
+            const auto& actions = std::get<1>(tpl);
+            auto& context = std::get<2>(tpl);
 
             iterate_tuple(actions, [&ss, &context, first = true](auto& action) mutable {
                 constexpr std::array<const char*, 2> sep = {" ", ""};
@@ -178,9 +180,9 @@ namespace sqlite_orm {
         // comma-separated
         template<class T, class Ctx>
         std::ostream& operator<<(std::ostream& ss,
-                                 std::tuple<const streaming<stream_as::expressions_tuple>&, T, Ctx> tpl) {
-            const auto& args = get<1>(tpl);
-            auto& context = get<2>(tpl);
+                                 mpl::tuple<const streaming<stream_as::expressions_tuple>&, T, Ctx> tpl) {
+            const auto& args = std::get<1>(tpl);
+            auto& context = std::get<2>(tpl);
 
             iterate_tuple(args, [&ss, &context, first = true](auto& arg) mutable {
                 constexpr std::array<const char*, 2> sep = {", ", ""};
@@ -194,9 +196,9 @@ namespace sqlite_orm {
         template<class... Os, class Ctx>
         std::ostream& operator<<(
             std::ostream& ss,
-            std::tuple<const streaming<stream_as::expressions_tuple>&, const std::tuple<order_by_t<Os>...>&, Ctx> tpl) {
-            const auto& args = get<1>(tpl);
-            auto& context = get<2>(tpl);
+            mpl::tuple<const streaming<stream_as::expressions_tuple>&, const mpl::tuple<order_by_t<Os>...>&, Ctx> tpl) {
+            const auto& args = std::get<1>(tpl);
+            auto& context = std::get<2>(tpl);
 
             iterate_tuple(args, [&ss, &context, first = true](auto& arg) mutable {
                 constexpr std::array<const char*, 2> sep = {", ", ""};
@@ -209,9 +211,9 @@ namespace sqlite_orm {
         // comma-separated
         template<class C, class Ctx>
         std::ostream& operator<<(std::ostream& ss,
-                                 std::tuple<const streaming<stream_as::dynamic_expressions>&, C, Ctx> tpl) {
-            const auto& args = get<1>(tpl);
-            auto& context = get<2>(tpl);
+                                 mpl::tuple<const streaming<stream_as::dynamic_expressions>&, C, Ctx> tpl) {
+            const auto& args = std::get<1>(tpl);
+            auto& context = std::get<2>(tpl);
 
             constexpr std::array<const char*, 2> sep = {", ", ""};
             for(size_t i = 0, first = true; i < args.size(); ++i) {
@@ -223,8 +225,8 @@ namespace sqlite_orm {
         // stream a vector of already serialized strings;
         // comma-separated
         template<class C>
-        std::ostream& operator<<(std::ostream& ss, std::tuple<const streaming<stream_as::serialized>&, C> tpl) {
-            const auto& strings = get<1>(tpl);
+        std::ostream& operator<<(std::ostream& ss, mpl::tuple<const streaming<stream_as::serialized>&, C> tpl) {
+            const auto& strings = std::get<1>(tpl);
 
             constexpr std::array<const char*, 2> sep = {", ", ""};
             for(size_t i = 0, first = true; i < strings.size(); ++i) {
@@ -239,7 +241,7 @@ namespace sqlite_orm {
         // 3. qualifier, identifier, alias
         template<class... Strings>
         std::ostream& operator<<(std::ostream& ss,
-                                 std::tuple<const streaming<stream_as::identifier>&, Strings...> tpl) {
+                                 mpl::tuple<const streaming<stream_as::identifier>&, Strings...> tpl) {
             stream_identifier(ss, tpl, streaming_identifier.offset_index(std::index_sequence_for<Strings...>{}));
             return ss;
         }
@@ -252,8 +254,8 @@ namespace sqlite_orm {
         //
         // comma-separated
         template<class C>
-        std::ostream& operator<<(std::ostream& ss, std::tuple<const streaming<stream_as::identifiers>&, C> tpl) {
-            const auto& identifiers = get<1>(tpl);
+        std::ostream& operator<<(std::ostream& ss, mpl::tuple<const streaming<stream_as::identifiers>&, C> tpl) {
+            const auto& identifiers = std::get<1>(tpl);
 
             constexpr std::array<const char*, 2> sep = {", ", ""};
             bool first = true;
@@ -267,9 +269,9 @@ namespace sqlite_orm {
         // stream placeholders as part of a values clause
         template<class... Ts>
         std::ostream& operator<<(std::ostream& ss,
-                                 std::tuple<const streaming<stream_as::values_placeholders>&, Ts...> tpl) {
-            const size_t& columnsCount = get<1>(tpl);
-            const ptrdiff_t& valuesCount = get<2>(tpl);
+                                 mpl::tuple<const streaming<stream_as::values_placeholders>&, Ts...> tpl) {
+            const size_t& columnsCount = std::get<1>(tpl);
+            const ptrdiff_t& valuesCount = std::get<2>(tpl);
 
             if(!valuesCount || !columnsCount) {
                 return ss;
@@ -296,9 +298,9 @@ namespace sqlite_orm {
         // comma-separated
         template<class Table>
         std::ostream& operator<<(std::ostream& ss,
-                                 std::tuple<const streaming<stream_as::table_columns>&, Table, const bool&> tpl) {
-            const auto& table = get<1>(tpl);
-            const bool& qualified = get<2>(tpl);
+                                 mpl::tuple<const streaming<stream_as::table_columns>&, Table, const bool&> tpl) {
+            const auto& table = std::get<1>(tpl);
+            const bool& qualified = std::get<2>(tpl);
 
             table.for_each_column([&ss, &tableName = qualified ? table.name : std::string{}, first = true](
                                       const column_identifier& column) mutable {
@@ -313,8 +315,8 @@ namespace sqlite_orm {
         // comma-separated
         template<class Table>
         std::ostream& operator<<(std::ostream& ss,
-                                 std::tuple<const streaming<stream_as::non_generated_columns>&, Table> tpl) {
-            const auto& table = get<1>(tpl);
+                                 mpl::tuple<const streaming<stream_as::non_generated_columns>&, Table> tpl) {
+            const auto& table = std::get<1>(tpl);
 
             table.template for_each_column_excluding<is_generated_always>(
                 [&ss, first = true](const column_identifier& column) mutable {
@@ -330,11 +332,11 @@ namespace sqlite_orm {
         template<class PredFnCls, class L, class Ctx, class Obj>
         std::ostream&
         operator<<(std::ostream& ss,
-                   std::tuple<const streaming<stream_as::field_values_excluding>&, PredFnCls, L, Ctx, Obj> tpl) {
-            using check_if_excluded = polyfill::remove_cvref_t<std::tuple_element_t<1, decltype(tpl)>>;
-            auto& excluded = get<2>(tpl);
-            auto& context = get<3>(tpl);
-            auto& object = get<4>(tpl);
+                   mpl::tuple<const streaming<stream_as::field_values_excluding>&, PredFnCls, L, Ctx, Obj> tpl) {
+            using check_if_excluded = polyfill::remove_cvref_t<mpl::element_at_t<1, decltype(tpl)>>;
+            auto& excluded = std::get<2>(tpl);
+            auto& context = std::get<3>(tpl);
+            auto& object = std::get<4>(tpl);
             using object_type = polyfill::remove_cvref_t<decltype(object)>;
             auto& table = pick_table<object_type>(context.db_objects);
 
@@ -355,9 +357,9 @@ namespace sqlite_orm {
         // comma-separated
         template<class T, class Ctx>
         std::ostream& operator<<(std::ostream& ss,
-                                 std::tuple<const streaming<stream_as::mapped_columns_expressions>&, T, Ctx> tpl) {
-            const auto& columns = get<1>(tpl);
-            auto& context = get<2>(tpl);
+                                 mpl::tuple<const streaming<stream_as::mapped_columns_expressions>&, T, Ctx> tpl) {
+            const auto& columns = std::get<1>(tpl);
+            auto& context = std::get<2>(tpl);
 
             iterate_tuple(columns, [&ss, &context, first = true](auto& colRef) mutable {
                 const std::string* columnName = find_column_name(context.db_objects, colRef);
@@ -374,13 +376,13 @@ namespace sqlite_orm {
 
         template<class... Op, class Ctx>
         std::ostream& operator<<(std::ostream& ss,
-                                 std::tuple<const streaming<stream_as::column_constraints>&,
+                                 mpl::tuple<const streaming<stream_as::column_constraints>&,
                                             const column_constraints<Op...>&,
                                             const bool&,
                                             Ctx> tpl) {
-            const auto& column = get<1>(tpl);
-            const bool& isNotNull = get<2>(tpl);
-            auto& context = get<3>(tpl);
+            const auto& column = std::get<1>(tpl);
+            const bool& isNotNull = std::get<2>(tpl);
+            auto& context = std::get<3>(tpl);
 
             using constraints_type = constraints_type_t<column_constraints<Op...>>;
             constexpr size_t constraintsCount = std::tuple_size<constraints_type>::value;
@@ -393,7 +395,7 @@ namespace sqlite_orm {
                 iterate_tuple(column.constraints,
                               [&constraintsStrings, &primaryKeyIndex, &autoincrementIndex, &tupleIndex, &context](
                                   auto& constraint) {
-                                  using constraint_type = std::decay_t<decltype(constraint)>;
+                                  using constraint_type = polyfill::remove_cvref_t<decltype(constraint)>;
                                   constraintsStrings.push_back(serialize(constraint, context));
                                   if(is_primary_key_v<constraint_type>) {
                                       primaryKeyIndex = tupleIndex;

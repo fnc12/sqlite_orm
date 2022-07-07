@@ -3,7 +3,6 @@
 
 #include <type_traits>  //  std::is_same
 #include <string>  //  std::string
-#include <type_traits>  //  std::is_same
 
 #include "static_tests_storage_traits.h"
 
@@ -106,32 +105,32 @@ TEST_CASE("foreign key static") {
     using namespace sqlite_orm::internal::storage_traits;
     {
         using FkTuple = storage_fk_references<Storage, FunctionCall>::type;
-        using Expected = std::tuple<>;
+        using Expected = mpl::tuple<>;
         STATIC_REQUIRE(std::is_same<FkTuple, Expected>::value);
     }
     {
         using FkTuple = storage_fk_references<Storage, FunctionDef>::type;
-        using Expected = std::tuple<FunctionCall>;
+        using Expected = mpl::tuple<FunctionCall>;
         STATIC_REQUIRE(std::is_same<FkTuple, Expected>::value);
     }
     {
         using FkTuple = storage_fk_references<Storage, VarDecl>::type;
-        using Expected = std::tuple<>;
+        using Expected = mpl::tuple<>;
         STATIC_REQUIRE(std::is_same<FkTuple, Expected>::value);
     }
     {
         using FkTuple = storage_fk_references<Storage, FunctionDecl>::type;
-        using Expected = std::tuple<>;
+        using Expected = mpl::tuple<>;
         STATIC_REQUIRE(std::is_same<FkTuple, Expected>::value);
     }
     {
         using FkTuple = storage_fk_references<Storage, CppInclusion>::type;
-        using Expected = std::tuple<>;
+        using Expected = mpl::tuple<>;
         STATIC_REQUIRE(std::is_same<FkTuple, Expected>::value);
     }
     {
         using FkTuple = storage_fk_references<Storage, File>::type;
-        using Expected = std::tuple<CppInclusion, CppInclusion, FunctionDecl, VarDecl, FunctionDef>;
+        using Expected = mpl::tuple<CppInclusion, CppInclusion, FunctionDecl, VarDecl, FunctionDef>;
         STATIC_REQUIRE(std::is_same<FkTuple, Expected>::value);
     }
 }

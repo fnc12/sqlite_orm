@@ -2,9 +2,9 @@
 
 #include <sqlite3.h>
 #include <type_traits>  //  std::index_sequence, std::make_index_sequence
-#include <tuple>  //  std::tuple, std::tuple_size, std::get
 
 #include "functional/cxx_universal.h"
+#include "functional/tuple.h"
 #include "row_extractor.h"
 #include "arg_values.h"
 
@@ -18,7 +18,7 @@ namespace sqlite_orm {
                 (*this)(values, tuple, std::make_index_sequence<std::tuple_size<Tpl>::value>{});
             }
 
-            void operator()(sqlite3_value** values, std::tuple<arg_values>& tuple, int argsCount) const {
+            void operator()(sqlite3_value** values, mpl::tuple<arg_values>& tuple, int argsCount) const {
                 std::get<0>(tuple) = arg_values(argsCount, values);
             }
 

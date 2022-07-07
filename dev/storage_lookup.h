@@ -1,10 +1,10 @@
 #pragma once
 
 #include <type_traits>  //  std::true_type, std::false_type, std::remove_const, std::enable_if
-#include <tuple>
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
+#include "functional/unique_tuple.h"
 #include "type_traits.h"
 
 namespace sqlite_orm {
@@ -14,7 +14,7 @@ namespace sqlite_orm {
         struct storage_t;
 
         template<class... DBO>
-        using db_objects_tuple = std::tuple<DBO...>;
+        using db_objects_tuple = mpl::uple<DBO...>;
 
         template<class T>
         struct is_storage : std::false_type {};
@@ -65,7 +65,7 @@ namespace sqlite_orm {
         struct storage_pick_table<Lookup, db_objects_tuple<DBO...>> : storage_pick_table<Lookup, DBO...> {};
 #else
         template<class Lookup, class... DBO>
-        struct storage_pick_table<Lookup, std::tuple<DBO...>> : storage_pick_table<Lookup, DBO...> {};
+        struct storage_pick_table<Lookup, mpl::uple<DBO...>> : storage_pick_table<Lookup, DBO...> {};
 #endif
 
         /**
@@ -92,7 +92,7 @@ namespace sqlite_orm {
         struct storage_find_table<Lookup, db_objects_tuple<DBO...>> : storage_find_table<Lookup, DBO...> {};
 #else
         template<class Lookup, class... DBO>
-        struct storage_find_table<Lookup, std::tuple<DBO...>> : storage_find_table<Lookup, DBO...> {};
+        struct storage_find_table<Lookup, mpl::uple<DBO...>> : storage_find_table<Lookup, DBO...> {};
 #endif
 
         /**

@@ -7,6 +7,7 @@
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
+#include "functional/tuple.h"
 #include "is_base_of_template.h"
 #include "tuple_helper/tuple_filter.h"
 #include "optional_container.h"
@@ -62,7 +63,7 @@ namespace sqlite_orm {
 
         template<class... Args>
         struct columns_t {
-            using columns_type = std::tuple<Args...>;
+            using columns_type = mpl::tuple<Args...>;
 
             columns_type columns;
             bool distinct = false;
@@ -70,7 +71,7 @@ namespace sqlite_orm {
             static constexpr int count = std::tuple_size<columns_type>::value;
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            columns_t(columns_type columns) : columns{move(columns)} {}
+            columns_t(columns_type columns) : columns{std::move(columns)} {}
 #endif
         };
 
@@ -82,7 +83,7 @@ namespace sqlite_orm {
 
         template<class... Args>
         struct set_t {
-            using assigns_type = std::tuple<Args...>;
+            using assigns_type = mpl::tuple<Args...>;
 
             assigns_type assigns;
         };
@@ -136,14 +137,15 @@ namespace sqlite_orm {
         template<class T, class... Args>
         struct select_t {
             using return_type = T;
-            using conditions_type = std::tuple<Args...>;
+            using conditions_type = mpl::tuple<Args...>;
 
             return_type col;
             conditions_type conditions;
             bool highest_level = false;
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            select_t(return_type col, conditions_type conditions) : col{std::move(col)}, conditions{move(conditions)} {}
+            select_t(return_type col, conditions_type conditions) :
+                col{std::move(col)}, conditions{std::move(conditions)} {}
 #endif
         };
 
@@ -281,7 +283,7 @@ namespace sqlite_orm {
         struct simple_case_t {
             using return_type = R;
             using case_expression_type = T;
-            using args_type = std::tuple<Args...>;
+            using args_type = mpl::tuple<Args...>;
             using else_expression_type = E;
 
             optional_container<case_expression_type> case_expression;
@@ -298,7 +300,7 @@ namespace sqlite_orm {
         struct simple_case_builder {
             using return_type = R;
             using case_expression_type = T;
-            using args_type = std::tuple<Args...>;
+            using args_type = mpl::tuple<Args...>;
             using else_expression_type = E;
 
             optional_container<case_expression_type> case_expression;
@@ -307,9 +309,9 @@ namespace sqlite_orm {
 
             template<class W, class Th>
             simple_case_builder<R, T, E, Args..., std::pair<W, Th>> when(W w, then_t<Th> t) {
-                using result_args_type = std::tuple<Args..., std::pair<W, Th>>;
+                using result_args_type = mpl::tuple<Args..., std::pair<W, Th>>;
                 std::pair<W, Th> newPair{std::move(w), std::move(t.expression)};
-                result_args_type result_args = std::tuple_cat(std::move(this->args), std::make_tuple(newPair));
+                result_args_type result_args = mpl::tuple_cat(std::move(this->args), mpl::make_tuple(newPair));
                 std::get<std::tuple_size<result_args_type>::value - 1>(result_args) = std::move(newPair);
                 return {std::move(this->case_expression), std::move(result_args), std::move(this->else_expression)};
             }
@@ -377,16 +379,16 @@ namespace sqlite_orm {
      */
     template<class... Args>
     internal::set_t<Args...> set(Args... args) {
-        using arg_tuple = std::tuple<Args...>;
-        static_assert(std::tuple_size<arg_tuple>::value ==
-                          internal::count_tuple<arg_tuple, internal::is_assign_t>::value,
+        using args_pack = mpl::pack<Args...>;
+        static_assert(std::tuple_size<args_pack>::value ==
+                          internal::count_tuple<args_pack, internal::is_assign_t>::value,
                       "set function accepts assign operators only");
-        return {std::make_tuple(std::forward<Args>(args)...)};
+        return {mpl::make_tuple(std::forward<Args>(args)...)};
     }
 
     template<class... Args>
     internal::columns_t<Args...> columns(Args... args) {
-        return {std::make_tuple<Args...>(std::forward<Args>(args)...)};
+        return {mpl::make_tuple<Args...>(std::forward<Args>(args)...)};
     }
 
     /**
@@ -404,9 +406,9 @@ namespace sqlite_orm {
      */
     template<class T, class... Args>
     internal::select_t<T, Args...> select(T t, Args... args) {
-        using args_tuple = std::tuple<Args...>;
+        using args_tuple = mpl::pack<Args...>;
         internal::validate_conditions<args_tuple>();
-        return {std::move(t), std::make_tuple(std::forward<Args>(args)...)};
+        return {std::move(t), mpl::make_tuple(std::forward<Args>(args)...)};
     }
 
     /**

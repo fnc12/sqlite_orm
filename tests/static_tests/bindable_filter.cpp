@@ -27,62 +27,62 @@ TEST_CASE("bindable_filter") {
     using internal::bindable_filter_t;
     using std::is_same;
     {
-        using Tuple = std::tuple<bool,
-                                 char,
-                                 unsigned char,
-                                 signed char,
-                                 short,
-                                 unsigned short,
-                                 int,
-                                 unsigned int,
-                                 long,
-                                 unsigned long,
-                                 long long,
-                                 unsigned long long,
-                                 float,
-                                 double,
-                                 long double,
-                                 const char*,
-                                 std::string,
-                                 StringVeneer<char>,
+        using Tuple = mpl::uple<bool,
+                                char,
+                                unsigned char,
+                                signed char,
+                                short,
+                                unsigned short,
+                                int,
+                                unsigned int,
+                                long,
+                                unsigned long,
+                                long long,
+                                unsigned long long,
+                                float,
+                                double,
+                                long double,
+                                const char*,
+                                std::string,
+                                StringVeneer<char>,
 #ifndef SQLITE_ORM_OMITS_CODECVT
-                                 const wchar_t*,
-                                 std::wstring,
-                                 StringVeneer<wchar_t>,
+                                const wchar_t*,
+                                std::wstring,
+                                StringVeneer<wchar_t>,
 #endif
-                                 std::vector<char>,
-                                 std::nullptr_t,
+                                std::vector<char>,
+                                std::nullptr_t,
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-                                 std::nullopt_t,
-                                 std::optional<int>,
-                                 std::optional<Custom>,
+                                std::nullopt_t,
+                                std::optional<int>,
+                                std::optional<Custom>,
 #endif
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                                 std::string_view,
+                                std::string_view,
 #ifndef SQLITE_ORM_OMITS_CODECVT
-                                 std::wstring_view,
+                                std::wstring_view,
 #endif
 #endif
-                                 std::unique_ptr<int>,
-                                 std::shared_ptr<int>,
+                                std::unique_ptr<int>,
+                                std::shared_ptr<int>,
 #ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
-                                 static_pointer_binding<std::nullptr_t, carray_pvt>,
+                                static_pointer_binding<std::nullptr_t, carray_pvt>,
 #endif
-                                 Custom,
-                                 std::unique_ptr<Custom>>;
+                                Custom,
+                                std::unique_ptr<Custom>>;
         using Res = bindable_filter_t<Tuple>;
         STATIC_REQUIRE(is_same<Res, Tuple>::value);
     }
     {
-        using Tuple = std::tuple<decltype(&User::id), decltype(&User::name), int>;
+        using Tuple = mpl::uple<decltype(&User::id), decltype(&User::name), int>;
         using Res = bindable_filter_t<Tuple>;
-        using Expected = std::tuple<int>;
+        using Expected = mpl::uple<int>;
         STATIC_REQUIRE(is_same<Res, Expected>::value);
     }
     {
-        using Tuple = std::tuple<std::string, decltype(&User::name), float, decltype(&User::id), short>;
+        using Tuple = mpl::uple<std::string, decltype(&User::name), float, decltype(&User::id), short>;
         using Res = bindable_filter_t<Tuple>;
-        using Expected = std::tuple<std::string, float, short>;
+        using Expected = mpl::uple<std::string, float, short>;
         STATIC_REQUIRE(is_same<Res, Expected>::value);
     }
 }

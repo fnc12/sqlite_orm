@@ -96,8 +96,8 @@ namespace sqlite_orm {
         };
 
         template<class... TargetArgs, class... ActionsArgs>
-        struct ast_iterator<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void> {
-            using node_type = upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>;
+        struct ast_iterator<upsert_clause<mpl::tuple<TargetArgs...>, mpl::tuple<ActionsArgs...>>, void> {
+            using node_type = upsert_clause<mpl::tuple<TargetArgs...>, mpl::tuple<ActionsArgs...>>;
 
             template<class L>
             void operator()(const node_type& expression, L& lambda) const {
@@ -309,6 +309,18 @@ namespace sqlite_orm {
         template<class... Args>
         struct ast_iterator<std::tuple<Args...>, void> {
             using node_type = std::tuple<Args...>;
+
+            template<class L>
+            void operator()(const node_type& node, L& lambda) const {
+                iterate_tuple(node, [&lambda](auto& v) {
+                    iterate_ast(v, lambda);
+                });
+            }
+        };
+
+        template<class... Args>
+        struct ast_iterator<mpl::tuple<Args...>, void> {
+            using node_type = mpl::tuple<Args...>;
 
             template<class L>
             void operator()(const node_type& node, L& lambda) const {

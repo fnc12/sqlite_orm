@@ -1,11 +1,10 @@
 #pragma once
 
-#include <memory>
-#include <sstream>
 #include <string>
-#include <tuple>
+#include <utility>  //  std::move, std::forward
 
 #include "functional/cxx_universal.h"
+#include "functional/tuple.h"
 #include "optional_container.h"
 
 // NOTE Idea : Maybe also implement a custom trigger system to call a c++ callback when a trigger triggers ?
@@ -26,7 +25,7 @@ namespace sqlite_orm {
          */
         template<class T, class... S>
         struct partial_trigger_t {
-            using statements_type = std::tuple<S...>;
+            using statements_type = mpl::tuple<S...>;
 
             /**
              * Base of the trigger (contains its type, timing and associated table)
@@ -38,7 +37,7 @@ namespace sqlite_orm {
             statements_type statements;
 
             partial_trigger_t(T trigger_base, S... statements) :
-                base{std::move(trigger_base)}, statements{std::make_tuple<S...>(std::forward<S>(statements)...)} {}
+                base{std::move(trigger_base)}, statements{mpl::make_tuple<S...>(std::forward<S>(statements)...)} {}
 
             partial_trigger_t &end() {
                 return *this;
@@ -156,7 +155,7 @@ namespace sqlite_orm {
          */
         template<class... Cs>
         struct trigger_update_type_t : trigger_type_base_t {
-            using columns_type = std::tuple<Cs...>;
+            using columns_type = mpl::tuple<Cs...>;
 
             /**
              * Contains the columns the trigger is watching. Will only
@@ -165,7 +164,7 @@ namespace sqlite_orm {
             columns_type columns;
 
             trigger_update_type_t(trigger_timing timing, trigger_type type, Cs... columns) :
-                trigger_type_base_t(timing, type), columns(std::make_tuple<Cs...>(std::forward<Cs>(columns)...)) {}
+                trigger_type_base_t(timing, type), columns(mpl::make_tuple<Cs...>(std::forward<Cs>(columns)...)) {}
 
             template<class T>
             trigger_base_t<T, void, trigger_update_type_t<Cs...>> on() {

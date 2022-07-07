@@ -9,7 +9,6 @@
 #include <sstream>  //  std::stringstream
 #include <map>  //  std::map
 #include <vector>  //  std::vector
-#include <tuple>  //  std::tuple_size, std::tuple, std::make_tuple, std::tie
 #include <utility>  //  std::forward, std::pair
 #include <algorithm>  //  std::for_each, std::ranges::for_each
 #include "functional/cxx_optional.h"
@@ -102,7 +101,7 @@ namespace sqlite_orm {
 
             template<class Table>
             void create_table(sqlite3* db, const std::string& tableName, const Table& table) {
-                using table_type = std::decay_t<decltype(table)>;
+                using table_type = std::remove_reference_t<decltype(table)>;
                 using context_t = serializer_context<db_objects_type>;
 
                 std::stringstream ss;
@@ -173,8 +172,8 @@ namespace sqlite_orm {
 
             template<class O>
             void assert_mapped_type() const {
-                using mapped_types_tuple = std::tuple<typename DBO::object_type...>;
-                static_assert(mpl::invoke_t<check_if_tuple_has_type<O>, mapped_types_tuple>::value,
+                using mapped_types_pack = mpl::pack<typename DBO::object_type...>;
+                static_assert(mpl::invoke_t<check_if_tuple_has_type<O>, mapped_types_pack>::value,
                               "type is not mapped to a storage");
             }
 
@@ -458,11 +457,7 @@ namespace sqlite_orm {
              *  @param m is a class member pointer (the same you passed into make_column).
              *  @return group_concat query result.
              */
-            template<class F,
-                     class O,
-                     class... Args,
-                     class Tuple = std::tuple<Args...>,
-                     std::enable_if_t<std::tuple_size<Tuple>::value >= 1, bool> = true>
+            template<class F, class O, class... Args, std::enable_if_t<sizeof...(Args) >= 1, bool> = true>
             std::string group_concat(F O::*m, Args&&... args) {
                 return this->group_concat_internal(m, {}, std::forward<Args>(args)...);
             }
@@ -567,8 +562,7 @@ namespace sqlite_orm {
              */
             template<class T, class... Args, class R = column_result_of_t<db_objects_type, T>>
             std::vector<R> select(T m, Args... args) {
-                static_assert(!is_base_of_template_v<T, compound_operator> ||
-                                  std::tuple_size<std::tuple<Args...>>::value == 0,
+                static_assert(!is_base_of_template_v<T, compound_operator> || sizeof...(Args) == 0,
                               "Cannot use args with a compound operator");
                 auto statement = this->prepare(sqlite_orm::select(std::move(m), std::forward<Args>(args)...));
                 return this->execute(statement);
@@ -611,7 +605,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "{ ";
                 table.for_each_column([&ss, &object, first = true](auto& column) mutable {
-                    using column_type = std::decay_t<decltype(column)>;
+                    using column_type = std::remove_reference_t<decltype(column)>;
                     using field_type = typename column_type::field_type;
                     constexpr std::array<const char*, 2> sep = {", ", ""};
 
@@ -1134,7 +1128,7 @@ namespace sqlite_orm {
 
             template<class T, class... Cols>
             int64 execute(const prepared_statement_t<insert_explicit<T, Cols...>>& statement) {
-                using statement_type = std::decay_t<decltype(statement)>;
+                using statement_type = std::remove_reference_t<decltype(statement)>;
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
 
@@ -1152,7 +1146,7 @@ namespace sqlite_orm {
             template<class T,
                      std::enable_if_t<polyfill::disjunction_v<is_replace<T>, is_replace_range<T>>, bool> = true>
             void execute(const prepared_statement_t<T>& statement) {
-                using statement_type = std::decay_t<decltype(statement)>;
+                using statement_type = std::remove_reference_t<decltype(statement)>;
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
 
@@ -1193,7 +1187,7 @@ namespace sqlite_orm {
 
             template<class T, std::enable_if_t<polyfill::disjunction_v<is_insert<T>, is_insert_range<T>>, bool> = true>
             int64 execute(const prepared_statement_t<T>& statement) {
-                using statement_type = std::decay_t<decltype(statement)>;
+                using statement_type = std::remove_reference_t<decltype(statement)>;
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
 
@@ -1201,7 +1195,7 @@ namespace sqlite_orm {
 
                 auto processObject = [&table = this->get_table<object_type>(),
                                       bind_value = field_value_binder{stmt}](auto& object) mutable {
-                    using is_without_rowid = typename std::decay_t<decltype(table)>::is_without_rowid;
+                    using is_without_rowid = typename std::remove_reference_t<decltype(table)>::is_without_rowid;
                     table.template for_each_column_excluding<
                         mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                          mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
@@ -1247,7 +1241,7 @@ namespace sqlite_orm {
 
             template<class T>
             void execute(const prepared_statement_t<update_t<T>>& statement) {
-                using statement_type = std::decay_t<decltype(statement)>;
+                using statement_type = std::remove_reference_t<decltype(statement)>;
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
 

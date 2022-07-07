@@ -12,12 +12,22 @@
 #define SQLITE_ORM_HAS_INCLUDE(file) 0L
 #endif
 
+// If possible, use an intrinsic provided by Clang
+#if defined(__has_builtin)
+#if __has_builtin(__type_pack_element)
+#define SQLITE_ORM_HAS_TYPE_PACK_ELEMENT_INTRINSIC
+#endif
+#endif
+
 #if __cpp_aggregate_nsdmi >= 201304L
 #define SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
 #endif
 
 #if __cpp_constexpr >= 201304L
 #define SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
+#define SQLITE_ORM_NONCONST_CONSTEXPR constexpr
+#else
+#define SQLITE_ORM_NONCONST_CONSTEXPR
 #endif
 
 #if __cpp_noexcept_function_type >= 201510L
@@ -55,6 +65,10 @@
 #define SQLITE_ORM_NOUNIQUEADDRESS [[no_unique_address]]
 #else
 #define SQLITE_ORM_NOUNIQUEADDRESS
+#endif
+
+#if __cpp_conditional_explicit >= 201806L
+#define SQLITE_ORM_CONDITIONAL_EXPLICIT_SUPPORTED
 #endif
 
 #if __cpp_consteval >= 201811L

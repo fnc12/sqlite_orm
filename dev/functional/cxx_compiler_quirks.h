@@ -25,6 +25,33 @@
 // Because we know what we are doing, we suppress the diagnostic message
 #define SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(...) SQLITE_ORM_CLANG_SUPPRESS("-Wmissing-braces", __VA_ARGS__)
 
-#if defined(_MSC_VER) && (_MSC_VER < 1920)
+#if defined(_MSC_VER) && !defined(__clang__)  // MSVC
+#define SQLITE_ORM_MSVC_EMPTYBASES __declspec(empty_bases)
+#else
+#define SQLITE_ORM_MSVC_EMPTYBASES
+#endif
+
+#if defined(_MSC_VER) && !defined(__clang__)  // MSVC
+
+#if __cplusplus < 202002L
+#define SQLITE_ORM_WORKAROUND_MSVC_MULTIPLECTOR_106654
+#endif
+
+#if _MSC_VER < 1920
 #define SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+#define SQLITE_ORM_BROKEN_CONSTEXPR_DELEGATING_CTORS
+#endif
+
+#elif defined(__clang__) && defined(_MSC_VER)  // Clang-cl (Clang for Windows)
+
+#elif defined(__clang__) && defined(__apple_build_version__)  // Apple's Clang
+
+#elif defined(__clang__)  // genuine Clang
+
+#elif defined(__GNUC__)  // GCC
+
+#if __GNUC__ < 11 || (__GNUC__ == 11 && __GNUC_MINOR__ < 3)
+#define SQLITE_ORM_BROKEN_GCC_ALIAS_TARGS_84785
+#endif
+
 #endif

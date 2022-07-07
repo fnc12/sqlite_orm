@@ -16,22 +16,22 @@ TEST_CASE("tuple iteration") {
             types.emplace_back(typeid(item));
         };
         SECTION("empty") {
-            std::tuple<> tuple;
+            mpl::tuple<> tuple;
             iterate_tuple(tuple, lambda);
         }
         SECTION("int") {
-            std::tuple<int> tuple;
+            mpl::tuple<int> tuple;
             iterate_tuple(tuple, lambda);
             expected = {typeid(int)};
         }
         SECTION("std::string, long") {
-            std::tuple<std::string, long> tuple;
+            mpl::tuple<std::string, long> tuple;
             iterate_tuple(tuple, lambda);
             expected = {typeid(std::string), typeid(long)};
         }
         SECTION("index selection") {
             constexpr size_t selectedIdx = 1;
-            std::tuple<std::string, long> tuple;
+            mpl::tuple<std::string, long> tuple;
             iterate_tuple(tuple, std::index_sequence<selectedIdx>{}, lambda);
             expected = {typeid(long)};
         }
@@ -42,14 +42,14 @@ TEST_CASE("tuple iteration") {
             types.emplace_back(typeid(Item));
         };
         SECTION("empty") {
-            iterate_tuple<std::tuple<>>(lambda);
+            iterate_pack(mpl::pack<>{}, lambda);
         }
         SECTION("int") {
-            iterate_tuple<std::tuple<int>>(lambda);
+            iterate_pack(mpl::pack<int>{}, lambda);
             expected = {typeid(int)};
         }
         SECTION("std::string, long") {
-            iterate_tuple<std::tuple<std::string, long>>(lambda);
+            iterate_pack(mpl::pack<std::string, long>{}, lambda);
             expected = {typeid(std::string), typeid(long)};
         }
     }
@@ -60,7 +60,7 @@ TEST_CASE("creation from tuple") {
     using namespace internal;
     using Catch::Matchers::Equals;
 
-    std::tuple<std::string, std::string> tpl{"abc", "xyz"};
+    mpl::tuple<std::string, std::string> tpl{"abc", "xyz"};
     SECTION("identity") {
         std::vector<std::string> expected{get<0>(tpl), get<1>(tpl)};
         auto strings = create_from_tuple<std::vector<std::string>>(tpl);

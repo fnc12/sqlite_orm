@@ -1,59 +1,65 @@
 #pragma once
 
-#include <tuple>  //  std::tuple, std::get, std::tuple_element, std::tuple_size
 #include <type_traits>  //  std::index_sequence, std::make_index_sequence
 #include <utility>  //  std::forward, std::move
 
 #include "../functional/cxx_universal.h"
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/cxx_functional_polyfill.h"
-#include "index_sequence_util.h"
+#include "../functional/index_sequence_util.h"
 
 namespace sqlite_orm {
     namespace internal {
+        namespace mpl {
+            template<class... X>
+            struct pack;
+
+            template<class... X>
+            struct uple;
+        }
 
         //  got it form here https://stackoverflow.com/questions/7858817/unpacking-a-tuple-to-call-a-matching-function-pointer
         template<class Function, class FunctionPointer, class Tuple, size_t... I>
         auto call_impl(Function& f, FunctionPointer functionPointer, Tuple t, std::index_sequence<I...>) {
-            return (f.*functionPointer)(std::get<I>(move(t))...);
+            return (f.*functionPointer)(std::get<I>(std::move(t))...);
         }
 
         template<class Function, class FunctionPointer, class Tuple>
         auto call(Function& f, FunctionPointer functionPointer, Tuple t) {
             constexpr size_t size = std::tuple_size<Tuple>::value;
-            return call_impl(f, functionPointer, move(t), std::make_index_sequence<size>{});
+            return call_impl(f, functionPointer, std::move(t), std::make_index_sequence<size>{});
         }
 
         template<class Function, class Tuple>
         auto call(Function& f, Tuple t) {
-            return call(f, &Function::operator(), move(t));
+            return call(f, &Function::operator(), std::move(t));
         }
 
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
-        template<bool reversed = false, class Tpl, size_t... Idx, class L>
-        void iterate_tuple(const Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
+        template<bool reversed = false, class Tpl, size_t... Ix, class L>
+        void iterate_tuple(const Tpl& tpl, std::index_sequence<Ix...>, L&& lambda) {
             if constexpr(reversed) {
-                iterate_tuple(tpl, reverse_index_sequence(std::index_sequence<Idx...>{}), std::forward<L>(lambda));
+                iterate_tuple(tpl, mpl::reverse_index_sequence(std::index_sequence<Ix...>{}), std::forward<L>(lambda));
             } else {
-                (lambda(std::get<Idx>(tpl)), ...);
+                (lambda(std::get<Ix>(tpl)), ...);
             }
         }
 #else
         template<bool reversed = false, class Tpl, class L>
         void iterate_tuple(const Tpl& /*tpl*/, std::index_sequence<>, L&& /*lambda*/) {}
 
-        template<bool reversed = false, class Tpl, size_t I, size_t... Idx, class L>
-        void iterate_tuple(const Tpl& tpl, std::index_sequence<I, Idx...>, L&& lambda) {
+        template<bool reversed = false, class Tpl, size_t I, size_t... Ix, class L>
+        void iterate_tuple(const Tpl& tpl, std::index_sequence<I, Ix...>, L&& lambda) {
 #ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
             if constexpr(reversed) {
 #else
             if(reversed) {
 #endif
-                iterate_tuple<reversed>(tpl, std::index_sequence<Idx...>{}, std::forward<L>(lambda));
+                iterate_tuple<reversed>(tpl, std::index_sequence<Ix...>{}, std::forward<L>(lambda));
                 lambda(std::get<I>(tpl));
             } else {
-                lambda(std::get<I>(tpl));
-                iterate_tuple<reversed>(tpl, std::index_sequence<Idx...>{}, std::forward<L>(lambda));
+                int poormansfold[] = {(lambda(std::get<I>(tpl)), int{}), (lambda(std::get<Ix>(tpl)), int{})...};
+                (void)poormansfold;
             }
         }
 #endif
@@ -65,28 +71,34 @@ namespace sqlite_orm {
         }
 
 #ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
-        template<class Tpl, size_t... Idx, class L>
-        void iterate_tuple(std::index_sequence<Idx...>, L&& lambda) {
-            (lambda((std::tuple_element_t<Idx, Tpl>*)nullptr), ...);
+        template<class... X, class L>
+        void iterate_tuple(const mpl::uple<X...>& tpl, L&& lambda) {
+            (lambda(std::get<X>(tpl)), ...);
         }
 #else
-        template<class Tpl, class L>
-        void iterate_tuple(std::index_sequence<>, L&& /*lambda*/) {}
-
-        template<class Tpl, size_t I, size_t... Idx, class L>
-        void iterate_tuple(std::index_sequence<I, Idx...>, L&& lambda) {
-            lambda((std::tuple_element_t<I, Tpl>*)nullptr);
-            iterate_tuple<Tpl>(std::index_sequence<Idx...>{}, std::forward<L>(lambda));
+        template<class... X, class L>
+        void iterate_tuple(const mpl::uple<X...>& tpl, L&& lambda) {
+            int poormansfold[] = {int{}, (lambda(std::get<X>(tpl)), int{})...};
+            (void)poormansfold;
         }
 #endif
-        template<class Tpl, class L>
-        void iterate_tuple(L&& lambda) {
-            iterate_tuple<Tpl>(std::make_index_sequence<std::tuple_size<Tpl>::value>{}, std::forward<L>(lambda));
-        }
 
-        template<class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
-        R create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, Projection project = {}) {
-            return R{polyfill::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
+#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
+        template<class... X, class L>
+        void iterate_pack(mpl::pack<X...>, L&& lambda) {
+            (lambda((X*)nullptr), ...);
+        }
+#else
+        template<class... X, class L>
+        void iterate_pack(mpl::pack<X...>, L&& lambda) {
+            int poormansfold[] = {int{}, (lambda((X*)nullptr), int{})...};
+            (void)poormansfold;
+        }
+#endif
+
+        template<class R, class Tpl, size_t... Ix, class Projection = polyfill::identity>
+        R create_from_tuple(Tpl&& tpl, std::index_sequence<Ix...>, Projection project = {}) {
+            return R{polyfill::invoke(project, std::get<Ix>(std::forward<Tpl>(tpl)))...};
         }
 
         template<class R, class Tpl, class Projection = polyfill::identity>

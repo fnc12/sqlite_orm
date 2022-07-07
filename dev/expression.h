@@ -5,6 +5,7 @@
 #include "functional/cxx_optional.h"
 
 #include "functional/cxx_universal.h"
+#include "functional/tuple.h"  //  make_tuple
 #include "operators.h"
 
 namespace sqlite_orm {
@@ -41,12 +42,12 @@ namespace sqlite_orm {
 #endif
             template<class... Args>
             in_t<T, Args...> in(Args... args) const {
-                return {this->value, std::make_tuple(std::forward<Args>(args)...), false};
+                return {this->value, mpl::make_tuple(std::forward<Args>(args)...), false};
             }
 
             template<class... Args>
             in_t<T, Args...> not_in(Args... args) const {
-                return {this->value, std::make_tuple(std::forward<Args>(args)...), true};
+                return {this->value, mpl::make_tuple(std::forward<Args>(args)...), true};
             }
 
             template<class R>

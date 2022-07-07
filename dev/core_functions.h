@@ -1,12 +1,12 @@
 #pragma once
 
 #include <string>  //  std::string
-#include <tuple>  //  std::make_tuple, std::tuple_size
 #include <type_traits>  //  std::forward, std::is_base_of, std::enable_if
 #include <memory>  //  std::unique_ptr
 #include <vector>  //  std::vector
 
 #include "functional/cxx_type_traits_polyfill.h"
+#include "functional/tuple.h"
 #include "conditions.h"
 #include "is_base_of_template.h"
 #include "tuple_helper/tuple_filter.h"
@@ -34,7 +34,7 @@ namespace sqlite_orm {
         struct built_in_function_t : S, arithmetic_t {
             using return_type = R;
             using string_type = S;
-            using args_type = std::tuple<Args...>;
+            using args_type = mpl::tuple<Args...>;
 
             static constexpr size_t args_size = std::tuple_size<args_type>::value;
 
@@ -662,7 +662,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<double, internal::acos_string, X> acos(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -678,7 +678,7 @@ namespace sqlite_orm {
      */
     template<class R, class X>
     internal::built_in_function_t<R, internal::acos_string, X> acos(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -690,7 +690,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<double, internal::acosh_string, X> acosh(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -706,7 +706,7 @@ namespace sqlite_orm {
      */
     template<class R, class X>
     internal::built_in_function_t<R, internal::acosh_string, X> acosh(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -718,7 +718,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<double, internal::asin_string, X> asin(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -734,7 +734,7 @@ namespace sqlite_orm {
      */
     template<class R, class X>
     internal::built_in_function_t<R, internal::asin_string, X> asin(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -746,7 +746,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<double, internal::asinh_string, X> asinh(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -762,7 +762,7 @@ namespace sqlite_orm {
      */
     template<class R, class X>
     internal::built_in_function_t<R, internal::asinh_string, X> asinh(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -774,7 +774,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<double, internal::atan_string, X> atan(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -790,7 +790,7 @@ namespace sqlite_orm {
      */
     template<class R, class X>
     internal::built_in_function_t<R, internal::atan_string, X> atan(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -802,7 +802,7 @@ namespace sqlite_orm {
      */
     template<class X, class Y>
     internal::built_in_function_t<double, internal::atan2_string, X, Y> atan2(X x, Y y) {
-        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+        return {{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     /**
@@ -818,7 +818,7 @@ namespace sqlite_orm {
      */
     template<class R, class X, class Y>
     internal::built_in_function_t<R, internal::atan2_string, X, Y> atan2(X x, Y y) {
-        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+        return {{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     /**
@@ -830,7 +830,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<double, internal::atanh_string, X> atanh(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -846,7 +846,7 @@ namespace sqlite_orm {
      */
     template<class R, class X>
     internal::built_in_function_t<R, internal::atanh_string, X> atanh(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -858,7 +858,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<double, internal::ceil_string, X> ceil(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -874,7 +874,7 @@ namespace sqlite_orm {
      */
     template<class R, class X>
     internal::built_in_function_t<R, internal::ceil_string, X> ceil(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -886,7 +886,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<double, internal::ceiling_string, X> ceiling(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -902,7 +902,7 @@ namespace sqlite_orm {
      */
     template<class R, class X>
     internal::built_in_function_t<R, internal::ceiling_string, X> ceiling(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -914,7 +914,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<double, internal::cos_string, X> cos(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -930,7 +930,7 @@ namespace sqlite_orm {
      */
     template<class R, class X>
     internal::built_in_function_t<R, internal::cos_string, X> cos(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -942,7 +942,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<double, internal::cosh_string, X> cosh(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -958,7 +958,7 @@ namespace sqlite_orm {
      */
     template<class R, class X>
     internal::built_in_function_t<R, internal::cosh_string, X> cosh(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -970,7 +970,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<double, internal::degrees_string, X> degrees(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -986,7 +986,7 @@ namespace sqlite_orm {
      */
     template<class R, class X>
     internal::built_in_function_t<R, internal::degrees_string, X> degrees(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -998,7 +998,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<double, internal::exp_string, X> exp(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1014,7 +1014,7 @@ namespace sqlite_orm {
      */
     template<class R, class X>
     internal::built_in_function_t<R, internal::exp_string, X> exp(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1026,7 +1026,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<double, internal::floor_string, X> floor(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1042,7 +1042,7 @@ namespace sqlite_orm {
      */
     template<class R, class X>
     internal::built_in_function_t<R, internal::floor_string, X> floor(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1054,7 +1054,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<double, internal::ln_string, X> ln(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1070,7 +1070,7 @@ namespace sqlite_orm {
      */
     template<class R, class X>
     internal::built_in_function_t<R, internal::ln_string, X> ln(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1082,7 +1082,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<double, internal::log_string, X> log(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1098,7 +1098,7 @@ namespace sqlite_orm {
      */
     template<class R, class X>
     internal::built_in_function_t<R, internal::log_string, X> log(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1110,7 +1110,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<double, internal::log10_string, X> log10(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1126,7 +1126,7 @@ namespace sqlite_orm {
      */
     template<class R, class X>
     internal::built_in_function_t<R, internal::log10_string, X> log10(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1138,7 +1138,7 @@ namespace sqlite_orm {
      */
     template<class B, class X>
     internal::built_in_function_t<double, internal::log_string, B, X> log(B b, X x) {
-        return {std::tuple<B, X>{std::forward<B>(b), std::forward<X>(x)}};
+        return {{std::forward<B>(b), std::forward<X>(x)}};
     }
 
     /**
@@ -1154,7 +1154,7 @@ namespace sqlite_orm {
      */
     template<class R, class B, class X>
     internal::built_in_function_t<R, internal::log_string, B, X> log(B b, X x) {
-        return {std::tuple<B, X>{std::forward<B>(b), std::forward<X>(x)}};
+        return {{std::forward<B>(b), std::forward<X>(x)}};
     }
 
     /**
@@ -1166,7 +1166,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<double, internal::log2_string, X> log2(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1182,7 +1182,7 @@ namespace sqlite_orm {
      */
     template<class R, class X>
     internal::built_in_function_t<R, internal::log2_string, X> log2(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1194,7 +1194,7 @@ namespace sqlite_orm {
      */
     template<class X, class Y>
     internal::built_in_function_t<double, internal::mod_string, X, Y> mod_f(X x, Y y) {
-        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+        return {{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     /**
@@ -1210,7 +1210,7 @@ namespace sqlite_orm {
      */
     template<class R, class X, class Y>
     internal::built_in_function_t<R, internal::mod_string, X, Y> mod_f(X x, Y y) {
-        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+        return {{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     /**
@@ -1249,7 +1249,7 @@ namespace sqlite_orm {
      */
     template<class X, class Y>
     internal::built_in_function_t<double, internal::pow_string, X, Y> pow(X x, Y y) {
-        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+        return {{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     /**
@@ -1265,7 +1265,7 @@ namespace sqlite_orm {
      */
     template<class R, class X, class Y>
     internal::built_in_function_t<R, internal::pow_string, X, Y> pow(X x, Y y) {
-        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+        return {{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     /**
@@ -1277,7 +1277,7 @@ namespace sqlite_orm {
      */
     template<class X, class Y>
     internal::built_in_function_t<double, internal::power_string, X, Y> power(X x, Y y) {
-        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+        return {{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     /**
@@ -1293,7 +1293,7 @@ namespace sqlite_orm {
      */
     template<class R, class X, class Y>
     internal::built_in_function_t<R, internal::power_string, X, Y> power(X x, Y y) {
-        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+        return {{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     /**
@@ -1305,7 +1305,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<double, internal::radians_string, X> radians(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1321,7 +1321,7 @@ namespace sqlite_orm {
      */
     template<class R, class X>
     internal::built_in_function_t<R, internal::radians_string, X> radians(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1333,7 +1333,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<double, internal::sin_string, X> sin(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1349,7 +1349,7 @@ namespace sqlite_orm {
      */
     template<class R, class X>
     internal::built_in_function_t<R, internal::sin_string, X> sin(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1361,7 +1361,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<double, internal::sinh_string, X> sinh(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1377,7 +1377,7 @@ namespace sqlite_orm {
      */
     template<class R, class X>
     internal::built_in_function_t<R, internal::sinh_string, X> sinh(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1389,7 +1389,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<double, internal::sqrt_string, X> sqrt(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1405,7 +1405,7 @@ namespace sqlite_orm {
      */
     template<class R, class X>
     internal::built_in_function_t<R, internal::sqrt_string, X> sqrt(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1417,7 +1417,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<double, internal::tan_string, X> tan(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1433,7 +1433,7 @@ namespace sqlite_orm {
      */
     template<class R, class X>
     internal::built_in_function_t<R, internal::tan_string, X> tan(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1445,7 +1445,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<double, internal::tanh_string, X> tanh(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1461,7 +1461,7 @@ namespace sqlite_orm {
      */
     template<class R, class X>
     internal::built_in_function_t<R, internal::tanh_string, X> tanh(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1473,7 +1473,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<double, internal::trunc_string, X> trunc(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1489,7 +1489,7 @@ namespace sqlite_orm {
      */
     template<class R, class X>
     internal::built_in_function_t<R, internal::trunc_string, X> trunc(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 #endif  //  SQLITE_ENABLE_MATH_FUNCTIONS
     /**
@@ -1497,7 +1497,7 @@ namespace sqlite_orm {
      */
     template<class T>
     internal::built_in_function_t<std::string, internal::typeof_string, T> typeof_(T t) {
-        return {std::tuple<T>{std::forward<T>(t)}};
+        return {{std::forward<T>(t)}};
     }
 
     /**
@@ -1505,7 +1505,7 @@ namespace sqlite_orm {
      */
     template<class T>
     internal::built_in_function_t<int, internal::unicode_string, T> unicode(T t) {
-        return {std::tuple<T>{std::forward<T>(t)}};
+        return {{std::forward<T>(t)}};
     }
 
     /**
@@ -1513,7 +1513,7 @@ namespace sqlite_orm {
      */
     template<class T>
     internal::built_in_function_t<int, internal::length_string, T> length(T t) {
-        return {std::tuple<T>{std::forward<T>(t)}};
+        return {{std::forward<T>(t)}};
     }
 
     /**
@@ -1521,7 +1521,7 @@ namespace sqlite_orm {
      */
     template<class T>
     internal::built_in_function_t<std::unique_ptr<double>, internal::abs_string, T> abs(T t) {
-        return {std::tuple<T>{std::forward<T>(t)}};
+        return {{std::forward<T>(t)}};
     }
 
     /**
@@ -1529,7 +1529,7 @@ namespace sqlite_orm {
      */
     template<class T>
     internal::built_in_function_t<std::string, internal::lower_string, T> lower(T t) {
-        return {std::tuple<T>{std::forward<T>(t)}};
+        return {{std::forward<T>(t)}};
     }
 
     /**
@@ -1537,7 +1537,7 @@ namespace sqlite_orm {
      */
     template<class T>
     internal::built_in_function_t<std::string, internal::upper_string, T> upper(T t) {
-        return {std::tuple<T>{std::forward<T>(t)}};
+        return {{std::forward<T>(t)}};
     }
 
     /**
@@ -1566,7 +1566,7 @@ namespace sqlite_orm {
      */
     template<class T>
     internal::built_in_function_t<std::string, internal::trim_string, T> trim(T t) {
-        return {std::tuple<T>{std::forward<T>(t)}};
+        return {{std::forward<T>(t)}};
     }
 
     /**
@@ -1574,7 +1574,7 @@ namespace sqlite_orm {
      */
     template<class X, class Y>
     internal::built_in_function_t<std::string, internal::trim_string, X, Y> trim(X x, Y y) {
-        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+        return {{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     /**
@@ -1582,7 +1582,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<std::string, internal::ltrim_string, X> ltrim(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1590,7 +1590,7 @@ namespace sqlite_orm {
      */
     template<class X, class Y>
     internal::built_in_function_t<std::string, internal::ltrim_string, X, Y> ltrim(X x, Y y) {
-        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+        return {{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     /**
@@ -1598,7 +1598,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<std::string, internal::rtrim_string, X> rtrim(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1606,7 +1606,7 @@ namespace sqlite_orm {
      */
     template<class X, class Y>
     internal::built_in_function_t<std::string, internal::rtrim_string, X, Y> rtrim(X x, Y y) {
-        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+        return {{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     /**
@@ -1614,7 +1614,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<std::string, internal::hex_string, X> hex(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1622,7 +1622,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<std::string, internal::quote_string, X> quote(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1630,7 +1630,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<std::vector<char>, internal::randomblob_string, X> randomblob(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1638,7 +1638,7 @@ namespace sqlite_orm {
      */
     template<class X, class Y>
     internal::built_in_function_t<int, internal::instr_string, X, Y> instr(X x, Y y) {
-        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+        return {{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     /**
@@ -1647,9 +1647,9 @@ namespace sqlite_orm {
     template<class X,
              class Y,
              class Z,
-             std::enable_if_t<internal::count_tuple<std::tuple<X, Y, Z>, internal::is_into>::value == 0, bool> = true>
+             std::enable_if_t<internal::count_tuple<mpl::tuple<X, Y, Z>, internal::is_into>::value == 0, bool> = true>
     internal::built_in_function_t<std::string, internal::replace_string, X, Y, Z> replace(X x, Y y, Z z) {
-        return {std::tuple<X, Y, Z>{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)}};
+        return {{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)}};
     }
 
     /**
@@ -1657,7 +1657,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<double, internal::round_string, X> round(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1665,7 +1665,7 @@ namespace sqlite_orm {
      */
     template<class X, class Y>
     internal::built_in_function_t<double, internal::round_string, X, Y> round(X x, Y y) {
-        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+        return {{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
 #if SQLITE_VERSION_NUMBER >= 3007016
@@ -1675,7 +1675,7 @@ namespace sqlite_orm {
      */
     template<class... Args>
     internal::built_in_function_t<std::string, internal::char_string, Args...> char_(Args... args) {
-        return {std::make_tuple(std::forward<Args>(args)...)};
+        return {{std::forward<Args>(args)...}};
     }
 
     /**
@@ -1698,7 +1698,7 @@ namespace sqlite_orm {
                                              polyfill::type_identity<R>>::type,
                                          internal::coalesce_string,
                                          Args...> {
-        return {std::make_tuple(std::forward<Args>(args)...)};
+        return {{std::forward<Args>(args)...}};
     }
 
     /**
@@ -1713,7 +1713,7 @@ namespace sqlite_orm {
         internal::ifnull_string,
         X,
         Y> {
-        return {std::make_tuple(std::move(x), std::move(y))};
+        return {{std::move(x), std::move(y)}};
     }
 
     /**
@@ -1739,17 +1739,17 @@ namespace sqlite_orm {
                 X,
                 Y>;
 
-            return F{std::make_tuple(std::move(x), std::move(y))};
+            return F{{std::move(x), std::move(y)}};
         } else {
             using F = internal::built_in_function_t<R, internal::nullif_string, X, Y>;
 
-            return F{std::make_tuple(std::move(x), std::move(y))};
+            return F{{std::move(x), std::move(y)}};
         }
     }
 #else
     template<class R, class X, class Y>
     internal::built_in_function_t<R, internal::nullif_string, X, Y> nullif(X x, Y y) {
-        return {std::make_tuple(std::move(x), std::move(y))};
+        return {{std::move(x), std::move(y)}};
     }
 #endif
 
@@ -1758,7 +1758,7 @@ namespace sqlite_orm {
      */
     template<class... Args>
     internal::built_in_function_t<std::string, internal::date_string, Args...> date(Args... args) {
-        return {std::tuple<Args...>{std::forward<Args>(args)...}};
+        return {{std::forward<Args>(args)...}};
     }
 
     /**
@@ -1766,7 +1766,7 @@ namespace sqlite_orm {
      */
     template<class... Args>
     internal::built_in_function_t<std::string, internal::time_string, Args...> time(Args... args) {
-        return {std::tuple<Args...>{std::forward<Args>(args)...}};
+        return {{std::forward<Args>(args)...}};
     }
 
     /**
@@ -1774,7 +1774,7 @@ namespace sqlite_orm {
      */
     template<class... Args>
     internal::built_in_function_t<std::string, internal::datetime_string, Args...> datetime(Args... args) {
-        return {std::tuple<Args...>{std::forward<Args>(args)...}};
+        return {{std::forward<Args>(args)...}};
     }
 
     /**
@@ -1782,7 +1782,7 @@ namespace sqlite_orm {
      */
     template<class... Args>
     internal::built_in_function_t<double, internal::julianday_string, Args...> julianday(Args... args) {
-        return {std::tuple<Args...>{std::forward<Args>(args)...}};
+        return {{std::forward<Args>(args)...}};
     }
 
     /**
@@ -1790,7 +1790,7 @@ namespace sqlite_orm {
      */
     template<class... Args>
     internal::built_in_function_t<std::string, internal::strftime_string, Args...> strftime(Args... args) {
-        return {std::tuple<Args...>{std::forward<Args>(args)...}};
+        return {{std::forward<Args>(args)...}};
     }
 
     /**
@@ -1798,7 +1798,7 @@ namespace sqlite_orm {
      */
     template<class N>
     internal::built_in_function_t<std::vector<char>, internal::zeroblob_string, N> zeroblob(N n) {
-        return {std::tuple<N>{std::forward<N>(n)}};
+        return {{std::forward<N>(n)}};
     }
 
     /**
@@ -1806,7 +1806,7 @@ namespace sqlite_orm {
      */
     template<class X, class Y>
     internal::built_in_function_t<std::string, internal::substr_string, X, Y> substr(X x, Y y) {
-        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+        return {{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     /**
@@ -1814,7 +1814,7 @@ namespace sqlite_orm {
      */
     template<class X, class Y, class Z>
     internal::built_in_function_t<std::string, internal::substr_string, X, Y, Z> substr(X x, Y y, Z z) {
-        return {std::tuple<X, Y, Z>{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)}};
+        return {{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)}};
     }
 
 #ifdef SQLITE_SOUNDEX
@@ -1823,7 +1823,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_function_t<std::string, internal::soundex_string, X> soundex(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 #endif
 
@@ -1832,7 +1832,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_aggregate_function_t<double, internal::total_string, X> total(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1840,7 +1840,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_aggregate_function_t<std::unique_ptr<double>, internal::sum_string, X> sum(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1848,7 +1848,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_aggregate_function_t<int, internal::count_string, X> count(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1872,7 +1872,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_aggregate_function_t<double, internal::avg_string, X> avg(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1880,7 +1880,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_aggregate_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X> max(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1888,7 +1888,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_aggregate_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X> min(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1898,7 +1898,7 @@ namespace sqlite_orm {
     template<class X, class Y, class... Rest>
     internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X, Y, Rest...>
     max(X x, Y y, Rest... rest) {
-        return {std::tuple<X, Y, Rest...>{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
+        return {{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
     }
 
     /**
@@ -1908,7 +1908,7 @@ namespace sqlite_orm {
     template<class X, class Y, class... Rest>
     internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X, Y, Rest...>
     min(X x, Y y, Rest... rest) {
-        return {std::tuple<X, Y, Rest...>{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
+        return {{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
     }
 
     /**
@@ -1916,7 +1916,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::built_in_aggregate_function_t<std::string, internal::group_concat_string, X> group_concat(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     /**
@@ -1924,128 +1924,124 @@ namespace sqlite_orm {
      */
     template<class X, class Y>
     internal::built_in_aggregate_function_t<std::string, internal::group_concat_string, X, Y> group_concat(X x, Y y) {
-        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+        return {{std::forward<X>(x), std::forward<Y>(y)}};
     }
 #ifdef SQLITE_ENABLE_JSON1
     template<class X>
     internal::built_in_function_t<std::string, internal::json_string, X> json(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     template<class... Args>
     internal::built_in_function_t<std::string, internal::json_array_string, Args...> json_array(Args... args) {
-        return {std::tuple<Args...>{std::forward<Args>(args)...}};
+        return {{std::forward<Args>(args)...}};
     }
 
     template<class X>
     internal::built_in_function_t<int, internal::json_array_length_string, X> json_array_length(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     template<class R, class X>
     internal::built_in_function_t<R, internal::json_array_length_string, X> json_array_length(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     template<class X, class Y>
     internal::built_in_function_t<int, internal::json_array_length_string, X, Y> json_array_length(X x, Y y) {
-        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+        return {{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     template<class R, class X, class Y>
     internal::built_in_function_t<R, internal::json_array_length_string, X, Y> json_array_length(X x, Y y) {
-        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+        return {{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     template<class R, class X, class... Args>
     internal::built_in_function_t<R, internal::json_extract_string, X, Args...> json_extract(X x, Args... args) {
-        return {std::tuple<X, Args...>{std::forward<X>(x), std::forward<Args>(args)...}};
+        return {{std::forward<X>(x), std::forward<Args>(args)...}};
     }
 
     template<class X, class... Args>
     internal::built_in_function_t<std::string, internal::json_insert_string, X, Args...> json_insert(X x,
                                                                                                      Args... args) {
-        static_assert(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
-                      "number of arguments in json_insert must be odd");
-        return {std::tuple<X, Args...>{std::forward<X>(x), std::forward<Args>(args)...}};
+        static_assert(sizeof...(Args) % 2 == 0, "number of arguments in json_insert must be odd");
+        return {{std::forward<X>(x), std::forward<Args>(args)...}};
     }
 
     template<class X, class... Args>
     internal::built_in_function_t<std::string, internal::json_replace_string, X, Args...> json_replace(X x,
                                                                                                        Args... args) {
-        static_assert(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
-                      "number of arguments in json_replace must be odd");
-        return {std::tuple<X, Args...>{std::forward<X>(x), std::forward<Args>(args)...}};
+        static_assert(sizeof...(Args) % 2 == 0, "number of arguments in json_replace must be odd");
+        return {{std::forward<X>(x), std::forward<Args>(args)...}};
     }
 
     template<class X, class... Args>
     internal::built_in_function_t<std::string, internal::json_set_string, X, Args...> json_set(X x, Args... args) {
-        static_assert(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
-                      "number of arguments in json_set must be odd");
-        return {std::tuple<X, Args...>{std::forward<X>(x), std::forward<Args>(args)...}};
+        static_assert(sizeof...(Args) % 2 == 0, "number of arguments in json_set must be odd");
+        return {{std::forward<X>(x), std::forward<Args>(args)...}};
     }
 
     template<class... Args>
     internal::built_in_function_t<std::string, internal::json_object_string, Args...> json_object(Args... args) {
-        static_assert(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
-                      "number of arguments in json_object must be even");
-        return {std::tuple<Args...>{std::forward<Args>(args)...}};
+        static_assert(sizeof...(Args) % 2 == 0, "number of arguments in json_object must be even");
+        return {{std::forward<Args>(args)...}};
     }
 
     template<class X, class Y>
     internal::built_in_function_t<std::string, internal::json_patch_string, X, Y> json_patch(X x, Y y) {
-        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+        return {{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     template<class X, class... Args>
     internal::built_in_function_t<std::string, internal::json_remove_string, X, Args...> json_remove(X x,
                                                                                                      Args... args) {
-        return {std::tuple<X, Args...>{std::forward<X>(x), std::forward<Args>(args)...}};
+        return {{std::forward<X>(x), std::forward<Args>(args)...}};
     }
 
     template<class R, class X, class... Args>
     internal::built_in_function_t<R, internal::json_remove_string, X, Args...> json_remove(X x, Args... args) {
-        return {std::tuple<X, Args...>{std::forward<X>(x), std::forward<Args>(args)...}};
+        return {{std::forward<X>(x), std::forward<Args>(args)...}};
     }
 
     template<class X>
     internal::built_in_function_t<std::string, internal::json_type_string, X> json_type(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     template<class R, class X>
     internal::built_in_function_t<R, internal::json_type_string, X> json_type(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     template<class X, class Y>
     internal::built_in_function_t<std::string, internal::json_type_string, X, Y> json_type(X x, Y y) {
-        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+        return {{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     template<class R, class X, class Y>
     internal::built_in_function_t<R, internal::json_type_string, X, Y> json_type(X x, Y y) {
-        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+        return {{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     template<class X>
     internal::built_in_function_t<bool, internal::json_valid_string, X> json_valid(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     template<class R, class X>
     internal::built_in_function_t<R, internal::json_quote_string, X> json_quote(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     template<class X>
     internal::built_in_function_t<std::string, internal::json_group_array_string, X> json_group_array(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+        return {{std::forward<X>(x)}};
     }
 
     template<class X, class Y>
     internal::built_in_function_t<std::string, internal::json_group_object_string, X, Y> json_group_object(X x, Y y) {
-        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+        return {{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
 #endif  //  SQLITE_ENABLE_JSON1

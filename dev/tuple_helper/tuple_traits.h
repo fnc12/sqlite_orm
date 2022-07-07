@@ -1,8 +1,5 @@
 #pragma once
 
-#include <type_traits>  //  std::is_same
-#include <tuple>
-
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/mpl.h"
 
@@ -13,8 +10,9 @@ namespace sqlite_orm {
          */
         template<template<class...> class TraitFn, class Tuple>
         struct tuple_has {};
-        template<template<class...> class TraitFn, class... Types>
-        struct tuple_has<TraitFn, std::tuple<Types...>> : polyfill::disjunction<TraitFn<Types>...> {};
+
+        template<template<class...> class TraitFn, template<class...> class Tuple, class... Types>
+        struct tuple_has<TraitFn, Tuple<Types...>> : polyfill::disjunction<TraitFn<Types>...> {};
 
         /*
          *  Trait metafunction class that checks whether a tuple contains a type with given trait.

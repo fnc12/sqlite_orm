@@ -1,10 +1,9 @@
 #pragma once
 
-#include <tuple>  //  std::tuple, std::make_tuple
-#include <type_traits>  //  std::false_type, std::true_type
 #include <utility>  //  std::forward, std::move
 
 #include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/tuple.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -14,24 +13,24 @@ namespace sqlite_orm {
 
         template<class... Args>
         struct conflict_target {
-            using args_tuple = std::tuple<Args...>;
+            using args_tuple = mpl::tuple<Args...>;
 
             args_tuple args;
 
-            upsert_clause<args_tuple, std::tuple<>> do_nothing() {
-                return {move(this->args), {}};
+            upsert_clause<args_tuple, mpl::tuple<>> do_nothing() {
+                return {std::move(this->args), {}};
             }
 
             template<class... ActionsArgs>
-            upsert_clause<args_tuple, std::tuple<ActionsArgs...>> do_update(ActionsArgs... actions) {
-                return {move(this->args), {std::make_tuple(std::forward<ActionsArgs>(actions)...)}};
+            upsert_clause<args_tuple, mpl::tuple<ActionsArgs...>> do_update(ActionsArgs... actions) {
+                return {std::move(this->args), {std::forward<ActionsArgs>(actions)...}};
             }
         };
 
         template<class... TargetArgs, class... ActionsArgs>
-        struct upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>> {
-            using target_args_tuple = std::tuple<TargetArgs...>;
-            using actions_tuple = std::tuple<ActionsArgs...>;
+        struct upsert_clause<mpl::tuple<TargetArgs...>, mpl::tuple<ActionsArgs...>> {
+            using target_args_tuple = mpl::tuple<TargetArgs...>;
+            using actions_tuple = mpl::tuple<ActionsArgs...>;
 
             target_args_tuple target_args;
 
@@ -56,7 +55,7 @@ namespace sqlite_orm {
      */
     template<class... Args>
     internal::conflict_target<Args...> on_conflict(Args... args) {
-        return {std::tuple<Args...>(std::forward<Args>(args)...)};
+        return {{std::forward<Args>(args)...}};
     }
 #endif
 }

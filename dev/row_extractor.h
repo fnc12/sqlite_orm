@@ -13,7 +13,7 @@
 #include <locale>
 #include <algorithm>  //  std::copy
 #include <iterator>  //  std::back_inserter
-#include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
+#include <tuple>  //  std::tuple
 
 #include "functional/cxx_universal.h"
 #include "arithmetic_tag.h"

@@ -3,11 +3,13 @@
 #include <string>  //  std::string
 #include <type_traits>  //  std::enable_if, std::is_same
 #include <vector>  //  std::vector
-#include <tuple>  //  std::tuple, std::tuple_size
 #include <sstream>  //  std::stringstream
+#include <utility>  //  std::move
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
+#include "functional/pack.h"
+#include "functional/tuple.h"
 #include "type_traits.h"
 #include "collate_argument.h"
 #include "constraints.h"
@@ -376,7 +378,7 @@ namespace sqlite_orm {
         template<class L, class... Args>
         struct in_t : condition_t, in_base, negatable_t {
             L left;
-            std::tuple<Args...> argument;
+            mpl::tuple<Args...> argument;
 
             in_t(L left_, decltype(argument) argument_, bool negative_) :
                 in_base{negative_}, left(std::move(left_)), argument(std::move(argument_)) {}
@@ -497,7 +499,7 @@ namespace sqlite_orm {
          */
         template<class... Args>
         struct multi_order_by_t : order_by_string {
-            using args_type = std::tuple<Args...>;
+            using args_type = mpl::tuple<Args...>;
 
             args_type args;
 
@@ -796,7 +798,7 @@ namespace sqlite_orm {
 
         template<class... Args>
         struct from_t {
-            using tuple_type = std::tuple<Args...>;
+            using pack_type = mpl::pack<Args...>;
         };
 
         template<class T>
@@ -809,7 +811,7 @@ namespace sqlite_orm {
      */
     template<class... Args>
     internal::from_t<Args...> from() {
-        static_assert(std::tuple_size<std::tuple<Args...>>::value > 0, "");
+        static_assert(sizeof...(Args) > 0, "");
         return {};
     }
 
@@ -1196,7 +1198,7 @@ namespace sqlite_orm {
      */
     template<class... Args>
     internal::multi_order_by_t<Args...> multi_order_by(Args&&... args) {
-        return {std::make_tuple(std::forward<Args>(args)...)};
+        return {mpl::make_tuple(std::forward<Args>(args)...)};
     }
 
     /**
