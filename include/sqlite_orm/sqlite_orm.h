@@ -9096,6 +9096,7 @@ namespace sqlite_orm {
 
 #include <type_traits>  //  std::true_type, std::false_type, std::remove_const, std::enable_if
 #include <tuple>
+#include <utility>  //  std::index_sequence
 
 // #include "functional/cxx_universal.h"
 
@@ -9148,30 +9149,35 @@ namespace sqlite_orm {
     namespace internal {
 
         /**
+         *   Indirect enabler for DBO, accepting an index to disambiguate non-unique DBOs
+         */
+        template<class Lookup, size_t Ix, class DBO>
+        struct enable_found_table : std::enable_if<lookup_type_matches<DBO, Lookup>::value, DBO> {};
+
+        /**
          *  SFINAE friendly facility to pick a table definition (`table_t`) from a tuple of database objects.
          *  
-         *  DBOs - db_objects_tuple type
          *  Lookup - mapped data type
+         *  Seq - index sequence matching the number of DBOs
+         *  DBOs - db_objects_tuple type
          */
-        template<class Lookup, class... DBO>
-        struct storage_pick_table : std::enable_if<lookup_type_matches<DBO, Lookup>::value, DBO>... {};
+        template<class Lookup, class Seq, class DBOs>
+        struct storage_pick_table;
 
-#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
-        template<class Lookup, class... DBO>
-        struct storage_pick_table<Lookup, db_objects_tuple<DBO...>> : storage_pick_table<Lookup, DBO...> {};
-#else
-        template<class Lookup, class... DBO>
-        struct storage_pick_table<Lookup, std::tuple<DBO...>> : storage_pick_table<Lookup, DBO...> {};
-#endif
+        template<class Lookup, size_t... Ix, class... DBO>
+        struct storage_pick_table<Lookup, std::index_sequence<Ix...>, db_objects_tuple<DBO...>>
+            : enable_found_table<Lookup, Ix, DBO>... {};
 
         /**
          *  SFINAE friendly facility to pick a table definition (`table_t`) from a tuple of database objects.
          *
-         *  DBOs - db_objects_tuple type, possibly const-qualified
          *  Lookup - 'table' type, mapped data type
+         *  DBOs - db_objects_tuple type, possibly const-qualified
          */
         template<class Lookup, class DBOs>
-        using storage_pick_table_t = typename storage_pick_table<Lookup, std::remove_const_t<DBOs>>::type;
+        using storage_pick_table_t = typename storage_pick_table<Lookup,
+                                                                 std::make_index_sequence<std::tuple_size<DBOs>::value>,
+                                                                 std::remove_const_t<DBOs>>::type;
 
         /**
          *  Find a table definition (`table_t`) from a tuple of database objects;
@@ -9180,16 +9186,8 @@ namespace sqlite_orm {
          *  DBOs - db_objects_tuple type
          *  Lookup - mapped data type
          */
-        template<class Lookup, class... DBO>
-        struct storage_find_table : polyfill::detected_or<polyfill::nonesuch, storage_pick_table_t, Lookup, DBO...> {};
-
-#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
-        template<class Lookup, class... DBO>
-        struct storage_find_table<Lookup, db_objects_tuple<DBO...>> : storage_find_table<Lookup, DBO...> {};
-#else
-        template<class Lookup, class... DBO>
-        struct storage_find_table<Lookup, std::tuple<DBO...>> : storage_find_table<Lookup, DBO...> {};
-#endif
+        template<class Lookup, class DBOs>
+        struct storage_find_table : polyfill::detected_or<polyfill::nonesuch, storage_pick_table_t, Lookup, DBOs> {};
 
         /**
          *  Find a table definition (`table_t`) from a tuple of database objects;
@@ -9201,14 +9199,20 @@ namespace sqlite_orm {
         template<class Lookup, class DBOs>
         using storage_find_table_t = typename storage_find_table<Lookup, std::remove_const_t<DBOs>>::type;
 
+#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
         template<class DBOs, class Lookup, class SFINAE = void>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_mapped_v = false;
+        struct is_mapped : std::false_type {};
         template<class DBOs, class Lookup>
-        SQLITE_ORM_INLINE_VAR constexpr bool
-            is_mapped_v<DBOs, Lookup, polyfill::void_t<storage_pick_table_t<Lookup, DBOs>>> = true;
+        struct is_mapped<DBOs, Lookup, polyfill::void_t<storage_pick_table_t<Lookup, DBOs>>> : std::true_type {};
+#else
+        template<class DBOs, class Lookup, class SFINAE = storage_find_table_t<Lookup, DBOs>>
+        struct is_mapped : std::true_type {};
+        template<class DBOs, class Lookup>
+        struct is_mapped<DBOs, Lookup, polyfill::nonesuch> : std::false_type {};
+#endif
 
         template<class DBOs, class Lookup>
-        using is_mapped = polyfill::bool_constant<is_mapped_v<DBOs, Lookup>>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_mapped_v = is_mapped<DBOs, Lookup>::value;
     }
 }
 
@@ -9235,12 +9239,11 @@ namespace sqlite_orm {
         namespace storage_traits {
 
             /**
-             *  DBOs - db_objects_tuple type
-             *  T - mapped or unmapped data type
+             *  DBO - db object (table)
              */
-            template<class DBOs>
+            template<class DBO>
             struct storage_mapped_columns_impl
-                : tuple_transformer<filter_tuple_t<elements_type_t<DBOs>, is_column>, field_type_t> {};
+                : tuple_transformer<filter_tuple_t<elements_type_t<DBO>, is_column>, field_type_t> {};
 
             template<>
             struct storage_mapped_columns_impl<polyfill::nonesuch> {
@@ -9249,7 +9252,7 @@ namespace sqlite_orm {
 
             /**
              *  DBOs - db_objects_tuple type
-             *  T - mapped or unmapped data type
+             *  Lookup - mapped or unmapped data type
              */
             template<class DBOs, class Lookup>
             struct storage_mapped_columns : storage_mapped_columns_impl<storage_find_table_t<Lookup, DBOs>> {};
@@ -19119,7 +19122,7 @@ namespace sqlite_orm {
         template<class Table, satisfies<is_table, Table>>
         sync_schema_result storage_t<DBO...>::sync_table(const Table& table, sqlite3* db, bool preserve) {
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
-            if(std::is_same<T, dbstat>::value) {
+            if(std::is_same<Table, dbstat>::value) {
                 return sync_schema_result::already_in_sync;
             }
 #endif  //  SQLITE_ENABLE_DBSTAT_VTAB
