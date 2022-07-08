@@ -7,7 +7,7 @@
 #include "../functional/cxx_universal.h"
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/cxx_functional_polyfill.h"
-#include "index_sequence_util.h"
+#include "../functional/index_sequence_util.h"
 
 namespace sqlite_orm {
     namespace internal {

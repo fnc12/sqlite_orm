@@ -280,3 +280,41 @@ TEST_CASE("issue880") {
     Inversion inversion;
     storage.has_dependent_rows(inversion);
 }
+
+namespace {
+    class Record final {
+      public:
+        using ID = std::uint64_t;
+        using TimeMs = std::uint64_t;
+
+        inline ID id() const noexcept {
+            return m_id;
+        };
+        inline void setId(ID val) noexcept {
+            m_id = val;
+        }
+
+        inline TimeMs time() const noexcept {
+            return m_time;
+        }
+        inline void setTime(const TimeMs& val) noexcept {
+            m_time = val;
+        }
+
+      private:
+        ID m_id{};
+        TimeMs m_time{};
+    };
+}
+TEST_CASE("non-unique DBOs") {
+    auto idx1 = make_unique_index("idx_record_id", &Record::id);
+    auto idx2 = make_index("idx_record_time", &Record::time);
+    static_assert(std::is_same<decltype(idx1), decltype(idx2)>::value, "");
+    auto db = make_storage({},
+                           idx1,
+                           idx2,
+                           make_table("record",
+                                      make_column("id", &Record::setId, &Record::id),
+                                      make_column("time", &Record::setTime, &Record::time)));
+    db.sync_schema();
+}

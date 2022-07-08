@@ -15,12 +15,11 @@ namespace sqlite_orm {
         namespace storage_traits {
 
             /**
-             *  DBOs - db_objects_tuple type
-             *  T - mapped or unmapped data type
+             *  DBO - db object (table)
              */
-            template<class DBOs>
+            template<class DBO>
             struct storage_mapped_columns_impl
-                : tuple_transformer<filter_tuple_t<elements_type_t<DBOs>, is_column>, field_type_t> {};
+                : tuple_transformer<filter_tuple_t<elements_type_t<DBO>, is_column>, field_type_t> {};
 
             template<>
             struct storage_mapped_columns_impl<polyfill::nonesuch> {
@@ -29,7 +28,7 @@ namespace sqlite_orm {
 
             /**
              *  DBOs - db_objects_tuple type
-             *  T - mapped or unmapped data type
+             *  Lookup - mapped or unmapped data type
              */
             template<class DBOs, class Lookup>
             struct storage_mapped_columns : storage_mapped_columns_impl<storage_find_table_t<Lookup, DBOs>> {};
