@@ -1045,6 +1045,77 @@ namespace sqlite_orm {
 
 // #include "../functional/cxx_universal.h"
 
+// #include "../functional/index_sequence_util.h"
+
+#include <type_traits>  //  std::index_sequence, std::make_index_sequence
+#include <utility>  //  std::index_sequence, std::make_index_sequence
+
+// #include "../functional/cxx_universal.h"
+
+#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
+#include <array>
+#endif
+
+namespace sqlite_orm {
+    namespace internal {
+        /**
+         *  Get the first value of an index_sequence.
+         */
+        template<size_t I, size_t... Idx>
+        SQLITE_ORM_CONSTEVAL size_t first_index_sequence_value(std::index_sequence<I, Idx...>) {
+            return I;
+        }
+
+#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
+        /**
+         *  Reorder the values of an index_sequence according to the positions from a second sequence.
+         */
+        template<size_t... Value, size_t... IdxOfValue>
+        SQLITE_ORM_CONSTEVAL auto reorder_index_sequence(std::index_sequence<Value...>,
+                                                         std::index_sequence<IdxOfValue...>) {
+            constexpr std::array<size_t, sizeof...(Value)> values{Value...};
+            return std::index_sequence<values[sizeof...(Value) - 1u - IdxOfValue]...>{};
+        }
+
+        template<size_t Value, size_t IdxOfValue>
+        SQLITE_ORM_CONSTEVAL std::index_sequence<Value> reorder_index_sequence(std::index_sequence<Value>,
+                                                                               std::index_sequence<IdxOfValue>) {
+            return {};
+        }
+
+        inline SQLITE_ORM_CONSTEVAL std::index_sequence<> reorder_index_sequence(std::index_sequence<>,
+                                                                                 std::index_sequence<>) {
+            return {};
+        }
+
+        /**
+         *  Reverse the values of an index_sequence.
+         */
+        template<size_t... Idx>
+        SQLITE_ORM_CONSTEVAL auto reverse_index_sequence(std::index_sequence<Idx...>) {
+            return reorder_index_sequence(std::index_sequence<Idx...>{}, std::make_index_sequence<sizeof...(Idx)>{});
+        }
+#endif
+
+        template<class... Seq>
+        struct flatten_idxseq {
+            using type = std::index_sequence<>;
+        };
+
+        template<size_t... Ix>
+        struct flatten_idxseq<std::index_sequence<Ix...>> {
+            using type = std::index_sequence<Ix...>;
+        };
+
+        template<size_t... As, size_t... Bs, class... Seq>
+        struct flatten_idxseq<std::index_sequence<As...>, std::index_sequence<Bs...>, Seq...>
+            : flatten_idxseq<std::index_sequence<As..., Bs...>, Seq...> {};
+
+        template<class... Seq>
+        using flatten_idxseq_t = typename flatten_idxseq<Seq...>::type;
+    }
+}
+
 namespace sqlite_orm {
     namespace internal {
 
@@ -1067,27 +1138,13 @@ namespace sqlite_orm {
         template<class Tpl, class Seq>
         using tuple_from_index_sequence_t = typename tuple_from_index_sequence<Tpl, Seq>::type;
 
-        template<class... Seq>
-        struct concat_idx_seq {
-            using type = std::index_sequence<>;
-        };
-
-        template<size_t... Idx>
-        struct concat_idx_seq<std::index_sequence<Idx...>> {
-            using type = std::index_sequence<Idx...>;
-        };
-
-        template<size_t... As, size_t... Bs, class... Seq>
-        struct concat_idx_seq<std::index_sequence<As...>, std::index_sequence<Bs...>, Seq...>
-            : concat_idx_seq<std::index_sequence<As..., Bs...>, Seq...> {};
-
         template<class Tpl, template<class...> class Pred, template<class...> class Proj, class Seq>
         struct filter_tuple_sequence;
 
 #ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
         template<class Tpl, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
         struct filter_tuple_sequence<Tpl, Pred, Proj, std::index_sequence<Idx...>>
-            : concat_idx_seq<std::conditional_t<Pred<Proj<std::tuple_element_t<Idx, Tpl>>>::value,
+            : flatten_idxseq<std::conditional_t<Pred<Proj<std::tuple_element_t<Idx, Tpl>>>::value,
                                                 std::index_sequence<Idx>,
                                                 std::index_sequence<>>...> {};
 #else
@@ -1103,7 +1160,7 @@ namespace sqlite_orm {
 
         template<class Tpl, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
         struct filter_tuple_sequence<Tpl, Pred, Proj, std::index_sequence<Idx...>>
-            : concat_idx_seq<typename tuple_seq_single<Idx, Proj<std::tuple_element_t<Idx, Tpl>>, Pred>::type...> {};
+            : flatten_idxseq<typename tuple_seq_single<Idx, Proj<std::tuple_element_t<Idx, Tpl>>, Pred>::type...> {};
 #endif
 
         template<class Tpl,
@@ -9868,60 +9925,7 @@ namespace sqlite_orm {
 
 // #include "functional/mpl.h"
 
-// #include "typed_comparator.h"
-
-// #include "tuple_helper/index_sequence_util.h"
-
-#include <type_traits>  //  std::index_sequence, std::make_index_sequence
-
-// #include "../functional/cxx_universal.h"
-
-#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
-#include <array>
-#endif
-
-namespace sqlite_orm {
-    namespace internal {
-        /**
-         *  Get the first value of an index_sequence.
-         */
-        template<size_t I, size_t... Idx>
-        SQLITE_ORM_CONSTEVAL size_t first_index_sequence_value(std::index_sequence<I, Idx...>) {
-            return I;
-        }
-
-#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
-        /**
-         *  Reorder the values of an index_sequence according to the positions from a second sequence.
-         */
-        template<size_t... Value, size_t... IdxOfValue>
-        SQLITE_ORM_CONSTEVAL auto reorder_index_sequence(std::index_sequence<Value...>,
-                                                         std::index_sequence<IdxOfValue...>) {
-            constexpr std::array<size_t, sizeof...(Value)> values{Value...};
-            return std::index_sequence<values[sizeof...(Value) - 1u - IdxOfValue]...>{};
-        }
-
-        template<size_t Value, size_t IdxOfValue>
-        SQLITE_ORM_CONSTEVAL std::index_sequence<Value> reorder_index_sequence(std::index_sequence<Value>,
-                                                                               std::index_sequence<IdxOfValue>) {
-            return {};
-        }
-
-        inline SQLITE_ORM_CONSTEVAL std::index_sequence<> reorder_index_sequence(std::index_sequence<>,
-                                                                                 std::index_sequence<>) {
-            return {};
-        }
-
-        /**
-         *  Reverse the values of an index_sequence.
-         */
-        template<size_t... Idx>
-        SQLITE_ORM_CONSTEVAL auto reverse_index_sequence(std::index_sequence<Idx...>) {
-            return reorder_index_sequence(std::index_sequence<Idx...>{}, std::make_index_sequence<sizeof...(Idx)>{});
-        }
-#endif
-    }
-}
+// #include "functional/index_sequence_util.h"
 
 // #include "tuple_helper/tuple_filter.h"
 
@@ -9939,7 +9943,7 @@ namespace sqlite_orm {
 
 // #include "../functional/cxx_functional_polyfill.h"
 
-// #include "index_sequence_util.h"
+// #include "../functional/index_sequence_util.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -10059,6 +10063,8 @@ namespace sqlite_orm {
 }
 
 // #include "member_traits/member_traits.h"
+
+// #include "typed_comparator.h"
 
 // #include "type_traits.h"
 
@@ -19006,7 +19012,7 @@ namespace sqlite_orm {
 
 // #include "../functional/static_magic.h"
 
-// #include "../tuple_helper/index_sequence_util.h"
+// #include "../functional/index_sequence_util.h"
 
 // #include "../tuple_helper/tuple_filter.h"
 
