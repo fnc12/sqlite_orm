@@ -801,6 +801,7 @@ namespace sqlite_orm {
                     case conflict_clause_t::replace:
                         return "REPLACE";
                 }
+                return {};
             }
         };
 

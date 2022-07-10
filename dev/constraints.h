@@ -508,7 +508,7 @@ namespace sqlite_orm {
      *  AUTOINCREMENT keyword. [Deprecation notice] Use `primary_key().autoincrement()` instead of using this function.
      *  This function will be removed in 1.9
      */
-    inline internal::autoincrement_t autoincrement() {
+    [[deprecated("Use primary_key().autoincrement()` instead")]] inline internal::autoincrement_t autoincrement() {
         return {};
     }
 

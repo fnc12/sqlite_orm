@@ -1732,7 +1732,7 @@ namespace sqlite_orm {
      *  AUTOINCREMENT keyword. [Deprecation notice] Use `primary_key().autoincrement()` instead of using this function.
      *  This function will be removed in 1.9
      */
-    inline internal::autoincrement_t autoincrement() {
+    [[deprecated("Use primary_key().autoincrement()` instead")]] inline internal::autoincrement_t autoincrement() {
         return {};
     }
 
@@ -6582,7 +6582,7 @@ namespace sqlite_orm {
      *  Example: storage.get_all<Employee>(group_by(&Employee::name), having(greater_than(count(&Employee::name), 2)));
      */
     template<class T>
-    internal::having_t<T> having(T expression) {
+    [[deprecated("Use group_by(...).having(...) instead")]] internal::having_t<T> having(T expression) {
         return {std::move(expression)};
     }
 }
@@ -15763,6 +15763,7 @@ namespace sqlite_orm {
                     case conflict_clause_t::replace:
                         return "REPLACE";
                 }
+                return {};
             }
         };
 
