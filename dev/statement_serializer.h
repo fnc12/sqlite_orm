@@ -783,18 +783,56 @@ namespace sqlite_orm {
             }
         };
 
+        template<>
+        struct statement_serializer<conflict_clause_t, void> {
+            using statement_type = conflict_clause_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                switch(statement) {
+                    case conflict_clause_t::rollback:
+                        return "ROLLBACK";
+                    case conflict_clause_t::abort:
+                        return "ABORT";
+                    case conflict_clause_t::fail:
+                        return "FAIL";
+                    case conflict_clause_t::ignore:
+                        return "IGNORE";
+                    case conflict_clause_t::replace:
+                        return "REPLACE";
+                }
+                return {};
+            }
+        };
+
         template<class... Cs>
         struct statement_serializer<primary_key_t<Cs...>, void> {
             using statement_type = primary_key_t<Cs...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
-                ss << static_cast<std::string>(c);
+                ss << "PRIMARY KEY";
+                switch(statement.options.asc_option) {
+                    case statement_type::order_by::ascending:
+                        ss << " ASC";
+                        break;
+                    case statement_type::order_by::descending:
+                        ss << " DESC";
+                        break;
+                    default:
+                        break;
+                }
+                if(statement.options.conflict_clause_is_on) {
+                    ss << " ON CONFLICT " << serialize(statement.options.conflict_clause, context);
+                }
+                if(statement.options.autoincrement_option) {
+                    ss << " AUTOINCREMENT";
+                }
                 using columns_tuple = typename statement_type::columns_tuple;
                 const size_t columnsCount = std::tuple_size<columns_tuple>::value;
                 if(columnsCount) {
-                    ss << "(" << streaming_mapped_columns_expressions(c.columns, context) << ")";
+                    ss << "(" << streaming_mapped_columns_expressions(statement.columns, context) << ")";
                 }
                 return ss.str();
             }

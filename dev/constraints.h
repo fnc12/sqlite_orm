@@ -27,29 +27,26 @@ namespace sqlite_orm {
          */
         struct autoincrement_t {};
 
+        enum class conflict_clause_t {
+            rollback,
+            abort,
+            fail,
+            ignore,
+            replace,
+        };
+
         struct primary_key_base {
             enum class order_by {
                 unspecified,
                 ascending,
                 descending,
             };
-
-            order_by asc_option = order_by::unspecified;
-
-            operator std::string() const {
-                std::string res = "PRIMARY KEY";
-                switch(this->asc_option) {
-                    case order_by::ascending:
-                        res += " ASC";
-                        break;
-                    case order_by::descending:
-                        res += " DESC";
-                        break;
-                    default:
-                        break;
-                }
-                return res;
-            }
+            struct {
+                order_by asc_option = order_by::unspecified;
+                conflict_clause_t conflict_clause = conflict_clause_t::rollback;
+                bool conflict_clause_is_on = false;
+                bool autoincrement_option = false;
+            } options;
         };
 
         /**
@@ -59,22 +56,64 @@ namespace sqlite_orm {
          */
         template<class... Cs>
         struct primary_key_t : primary_key_base {
+            using self = primary_key_t<Cs...>;
             using order_by = primary_key_base::order_by;
             using columns_tuple = std::tuple<Cs...>;
 
             columns_tuple columns;
 
-            primary_key_t(decltype(columns) c) : columns(move(c)) {}
+            primary_key_t(decltype(columns) columns) : columns(move(columns)) {}
 
-            primary_key_t<Cs...> asc() const {
+            self asc() const {
                 auto res = *this;
-                res.asc_option = order_by::ascending;
+                res.options.asc_option = order_by::ascending;
                 return res;
             }
 
-            primary_key_t<Cs...> desc() const {
+            self desc() const {
                 auto res = *this;
-                res.asc_option = order_by::descending;
+                res.options.asc_option = order_by::descending;
+                return res;
+            }
+
+            self autoincrement() const {
+                auto res = *this;
+                res.options.autoincrement_option = true;
+                return res;
+            }
+
+            self on_conflict_rollback() const {
+                auto res = *this;
+                res.options.conflict_clause_is_on = true;
+                res.options.conflict_clause = conflict_clause_t::rollback;
+                return res;
+            }
+
+            self on_conflict_abort() const {
+                auto res = *this;
+                res.options.conflict_clause_is_on = true;
+                res.options.conflict_clause = conflict_clause_t::abort;
+                return res;
+            }
+
+            self on_conflict_fail() const {
+                auto res = *this;
+                res.options.conflict_clause_is_on = true;
+                res.options.conflict_clause = conflict_clause_t::fail;
+                return res;
+            }
+
+            self on_conflict_ignore() const {
+                auto res = *this;
+                res.options.conflict_clause_is_on = true;
+                res.options.conflict_clause = conflict_clause_t::ignore;
+                return res;
+            }
+
+            self on_conflict_replace() const {
+                auto res = *this;
+                res.options.conflict_clause_is_on = true;
+                res.options.conflict_clause = conflict_clause_t::replace;
                 return res;
             }
         };
@@ -465,7 +504,11 @@ namespace sqlite_orm {
         return {{}};
     }
 
-    inline internal::autoincrement_t autoincrement() {
+    /**
+     *  AUTOINCREMENT keyword. [Deprecation notice] Use `primary_key().autoincrement()` instead of using this function.
+     *  This function will be removed in 1.9
+     */
+    [[deprecated("Use primary_key().autoincrement()` instead")]] inline internal::autoincrement_t autoincrement() {
         return {};
     }
 
