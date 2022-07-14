@@ -79,7 +79,7 @@ TEST_CASE("foreign key static") {
                                            functionDeclFilePathFk,
                                            primary_key(&FunctionDecl::function_name, &FunctionDecl::file_path)),
                                 make_table("var_decls",
-                                           make_column("id", &VarDecl::id, autoincrement(), primary_key()),
+                                           make_column("id", &VarDecl::id, primary_key().autoincrement()),
                                            make_column("name", &VarDecl::name),
                                            make_column("type", &VarDecl::type),
                                            make_column("is_global", &VarDecl::is_global),
