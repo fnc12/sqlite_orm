@@ -124,13 +124,12 @@ TEST_CASE("issue854") {
     struct A : public Base {
         int64_t id;
     };
-    auto storage =
-        make_storage({},
-                     make_table("entries",
-                                make_column("id", &A::id, sqlite_orm::autoincrement(), sqlite_orm::primary_key()),
-                                make_column("name", &A::name),
-                                make_column("timestamp", &A::timestamp),
-                                unique(column<A>(&Base::name), column<A>(&Base::timestamp))));
+    auto storage = make_storage({},
+                                make_table("entries",
+                                           make_column("id", &A::id, sqlite_orm::primary_key().autoincrement()),
+                                           make_column("name", &A::name),
+                                           make_column("timestamp", &A::timestamp),
+                                           unique(column<A>(&Base::name), column<A>(&Base::timestamp))));
     storage.sync_schema();
 }
 

@@ -13,7 +13,7 @@ TEST_CASE("table::find_column_name") {
             std::string phoneNumber;
             int visitsCount = 0;
         };
-        auto contactIdColumn = make_column("contact_id", &Contact::id, primary_key(), autoincrement());
+        auto contactIdColumn = make_column("contact_id", &Contact::id, primary_key().autoincrement());
         {
             using column_type = decltype(contactIdColumn);
             STATIC_REQUIRE(internal::is_column<column_type>::value);
@@ -92,14 +92,13 @@ TEST_CASE("table::find_column_name") {
                 this->_visitsCount = value;
             }
         };
-        auto table =
-            make_table("contacts",
-                       make_column("contact_id", &Contact::id, &Contact::setId, primary_key(), autoincrement()),
-                       make_column("first_name", &Contact::firstName, &Contact::setFirstName),
-                       make_column("last_name", &Contact::lastName, &Contact::setLastName),
-                       make_column("country_code", &Contact::countryCode, &Contact::setCountryCode),
-                       make_column("phone_number", &Contact::phoneNumber, &Contact::setPhoneNumber),
-                       make_column("visits_count", &Contact::visitsCount, &Contact::setVisitsCount));
+        auto table = make_table("contacts",
+                                make_column("contact_id", &Contact::id, &Contact::setId, primary_key().autoincrement()),
+                                make_column("first_name", &Contact::firstName, &Contact::setFirstName),
+                                make_column("last_name", &Contact::lastName, &Contact::setLastName),
+                                make_column("country_code", &Contact::countryCode, &Contact::setCountryCode),
+                                make_column("phone_number", &Contact::phoneNumber, &Contact::setPhoneNumber),
+                                make_column("visits_count", &Contact::visitsCount, &Contact::setVisitsCount));
 
         REQUIRE(*table.find_column_name(&Contact::id) == "contact_id");
         REQUIRE(*table.find_column_name(&Contact::setId) == "contact_id");

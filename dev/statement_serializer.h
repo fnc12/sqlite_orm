@@ -805,6 +805,16 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T>
+        struct statement_serializer<primary_key_with_autoincrement<T>, void> {
+            using statement_type = primary_key_with_autoincrement<T>;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                return serialize(statement.primary_key, context) + " AUTOINCREMENT";
+            }
+        };
+
         template<class... Cs>
         struct statement_serializer<primary_key_t<Cs...>, void> {
             using statement_type = primary_key_t<Cs...>;
@@ -825,9 +835,6 @@ namespace sqlite_orm {
                 }
                 if(statement.options.conflict_clause_is_on) {
                     ss << " ON CONFLICT " << serialize(statement.options.conflict_clause, context);
-                }
-                if(statement.options.autoincrement_option) {
-                    ss << " AUTOINCREMENT";
                 }
                 using columns_tuple = typename statement_type::columns_tuple;
                 const size_t columnsCount = std::tuple_size<columns_tuple>::value;

@@ -152,7 +152,7 @@ int main(int argc, const char* argv[]) {
 
     auto storage = make_storage(db_name,
                                 make_table("Persons",
-                                           make_column("id", &Person::id, primary_key(), autoincrement()),
+                                           make_column("id", &Person::id, primary_key().autoincrement()),
                                            make_column("name", &Person::name),
                                            make_column("birthdate", &Person::birthdate)));
 

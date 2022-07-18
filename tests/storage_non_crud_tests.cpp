@@ -282,7 +282,7 @@ TEST_CASE("Select") {
 
     auto storage = make_storage(dbFileName,
                                 make_table("WORDS",
-                                           make_column("ID", &Word::id, primary_key(), autoincrement()),
+                                           make_column("ID", &Word::id, primary_key().autoincrement()),
                                            make_column("CURRENT_WORD", &Word::currentWord),
                                            make_column("BEFORE_WORD", &Word::beforeWord),
                                            make_column("AFTER_WORD", &Word::afterWord),

@@ -166,11 +166,11 @@ TEST_CASE("statement_serializer select_t") {
                 };
 
                 auto t1 = make_table("Emp",
-                                     make_column("empno", &Employee::m_empno, primary_key(), autoincrement()),
+                                     make_column("empno", &Employee::m_empno, primary_key().autoincrement()),
                                      make_column("deptno", &Employee::m_deptno),
                                      foreign_key(&Employee::m_deptno).references(&Department::m_deptno));
                 auto t2 =
-                    make_table("Dept", make_column("deptno", &Department::m_deptno, primary_key(), autoincrement()));
+                    make_table("Dept", make_column("deptno", &Department::m_deptno, primary_key().autoincrement()));
 
                 using db_objects_t = internal::db_objects_tuple<decltype(t1), decltype(t2)>;
                 db_objects_t storage{t1, t2};

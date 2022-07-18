@@ -45,8 +45,16 @@ namespace sqlite_orm {
                 order_by asc_option = order_by::unspecified;
                 conflict_clause_t conflict_clause = conflict_clause_t::rollback;
                 bool conflict_clause_is_on = false;
-                bool autoincrement_option = false;
             } options;
+        };
+
+        template<class T>
+        struct primary_key_with_autoincrement {
+            using primary_key_type = T;
+
+            primary_key_type primary_key;
+
+            primary_key_with_autoincrement(primary_key_type primary_key_) : primary_key(primary_key_) {}
         };
 
         /**
@@ -76,10 +84,8 @@ namespace sqlite_orm {
                 return res;
             }
 
-            self autoincrement() const {
-                auto res = *this;
-                res.options.autoincrement_option = true;
-                return res;
+            primary_key_with_autoincrement<self> autoincrement() const {
+                return {*this};
             }
 
             self on_conflict_rollback() const {
@@ -422,7 +428,13 @@ namespace sqlite_orm {
         using is_foreign_key = polyfill::bool_constant<is_foreign_key_v<T>>;
 
         template<class T>
-        using is_primary_key = polyfill::is_specialization_of<T, primary_key_t>;
+        struct is_primary_key : std::false_type {};
+
+        template<class... Cs>
+        struct is_primary_key<primary_key_t<Cs...>> : std::true_type {};
+
+        template<class T>
+        struct is_primary_key<primary_key_with_autoincrement<T>> : std::true_type {};
 
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_primary_key_v = is_primary_key<T>::value;
@@ -444,10 +456,12 @@ namespace sqlite_orm {
          */
         template<typename T>
         struct is_primary_key_insertable
-            : polyfill::disjunction<mpl::instantiate<mpl::disjunction<check_if_tuple_has<is_autoincrement>,
-                                                                      check_if_tuple_has_template<default_t>>,
-                                                     constraints_type_t<T>>,
-                                    std::is_base_of<integer_printer, type_printer<field_type_t<T>>>> {
+            : polyfill::disjunction<
+                  mpl::instantiate<mpl::disjunction<check_if_tuple_has<is_autoincrement>,
+                                                    check_if_tuple_has_template<default_t>,
+                                                    check_if_tuple_has_template<primary_key_with_autoincrement>>,
+                                   constraints_type_t<T>>,
+                  std::is_base_of<integer_printer, type_printer<field_type_t<T>>>> {
 
             static_assert(tuple_has<is_primary_key, constraints_type_t<T>>::value, "an unexpected type was passed");
         };
@@ -460,6 +474,7 @@ namespace sqlite_orm {
                                               check_if_is_template<unique_t>,
                                               check_if_is_template<default_t>,
                                               check_if_is_template<check_t>,
+                                              check_if_is_template<primary_key_with_autoincrement>,
                                               check_if_is_type<collate_constraint_t>,
 #if SQLITE_VERSION_NUMBER >= 3031000
                                               check_if<is_generated_always>,
