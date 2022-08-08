@@ -18431,7 +18431,7 @@ namespace sqlite_orm {
                             ss << "SELECT COUNT(*)"
                                << " FROM " << streaming_identifier(table.name) << " WHERE ";
                             bool first = true;
-                            iterate_tuple(foreignKey.columns, [&ss, &table, &first](auto& colRef) mutable {
+                            iterate_tuple(foreignKey.columns, [&](auto& colRef) mutable {
                                 auto* columnName = table.find_column_name(colRef);
                                 if(!columnName) {
                                     throw std::system_error{orm_error_code::column_not_found};
