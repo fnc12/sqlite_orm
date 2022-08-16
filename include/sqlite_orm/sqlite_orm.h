@@ -18416,7 +18416,7 @@ namespace sqlite_orm {
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
-            template<class O>
+            /*template<class O>
             bool has_dependent_rows(const O& object) {
                 auto res = false;
                 iterate_tuple<true>(
@@ -18458,7 +18458,7 @@ namespace sqlite_orm {
                         });
                     });
                 return res;
-            }
+            }*/
         };  // struct storage_t
     }
 

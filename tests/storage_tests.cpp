@@ -151,7 +151,7 @@ TEST_CASE("Storage copy") {
     storageCopy.remove_all<User>();
 }
 
-TEST_CASE("has_dependent_rows") {
+/*TEST_CASE("has_dependent_rows") {
     struct User {
         int id = 0;
         std::string name;
@@ -189,7 +189,7 @@ TEST_CASE("has_dependent_rows") {
     storage.insert(Visit{0, user5.id, 100});
 
     REQUIRE(storage.has_dependent_rows(user5));
-}
+}*/
 
 TEST_CASE("column_name") {
     struct User {
@@ -219,7 +219,7 @@ TEST_CASE("column_name") {
     REQUIRE(storage.find_column_name(&Visit::notUsed) == nullptr);
 }
 
-TEST_CASE("issue880") {
+/*TEST_CASE("issue880") {
     struct Fondo {
         int id = 5;
         std::string abreviacion;
@@ -279,15 +279,16 @@ TEST_CASE("issue880") {
 
     Inversion inversion;
     storage.has_dependent_rows(inversion);
-}
+}*/
 
 namespace {
     class Record final {
       public:
         using ID = std::uint64_t;
-        using TimeMs = std::uint64_t;
+        using TimeMs = std::uint64_t
 
-        inline ID id() const noexcept {
+            inline ID
+            id() const noexcept {
             return m_id;
         };
         inline void setId(ID val) noexcept {
