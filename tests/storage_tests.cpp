@@ -285,10 +285,9 @@ namespace {
     class Record final {
       public:
         using ID = std::uint64_t;
-        using TimeMs = std::uint64_t
+        using TimeMs = std::uint64_t;
 
-            inline ID
-            id() const noexcept {
+        inline ID id() const noexcept {
             return m_id;
         };
         inline void setId(ID val) noexcept {
