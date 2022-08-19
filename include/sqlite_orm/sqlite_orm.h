@@ -13685,6 +13685,9 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& c, const C& context) const {
                 std::stringstream ss;
                 auto leftString = serialize(c.left, context);
+                if (context.use_parentheses) {
+                    ss << "(";
+                }
                 ss << leftString << " " << static_cast<std::string>(c) << " (";
                 for(size_t index = 0; index < c.argument.size(); ++index) {
                     auto& value = c.argument[index];
@@ -13694,6 +13697,9 @@ namespace sqlite_orm {
                     }
                 }
                 ss << ")";
+                if (context.use_parentheses) {
+                    ss << ")";
+                }
                 return ss.str();
             }
         };

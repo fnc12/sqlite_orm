@@ -37,4 +37,24 @@ TEST_CASE("check") {
                                                make_column("PRICE", &Book::price, check(c(&Book::price) > 0))));
         storage.sync_schema();
     }
+    {
+        struct Rect {
+            int id = 0;
+            int x = 0;
+            int y = 0;
+            int width = 0;
+            int height = 0;
+            std::string join_type = "miter";
+        };
+        auto storage = make_storage({},
+                                    make_table("RECT",
+                                               make_column("id", &Rect::id, primary_key()),
+                                               make_column("x", &Rect::x),
+                                               make_column("y", &Rect::y),
+                                               make_column("width", &Rect::width),
+                                               make_column("height", &Rect::height),
+                                               make_column("join_type", &Rect::join_type),
+                                               check(in(&Rect::join_type, {"miter", "round", "bevel"}))));
+        storage.sync_schema();
+    }
 }
