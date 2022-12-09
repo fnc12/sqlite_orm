@@ -8,6 +8,7 @@ using namespace sqlite_orm;
 
 TEST_CASE("Prepared insert range") {
     using namespace PreparedStatementTests;
+    using Catch::Matchers::Contains;
     using Catch::Matchers::UnorderedEquals;
 
     const int defaultVisitTime = 50;
@@ -17,10 +18,10 @@ TEST_CASE("Prepared insert range") {
     auto storage = make_storage(filename,
                                 make_index("user_id_index", &User::id),
                                 make_table("users",
-                                           make_column("id", &User::id, primary_key(), autoincrement()),
+                                           make_column("id", &User::id, primary_key().autoincrement()),
                                            make_column("name", &User::name)),
                                 make_table("visits",
-                                           make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                           make_column("id", &Visit::id, primary_key().autoincrement()),
                                            make_column("user_id", &Visit::userId),
                                            make_column("time", &Visit::time, default_value(defaultVisitTime)),
                                            foreign_key(&Visit::userId).references(&User::id)),
@@ -46,25 +47,15 @@ TEST_CASE("Prepared insert range") {
 
     SECTION("empty") {
         SECTION("strict") {
-            try {
-                auto statement = storage.prepare(insert_range(users.begin(), users.end()));
-                REQUIRE(false);
-            } catch(const std::system_error &e) {
-                //..
-            }
+            REQUIRE_THROWS_WITH(storage.prepare(insert_range(users.begin(), users.end())),
+                                Contains("incomplete input"));
         }
         SECTION("container with pointers") {
-            try {
-                std::vector<std::unique_ptr<User>> usersPointers;
-                auto statement = storage.prepare(insert_range<User>(usersPointers.begin(),
-                                                                    usersPointers.end(),
-                                                                    [](const std::unique_ptr<User> &pointer) {
-                                                                        return *pointer;
-                                                                    }));
-                REQUIRE(false);
-            } catch(const std::system_error &e) {
-                //..
-            }
+            std::vector<std::unique_ptr<User>> usersPointers;
+            REQUIRE_THROWS_WITH(
+                storage.prepare(
+                    insert_range(usersPointers.begin(), usersPointers.end(), &std::unique_ptr<User>::operator*)),
+                Contains("incomplete input"));
         }
     }
     SECTION("one") {
@@ -82,12 +73,8 @@ TEST_CASE("Prepared insert range") {
             std::transform(users.begin(), users.end(), std::back_inserter(usersPointers), [](const User &user) {
                 return std::make_unique<User>(user);
             });
-            auto statement =
-                storage.prepare(insert_range<User>(usersPointers.begin(),
-                                                   usersPointers.end(),
-                                                   [](const std::unique_ptr<User> &pointer) -> const User & {
-                                                       return *pointer;
-                                                   }));
+            auto statement = storage.prepare(
+                insert_range(usersPointers.begin(), usersPointers.end(), &std::unique_ptr<User>::operator*));
             REQUIRE(get<0>(statement) == usersPointers.begin());
             REQUIRE(get<1>(statement) == usersPointers.end());
             storage.execute(statement);
@@ -126,12 +113,8 @@ TEST_CASE("Prepared insert range") {
             std::transform(users.begin(), users.end(), std::back_inserter(usersPointers), [](const User &user) {
                 return std::make_unique<User>(user);
             });
-            auto statement =
-                storage.prepare(insert_range<User>(usersPointers.begin(),
-                                                   usersPointers.end(),
-                                                   [](const std::unique_ptr<User> &pointer) -> const User & {
-                                                       return *pointer;
-                                                   }));
+            auto statement = storage.prepare(
+                insert_range(usersPointers.begin(), usersPointers.end(), &std::unique_ptr<User>::operator*));
             REQUIRE(get<0>(statement) == usersPointers.begin());
             REQUIRE(get<1>(statement) == usersPointers.end());
             storage.execute(statement);

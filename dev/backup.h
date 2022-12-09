@@ -1,8 +1,10 @@
 #pragma once
 
 #include <sqlite3.h>
+#include <system_error>  //  std::system_error
 #include <string>  //  std::string
 #include <memory>
+#include <utility>  //  std::move, std::exchange
 
 #include "error_code.h"
 #include "connection_holder.h"
@@ -24,21 +26,19 @@ namespace sqlite_orm {
                      const std::string& zSourceName,
                      std::unique_ptr<connection_holder> holder_) :
                 handle(sqlite3_backup_init(to_.get(), zDestName.c_str(), from_.get(), zSourceName.c_str())),
-                to(to_), from(from_), holder(move(holder_)) {
+                holder(move(holder_)), to(to_), from(from_) {
                 if(!this->handle) {
-                    throw std::system_error(std::make_error_code(orm_error_code::failed_to_init_a_backup));
+                    throw std::system_error{orm_error_code::failed_to_init_a_backup};
                 }
             }
 
             backup_t(backup_t&& other) :
-                handle(other.handle), to(other.to), from(other.from), holder(move(other.holder)) {
-                other.handle = nullptr;
-            }
+                handle(std::exchange(other.handle, nullptr)), holder(move(other.holder)), to(other.to),
+                from(other.from) {}
 
             ~backup_t() {
                 if(this->handle) {
                     (void)sqlite3_backup_finish(this->handle);
-                    this->handle = nullptr;
                 }
             }
 
@@ -65,9 +65,9 @@ namespace sqlite_orm {
 
           protected:
             sqlite3_backup* handle = nullptr;
+            std::unique_ptr<connection_holder> holder;
             connection_ref to;
             connection_ref from;
-            std::unique_ptr<connection_holder> holder;
         };
     }
 }

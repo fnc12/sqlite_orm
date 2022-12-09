@@ -16,10 +16,10 @@ TEST_CASE("Prepared get all") {
     auto storage = make_storage(filename,
                                 make_index("user_id_index", &User::id),
                                 make_table("users",
-                                           make_column("id", &User::id, primary_key(), autoincrement()),
+                                           make_column("id", &User::id, primary_key().autoincrement()),
                                            make_column("name", &User::name)),
                                 make_table("visits",
-                                           make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                           make_column("id", &Visit::id, primary_key().autoincrement()),
                                            make_column("user_id", &Visit::userId),
                                            make_column("time", &Visit::time, default_value(defaultVisitTime)),
                                            foreign_key(&Visit::userId).references(&User::id)),
@@ -60,14 +60,14 @@ TEST_CASE("Prepared get all") {
             using Statement = decltype(statement);
             using ExpressionType = Statement::expression_type;
             using NodeTuple = internal::node_tuple<ExpressionType>::type;
-            static_assert(std::tuple_size<NodeTuple>::value == 2, "");
+            STATIC_REQUIRE(std::tuple_size<NodeTuple>::value == 2);
             {
                 using Arg0 = std::tuple_element<0, NodeTuple>::type;
-                static_assert(std::is_same<Arg0, decltype(&User::id)>::value, "");
+                STATIC_REQUIRE(std::is_same<Arg0, decltype(&User::id)>::value);
             }
             {
                 using Arg1 = std::tuple_element<1, NodeTuple>::type;
-                static_assert(std::is_same<Arg1, int>::value, "");
+                STATIC_REQUIRE(std::is_same<Arg1, int>::value);
             }
         }
         REQUIRE(get<0>(statement) == 3);
@@ -91,14 +91,14 @@ TEST_CASE("Prepared get all") {
             using Statement = decltype(statement);
             using ExpressionType = Statement::expression_type;
             using NodeTuple = internal::node_tuple<ExpressionType>::type;
-            static_assert(std::tuple_size<NodeTuple>::value == 2, "");
+            STATIC_REQUIRE(std::tuple_size<NodeTuple>::value == 2);
             {
                 using Arg0 = std::tuple_element<0, NodeTuple>::type;
-                static_assert(std::is_same<Arg0, decltype(&User::id)>::value, "");
+                STATIC_REQUIRE(std::is_same<Arg0, decltype(&User::id)>::value);
             }
             {
                 using Arg1 = std::tuple_element<1, NodeTuple>::type;
-                static_assert(std::is_same<Arg1, int>::value, "");
+                STATIC_REQUIRE(std::is_same<Arg1, int>::value);
             }
         }
         REQUIRE(get<0>(statement) == id);

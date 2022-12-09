@@ -26,10 +26,10 @@ int main() {
 
     auto storage = make_storage("",
                                 make_table("dept_master",
-                                           make_column("dept_id", &DeptMaster::deptId, autoincrement(), primary_key()),
+                                           make_column("dept_id", &DeptMaster::deptId, primary_key().autoincrement()),
                                            make_column("dept_name", &DeptMaster::deptName)),
                                 make_table("emp_master",
-                                           make_column("emp_id", &EmpMaster::empId, autoincrement(), primary_key()),
+                                           make_column("emp_id", &EmpMaster::empId, primary_key().autoincrement()),
                                            make_column("first_name", &EmpMaster::firstName),
                                            make_column("last_name", &EmpMaster::lastName),
                                            make_column("salary", &EmpMaster::salary),

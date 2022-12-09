@@ -1,11 +1,14 @@
 #pragma once
 
-#include <tuple>  //  std::tuple
+#include <tuple>  //  std::tuple, std::make_tuple
 #include <type_traits>  //  std::false_type, std::true_type
+#include <utility>  //  std::forward, std::move
+
+#include "../functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
     namespace internal {
-
+#if SQLITE_VERSION_NUMBER >= 3024000
         template<class T, class A>
         struct upsert_clause;
 
@@ -16,12 +19,12 @@ namespace sqlite_orm {
             args_tuple args;
 
             upsert_clause<args_tuple, std::tuple<>> do_nothing() {
-                return {std::move(this->args), {}};
+                return {move(this->args), {}};
             }
 
             template<class... ActionsArgs>
             upsert_clause<args_tuple, std::tuple<ActionsArgs...>> do_update(ActionsArgs... actions) {
-                return {std::move(this->args), {std::make_tuple(std::forward<ActionsArgs>(actions)...)}};
+                return {move(this->args), {std::make_tuple(std::forward<ActionsArgs>(actions)...)}};
             }
         };
 
@@ -36,10 +39,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct is_upsert_clause : std::false_type {};
-
-        template<class T, class A>
-        struct is_upsert_clause<upsert_clause<T, A>> : std::true_type {};
+        using is_upsert_clause = polyfill::is_specialization_of<T, upsert_clause>;
     }
 
     /**
@@ -58,4 +58,5 @@ namespace sqlite_orm {
     internal::conflict_target<Args...> on_conflict(Args... args) {
         return {std::tuple<Args...>(std::forward<Args>(args)...)};
     }
+#endif
 }

@@ -16,10 +16,10 @@ TEST_CASE("Prepared select") {
     auto storage = make_storage(filename,
                                 make_index("user_id_index", &User::id),
                                 make_table("users",
-                                           make_column("id", &User::id, primary_key(), autoincrement()),
+                                           make_column("id", &User::id, primary_key().autoincrement()),
                                            make_column("name", &User::name)),
                                 make_table("visits",
-                                           make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                           make_column("id", &Visit::id, primary_key().autoincrement()),
                                            make_column("user_id", &Visit::userId),
                                            make_column("time", &Visit::time, default_value(defaultVisitTime)),
                                            foreign_key(&Visit::userId).references(&User::id)),
@@ -37,17 +37,37 @@ TEST_CASE("Prepared select") {
     storage.replace(UserAndVisit{2, 1, "Glad you came"});
     storage.replace(UserAndVisit{3, 1, "Shine on"});
 
+    SECTION("const access to bindable") {
+        auto statement = storage.prepare(select(10));
+        REQUIRE(get<0>(static_cast<const decltype(statement)&>(statement)) == 10);
+    }
     SECTION("one simple argument") {
         SECTION("by val") {
-            auto statement = storage.prepare(select(10));
-            auto str = storage.dump(statement);
-            REQUIRE(get<0>(statement) == 10);
-            auto rows = storage.execute(statement);
-            REQUIRE_THAT(rows, UnorderedEquals<int>({10}));
-            get<0>(statement) = 20;
-            REQUIRE(get<0>(statement) == 20);
-            auto rows2 = storage.execute(statement);
-            REQUIRE_THAT(rows2, UnorderedEquals<int>({20}));
+            SECTION("int") {
+                auto statement = storage.prepare(select(10));
+                auto str = storage.dump(statement);
+                REQUIRE(get<0>(statement) == 10);
+                auto rows = storage.execute(statement);
+                REQUIRE_THAT(rows, UnorderedEquals<int>({10}));
+                get<0>(statement) = 20;
+                REQUIRE(get<0>(statement) == 20);
+                auto rows2 = storage.execute(statement);
+                REQUIRE_THAT(rows2, UnorderedEquals<int>({20}));
+            }
+            SECTION("null") {
+                auto statement = storage.prepare(select(nullptr));
+                REQUIRE(get<0>(statement) == nullptr);
+                auto rows = storage.execute(statement);
+                REQUIRE_THAT(rows, UnorderedEquals<std::nullptr_t>({nullptr}));
+            }
+            SECTION("optional") {
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+                auto statement = storage.prepare(select(std::optional<int>()));
+                REQUIRE(get<0>(statement) == std::nullopt);
+                auto rows = storage.execute(statement);
+                REQUIRE_THAT(rows, UnorderedEquals<std::optional<int>>({std::nullopt}));
+#endif
+            }
         }
         SECTION("by ref") {
             auto id = 10;
@@ -283,4 +303,42 @@ TEST_CASE("Prepared select") {
             }
         }
     }
+}
+
+TEST_CASE("dumping") {
+    auto storage = make_storage("");
+
+    std::string value, expected;
+
+    SECTION("expression") {
+        auto expression = select(1);
+        SECTION("default") {
+            value = storage.dump(expression);
+            expected = "SELECT 1";
+        }
+        SECTION("parametrized") {
+            value = storage.dump(expression, false);
+            expected = "SELECT 1";
+        }
+        SECTION("dump") {
+            value = storage.dump(expression, true);
+            expected = "SELECT ?";
+        }
+    }
+    SECTION("statement") {
+        auto statement = storage.prepare(select(1));
+        SECTION("default") {
+            value = storage.dump(statement);
+            expected = "SELECT ?";
+        }
+        SECTION("parametrized") {
+            value = storage.dump(statement, true);
+            expected = "SELECT ?";
+        }
+        SECTION("dump") {
+            value = storage.dump(statement, false);
+            expected = "SELECT 1";
+        }
+    }
+    REQUIRE(value == expected);
 }

@@ -4,21 +4,39 @@
 using namespace sqlite_orm;
 
 TEST_CASE("Unique") {
+    using Catch::Matchers::Contains;
 
     struct Contact {
         int id = 0;
         std::string firstName;
         std::string lastName;
         std::string email;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        Contact() = default;
+        Contact(int id, std::string firstName, std::string lastName, std::string email) :
+            id{id}, firstName{move(firstName)}, lastName{move(lastName)}, email{move(email)} {}
+#endif
     };
     struct Shape {
         int id = 0;
         std::string backgroundColor;
         std::string foregroundColor;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        Shape() = default;
+        Shape(int id, std::string backgroundColor, std::string foregroundColor) :
+            id{id}, backgroundColor{move(backgroundColor)}, foregroundColor{move(foregroundColor)} {}
+#endif
     };
     struct List {
         int id = 0;
         std::unique_ptr<std::string> email;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        List() = default;
+        List(int id, decltype(email) email) : id{id}, email{move(email)} {}
+#endif
     };
 
     auto storage = make_storage(
@@ -38,28 +56,13 @@ TEST_CASE("Unique") {
 
     storage.insert(Contact{0, "John", "Doe", "john.doe@gmail.com"});
 
-    try {
-        storage.insert(Contact{0, "Johnny", "Doe", "john.doe@gmail.com"});
-        REQUIRE(false);
-    } catch(const std::system_error& e) {
-        //..
-    } catch(...) {
-        REQUIRE(false);
-    }
+    REQUIRE_THROWS_WITH(storage.insert(Contact{0, "Johnny", "Doe", "john.doe@gmail.com"}),
+                        Contains("constraint failed"));
 
     storage.insert(Shape{0, "red", "green"});
     storage.insert(Shape{0, "red", "blue"});
-    try {
-        storage.insert(Shape{0, "red", "green"});
-        REQUIRE(false);
-    } catch(const std::system_error& e) {
-        //..
-    } catch(...) {
-        REQUIRE(false);
-    }
+    REQUIRE_THROWS_WITH(storage.insert(Shape{0, "red", "green"}), Contains("constraint failed"));
 
-    std::vector<List> lists;
-    lists.push_back(List{0, nullptr});
-    lists.push_back(List{0, nullptr});
-    storage.insert_range(lists.begin(), lists.end());
+    std::vector<List> lists(2);
+    REQUIRE_NOTHROW(storage.insert_range(lists.begin(), lists.end()));
 }

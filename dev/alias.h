@@ -7,7 +7,7 @@
 namespace sqlite_orm {
 
     /**
-     *  This is base class for every class which is used as a custom table alias.
+     *  This is base class for every class which is used as a custom table alias, column alias or expression alias.
      *  For more information please look through self_join.cpp example
      */
     struct alias_tag {};
@@ -16,7 +16,7 @@ namespace sqlite_orm {
 
         /**
          *  This is a common built-in class used for custom single character table aliases.
-         *  Also you can use language aliases `alias_a`, `alias_b` etc. instead
+         *  For convenience there exist type aliases `alias_a`, `alias_b`, ...
          */
         template<class T, char A>
         struct table_alias : alias_tag {
@@ -36,28 +36,21 @@ namespace sqlite_orm {
             using column_type = C;
 
             column_type column;
-
-            alias_column_t(){};
-
-            alias_column_t(column_type column_) : column(std::move(column_)) {}
         };
 
         template<class T, class SFINAE = void>
-        struct alias_extractor;
-
-        template<class T>
-        struct alias_extractor<T, typename std::enable_if<std::is_base_of<alias_tag, T>::value>::type> {
+        struct alias_extractor {
             static std::string get() {
-                std::stringstream ss;
-                ss << T::get();
-                return ss.str();
+                return {};
             }
         };
 
         template<class T>
-        struct alias_extractor<T, typename std::enable_if<!std::is_base_of<alias_tag, T>::value>::type> {
+        struct alias_extractor<T, std::enable_if_t<std::is_base_of<alias_tag, T>::value>> {
             static std::string get() {
-                return {};
+                std::stringstream ss;
+                ss << T::get();
+                return ss.str();
             }
         };
 
@@ -70,6 +63,17 @@ namespace sqlite_orm {
             using expression_type = E;
 
             expression_type expression;
+        };
+
+        /**
+         *  This is a common built-in class used for custom single-character column aliases.
+         *  For convenience there exist type aliases `colalias_a`, `colalias_b`, ...
+         */
+        template<char A>
+        struct column_alias : alias_tag {
+            static std::string get() {
+                return std::string(1u, A);
+            }
         };
 
         template<class T>
@@ -151,4 +155,14 @@ namespace sqlite_orm {
     using alias_y = internal::table_alias<T, 'y'>;
     template<class T>
     using alias_z = internal::table_alias<T, 'z'>;
+
+    using colalias_a = internal::column_alias<'a'>;
+    using colalias_b = internal::column_alias<'b'>;
+    using colalias_c = internal::column_alias<'c'>;
+    using colalias_d = internal::column_alias<'d'>;
+    using colalias_e = internal::column_alias<'e'>;
+    using colalias_f = internal::column_alias<'f'>;
+    using colalias_g = internal::column_alias<'g'>;
+    using colalias_h = internal::column_alias<'h'>;
+    using colalias_i = internal::column_alias<'i'>;
 }

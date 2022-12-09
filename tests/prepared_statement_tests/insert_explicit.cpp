@@ -7,6 +7,7 @@ using namespace sqlite_orm;
 
 TEST_CASE("Prepared insert explicit") {
     using namespace PreparedStatementTests;
+    using Catch::Matchers::Contains;
     using Catch::Matchers::UnorderedEquals;
 
     const int defaultVisitTime = 50;
@@ -16,10 +17,10 @@ TEST_CASE("Prepared insert explicit") {
     auto storage = make_storage(filename,
                                 make_index("user_id_index", &User::id),
                                 make_table("users",
-                                           make_column("id", &User::id, primary_key(), autoincrement()),
+                                           make_column("id", &User::id, primary_key().autoincrement()),
                                            make_column("name", &User::name)),
                                 make_table("visits",
-                                           make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                           make_column("id", &Visit::id, primary_key().autoincrement()),
                                            make_column("user_id", &Visit::userId),
                                            make_column("time", &Visit::time, default_value(defaultVisitTime)),
                                            foreign_key(&Visit::userId).references(&User::id)),
@@ -66,14 +67,7 @@ TEST_CASE("Prepared insert explicit") {
             {
                 user.id = 6;
                 user.name = "Nate Dogg";
-                try {
-                    storage.execute(statement);
-                    REQUIRE(false);
-                } catch(const std::system_error& e) {
-                    REQUIRE(storage.count<User>(where(is_equal(&User::name, "Nate Dogg"))) == 0);
-                } catch(...) {
-                    REQUIRE(false);
-                }
+                REQUIRE_THROWS_WITH(storage.execute(statement), Contains("constraint failed"));
 
                 get<0>(statement) = user;
                 auto insertedId = storage.execute(statement);

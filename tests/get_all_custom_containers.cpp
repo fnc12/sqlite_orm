@@ -6,34 +6,41 @@
 
 using namespace sqlite_orm;
 
-struct User {
-    int id = 0;
-    std::string name;
-};
+namespace {
+    struct User {
+        int id = 0;
+        std::string name;
 
-struct Comparator {
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        User() = default;
+        User(int id, std::string name) : id{id}, name{move(name)} {}
+#endif
+    };
 
-    bool operator()(const User& lhs, const User& rhs) const {
-        return lhs.id == rhs.id && lhs.name == rhs.name;
-    }
+    struct Comparator {
 
-    bool operator()(const std::unique_ptr<User>& lhs, const User& rhs) const {
-        if(lhs) {
-            return this->operator()(*lhs, rhs);
-        } else {
-            return false;
+        bool operator()(const User& lhs, const User& rhs) const {
+            return lhs.id == rhs.id && lhs.name == rhs.name;
         }
-    }
+
+        bool operator()(const std::unique_ptr<User>& lhs, const User& rhs) const {
+            if(lhs) {
+                return this->operator()(*lhs, rhs);
+            } else {
+                return false;
+            }
+        }
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-    bool operator()(const std::optional<User>& lhs, const User& rhs) const {
-        if(lhs.has_value()) {
-            return this->operator()(*lhs, rhs);
-        } else {
-            return false;
+        bool operator()(const std::optional<User>& lhs, const User& rhs) const {
+            if(lhs.has_value()) {
+                return this->operator()(*lhs, rhs);
+            } else {
+                return false;
+            }
         }
-    }
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
-};
+    };
+}
 
 struct Tester {
     const std::vector<User>& expected;
@@ -41,7 +48,7 @@ struct Tester {
     template<class E, class T>
     void testContainer(const T& users) const {
         REQUIRE(std::equal(users.begin(), users.end(), this->expected.begin(), this->expected.end(), Comparator{}));
-        static_assert(std::is_same<T, E>::value, "");
+        STATIC_REQUIRE(std::is_same<T, E>::value);
     }
 
     template<class E, class S, class T>

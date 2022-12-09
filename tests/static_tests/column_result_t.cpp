@@ -5,9 +5,9 @@
 using namespace sqlite_orm;
 
 template<class St, class E, class V>
-void runTest(V value) {
-    using Type = typename internal::column_result_t<St, V>::type;
-    static_assert(std::is_same<Type, E>::value, "");
+void runTest(V /*value*/) {
+    using Type = internal::column_result_of_t<typename St::db_objects_type, V>;
+    STATIC_REQUIRE(std::is_same<Type, E>::value);
 }
 
 TEST_CASE("column_result_t") {
@@ -37,7 +37,8 @@ TEST_CASE("column_result_t") {
         int id = 0;
         std::string comment;
     };
-    auto storage = make_storage({});
+    auto storage =
+        make_storage({}, make_table("users", make_column("id", &User::id), make_column("name", &User::name)));
 
     using Storage = decltype(storage);
     runTest<Storage, int>(&User::id);
@@ -62,8 +63,12 @@ TEST_CASE("column_result_t") {
     runTest<Storage, std::string>(sqlite_orm::typeof_(&User::id));
     runTest<Storage, std::string>(sqlite_orm::lower(&User::id));
     runTest<Storage, std::string>(sqlite_orm::upper(&User::id));
+    runTest<Storage, std::unique_ptr<int>>(max(&User::id, 4));
+    runTest<Storage, std::unique_ptr<int>>(min(&User::id, 4));
     runTest<Storage, std::unique_ptr<int>>(max(&User::id));
     runTest<Storage, std::unique_ptr<std::string>>(max(&User::name));
+    runTest<Storage, std::unique_ptr<int>>(min(&User::id));
+    runTest<Storage, std::unique_ptr<std::string>>(min(&User::name));
     runTest<Storage, int>(count<User>());
     runTest<Storage, int>(count());
     {
@@ -101,4 +106,9 @@ TEST_CASE("column_result_t") {
     runTest<Storage, int64>(rowid<User>());
     runTest<Storage, int64>(oid<User>());
     runTest<Storage, int64>(_rowid_<User>());
+    runTest<Storage, std::tuple<int, std::string>>(asterisk<User>());
+    runTest<Storage, std::tuple<int, std::string>>(asterisk<alias_a<User>>());
+    runTest<Storage, std::tuple<int, std::string>>(columns(&User::id, &User::name));
+    runTest<Storage, int>(column<User>(&User::id));
+    runTest<Storage, User>(object<User>());
 }

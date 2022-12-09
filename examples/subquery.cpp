@@ -1313,6 +1313,7 @@ int main(int, char**) {
         //      WHERE location_id=1700);
         auto rows = storage.select(
             columns(&Employee::firstName, &Employee::lastName, &Employee::departmentId),
+            from<Employee>(),
             where(in(&Employee::departmentId, select(&Department::id, where(c(&Department::locationId) == 1700)))));
         cout << "first_name  last_name   department_id" << endl;
         cout << "----------  ----------  -------------" << endl;
@@ -1330,6 +1331,7 @@ int main(int, char**) {
         //      BETWEEN 100 AND 200);
         auto rows =
             storage.select(columns(&Employee::firstName, &Employee::lastName, &Employee::departmentId),
+                           from<Employee>(),
                            where(not_in(&Employee::departmentId,
                                         select(&Department::id, where(between(&Department::managerId, 100, 200))))));
         cout << "first_name  last_name   department_id" << endl;
@@ -1367,9 +1369,11 @@ int main(int, char**) {
         //      WHERE employee_id = employees.employee_id);
         auto rows =
             storage.select(columns(&Employee::firstName, &Employee::lastName, &Employee::id, &Employee::jobId),
-                           where(lesser_or_equal(
-                               1,
-                               select(count<JobHistory>(), where(is_equal(&Employee::id, &JobHistory::employeeId))))));
+                           from<Employee>(),
+                           where(lesser_or_equal(1,
+                                                 select(count<JobHistory>(),
+                                                        from<JobHistory>(),
+                                                        where(is_equal(&Employee::id, &JobHistory::employeeId))))));
         cout << "first_name  last_name   employee_id  job_id" << endl;
         cout << "----------  ----------  -----------  ----------" << endl;
         for(auto& row: rows) {

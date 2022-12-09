@@ -16,10 +16,10 @@ TEST_CASE("Prepared update all") {
     auto storage = make_storage(filename,
                                 make_index("user_id_index", &User::id),
                                 make_table("users",
-                                           make_column("id", &User::id, primary_key(), autoincrement()),
+                                           make_column("id", &User::id, primary_key().autoincrement()),
                                            make_column("name", &User::name)),
                                 make_table("visits",
-                                           make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                           make_column("id", &Visit::id, primary_key().autoincrement()),
                                            make_column("user_id", &Visit::userId),
                                            make_column("time", &Visit::time, default_value(defaultVisitTime)),
                                            foreign_key(&Visit::userId).references(&User::id)),
@@ -42,11 +42,11 @@ TEST_CASE("Prepared update all") {
         using Statement = decltype(statement);
         using Expression = Statement::expression_type;
         using SetTuple = internal::node_tuple<Expression>::set_tuple;
-        using SetBind = internal::bindable_filter<SetTuple>::type;
-        static_assert(std::tuple_size<SetBind>::value == 1, "");
+        using SetBind = internal::bindable_filter_t<SetTuple>;
+        STATIC_REQUIRE(std::tuple_size<SetBind>::value == 1);
         {
-            using Arg0 = std::tuple_element<0, SetBind>::type;
-            static_assert(std::is_same<Arg0, const char*>::value, "");
+            using Arg0 = std::tuple_element_t<0, SetBind>;
+            STATIC_REQUIRE(std::is_same<Arg0, const char*>::value);
         }
         REQUIRE(strcmp(get<0>(statement), "_") == 0);
         testSerializing(statement);
@@ -108,11 +108,11 @@ TEST_CASE("Prepared update all") {
         using Statement = decltype(statement);
         using Expression = Statement::expression_type;
         using SetTuple = internal::node_tuple<Expression>::set_tuple;
-        using SetBind = internal::bindable_filter<SetTuple>::type;
-        static_assert(std::tuple_size<SetBind>::value == 1, "");
+        using SetBind = internal::bindable_filter_t<SetTuple>;
+        STATIC_REQUIRE(std::tuple_size<SetBind>::value == 1);
         {
-            using Arg0 = std::tuple_element<0, SetBind>::type;
-            static_assert(std::is_same<Arg0, std::string>::value, "");
+            using Arg0 = std::tuple_element_t<0, SetBind>;
+            STATIC_REQUIRE(std::is_same<Arg0, std::string>::value);
         }
         REQUIRE(get<0>(statement) == "_");
         REQUIRE(&get<0>(statement) == &str);

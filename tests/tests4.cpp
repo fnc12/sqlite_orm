@@ -74,12 +74,22 @@ TEST_CASE("join") {
     struct User {
         int id = 0;
         std::string name;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        User() = default;
+        User(int id, std::string name) : id{id}, name{move(name)} {}
+#endif
     };
 
     struct Visit {
         int id = 0;
         int userId = 0;
         time_t date = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        Visit() = default;
+        Visit(int id, int userId, time_t date) : id{id}, userId{userId}, date{date} {}
+#endif
     };
 
     auto storage =
@@ -196,19 +206,19 @@ TEST_CASE("two joins") {
     auto storage = make_storage(
         {},
         make_table("Statement",
-                   make_column("id_statement", &Statement::id_statement, autoincrement(), primary_key()),
+                   make_column("id_statement", &Statement::id_statement, primary_key().autoincrement()),
                    make_column("date", &Statement::date)),
         make_table("Categoria",
-                   make_column("id_category", &Categoria::id_categoria, autoincrement(), primary_key()),
+                   make_column("id_category", &Categoria::id_categoria, primary_key().autoincrement()),
                    make_column("name", &Categoria::name, collate_nocase()),
                    make_column("is_expense_or_income", &Categoria::is_expense_or_income)),
         make_table("Concepto",
-                   make_column("id_concepto", &Concepto::id_concepto, autoincrement(), primary_key()),
+                   make_column("id_concepto", &Concepto::id_concepto, primary_key().autoincrement()),
                    make_column("name", &Concepto::name, collate_nocase()),
                    make_column("fkey_account", &Concepto::fkey_account),
                    foreign_key(&Concepto::fkey_account).references(&Account::id_account)),
         make_table("Account",
-                   make_column("id_account", &Account::id_account, autoincrement(), primary_key()),
+                   make_column("id_account", &Account::id_account, primary_key().autoincrement()),
                    make_column("number", &Account::number, collate_nocase()),
                    make_column("fkey_bank", &Account::fkey_bank),
                    make_column("fkey_account_owner", &Account::fkey_account_owner),
@@ -217,16 +227,16 @@ TEST_CASE("two joins") {
                    foreign_key(&Account::fkey_account_owner).references(&AccountOwner::id_owner),
                    foreign_key(&Account::fkey_bank).references(&Banco::id_bank)),
         make_table("Banco",
-                   make_column("id_bank", &Banco::id_bank, autoincrement(), primary_key()),
+                   make_column("id_bank", &Banco::id_bank, primary_key().autoincrement()),
                    make_column("nombre", &Banco::nombre, collate_nocase()),
                    make_column("ubicacion", &Banco::ubicacion, collate_nocase()),
                    make_column("fkey_Pais", &Banco::fkey_pais),
                    foreign_key(&Banco::fkey_pais).references(&Pais::id_pais)),
         make_table("AccountOwner",
-                   make_column("id_owner", &AccountOwner::id_owner, autoincrement(), primary_key()),
+                   make_column("id_owner", &AccountOwner::id_owner, primary_key().autoincrement()),
                    make_column("name", &AccountOwner::name, collate_nocase())),
         make_table("Transaccion",
-                   make_column("id_transaccion", &Transaccion::id_transaccion, autoincrement(), primary_key()),
+                   make_column("id_transaccion", &Transaccion::id_transaccion, primary_key().autoincrement()),
                    make_column("colones", &Transaccion::amount_colones),
                    make_column("dolares", &Transaccion::amount_dolares),
                    make_column("fkey_account_own", &Transaccion::fkey_account_own),
@@ -243,7 +253,7 @@ TEST_CASE("two joins") {
                    foreign_key(&Transaccion::fkey_concepto).references(&Concepto::id_concepto),
                    foreign_key(&Transaccion::fkey_statement).references(&Statement::id_statement)),
         make_table("Pais",
-                   make_column("id_pais", &Pais::id_pais, autoincrement(), primary_key()),
+                   make_column("id_pais", &Pais::id_pais, primary_key().autoincrement()),
                    make_column("name", &Pais::name, collate_nocase())));
     storage.sync_schema();
 

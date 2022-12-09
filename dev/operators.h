@@ -1,10 +1,11 @@
 #pragma once
 
 #include <type_traits>  //  std::false_type, std::true_type
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>  //  std::nullopt
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <utility>  //  std::move
+#include "functional/cxx_optional.h"
+
 #include "tags.h"
+#include "serialize_result_type.h"
 
 namespace sqlite_orm {
 
@@ -27,7 +28,7 @@ namespace sqlite_orm {
         };
 
         struct conc_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "||";
             }
         };
@@ -39,7 +40,7 @@ namespace sqlite_orm {
         using conc_t = binary_operator<L, R, conc_string>;
 
         struct add_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "+";
             }
         };
@@ -51,7 +52,7 @@ namespace sqlite_orm {
         using add_t = binary_operator<L, R, add_string, arithmetic_t, negatable_t>;
 
         struct sub_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "-";
             }
         };
@@ -63,7 +64,7 @@ namespace sqlite_orm {
         using sub_t = binary_operator<L, R, sub_string, arithmetic_t, negatable_t>;
 
         struct mul_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "*";
             }
         };
@@ -75,7 +76,7 @@ namespace sqlite_orm {
         using mul_t = binary_operator<L, R, mul_string, arithmetic_t, negatable_t>;
 
         struct div_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "/";
             }
         };
@@ -87,7 +88,7 @@ namespace sqlite_orm {
         using div_t = binary_operator<L, R, div_string, arithmetic_t, negatable_t>;
 
         struct mod_operator_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "%";
             }
         };
@@ -99,7 +100,7 @@ namespace sqlite_orm {
         using mod_t = binary_operator<L, R, mod_operator_string, arithmetic_t, negatable_t>;
 
         struct bitwise_shift_left_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "<<";
             }
         };
@@ -111,7 +112,7 @@ namespace sqlite_orm {
         using bitwise_shift_left_t = binary_operator<L, R, bitwise_shift_left_string, arithmetic_t, negatable_t>;
 
         struct bitwise_shift_right_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return ">>";
             }
         };
@@ -123,7 +124,7 @@ namespace sqlite_orm {
         using bitwise_shift_right_t = binary_operator<L, R, bitwise_shift_right_string, arithmetic_t, negatable_t>;
 
         struct bitwise_and_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "&";
             }
         };
@@ -135,7 +136,7 @@ namespace sqlite_orm {
         using bitwise_and_t = binary_operator<L, R, bitwise_and_string, arithmetic_t, negatable_t>;
 
         struct bitwise_or_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "|";
             }
         };
@@ -147,7 +148,7 @@ namespace sqlite_orm {
         using bitwise_or_t = binary_operator<L, R, bitwise_or_string, arithmetic_t, negatable_t>;
 
         struct bitwise_not_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "~";
             }
         };
@@ -165,7 +166,7 @@ namespace sqlite_orm {
         };
 
         struct assign_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "=";
             }
         };

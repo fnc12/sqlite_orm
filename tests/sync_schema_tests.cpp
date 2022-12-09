@@ -26,10 +26,15 @@ TEST_CASE("Sync schema") {
     struct UserAfter {
         int id;
         std::string name;
+
+        bool operator==(const UserBefore& userBefore) const {
+            return this->id == userBefore.id && this->name == userBefore.name;
+        }
     };
 
     //  create an old storage
     auto filename = "sync_schema_text.sqlite";
+    ::remove(filename);
     auto storage = make_storage(filename,
                                 make_table("users",
                                            make_column("id", &UserBefore::id, primary_key()),
@@ -42,9 +47,6 @@ TEST_CASE("Sync schema") {
     auto syncSchemaRes = storage.sync_schema();
 
     REQUIRE(syncSchemaRes == syncSchemaSimulationRes);
-
-    //  remove old users in case the test was launched before
-    storage.remove_all<UserBefore>();
 
     //  create c++ objects to insert into table
     std::vector<UserBefore> usersToInsert;
@@ -68,46 +70,67 @@ TEST_CASE("Sync schema") {
     auto newStorage = make_storage(
         filename,
         make_table("users", make_column("id", &UserAfter::id, primary_key()), make_column("name", &UserAfter::name)));
+    SECTION("preserve = false") {
+        syncSchemaSimulationRes = newStorage.sync_schema_simulate(false);
+        syncSchemaRes = newStorage.sync_schema(false);
 
-    syncSchemaSimulationRes = newStorage.sync_schema_simulate(true);
-
-    //  now call `sync_schema` with argument `preserve` as `true`. It will retain the data in case `sqlite_orm` needs to
-    //  remove a column
-    syncSchemaRes = newStorage.sync_schema(true);
-    REQUIRE(syncSchemaRes.size() == 1);
-    REQUIRE(syncSchemaRes.begin()->second == sync_schema_result::old_columns_removed);
-    REQUIRE(syncSchemaSimulationRes == syncSchemaRes);
-
-    //  get all users after syncing the schema
-    auto usersFromDb = newStorage.get_all<UserAfter>(order_by(&UserAfter::id));
-
-    REQUIRE(usersFromDb.size() == usersToInsert.size());
-
-    for(size_t i = 0; i < usersFromDb.size(); ++i) {
-        auto& userFromDb = usersFromDb[i];
-        auto& oldUser = usersToInsert[i];
-        REQUIRE(userFromDb.id == oldUser.id);
-        REQUIRE(userFromDb.name == oldUser.name);
+        REQUIRE(syncSchemaRes.size() == 1);
+#if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
+        REQUIRE(syncSchemaRes.begin()->second == sync_schema_result::old_columns_removed);
+#else
+        REQUIRE(syncSchemaRes.begin()->second == sync_schema_result::dropped_and_recreated);
+#endif
+        REQUIRE(syncSchemaSimulationRes == syncSchemaRes);
     }
+    SECTION("preserve = true") {
+        syncSchemaSimulationRes = newStorage.sync_schema_simulate(true);
 
-    auto usersCountBefore = newStorage.count<UserAfter>();
+        //  now call `sync_schema` with argument `preserve` as `true`. It will retain the data in case `sqlite_orm` needs to
+        //  remove a column
+        syncSchemaRes = newStorage.sync_schema(true);
+        REQUIRE(syncSchemaRes.size() == 1);
+        REQUIRE(syncSchemaRes.begin()->second == sync_schema_result::old_columns_removed);
+        REQUIRE(syncSchemaSimulationRes == syncSchemaRes);
 
-    syncSchemaSimulationRes = newStorage.sync_schema_simulate();
-    syncSchemaRes = newStorage.sync_schema();
-    REQUIRE(syncSchemaRes == syncSchemaSimulationRes);
+        //  get all users after syncing the schema
+        auto usersFromDb = newStorage.get_all<UserAfter>(order_by(&UserAfter::id));
 
-    auto usersCountAfter = newStorage.count<UserAfter>();
-    REQUIRE(usersCountBefore == usersCountAfter);
+        REQUIRE(usersFromDb.size() == usersToInsert.size());
 
-    //  test select..
-    auto ids = newStorage.select(&UserAfter::id);
-    auto users = newStorage.get_all<UserAfter>();
-    decltype(ids) idsFromGetAll;
-    idsFromGetAll.reserve(users.size());
-    std::transform(users.begin(), users.end(), std::back_inserter(idsFromGetAll), [=](auto& user) {
-        return user.id;
-    });
-    REQUIRE(std::equal(ids.begin(), ids.end(), idsFromGetAll.begin(), idsFromGetAll.end()));
+        for(size_t i = 0; i < usersFromDb.size(); ++i) {
+            auto& userFromDb = usersFromDb[i];
+            auto& oldUser = usersToInsert[i];
+            REQUIRE(userFromDb == oldUser);
+        }
+
+        auto usersCountBefore = newStorage.count<UserAfter>();
+
+        syncSchemaSimulationRes = newStorage.sync_schema_simulate();
+        syncSchemaRes = newStorage.sync_schema();
+        REQUIRE(syncSchemaRes == syncSchemaSimulationRes);
+
+        auto usersCountAfter = newStorage.count<UserAfter>();
+        REQUIRE(usersCountBefore == usersCountAfter);
+    }
+}
+
+TEST_CASE("issue854") {
+    struct Base {
+        std::string name;
+        int64_t timestamp;
+        int64_t value;
+    };
+
+    struct A : public Base {
+        int64_t id;
+    };
+    auto storage = make_storage({},
+                                make_table("entries",
+                                           make_column("id", &A::id, sqlite_orm::primary_key().autoincrement()),
+                                           make_column("name", &A::name),
+                                           make_column("timestamp", &A::timestamp),
+                                           unique(column<A>(&Base::name), column<A>(&Base::timestamp))));
+    storage.sync_schema();
 }
 
 TEST_CASE("issue521") {
@@ -115,9 +138,15 @@ TEST_CASE("issue521") {
 
     struct MockDatabasePoco {
         int id{-1};
-        std::string name{""};
+        std::string name;
         uint32_t alpha{0};
         float beta{0.0};
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        MockDatabasePoco() = default;
+        MockDatabasePoco(int id, std::string name, uint32_t alpha, float beta) :
+            id{id}, name{move(name)}, alpha{alpha}, beta{beta} {}
+#endif
     };
     std::vector<MockDatabasePoco> pocosToInsert;
 
@@ -138,8 +167,8 @@ TEST_CASE("issue521") {
 
         // --- Insert two rows
         pocosToInsert.clear();
-        pocosToInsert.push_back({-1, "Michael", 10, 10.10});
-        pocosToInsert.push_back({-1, "Joyce", 20, 20.20});
+        pocosToInsert.push_back({-1, "Michael", 10, 10.10f});
+        pocosToInsert.push_back({-1, "Joyce", 20, 20.20f});
 
         for(auto& poco: pocosToInsert) {
             auto insertedId = storage.insert(poco);
@@ -316,12 +345,22 @@ TEST_CASE("sync_schema") {
             auto syncSchemaSimulateRes = storage.sync_schema_simulate();
             auto syncSchemaRes = storage.sync_schema();
             REQUIRE(syncSchemaSimulateRes == syncSchemaRes);
+#if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
+            decltype(syncSchemaRes) expected{
+                {tableName, sync_schema_result::old_columns_removed},
+            };
+#else
             decltype(syncSchemaRes) expected{
                 {tableName, sync_schema_result::dropped_and_recreated},
             };
+#endif
             REQUIRE(syncSchemaRes == expected);
             auto users = storage.get_all<User>();
+#if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
+            REQUIRE(!users.empty());
+#else
             REQUIRE(users.empty());
+#endif
         }
     }
     SECTION("replace a column with no default value") {
@@ -331,7 +370,8 @@ TEST_CASE("sync_schema") {
                                                make_column(columnNames.age, &User::age)));
         std::map<std::string, sync_schema_result> syncSchemaSimulateRes;
         std::map<std::string, sync_schema_result> syncSchemaRes;
-        SECTION("preserve = true") {
+        SECTION(
+            "preserve = true") {  // there is NO way we can preserve data by adding a column with no default value and not nullable!
             syncSchemaSimulateRes = storage.sync_schema_simulate(true);
             syncSchemaRes = storage.sync_schema(true);
         }
@@ -367,12 +407,22 @@ TEST_CASE("sync_schema") {
             auto syncSchemaSimulateRes = storage.sync_schema_simulate();
             auto syncSchemaRes = storage.sync_schema();
             REQUIRE(syncSchemaSimulateRes == syncSchemaRes);
+#if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
+            decltype(syncSchemaRes) expected{
+                {tableName, sync_schema_result::new_columns_added_and_old_columns_removed},
+            };
+#else
             decltype(syncSchemaRes) expected{
                 {tableName, sync_schema_result::dropped_and_recreated},
             };
+#endif
             REQUIRE(syncSchemaRes == expected);
             auto users = storage.get_all<User>();
+#if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
+            REQUIRE(!users.empty());
+#else
             REQUIRE(users.empty());
+#endif
         }
     }
     SECTION("replace a column with null") {
@@ -404,12 +454,22 @@ TEST_CASE("sync_schema") {
             auto syncSchemaSimulateRes = storage.sync_schema_simulate();
             auto syncSchemaRes = storage.sync_schema();
             REQUIRE(syncSchemaSimulateRes == syncSchemaRes);
+#if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
+            decltype(syncSchemaRes) expected{
+                {tableName, sync_schema_result::new_columns_added_and_old_columns_removed},
+            };
+#else
             decltype(syncSchemaRes) expected{
                 {tableName, sync_schema_result::dropped_and_recreated},
             };
+#endif
             REQUIRE(syncSchemaRes == expected);
             auto users = storage.get_all<User>();
+#if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
+            REQUIRE(!users.empty());
+#else
             REQUIRE(users.empty());
+#endif
         }
     }
 }
@@ -425,3 +485,72 @@ TEST_CASE("sync_schema_simulate") {
     storage.sync_schema();
     storage.sync_schema_simulate();
 }
+#if SQLITE_VERSION_NUMBER >= 3031000
+TEST_CASE("sync_schema with generated columns") {
+    struct User {
+        int id = 0;
+        int hash = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        User() = default;
+        User(int id, int hash = 0) : id{id}, hash{hash} {}
+#endif
+
+        bool operator==(const User& other) const {
+            return this->id == other.id && this->hash == other.hash;
+        }
+    };
+    auto storagePath = "sync_schema_with_generated.sqlite";
+    ::remove(storagePath);
+    auto storage1 = make_storage(storagePath, make_table("users", make_column("id", &User::id)));
+    storage1.sync_schema();
+    storage1.insert(User{5});
+    SECTION("add a generated column and sync schema with preserve = false") {
+        auto generatedAlwaysConstraint = generated_always_as(c(&User::id) + 4);
+        std::vector<User> allUsers;
+        decltype(allUsers) expectedUsers;
+        SECTION("virtual") {
+            generatedAlwaysConstraint = generatedAlwaysConstraint.virtual_();
+            expectedUsers.push_back({5, 9});
+        }
+        SECTION("not specified") {
+            expectedUsers.push_back({5, 9});
+        }
+        SECTION("stored") {
+            generatedAlwaysConstraint = generatedAlwaysConstraint.stored();
+            // with preserve == false nothing is preserved since this kind of generated column requires dropping the table
+            // thus we don't expect any users to be preserved!
+        }
+        auto storage2 = make_storage(storagePath,
+                                     make_table("users",
+                                                make_column("id", &User::id),
+                                                make_column("hash", &User::hash, generatedAlwaysConstraint)));
+        storage2.sync_schema();
+        allUsers = storage2.get_all<User>();
+        REQUIRE(allUsers == expectedUsers);
+    }
+    SECTION("add a generated column and sync schema with preserve = true") {
+        auto generatedAlwaysConstraint = generated_always_as(c(&User::id) + 4);
+        std::vector<User> allUsers;
+        decltype(allUsers) expectedUsers;
+        SECTION("not specified") {
+            expectedUsers.push_back({5, 9});
+        }
+        SECTION("virtual") {
+            generatedAlwaysConstraint = generatedAlwaysConstraint.virtual_();
+            expectedUsers.push_back({5, 9});
+        }
+        SECTION("stored") {
+            generatedAlwaysConstraint = generatedAlwaysConstraint.stored();
+            expectedUsers.push_back({5, 9});
+        }
+        auto storage2 = make_storage(storagePath,
+                                     make_table("users",
+                                                make_column("id", &User::id),
+                                                make_column("hash", &User::hash, generatedAlwaysConstraint)));
+        storage2.sync_schema(true);
+        allUsers = storage2.get_all<User>();
+        REQUIRE(allUsers == expectedUsers);
+    }
+}
+#endif

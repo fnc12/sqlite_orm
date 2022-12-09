@@ -1,16 +1,18 @@
 #pragma once
 
-#include <string>  //  std::string
 #include <sqlite3.h>
+#include <string>  //  std::string
 #include <functional>  //  std::function
 #include <memory>  // std::shared_ptr
 #include <vector>  //  std::vector
+#include <sstream>
 
 #include "error_code.h"
-#include "util.h"
 #include "row_extractor.h"
 #include "journal_mode.h"
 #include "connection_holder.h"
+#include "util.h"
+#include "serializing_util.h"
 
 namespace sqlite_orm {
 
@@ -18,12 +20,8 @@ namespace sqlite_orm {
         struct storage_base;
 
         template<class T>
-        int getPragmaCallback(void* data, int argc, char** argv, char**) {
-            auto& res = *(T*)data;
-            if(argc) {
-                res = row_extractor<T>().extract(argv[0]);
-            }
-            return 0;
+        int getPragmaCallback(void* data, int argc, char** argv, char** x) {
+            return extract_single_value<T>(data, argc, argv, x);
         }
 
         template<>
@@ -60,6 +58,20 @@ namespace sqlite_orm {
                 this->_journal_mode = static_cast<decltype(this->_journal_mode)>(value);
             }
 
+            /**
+             *  https://www.sqlite.org/pragma.html#pragma_application_id
+             */
+            int application_id() {
+                return this->get_pragma<int>("application_id");
+            }
+
+            /**
+             *  https://www.sqlite.org/pragma.html#pragma_application_id
+             */
+            void application_id(int value) {
+                this->set_pragma("application_id", value);
+            }
+
             int synchronous() {
                 return this->get_pragma<int>("synchronous");
             }
@@ -92,15 +104,77 @@ namespace sqlite_orm {
 
             template<class T>
             std::vector<std::string> integrity_check(T table_name) {
-                std::ostringstream oss;
-                oss << "integrity_check(" << table_name << ")";
-                return this->get_pragma<std::vector<std::string>>(oss.str());
+                std::ostringstream ss;
+                ss << "integrity_check(" << table_name << ")" << std::flush;
+                return this->get_pragma<std::vector<std::string>>(ss.str());
             }
 
             std::vector<std::string> integrity_check(int n) {
-                std::ostringstream oss;
-                oss << "integrity_check(" << n << ")";
-                return this->get_pragma<std::vector<std::string>>(oss.str());
+                std::ostringstream ss;
+                ss << "integrity_check(" << n << ")" << std::flush;
+                return this->get_pragma<std::vector<std::string>>(ss.str());
+            }
+
+            // will include generated columns in response as opposed to table_info
+            std::vector<sqlite_orm::table_xinfo> table_xinfo(const std::string& tableName) const {
+                auto connection = this->get_connection();
+
+                std::vector<sqlite_orm::table_xinfo> result;
+                std::ostringstream ss;
+                ss << "PRAGMA "
+                      "table_xinfo("
+                   << streaming_identifier(tableName) << ")" << std::flush;
+                perform_exec(
+                    connection.get(),
+                    ss.str(),
+                    [](void* data, int argc, char** argv, char**) -> int {
+                        auto& res = *(std::vector<sqlite_orm::table_xinfo>*)data;
+                        if(argc) {
+                            auto index = 0;
+                            auto cid = std::atoi(argv[index++]);
+                            std::string name = argv[index++];
+                            std::string type = argv[index++];
+                            bool notnull = !!std::atoi(argv[index++]);
+                            std::string dflt_value = argv[index] ? argv[index] : "";
+                            ++index;
+                            auto pk = std::atoi(argv[index++]);
+                            auto hidden = std::atoi(argv[index++]);
+                            res.emplace_back(cid, move(name), move(type), notnull, move(dflt_value), pk, hidden);
+                        }
+                        return 0;
+                    },
+                    &result);
+                return result;
+            }
+
+            std::vector<sqlite_orm::table_info> table_info(const std::string& tableName) const {
+                auto connection = this->get_connection();
+
+                std::ostringstream ss;
+                ss << "PRAGMA "
+                      "table_info("
+                   << streaming_identifier(tableName) << ")" << std::flush;
+                std::vector<sqlite_orm::table_info> result;
+                perform_exec(
+                    connection.get(),
+                    ss.str(),
+                    [](void* data, int argc, char** argv, char**) -> int {
+                        auto& res = *(std::vector<sqlite_orm::table_info>*)data;
+                        if(argc) {
+                            auto index = 0;
+                            auto cid = std::atoi(argv[index++]);
+                            std::string name = argv[index++];
+                            std::string type = argv[index++];
+                            bool notnull = !!std::atoi(argv[index++]);
+                            std::string dflt_value = argv[index] ? argv[index] : "";
+                            ++index;
+                            auto pk = std::atoi(argv[index++]);
+                            res.emplace_back(cid, move(name), move(type), notnull, move(dflt_value), pk);
+                        }
+                        return 0;
+                    },
+                    &result);
+                return result;
             }
 
           private:
@@ -113,16 +187,9 @@ namespace sqlite_orm {
             template<class T>
             T get_pragma(const std::string& name) {
                 auto connection = this->get_connection();
-                auto query = "PRAGMA " + name;
                 T result;
-                auto db = connection.get();
-                auto rc = sqlite3_exec(db, query.c_str(), getPragmaCallback<T>, &result, nullptr);
-                if(rc == SQLITE_OK) {
-                    return result;
-                } else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
-                }
+                perform_exec(connection.get(), "PRAGMA " + name, getPragmaCallback<T>, &result);
+                return result;
             }
 
             /**
@@ -136,8 +203,8 @@ namespace sqlite_orm {
                     db = con.get();
                 }
                 std::stringstream ss;
-                ss << "PRAGMA " << name << " = " << value;
-                internal::perform_void_exec(db, ss.str());
+                ss << "PRAGMA " << name << " = " << value << std::flush;
+                perform_void_exec(db, ss.str());
             }
 
             void set_pragma(const std::string& name, const sqlite_orm::journal_mode& value, sqlite3* db = nullptr) {
@@ -146,8 +213,8 @@ namespace sqlite_orm {
                     db = con.get();
                 }
                 std::stringstream ss;
-                ss << "PRAGMA " << name << " = " << internal::to_string(value);
-                internal::perform_void_exec(db, ss.str());
+                ss << "PRAGMA " << name << " = " << to_string(value) << std::flush;
+                perform_void_exec(db, ss.str());
             }
         };
     }

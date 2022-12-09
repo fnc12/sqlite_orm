@@ -1,13 +1,10 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch.hpp>
-#include <iostream>
 
 using namespace sqlite_orm;
-using std::cout;
-using std::endl;
 
-TEST_CASE("table") {
-    {
+TEST_CASE("table::find_column_name") {
+    SECTION("fields") {
         struct Contact {
             int id = 0;
             std::string firstName;
@@ -16,10 +13,10 @@ TEST_CASE("table") {
             std::string phoneNumber;
             int visitsCount = 0;
         };
-        auto contactIdColumn = make_column("contact_id", &Contact::id, primary_key(), autoincrement());
+        auto contactIdColumn = make_column("contact_id", &Contact::id, primary_key().autoincrement());
         {
             using column_type = decltype(contactIdColumn);
-            static_assert(internal::is_column<column_type>::value, "");
+            STATIC_REQUIRE(internal::is_column<column_type>::value);
         }
 
         auto table = make_table("contacts",
@@ -36,7 +33,7 @@ TEST_CASE("table") {
         REQUIRE(*table.find_column_name(&Contact::phoneNumber) == "phone_number");
         REQUIRE(*table.find_column_name(&Contact::visitsCount) == "visits_count");
     }
-    {
+    SECTION("getters and setters") {
         struct Contact {
           private:
             int _id = 0;
@@ -95,14 +92,13 @@ TEST_CASE("table") {
                 this->_visitsCount = value;
             }
         };
-        auto table =
-            make_table("contacts",
-                       make_column("contact_id", &Contact::id, &Contact::setId, primary_key(), autoincrement()),
-                       make_column("first_name", &Contact::firstName, &Contact::setFirstName),
-                       make_column("last_name", &Contact::lastName, &Contact::setLastName),
-                       make_column("country_code", &Contact::countryCode, &Contact::setCountryCode),
-                       make_column("phone_number", &Contact::phoneNumber, &Contact::setPhoneNumber),
-                       make_column("visits_count", &Contact::visitsCount, &Contact::setVisitsCount));
+        auto table = make_table("contacts",
+                                make_column("contact_id", &Contact::id, &Contact::setId, primary_key().autoincrement()),
+                                make_column("first_name", &Contact::firstName, &Contact::setFirstName),
+                                make_column("last_name", &Contact::lastName, &Contact::setLastName),
+                                make_column("country_code", &Contact::countryCode, &Contact::setCountryCode),
+                                make_column("phone_number", &Contact::phoneNumber, &Contact::setPhoneNumber),
+                                make_column("visits_count", &Contact::visitsCount, &Contact::setVisitsCount));
 
         REQUIRE(*table.find_column_name(&Contact::id) == "contact_id");
         REQUIRE(*table.find_column_name(&Contact::setId) == "contact_id");
@@ -170,4 +166,44 @@ TEST_CASE("Composite key column names") {
         auto compositeKeyColumnsNames = table.composite_key_columns_names();
         REQUIRE(compositeKeyColumnsNames.empty());
     }
+}
+
+TEST_CASE("for_each_foreign_key") {
+    struct Location {
+        int id;
+        std::string place;
+        std::string country;
+        std::string city;
+        int distance;
+    };
+
+    struct Visit {
+        int id;
+        std::unique_ptr<int> location;
+        std::unique_ptr<int> user;
+        int visited_at;
+        uint8_t mark;
+    };
+    auto locationTable = make_table("location",
+                                    make_column("id", &Location::id, primary_key()),
+                                    make_column("place", &Location::place),
+                                    make_column("country", &Location::country),
+                                    make_column("city", &Location::city),
+                                    make_column("distance", &Location::distance));
+    auto visitTable = make_table("visit",
+                                 make_column("id", &Visit::id, primary_key()),
+                                 make_column("location", &Visit::location),
+                                 make_column("user", &Visit::user),
+                                 make_column("visited_at", &Visit::visited_at),
+                                 make_column("mark", &Visit::mark),
+                                 foreign_key(&Visit::location).references(&Location::id));
+    locationTable.for_each_foreign_key([](auto&) {
+        REQUIRE(false);
+    });
+    auto visitCallsCount = 0;
+    visitTable.for_each_foreign_key([&visitCallsCount](auto& foreignKey) {
+        ++visitCallsCount;
+        REQUIRE(foreignKey == foreign_key(&Visit::location).references(&Location::id));
+    });
+    REQUIRE(visitCallsCount == 1);
 }

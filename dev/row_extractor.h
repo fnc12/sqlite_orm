@@ -3,19 +3,24 @@
 #include <sqlite3.h>
 #include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::enable_if
 #include <stdlib.h>  //  atof, atoi, atoll
+#include <system_error>  //  std::system_error
 #include <string>  //  std::string, std::wstring
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <codecvt>  //  std::wstring_convert, std::codecvt_utf8_utf16
 #endif  //  SQLITE_ORM_OMITS_CODECVT
 #include <vector>  //  std::vector
 #include <cstring>  //  strlen
+#include <locale>
 #include <algorithm>  //  std::copy
 #include <iterator>  //  std::back_inserter
 #include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
 
+#include "functional/cxx_universal.h"
 #include "arithmetic_tag.h"
+#include "pointer_value.h"
 #include "journal_mode.h"
 #include "error_code.h"
+#include "is_std_ptr.h"
 
 namespace sqlite_orm {
 
@@ -27,14 +32,44 @@ namespace sqlite_orm {
     template<class V, typename Enable = void>
     struct row_extractor {
         //  used in sqlite3_exec (select)
-        V extract(const char* row_value) const;
+        V extract(const char* row_value) const = delete;
 
         //  used in sqlite_column (iteration, get_all)
-        V extract(sqlite3_stmt* stmt, int columnIndex) const;
+        V extract(sqlite3_stmt* stmt, int columnIndex) const = delete;
 
         //  used in user defined functions
-        V extract(sqlite3_value* value) const;
+        V extract(sqlite3_value* value) const = delete;
     };
+
+    template<class R>
+    int extract_single_value(void* data, int argc, char** argv, char**) {
+        auto& res = *(R*)data;
+        if(argc) {
+            res = row_extractor<R>{}.extract(argv[0]);
+        }
+        return 0;
+    }
+
+    /**
+     *  Specialization for the 'pointer-passing interface'.
+     * 
+     *  @note The 'pointer-passing' interface doesn't support (and in fact prohibits)
+     *  extracting pointers from columns.
+     */
+    template<class P, class T>
+    struct row_extractor<pointer_arg<P, T>, void> {
+        using V = pointer_arg<P, T>;
+
+        V extract(sqlite3_value* value) const {
+            return {(P*)sqlite3_value_pointer(value, T::value)};
+        }
+    };
+
+    /**
+     * Undefine using pointer_binding<> for querying values
+     */
+    template<class P, class T, class D>
+    struct row_extractor<pointer_binding<P, T, D>, void>;
 
     /**
      *  Specialization for arithmetic types.
@@ -159,11 +194,11 @@ namespace sqlite_orm {
 
     template<class V>
     struct row_extractor<V, std::enable_if_t<is_std_ptr<V>::value>> {
-        using value_type = typename is_std_ptr<V>::element_type;
+        using unqualified_type = std::remove_cv_t<typename V::element_type>;
 
         V extract(const char* row_value) const {
             if(row_value) {
-                return is_std_ptr<V>::make(row_extractor<value_type>().extract(row_value));
+                return is_std_ptr<V>::make(row_extractor<unqualified_type>().extract(row_value));
             } else {
                 return {};
             }
@@ -172,7 +207,7 @@ namespace sqlite_orm {
         V extract(sqlite3_stmt* stmt, int columnIndex) const {
             auto type = sqlite3_column_type(stmt, columnIndex);
             if(type != SQLITE_NULL) {
-                return is_std_ptr<V>::make(row_extractor<value_type>().extract(stmt, columnIndex));
+                return is_std_ptr<V>::make(row_extractor<unqualified_type>().extract(stmt, columnIndex));
             } else {
                 return {};
             }
@@ -181,7 +216,7 @@ namespace sqlite_orm {
         V extract(sqlite3_value* value) const {
             auto type = sqlite3_value_type(value);
             if(type != SQLITE_NULL) {
-                return is_std_ptr<V>::make(row_extractor<value_type>().extract(value));
+                return is_std_ptr<V>::make(row_extractor<unqualified_type>().extract(value));
             } else {
                 return {};
             }
@@ -189,73 +224,71 @@ namespace sqlite_orm {
     };
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-    template<class T>
-    struct row_extractor<std::optional<T>, void> {
-        using value_type = T;
+    template<class V>
+    struct row_extractor<V, std::enable_if_t<polyfill::is_specialization_of_v<V, std::optional>>> {
+        using unqualified_type = std::remove_cv_t<typename V::value_type>;
 
-        std::optional<T> extract(const char* row_value) const {
+        V extract(const char* row_value) const {
             if(row_value) {
-                return std::make_optional(row_extractor<value_type>().extract(row_value));
+                return std::make_optional(row_extractor<unqualified_type>().extract(row_value));
             } else {
                 return std::nullopt;
             }
         }
 
-        std::optional<T> extract(sqlite3_stmt* stmt, int columnIndex) const {
+        V extract(sqlite3_stmt* stmt, int columnIndex) const {
             auto type = sqlite3_column_type(stmt, columnIndex);
             if(type != SQLITE_NULL) {
-                return std::make_optional(row_extractor<value_type>().extract(stmt, columnIndex));
+                return std::make_optional(row_extractor<unqualified_type>().extract(stmt, columnIndex));
             } else {
                 return std::nullopt;
             }
         }
 
-        std::optional<T> extract(sqlite3_value* value) const {
+        V extract(sqlite3_value* value) const {
             auto type = sqlite3_value_type(value);
             if(type != SQLITE_NULL) {
-                return std::make_optional(row_extractor<value_type>().extract(value));
+                return std::make_optional(row_extractor<unqualified_type>().extract(value));
             } else {
                 return std::nullopt;
             }
         }
     };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+
+    template<>
+    struct row_extractor<nullptr_t> {
+        nullptr_t extract(const char* /*row_value*/) const {
+            return nullptr;
+        }
+
+        nullptr_t extract(sqlite3_stmt*, int /*columnIndex*/) const {
+            return nullptr;
+        }
+
+        nullptr_t extract(sqlite3_value*) const {
+            return nullptr;
+        }
+    };
     /**
      *  Specialization for std::vector<char>.
      */
     template<>
     struct row_extractor<std::vector<char>> {
         std::vector<char> extract(const char* row_value) const {
-            if(row_value) {
-                auto len = ::strlen(row_value);
-                return this->go(row_value, len);
-            } else {
-                return {};
-            }
+            return {row_value, row_value + (row_value ? ::strlen(row_value) : 0)};
         }
 
         std::vector<char> extract(sqlite3_stmt* stmt, int columnIndex) const {
             auto bytes = static_cast<const char*>(sqlite3_column_blob(stmt, columnIndex));
             auto len = static_cast<size_t>(sqlite3_column_bytes(stmt, columnIndex));
-            return this->go(bytes, len);
+            return {bytes, bytes + len};
         }
 
         std::vector<char> extract(sqlite3_value* value) const {
             auto bytes = static_cast<const char*>(sqlite3_value_blob(value));
             auto len = static_cast<size_t>(sqlite3_value_bytes(value));
-            return this->go(bytes, len);
-        }
-
-      protected:
-        std::vector<char> go(const char* bytes, size_t len) const {
-            if(len) {
-                std::vector<char> res;
-                res.reserve(len);
-                std::copy(bytes, bytes + len, std::back_inserter(res));
-                return res;
-            } else {
-                return {};
-            }
+            return {bytes, bytes + len};
         }
     };
 
@@ -263,40 +296,22 @@ namespace sqlite_orm {
     struct row_extractor<std::tuple<Args...>> {
 
         std::tuple<Args...> extract(char** argv) const {
-            std::tuple<Args...> res;
-            this->extract<std::tuple_size<decltype(res)>::value>(res, argv);
-            return res;
+            return this->extract(argv, std::make_index_sequence<sizeof...(Args)>{});
         }
 
         std::tuple<Args...> extract(sqlite3_stmt* stmt, int /*columnIndex*/) const {
-            std::tuple<Args...> res;
-            this->extract<std::tuple_size<decltype(res)>::value>(res, stmt);
-            return res;
+            return this->extract(stmt, std::make_index_sequence<sizeof...(Args)>{});
         }
 
       protected:
-        template<size_t I, typename std::enable_if<I != 0>::type* = nullptr>
-        void extract(std::tuple<Args...>& t, sqlite3_stmt* stmt) const {
-            using tuple_type = typename std::tuple_element<I - 1, typename std::tuple<Args...>>::type;
-            std::get<I - 1>(t) = row_extractor<tuple_type>().extract(stmt, I - 1);
-            this->extract<I - 1>(t, stmt);
+        template<size_t... Idx>
+        std::tuple<Args...> extract(sqlite3_stmt* stmt, std::index_sequence<Idx...>) const {
+            return std::tuple<Args...>{row_extractor<Args>{}.extract(stmt, Idx)...};
         }
 
-        template<size_t I, typename std::enable_if<I == 0>::type* = nullptr>
-        void extract(std::tuple<Args...>&, sqlite3_stmt*) const {
-            //..
-        }
-
-        template<size_t I, typename std::enable_if<I != 0>::type* = nullptr>
-        void extract(std::tuple<Args...>& t, char** argv) const {
-            using tuple_type = typename std::tuple_element<I - 1, typename std::tuple<Args...>>::type;
-            std::get<I - 1>(t) = row_extractor<tuple_type>().extract(argv[I - 1]);
-            this->extract<I - 1>(t, argv);
-        }
-
-        template<size_t I, typename std::enable_if<I == 0>::type* = nullptr>
-        void extract(std::tuple<Args...>&, char**) const {
-            //..
+        template<size_t... Idx>
+        std::tuple<Args...> extract(char** argv, std::index_sequence<Idx...>) const {
+            return std::tuple<Args...>{row_extractor<Args>{}.extract(argv[Idx])...};
         }
     };
 
@@ -310,10 +325,10 @@ namespace sqlite_orm {
                 if(auto res = internal::journal_mode_from_string(row_value)) {
                     return std::move(*res);
                 } else {
-                    throw std::system_error(std::make_error_code(orm_error_code::incorrect_journal_mode_string));
+                    throw std::system_error{orm_error_code::incorrect_journal_mode_string};
                 }
             } else {
-                throw std::system_error(std::make_error_code(orm_error_code::incorrect_journal_mode_string));
+                throw std::system_error{orm_error_code::incorrect_journal_mode_string};
             }
         }
 

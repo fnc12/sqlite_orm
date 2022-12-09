@@ -83,7 +83,7 @@ namespace sqlite_orm {
                 if(this->index < int(this->container.size()) && this->index >= 0) {
                     return this->currentValue;
                 } else {
-                    throw std::system_error(std::make_error_code(orm_error_code::index_is_out_of_bounds));
+                    throw std::system_error{orm_error_code::index_is_out_of_bounds};
                 }
             }
 
@@ -119,10 +119,10 @@ namespace sqlite_orm {
 
         arg_value operator[](int index) const {
             if(index < this->argsCount && index >= 0) {
-                auto valuePointer = this->values[index];
-                return {valuePointer};
+                sqlite3_value *value = this->values[index];
+                return {value};
             } else {
-                throw std::system_error(std::make_error_code(orm_error_code::index_is_out_of_bounds));
+                throw std::system_error{orm_error_code::index_is_out_of_bounds};
             }
         }
 

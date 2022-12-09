@@ -1,13 +1,22 @@
 #pragma once
 
+#include <system_error>  //  std::system_error
+#include <ostream>  //  std::ostream
 #include <string>  //  std::string
 #include <tuple>  //  std::tuple, std::make_tuple
-#include <sstream>  //  std::stringstream
 #include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
-#include <ostream>  //  std::ostream
 
-#include "table_type.h"
-#include "tuple_helper/tuple_helper.h"
+#include "functional/cxx_universal.h"
+#include "functional/cxx_type_traits_polyfill.h"
+#include "functional/mpl.h"
+#include "tuple_helper/same_or_void.h"
+#include "tuple_helper/tuple_traits.h"
+#include "tuple_helper/tuple_filter.h"
+#include "type_traits.h"
+#include "collate_argument.h"
+#include "error_code.h"
+#include "table_type_of.h"
+#include "type_printer.h"
 
 namespace sqlite_orm {
 
@@ -16,11 +25,14 @@ namespace sqlite_orm {
         /**
          *  AUTOINCREMENT constraint class.
          */
-        struct autoincrement_t {
+        struct autoincrement_t {};
 
-            operator std::string() const {
-                return "AUTOINCREMENT";
-            }
+        enum class conflict_clause_t {
+            rollback,
+            abort,
+            fail,
+            ignore,
+            replace,
         };
 
         struct primary_key_base {
@@ -29,48 +41,85 @@ namespace sqlite_orm {
                 ascending,
                 descending,
             };
+            struct {
+                order_by asc_option = order_by::unspecified;
+                conflict_clause_t conflict_clause = conflict_clause_t::rollback;
+                bool conflict_clause_is_on = false;
+            } options;
+        };
 
-            order_by asc_option = order_by::unspecified;
+        template<class T>
+        struct primary_key_with_autoincrement {
+            using primary_key_type = T;
 
-            operator std::string() const {
-                std::string res = "PRIMARY KEY";
-                switch(this->asc_option) {
-                    case order_by::ascending:
-                        res += " ASC";
-                        break;
-                    case order_by::descending:
-                        res += " DESC";
-                        break;
-                    default:
-                        break;
-                }
-                return res;
-            }
+            primary_key_type primary_key;
+
+            primary_key_with_autoincrement(primary_key_type primary_key_) : primary_key(primary_key_) {}
         };
 
         /**
          *  PRIMARY KEY constraint class.
          *  Cs is parameter pack which contains columns (member pointers and/or function pointers). Can be empty when
-         * used withen `make_column` function.
+         *  used within `make_column` function.
          */
         template<class... Cs>
         struct primary_key_t : primary_key_base {
+            using self = primary_key_t<Cs...>;
             using order_by = primary_key_base::order_by;
             using columns_tuple = std::tuple<Cs...>;
 
             columns_tuple columns;
 
-            primary_key_t(decltype(columns) c) : columns(move(c)) {}
+            primary_key_t(decltype(columns) columns) : columns(move(columns)) {}
 
-            primary_key_t<Cs...> asc() const {
+            self asc() const {
                 auto res = *this;
-                res.asc_option = order_by::ascending;
+                res.options.asc_option = order_by::ascending;
                 return res;
             }
 
-            primary_key_t<Cs...> desc() const {
+            self desc() const {
                 auto res = *this;
-                res.asc_option = order_by::descending;
+                res.options.asc_option = order_by::descending;
+                return res;
+            }
+
+            primary_key_with_autoincrement<self> autoincrement() const {
+                return {*this};
+            }
+
+            self on_conflict_rollback() const {
+                auto res = *this;
+                res.options.conflict_clause_is_on = true;
+                res.options.conflict_clause = conflict_clause_t::rollback;
+                return res;
+            }
+
+            self on_conflict_abort() const {
+                auto res = *this;
+                res.options.conflict_clause_is_on = true;
+                res.options.conflict_clause = conflict_clause_t::abort;
+                return res;
+            }
+
+            self on_conflict_fail() const {
+                auto res = *this;
+                res.options.conflict_clause_is_on = true;
+                res.options.conflict_clause = conflict_clause_t::fail;
+                return res;
+            }
+
+            self on_conflict_ignore() const {
+                auto res = *this;
+                res.options.conflict_clause_is_on = true;
+                res.options.conflict_clause = conflict_clause_t::ignore;
+                return res;
+            }
+
+            self on_conflict_replace() const {
+                auto res = *this;
+                res.options.conflict_clause_is_on = true;
+                res.options.conflict_clause = conflict_clause_t::replace;
                 return res;
             }
         };
@@ -131,22 +180,22 @@ namespace sqlite_orm {
 
         inline std::ostream& operator<<(std::ostream& os, foreign_key_action action) {
             switch(action) {
-                case decltype(action)::no_action:
+                case foreign_key_action::no_action:
                     os << "NO ACTION";
                     break;
-                case decltype(action)::restrict_:
+                case foreign_key_action::restrict_:
                     os << "RESTRICT";
                     break;
-                case decltype(action)::set_null:
+                case foreign_key_action::set_null:
                     os << "SET NULL";
                     break;
-                case decltype(action)::set_default:
+                case foreign_key_action::set_default:
                     os << "SET DEFAULT";
                     break;
-                case decltype(action)::cascade:
+                case foreign_key_action::cascade:
                     os << "CASCADE";
                     break;
-                case decltype(action)::none:
+                case foreign_key_action::none:
                     break;
             }
             return os;
@@ -229,9 +278,14 @@ namespace sqlite_orm {
             }
 
             operator bool() const {
-                return this->_action != decltype(this->_action)::none;
+                return this->_action != foreign_key_action::none;
             }
         };
+
+        template<class F>
+        bool operator==(const on_update_delete_t<F>& lhs, const on_update_delete_t<F>& rhs) {
+            return lhs._action == rhs._action;
+        }
 
         template<class... Cs, class... Rs>
         struct foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> {
@@ -242,12 +296,12 @@ namespace sqlite_orm {
             /**
              * Holds obect type of all referenced columns.
              */
-            using target_type = typename same_or_void<typename table_type<Rs>::type...>::type;
+            using target_type = typename same_or_void<table_type_of_t<Rs>...>::type;
 
             /**
              * Holds obect type of all source columns.
              */
-            using source_type = typename same_or_void<typename table_type<Cs>::type...>::type;
+            using source_type = typename same_or_void<table_type_of_t<Cs>...>::type;
 
             columns_type columns;
             references_type references;
@@ -260,7 +314,7 @@ namespace sqlite_orm {
             static_assert(!std::is_same<target_type, void>::value, "All references must have the same type");
 
             foreign_key_t(columns_type columns_, references_type references_) :
-                columns(std::move(columns_)), references(std::move(references_)),
+                columns(move(columns_)), references(move(references_)),
                 on_update(*this, true, foreign_key_action::none), on_delete(*this, false, foreign_key_action::none) {}
 
             foreign_key_t(const self& other) :
@@ -274,15 +328,13 @@ namespace sqlite_orm {
                 this->on_delete = {*this, false, other.on_delete._action};
                 return *this;
             }
-
-            template<class L>
-            void for_each_column(const L&) {}
-
-            template<class... Opts>
-            constexpr bool has_every() const {
-                return false;
-            }
         };
+
+        template<class A, class B>
+        bool operator==(const foreign_key_t<A, B>& lhs, const foreign_key_t<A, B>& rhs) {
+            return lhs.columns == rhs.columns && lhs.references == rhs.references && lhs.on_update == rhs.on_update &&
+                   lhs.on_delete == rhs.on_delete;
+        }
 
         /**
          *  Cs can be a class member pointer, a getter function member pointer or setter
@@ -295,8 +347,6 @@ namespace sqlite_orm {
 
             tuple_type columns;
 
-            foreign_key_intermediate_t(tuple_type columns_) : columns(std::move(columns_)) {}
-
             template<class... Rs>
             foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> references(Rs... refs) {
                 return {std::move(this->columns), std::make_tuple(std::forward<Rs>(refs)...)};
@@ -305,81 +355,146 @@ namespace sqlite_orm {
 #endif
 
         struct collate_constraint_t {
-            internal::collate_argument argument = internal::collate_argument::binary;
-
-            collate_constraint_t(internal::collate_argument argument_) : argument(argument_) {}
+            collate_argument argument = collate_argument::binary;
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            collate_constraint_t(collate_argument argument) : argument{argument} {}
+#endif
 
             operator std::string() const {
-                std::string res = "COLLATE " + this->string_from_collate_argument(this->argument);
-                return res;
+                return "COLLATE " + this->string_from_collate_argument(this->argument);
             }
 
-            static std::string string_from_collate_argument(internal::collate_argument argument) {
+            static std::string string_from_collate_argument(collate_argument argument) {
                 switch(argument) {
-                    case decltype(argument)::binary:
+                    case collate_argument::binary:
                         return "BINARY";
-                    case decltype(argument)::nocase:
+                    case collate_argument::nocase:
                         return "NOCASE";
-                    case decltype(argument)::rtrim:
+                    case collate_argument::rtrim:
                         return "RTRIM";
                 }
-                throw std::system_error(std::make_error_code(orm_error_code::invalid_collate_argument_enum));
-            }
-        };
-
-        struct check_string {
-            operator std::string() const {
-                return "CHECK";
+                throw std::system_error{orm_error_code::invalid_collate_argument_enum};
             }
         };
 
         template<class T>
-        struct check_t : check_string {
+        struct check_t {
+            using expression_type = T;
+
+            expression_type expression;
+        };
+
+        struct basic_generated_always {
+            enum class storage_type {
+                not_specified,
+                virtual_,
+                stored,
+            };
+
+            bool full = true;
+            storage_type storage = storage_type::not_specified;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            basic_generated_always(bool full, storage_type storage) : full{full}, storage{storage} {}
+#endif
+        };
+
+        template<class T>
+        struct generated_always_t : basic_generated_always {
             using expression_type = T;
 
             expression_type expression;
 
-            check_t(expression_type expression_) : expression(std::move(expression_)) {}
+            generated_always_t(expression_type expression_, bool full, storage_type storage) :
+                basic_generated_always{full, storage}, expression(std::move(expression_)) {}
+
+            generated_always_t<T> virtual_() {
+                return {std::move(this->expression), this->full, storage_type::virtual_};
+            }
+
+            generated_always_t<T> stored() {
+                return {std::move(this->expression), this->full, storage_type::stored};
+            }
         };
 
-        template<class T>
-        struct is_constraint : std::false_type {};
-
-        template<>
-        struct is_constraint<autoincrement_t> : std::true_type {};
-
-        template<class... Cs>
-        struct is_constraint<primary_key_t<Cs...>> : std::true_type {};
-
-        template<class... Args>
-        struct is_constraint<unique_t<Args...>> : std::true_type {};
-
-        template<class T>
-        struct is_constraint<default_t<T>> : std::true_type {};
-
-        template<class C, class R>
-        struct is_constraint<foreign_key_t<C, R>> : std::true_type {};
-
-        template<>
-        struct is_constraint<collate_constraint_t> : std::true_type {};
-
-        template<class T>
-        struct is_constraint<check_t<T>> : std::true_type {};
-
-        template<class... Args>
-        struct constraints_size;
-
-        template<>
-        struct constraints_size<> {
-            static constexpr const int value = 0;
-        };
-
-        template<class H, class... Args>
-        struct constraints_size<H, Args...> {
-            static constexpr const int value = is_constraint<H>::value + constraints_size<Args...>::value;
-        };
     }
 
+    namespace internal {
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_foreign_key_v = polyfill::is_specialization_of_v<T, foreign_key_t>;
+
+        template<class T>
+        using is_foreign_key = polyfill::bool_constant<is_foreign_key_v<T>>;
+
+        template<class T>
+        struct is_primary_key : std::false_type {};
+
+        template<class... Cs>
+        struct is_primary_key<primary_key_t<Cs...>> : std::true_type {};
+
+        template<class T>
+        struct is_primary_key<primary_key_with_autoincrement<T>> : std::true_type {};
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_primary_key_v = is_primary_key<T>::value;
+
+        template<class T>
+        using is_generated_always = polyfill::is_specialization_of<T, generated_always_t>;
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_generated_always_v = is_generated_always<T>::value;
+
+        template<class T>
+        using is_autoincrement = std::is_same<T, autoincrement_t>;
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_autoincrement_v = is_autoincrement<T>::value;
+
+        /**
+         * PRIMARY KEY INSERTABLE traits.
+         */
+        template<typename T>
+        struct is_primary_key_insertable
+            : polyfill::disjunction<
+                  mpl::instantiate<mpl::disjunction<check_if_tuple_has<is_autoincrement>,
+                                                    check_if_tuple_has_template<default_t>,
+                                                    check_if_tuple_has_template<primary_key_with_autoincrement>>,
+                                   constraints_type_t<T>>,
+                  std::is_base_of<integer_printer, type_printer<field_type_t<T>>>> {
+
+            static_assert(tuple_has<is_primary_key, constraints_type_t<T>>::value, "an unexpected type was passed");
+        };
+
+        template<class T>
+        using is_constraint =
+            mpl::instantiate<mpl::disjunction<check_if<is_autoincrement>,
+                                              check_if<is_primary_key>,
+                                              check_if<is_foreign_key>,
+                                              check_if_is_template<unique_t>,
+                                              check_if_is_template<default_t>,
+                                              check_if_is_template<check_t>,
+                                              check_if_is_template<primary_key_with_autoincrement>,
+                                              check_if_is_type<collate_constraint_t>,
+#if SQLITE_VERSION_NUMBER >= 3031000
+                                              check_if<is_generated_always>,
+#endif
+                                              // dummy tail because of SQLITE_VERSION_NUMBER checks above
+                                              mpl::always<std::false_type>>,
+                             T>;
+    }
+
+#if SQLITE_VERSION_NUMBER >= 3031000
+    template<class T>
+    internal::generated_always_t<T> generated_always_as(T expression) {
+        return {std::move(expression), true, internal::basic_generated_always::storage_type::not_specified};
+    }
+
+    template<class T>
+    internal::generated_always_t<T> as(T expression) {
+        return {std::move(expression), false, internal::basic_generated_always::storage_type::not_specified};
+    }
+#endif
 #if SQLITE_VERSION_NUMBER >= 3006019
 
     /**
@@ -404,7 +519,11 @@ namespace sqlite_orm {
         return {{}};
     }
 
-    inline internal::autoincrement_t autoincrement() {
+    /**
+     *  AUTOINCREMENT keyword. [Deprecation notice] Use `primary_key().autoincrement()` instead of using this function.
+     *  This function will be removed in 1.9
+     */
+    [[deprecated("Use primary_key().autoincrement()` instead")]] inline internal::autoincrement_t autoincrement() {
         return {};
     }
 
@@ -438,49 +557,4 @@ namespace sqlite_orm {
     internal::check_t<T> check(T t) {
         return {std::move(t)};
     }
-
-    namespace internal {
-
-        /**
-         *  FOREIGN KEY traits. Common case
-         */
-        template<class T>
-        struct is_foreign_key : std::false_type {};
-
-        /**
-         *  FOREIGN KEY traits. Specialized case
-         */
-        template<class C, class R>
-        struct is_foreign_key<internal::foreign_key_t<C, R>> : std::true_type {};
-
-        /**
-         *  PRIMARY KEY traits. Common case
-         */
-        template<class T>
-        struct is_primary_key : public std::false_type {};
-
-        /**
-         *  PRIMARY KEY traits. Specialized case
-         */
-        template<class... Cs>
-        struct is_primary_key<internal::primary_key_t<Cs...>> : public std::true_type {};
-
-        /**
-         * PRIMARY KEY INSERTABLE traits.
-         */
-        template<typename T>
-        struct is_primary_key_insertable {
-            using field_type = typename T::field_type;
-            using constraints_type = typename T::constraints_type;
-
-            static_assert((tuple_helper::tuple_contains_type<primary_key_t<>, constraints_type>::value),
-                          "an unexpected type was passed");
-
-            static constexpr bool value =
-                (tuple_helper::tuple_contains_some_type<default_t, constraints_type>::value ||
-                 tuple_helper::tuple_contains_type<autoincrement_t, constraints_type>::value ||
-                 std::is_base_of<integer_printer, type_printer<field_type>>::value);
-        };
-    }
-
 }

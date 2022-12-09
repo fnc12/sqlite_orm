@@ -121,28 +121,26 @@ TEST_CASE("Wide string") {
     }
 }
 #endif  //  SQLITE_ORM_OMITS_CODECVT
-
-TEST_CASE("Issue 86") {
-    struct Data {
-        uint8_t mUsed = 0;
-        int mId = 0;
-        int mCountryId = 0;
-        int mLangId = 0;
-        std::string mName;
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+TEST_CASE("dbstat") {
+    struct User {
+        int id = 0;
+        std::string name;
     };
-
-    auto storage = make_storage("",
-                                make_table("cities",
-                                           make_column("U", &Data::mUsed),
-                                           make_column("Id", &Data::mId),
-                                           make_column("CntId", &Data::mCountryId),
-                                           make_column("LId", &Data::mLangId),
-                                           make_column("N", &Data::mName)));
+    auto storage =
+        make_storage("dbstat.sqlite",
+                     make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)),
+                     make_dbstat_table());
     storage.sync_schema();
-    std::string CurrCity = "ototo";
-    auto vms = storage.select(columns(&Data::mId, &Data::mLangId), where(like(&Data::mName, CurrCity)));
-}
 
+    storage.remove_all<User>();
+
+    storage.replace(User{1, "Dua Lipa"});
+
+    auto dbstatRows = storage.get_all<dbstat>();
+    std::ignore = dbstatRows;
+}
+#endif  //  SQLITE_ENABLE_DBSTAT_VTAB
 TEST_CASE("Busy timeout") {
     auto storage = make_storage("testBusyTimeout.sqlite");
     storage.busy_timeout(500);
@@ -341,7 +339,7 @@ TEST_CASE("Blob") {
     //  read data with get_all
     {
         auto vd = storage.get_all<BlobData>();
-        assert(vd.size() == 1);
+        REQUIRE(vd.size() == 1);
         auto& blob = vd.front();
         REQUIRE(blob.data.size() == size);
         REQUIRE(std::equal(data, data + size, blob.data.begin()));
@@ -350,7 +348,7 @@ TEST_CASE("Blob") {
     //  read data with select (single column)
     {
         auto blobData = storage.select(&BlobData::data);
-        assert(blobData.size() == 1);
+        REQUIRE(blobData.size() == 1);
         auto& blob = blobData.front();
         REQUIRE(blob.size() == size);
         REQUIRE(std::equal(data, data + size, blob.begin()));

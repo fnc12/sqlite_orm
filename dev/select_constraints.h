@@ -3,14 +3,16 @@
 #include <string>  //  std::string
 #include <utility>  //  std::declval
 #include <tuple>  //  std::tuple, std::get, std::tuple_size
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>  // std::optional
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+#include "functional/cxx_optional.h"
 
+#include "functional/cxx_universal.h"
+#include "functional/cxx_type_traits_polyfill.h"
 #include "is_base_of_template.h"
-#include "tuple_helper/tuple_helper.h"
+#include "tuple_helper/tuple_filter.h"
 #include "optional_container.h"
 #include "ast/where.h"
+#include "ast/group_by.h"
+#include "core_functions.h"
 
 namespace sqlite_orm {
 
@@ -65,28 +67,24 @@ namespace sqlite_orm {
             columns_type columns;
             bool distinct = false;
 
-            static constexpr const int count = std::tuple_size<columns_type>::value;
+            static constexpr int count = std::tuple_size<columns_type>::value;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            columns_t(columns_type columns) : columns{move(columns)} {}
+#endif
         };
 
         template<class T>
-        struct is_columns : std::false_type {};
+        SQLITE_ORM_INLINE_VAR constexpr bool is_columns_v = polyfill::is_specialization_of_v<T, columns_t>;
+
+        template<class T>
+        using is_columns = polyfill::bool_constant<is_columns_v<T>>;
 
         template<class... Args>
-        struct is_columns<columns_t<Args...>> : std::true_type {};
-
-        struct set_string {
-            operator std::string() const {
-                return "SET";
-            }
-        };
-
-        template<class... Args>
-        struct set_t : set_string {
+        struct set_t {
             using assigns_type = std::tuple<Args...>;
 
             assigns_type assigns;
-
-            set_t(assigns_type assigns_) : assigns(move(assigns_)) {}
         };
 
         /**
@@ -143,13 +141,17 @@ namespace sqlite_orm {
             return_type col;
             conditions_type conditions;
             bool highest_level = false;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            select_t(return_type col, conditions_type conditions) : col{std::move(col)}, conditions{move(conditions)} {}
+#endif
         };
 
         template<class T>
-        struct is_select : std::false_type {};
+        SQLITE_ORM_INLINE_VAR constexpr bool is_select_v = polyfill::is_specialization_of_v<T, select_t>;
 
-        template<class T, class... Args>
-        struct is_select<select_t<T, Args...>> : std::true_type {};
+        template<class T>
+        using is_select = polyfill::bool_constant<is_select_v<T>>;
 
         /**
          *  Base for UNION, UNION ALL, EXCEPT and INTERSECT
@@ -171,6 +173,10 @@ namespace sqlite_orm {
         struct union_base {
             bool all = false;
 
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            union_base(bool all) : all{all} {}
+#endif
+
             operator std::string() const {
                 if(!this->all) {
                     return "UNION";
@@ -188,10 +194,10 @@ namespace sqlite_orm {
             using left_type = typename compound_operator<L, R>::left_type;
             using right_type = typename compound_operator<L, R>::right_type;
 
-            union_t(left_type l, right_type r, decltype(all) all_) :
-                compound_operator<L, R>(std::move(l), std::move(r)), union_base{all_} {}
+            union_t(left_type l, right_type r, bool all_) :
+                compound_operator<L, R>{std::move(l), std::move(r)}, union_base{all_} {}
 
-            union_t(left_type l, right_type r) : union_t(std::move(l), std::move(r), false) {}
+            union_t(left_type l, right_type r) : union_t{std::move(l), std::move(r), false} {}
         };
 
         struct except_string {
@@ -245,11 +251,23 @@ namespace sqlite_orm {
         template<class T>
         struct asterisk_t {
             using type = T;
+
+            bool defined_order = false;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            asterisk_t(bool definedOrder) : defined_order{definedOrder} {}
+#endif
         };
 
         template<class T>
         struct object_t {
             using type = T;
+
+            bool defined_order = false;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            object_t(bool definedOrder) : defined_order{definedOrder} {}
+#endif
         };
 
         template<class T>
@@ -291,8 +309,7 @@ namespace sqlite_orm {
             simple_case_builder<R, T, E, Args..., std::pair<W, Th>> when(W w, then_t<Th> t) {
                 using result_args_type = std::tuple<Args..., std::pair<W, Th>>;
                 std::pair<W, Th> newPair{std::move(w), std::move(t.expression)};
-                result_args_type result_args =
-                    std::tuple_cat(std::move(this->args), std::move(std::make_tuple(newPair)));
+                result_args_type result_args = std::tuple_cat(std::move(this->args), std::make_tuple(newPair));
                 std::get<std::tuple_size<result_args_type>::value - 1>(result_args) = std::move(newPair);
                 return {std::move(this->case_expression), std::move(result_args), std::move(this->else_expression)};
             }
@@ -428,26 +445,42 @@ namespace sqlite_orm {
     }
 
     /**
-     * SELECT * FROM T function.
-     * T is typed mapped to a storage.
-     * Example: auto rows = storage.select(asterisk<User>());
-     * // decltype(rows) is std::vector<std::tuple<...all column typed in declared in make_table order...>>
-     * If you need to fetch result as objects not tuple please use `object<T>` instead.
+     *   `SELECT * FROM T` expression that fetches results as tuples.
+     *   T is a type mapped to a storage, or an alias of it.
+     *   The `definedOrder` parameter denotes the expected order of result columns.
+     *   The default is the implicit order as returned by SQLite, which may differ from the defined order
+     *   if the schema of a table has been changed.
+     *   By specifying the defined order, the columns are written out in the resulting select SQL string.
+     *
+     *   In pseudo code:
+     *   select(asterisk<User>(false)) -> SELECT * from User
+     *   select(asterisk<User>(true))  -> SELECT id, name from User
+     *
+     *   Example: auto rows = storage.select(asterisk<User>());
+     *   // decltype(rows) is std::vector<std::tuple<...all columns in implicitly stored order...>>
+     *   Example: auto rows = storage.select(asterisk<User>(true));
+     *   // decltype(rows) is std::vector<std::tuple<...all columns in declared make_table order...>>
+     *   
+     *   If you need to fetch results as objects instead of tuples please use `object<T>()`.
      */
     template<class T>
-    internal::asterisk_t<T> asterisk() {
-        return {};
+    internal::asterisk_t<T> asterisk(bool definedOrder = false) {
+        return {definedOrder};
     }
 
     /**
-     * SELECT * FROM T function.
-     * T is typed mapped to a storage.
-     * Example: auto rows = storage.select(object<User>());
-     * // decltype(rows) is std::vector<User>
-     * If you need to fetch result as tuples not objects please use `asterisk<T>` instead.
+     *   `SELECT * FROM T` expression that fetches results as objects of type T.
+     *   T is a type mapped to a storage, or an alias of it.
+     *   
+     *   Example: auto rows = storage.select(object<User>());
+     *   // decltype(rows) is std::vector<User>, where the User objects are constructed from columns in implicitly stored order
+     *   Example: auto rows = storage.select(object<User>(true));
+     *   // decltype(rows) is std::vector<User>, where the User objects are constructed from columns in declared make_table order
+     *
+     *   If you need to fetch results as tuples instead of objects please use `asterisk<T>()`.
      */
     template<class T>
-    internal::object_t<T> object() {
-        return {};
+    internal::object_t<T> object(bool definedOrder = false) {
+        return {definedOrder};
     }
 }

@@ -5,59 +5,110 @@
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>  //  std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+#include <string_view>
+#endif
 
 using namespace sqlite_orm;
+using internal::is_bindable_v;
 
-TEST_CASE("is_bindable") {
+namespace {
+    struct Custom {};
+    template<class Elem>
+    class StringVeneer : public std::basic_string<Elem> {};
+
     struct User {
         int id;
     };
-    static_assert(internal::is_bindable<bool>::value, "bool must be bindable");
-    static_assert(internal::is_bindable<int>::value, "int must be bindable");
-    static_assert(internal::is_bindable<long>::value, "long must be bindable");
-    static_assert(internal::is_bindable<float>::value, "float must be bindable");
-    static_assert(internal::is_bindable<double>::value, "double must be bindable");
-    static_assert(internal::is_bindable<std::string>::value, "string must be bindable");
-    static_assert(internal::is_bindable<std::nullptr_t>::value, "null must be bindable");
-    static_assert(internal::is_bindable<std::unique_ptr<int>>::value, "unique_ptr must be bindable");
-    static_assert(internal::is_bindable<std::shared_ptr<int>>::value, "shared_ptr must be bindable");
+}
 
+namespace sqlite_orm {
+    template<>
+    struct statement_binder<Custom> {};
+    template<>
+    struct field_printer<Custom> {};
+}
+
+TEST_CASE("is_bindable") {
+    STATIC_REQUIRE(is_bindable_v<bool>);
+    STATIC_REQUIRE(is_bindable_v<char>);
+    STATIC_REQUIRE(is_bindable_v<signed char>);
+    STATIC_REQUIRE(is_bindable_v<unsigned char>);
+    STATIC_REQUIRE(is_bindable_v<short>);
+    STATIC_REQUIRE(is_bindable_v<unsigned short>);
+    STATIC_REQUIRE(is_bindable_v<int>);
+    STATIC_REQUIRE(is_bindable_v<unsigned int>);
+    STATIC_REQUIRE(is_bindable_v<long>);
+    STATIC_REQUIRE(is_bindable_v<unsigned long>);
+    STATIC_REQUIRE(is_bindable_v<float>);
+    STATIC_REQUIRE(is_bindable_v<long long>);
+    STATIC_REQUIRE(is_bindable_v<unsigned long long>);
+    STATIC_REQUIRE(is_bindable_v<double>);
+    STATIC_REQUIRE(is_bindable_v<const char*>);
+    STATIC_REQUIRE(is_bindable_v<std::string>);
+    STATIC_REQUIRE(is_bindable_v<StringVeneer<char>>);
+#ifndef SQLITE_ORM_OMITS_CODECVT
+    STATIC_REQUIRE(is_bindable_v<const wchar_t*>);
+    STATIC_REQUIRE(is_bindable_v<std::wstring>);
+    STATIC_REQUIRE(is_bindable_v<StringVeneer<wchar_t>>);
+#endif
+    STATIC_REQUIRE(is_bindable_v<std::nullptr_t>);
+    STATIC_REQUIRE(is_bindable_v<std::unique_ptr<int>>);
+    STATIC_REQUIRE(is_bindable_v<std::shared_ptr<int>>);
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+    STATIC_REQUIRE(is_bindable_v<std::string_view>);
+#ifndef SQLITE_ORM_OMITS_CODECVT
+    STATIC_REQUIRE(is_bindable_v<std::wstring_view>);
+#endif
+#endif
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-    static_assert(internal::is_bindable<std::optional<int>>::value, "optional must be bindable");
+    STATIC_REQUIRE(is_bindable_v<std::nullopt_t>);
+    STATIC_REQUIRE(is_bindable_v<std::optional<int>>);
+    STATIC_REQUIRE(is_bindable_v<std::optional<Custom>>);
+    STATIC_REQUIRE(!is_bindable_v<std::optional<User>>);
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+#ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
+    STATIC_REQUIRE(is_bindable_v<static_pointer_binding<std::nullptr_t, carray_pvt>>);
+#endif
 
-    static_assert(!internal::is_bindable<void>::value, "void cannot be bindable");
+    STATIC_REQUIRE(is_bindable_v<Custom>);
+    STATIC_REQUIRE(is_bindable_v<std::unique_ptr<Custom>>);
+
+    STATIC_REQUIRE(!is_bindable_v<void>);
+    STATIC_REQUIRE(!is_bindable_v<internal::literal_holder<int>>);
+    STATIC_REQUIRE(!is_bindable_v<User>);
+    STATIC_REQUIRE(!is_bindable_v<std::unique_ptr<User>>);
     {
         auto isEqual = is_equal(&User::id, 5);
-        static_assert(!internal::is_bindable<decltype(isEqual)>::value, "is_equal cannot be bindable");
+        STATIC_REQUIRE(!is_bindable_v<decltype(isEqual)>);
     }
     {
         auto notEqual = is_not_equal(&User::id, 10);
-        static_assert(!internal::is_bindable<decltype(notEqual)>::value, "is_not_equal cannot be bindable");
+        STATIC_REQUIRE(!is_bindable_v<decltype(notEqual)>);
     }
     {
         auto lesserThan = lesser_than(&User::id, 10);
-        static_assert(!internal::is_bindable<decltype(lesserThan)>::value, "lesser_than cannot be bindable");
+        STATIC_REQUIRE(!is_bindable_v<decltype(lesserThan)>);
     }
     {
         auto lesserOrEqual = lesser_or_equal(&User::id, 5);
-        static_assert(!internal::is_bindable<decltype(lesserOrEqual)>::value, "lesser_or_equal cannot be bindable");
+        STATIC_REQUIRE(!is_bindable_v<decltype(lesserOrEqual)>);
     }
     {
         auto greaterThan = greater_than(&User::id, 5);
-        static_assert(!internal::is_bindable<decltype(greaterThan)>::value, "greater_than cannot be bindable");
+        STATIC_REQUIRE(!is_bindable_v<decltype(greaterThan)>);
     }
     {
         auto greaterOrEqual = greater_or_equal(&User::id, 5);
-        static_assert(!internal::is_bindable<decltype(greaterOrEqual)>::value, "greater_or_equal cannot be bindable");
+        STATIC_REQUIRE(!is_bindable_v<decltype(greaterOrEqual)>);
     }
     {
         auto func = datetime("now");
-        static_assert(!internal::is_bindable<decltype(func)>::value, "datetime cannot be bindable");
+        STATIC_REQUIRE(!is_bindable_v<decltype(func)>);
         bool trueCalled = false;
         bool falseCalled = false;
         auto dummy = 5;  //  for gcc compilation
-        internal::static_if<internal::is_bindable<decltype(func)>{}>(
+        internal::static_if<is_bindable_v<decltype(func)>>(
             [&trueCalled](int&) {
                 trueCalled = true;
             },

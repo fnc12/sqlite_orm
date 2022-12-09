@@ -6,11 +6,17 @@
 #include <tuple>  //  std::tuple, std::tuple_size
 #include <sstream>  //  std::stringstream
 
+#include "functional/cxx_universal.h"
+#include "functional/cxx_type_traits_polyfill.h"
+#include "type_traits.h"
 #include "collate_argument.h"
 #include "constraints.h"
 #include "optional_container.h"
+#include "serializer_context.h"
 #include "tags.h"
 #include "expression.h"
+#include "type_printer.h"
+#include "literal.h"
 
 namespace sqlite_orm {
 
@@ -52,10 +58,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct is_offset : std::false_type {};
-
-        template<class T>
-        struct is_offset<offset_t<T>> : std::true_type {};
+        using is_offset = polyfill::is_specialization_of<T, offset_t>;
 
         /**
          *  Collated something
@@ -203,10 +206,8 @@ namespace sqlite_orm {
             template<class C>
             named_collate<self> collate() const {
                 std::stringstream ss;
-                ss << C::name();
-                auto name = ss.str();
-                ss.flush();
-                return {*this, std::move(name)};
+                ss << C::name() << std::flush;
+                return {*this, ss.str()};
             }
         };
 
@@ -353,13 +354,9 @@ namespace sqlite_orm {
         struct in_base {
             bool negative = false;  //  used in not_in
 
-            operator std::string() const {
-                if(!this->negative) {
-                    return "IN";
-                } else {
-                    return "NOT IN";
-                }
-            }
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            in_base(bool negative) : negative{negative} {}
+#endif
         };
 
         /**
@@ -425,10 +422,12 @@ namespace sqlite_orm {
             int asc_desc = 0;  //  1: asc, -1: desc
             std::string _collate_argument;
 
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
             order_by_base() = default;
 
             order_by_base(decltype(asc_desc) asc_desc_, decltype(_collate_argument) _collate_argument_) :
                 asc_desc(asc_desc_), _collate_argument(move(_collate_argument_)) {}
+#endif
         };
 
         struct order_by_string {
@@ -449,13 +448,13 @@ namespace sqlite_orm {
 
             order_by_t(expression_type expression_) : order_by_base(), expression(std::move(expression_)) {}
 
-            self asc() {
+            self asc() const {
                 auto res = *this;
                 res.asc_desc = 1;
                 return res;
             }
 
-            self desc() {
+            self desc() const {
                 auto res = *this;
                 res.asc_desc = -1;
                 return res;
@@ -463,22 +462,19 @@ namespace sqlite_orm {
 
             self collate_binary() const {
                 auto res = *this;
-                res._collate_argument =
-                    collate_constraint_t::string_from_collate_argument(sqlite_orm::internal::collate_argument::binary);
+                res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::binary);
                 return res;
             }
 
             self collate_nocase() const {
                 auto res = *this;
-                res._collate_argument =
-                    collate_constraint_t::string_from_collate_argument(sqlite_orm::internal::collate_argument::nocase);
+                res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::nocase);
                 return res;
             }
 
             self collate_rtrim() const {
                 auto res = *this;
-                res._collate_argument =
-                    collate_constraint_t::string_from_collate_argument(sqlite_orm::internal::collate_argument::rtrim);
+                res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::rtrim);
                 return res;
             }
 
@@ -491,10 +487,8 @@ namespace sqlite_orm {
             template<class C>
             self collate() const {
                 std::stringstream ss;
-                ss << C::name();
-                auto name = ss.str();
-                ss.flush();
-                return this->collate(move(name));
+                ss << C::name() << std::flush;
+                return this->collate(ss.str());
             }
         };
 
@@ -507,7 +501,7 @@ namespace sqlite_orm {
 
             args_type args;
 
-            multi_order_by_t(args_type&& args_) : args(std::move(args_)) {}
+            multi_order_by_t(args_type args_) : args{std::move(args_)} {}
         };
 
         struct dynamic_order_by_entry_t : order_by_base {
@@ -518,7 +512,7 @@ namespace sqlite_orm {
         };
 
         /**
-         *  C - serializator context class
+         *  C - serializer context class
          */
         template<class C>
         struct dynamic_order_by_t : order_by_string {
@@ -554,39 +548,13 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct is_order_by : std::false_type {};
-
-        template<class O>
-        struct is_order_by<order_by_t<O>> : std::true_type {};
-
-        template<class... Args>
-        struct is_order_by<multi_order_by_t<Args...>> : std::true_type {};
-
-        template<class C>
-        struct is_order_by<dynamic_order_by_t<C>> : std::true_type {};
-
-        struct group_by_string {
-            operator std::string() const {
-                return "GROUP BY";
-            }
-        };
-
-        /**
-         *  GROUP BY pack holder.
-         */
-        template<class... Args>
-        struct group_by_t : group_by_string {
-            using args_type = std::tuple<Args...>;
-            args_type args;
-
-            group_by_t(args_type&& args_) : args(std::move(args_)) {}
-        };
+        SQLITE_ORM_INLINE_VAR constexpr bool is_order_by_v =
+            polyfill::disjunction_v<polyfill::is_specialization_of<T, order_by_t>,
+                                    polyfill::is_specialization_of<T, multi_order_by_t>,
+                                    polyfill::is_specialization_of<T, dynamic_order_by_t>>;
 
         template<class T>
-        struct is_group_by : std::false_type {};
-
-        template<class... Args>
-        struct is_group_by<group_by_t<Args...>> : std::true_type {};
+        using is_order_by = polyfill::bool_constant<is_order_by_v<T>>;
 
         struct between_string {
             operator std::string() const {
@@ -774,9 +742,9 @@ namespace sqlite_orm {
         /**
          *  USING argument holder.
          */
-        template<class F, class O>
+        template<class T, class M>
         struct using_t {
-            F O::*column = nullptr;
+            column_pointer<T, M> column;
 
             operator std::string() const {
                 return "USING";
@@ -803,47 +771,6 @@ namespace sqlite_orm {
 
             inner_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
         };
-
-        struct exists_string {
-            operator std::string() const {
-                return "EXISTS";
-            }
-        };
-
-        template<class T>
-        struct exists_t : condition_t, exists_string, internal::negatable_t {
-            using type = T;
-            using self = exists_t<type>;
-
-            type t;
-
-            exists_t(T t_) : t(std::move(t_)) {}
-        };
-
-        struct having_string {
-            operator std::string() const {
-                return "HAVING";
-            }
-        };
-
-        /**
-         *  HAVING holder.
-         *  T is having argument type.
-         */
-        template<class T>
-        struct having_t : having_string {
-            using type = T;
-
-            type t;
-
-            having_t(type t_) : t(std::move(t_)) {}
-        };
-
-        template<class T>
-        struct is_having : std::false_type {};
-
-        template<class T>
-        struct is_having<having_t<T>> : std::true_type {};
 
         struct cast_string {
             operator std::string() const {
@@ -873,10 +800,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct is_from : std::false_type {};
-
-        template<class... Args>
-        struct is_from<from_t<Args...>> : std::true_type {};
+        using is_from = polyfill::is_specialization_of<T, from_t>;
     }
 
     /**
@@ -889,7 +813,7 @@ namespace sqlite_orm {
         return {};
     }
 
-    template<class T, typename = typename std::enable_if<std::is_base_of<internal::negatable_t, T>::value>::type>
+    template<class T, internal::satisfies<std::is_base_of, internal::negatable_t, T> = true>
     internal::negated_condition_t<T> operator!(T arg) {
         return {std::move(arg)};
     }
@@ -1048,8 +972,12 @@ namespace sqlite_orm {
     }
 
     template<class F, class O>
-    internal::using_t<F, O> using_(F O::*p) {
-        return {std::move(p)};
+    internal::using_t<O, F O::*> using_(F O::*p) {
+        return {p};
+    }
+    template<class T, class M>
+    internal::using_t<T, M> using_(internal::column_pointer<T, M> cp) {
+        return {std::move(cp)};
     }
 
     template<class T>
@@ -1097,9 +1025,8 @@ namespace sqlite_orm {
         return {std::move(lim)};
     }
 
-    template<class T, class O>
-    typename std::enable_if<!internal::is_offset<T>::value, internal::limit_t<T, true, true, O>>::type limit(O off,
-                                                                                                             T lim) {
+    template<class T, class O, internal::satisfies_not<internal::is_offset, T> = true>
+    internal::limit_t<T, true, true, O> limit(O off, T lim) {
         return {std::move(lim), {std::move(off)}};
     }
 
@@ -1110,8 +1037,9 @@ namespace sqlite_orm {
 
     template<class L,
              class R,
-             typename = typename std::enable_if<std::is_base_of<internal::condition_t, L>::value ||
-                                                std::is_base_of<internal::condition_t, R>::value>::type>
+             std::enable_if_t<polyfill::disjunction_v<std::is_base_of<internal::condition_t, L>,
+                                                      std::is_base_of<internal::condition_t, R>>,
+                              bool> = true>
     auto operator&&(L l, R r) {
         using internal::get_from_expression;
         return internal::make_and_condition(std::move(get_from_expression(l)), std::move(get_from_expression(r)));
@@ -1125,8 +1053,9 @@ namespace sqlite_orm {
 
     template<class L,
              class R,
-             typename = typename std::enable_if<std::is_base_of<internal::condition_t, L>::value ||
-                                                std::is_base_of<internal::condition_t, R>::value>::type>
+             std::enable_if_t<polyfill::disjunction_v<std::is_base_of<internal::condition_t, L>,
+                                                      std::is_base_of<internal::condition_t, R>>,
+                              bool> = true>
     auto operator||(L l, R r) {
         using internal::get_from_expression;
         return internal::make_or_condition(std::move(get_from_expression(l)), std::move(get_from_expression(r)));
@@ -1239,12 +1168,26 @@ namespace sqlite_orm {
     }
 
     /**
-     * ORDER BY column
-     * Example: storage.select(&User::name, order_by(&User::id))
+     * ORDER BY column, column alias or expression
+     * 
+     * Examples:
+     * storage.select(&User::name, order_by(&User::id))
+     * storage.select(as<colalias_a>(&User::name), order_by(get<colalias_a>()))
      */
-    template<class O>
+    template<class O, internal::satisfies_not<std::is_base_of, integer_printer, type_printer<O>> = true>
     internal::order_by_t<O> order_by(O o) {
         return {std::move(o)};
+    }
+
+    /**
+     * ORDER BY positional ordinal
+     * 
+     * Examples:
+     * storage.select(&User::name, order_by(1))
+     */
+    template<class O, internal::satisfies<std::is_base_of, integer_printer, type_printer<O>> = true>
+    internal::order_by_t<internal::literal_holder<O>> order_by(O o) {
+        return {{std::move(o)}};
     }
 
     /**
@@ -1269,19 +1212,10 @@ namespace sqlite_orm {
      *  }
      */
     template<class S>
-    internal::dynamic_order_by_t<internal::serializator_context<typename S::impl_type>>
+    internal::dynamic_order_by_t<internal::serializer_context<typename S::db_objects_type>>
     dynamic_order_by(const S& storage) {
-        internal::serializator_context_builder<S> builder(storage);
+        internal::serializer_context_builder<S> builder(storage);
         return builder();
-    }
-
-    /**
-     *  GROUP BY column.
-     *  Example: storage.get_all<Employee>(group_by(&Employee::name))
-     */
-    template<class... Args>
-    internal::group_by_t<Args...> group_by(Args&&... args) {
-        return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
     /**
@@ -1318,28 +1252,6 @@ namespace sqlite_orm {
     template<class A, class T, class E>
     internal::like_t<A, T, E> like(A a, T t, E e) {
         return {std::move(a), std::move(t), {std::move(e)}};
-    }
-
-    /**
-     *  EXISTS(condition).
-     *  Example: storage.select(columns(&Agent::code, &Agent::name, &Agent::workingArea, &Agent::comission),
-         where(exists(select(asterisk<Customer>(),
-         where(is_equal(&Customer::grade, 3) and
-         is_equal(&Agent::code, &Customer::agentCode))))),
-         order_by(&Agent::comission));
-     */
-    template<class T>
-    internal::exists_t<T> exists(T t) {
-        return {std::move(t)};
-    }
-
-    /**
-     *  HAVING(expression).
-     *  Example: storage.get_all<Employee>(group_by(&Employee::name), having(greater_than(count(&Employee::name), 2)));
-     */
-    template<class T>
-    internal::having_t<T> having(T t) {
-        return {std::move(t)};
     }
 
     /**

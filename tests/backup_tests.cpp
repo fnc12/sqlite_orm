@@ -4,10 +4,15 @@
 
 using namespace sqlite_orm;
 
-namespace BackupTests {
+namespace {
     struct User {
         int id = 0;
         std::string name;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        User() = default;
+        User(int id, std::string name) : id{id}, name{move(name)} {}
+#endif
     };
 
     bool operator==(const User& lhs, const User& rhs) {
@@ -20,8 +25,7 @@ namespace BackupTests {
         std::string abilities;
     };
 
-    inline auto initStorageMarvel(const std::string& path) {
-        using namespace sqlite_orm;
+    auto initStorageMarvel(const std::string& path) {
         auto storage = make_storage(path,
                                     make_table("marvel",
                                                make_column("id", &MarvelHero::id, primary_key()),
@@ -32,8 +36,8 @@ namespace BackupTests {
 }
 
 TEST_CASE("backup") {
-    using namespace BackupTests;
     using Catch::Matchers::UnorderedEquals;
+
     const std::string usersTableName = "users";
     auto makeStorage = [&usersTableName](const std::string& filename) {
         return make_storage(
@@ -123,7 +127,6 @@ TEST_CASE("backup") {
 }
 
 TEST_CASE("Backup crash") {
-    using namespace BackupTests;
     using MarvelStorage = decltype(initStorageMarvel(""));
 
     // --- Create a shared pointer to the MarvelStorage

@@ -7,6 +7,11 @@ TEST_CASE("Like operator") {
     struct User {
         int id = 0;
         std::string name;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        User() = default;
+        User(int id, std::string name) : id{id}, name{move(name)} {}
+#endif
     };
     struct Pattern {
         std::string value;
@@ -14,7 +19,7 @@ TEST_CASE("Like operator") {
 
     auto storage = make_storage("",
                                 make_table("users",
-                                           make_column("id", &User::id, autoincrement(), primary_key()),
+                                           make_column("id", &User::id, primary_key().autoincrement()),
                                            make_column("name", &User::name)),
                                 make_table("patterns", make_column("value", &Pattern::value)));
     storage.sync_schema();
