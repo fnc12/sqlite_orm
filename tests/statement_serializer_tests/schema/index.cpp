@@ -50,6 +50,7 @@ TEST_CASE("statement_serializer index") {
         value = internal::serialize(index, context);
         expected = R"(CREATE INDEX IF NOT EXISTS "idx" ON "users" ("id") WHERE ("id" IS NOT NULL))";
     }
+#ifdef SQLITE_ENABLE_JSON1
     SECTION("json") {
         SECTION("implicit") {
             auto index = make_index<User>("idx", json_extract<bool>(&User::name, "$.field"));
@@ -61,5 +62,6 @@ TEST_CASE("statement_serializer index") {
         }
         expected = "CREATE INDEX IF NOT EXISTS \"idx\" ON \"users\" (JSON_EXTRACT(\"name\", '$.field'))";
     }
+#endif  //  SQLITE_ENABLE_JSON1
     REQUIRE(value == expected);
 }
