@@ -1536,9 +1536,9 @@ namespace sqlite_orm {
             }
         };
 
-        template<class... Cols>
-        struct statement_serializer<index_t<Cols...>, void> {
-            using statement_type = index_t<Cols...>;
+        template<class T, class... Cols>
+        struct statement_serializer<index_t<T, Cols...>, void> {
+            using statement_type = index_t<T, Cols...>;
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
@@ -1547,9 +1547,7 @@ namespace sqlite_orm {
                 if(statement.unique) {
                     ss << "UNIQUE ";
                 }
-                using elements_type = typename std::decay_t<decltype(statement)>::elements_type;
-                using head_t = typename std::tuple_element_t<0, elements_type>::column_type;
-                using indexed_type = table_type_of_t<head_t>;
+                using indexed_type = typename std::decay_t<decltype(statement)>::table_mapped_type;
                 ss << "INDEX IF NOT EXISTS " << streaming_identifier(statement.name) << " ON "
                    << streaming_identifier(lookup_table_name<indexed_type>(context.db_objects));
                 std::vector<std::string> columnNames;

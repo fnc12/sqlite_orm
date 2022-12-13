@@ -30,6 +30,18 @@ TEST_CASE("index") {
         auto storage = make_storage({}, make_index("name_index", indexed_column(&User::name)), table);
         REQUIRE_NOTHROW(storage.sync_schema());
     }
+    SECTION("json implicit") {
+        auto storage =
+            make_storage({}, make_index<User>("name_index", json_extract<bool>(&User::name, "$.field")), table);
+        REQUIRE_NOTHROW(storage.sync_schema());
+    }
+    SECTION("json explicit") {
+        auto storage =
+            make_storage({},
+                         make_index<User>("name_index", indexed_column(json_extract<bool>(&User::name, "$.field"))),
+                         table);
+        REQUIRE_NOTHROW(storage.sync_schema());
+    }
     SECTION("collate") {
         auto storage = make_storage({}, make_index("name_index", indexed_column(&User::name).collate("binary")), table);
         REQUIRE_NOTHROW(storage.sync_schema());
