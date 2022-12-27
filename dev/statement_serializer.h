@@ -1070,6 +1070,26 @@ namespace sqlite_orm {
             }
         };
 
+        template<class C>
+        struct statement_serializer<dynamic_set_t<C>, void> {
+            using statement_type = dynamic_set_t<C>;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                std::stringstream ss;
+                ss << "SET ";
+                int index = 0;
+                for(const std::string& entry: statement) {
+                    if(index > 0) {
+                        ss << ", ";
+                    }
+                    ss << entry;
+                    ++index;
+                }
+                return ss.str();
+            }
+        };
+
         template<class... Args>
         struct statement_serializer<set_t<Args...>, void> {
             using statement_type = set_t<Args...>;

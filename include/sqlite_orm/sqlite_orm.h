@@ -6801,13 +6801,6 @@ namespace sqlite_orm {
         template<class T>
         using is_columns = polyfill::bool_constant<is_columns_v<T>>;
 
-        template<class... Args>
-        struct set_t {
-            using assigns_type = std::tuple<Args...>;
-
-            assigns_type assigns;
-        };
-
         /**
          *  This class is used to store explicit mapped type T and its column descriptor (member pointer/getter/setter).
          *  Is useful when mapped type is derived from other type and base class has members mapped to a storage.
@@ -7090,19 +7083,6 @@ namespace sqlite_orm {
     internal::columns_t<Args...> distinct(internal::columns_t<Args...> cols) {
         cols.distinct = true;
         return cols;
-    }
-
-    /**
-     *  SET keyword used in UPDATE ... SET queries.
-     *  Args must have `assign_t` type. E.g. set(assign(&User::id, 5)) or set(c(&User::id) = 5)
-     */
-    template<class... Args>
-    internal::set_t<Args...> set(Args... args) {
-        using arg_tuple = std::tuple<Args...>;
-        static_assert(std::tuple_size<arg_tuple>::value ==
-                          internal::count_tuple<arg_tuple, internal::is_assign_t>::value,
-                      "set function accepts assign operators only");
-        return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
     template<class... Args>
@@ -11167,6 +11147,84 @@ namespace sqlite_orm {
 #endif
 }
 
+// #include "ast/set.h"
+
+
+#include <tuple>  //  std::tuple, std::tuple_size
+#include <string>  //  std::string
+#include <vector>  //  std::vector
+#include <sstream>  //  std::stringstream
+
+namespace sqlite_orm {
+
+    namespace internal {
+
+        template<class... Args>
+        struct set_t {
+            using assigns_type = std::tuple<Args...>;
+
+            assigns_type assigns;
+        };
+
+        template<class C>
+        struct dynamic_set_t {
+            using context_t = C;
+            using entry_t = std::string;
+            using const_iterator = typename std::vector<entry_t>::const_iterator;
+
+            dynamic_set_t(const context_t& context_) : context(context_) {}
+
+            template<class L, class R>
+            void push_back(assign_t<L, R> assign) {
+                auto newContext = this->context;
+                newContext.skip_table_name = true;
+                std::stringstream ss;
+                ss << serialize(assign.lhs, newContext) << ' ' << assign.serialize() << ' '
+                   << serialize(assign.rhs, context);
+                entries.push_back(ss.str());
+            }
+
+            const_iterator begin() const {
+                return this->entries.begin();
+            }
+
+            const_iterator end() const {
+                return this->entries.end();
+            }
+
+            void clear() {
+                this->entries.clear();
+            }
+
+          protected:
+            context_t context;
+            std::vector<entry_t> entries;
+        };
+    }
+
+    /**
+     *  SET keyword used in UPDATE ... SET queries.
+     *  Args must have `assign_t` type. E.g. set(assign(&User::id, 5)) or set(c(&User::id) = 5)
+     */
+    template<class... Args>
+    internal::set_t<Args...> set(Args... args) {
+        using arg_tuple = std::tuple<Args...>;
+        static_assert(std::tuple_size<arg_tuple>::value ==
+                          internal::count_tuple<arg_tuple, internal::is_assign_t>::value,
+                      "set function accepts assign operators only");
+        return {std::make_tuple(std::forward<Args>(args)...)};
+    }
+
+    /**
+     *  SET keyword used in UPDATE ... SET queries. It is dynamic version. It means use can add amount of arguments now known at compilation time but known at runtime.
+     */
+    template<class S>
+    internal::dynamic_set_t<internal::serializer_context<typename S::db_objects_type>> dynamic_set(const S& storage) {
+        internal::serializer_context_builder<S> builder(storage);
+        return builder();
+    }
+}
+
 
 namespace sqlite_orm {
 
@@ -11972,6 +12030,8 @@ namespace sqlite_orm {
         return {std::move(expression)};
     }
 }
+
+// #include "ast/set.h"
 
 
 namespace sqlite_orm {
@@ -16196,6 +16256,26 @@ namespace sqlite_orm {
                         ss << sep[std::exchange(first, false)] << streaming_identifier(column.name) << " = "
                            << serialize(polyfill::invoke(column.member_pointer, object), context);
                     });
+                return ss.str();
+            }
+        };
+
+        template<class C>
+        struct statement_serializer<dynamic_set_t<C>, void> {
+            using statement_type = dynamic_set_t<C>;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                std::stringstream ss;
+                ss << "SET ";
+                int index = 0;
+                for(const std::string& entry: statement) {
+                    if(index > 0) {
+                        ss << ", ";
+                    }
+                    ss << entry;
+                    ++index;
+                }
                 return ss.str();
             }
         };

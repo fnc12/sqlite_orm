@@ -17,6 +17,7 @@
 #include "ast/into.h"
 #include "ast/group_by.h"
 #include "ast/exists.h"
+#include "ast/set.h"
 
 namespace sqlite_orm {
 
