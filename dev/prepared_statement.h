@@ -15,6 +15,7 @@
 #include "select_constraints.h"
 #include "values.h"
 #include "ast/upsert_clause.h"
+#include "ast/set.h"
 
 namespace sqlite_orm {
 
