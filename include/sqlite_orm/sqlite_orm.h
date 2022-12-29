@@ -11062,7 +11062,6 @@ namespace sqlite_orm {
 #include <vector>  //  std::vector
 #include <sstream>  //  std::stringstream
 #include <type_traits>  //  std::false_type, std::true_type
-#include <functional>  //  std::function
 
 // #include "table_name_collector.h"
 
@@ -11185,7 +11184,6 @@ namespace sqlite_orm {
 
         struct dynamic_set_entry {
             std::string serialized_value;
-            //            std::function<void>
         };
 
         template<class C>
@@ -16299,22 +16297,6 @@ namespace sqlite_orm {
                     throw std::system_error{orm_error_code::no_tables_specified};
                 }
                 tableName = collector.table_names.begin()->first;
-
-                /*static_if<is_dynamic_set<set_type>::value>([&tableName, &context] (const statement_type& statement) {
-                    table_name_collector collector([&context](const std::type_index& ti) {
-                        return find_table_name(context.db_objects, ti);
-                    });
-                    iterate_ast(statement.set, collector);
-                    if(collector.table_names.empty()) {
-                        throw std::system_error{orm_error_code::no_tables_specified};
-                    }
-                    tableName = collector.table_names.begin()->first;
-                }, [&tableName] (const statement_type& statement) {
-                    if (statement.set.collector.table_names.empty()) {
-                        throw std::system_error{orm_error_code::no_tables_specified};
-                    }
-                    tableName = statement.set.collector.table_names.begin()->first;
-                })(statement);*/
 
                 std::stringstream ss;
                 ss << "UPDATE " << streaming_identifier(tableName);

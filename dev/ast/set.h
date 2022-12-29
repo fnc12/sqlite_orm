@@ -5,7 +5,6 @@
 #include <vector>  //  std::vector
 #include <sstream>  //  std::stringstream
 #include <type_traits>  //  std::false_type, std::true_type
-#include <functional>  //  std::function
 
 #include "table_name_collector.h"
 
@@ -31,7 +30,6 @@ namespace sqlite_orm {
 
         struct dynamic_set_entry {
             std::string serialized_value;
-            //            std::function<void>
         };
 
         template<class C>
