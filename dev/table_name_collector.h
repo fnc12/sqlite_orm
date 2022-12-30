@@ -27,8 +27,8 @@ namespace sqlite_orm {
             table_name_collector(find_table_name_t find_table_name) : find_table_name{move(find_table_name)} {}
 
             template<class T>
-            table_name_set operator()(const T &) const {
-                return {};
+            void operator()(const T &) const {
+                //..
             }
 
             template<class F, class O>

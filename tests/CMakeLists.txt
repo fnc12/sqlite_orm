@@ -84,6 +84,7 @@ add_executable(unit_tests
     statement_serializer_tests/bindables.cpp
     statement_serializer_tests/ast/upsert_clause.cpp
     statement_serializer_tests/ast/excluded.cpp
+	statement_serializer_tests/ast/set.cpp
     statement_serializer_tests/arithmetic_operators.cpp
     statement_serializer_tests/base_types.cpp
     statement_serializer_tests/collate.cpp
