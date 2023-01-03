@@ -6,11 +6,13 @@
 #include <memory>  //  std::unique_ptr
 #include <vector>  //  std::vector
 
+#include "functional/cxx_type_traits_polyfill.h"
 #include "conditions.h"
 #include "is_base_of_template.h"
-#include "operators.h"
-#include "serialize_result_type.h"
 #include "tuple_helper/tuple_filter.h"
+#include "serialize_result_type.h"
+#include "operators.h"
+#include "ast/into.h"
 
 namespace sqlite_orm {
 
@@ -18,9 +20,6 @@ namespace sqlite_orm {
     using uint64 = sqlite_uint64;
 
     namespace internal {
-
-        template<class T>
-        struct is_into;
 
         template<class T>
         struct unique_ptr_result_of {};
@@ -605,7 +604,7 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ENABLE_JSON1
 
         template<class T>
-        using field_type_or_type_t = polyfill::detected_or_t<T, field_type_t, member_traits<T>>;
+        using field_type_or_type_t = polyfill::detected_or_t<T, type_t, member_field_type<T>>;
     }
 
     /**
@@ -613,48 +612,42 @@ namespace sqlite_orm {
      */
     template<class F,
              class R,
-             typename =
-                 typename std::enable_if<internal::is_base_of_template<F, internal::built_in_function_t>::value>::type>
+             std::enable_if_t<internal::is_base_of_template_v<F, internal::built_in_function_t>, bool> = true>
     internal::lesser_than_t<F, R> operator<(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
     template<class F,
              class R,
-             typename =
-                 typename std::enable_if<internal::is_base_of_template<F, internal::built_in_function_t>::value>::type>
+             std::enable_if_t<internal::is_base_of_template_v<F, internal::built_in_function_t>, bool> = true>
     internal::lesser_or_equal_t<F, R> operator<=(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
     template<class F,
              class R,
-             typename =
-                 typename std::enable_if<internal::is_base_of_template<F, internal::built_in_function_t>::value>::type>
+             std::enable_if_t<internal::is_base_of_template_v<F, internal::built_in_function_t>, bool> = true>
     internal::greater_than_t<F, R> operator>(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
     template<class F,
              class R,
-             typename =
-                 typename std::enable_if<internal::is_base_of_template<F, internal::built_in_function_t>::value>::type>
+             std::enable_if_t<internal::is_base_of_template_v<F, internal::built_in_function_t>, bool> = true>
     internal::greater_or_equal_t<F, R> operator>=(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
     template<class F,
              class R,
-             typename =
-                 typename std::enable_if<internal::is_base_of_template<F, internal::built_in_function_t>::value>::type>
+             std::enable_if_t<internal::is_base_of_template_v<F, internal::built_in_function_t>, bool> = true>
     internal::is_equal_t<F, R> operator==(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
     template<class F,
              class R,
-             typename =
-                 typename std::enable_if<internal::is_base_of_template<F, internal::built_in_function_t>::value>::type>
+             std::enable_if_t<internal::is_base_of_template_v<F, internal::built_in_function_t>, bool> = true>
     internal::is_not_equal_t<F, R> operator!=(F f, R r) {
         return {std::move(f), std::move(r)};
     }
@@ -1651,10 +1644,11 @@ namespace sqlite_orm {
     /**
      *  REPLACE(X) function https://sqlite.org/lang_corefunc.html#replace
      */
-    template<class X, class Y, class Z>
-    typename std::enable_if<internal::count_tuple<std::tuple<X, Y, Z>, internal::is_into>::value == 0,
-                            internal::built_in_function_t<std::string, internal::replace_string, X, Y, Z>>::type
-    replace(X x, Y y, Z z) {
+    template<class X,
+             class Y,
+             class Z,
+             std::enable_if_t<internal::count_tuple<std::tuple<X, Y, Z>, internal::is_into>::value == 0, bool> = true>
+    internal::built_in_function_t<std::string, internal::replace_string, X, Y, Z> replace(X x, Y y, Z z) {
         return {std::tuple<X, Y, Z>{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)}};
     }
 
@@ -1696,17 +1690,12 @@ namespace sqlite_orm {
     /**
      *  COALESCE(X,Y,...) function https://www.sqlite.org/lang_corefunc.html#coalesce
      */
-    template<class R, class... Args>
-    internal::built_in_function_t<R, internal::coalesce_string, Args...> coalesce(Args... args) {
-        return {std::make_tuple(std::forward<Args>(args)...)};
-    }
-
-    /**
-     *  COALESCE(X,Y,...) using common return type of X, Y, ...
-     */
-    template<class... Args>
+    template<class R = void, class... Args>
     auto coalesce(Args... args)
-        -> internal::built_in_function_t<std::common_type_t<internal::field_type_or_type_t<Args>...>,
+        -> internal::built_in_function_t<typename std::conditional_t<  //  choose R or common type
+                                             std::is_void<R>::value,
+                                             std::common_type<internal::field_type_or_type_t<Args>...>,
+                                             polyfill::type_identity<R>>::type,
                                          internal::coalesce_string,
                                          Args...> {
         return {std::make_tuple(std::forward<Args>(args)...)};
@@ -1715,17 +1704,12 @@ namespace sqlite_orm {
     /**
      *  IFNULL(X,Y) function https://www.sqlite.org/lang_corefunc.html#ifnull
      */
-    template<class R, class X, class Y>
-    internal::built_in_function_t<R, internal::ifnull_string, X, Y> ifnull(X x, Y y) {
-        return {std::make_tuple(std::move(x), std::move(y))};
-    }
-
-    /**
-     *  IFNULL(X,Y) using common return type of X and Y
-     */
-    template<class X, class Y>
+    template<class R = void, class X, class Y>
     auto ifnull(X x, Y y) -> internal::built_in_function_t<
-        std::common_type_t<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>,
+        typename std::conditional_t<  //  choose R or common type
+            std::is_void<R>::value,
+            std::common_type<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>,
+            polyfill::type_identity<R>>::type,
         internal::ifnull_string,
         X,
         Y> {
@@ -1735,21 +1719,36 @@ namespace sqlite_orm {
     /**
      *  NULLIF(X,Y) function https://www.sqlite.org/lang_corefunc.html#nullif
      */
-    template<class R, class X, class Y>
-    internal::built_in_function_t<R, internal::nullif_string, X, Y> nullif(X x, Y y) {
-        return {std::make_tuple(std::move(x), std::move(y))};
-    }
-
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+#if defined(SQLITE_ORM_OPTIONAL_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
     /**
      *  NULLIF(X,Y) using common return type of X and Y
      */
-    template<class X, class Y>
-    auto nullif(X x, Y y) -> internal::built_in_function_t<
-        std::optional<std::common_type_t<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>>,
-        internal::nullif_string,
-        X,
-        Y> {
+    template<class R = void,
+             class X,
+             class Y,
+             std::enable_if_t<polyfill::disjunction_v<polyfill::negation<std::is_void<R>>,
+                                                      polyfill::is_detected<std::common_type_t,
+                                                                            internal::field_type_or_type_t<X>,
+                                                                            internal::field_type_or_type_t<Y>>>,
+                              bool> = true>
+    auto nullif(X x, Y y) {
+        if constexpr(std::is_void_v<R>) {
+            using F = internal::built_in_function_t<
+                std::optional<std::common_type_t<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>>,
+                internal::nullif_string,
+                X,
+                Y>;
+
+            return F{std::make_tuple(std::move(x), std::move(y))};
+        } else {
+            using F = internal::built_in_function_t<R, internal::nullif_string, X, Y>;
+
+            return F{std::make_tuple(std::move(x), std::move(y))};
+        }
+    }
+#else
+    template<class R, class X, class Y>
+    internal::built_in_function_t<R, internal::nullif_string, X, Y> nullif(X x, Y y) {
         return {std::make_tuple(std::move(x), std::move(y))};
     }
 #endif
@@ -2056,45 +2055,45 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ENABLE_JSON1
     template<class L,
              class R,
-             typename = typename std::enable_if<(std::is_base_of<internal::arithmetic_t, L>::value +
-                                                     std::is_base_of<internal::arithmetic_t, R>::value >
-                                                 0)>::type>
+             std::enable_if_t<polyfill::disjunction_v<std::is_base_of<internal::arithmetic_t, L>,
+                                                      std::is_base_of<internal::arithmetic_t, R>>,
+                              bool> = true>
     internal::add_t<L, R> operator+(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L,
              class R,
-             typename = typename std::enable_if<(std::is_base_of<internal::arithmetic_t, L>::value +
-                                                     std::is_base_of<internal::arithmetic_t, R>::value >
-                                                 0)>::type>
+             std::enable_if_t<polyfill::disjunction_v<std::is_base_of<internal::arithmetic_t, L>,
+                                                      std::is_base_of<internal::arithmetic_t, R>>,
+                              bool> = true>
     internal::sub_t<L, R> operator-(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L,
              class R,
-             typename = typename std::enable_if<(std::is_base_of<internal::arithmetic_t, L>::value +
-                                                     std::is_base_of<internal::arithmetic_t, R>::value >
-                                                 0)>::type>
+             std::enable_if_t<polyfill::disjunction_v<std::is_base_of<internal::arithmetic_t, L>,
+                                                      std::is_base_of<internal::arithmetic_t, R>>,
+                              bool> = true>
     internal::mul_t<L, R> operator*(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L,
              class R,
-             typename = typename std::enable_if<(std::is_base_of<internal::arithmetic_t, L>::value +
-                                                     std::is_base_of<internal::arithmetic_t, R>::value >
-                                                 0)>::type>
+             std::enable_if_t<polyfill::disjunction_v<std::is_base_of<internal::arithmetic_t, L>,
+                                                      std::is_base_of<internal::arithmetic_t, R>>,
+                              bool> = true>
     internal::div_t<L, R> operator/(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L,
              class R,
-             typename = typename std::enable_if<(std::is_base_of<internal::arithmetic_t, L>::value +
-                                                     std::is_base_of<internal::arithmetic_t, R>::value >
-                                                 0)>::type>
+             std::enable_if_t<polyfill::disjunction_v<std::is_base_of<internal::arithmetic_t, L>,
+                                                      std::is_base_of<internal::arithmetic_t, R>>,
+                              bool> = true>
     internal::mod_t<L, R> operator%(L l, R r) {
         return {std::move(l), std::move(r)};
     }

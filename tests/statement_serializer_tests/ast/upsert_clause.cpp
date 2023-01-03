@@ -21,10 +21,10 @@ TEST_CASE("upsert_clause") {
                                  make_column("id", &User::id, primary_key()),
                                  make_column("firstname", &User::firstname),
                                  make_column("lastname", &User::lastname));
-    using storage_impl_t = internal::storage_impl<decltype(vocabularyTable), decltype(usersTable)>;
-    auto storageImpl = storage_impl_t{vocabularyTable, usersTable};
-    using context_t = internal::serializer_context<storage_impl_t>;
-    context_t context{storageImpl};
+    using db_objects_t = internal::db_objects_tuple<decltype(vocabularyTable), decltype(usersTable)>;
+    auto dbObjects = db_objects_t{vocabularyTable, usersTable};
+    using context_t = internal::serializer_context<db_objects_t>;
+    context_t context{dbObjects};
 
     std::string value;
     decltype(value) expected;

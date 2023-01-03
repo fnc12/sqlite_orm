@@ -7,6 +7,11 @@ TEST_CASE("explicit from") {
     struct User {
         int id = 0;
         std::string name;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        User() = default;
+        User(int id, std::string name) : id{id}, name{move(name)} {}
+#endif
     };
     auto storage = make_storage(
         {},
@@ -58,6 +63,11 @@ TEST_CASE("update set null") {
     struct User {
         int id = 0;
         std::unique_ptr<std::string> name;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        User() = default;
+        User(int id, decltype(name) name) : id{id}, name{move(name)} {}
+#endif
     };
 
     auto storage = make_storage(
@@ -100,11 +110,21 @@ TEST_CASE("InsertRange") {
     struct Object {
         int id;
         std::string name;
+
+#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
+        Object() = default;
+        Object(int id, std::string name) : id{id}, name{move(name)} {}
+#endif
     };
 
     struct ObjectWithoutRowid {
         int id;
         std::string name;
+
+#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
+        ObjectWithoutRowid() = default;
+        ObjectWithoutRowid(int id, std::string name) : id{id}, name{move(name)} {}
+#endif
     };
 
     auto storage = make_storage(
@@ -143,35 +163,22 @@ TEST_CASE("InsertRange") {
         std::vector<std::unique_ptr<Object>> objects;
         objects.reserve(100);
         for(auto i = 0; i < 100; ++i) {
-            objects.push_back(std::make_unique<Object>(Object{0, "Skillet"}));
+            objects.push_back(std::make_unique<Object>(0, "Skillet"));
         }
-        storage.insert_range<Object>(objects.begin(),
-                                     objects.end(),
-                                     [](const std::unique_ptr<Object> &pointer) -> const Object & {
-                                         return *pointer;
-                                     });
+        storage.insert_range(objects.begin(), objects.end(), &std::unique_ptr<Object>::operator*);
         REQUIRE(storage.count<Object>() == 100);
 
         //  test empty container
         std::vector<std::unique_ptr<Object>> emptyVector;
-        storage.insert_range<Object>(emptyVector.begin(),
-                                     emptyVector.end(),
-                                     [](const std::unique_ptr<Object> &pointer) -> const Object & {
-                                         return *pointer;
-                                     });
+        storage.insert_range(emptyVector.begin(), emptyVector.end(), &std::unique_ptr<Object>::operator*);
 
         //  test insert_range without rowid
         std::vector<std::unique_ptr<ObjectWithoutRowid>> objectsWR;
-        objectsWR.push_back(std::make_unique<ObjectWithoutRowid>(ObjectWithoutRowid{10, "Life"}));
-        objectsWR.push_back(std::make_unique<ObjectWithoutRowid>(ObjectWithoutRowid{20, "Death"}));
+        objectsWR.push_back(std::make_unique<ObjectWithoutRowid>(10, "Life"));
+        objectsWR.push_back(std::make_unique<ObjectWithoutRowid>(20, "Death"));
 
         REQUIRE(objectsWR.size() == 2);
-        storage.insert_range<ObjectWithoutRowid>(
-            objectsWR.begin(),
-            objectsWR.end(),
-            [](const std::unique_ptr<ObjectWithoutRowid> &pointer) -> const ObjectWithoutRowid & {
-                return *pointer;
-            });
+        storage.insert_range(objectsWR.begin(), objectsWR.end(), &std::unique_ptr<ObjectWithoutRowid>::operator*);
         REQUIRE(storage.get<ObjectWithoutRowid>(10).name == "Life");
         REQUIRE(storage.get<ObjectWithoutRowid>(20).name == "Death");
     }
@@ -181,7 +188,7 @@ TEST_CASE("Select") {
     sqlite3 *db;
     auto dbFileName = "test.db";
     auto rc = sqlite3_open(dbFileName, &db);
-    assert(rc == SQLITE_OK);
+    REQUIRE(rc == SQLITE_OK);
     auto sql = "CREATE TABLE IF NOT EXISTS WORDS("
                "ID INTEGER PRIMARY        KEY AUTOINCREMENT      NOT NULL,"
                "CURRENT_WORD          TEXT     NOT NULL,"
@@ -367,6 +374,11 @@ TEST_CASE("Replace query") {
     struct Object {
         int id;
         std::string name;
+
+#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
+        Object() = default;
+        Object(int id, std::string name) : id{id}, name{move(name)} {}
+#endif
     };
 
     struct User {
@@ -451,22 +463,14 @@ TEST_CASE("Replace query") {
     }
     SECTION("pointers") {
         std::vector<std::unique_ptr<Object>> vector;
-        vector.push_back(std::make_unique<Object>(Object{300, "Iggy"}));
-        vector.push_back(std::make_unique<Object>(Object{400, "Azalea"}));
-        storage.replace_range<Object>(vector.begin(),
-                                      vector.end(),
-                                      [](const std::unique_ptr<Object> &pointer) -> const Object & {
-                                          return *pointer;
-                                      });
+        vector.push_back(std::make_unique<Object>(300, "Iggy"));
+        vector.push_back(std::make_unique<Object>(400, "Azalea"));
+        storage.replace_range(vector.begin(), vector.end(), &std::unique_ptr<Object>::operator*);
         REQUIRE(storage.count<Object>() == 4);
 
         //  test empty container
         std::vector<std::unique_ptr<Object>> emptyVector;
-        storage.replace_range<Object>(emptyVector.begin(),
-                                      emptyVector.end(),
-                                      [](const std::unique_ptr<Object> &pointer) -> const Object & {
-                                          return *pointer;
-                                      });
+        storage.replace_range(emptyVector.begin(), emptyVector.end(), &std::unique_ptr<Object>::operator*);
     }
     REQUIRE(storage.count<User>() == 0);
     storage.replace(User{10, "Daddy Yankee"});
@@ -494,6 +498,8 @@ TEST_CASE("Remove all") {
 }
 
 TEST_CASE("Explicit insert") {
+    using Catch::Matchers::Contains;
+
     struct User {
         int id;
         std::string name;
@@ -581,13 +587,7 @@ TEST_CASE("Explicit insert") {
         SECTION("one column") {
             User user4;
             user4.name = "Egor";
-            try {
-                storage.insert(user4, columns(&User::name));
-                REQUIRE(false);
-                //                throw std::runtime_error("Must not fire");
-            } catch(const std::system_error &) {
-                //        cout << e.what() << endl;
-            }
+            REQUIRE_THROWS_WITH(storage.insert(user4, columns(&User::name)), Contains("NOT NULL constraint failed"));
         }
     }
     SECTION("visit") {
@@ -619,12 +619,8 @@ TEST_CASE("Explicit insert") {
             Visit visit3;
             visit3.setId(10);
             SECTION("getter") {
-                try {
-                    storage.insert(visit3, columns(&Visit::id));
-                    REQUIRE(false);
-                } catch(const std::system_error &) {
-                    //        cout << e.what() << endl;
-                }
+                REQUIRE_THROWS_WITH(storage.insert(visit3, columns(&Visit::id)),
+                                    Contains("NOT NULL constraint failed"));
             }
         }
     }

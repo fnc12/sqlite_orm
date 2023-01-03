@@ -2,9 +2,9 @@
 
 #include <type_traits>  //  std::is_same, std::decay, std::remove_reference
 
+#include "functional/static_magic.h"
 #include "prepared_statement.h"
 #include "ast_iterator.h"
-#include "static_magic.h"
 #include "expression_object_type.h"
 
 namespace sqlite_orm {
@@ -121,22 +121,24 @@ namespace sqlite_orm {
 
     template<int N, class T>
     const auto& get(const internal::prepared_statement_t<T>& statement) {
-        using statement_type = typename std::decay<decltype(statement)>::type;
+        using statement_type = std::decay_t<decltype(statement)>;
         using expression_type = typename statement_type::expression_type;
         using node_tuple = internal::node_tuple_t<expression_type>;
-        using bind_tuple = typename internal::bindable_filter<node_tuple>::type;
-        using result_tupe = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
-        const result_tupe* result = nullptr;
-        auto index = -1;
-        internal::iterate_ast(statement.expression, [&result, &index](auto& node) {
-            using node_type = typename std::decay<decltype(node)>::type;
+        using bind_tuple = internal::bindable_filter_t<node_tuple>;
+        using result_type = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
+        const result_type* result = nullptr;
+        internal::iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
+            using node_type = std::decay_t<decltype(node)>;
             if(internal::is_bindable_v<node_type>) {
                 ++index;
             }
             if(index == N) {
-                internal::static_if<std::is_same<result_tupe, node_type>{}>([](auto& r, auto& n) {
-                    r = const_cast<typename std::remove_reference<decltype(r)>::type>(&n);
-                })(result, node);
+                internal::call_if_constexpr<std::is_same<result_type, node_type>::value>(
+                    [](auto& r, auto& n) {
+                        r = &n;
+                    },
+                    result,
+                    node);
             }
         });
         return internal::get_ref(*result);
@@ -144,22 +146,25 @@ namespace sqlite_orm {
 
     template<int N, class T>
     auto& get(internal::prepared_statement_t<T>& statement) {
-        using statement_type = typename std::decay<decltype(statement)>::type;
+        using statement_type = std::decay_t<decltype(statement)>;
         using expression_type = typename statement_type::expression_type;
         using node_tuple = internal::node_tuple_t<expression_type>;
-        using bind_tuple = typename internal::bindable_filter<node_tuple>::type;
-        using result_tupe = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
-        result_tupe* result = nullptr;
-        auto index = -1;
-        internal::iterate_ast(statement.expression, [&result, &index](auto& node) {
-            using node_type = typename std::decay<decltype(node)>::type;
+        using bind_tuple = internal::bindable_filter_t<node_tuple>;
+        using result_type = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
+        result_type* result = nullptr;
+
+        internal::iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
+            using node_type = std::decay_t<decltype(node)>;
             if(internal::is_bindable_v<node_type>) {
                 ++index;
             }
             if(index == N) {
-                internal::static_if<std::is_same<result_tupe, node_type>{}>([](auto& r, auto& n) {
-                    r = const_cast<typename std::remove_reference<decltype(r)>::type>(&n);
-                })(result, node);
+                internal::call_if_constexpr<std::is_same<result_type, node_type>::value>(
+                    [](auto& r, auto& n) {
+                        r = const_cast<std::remove_reference_t<decltype(r)>>(&n);
+                    },
+                    result,
+                    node);
             }
         });
         return internal::get_ref(*result);

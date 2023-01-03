@@ -21,7 +21,7 @@ template<class... Args>
 struct is_tuple<std::tuple<Args...>> : std::true_type {};
 
 TEST_CASE("Node tuple") {
-    using internal::bindable_filter;
+    using internal::bindable_filter_t;
     using internal::node_tuple;
     using internal::node_tuple_t;
     using std::is_same;
@@ -37,13 +37,13 @@ TEST_CASE("Node tuple") {
             using Tuple = node_tuple_t<int>;
             using Expected = tuple<int>;
             static_assert(is_same<Tuple, Expected>::value, "bindable int");
-            STATIC_REQUIRE(is_same<bindable_filter<Tuple>::type, tuple<int>>::value);
+            STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<int>>::value);
         }
         SECTION("float") {
             using Tuple = node_tuple_t<float>;
             using Expected = tuple<float>;
             static_assert(is_same<Tuple, Expected>::value, "bindable float");
-            STATIC_REQUIRE(is_same<bindable_filter<Tuple>::type, tuple<float>>::value);
+            STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<float>>::value);
         }
     }
     SECTION("non-bindable literals") {
@@ -51,7 +51,7 @@ TEST_CASE("Node tuple") {
         using Tuple = node_tuple_t<literal_holder<int>>;
         using Expected = tuple<>;
         static_assert(is_same<Tuple, Expected>::value, "literal int");
-        STATIC_REQUIRE(is_same<bindable_filter<Tuple>::type, tuple<>>::value);
+        STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<>>::value);
     }
     SECTION("binary_condition") {
         using namespace internal;
@@ -61,7 +61,7 @@ TEST_CASE("Node tuple") {
             using Tuple = node_tuple_t<C>;
             using Expected = tuple<int, float>;
             static_assert(is_same<Tuple, Expected>::value, "lesser_than_t");
-            STATIC_REQUIRE(is_same<bindable_filter<Tuple>::type, tuple<int, float>>::value);
+            STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<int, float>>::value);
         }
         SECTION("id < 10") {
             auto c = lesser_than(&User::id, 10);
@@ -69,7 +69,7 @@ TEST_CASE("Node tuple") {
             using Tuple = node_tuple_t<C>;
             using Expected = tuple<decltype(&User::id), int>;
             static_assert(is_same<Tuple, Expected>::value, "lesser_than_t");
-            STATIC_REQUIRE(is_same<bindable_filter<Tuple>::type, tuple<int>>::value);
+            STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<int>>::value);
         }
         SECTION("5 <= 6.0f") {
             auto c = lesser_or_equal(5, 6.0f);
@@ -77,7 +77,7 @@ TEST_CASE("Node tuple") {
             using Tuple = node_tuple_t<C>;
             using Expected = tuple<int, float>;
             static_assert(is_same<Tuple, Expected>::value, "lesser_or_equal_t");
-            STATIC_REQUIRE(is_same<bindable_filter<Tuple>::type, tuple<int, float>>::value);
+            STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<int, float>>::value);
         }
         SECTION("id <= 10.0") {
             auto c = lesser_or_equal(&User::id, 10.0);
@@ -85,7 +85,7 @@ TEST_CASE("Node tuple") {
             using Tuple = node_tuple_t<C>;
             using Expected = tuple<decltype(&User::id), double>;
             static_assert(is_same<Tuple, Expected>::value, "lesser_or_equal_t");
-            STATIC_REQUIRE(is_same<bindable_filter<Tuple>::type, tuple<double>>::value);
+            STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<double>>::value);
         }
         SECTION("5 > 6.0f") {
             auto c = greater_than(5, 6.0f);
@@ -93,7 +93,7 @@ TEST_CASE("Node tuple") {
             using Tuple = node_tuple_t<C>;
             using Expected = tuple<int, float>;
             static_assert(is_same<Tuple, Expected>::value, "greater_than_t");
-            STATIC_REQUIRE(is_same<bindable_filter<Tuple>::type, tuple<int, float>>::value);
+            STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<int, float>>::value);
         }
         SECTION("id > 20") {
             auto c = greater_than(&User::id, 20);
@@ -101,7 +101,7 @@ TEST_CASE("Node tuple") {
             using Tuple = node_tuple_t<C>;
             using Expected = tuple<decltype(&User::id), int>;
             static_assert(is_same<Tuple, Expected>::value, "greater_than_t");
-            STATIC_REQUIRE(is_same<bindable_filter<Tuple>::type, tuple<int>>::value);
+            STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<int>>::value);
         }
         SECTION("5 >= 6.0f") {
             auto c = greater_or_equal(5, 6.0f);
@@ -109,7 +109,7 @@ TEST_CASE("Node tuple") {
             using Tuple = node_tuple_t<C>;
             using Expected = tuple<int, float>;
             static_assert(is_same<Tuple, Expected>::value, "greater_or_equal_t");
-            STATIC_REQUIRE(is_same<bindable_filter<Tuple>::type, tuple<int, float>>::value);
+            STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<int, float>>::value);
         }
         SECTION("5 >= id") {
             auto c = greater_or_equal(5, &User::id);
@@ -117,7 +117,7 @@ TEST_CASE("Node tuple") {
             using Tuple = node_tuple_t<C>;
             using Expected = tuple<int, decltype(&User::id)>;
             static_assert(is_same<Tuple, Expected>::value, "greater_or_equal_t");
-            STATIC_REQUIRE(is_same<bindable_filter<Tuple>::type, tuple<int>>::value);
+            STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<int>>::value);
         }
         SECTION("5 == 6.0f") {
             auto c = is_equal(5, 6.0f);
@@ -125,7 +125,7 @@ TEST_CASE("Node tuple") {
             using Tuple = node_tuple_t<C>;
             using Expected = tuple<int, float>;
             static_assert(is_same<Tuple, Expected>::value, "is_equal_t");
-            STATIC_REQUIRE(is_same<bindable_filter<Tuple>::type, tuple<int, float>>::value);
+            STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<int, float>>::value);
         }
         SECTION("'ototo' == name") {
             auto c = is_equal("ototo", &User::name);
@@ -133,7 +133,7 @@ TEST_CASE("Node tuple") {
             using Tuple = node_tuple_t<C>;
             using Expected = tuple<const char*, decltype(&User::name)>;
             static_assert(is_same<Tuple, Expected>::value, "is_equal_t");
-            STATIC_REQUIRE(is_same<bindable_filter<Tuple>::type, tuple<const char*>>::value);
+            STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<const char*>>::value);
         }
         SECTION("5 != 6.0f") {
             auto c = is_not_equal(5, 6.0f);
@@ -141,7 +141,7 @@ TEST_CASE("Node tuple") {
             using Tuple = node_tuple_t<C>;
             using Expected = tuple<int, float>;
             static_assert(is_same<Tuple, Expected>::value, "is_not_equal_t");
-            STATIC_REQUIRE(is_same<bindable_filter<Tuple>::type, tuple<int, float>>::value);
+            STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<int, float>>::value);
         }
         SECTION("name != std::string('ototo')") {
             auto c = is_not_equal(&User::name, std::string("ototo"));
@@ -149,43 +149,43 @@ TEST_CASE("Node tuple") {
             using Tuple = node_tuple_t<C>;
             using Expected = tuple<decltype(&User::name), std::string>;
             static_assert(is_same<Tuple, Expected>::value, "is_not_equal_t");
-            STATIC_REQUIRE(is_same<bindable_filter<Tuple>::type, tuple<std::string>>::value);
+            STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<std::string>>::value);
         }
         SECTION("bool and int") {
-            using Tuple = node_tuple<and_condition_t<bool, int>>::type;
+            using Tuple = node_tuple_t<and_condition_t<bool, int>>;
             using Expected = tuple<bool, int>;
             static_assert(is_same<Tuple, Expected>::value, "and_condition_t");
-            STATIC_REQUIRE(is_same<bindable_filter<Tuple>::type, tuple<bool, int>>::value);
+            STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<bool, int>>::value);
         }
         SECTION("bool or int") {
-            using Tuple = node_tuple<or_condition_t<bool, int>>::type;
+            using Tuple = node_tuple_t<or_condition_t<bool, int>>;
             using Expected = tuple<bool, int>;
             static_assert(is_same<Tuple, Expected>::value, "or_condition_t");
-            STATIC_REQUIRE(is_same<bindable_filter<Tuple>::type, tuple<bool, int>>::value);
+            STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<bool, int>>::value);
         }
     }
     SECTION("binary_operator") {
         using namespace internal;
 
-        using CondTuple = node_tuple<conc_t<std::string, decltype(&User::name)>>::type;
+        using CondTuple = node_tuple_t<conc_t<std::string, decltype(&User::name)>>;
         static_assert(is_same<CondTuple, tuple<std::string, decltype(&User::name)>>::value, "conc_t");
 
-        using AddTuple = node_tuple<add_t<int, decltype(&User::id)>>::type;
+        using AddTuple = node_tuple_t<add_t<int, decltype(&User::id)>>;
         static_assert(is_same<AddTuple, tuple<int, decltype(&User::id)>>::value, "add_t");
 
-        using SubTuple = node_tuple<sub_t<float, double>>::type;
+        using SubTuple = node_tuple_t<sub_t<float, double>>;
         static_assert(is_same<SubTuple, tuple<float, double>>::value, "sub_t");
 
-        using MulTuple = node_tuple<mul_t<double, decltype(&User::id)>>::type;
+        using MulTuple = node_tuple_t<mul_t<double, decltype(&User::id)>>;
         static_assert(is_same<MulTuple, tuple<double, decltype(&User::id)>>::value, "mul_t");
 
-        using DivTuple = node_tuple<sqlite_orm::internal::div_t<int, float>>::type;
+        using DivTuple = node_tuple_t<sqlite_orm::internal::div_t<int, float>>;
         static_assert(is_same<DivTuple, tuple<int, float>>::value, "div_t");
 
-        using ModTuple = node_tuple<mod_t<decltype(&User::id), int>>::type;
+        using ModTuple = node_tuple_t<mod_t<decltype(&User::id), int>>;
         static_assert(is_same<ModTuple, tuple<decltype(&User::id), int>>::value, "mod_t");
 
-        using AssignTuple = node_tuple<assign_t<decltype(&User::name), std::string>>::type;
+        using AssignTuple = node_tuple_t<assign_t<decltype(&User::name), std::string>>;
         static_assert(is_same<AssignTuple, tuple<decltype(&User::name), std::string>>::value, "assign_t");
     }
     SECTION("columns") {
@@ -772,7 +772,7 @@ TEST_CASE("Node tuple") {
         }
 #endif
         SECTION("coalesce") {
-            auto f = char_(10, 20);
+            auto f = coalesce(10, 20);
             using Fun = decltype(f);
             using Tuple = node_tuple_t<Fun>;
             using Expected = tuple<int, int>;
@@ -942,16 +942,16 @@ TEST_CASE("Node tuple") {
     }
     SECTION("with") {
         auto expression =
-            with(cte<1_ctealias>()(
+            with(cte<cte_alias<'1'>>()(
                      union_all(select(1), select(1_ctealias->*1_colalias + c(1), where(1_ctealias->*1_colalias < 10)))),
                  select(1_ctealias->*1_colalias));
         using Tuple = node_tuple_t<decltype(expression)>;
         using ExpectedTuple = tuple<int,
-                                    column_pointer<cte_alias<49>, alias_holder<column_alias<49>>>,
+                                    column_pointer<cte_alias<'1'>, alias_holder<column_alias<'1'>>>,
                                     int,
-                                    column_pointer<cte_alias<49>, alias_holder<column_alias<49>>>,
+                                    column_pointer<cte_alias<'1'>, alias_holder<column_alias<'1'>>>,
                                     int,
-                                    column_pointer<cte_alias<49>, alias_holder<column_alias<49>>>>;
+                                    column_pointer<cte_alias<'1'>, alias_holder<column_alias<'1'>>>>;
         STATIC_REQUIRE(std::is_same_v<Tuple, ExpectedTuple>);
     }
 }

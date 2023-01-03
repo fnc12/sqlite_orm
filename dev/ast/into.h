@@ -1,6 +1,6 @@
 #pragma once
 
-#include <type_traits>  //  std::true_type, std::false_type
+#include "../functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -11,10 +11,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct is_into : std::false_type {};
-
-        template<class T>
-        struct is_into<into_t<T>> : std::true_type {};
+        using is_into = polyfill::is_specialization_of<T, into_t>;
     }
 
     template<class T>

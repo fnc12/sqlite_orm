@@ -5,7 +5,7 @@
 #include <functional>  //  std::function
 #include <typeindex>  //  std::type_index
 
-#include "cxx_polyfill.h"
+#include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"
 #include "mapped_type_proxy.h"
 #include "select_constraints.h"
@@ -18,7 +18,7 @@ namespace sqlite_orm {
 
         struct table_name_collector {
             using table_name_set = std::set<std::pair<std::string, std::string>>;
-            using find_table_name_t = std::function<std::string(std::type_index)>;
+            using find_table_name_t = std::function<std::string(const std::type_index &)>;
 
             find_table_name_t find_table_name;
             mutable table_name_set table_names;

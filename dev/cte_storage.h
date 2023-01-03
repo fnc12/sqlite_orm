@@ -5,8 +5,9 @@
 #include <string>
 #include <vector>
 
+#include "tuple_helper/tuple_fy.h"
 #include "is_base_of_template.h"
-#include "table_type.h"
+#include "table_type_of.h"
 #include "column_result.h"
 #include "column_expression.h"
 #include "select_constraints.h"
@@ -67,8 +68,8 @@ namespace sqlite_orm {
         // F O::*
         template<typename F, typename ColRef, satisfies<std::is_member_pointer, ColRef> = true>
         static auto make_cte_column(std::string name, const ColRef& finalColRef) {
-            using object_type = typename table_type<ColRef>::type;
-            using column_type = column_t<object_type, F, ColRef, empty_setter>;
+            using object_type = table_type_of_t<ColRef>;
+            using column_type = column_t<ColRef, empty_setter>;
 
             return column_type{move(name), finalColRef, empty_setter{}};
         }
@@ -78,9 +79,9 @@ namespace sqlite_orm {
          *  forming a new storage implementation object.
          */
         template<typename... Ts, typename... CTETables>
-        storage_impl<CTETables..., Ts...> storage_impl_cat(const storage_impl<Ts...>& storage,
-                                                           CTETables&&... cteTables) {
-            return {std::forward<CTETables>(cteTables)..., pick_impl<Ts>(storage).table...};
+        db_objects_tuple<CTETables..., Ts...> storage_db_objects_cat(const db_objects_tuple<Ts...>& storage,
+                                                                     CTETables&&... cteTables) {
+            return {std::forward<CTETables>(cteTables)..., pick_table<Ts>(storage)...};
         }
 
         /**
@@ -121,89 +122,94 @@ namespace sqlite_orm {
         }
 
         // any expression -> numeric column alias
-        template<class S, class E, size_t Idx = 0>
-        auto extract_colref_expressions(const S& /*impl*/, const E& /*col*/, std::index_sequence<Idx> = {})
+        template<class DBOs, class E, size_t Idx = 0>
+        auto extract_colref_expressions(const DBOs& /*dbObjects*/, const E& /*col*/, std::index_sequence<Idx> = {})
             -> std::tuple<alias_holder<decltype(n_to_colalias<Idx>())>> {
-            return {};
+            return;
         }
 
         // expression_t<>
-        template<class S, class E, size_t Idx = 0>
-        auto extract_colref_expressions(const S& impl, const expression_t<E>& col, std::index_sequence<Idx> s = {}) {
-            return extract_colref_expressions(impl, col.value, s);
+        template<class DBOs, class E, size_t Idx = 0>
+        auto
+        extract_colref_expressions(const DBOs& dbObjects, const expression_t<E>& col, std::index_sequence<Idx> s = {}) {
+            return extract_colref_expressions(dbObjects, col.value, s);
         }
 
         // F O::* (field/getter) -> field/getter
-        template<class S, class F, class O, size_t Idx = 0>
-        auto extract_colref_expressions(const S& /*impl*/, F O::*col, std::index_sequence<Idx> = {}) {
+        template<class DBOs, class F, class O, size_t Idx = 0>
+        auto extract_colref_expressions(const DBOs& /*dbObjects*/, F O::*col, std::index_sequence<Idx> = {}) {
             return std::make_tuple(col);
         }
 
         // as_t<> (aliased expression) -> alias_holder
-        template<class S, class A, class E, size_t Idx = 0>
-        std::tuple<alias_holder<A>>
-        extract_colref_expressions(const S& /*impl*/, const as_t<A, E>& /*col*/, std::index_sequence<Idx> = {}) {
+        template<class DBOs, class A, class E, size_t Idx = 0>
+        std::tuple<alias_holder<A>> extract_colref_expressions(const DBOs& /*dbObjects*/,
+                                                               const as_t<A, E>& /*col*/,
+                                                               std::index_sequence<Idx> = {}) {
             return {};
         }
 
         // alias_holder<> (colref) -> alias_holder
-        template<class S, class A, size_t Idx = 0>
-        std::tuple<alias_holder<A>>
-        extract_colref_expressions(const S& /*impl*/, const alias_holder<A>& /*col*/, std::index_sequence<Idx> = {}) {
+        template<class DBOs, class A, size_t Idx = 0>
+        std::tuple<alias_holder<A>> extract_colref_expressions(const DBOs& /*dbObjects*/,
+                                                               const alias_holder<A>& /*col*/,
+                                                               std::index_sequence<Idx> = {}) {
             return {};
         }
 
         // column_pointer<>
-        template<class S, class Label, class F, size_t Idx = 0>
-        auto extract_colref_expressions(const S& impl,
+        template<class DBOs, class Label, class F, size_t Idx = 0>
+        auto extract_colref_expressions(const DBOs& dbObjects,
                                         const column_pointer<Label, F>& col,
                                         std::index_sequence<Idx> s = {}) {
-            return extract_colref_expressions(impl, col.field, s);
+            return extract_colref_expressions(dbObjects, col.field, s);
         }
 
         // column expression tuple
-        template<class S, class... Args, size_t... Idx>
-        auto extract_colref_expressions(const S& impl, const std::tuple<Args...>& cols, std::index_sequence<Idx...>) {
-            return std::tuple_cat(extract_colref_expressions(impl, get<Idx>(cols), std::index_sequence<Idx>{})...);
+        template<class DBOs, class... Args, size_t... Idx>
+        auto extract_colref_expressions(const DBOs& dbObjects,
+                                        const std::tuple<Args...>& cols,
+                                        std::index_sequence<Idx...>) {
+            return std::tuple_cat(extract_colref_expressions(dbObjects, get<Idx>(cols), std::index_sequence<Idx>{})...);
         }
 
         // columns_t<>
-        template<class S, class... Args>
-        auto extract_colref_expressions(const S& impl, const columns_t<Args...>& cols) {
-            return extract_colref_expressions(impl, cols.columns, std::index_sequence_for<Args...>{});
+        template<class DBOs, class... Args>
+        auto extract_colref_expressions(const DBOs& dbObjects, const columns_t<Args...>& cols) {
+            return extract_colref_expressions(dbObjects, cols.columns, std::index_sequence_for<Args...>{});
         }
 
         // asterisk_t<> -> fields
-        template<class S, class O>
-        auto extract_colref_expressions(const S& impl, const asterisk_t<O>& /*col*/) {
-            using timpl_type = storage_pick_impl_t<S, O>;
-            using elements_t = typename timpl_type::table_type::elements_type;
+        template<class DBOs, class O>
+        auto extract_colref_expressions(const DBOs& dbObjects, const asterisk_t<O>& /*col*/) {
+            using table_type = storage_pick_table_t<O, DBOs>;
+            using elements_t = typename table_type::elements_type;
             using column_idxs = filter_tuple_sequence_t<elements_t, is_column>;
 
-            auto& tImpl = pick_impl<O>(impl);
-            return get_fields_of_columns(tImpl.table.elements, column_idxs{});
+            auto& table = pick_table<O>(dbObjects);
+            return get_fields_of_columns(table.elements, column_idxs{});
         }
 
-        template<class S, class E, class... Args>
-        void extract_colref_expressions(const S& /*impl*/, const select_t<E, Args...>& /*subSelect*/) = delete;
-        template<class S,
+        template<class DBOs, class E, class... Args>
+        void extract_colref_expressions(const DBOs& /*dbObjects*/, const select_t<E, Args...>& /*subSelect*/) = delete;
+        template<class DBOs,
                  class Compound,
                  std::enable_if_t<is_base_of_template_v<Compound, compound_operator>, bool> = true>
-        void extract_colref_expressions(const S& /*impl*/, const Compound& /*subSelect*/) = delete;
+        void extract_colref_expressions(const DBOs& /*dbObjects*/, const Compound& /*subSelect*/) = delete;
 
         /*
          *  Depending on ExplicitColRef's type returns either the explicit column reference
          *  or the expression's column reference otherwise.
          */
-        template<typename S, typename SubselectColRef, typename ExplicitColRef>
-        auto determine_cte_colref(const S& /*impl*/,
+        template<typename DBOs, typename SubselectColRef, typename ExplicitColRef>
+        auto determine_cte_colref(const DBOs& /*dbObjects*/,
                                   const SubselectColRef& subselectColRef,
                                   const ExplicitColRef& explicitColRef) {
             if constexpr(polyfill::is_specialization_of_v<ExplicitColRef, alias_holder>) {
                 return explicitColRef;
             } else if constexpr(std::is_member_pointer<ExplicitColRef>::value) {
                 return explicitColRef;
-            } else if constexpr(std::is_base_of_v<basic_column, ExplicitColRef>) {
+            } else if constexpr(std::is_base_of_v<column_identifier, ExplicitColRef>) {
                 return explicitColRef.member_pointer;
             } else if constexpr(std::is_same_v<ExplicitColRef, std::string>) {
                 return subselectColRef;
@@ -214,25 +220,26 @@ namespace sqlite_orm {
             }
         }
 
-        template<typename S, typename SubselectColRefs, typename ExplicitColRefs, size_t... Idx>
-        auto determine_cte_colrefs(const S& impl,
+        template<typename DBOs, typename SubselectColRefs, typename ExplicitColRefs, size_t... Idx>
+        auto determine_cte_colrefs(const DBOs& dbObjects,
                                    const SubselectColRefs& subselectColRefs,
                                    const ExplicitColRefs& explicitColRefs,
                                    std::index_sequence<Idx...>) {
             if constexpr(std::tuple_size_v < ExplicitColRefs >> 0) {
-                return std::tuple{determine_cte_colref(impl, get<Idx>(subselectColRefs), get<Idx>(explicitColRefs))...};
+                return std::tuple{
+                    determine_cte_colref(dbObjects, get<Idx>(subselectColRefs), get<Idx>(explicitColRefs))...};
             } else {
                 static_assert(
                     (!internal::is_builtin_numeric_column_alias_v<
-                         alias_holder_type_or_none_t<std::tuple_element_t<Idx, SubselectColRefs>>> &&
+                         alias_holder_type_or_none_t<std::tuple_element_t<Idx, ExplicitColRefs>>> &&
                      ...),
                     "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
                 return subselectColRefs;
             }
         }
 
-        template<typename Mapper, typename S, typename ColRefs, size_t... CIs>
-        auto make_cte_table_using_column_indices(const S& impl,
+        template<typename Mapper, typename DBOs, typename ColRefs, size_t... CIs>
+        auto make_cte_table_using_column_indices(const DBOs& /*dbObjects*/,
                                                  std::string tableName,
                                                  std::vector<std::string> columnNames,
                                                  const ColRefs& finalColRefs,
@@ -243,79 +250,79 @@ namespace sqlite_orm {
                                                                                          get<CIs>(finalColRefs))...);
         }
 
-        template<typename S, typename CTE>
-        auto make_cte_table(const S& impl, const CTE& cte) {
+        template<typename DBOs, typename CTE>
+        auto make_cte_table(const DBOs& dbObjects, const CTE& cte) {
             using cte_type = CTE;
 
             auto subSelect = get_cte_driving_subselect(cte.subselect);
 
             using subselect_type = decltype(subSelect);
-            using column_results = column_result_of_t<S, subselect_type>;
+            using column_results = column_result_of_t<DBOs, subselect_type>;
             using index_sequence = std::make_index_sequence<std::tuple_size_v<tuplify_t<column_results>>>;
             static_assert(cte_type::explicit_colref_count == 0 ||
                               cte_type::explicit_colref_count == index_sequence::size(),
                           "Number of explicit columns of common table expression doesn't match the number of columns "
                           "in the subselect.");
 
-            using context_type = serializer_context<S>;
+            using context_type = serializer_context<DBOs>;
 
             std::string tableName = alias_extractor<cte_label_type_t<cte_type>>::extract();
-            auto subselectColRefs = extract_colref_expressions(impl, subSelect.col);
+            auto subselectColRefs = extract_colref_expressions(dbObjects, subSelect.col);
             const auto& finalColRefs =
-                determine_cte_colrefs(impl, subselectColRefs, cte.explicitColumns, index_sequence{});
+                determine_cte_colrefs(dbObjects, subselectColRefs, cte.explicitColumns, index_sequence{});
 
-            context_type context{impl};
+            context_type context{dbObjects};
             std::vector<std::string> columnNames = collect_cte_column_names(subSelect, cte.explicitColumns, context);
 
             using mapper_type = create_cte_mapper_t<cte_label_type_t<cte_type>,
                                                     typename cte_type::explicit_colrefs_tuple,
-                                                    column_expression_of_t<S, subselect_type>,
+                                                    column_expression_of_t<DBOs, subselect_type>,
                                                     decltype(subselectColRefs),
                                                     polyfill::remove_cvref_t<decltype(finalColRefs)>,
                                                     column_results>;
-            return make_cte_table_using_column_indices<mapper_type>(impl,
+            return make_cte_table_using_column_indices<mapper_type>(dbObjects,
                                                                     move(tableName),
                                                                     move(columnNames),
                                                                     finalColRefs,
                                                                     index_sequence{});
         }
 
-        template<typename S, typename... CTEs, size_t Ii>
-        decltype(auto) make_recursive_cte_storage_using_table_indices(const S& impl,
+        template<typename DBOs, typename... CTEs, size_t Ii>
+        decltype(auto) make_recursive_cte_storage_using_table_indices(const DBOs& dbObjects,
                                                                       const common_table_expressions<CTEs...>& cte,
                                                                       std::index_sequence<Ii>) {
-            auto tbl = make_cte_table(impl, get<Ii>(cte));
+            auto tbl = make_cte_table(dbObjects, get<Ii>(cte));
 
-            return storage_impl_cat(impl, std::move(tbl));
+            return storage_db_objects_cat(dbObjects, std::move(tbl));
         }
 
-        template<typename S, typename... CTEs, size_t Ii, size_t Ij, size_t... In>
-        decltype(auto) make_recursive_cte_storage_using_table_indices(const S& impl,
+        template<typename DBOs, typename... CTEs, size_t Ii, size_t Ij, size_t... In>
+        decltype(auto) make_recursive_cte_storage_using_table_indices(const DBOs& dbObjects,
                                                                       const common_table_expressions<CTEs...>& cte,
                                                                       std::index_sequence<Ii, Ij, In...>) {
-            auto tbl = make_cte_table(impl, get<Ii>(cte));
+            auto tbl = make_cte_table(dbObjects, get<Ii>(cte));
 
             return make_recursive_cte_storage_using_table_indices(
                 // Because CTEs can depend on their predecessor we recursively pass in a new storage object
-                storage_impl_cat(impl, std::move(tbl)),
+                storage_db_objects_cat(dbObjects, std::move(tbl)),
                 cte,
                 std::index_sequence<Ij, In...>{});
         }
 
         /**
-         *  Return const storage_impl of storage_t.
+         *  Return DBOs of storage_t.
          */
         template<class S, class E, satisfies<is_storage, S> = true>
         decltype(auto) storage_for_expression(S& storage, const E&) {
-            return obtain_const_impl(storage);
+            return obtain_db_objects(storage);
         }
 
         /**
-         *  Return new storage_impl for CTE expressions.
+         *  Return new DBOs for CTE expressions.
          */
         template<class S, class E, class... CTEs, satisfies<is_storage, S> = true>
         decltype(auto) storage_for_expression(S& storage, const with_t<E, CTEs...>& e) {
-            return make_recursive_cte_storage_using_table_indices(obtain_const_impl(storage),
+            return make_recursive_cte_storage_using_table_indices(obtain_db_objects(storage),
                                                                   e.cte,
                                                                   std::index_sequence_for<CTEs...>{});
         }

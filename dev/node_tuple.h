@@ -4,11 +4,9 @@
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::pair
 #include <functional>  //  std::reference_wrapper
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>  // std::optional
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+#include "functional/cxx_optional.h"
 
-#include "cxx_polyfill.h"
+#include "functional/cxx_type_traits_polyfill.h"
 #include "tuple_helper/tuple_filter.h"
 #include "conditions.h"
 #include "operators.h"
@@ -28,15 +26,12 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class T, class SFINAE = void>
-        struct node_tuple;
-
-        template<class T>
-        using node_tuple_t = typename node_tuple<T>::type;
-
-        template<class T, class SFINAE>
         struct node_tuple {
             using type = std::tuple<T>;
         };
+
+        template<class T>
+        using node_tuple_t = typename node_tuple<T>::type;
 
         template<>
         struct node_tuple<void, void> {
@@ -56,7 +51,7 @@ namespace sqlite_orm {
         struct node_tuple<group_by_with_having<T, Args...>, void> {
             using args_tuple = node_tuple_t<std::tuple<Args...>>;
             using expression_tuple = node_tuple_t<T>;
-            using type = conc_tuple_t<args_tuple, expression_tuple>;
+            using type = tuple_cat_t<args_tuple, expression_tuple>;
         };
 
         template<class... TargetArgs, class... ActionsArgs>
@@ -65,7 +60,7 @@ namespace sqlite_orm {
 
         template<class... Args>
         struct node_tuple<set_t<Args...>, void> {
-            using type = conc_tuple_t<node_tuple_t<Args>...>;
+            using type = tuple_cat_t<node_tuple_t<Args>...>;
         };
 
         template<class T>
@@ -90,13 +85,13 @@ namespace sqlite_orm {
         struct node_tuple<order_by_t<E>, void> : node_tuple<E> {};
 
         template<class T>
-        struct node_tuple<T, std::enable_if_t<is_base_of_template<T, binary_condition>::value>> {
+        struct node_tuple<T, std::enable_if_t<is_base_of_template_v<T, binary_condition>>> {
             using node_type = T;
             using left_type = typename node_type::left_type;
             using right_type = typename node_type::right_type;
             using left_node_tuple = node_tuple_t<left_type>;
             using right_node_tuple = node_tuple_t<right_type>;
-            using type = conc_tuple_t<left_node_tuple, right_node_tuple>;
+            using type = tuple_cat_t<left_node_tuple, right_node_tuple>;
         };
 
         template<class L, class R, class... Ds>
@@ -106,36 +101,36 @@ namespace sqlite_orm {
             using right_type = typename node_type::right_type;
             using left_node_tuple = node_tuple_t<left_type>;
             using right_node_tuple = node_tuple_t<right_type>;
-            using type = conc_tuple_t<left_node_tuple, right_node_tuple>;
+            using type = tuple_cat_t<left_node_tuple, right_node_tuple>;
         };
 
         template<class... Args>
         struct node_tuple<columns_t<Args...>, void> {
-            using type = conc_tuple_t<node_tuple_t<Args>...>;
+            using type = tuple_cat_t<node_tuple_t<Args>...>;
         };
 
         template<class L, class A>
         struct node_tuple<dynamic_in_t<L, A>, void> {
             using left_tuple = node_tuple_t<L>;
             using right_tuple = node_tuple_t<A>;
-            using type = conc_tuple_t<left_tuple, right_tuple>;
+            using type = tuple_cat_t<left_tuple, right_tuple>;
         };
 
         template<class L, class... Args>
         struct node_tuple<in_t<L, Args...>, void> {
             using left_tuple = node_tuple_t<L>;
-            using right_tuple = conc_tuple_t<node_tuple_t<Args>...>;
-            using type = conc_tuple_t<left_tuple, right_tuple>;
+            using right_tuple = tuple_cat_t<node_tuple_t<Args>...>;
+            using type = tuple_cat_t<left_tuple, right_tuple>;
         };
 
         template<class T>
-        struct node_tuple<T, std::enable_if_t<is_base_of_template<T, compound_operator>::value>> {
+        struct node_tuple<T, std::enable_if_t<is_base_of_template_v<T, compound_operator>>> {
             using node_type = T;
             using left_type = typename node_type::left_type;
             using right_type = typename node_type::right_type;
             using left_tuple = node_tuple_t<left_type>;
             using right_tuple = node_tuple_t<right_type>;
-            using type = conc_tuple_t<left_tuple, right_tuple>;
+            using type = tuple_cat_t<left_tuple, right_tuple>;
         };
 
         template<class CTE>
@@ -155,18 +150,18 @@ namespace sqlite_orm {
         template<class T, class... Args>
         struct node_tuple<select_t<T, Args...>, void> {
             using columns_tuple = node_tuple_t<T>;
-            using args_tuple = conc_tuple_t<node_tuple_t<Args>...>;
-            using type = conc_tuple_t<columns_tuple, args_tuple>;
+            using args_tuple = tuple_cat_t<node_tuple_t<Args>...>;
+            using type = tuple_cat_t<columns_tuple, args_tuple>;
         };
 
         template<class... Args>
         struct node_tuple<insert_raw_t<Args...>, void> {
-            using type = conc_tuple_t<node_tuple_t<Args>...>;
+            using type = tuple_cat_t<node_tuple_t<Args>...>;
         };
 
         template<class... Args>
         struct node_tuple<replace_raw_t<Args...>, void> {
-            using type = conc_tuple_t<node_tuple_t<Args>...>;
+            using type = tuple_cat_t<node_tuple_t<Args>...>;
         };
 
         template<class T>
@@ -174,41 +169,41 @@ namespace sqlite_orm {
 
         template<class... Args>
         struct node_tuple<values_t<Args...>, void> {
-            using type = conc_tuple_t<node_tuple_t<Args>...>;
+            using type = tuple_cat_t<node_tuple_t<Args>...>;
         };
 
         template<class... Args>
         struct node_tuple<std::tuple<Args...>, void> {
-            using type = conc_tuple_t<node_tuple_t<Args>...>;
+            using type = tuple_cat_t<node_tuple_t<Args>...>;
         };
 
         template<class T, class R, class... Args>
         struct node_tuple<get_all_t<T, R, Args...>, void> {
-            using type = conc_tuple_t<node_tuple_t<Args>...>;
+            using type = tuple_cat_t<node_tuple_t<Args>...>;
         };
 
         template<class T, class... Args>
         struct node_tuple<get_all_pointer_t<T, Args...>, void> {
-            using type = conc_tuple_t<node_tuple_t<Args>...>;
+            using type = tuple_cat_t<node_tuple_t<Args>...>;
         };
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T, class... Args>
         struct node_tuple<get_all_optional_t<T, Args...>, void> {
-            using type = conc_tuple_t<node_tuple_t<Args>...>;
+            using type = tuple_cat_t<node_tuple_t<Args>...>;
         };
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
         template<class... Args, class... Wargs>
         struct node_tuple<update_all_t<set_t<Args...>, Wargs...>, void> {
-            using set_tuple = conc_tuple_t<node_tuple_t<Args>...>;
-            using conditions_tuple = conc_tuple_t<node_tuple_t<Wargs>...>;
-            using type = conc_tuple_t<set_tuple, conditions_tuple>;
+            using set_tuple = tuple_cat_t<node_tuple_t<Args>...>;
+            using conditions_tuple = tuple_cat_t<node_tuple_t<Wargs>...>;
+            using type = tuple_cat_t<set_tuple, conditions_tuple>;
         };
 
         template<class T, class... Args>
         struct node_tuple<remove_all_t<T, Args...>, void> {
-            using type = conc_tuple_t<node_tuple_t<Args>...>;
+            using type = tuple_cat_t<node_tuple_t<Args>...>;
         };
 
         template<class T>
@@ -228,14 +223,14 @@ namespace sqlite_orm {
             using arg_tuple = node_tuple_t<A>;
             using pattern_tuple = node_tuple_t<T>;
             using escape_tuple = node_tuple_t<E>;
-            using type = conc_tuple_t<arg_tuple, pattern_tuple, escape_tuple>;
+            using type = tuple_cat_t<arg_tuple, pattern_tuple, escape_tuple>;
         };
 
         template<class A, class T>
         struct node_tuple<glob_t<A, T>, void> {
             using arg_tuple = node_tuple_t<A>;
             using pattern_tuple = node_tuple_t<T>;
-            using type = conc_tuple_t<arg_tuple, pattern_tuple>;
+            using type = tuple_cat_t<arg_tuple, pattern_tuple>;
         };
 
         template<class A, class T>
@@ -243,7 +238,7 @@ namespace sqlite_orm {
             using expression_tuple = node_tuple_t<A>;
             using lower_tuple = node_tuple_t<T>;
             using upper_tuple = node_tuple_t<T>;
-            using type = conc_tuple_t<expression_tuple, lower_tuple, upper_tuple>;
+            using type = tuple_cat_t<expression_tuple, lower_tuple, upper_tuple>;
         };
 
         template<class T>
@@ -260,24 +255,24 @@ namespace sqlite_orm {
 
         template<class R, class S, class... Args>
         struct node_tuple<built_in_function_t<R, S, Args...>, void> {
-            using type = conc_tuple_t<node_tuple_t<Args>...>;
+            using type = tuple_cat_t<node_tuple_t<Args>...>;
         };
 
         template<class R, class S, class... Args>
         struct node_tuple<built_in_aggregate_function_t<R, S, Args...>, void> {
-            using type = conc_tuple_t<node_tuple_t<Args>...>;
+            using type = tuple_cat_t<node_tuple_t<Args>...>;
         };
 
         template<class F, class W>
         struct node_tuple<filtered_aggregate_function<F, W>, void> {
             using left_tuple = node_tuple_t<F>;
             using right_tuple = node_tuple_t<W>;
-            using type = conc_tuple_t<left_tuple, right_tuple>;
+            using type = tuple_cat_t<left_tuple, right_tuple>;
         };
 
         template<class F, class... Args>
         struct node_tuple<function_call<F, Args...>, void> {
-            using type = conc_tuple_t<node_tuple_t<Args>...>;
+            using type = tuple_cat_t<node_tuple_t<Args>...>;
         };
 
         template<class T, class O>
@@ -303,16 +298,16 @@ namespace sqlite_orm {
         template<class R, class T, class E, class... Args>
         struct node_tuple<simple_case_t<R, T, E, Args...>, void> {
             using case_tuple = node_tuple_t<T>;
-            using args_tuple = conc_tuple_t<node_tuple_t<Args>...>;
+            using args_tuple = tuple_cat_t<node_tuple_t<Args>...>;
             using else_tuple = node_tuple_t<E>;
-            using type = conc_tuple_t<case_tuple, args_tuple, else_tuple>;
+            using type = tuple_cat_t<case_tuple, args_tuple, else_tuple>;
         };
 
         template<class L, class R>
         struct node_tuple<std::pair<L, R>, void> {
             using left_tuple = node_tuple_t<L>;
             using right_tuple = node_tuple_t<R>;
-            using type = conc_tuple_t<left_tuple, right_tuple>;
+            using type = tuple_cat_t<left_tuple, right_tuple>;
         };
 
         template<class T, class E>
@@ -323,12 +318,12 @@ namespace sqlite_orm {
 
         template<class T, class O>
         struct node_tuple<limit_t<T, true, false, O>, void> {
-            using type = conc_tuple_t<node_tuple_t<T>, node_tuple_t<O>>;
+            using type = tuple_cat_t<node_tuple_t<T>, node_tuple_t<O>>;
         };
 
         template<class T, class O>
         struct node_tuple<limit_t<T, true, true, O>, void> {
-            using type = conc_tuple_t<node_tuple_t<O>, node_tuple_t<T>>;
+            using type = tuple_cat_t<node_tuple_t<O>, node_tuple_t<T>>;
         };
     }
 }

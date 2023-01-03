@@ -3,9 +3,9 @@
 #include <type_traits>
 #include <tuple>
 
-#include "cxx_polyfill.h"
-#include "start_macros.h"
-#include "type_traits.h"
+#include "functional/cxx_core_features.h"
+#include "functional/cxx_type_traits_polyfill.h"
+#include "tuple_helper/tuple_fy.h"
 
 namespace sqlite_orm {
 
@@ -37,13 +37,9 @@ namespace sqlite_orm {
           public:
             subselect_mapper() = delete;
 
-            using index_sequence = std::index_sequence_for<Fs...>;
             // this type name is used to detect the mapping from label to object
             using cte_label_type = Label;
-            using fields_type = fields_t<Fs...>;
-            // this type name is used to detect the mapping from label to object;
-            // it only exists to satisfy a table_t<>'s requirement to have a object_type typename
-            using cte_object_type = fields_t<Fs...>;
+            using fields_type = std::tuple<Fs...>;
             // this type captures the expressions forming the columns in a subselect;
             // it is currently unused, however proves to be useful in compilation errors,
             // as it simplifies recognizing errors in column expressions

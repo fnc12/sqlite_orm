@@ -6,7 +6,7 @@ using namespace sqlite_orm;
 
 template<class St, class E, class V>
 void runTest(V /*value*/) {
-    using Type = internal::column_result_of_t<St, V>;
+    using Type = internal::column_result_of_t<typename St::db_objects_type, V>;
     STATIC_REQUIRE(std::is_same<Type, E>::value);
 }
 
@@ -115,7 +115,7 @@ TEST_CASE("column_result_of_t") {
     runTest<Storage, int>(column<cte_1>()->*&User::id);
     runTest<Storage, int>(column<cte_1>->*&User::id);
     runTest<Storage, int>(1_ctealias->*&User::id);
-#if __cplusplus >= 202002L  // C++20 or later
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
     runTest<Storage, int>("1"_cte->*&User::id);
 #endif
 }

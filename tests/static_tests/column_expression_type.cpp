@@ -7,8 +7,8 @@ using internal::alias_holder;
 using internal::column_pointer;
 
 template<class St, class E, class V>
-void runTest(V value) {
-    using Type = internal::column_expression_of_t<St, V>;
+void runTest(V /*value*/) {
+    using Type = internal::column_expression_of_t<typename St::db_objects_type, V>;
     STATIC_REQUIRE(std::is_same<Type, E>::value);
 }
 

@@ -18,10 +18,10 @@ TEST_CASE("statement_serializer trigger") {
                             make_column("last_name", &Lead::lastName),
                             make_column("email", &Lead::email),
                             make_column("phone", &Lead::phone));
-    using storage_impl_t = internal::storage_impl<decltype(table)>;
-    auto storageImpl = storage_impl_t{table};
-    using context_t = internal::serializer_context<storage_impl_t>;
-    context_t context{storageImpl};
+    using db_objects_t = internal::db_objects_tuple<decltype(table)>;
+    auto dbObjects = db_objects_t{table};
+    using context_t = internal::serializer_context<db_objects_t>;
+    context_t context{dbObjects};
     std::string value;
     decltype(value) expected;
     SECTION("without for each row") {

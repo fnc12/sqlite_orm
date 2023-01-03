@@ -8,18 +8,14 @@
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <codecvt>  //  std::codecvt_utf8_utf16
 #endif  //  SQLITE_ORM_OMITS_CODECVT
-#include <cstddef>  // std::nullptr_t
 #include <memory>
 #include <array>
+#include "functional/cxx_string_view.h"
 
-#include "start_macros.h"
-#include "cxx_polyfill.h"
-#include "cxx_functional_polyfill.h"
-#include "type_traits.h"
+#include "functional/cxx_universal.h"
+#include "functional/cxx_functional_polyfill.h"
+#include "functional/mpl.h"
 #include "tuple_helper/tuple_filter.h"
-#include "member_traits/is_getter.h"
-#include "member_traits/is_setter.h"
-#include "mapped_type_proxy.h"
 #include "ast/upsert_clause.h"
 #include "ast/excluded.h"
 #include "ast/group_by.h"
@@ -40,10 +36,11 @@
 #include "column_names_getter.h"
 #include "cte_column_names_collector.h"
 #include "order_by_serializer.h"
+#include "serializing_util.h"
 #include "statement_binder.h"
 #include "values.h"
 #include "triggers.h"
-#include "table_type.h"
+#include "table_type_of.h"
 #include "index.h"
 #include "util.h"
 
@@ -58,322 +55,6 @@ namespace sqlite_orm {
         std::string serialize(const T& t, const serializer_context<I>& context) {
             statement_serializer<T> serializer;
             return serializer(t, context);
-        }
-
-#if __cplusplus >= 202002L  // C++20 or later
-        inline void stream_sql_escaped(std::ostream& os, const std::string& str, char char2Escape) {
-            for(std::string::const_iterator it = str.cbegin(), next; true; it = next + 1) {
-                next = std::find(it, str.cend(), char2Escape);
-                os << std::string_view{it, next};
-
-                if(next == str.cend()) [[likely]] {
-                    break;
-                }
-                os << std::string(2, char2Escape);
-            }
-        }
-#else
-        inline void stream_sql_escaped(std::ostream& os, const std::string& str, char char2Escape) {
-            if(str.find(char2Escape) == str.npos) {
-                os << str;
-            } else {
-                for(char c: str) {
-                    if(c == char2Escape) {
-                        os << char2Escape;
-                    }
-                    os << c;
-                }
-            }
-        }
-#endif
-
-        inline void stream_identifier(std::ostream& ss,
-                                      const std::string& qualifier,
-                                      const std::string& identifier,
-                                      const std::string& alias) {
-            constexpr char quoteChar = '"';
-            constexpr char qualified[] = {quoteChar, '.', '\0'};
-            constexpr char aliased[] = {' ', quoteChar, '\0'};
-
-            // note: In practice, escaping double quotes in identifiers is arguably overkill,
-            // but since the SQLite grammar allows it, it's better to be safe than sorry.
-
-            if(!qualifier.empty()) {
-                ss << quoteChar;
-                stream_sql_escaped(ss, qualifier, quoteChar);
-                ss << qualified;
-            }
-            {
-                ss << quoteChar;
-                stream_sql_escaped(ss, identifier, quoteChar);
-                ss << quoteChar;
-            }
-            if(!alias.empty()) {
-                ss << aliased;
-                stream_sql_escaped(ss, alias, quoteChar);
-                ss << quoteChar;
-            }
-        }
-
-        inline void stream_identifier(std::ostream& ss, const std::string& identifier, const std::string& alias) {
-            return stream_identifier(ss, std::string{}, identifier, alias);
-        }
-
-        inline void stream_identifier(std::ostream& ss, const std::string& identifier) {
-            return stream_identifier(ss, std::string{}, identifier, std::string{});
-        }
-
-        template<typename Tpl, size_t... Is>
-        void stream_identifier(std::ostream& ss, const Tpl& tpl, std::index_sequence<Is...>) {
-            return stream_identifier(ss, std::get<Is>(tpl)...);
-        }
-
-        template<typename Tpl>
-        void stream_identifier(std::ostream& ss, const Tpl& tpl) {
-            return stream_identifier(ss, tpl, std::make_index_sequence<std::tuple_size<Tpl>::value>{});
-        }
-
-        enum class stream_as {
-            conditions_tuple,
-            actions_tuple,
-            expressions_tuple,
-            dynamic_expressions,
-            serialized,
-            identifier,
-            identifiers,
-            values_placeholders,
-            table_columns,
-            non_generated_columns,
-            mapped_columns_expressions,
-        };
-
-        template<stream_as mode>
-        struct streaming {
-            template<class... Ts>
-            auto operator()(const Ts&... ts) const {
-                return std::forward_as_tuple(*this, ts...);
-            }
-
-            template<size_t... Idx>
-            constexpr std::index_sequence<1u + Idx...> offset_index(std::index_sequence<Idx...>) const {
-                return {};
-            }
-        };
-        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::conditions_tuple> streaming_conditions_tuple{};
-        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::actions_tuple> streaming_actions_tuple{};
-        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::expressions_tuple> streaming_expressions_tuple{};
-        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::dynamic_expressions> streaming_dynamic_expressions{};
-        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::serialized> streaming_serialized{};
-        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::identifier> streaming_identifier{};
-        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::identifiers> streaming_identifiers{};
-        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::values_placeholders> streaming_values_placeholders{};
-        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::table_columns> streaming_table_column_names{};
-        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::non_generated_columns>
-            streaming_non_generated_column_names{};
-        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::mapped_columns_expressions>
-            streaming_mapped_columns_expressions{};
-
-        // serialize and stream a tuple of condition expressions;
-        // space + space-separated
-        template<class T, class Ctx>
-        std::ostream& operator<<(std::ostream& ss, std::tuple<decltype((streaming_conditions_tuple)), T, Ctx> tpl) {
-            const auto& conditions = get<1>(tpl);
-            auto& context = get<2>(tpl);
-
-            iterate_tuple(conditions, [&ss, &context](auto& c) {
-                ss << " " << serialize(c, context);
-            });
-            return ss;
-        }
-
-        // serialize and stream a tuple of action expressions;
-        // space-separated
-        template<class T, class Ctx>
-        std::ostream& operator<<(std::ostream& ss, std::tuple<decltype((streaming_actions_tuple)), T, Ctx> tpl) {
-            const auto& actions = get<1>(tpl);
-            auto& context = get<2>(tpl);
-
-            bool first = true;
-            iterate_tuple(actions, [&ss, &context, &first](auto& a) {
-                constexpr std::array<const char*, 2> sep = {" ", ""};
-                ss << sep[std::exchange(first, false)] << serialize(a, context);
-            });
-            return ss;
-        }
-
-        // serialize and stream a tuple of expressions;
-        // comma-separated
-        template<class T, class Ctx>
-        std::ostream& operator<<(std::ostream& ss, std::tuple<decltype((streaming_expressions_tuple)), T, Ctx> tpl) {
-            const auto& args = get<1>(tpl);
-            auto& context = get<2>(tpl);
-
-            bool first = true;
-            iterate_tuple(args, [&ss, &context, &first](auto& arg) {
-                constexpr std::array<const char*, 2> sep = {", ", ""};
-                ss << sep[std::exchange(first, false)] << serialize(arg, context);
-            });
-            return ss;
-        }
-
-        // serialize and stream multi_order_by arguments;
-        // comma-separated
-        template<class... Os, class Ctx>
-        std::ostream&
-        operator<<(std::ostream& ss,
-                   std::tuple<decltype((streaming_expressions_tuple)), const std::tuple<order_by_t<Os>...>&, Ctx> tpl) {
-            const auto& args = get<1>(tpl);
-            auto& context = get<2>(tpl);
-
-            bool first = true;
-            iterate_tuple(args, [&ss, &context, &first](auto& arg) {
-                constexpr std::array<const char*, 2> sep = {", ", ""};
-                ss << sep[std::exchange(first, false)] << serialize_order_by(arg, context);
-            });
-            return ss;
-        }
-
-        // serialize and stream a vector of expressions;
-        // comma-separated
-        template<class C, class Ctx>
-        std::ostream& operator<<(std::ostream& ss, std::tuple<decltype((streaming_dynamic_expressions)), C, Ctx> tpl) {
-            const auto& args = get<1>(tpl);
-            auto& context = get<2>(tpl);
-
-            constexpr std::array<const char*, 2> sep = {", ", ""};
-            for(size_t i = 0, first = true; i < args.size(); ++i) {
-                ss << sep[std::exchange(first, false)] << serialize(args[i], context);
-            }
-            return ss;
-        }
-
-        // stream a vector of already serialized strings;
-        // comma-separated
-        template<class C>
-        std::ostream& operator<<(std::ostream& ss, std::tuple<decltype((streaming_serialized)), C> tpl) {
-            const auto& strings = get<1>(tpl);
-
-            constexpr std::array<const char*, 2> sep = {", ", ""};
-            for(size_t i = 0, first = true; i < strings.size(); ++i) {
-                ss << sep[std::exchange(first, false)] << strings[i];
-            }
-            return ss;
-        }
-
-        // stream an identifier described by a variadic string pack, which is one of:
-        // 1. identifier
-        // 2. identifier, alias
-        // 3. qualifier, identifier, alias
-        template<class... Strings>
-        std::ostream& operator<<(std::ostream& ss, std::tuple<decltype((streaming_identifier)), Strings...> tpl) {
-            stream_identifier(ss, tpl, streaming_identifier.offset_index(std::index_sequence_for<Strings...>{}));
-            return ss;
-        }
-
-        // stream a container of identifiers described by a string or a tuple, which is one of:
-        // 1. identifier
-        // 1. tuple(identifier)
-        // 2. tuple(identifier, alias), pair(identifier, alias)
-        // 3. tuple(qualifier, identifier, alias)
-        //
-        // comma-separated
-        template<class C>
-        std::ostream& operator<<(std::ostream& ss, std::tuple<decltype((streaming_identifiers)), C> tpl) {
-            const auto& identifiers = get<1>(tpl);
-
-            constexpr std::array<const char*, 2> sep = {", ", ""};
-            bool first = true;
-            for(auto& identifier: identifiers) {
-                ss << sep[std::exchange(first, false)];
-                stream_identifier(ss, identifier);
-            }
-            return ss;
-        }
-
-        // stream placeholders as part of a values clause
-        template<class... Ts>
-        std::ostream& operator<<(std::ostream& ss, std::tuple<decltype((streaming_values_placeholders)), Ts...> tpl) {
-            const size_t& columnsCount = get<1>(tpl);
-            const ptrdiff_t& valuesCount = get<2>(tpl);
-
-            if(!valuesCount || !columnsCount) {
-                return ss;
-            }
-
-            std::string result;
-            result.reserve((1 + (columnsCount * 1) + (columnsCount * 2 - 2) + 1) * valuesCount + (valuesCount * 2 - 2));
-
-            constexpr std::array<const char*, 2> sep = {", ", ""};
-            for(ptrdiff_t i = 0, first = true; i < valuesCount; ++i) {
-                result += sep[std::exchange(first, false)];
-                result += "(";
-                for(size_t i = 0, first = true; i < columnsCount; ++i) {
-                    result += sep[std::exchange(first, false)];
-                    result += "?";
-                }
-                result += ")";
-            }
-            ss << result;
-            return ss;
-        }
-
-        // stream a table's column identifiers, possibly qualified;
-        // comma-separated
-        template<class Table>
-        std::ostream& operator<<(std::ostream& ss,
-                                 std::tuple<decltype((streaming_table_column_names)), Table, const bool&> tpl) {
-            const auto& table = get<1>(tpl);
-            const bool& qualified = get<2>(tpl);
-
-            bool first = true;
-            table.for_each_column([&ss, &tableName = qualified ? table.name : std::string{}, &first](auto& column) {
-                constexpr std::array<const char*, 2> sep = {", ", ""};
-                ss << sep[std::exchange(first, false)];
-                stream_identifier(ss, tableName, column.name, std::string{});
-            });
-            return ss;
-        }
-
-        // stream a table's non-generated column identifiers, unqualified;
-        // comma-separated
-        template<class Table>
-        std::ostream& operator<<(std::ostream& ss,
-                                 std::tuple<decltype((streaming_non_generated_column_names)), Table> tpl) {
-            const auto& table = get<1>(tpl);
-
-            bool first = true;
-            table.for_each_column([&ss, &first](auto& column) {
-                if(column.is_generated()) {
-                    return;
-                }
-
-                constexpr std::array<const char*, 2> sep = {", ", ""};
-                ss << sep[std::exchange(first, false)];
-                stream_identifier(ss, column.name);
-            });
-            return ss;
-        }
-
-        // stream a tuple of mapped columns (which are member pointers or column pointers);
-        // comma-separated
-        template<class T, class Ctx>
-        std::ostream& operator<<(std::ostream& ss,
-                                 std::tuple<decltype((streaming_mapped_columns_expressions)), T, Ctx> tpl) {
-            const auto& columns = get<1>(tpl);
-            auto& context = get<2>(tpl);
-
-            bool first = true;
-            iterate_tuple(columns, [&ss, &context, &first](auto& column) {
-                const std::string* columnName = find_column_name(context.impl, column);
-                if(!columnName) {
-                    throw std::system_error{orm_error_code::column_not_found};
-                }
-
-                constexpr std::array<const char*, 2> sep = {", ", ""};
-                ss << sep[std::exchange(first, false)];
-                stream_identifier(ss, *columnName);
-            });
-            return ss;
         }
 
         /**
@@ -447,7 +128,7 @@ namespace sqlite_orm {
             template<class P, class PT, class D>
             std::string do_serialize(const pointer_binding<P, PT, D>&) const {
                 // always serialize null (security reasons)
-                return field_printer<std::nullptr_t>{}(nullptr);
+                return field_printer<nullptr_t>{}(nullptr);
             }
         };
 
@@ -490,7 +171,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
                 ss << "excluded.";
-                if(auto* columnName = find_column_name(context.impl, statement.expression)) {
+                if(auto* columnName = find_column_name(context.db_objects, statement.expression)) {
                     ss << streaming_identifier(*columnName);
                 } else {
                     throw std::system_error{orm_error_code::column_not_found};
@@ -525,7 +206,9 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type&, const Ctx&) {
-                return quote_identifier(T::get());
+                std::stringstream ss;
+                ss << streaming_identifier(T::get());
+                return ss.str();
             }
         };
 
@@ -632,9 +315,9 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& m, const Ctx& context) const {
                 std::stringstream ss;
                 if(!context.skip_table_name) {
-                    ss << streaming_identifier(lookup_table_name<O>(context.impl)) << ".";
+                    ss << streaming_identifier(lookup_table_name<O>(context.db_objects)) << ".";
                 }
-                if(auto* columnName = find_column_name(context.impl, m)) {
+                if(auto* columnName = find_column_name(context.db_objects, m)) {
                     ss << streaming_identifier(*columnName);
                 } else {
                     throw std::system_error{orm_error_code::column_not_found};
@@ -681,7 +364,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& s, const Ctx& context) const {
                 std::stringstream ss;
                 if(!context.skip_table_name) {
-                    ss << streaming_identifier(lookup_table_name<O>(context.impl)) << ".";
+                    ss << streaming_identifier(lookup_table_name<O>(context.db_objects)) << ".";
                 }
                 ss << static_cast<std::string>(s);
                 return ss.str();
@@ -696,7 +379,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& s, const Ctx& context) const {
                 std::stringstream ss;
                 if(!context.skip_table_name) {
-                    ss << streaming_identifier(lookup_table_name<O>(context.impl)) << ".";
+                    ss << streaming_identifier(lookup_table_name<O>(context.db_objects)) << ".";
                 }
                 ss << static_cast<std::string>(s);
                 return ss.str();
@@ -711,7 +394,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& s, const Ctx& context) const {
                 std::stringstream ss;
                 if(!context.skip_table_name) {
-                    ss << streaming_identifier(lookup_table_name<O>(context.impl)) << ".";
+                    ss << streaming_identifier(lookup_table_name<O>(context.db_objects)) << ".";
                 }
                 ss << static_cast<std::string>(s);
                 return ss.str();
@@ -795,9 +478,9 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& cp, const Ctx& context) const {
                 std::stringstream ss;
                 if(!context.skip_table_name) {
-                    ss << streaming_identifier(lookup_table_name<T>(context.impl)) << ".";
+                    ss << streaming_identifier(lookup_table_name<T>(context.db_objects)) << ".";
                 }
-                if(auto* columnName = find_column_name(context.impl, cp)) {
+                if(auto* columnName = find_column_name(context.db_objects, cp)) {
                     ss << streaming_identifier(*columnName);
                 } else {
                     throw std::system_error{orm_error_code::column_not_found};
@@ -861,8 +544,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializer<T,
-                                    typename std::enable_if<is_base_of_template<T, compound_operator>::value>::type> {
+        struct statement_serializer<T, std::enable_if_t<is_base_of_template_v<T, compound_operator>>> {
             using statement_type = T;
 
             template<class Ctx>
@@ -951,7 +633,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializer<T, typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
+        struct statement_serializer<T, std::enable_if_t<is_base_of_template_v<T, binary_condition>>> {
             using statement_type = T;
 
             template<class Ctx>
@@ -1011,7 +693,7 @@ namespace sqlite_orm {
                     ss << "NOT IN";
                 }
                 ss << " ";
-                constexpr auto isCompoundOperator = is_base_of_template<A, compound_operator>::value;
+                constexpr bool isCompoundOperator = is_base_of_template_v<A, compound_operator>;
                 if(isCompoundOperator) {
                     ss << '(';
                 }
@@ -1060,8 +742,8 @@ namespace sqlite_orm {
                 }
                 ss << " ";
                 using args_type = std::tuple<Args...>;
-                const bool theOnlySelect =
-                    std::tuple_size<args_type>::value == 1 && is_select<std::tuple_element_t<0, args_type>>::value;
+                constexpr bool theOnlySelect =
+                    std::tuple_size<args_type>::value == 1 && is_select_v<std::tuple_element_t<0, args_type>>;
                 if(!theOnlySelect) {
                     ss << "(";
                 }
@@ -1138,7 +820,7 @@ namespace sqlite_orm {
             using statement_type = autoincrement_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx&) const {
+            std::string operator()(const statement_type&, const Ctx&) const {
                 return "AUTOINCREMENT";
             }
         };
@@ -1206,10 +888,10 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "FOREIGN KEY(" << streaming_mapped_columns_expressions(fk.columns, context) << ") REFERENCES ";
                 {
-                    using references_type_t = typename std::decay<decltype(fk)>::type::references_type;
+                    using references_type_t = typename std::decay_t<decltype(fk)>::references_type;
                     using first_reference_t = std::tuple_element_t<0, references_type_t>;
-                    using first_reference_mapped_type = typename table_type<first_reference_t>::type;
-                    auto refTableName = lookup_table_name<first_reference_mapped_type>(context.impl);
+                    using first_reference_mapped_type = table_type_of_t<first_reference_t>;
+                    auto refTableName = lookup_table_name<first_reference_mapped_type>(context.db_objects);
                     ss << streaming_identifier(refTableName);
                 }
                 ss << "(" << streaming_mapped_columns_expressions(fk.references, context) << ")";
@@ -1229,7 +911,9 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
-                return "CHECK (" + serialize(statement.expression, context) + ")";
+                std::stringstream ss;
+                ss << "CHECK (" << serialize(statement.expression, context) << ")";
+                return ss.str();
             }
         };
 #if SQLITE_VERSION_NUMBER >= 3031000
@@ -1246,13 +930,13 @@ namespace sqlite_orm {
                 ss << "AS (";
                 ss << serialize(statement.expression, context) << ")";
                 switch(statement.storage) {
-                    case decltype(statement.storage)::not_specified:
+                    case basic_generated_always::storage_type::not_specified:
                         //..
                         break;
-                    case decltype(statement.storage)::virtual_:
+                    case basic_generated_always::storage_type::virtual_:
                         ss << " VIRTUAL";
                         break;
-                    case decltype(statement.storage)::stored:
+                    case basic_generated_always::storage_type::stored:
                         ss << " STORED";
                         break;
                 }
@@ -1260,48 +944,21 @@ namespace sqlite_orm {
             }
         };
 #endif
-        template<class O, class T, class G, class S, class... Op>
-        struct statement_serializer<column_t<O, T, G, S, Op...>, void> {
-            using statement_type = column_t<O, T, G, S, Op...>;
+        template<class G, class S, class... Op>
+        struct statement_serializer<column_t<G, S, Op...>, void> {
+            using statement_type = column_t<G, S, Op...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
-                using column_type = std::decay_t<decltype(c)>;
-                using field_type = typename column_type::field_type;
-                using constraints_type = typename column_type::constraints_type;
+            std::string operator()(const statement_type& column, const Ctx& context) const {
+                using column_type = statement_type;
 
                 std::stringstream ss;
-                ss << streaming_identifier(c.name) << " " << type_printer<field_type>().print() << " ";
-                {
-                    std::vector<std::string> constraintsStrings;
-                    constexpr size_t constraintsCount = std::tuple_size<constraints_type>::value;
-                    constraintsStrings.reserve(constraintsCount);
-                    int primaryKeyIndex = -1;
-                    int autoincrementIndex = -1;
-                    int tupleIndex = 0;
-                    iterate_tuple(
-                        c.constraints,
-                        [&constraintsStrings, &primaryKeyIndex, &autoincrementIndex, &tupleIndex, &context](auto& v) {
-                            using constraint_type = std::decay_t<decltype(v)>;
-                            constraintsStrings.push_back(serialize(v, context));
-                            if(is_primary_key<constraint_type>::value) {
-                                primaryKeyIndex = tupleIndex;
-                            } else if(std::is_same<autoincrement_t, constraint_type>::value) {
-                                autoincrementIndex = tupleIndex;
-                            }
-                            ++tupleIndex;
-                        });
-                    if(primaryKeyIndex != -1 && autoincrementIndex != -1 && autoincrementIndex < primaryKeyIndex) {
-                        iter_swap(constraintsStrings.begin() + primaryKeyIndex,
-                                  constraintsStrings.begin() + autoincrementIndex);
-                    }
-                    for(auto& str: constraintsStrings) {
-                        ss << str << ' ';
-                    }
-                }
-                if(c.not_null()) {
-                    ss << "NOT NULL ";
-                }
+                ss << streaming_identifier(column.name) << " " << type_printer<field_type_t<column_type>>().print()
+                   << " "
+                   << streaming_column_constraints(
+                          call_as_template_base<column_constraints>(polyfill::identity{})(column),
+                          column.is_not_null(),
+                          context);
                 return ss.str();
             }
         };
@@ -1312,10 +969,10 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& rem, const Ctx& context) const {
-                auto& tImpl = pick_impl<T>(context.impl);
+                auto& table = pick_table<T>(context.db_objects);
 
                 std::stringstream ss;
-                ss << "DELETE FROM " << streaming_identifier(tImpl.table.name)
+                ss << "DELETE FROM " << streaming_identifier(table.name)
                    << streaming_conditions_tuple(rem.conditions, context);
                 return ss.str();
             }
@@ -1329,26 +986,16 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 using expression_type = std::decay_t<decltype(statement)>;
                 using object_type = typename expression_object_type<expression_type>::type;
-                auto& tImpl = pick_impl<object_type>(context.impl);
+                auto& table = pick_table<object_type>(context.db_objects);
                 std::stringstream ss;
-                ss << "REPLACE INTO " << streaming_identifier(tImpl.table.name) << " ("
-                   << streaming_non_generated_column_names(tImpl.table) << ")"
-                   << " VALUES (";
-
-                auto columnIndex = 0;
-                tImpl.table.for_each_column(
-                    [&ss, &columnIndex, &object = get_ref(statement.object), &context](auto& column) {
-                        if(column.is_generated()) {
-                            return;
-                        }
-
-                        if(columnIndex > 0) {
-                            ss << ", ";
-                        }
-                        ss << serialize(polyfill::invoke(column.member_pointer, object), context);
-                        ++columnIndex;
-                    });
-                ss << ")";
+                ss << "REPLACE INTO " << streaming_identifier(table.name) << " ("
+                   << streaming_non_generated_column_names(table) << ")"
+                   << " VALUES ("
+                   << streaming_field_values_excluding(check_if<is_generated_always>{},
+                                                       empty_callable<std::false_type>(),  //  don't exclude
+                                                       context,
+                                                       get_ref(statement.object))
+                   << ")";
                 return ss.str();
             }
         };
@@ -1363,23 +1010,20 @@ namespace sqlite_orm {
                 static_assert(colsCount > 0, "Use insert or replace with 1 argument instead");
                 using expression_type = std::decay_t<decltype(ins)>;
                 using object_type = typename expression_object_type<expression_type>::type;
-                auto& tImpl = pick_impl<object_type>(context.impl);
+                auto& table = pick_table<object_type>(context.db_objects);
                 std::stringstream ss;
-                ss << "INSERT INTO " << streaming_identifier(tImpl.table.name) << " ";
+                ss << "INSERT INTO " << streaming_identifier(table.name) << " ";
                 ss << "(" << streaming_mapped_columns_expressions(ins.columns.columns, context) << ") "
                    << "VALUES (";
-                auto index = 0;
                 iterate_tuple(ins.columns.columns,
-                              [&ss, &context, &index, &object = get_ref(ins.obj)](auto& memberPointer) {
+                              [&ss, &context, &object = get_ref(ins.obj), first = true](auto& memberPointer) mutable {
                                   using member_pointer_type = std::decay_t<decltype(memberPointer)>;
-                                  static_assert(!is_setter<member_pointer_type>::value,
+                                  static_assert(!is_setter_v<member_pointer_type>,
                                                 "Unable to use setter within insert explicit");
 
-                                  if(index > 0) {
-                                      ss << ", ";
-                                  }
-                                  ss << serialize(polyfill::invoke(memberPointer, object), context);
-                                  ++index;
+                                  constexpr std::array<const char*, 2> sep = {", ", ""};
+                                  ss << sep[std::exchange(first, false)]
+                                     << serialize(polyfill::invoke(memberPointer, object), context);
                               });
                 ss << ")";
                 return ss.str();
@@ -1394,39 +1038,30 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 using expression_type = std::decay_t<decltype(statement)>;
                 using object_type = typename expression_object_type<expression_type>::type;
-                auto& tImpl = pick_impl<object_type>(context.impl);
+                auto& table = pick_table<object_type>(context.db_objects);
 
                 std::stringstream ss;
-                ss << "UPDATE " << streaming_identifier(tImpl.table.name) << " SET ";
-                auto columnIndex = 0;
-                tImpl.table.for_each_column([&tImpl, &columnIndex, &ss, &object = get_ref(statement.object), &context](
-                                                auto& column) {
-                    if(column.template has<primary_key_t<>>() || tImpl.table.exists_in_composite_primary_key(column)) {
-                        return;
-                    }
-
-                    if(columnIndex > 0) {
-                        ss << ", ";
-                    }
-                    ss << streaming_identifier(column.name) << " = "
-                       << serialize(polyfill::invoke(column.member_pointer, object), context);
-                    ++columnIndex;
-                });
-                ss << " WHERE ";
-                columnIndex = 0;
-                tImpl.table.for_each_column(
-                    [&tImpl, &columnIndex, &ss, &object = get_ref(statement.object), &context](auto& column) {
-                        if(!column.template has<primary_key_t<>>() &&
-                           !tImpl.table.exists_in_composite_primary_key(column)) {
+                ss << "UPDATE " << streaming_identifier(table.name) << " SET ";
+                table.template for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
+                    [&table, &ss, &context, &object = get_ref(statement.object), first = true](auto& column) mutable {
+                        if(table.exists_in_composite_primary_key(column)) {
                             return;
                         }
 
-                        if(columnIndex > 0) {
-                            ss << " AND ";
-                        }
-                        ss << streaming_identifier(column.name) << " = "
+                        constexpr std::array<const char*, 2> sep = {", ", ""};
+                        ss << sep[std::exchange(first, false)] << streaming_identifier(column.name) << " = "
                            << serialize(polyfill::invoke(column.member_pointer, object), context);
-                        ++columnIndex;
+                    });
+                ss << " WHERE ";
+                table.for_each_column(
+                    [&table, &context, &ss, &object = get_ref(statement.object), first = true](auto& column) mutable {
+                        if(!column.template is<is_primary_key>() && !table.exists_in_composite_primary_key(column)) {
+                            return;
+                        }
+
+                        constexpr std::array<const char*, 2> sep = {" AND ", ""};
+                        ss << sep[std::exchange(first, false)] << streaming_identifier(column.name) << " = "
+                           << serialize(polyfill::invoke(column.member_pointer, object), context);
                     });
                 return ss.str();
             }
@@ -1440,17 +1075,12 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
                 ss << "SET ";
-                size_t assignIndex = 0;
                 auto leftContext = context;
                 leftContext.skip_table_name = true;
-                iterate_tuple(statement.assigns, [&ss, &context, &leftContext, &assignIndex](auto& value) {
-                    if(assignIndex > 0) {
-                        ss << ", ";
-                    }
-                    ss << serialize(value.lhs, leftContext);
-                    ss << ' ' << value.serialize() << ' ';
-                    ss << serialize(value.rhs, context);
-                    ++assignIndex;
+                iterate_tuple(statement.assigns, [&ss, &context, &leftContext, first = true](auto& value) mutable {
+                    constexpr std::array<const char*, 2> sep = {", ", ""};
+                    ss << sep[std::exchange(first, false)] << serialize(value.lhs, leftContext) << ' '
+                       << value.serialize() << ' ' << serialize(value.rhs, context);
                 });
                 return ss.str();
             }
@@ -1463,7 +1093,7 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& upd, const Ctx& context) const {
                 table_name_collector collector([&context](const std::type_index& ti) {
-                    return find_table_name(context.impl, ti);
+                    return find_table_name(context.db_objects, ti);
                 });
                 iterate_ast(upd.set.assigns, collector);
 
@@ -1472,8 +1102,7 @@ namespace sqlite_orm {
                 }
 
                 std::stringstream ss;
-                ss << "UPDATE";
-                ss << " " << streaming_identifier(collector.table_names.begin()->first) << " SET ";
+                ss << "UPDATE " << streaming_identifier(collector.table_names.begin()->first) << " SET ";
                 {
                     std::vector<std::string> setPairs;
                     setPairs.reserve(std::tuple_size<typename set_t<Args...>::assigns_type>::value);
@@ -1499,54 +1128,41 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 using object_type = typename expression_object_type<statement_type>::type;
-                auto& tImpl = pick_impl<object_type>(context.impl);
+                auto& table = pick_table<object_type>(context.db_objects);
+                using is_without_rowid = typename std::decay_t<decltype(table)>::is_without_rowid;
+
+                std::vector<std::reference_wrapper<const std::string>> columnNames;
+                table.template for_each_column_excluding<
+                    mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
+                                     mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
+                    [&table, &columnNames](auto& column) {
+                        if(table.exists_in_composite_primary_key(column)) {
+                            return;
+                        }
+
+                        columnNames.push_back(cref(column.name));
+                    });
+                const size_t columnNamesCount = columnNames.size();
 
                 std::stringstream ss;
-                ss << "INSERT INTO " << streaming_identifier(tImpl.table.name) << " ";
-
-                auto columnIndex = 0;
-                tImpl.table.for_each_column([&tImpl, &columnIndex, &ss](auto& column) {
-                    using table_type = std::decay_t<decltype(tImpl.table)>;
-                    if(!table_type::is_without_rowid &&
-                       (column.template has<primary_key_t<>>() || tImpl.table.exists_in_composite_primary_key(column) ||
-                        column.is_generated())) {
-                        return;
-                    }
-
-                    if(columnIndex == 0) {
-                        ss << '(';
-                    } else {
-                        ss << ", ";
-                    }
-                    ss << streaming_identifier(column.name);
-                    ++columnIndex;
-                });
-                auto columnsToInsertCount = columnIndex;
-                if(columnsToInsertCount > 0) {
-                    ss << ')';
+                ss << "INSERT INTO " << streaming_identifier(table.name) << " ";
+                if(columnNamesCount) {
+                    ss << "(" << streaming_identifiers(columnNames) << ")";
                 } else {
                     ss << "DEFAULT";
                 }
-                ss << " VALUES ";
-                if(columnsToInsertCount > 0) {
-                    ss << "(";
-                    columnIndex = 0;
-                    tImpl.table.for_each_column(
-                        [&tImpl, &columnIndex, &ss, &context, &object = get_ref(statement.object)](auto& column) {
-                            using table_type = std::decay_t<decltype(tImpl.table)>;
-                            if(!table_type::is_without_rowid &&
-                               (column.template has<primary_key_t<>>() ||
-                                tImpl.table.exists_in_composite_primary_key(column) || column.is_generated())) {
-                                return;
-                            }
-
-                            if(columnIndex > 0) {
-                                ss << ", ";
-                            }
-                            ss << serialize(polyfill::invoke(column.member_pointer, object), context);
-                            ++columnIndex;
-                        });
-                    ss << ")";
+                ss << " VALUES";
+                if(columnNamesCount) {
+                    ss << " ("
+                       << streaming_field_values_excluding(
+                              mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
+                                               mpl::disjunction_fn<is_primary_key, is_generated_always>>{},
+                              [&table](auto& column) {
+                                  return table.exists_in_composite_primary_key(column);
+                              },
+                              context,
+                              get_ref(statement.object))
+                       << ")";
                 }
 
                 return ss.str();
@@ -1558,11 +1174,11 @@ namespace sqlite_orm {
             using statement_type = into_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
-                auto& tImpl = pick_impl<T>(context.impl);
+            std::string operator()(const statement_type&, const Ctx& context) const {
+                auto& table = pick_table<T>(context.db_objects);
 
                 std::stringstream ss;
-                ss << "INTO " << streaming_identifier(tImpl.table.name);
+                ss << "INTO " << streaming_identifier(table.name);
                 return ss.str();
             }
         };
@@ -1586,15 +1202,13 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializer<
-            T,
-            typename std::enable_if<is_insert_raw<T>::value || is_replace_raw<T>::value>::type> {
+        struct statement_serializer<T, std::enable_if_t<polyfill::disjunction_v<is_insert_raw<T>, is_replace_raw<T>>>> {
             using statement_type = T;
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
-                if(is_insert_raw<T>::value) {
+                if(is_insert_raw_v<T>) {
                     ss << "INSERT";
                 } else {
                     ss << "REPLACE";
@@ -1602,12 +1216,12 @@ namespace sqlite_orm {
                 iterate_tuple(statement.args, [&context, &ss](auto& value) {
                     using value_type = std::decay_t<decltype(value)>;
                     ss << ' ';
-                    if(is_columns<value_type>::value) {
+                    if(is_columns_v<value_type>) {
                         auto newContext = context;
                         newContext.skip_table_name = true;
                         newContext.use_parentheses = true;
                         ss << serialize(value, newContext);
-                    } else if(is_values<value_type>::value || is_select<value_type>::value) {
+                    } else if(is_values_v<value_type> || is_select_v<value_type>) {
                         auto newContext = context;
                         newContext.use_parentheses = false;
                         ss << serialize(value, newContext);
@@ -1625,26 +1239,23 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
-                auto& tImpl = pick_impl<T>(context.impl);
+                auto& table = pick_table<T>(context.db_objects);
                 std::stringstream ss;
-                ss << "DELETE FROM " << streaming_identifier(tImpl.table.name) << " "
+                ss << "DELETE FROM " << streaming_identifier(table.name) << " "
                    << "WHERE ";
                 std::vector<std::string> idsStrings;
                 idsStrings.reserve(std::tuple_size<typename statement_type::ids_type>::value);
                 iterate_tuple(statement.ids, [&idsStrings, &context](auto& idValue) {
                     idsStrings.push_back(serialize(idValue, context));
                 });
-                auto index = 0;
-                tImpl.table.for_each_primary_key_column([&ss, &index, &tImpl, &idsStrings](auto& memberPointer) {
-                    auto* columnName = tImpl.table.find_column_name(memberPointer);
+                table.for_each_primary_key_column([&table, &ss, &idsStrings, index = 0](auto& memberPointer) mutable {
+                    auto* columnName = table.find_column_name(memberPointer);
                     if(!columnName) {
                         throw std::system_error{orm_error_code::column_not_found};
                     }
 
-                    if(index > 0) {
-                        ss << " AND ";
-                    }
-                    ss << streaming_identifier(*columnName) << " = " << idsStrings[index];
+                    constexpr std::array<const char*, 2> sep = {" AND ", ""};
+                    ss << sep[index == 0] << streaming_identifier(*columnName) << " = " << idsStrings[index];
                     ++index;
                 });
                 return ss.str();
@@ -1659,13 +1270,13 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& rep, const Ctx& context) const {
                 using expression_type = std::decay_t<decltype(rep)>;
                 using object_type = typename expression_object_type<expression_type>::type;
-                auto& tImpl = pick_impl<object_type>(context.impl);
+                auto& table = pick_table<object_type>(context.db_objects);
 
                 std::stringstream ss;
-                ss << "REPLACE INTO " << streaming_identifier(tImpl.table.name) << " ("
-                   << streaming_non_generated_column_names(tImpl.table) << ")";
+                ss << "REPLACE INTO " << streaming_identifier(table.name) << " ("
+                   << streaming_non_generated_column_names(table) << ")";
                 const auto valuesCount = std::distance(rep.range.first, rep.range.second);
-                const auto columnsCount = tImpl.table.non_generated_columns_count();
+                const auto columnsCount = table.non_generated_columns_count();
                 ss << " VALUES " << streaming_values_placeholders(columnsCount, valuesCount);
                 return ss.str();
             }
@@ -1678,23 +1289,25 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 using object_type = typename expression_object_type<statement_type>::type;
-                auto& tImpl = pick_impl<object_type>(context.impl);
+                auto& table = pick_table<object_type>(context.db_objects);
+                using is_without_rowid = typename std::decay_t<decltype(table)>::is_without_rowid;
+
+                std::vector<std::reference_wrapper<const std::string>> columnNames;
+                table.template for_each_column_excluding<
+                    mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
+                                     mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
+                    [&table, &columnNames](auto& column) {
+                        if(table.exists_in_composite_primary_key(column)) {
+                            return;
+                        }
+
+                        columnNames.push_back(cref(column.name));
+                    });
+                const size_t valuesCount = std::distance(statement.range.first, statement.range.second);
+                const size_t columnNamesCount = columnNames.size();
 
                 std::stringstream ss;
-                ss << "INSERT INTO " << streaming_identifier(tImpl.table.name) << " ";
-
-                std::vector<std::string> columnNames;
-                tImpl.table.for_each_column([&columnNames, &tImpl](auto& column) {
-                    using table_type = std::decay_t<decltype(tImpl.table)>;
-                    if(table_type::is_without_rowid ||
-                       (!column.template has<primary_key_t<>>() &&
-                        !tImpl.table.exists_in_composite_primary_key(column) && !column.is_generated())) {
-                        columnNames.push_back(column.name);
-                    }
-                });
-
-                const auto valuesCount = std::distance(statement.range.first, statement.range.second);
-                const auto columnNamesCount = columnNames.size();
+                ss << "INSERT INTO " << streaming_identifier(table.name) << " ";
                 if(columnNamesCount) {
                     ss << "(" << streaming_identifiers(columnNames) << ")";
                 } else {
@@ -1715,12 +1328,12 @@ namespace sqlite_orm {
             using primary_type = type_t<T>;
 
             table_name_collector collector;
-            collector.table_names.emplace(lookup_table_name<primary_type>(context.impl), "");
+            collector.table_names.emplace(lookup_table_name<primary_type>(context.db_objects), "");
             // note: not collecting table names from get.conditions;
 
-            auto& tImpl = pick_impl<primary_type>(context.impl);
+            auto& table = pick_table<primary_type>(context.db_objects);
             std::stringstream ss;
-            ss << "SELECT " << streaming_table_column_names(tImpl.table, true);
+            ss << "SELECT " << streaming_table_column_names(table, true);
             if(!collector.table_names.empty()) {
                 ss << " FROM " << streaming_identifiers(collector.table_names);
             }
@@ -1763,12 +1376,12 @@ namespace sqlite_orm {
         template<class T, class Ctx>
         std::string serialize_get_impl(const T&, const Ctx& context) {
             using primary_type = type_t<T>;
-            auto& tImpl = pick_impl<primary_type>(context.impl);
+            auto& table = pick_table<primary_type>(context.db_objects);
             std::stringstream ss;
-            ss << "SELECT " << streaming_table_column_names(tImpl.table, false) << " FROM "
-               << streaming_identifier(tImpl.table.name) << " WHERE ";
+            ss << "SELECT " << streaming_table_column_names(table, false) << " FROM "
+               << streaming_identifier(table.name) << " WHERE ";
 
-            auto primaryKeyColumnNames = tImpl.table.primary_key_column_names();
+            auto primaryKeyColumnNames = table.primary_key_column_names();
             if(primaryKeyColumnNames.empty()) {
                 throw std::system_error{orm_error_code::table_has_no_primary_key_column};
             }
@@ -1807,7 +1420,7 @@ namespace sqlite_orm {
             using statement_type = conflict_action;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type& statement, const Ctx&) const {
                 switch(statement) {
                     case conflict_action::replace:
                         return "REPLACE";
@@ -1820,6 +1433,7 @@ namespace sqlite_orm {
                     case conflict_action::rollback:
                         return "ROLLBACK";
                 }
+                return {};
             }
         };
 
@@ -1851,7 +1465,7 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& sel, const Ctx& context) const {
                 std::stringstream ss;
-                const auto isCompoundOperator = is_base_of_template<T, compound_operator>::value;
+                constexpr bool isCompoundOperator = is_base_of_template_v<T, compound_operator>;
                 if(!isCompoundOperator) {
                     if(!sel.highest_level && context.use_parentheses) {
                         ss << "(";
@@ -1863,16 +1477,16 @@ namespace sqlite_orm {
                 }
                 ss << streaming_serialized(get_column_names(sel.col, context));
                 table_name_collector collector([&context](const std::type_index& ti) {
-                    return find_table_name(context.impl, ti);
+                    return find_table_name(context.db_objects, ti);
                 });
-                const auto explicitFromItemsCount = count_tuple<std::tuple<Args...>, is_from>::value;
+                constexpr bool explicitFromItemsCount = count_tuple<std::tuple<Args...>, is_from>::value;
                 if(!explicitFromItemsCount) {
                     iterate_ast(sel.col, collector);
                     iterate_ast(sel.conditions, collector);
                     join_iterator<Args...>()([&collector, &context](const auto& c) {
-                        using original_join_type = typename std::decay<decltype(c)>::type::join_type::type;
+                        using original_join_type = typename std::decay_t<decltype(c)>::join_type::type;
                         using cross_join_type = mapped_type_proxy_t<original_join_type>;
-                        auto crossJoinedTableName = lookup_table_name<cross_join_type>(context.impl);
+                        auto crossJoinedTableName = lookup_table_name<cross_join_type>(context.db_objects);
                         auto tableAliasString = alias_extractor<original_join_type>::as_alias();
                         std::pair<std::string, std::string> tableNameWithAlias{std::move(crossJoinedTableName),
                                                                                std::move(tableAliasString)};
@@ -1883,7 +1497,7 @@ namespace sqlite_orm {
                     }
                 }
                 ss << streaming_conditions_tuple(sel.conditions, context);
-                if(!is_base_of_template<T, compound_operator>::value) {
+                if(!is_base_of_template_v<T, compound_operator>) {
                     if(!sel.highest_level && context.use_parentheses) {
                         ss << ")";
                     }
@@ -1930,16 +1544,16 @@ namespace sqlite_orm {
                 if(statement.unique) {
                     ss << "UNIQUE ";
                 }
-                using elements_type = typename std::decay<decltype(statement)>::type::elements_type;
-                using head_t = typename std::tuple_element<0, elements_type>::type::column_type;
-                using indexed_type = typename table_type<head_t>::type;
+                using elements_type = typename std::decay_t<decltype(statement)>::elements_type;
+                using head_t = typename std::tuple_element_t<0, elements_type>::column_type;
+                using indexed_type = table_type_of_t<head_t>;
                 ss << "INDEX IF NOT EXISTS " << streaming_identifier(statement.name) << " ON "
-                   << streaming_identifier(lookup_table_name<indexed_type>(context.impl));
+                   << streaming_identifier(lookup_table_name<indexed_type>(context.db_objects));
                 std::vector<std::string> columnNames;
                 std::string whereString;
                 iterate_tuple(statement.elements, [&columnNames, &context, &whereString](auto& value) {
                     using value_type = std::decay_t<decltype(value)>;
-                    if(!is_where<value_type>::value) {
+                    if(!is_where_v<value_type>) {
                         auto newContext = context;
                         newContext.use_parentheses = false;
                         auto whereString = serialize(value, newContext);
@@ -1962,21 +1576,18 @@ namespace sqlite_orm {
             using statement_type = from_t<Args...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type&, const Ctx& context) const {
                 using tuple = std::tuple<Args...>;
 
                 std::stringstream ss;
                 ss << "FROM ";
-                size_t index = 0;
-                iterate_tuple<tuple>([&context, &ss, &index](auto* itemPointer) {
-                    using from_type = std::remove_pointer_t<decltype(itemPointer)>;
+                iterate_tuple<tuple>([&context, &ss, first = true](auto* item) mutable {
+                    using from_type = std::remove_pointer_t<decltype(item)>;
 
-                    if(index > 0) {
-                        ss << ", ";
-                    }
-                    ss << streaming_identifier(lookup_table_name<mapped_type_proxy_t<from_type>>(context.impl),
+                    constexpr std::array<const char*, 2> sep = {", ", ""};
+                    ss << sep[std::exchange(first, false)]
+                       << streaming_identifier(lookup_table_name<mapped_type_proxy_t<from_type>>(context.db_objects),
                                                alias_extractor<from_type>::as_alias());
-                    ++index;
                 });
                 return ss.str();
             }
@@ -2019,16 +1630,16 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 switch(statement.type) {
-                    case decltype(statement.type)::ignore:
+                    case raise_t::type_t::ignore:
                         return "RAISE(IGNORE)";
 
-                    case decltype(statement.type)::rollback:
+                    case raise_t::type_t::rollback:
                         return "RAISE(ROLLBACK, " + serialize(statement.message, context) + ")";
 
-                    case decltype(statement.type)::abort:
+                    case raise_t::type_t::abort:
                         return "RAISE(ABORT, " + serialize(statement.message, context) + ")";
 
-                    case decltype(statement.type)::fail:
+                    case raise_t::type_t::fail:
                         return "RAISE(FAIL, " + serialize(statement.message, context) + ")";
                 }
                 return {};
@@ -2040,7 +1651,7 @@ namespace sqlite_orm {
             using statement_type = trigger_timing;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type& statement, const Ctx&) const {
                 switch(statement) {
                     case trigger_timing::trigger_before:
                         return "BEFORE";
@@ -2048,9 +1659,8 @@ namespace sqlite_orm {
                         return "AFTER";
                     case trigger_timing::trigger_instead_of:
                         return "INSTEAD OF";
-                    default:
-                        return "";
                 }
+                return {};
             }
         };
 
@@ -2059,7 +1669,7 @@ namespace sqlite_orm {
             using statement_type = trigger_type;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type& statement, const Ctx&) const {
                 switch(statement) {
                     case trigger_type::trigger_delete:
                         return "DELETE";
@@ -2067,9 +1677,8 @@ namespace sqlite_orm {
                         return "INSERT";
                     case trigger_type::trigger_update:
                         return "UPDATE";
-                    default:
-                        return "";
                 }
+                return {};
             }
         };
 
@@ -2109,7 +1718,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
 
                 ss << serialize(statement.type_base, context);
-                ss << " ON " << streaming_identifier(lookup_table_name<T>(context.impl));
+                ss << " ON " << streaming_identifier(lookup_table_name<T>(context.db_objects));
                 if(statement.do_for_each_row) {
                     ss << " FOR EACH ROW";
                 }
@@ -2134,7 +1743,7 @@ namespace sqlite_orm {
                 ss << " BEGIN ";
                 iterate_tuple(statement.elements, [&ss, &context](auto& element) {
                     using element_type = std::decay_t<decltype(element)>;
-                    if(is_select<element_type>::value) {
+                    if(is_select_v<element_type>) {
                         auto newContext = context;
                         newContext.use_parentheses = false;
                         ss << serialize(element, newContext);
@@ -2209,7 +1818,8 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& c, const Ctx& context) const {
                 std::stringstream ss;
-                ss << static_cast<std::string>(c) << " " << streaming_identifier(lookup_table_name<O>(context.impl));
+                ss << static_cast<std::string>(c) << " "
+                   << streaming_identifier(lookup_table_name<O>(context.db_objects));
                 return ss.str();
             }
         };
@@ -2222,7 +1832,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& l, const Ctx& context) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " "
-                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<T>>(context.impl),
+                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<T>>(context.db_objects),
                                            alias_extractor<T>::as_alias())
                    << serialize(l.constraint, context);
                 return ss.str();
@@ -2251,7 +1861,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& l, const Ctx& context) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " "
-                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<T>>(context.impl),
+                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<T>>(context.db_objects),
                                            alias_extractor<T>::as_alias())
                    << " " << serialize(l.constraint, context);
                 return ss.str();
@@ -2266,7 +1876,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& l, const Ctx& context) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " "
-                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<T>>(context.impl),
+                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<T>>(context.db_objects),
                                            alias_extractor<T>::as_alias())
                    << " " << serialize(l.constraint, context);
                 return ss.str();
@@ -2281,7 +1891,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& l, const Ctx& context) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " "
-                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<T>>(context.impl),
+                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<T>>(context.db_objects),
                                            alias_extractor<T>::as_alias())
                    << " " << serialize(l.constraint, context);
                 return ss.str();
@@ -2295,7 +1905,8 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& c, const Ctx& context) const {
                 std::stringstream ss;
-                ss << static_cast<std::string>(c) << " " << streaming_identifier(lookup_table_name<O>(context.impl));
+                ss << static_cast<std::string>(c) << " "
+                   << streaming_identifier(lookup_table_name<O>(context.db_objects));
                 return ss.str();
             }
         };
@@ -2382,7 +1993,7 @@ namespace sqlite_orm {
             using statement_type = default_values_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type&, const Ctx&) const {
                 return "DEFAULT VALUES";
             }
         };

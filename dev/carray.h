@@ -1,13 +1,21 @@
 #pragma once
 
-#include <type_traits>
+/*
+ *  Note: This feature needs constexpr variables with external linkage.
+ *  which can be achieved before C++17's inline variables, but differs from compiler to compiler.
+ *  Hence we make it only available for compilers supporting inline variables.
+ */
 
-#include "start_macros.h"
+#ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
+#include <type_traits>  //  std::integral_constant
+#include <utility>  //  std::move
+
+#include "functional/cxx_universal.h"
 #include "pointer_value.h"
 
 namespace sqlite_orm {
 
-    SQLITE_ORM_INLINE_VAR constexpr const char carray_pvt_name[] = "carray";
+    inline constexpr const char carray_pvt_name[] = "carray";
     using carray_pvt = std::integral_constant<const char*, carray_pvt_name>;
 
     template<typename P>
@@ -68,3 +76,4 @@ namespace sqlite_orm {
         }
     };
 }
+#endif

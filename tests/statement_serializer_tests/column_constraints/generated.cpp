@@ -3,6 +3,7 @@
 
 using namespace sqlite_orm;
 
+#if SQLITE_VERSION_NUMBER >= 3031000
 TEST_CASE("issue893") {
     struct Object {
         std::string name;
@@ -18,7 +19,6 @@ TEST_CASE("issue893") {
     storage.sync_schema();
 }
 
-#if SQLITE_VERSION_NUMBER >= 3031000
 TEST_CASE("statement_serializer generated") {
     using internal::serialize;
     struct Type {
@@ -35,10 +35,10 @@ TEST_CASE("statement_serializer generated") {
         make_column("c", &Type::c),
         make_column("d", &Type::d, generated_always_as(&Type::a * sqlite_orm::abs(&Type::b)).virtual_()),
         make_column("e", &Type::e, generated_always_as(substr(&Type::c, &Type::b, add(&Type::b, 1))).stored()));
-    using storage_impl_t = internal::storage_impl<decltype(table)>;
-    auto storageImpl = storage_impl_t{table};
-    using context_t = internal::serializer_context<storage_impl_t>;
-    context_t context{storageImpl};
+    using db_objects_t = internal::db_objects_tuple<decltype(table)>;
+    auto dbObjects = db_objects_t{table};
+    using context_t = internal::serializer_context<db_objects_t>;
+    context_t context{dbObjects};
     std::string value;
     decltype(value) expected;
     SECTION("full") {

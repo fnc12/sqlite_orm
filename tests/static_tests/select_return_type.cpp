@@ -2,6 +2,7 @@
 #include <catch2/catch.hpp>
 
 #include "static_tests_common.h"
+#include "static_tests_storage_traits.h"
 
 using namespace sqlite_orm;
 
@@ -20,17 +21,17 @@ TEST_CASE("Select return types") {
         using IdsTuple = SelectVectorTuple::value_type;
         STATIC_REQUIRE(std::tuple_size<IdsTuple>::value == 1);
     }
+    //  test storage traits
     {
-        //  test storage traits
+        using namespace sqlite_orm::internal::storage_traits;
         struct Visit {
             int id = 0;
             std::string date;
         };
-        using namespace sqlite_orm::internal::storage_traits;
 
-        //  test type_is_mapped
-        STATIC_REQUIRE(type_is_mapped<decltype(storage), User>::value);
-        STATIC_REQUIRE(!type_is_mapped<decltype(storage), Visit>::value);
+        //  test is_mapped
+        STATIC_REQUIRE(internal::is_mapped_v<decltype(storage)::db_objects_type, User>);
+        STATIC_REQUIRE(!internal::is_mapped_v<decltype(storage)::db_objects_type, Visit>);
 
         //  test is_storage
         STATIC_REQUIRE(internal::is_storage<decltype(storage)>::value);
@@ -48,13 +49,13 @@ TEST_CASE("Select return types") {
         STATIC_REQUIRE(storage_columns_count<decltype(storage2), Visit>::value == 2);
 
         //  test storage mapped columns
-        using MappedUserColumnsTypes = storage_mapped_columns<decltype(storage), User>::type;
+        using MappedUserColumnsTypes = storage_mapped_columns<decltype(storage)::db_objects_type, User>::type;
         STATIC_REQUIRE(std::is_same<MappedUserColumnsTypes, std::tuple<int>>::value);
 
-        using MappedVisitColumnsEmpty = storage_mapped_columns<decltype(storage), Visit>::type;
+        using MappedVisitColumnsEmpty = storage_mapped_columns<decltype(storage)::db_objects_type, Visit>::type;
         STATIC_REQUIRE(std::is_same<MappedVisitColumnsEmpty, std::tuple<>>::value);
 
-        using MappedVisitColumnTypes = storage_mapped_columns<decltype(storage2), Visit>::type;
+        using MappedVisitColumnTypes = storage_mapped_columns<decltype(storage2)::db_objects_type, Visit>::type;
         STATIC_REQUIRE(std::is_same<MappedVisitColumnTypes, std::tuple<int, std::string>>::value);
     }
 }

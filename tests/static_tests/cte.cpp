@@ -14,8 +14,8 @@ void do_assert() {
 }
 
 template<class E, class ColRef>
-void runTest(ColRef colRef) {
-    do_assert<internal::transform_tuple_t<tuple<ColRef>, internal::decay_explicit_column>, E>();
+void runTest(ColRef /*colRef*/) {
+    do_assert<internal::transform_tuple_t<tuple<ColRef>, internal::decay_explicit_column_t>, E>();
 }
 
 TEST_CASE("CTE type traits") {
@@ -34,7 +34,7 @@ TEST_CASE("CTE type traits") {
 #ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
         runTest<tuple<alias_holder<column_alias<'a'>>>>("a"_col);
 #endif
-        runTest<tuple<column_t<Org, int64, int64 Org::*, internal::empty_setter>>>(make_column("id", &Org::id));
+        runTest<tuple<column_t<int64 Org::*, internal::empty_setter>>>(make_column("id", &Org::id));
         runTest<tuple<polyfill::remove_cvref_t<decltype(std::ignore)>>>(std::ignore);
         runTest<tuple<std::string>>("");
     }

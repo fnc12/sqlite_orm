@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iterator>  //  std::back_inserter
 #include <string>  //  std::string
 #include <memory>  //  std::unique_ptr
 #include <array>  //  std::array

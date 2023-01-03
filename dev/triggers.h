@@ -5,7 +5,7 @@
 #include <string>
 #include <tuple>
 
-#include "tuple_helper/tuple_helper.h"
+#include "functional/cxx_universal.h"
 #include "optional_container.h"
 
 // NOTE Idea : Maybe also implement a custom trigger system to call a c++ callback when a trigger triggers ?
@@ -29,20 +29,27 @@ namespace sqlite_orm {
             using statements_type = std::tuple<S...>;
 
             /**
-             * Statements of the triggers (to be executed when the trigger fires)
-             */
-            statements_type statements;
-            /**
              * Base of the trigger (contains its type, timing and associated table)
              */
             T base;
+            /**
+             * Statements of the triggers (to be executed when the trigger fires)
+             */
+            statements_type statements;
 
             partial_trigger_t(T trigger_base, S... statements) :
-                statements(std::make_tuple<S...>(std::forward<S>(statements)...)), base(std::move(trigger_base)) {}
+                base{std::move(trigger_base)}, statements{std::make_tuple<S...>(std::forward<S>(statements)...)} {}
 
             partial_trigger_t &end() {
                 return *this;
             }
+        };
+
+        struct base_trigger {
+            /**
+             * Name of the trigger
+             */
+            std::string name;
         };
 
         /**
@@ -51,14 +58,9 @@ namespace sqlite_orm {
          *  S is the list of trigger statments
          */
         template<class T, class... S>
-        struct trigger_t {
-            using object_type = void;  // Not sure
+        struct trigger_t : base_trigger {
+            using object_type = void;
             using elements_type = typename partial_trigger_t<T, S...>::statements_type;
-
-            /**
-             * Name of the trigger
-             */
-            std::string name;
 
             /**
              * Base of the trigger (contains its type, timing and associated table)
@@ -70,8 +72,10 @@ namespace sqlite_orm {
              */
             elements_type elements;
 
-            trigger_t(const std::string &name, T trigger_base, elements_type statements) :
-                name(name), base(std::move(trigger_base)), elements(std::move(statements)) {}
+#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
+            trigger_t(std::string name, T trigger_base, elements_type statements) :
+                base_trigger{move(name)}, base(std::move(trigger_base)), elements(move(statements)) {}
+#endif
         };
 
         /**
@@ -172,8 +176,6 @@ namespace sqlite_orm {
         struct trigger_timing_t {
             trigger_timing timing;
 
-            trigger_timing_t(trigger_timing timing) : timing(timing) {}
-
             trigger_type_base_t delete_() {
                 return {timing, trigger_type::trigger_delete};
             }
@@ -202,6 +204,10 @@ namespace sqlite_orm {
 
             type_t type = type_t::ignore;
             std::string message;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            raise_t(type_t type, std::string message) : type{type}, message{move(message)} {}
+#endif
         };
 
         template<class T>
@@ -265,18 +271,18 @@ namespace sqlite_orm {
 
     template<class T, class... S>
     internal::trigger_t<T, S...> make_trigger(std::string name, const internal::partial_trigger_t<T, S...> &part) {
-        return {move(name), std::move(part.base), std::move(part.statements)};
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {move(name), std::move(part.base), std::move(part.statements)});
     }
 
     inline internal::trigger_timing_t before() {
-        return {internal::trigger_timing_t(internal::trigger_timing::trigger_before)};
+        return {internal::trigger_timing::trigger_before};
     }
 
     inline internal::trigger_timing_t after() {
-        return {internal::trigger_timing_t(internal::trigger_timing::trigger_after)};
+        return {internal::trigger_timing::trigger_after};
     }
 
     inline internal::trigger_timing_t instead_of() {
-        return {internal::trigger_timing_t(internal::trigger_timing::trigger_instead_of)};
+        return {internal::trigger_timing::trigger_instead_of};
     }
 }

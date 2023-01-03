@@ -4,7 +4,7 @@
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string
 
-#include "cxx_polyfill.h"
+#include "functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
 
@@ -102,10 +102,6 @@ namespace sqlite_orm {
             using column_type = C;
 
             column_type column;
-
-            alias_column_t() {}
-
-            alias_column_t(column_type column_) : column(std::move(column_)) {}
         };
 
         /*

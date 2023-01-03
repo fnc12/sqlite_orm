@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string>  //  std::string
-#include <vector>  //  std::vector
 #include <sstream>  //  std::stringstream
 
 namespace sqlite_orm {
@@ -26,8 +25,8 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 auto newContext = context;
                 newContext.skip_table_name = false;
-                auto columnName = serialize(orderBy.expression, newContext);
-                ss << columnName;
+
+                ss << serialize(orderBy.expression, newContext);
                 if(!orderBy._collate_argument.empty()) {
                     ss << " COLLATE " << orderBy._collate_argument;
                 }
@@ -43,42 +42,34 @@ namespace sqlite_orm {
             }
         };
 
-        template<class S>
-        struct order_by_serializer<dynamic_order_by_t<S>, void> {
-            using statement_type = dynamic_order_by_t<S>;
+        template<class C>
+        struct order_by_serializer<dynamic_order_by_t<C>, void> {
+            using statement_type = dynamic_order_by_t<C>;
 
             template<class Ctx>
             std::string operator()(const statement_type& orderBy, const Ctx&) const {
-                std::vector<std::string> expressions;
-                for(auto& entry: orderBy) {
-                    std::string entryString;
-                    {
-                        std::stringstream ss;
-                        ss << entry.name;
-                        if(!entry._collate_argument.empty()) {
-                            ss << " COLLATE " << entry._collate_argument;
-                        }
-                        switch(entry.asc_desc) {
-                            case 1:
-                                ss << " ASC";
-                                break;
-                            case -1:
-                                ss << " DESC";
-                                break;
-                        }
-                        entryString = ss.str();
-                    }
-                    expressions.push_back(move(entryString));
-                };
                 std::stringstream ss;
                 ss << static_cast<std::string>(orderBy) << " ";
-                for(size_t i = 0; i < expressions.size(); ++i) {
-                    ss << expressions[i];
-                    if(i < expressions.size() - 1) {
+                int index = 0;
+                for(const dynamic_order_by_entry_t& entry: orderBy) {
+                    if(index > 0) {
                         ss << ", ";
                     }
-                }
-                ss << " ";
+
+                    ss << entry.name;
+                    if(!entry._collate_argument.empty()) {
+                        ss << " COLLATE " << entry._collate_argument;
+                    }
+                    switch(entry.asc_desc) {
+                        case 1:
+                            ss << " ASC";
+                            break;
+                        case -1:
+                            ss << " DESC";
+                            break;
+                    }
+                    ++index;
+                };
                 return ss.str();
             }
         };

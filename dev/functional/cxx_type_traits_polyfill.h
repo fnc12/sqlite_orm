@@ -1,8 +1,7 @@
 #pragma once
-
 #include <type_traits>
 
-#include "start_macros.h"
+#include "cxx_universal.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -22,9 +21,12 @@ namespace sqlite_orm {
 #endif
 
 #if __cpp_lib_logical_traits >= 201510L && __cpp_lib_type_trait_variable_templates >= 201510L
-            using std::conjunction, std::conjunction_v;
-            using std::disjunction, std::disjunction_v;
-            using std::negation, std::negation_v;
+            using std::conjunction;
+            using std::conjunction_v;
+            using std::disjunction;
+            using std::disjunction_v;
+            using std::negation;
+            using std::negation_v;
 #else
             template<typename...>
             struct conjunction : std::true_type {};
@@ -60,22 +62,16 @@ namespace sqlite_orm {
             using remove_cvref_t = typename remove_cvref<T>::type;
 #endif
 
-#if 1  // proposed but not pursued                                                                                     \
-    // is_specialization_of: https://github.com/cplusplus/papers/issues/812
-
-            template<typename Type, template<typename...> class Primary>
-            SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_of_v = false;
-
-            template<template<typename...> class Primary, class... Types>
-            SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_of_v<Primary<Types...>, Primary> = true;
-
-            template<typename Type, template<typename...> class Primary>
-            struct is_specialization_of : bool_constant<is_specialization_of_v<Type, Primary>> {};
-
-            template<typename... T>
-            using is_specialization_of_t = typename is_specialization_of<T...>::type;
+#if __cpp_lib_type_identity >= 201806L
+            using std::type_identity, std::type_identity_t;
 #else
-            using std::is_specialization_of, std::is_specialization_of_t, std::is_specialization_of_v;
+            template<class T>
+            struct type_identity {
+                using type = T;
+            };
+
+            template<class T>
+            using type_identity_t = typename type_identity<T>::type;
 #endif
 
 #if 0  // __cpp_lib_detect >= 0L  //  library fundamentals TS v2, [meta.detect]
@@ -122,45 +118,26 @@ namespace sqlite_orm {
             SQLITE_ORM_INLINE_VAR constexpr bool is_detected_v = is_detected<Op, Args...>::value;
 #endif
 
+#if 0  // proposed but not pursued
+            using std::is_specialization_of, std::is_specialization_of_t, std::is_specialization_of_v;
+#else
+            // is_specialization_of: https://github.com/cplusplus/papers/issues/812
+
+            template<typename Type, template<typename...> class Primary>
+            SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_of_v = false;
+
+            template<template<typename...> class Primary, class... Types>
+            SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_of_v<Primary<Types...>, Primary> = true;
+
+            template<typename Type, template<typename...> class Primary>
+            struct is_specialization_of : bool_constant<is_specialization_of_v<Type, Primary>> {};
+#endif
+
             template<typename...>
             SQLITE_ORM_INLINE_VAR constexpr bool always_false_v = false;
 
             template<size_t I>
             using index_constant = std::integral_constant<size_t, I>;
-
-            template<template<typename...> class Base, typename... Fs>
-            Base<Fs...>& as_template_base(Base<Fs...>& base) {
-                return base;
-            }
-            template<template<typename...> class Base, typename... Fs>
-            const Base<Fs...>& as_template_base(const Base<Fs...>& base) {
-                return base;
-            }
-            template<template<typename...> class Base, typename... Fs>
-            Base<Fs...>&& as_template_base(Base<Fs...>&& base) {
-                return std::move(base);
-            }
-            template<template<typename...> class Base, typename... Fs>
-            const Base<Fs...>&& as_template_base(const Base<Fs...>&& base) {
-                return std::move(base);
-            }
-
-            /** @short Deduce template base specialization from a derived type */
-            template<template<typename...> class Base, class Derived>
-            using as_template_base_t = decltype(as_template_base<Base>(std::declval<Derived>()));
-
-            template<template<typename...> class Base, class Derived, typename SFINAE = void>
-            struct is_template_base_of : std::false_type {};
-
-            template<template<typename...> class Base, class Derived>
-            struct is_template_base_of<Base, Derived, polyfill::void_t<as_template_base_t<Base, Derived>>>
-                : std::true_type {};
-
-            template<template<typename...> class Base, class Derived>
-            using is_template_base_of_t = typename is_template_base_of<Base, Derived>::type;
-
-            template<template<typename...> class Base, class Derived>
-            SQLITE_ORM_INLINE_VAR constexpr bool is_template_base_of_v = is_template_base_of<Base, Derived>::value;
         }
     }
 

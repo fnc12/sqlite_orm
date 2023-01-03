@@ -22,7 +22,7 @@ TEST_CASE("tuple_helper static") {
         using Column3 = decltype(column3);
         using Column4 = decltype(column4);
         using ColumnsTuple = std::tuple<Column1, Column2, Column3, Column4>;
-        using ColumnsMappedTypes = internal::tuple_transformer<ColumnsTuple, internal::column_field_type>::type;
+        using ColumnsMappedTypes = internal::transform_tuple_t<ColumnsTuple, internal::field_type_t>;
         using Expected = std::tuple<int64_t, std::string, std::string, std::string>;
         STATIC_REQUIRE(std::is_same<ColumnsMappedTypes, Expected>::value);
     }

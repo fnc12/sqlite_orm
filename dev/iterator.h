@@ -1,17 +1,19 @@
 #pragma once
 
-#include <memory>  //  std::shared_ptr, std::unique_ptr, std::make_shared
 #include <sqlite3.h>
+#include <memory>  //  std::shared_ptr, std::unique_ptr, std::make_shared
 #include <type_traits>  //  std::decay
 #include <utility>  //  std::move
-#include <cstddef>  //  std::ptrdiff_t
 #include <iterator>  //  std::input_iterator_tag
 #include <system_error>  //  std::system_error
+#include <functional>  //  std::bind
 
-#include "row_extractor.h"
+#include "functional/cxx_universal.h"
 #include "statement_finalizer.h"
 #include "error_code.h"
 #include "object_from_column_builder.h"
+#include "storage_lookup.h"
+#include "util.h"
 
 namespace sqlite_orm {
 
@@ -24,15 +26,13 @@ namespace sqlite_orm {
 
           protected:
             /**
-             *  The double-indirection is so that copies of the iterator
-             *  share the same sqlite3_stmt from a sqlite3_prepare_v2()
-             *  call. When one finishes iterating it the pointer
-             *  inside the shared_ptr is nulled out in all copies.
+             *  shared_ptr is used over unique_ptr here
+             *  so that the iterator can be copyable.
              */
-            std::shared_ptr<statement_finalizer> stmt;
+            std::shared_ptr<sqlite3_stmt> stmt;
 
             // only null for the default constructed iterator
-            view_type* view;
+            view_type* view = nullptr;
 
             /**
              *  shared_ptr is used over unique_ptr here
@@ -41,23 +41,31 @@ namespace sqlite_orm {
             std::shared_ptr<value_type> current;
 
             void extract_value() {
-                auto& storage = this->view->storage;
-                auto& impl = pick_const_impl<value_type>(storage);
+                auto& dbObjects = obtain_db_objects(this->view->storage);
                 this->current = std::make_shared<value_type>();
-                object_from_column_builder<value_type> builder{*this->current, this->stmt->get()};
-                impl.table.for_each_column(builder);
+                object_from_column_builder<value_type> builder{*this->current, this->stmt.get()};
+                pick_table<value_type>(dbObjects).for_each_column(builder);
+            }
+
+            void next() {
+                this->current.reset();
+                if(sqlite3_stmt* stmt = this->stmt.get()) {
+                    perform_step(stmt, std::bind(&iterator_t::extract_value, this));
+                    if(!this->current) {
+                        this->stmt.reset();
+                    }
+                }
             }
 
           public:
-            using difference_type = std::ptrdiff_t;
+            using difference_type = ptrdiff_t;
             using pointer = value_type*;
             using reference = value_type&;
             using iterator_category = std::input_iterator_tag;
 
-            iterator_t() : view(nullptr){};
+            iterator_t(){};
 
-            iterator_t(sqlite3_stmt* stmt_, view_type& view_) :
-                stmt(std::make_shared<statement_finalizer>(stmt_)), view(&view_) {
+            iterator_t(statement_finalizer stmt_, view_type& view_) : stmt{move(stmt_)}, view{&view_} {
                 next();
             }
 
@@ -72,28 +80,6 @@ namespace sqlite_orm {
                 return &(this->operator*());
             }
 
-          private:
-            void next() {
-                this->current.reset();
-                if(this->stmt) {
-                    auto statementPointer = this->stmt->get();
-                    auto ret = sqlite3_step(statementPointer);
-                    switch(ret) {
-                        case SQLITE_ROW:
-                            this->extract_value();
-                            break;
-                        case SQLITE_DONE:
-                            this->stmt.reset();
-                            break;
-                        default: {
-                            auto db = this->view->connection.get();
-                            throw_translated_sqlite_error(db);
-                        }
-                    }
-                }
-            }
-
-          public:
             iterator_t<V>& operator++() {
                 next();
                 return *this;

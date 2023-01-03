@@ -2,7 +2,7 @@
 	"project": "SQLite ORM",
 	"target": "include/sqlite_orm/sqlite_orm.h",
   "sources": [
-    "dev/start_macros.h",
+    "dev/functional/start_macros.h",
     "dev/type_traits.h",
     "dev/error_code.h",
     "dev/type_printer.h",
@@ -41,7 +41,7 @@
     "dev/carray.h",
     "dev/dbstat.h",
     "dev/interface_definitions.h",
-    "dev/finish_macros.h"
+    "dev/functional/finish_macros.h"
   ],
 	"include_paths": ["dev"]
 }

@@ -270,15 +270,15 @@ TEST_CASE("ast_iterator") {
     }
     SECTION("with") {
         auto expression =
-            with(cte<1_ctealias>()(
+            with(cte<cte_alias<'1'>>()(
                      union_all(select(1), select(1_ctealias->*1_colalias + c(1), where(1_ctealias->*1_colalias < 10)))),
                  select(1_ctealias->*1_colalias));
         expected.push_back(typeid(int));
-        expected.push_back(typeid(column_pointer<cte_alias<49>, alias_holder<column_alias<49>>>));
+        expected.push_back(typeid(column_pointer<cte_alias<'1'>, alias_holder<column_alias<'1'>>>));
         expected.push_back(typeid(int));
-        expected.push_back(typeid(column_pointer<cte_alias<49>, alias_holder<column_alias<49>>>));
+        expected.push_back(typeid(column_pointer<cte_alias<'1'>, alias_holder<column_alias<'1'>>>));
         expected.push_back(typeid(int));
-        expected.push_back(typeid(column_pointer<cte_alias<49>, alias_holder<column_alias<49>>>));
+        expected.push_back(typeid(column_pointer<cte_alias<'1'>, alias_holder<column_alias<'1'>>>));
         internal::iterate_ast(expression, lambda);
     }
     REQUIRE(typeIndexes == expected);

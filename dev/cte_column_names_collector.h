@@ -5,10 +5,10 @@
 #include <functional>  //  std::reference_wrapper
 #include <system_error>
 
-#include "cxx_polyfill.h"
+#include "functional/cxx_type_traits_polyfill.h"
 #include "is_base_of_template.h"
 #include "type_traits.h"
-#include "member_traits/field_member_traits.h"
+#include "member_traits/member_traits.h"
 #include "error_code.h"
 #include "alias.h"
 #include "select_constraints.h"
@@ -95,12 +95,12 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::vector<std::string> operator()(const expression_type&, const Ctx& context) const {
-                auto& tImpl = pick_impl<T>(context.impl);
+                auto& table = pick_table<T>(context.db_objects);
 
                 std::vector<std::string> columnNames;
-                columnNames.reserve(size_t(tImpl.table.elements_count));
+                columnNames.reserve(size_t(table.count_columns_amount()));
 
-                tImpl.table.for_each_column([&columnNames](const basic_column& column) {
+                table.for_each_column([&columnNames](const column_identifier& column) {
                     columnNames.push_back(column.name);
                 });
                 return columnNames;
@@ -162,8 +162,8 @@ namespace sqlite_orm {
                     if constexpr(polyfill::is_specialization_of_v<ColRef, alias_holder>) {
                         columnNames[idx] = alias_extractor<type_t<ColRef>>::extract();
                     } else if constexpr(std::is_member_pointer<ColRef>::value) {
-                        using O = typename table_type<ColRef>::type;
-                        if(auto* columnName = find_column_name<O>(context.impl, colRef)) {
+                        using O = table_type_of_t<ColRef>;
+                        if(auto* columnName = find_column_name<O>(context.db_objects, colRef)) {
                             columnNames[idx] = *columnName;
                         } else {
                             // relaxed: allow any member pointer as column reference
