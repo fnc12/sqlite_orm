@@ -58,17 +58,11 @@ namespace sqlite_orm {
                 return N - 1;
             }
 
-#ifdef _MSC_VER
-            constexpr string_identifier_template(const char (&id)[N]) : id{id} {}
-
-            const char (&id)[N];
-#else
             constexpr string_identifier_template(const char (&id)[N]) {
                 std::copy_n(id, N, this->id);
             }
 
             char id[N];
-#endif
         };
 
         template<template<char...> class Alias, string_identifier_template t, size_t... Idx>
