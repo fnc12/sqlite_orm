@@ -36,28 +36,6 @@ namespace sqlite_orm {
     }
 
     /**
-     *  index_constant<> from numeric literal.
-     *  E.g. 0_colidx, 1_colidx
-     */
-    template<char... Chars>
-    [[nodiscard]] SQLITE_ORM_CONSTEVAL decltype(auto) operator"" _colidx() {
-        return polyfill::index_constant<internal::n_from_literal(std::make_index_sequence<sizeof...(Chars)>{},
-                                                                 Chars...)>{};
-    }
-
-    /**
-     *  integral_constant<unsigned int> from numeric literal.
-     *  E.g. 1_nth_col, 2_nth_col
-     */
-    template<char... Chars>
-    [[nodiscard]] SQLITE_ORM_CONSTEVAL decltype(auto) operator"" _nth_col() {
-        constexpr auto n =
-            internal::nth_constant<internal::n_from_literal(std::make_index_sequence<sizeof...(Chars)>{}, Chars...)>{};
-        static_assert(n > 0);
-        return n;
-    }
-
-    /**
      *  cte_alias<'n'> from a numeric literal.
      *  E.g. 1_ctealias, 2_ctealias
      */

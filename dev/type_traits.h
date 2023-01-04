@@ -83,9 +83,4 @@ namespace sqlite_orm {
         template<class T>
         using alias_holder_type_or_none_t = typename alias_holder_type_or_none<T>::type;
     }
-
-    namespace internal {
-        template<unsigned int N>
-        using nth_constant = std::integral_constant<unsigned int, N>;
-    }
 }

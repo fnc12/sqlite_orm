@@ -188,14 +188,6 @@ namespace sqlite_orm {
             constexpr column_pointer<mapped_type, alias_holder<ColAlias>> operator()(const ColAlias&) const {
                 return {{}};
             }
-
-            /**
-             *  Turn 1_nth_col -> 0_col
-             */
-            template<unsigned int I>
-            auto operator()(internal::nth_constant<I>) const {
-                return (*this)(polyfill::index_constant<I - 1>{});
-            }
         };
 
         /**

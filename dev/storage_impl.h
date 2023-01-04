@@ -137,23 +137,5 @@ namespace sqlite_orm {
             auto& table = pick_table<Label>(dboObjects);
             return &std::get<ColIdx>(table.elements).name;
         }
-
-        /**
-         *  Find column name by:
-         *  4. by label type and index constant.
-         */
-        template<class Label, size_t I, class DBOs, satisfies<is_db_objects, DBOs> = true>
-        constexpr decltype(auto) find_column_name(const DBOs& dboObjects,
-                                                  const column_pointer<Label, polyfill::index_constant<I>>&) {
-            using table_type = storage_pick_table_t<Label, DBOs>;
-            using column_idxs = filter_tuple_sequence_t<typename table_type::elements_type, is_column>;
-
-            // lookup column in table_t<>'s elements
-            constexpr size_t ColIdx = index_sequence_value(I, column_idxs{});
-            static_assert(ColIdx < column_idxs{}.size(), "No such column mapped into the CTE.");
-
-            auto& table = pick_table<Label>(dboObjects);
-            return &std::get<ColIdx>(table.elements).name;
-        }
     }
 }

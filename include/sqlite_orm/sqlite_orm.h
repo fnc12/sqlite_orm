@@ -366,11 +366,6 @@ namespace sqlite_orm {
         template<class T>
         using alias_holder_type_or_none_t = typename alias_holder_type_or_none<T>::type;
     }
-
-    namespace internal {
-        template<unsigned int N>
-        using nth_constant = std::integral_constant<unsigned int, N>;
-    }
 }
 #pragma once
 
@@ -7078,14 +7073,6 @@ namespace sqlite_orm {
             constexpr column_pointer<mapped_type, alias_holder<ColAlias>> operator()(const ColAlias&) const {
                 return {{}};
             }
-
-            /**
-             *  Turn 1_nth_col -> 0_col
-             */
-            template<unsigned int I>
-            auto operator()(internal::nth_constant<I>) const {
-                return (*this)(polyfill::index_constant<I - 1>{});
-            }
         };
 
         /**
@@ -11330,24 +11317,6 @@ namespace sqlite_orm {
             //       however we have the column index already.
             // lookup column in table_t<>'s elements
             constexpr size_t ColIdx = index_sequence_value(I, column_idxs{});
-            auto& table = pick_table<Label>(dboObjects);
-            return &std::get<ColIdx>(table.elements).name;
-        }
-
-        /**
-         *  Find column name by:
-         *  4. by label type and index constant.
-         */
-        template<class Label, size_t I, class DBOs, satisfies<is_db_objects, DBOs> = true>
-        constexpr decltype(auto) find_column_name(const DBOs& dboObjects,
-                                                  const column_pointer<Label, polyfill::index_constant<I>>&) {
-            using table_type = storage_pick_table_t<Label, DBOs>;
-            using column_idxs = filter_tuple_sequence_t<typename table_type::elements_type, is_column>;
-
-            // lookup column in table_t<>'s elements
-            constexpr size_t ColIdx = index_sequence_value(I, column_idxs{});
-            static_assert(ColIdx < column_idxs{}.size(), "No such column mapped into the CTE.");
-
             auto& table = pick_table<Label>(dboObjects);
             return &std::get<ColIdx>(table.elements).name;
         }
@@ -20179,28 +20148,6 @@ namespace sqlite_orm {
         constexpr size_t n_from_literal(std::index_sequence<Is...>, Chars... chars) {
             return (((chars - '0') * _10_pow(sizeof...(Is) - 1u - Is /*reversed index sequence*/)) + ...);
         }
-    }
-
-    /**
-     *  index_constant<> from numeric literal.
-     *  E.g. 0_colidx, 1_colidx
-     */
-    template<char... Chars>
-    [[nodiscard]] SQLITE_ORM_CONSTEVAL decltype(auto) operator"" _colidx() {
-        return polyfill::index_constant<internal::n_from_literal(std::make_index_sequence<sizeof...(Chars)>{},
-                                                                 Chars...)>{};
-    }
-
-    /**
-     *  integral_constant<unsigned int> from numeric literal.
-     *  E.g. 1_nth_col, 2_nth_col
-     */
-    template<char... Chars>
-    [[nodiscard]] SQLITE_ORM_CONSTEVAL decltype(auto) operator"" _nth_col() {
-        constexpr auto n =
-            internal::nth_constant<internal::n_from_literal(std::make_index_sequence<sizeof...(Chars)>{}, Chars...)>{};
-        static_assert(n > 0);
-        return n;
     }
 
     /**
