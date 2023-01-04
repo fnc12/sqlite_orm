@@ -125,7 +125,7 @@ namespace sqlite_orm {
         template<class DBOs, class E, size_t Idx = 0>
         auto extract_colref_expressions(const DBOs& /*dbObjects*/, const E& /*col*/, std::index_sequence<Idx> = {})
             -> std::tuple<alias_holder<decltype(n_to_colalias<Idx>())>> {
-            return;
+            return {};
         }
 
         // expression_t<>
@@ -221,19 +221,20 @@ namespace sqlite_orm {
         }
 
         template<typename DBOs, typename SubselectColRefs, typename ExplicitColRefs, size_t... Idx>
-        auto determine_cte_colrefs(const DBOs& dbObjects,
+        auto determine_cte_colrefs([[maybe_unused]] const DBOs& dbObjects,
                                    const SubselectColRefs& subselectColRefs,
-                                   const ExplicitColRefs& explicitColRefs,
+                                   [[maybe_unused]] const ExplicitColRefs& explicitColRefs,
                                    std::index_sequence<Idx...>) {
             if constexpr(std::tuple_size_v < ExplicitColRefs >> 0) {
-                return std::tuple{
-                    determine_cte_colref(dbObjects, get<Idx>(subselectColRefs), get<Idx>(explicitColRefs))...};
-            } else {
                 static_assert(
                     (!internal::is_builtin_numeric_column_alias_v<
                          alias_holder_type_or_none_t<std::tuple_element_t<Idx, ExplicitColRefs>>> &&
                      ...),
                     "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
+
+                return std::tuple{
+                    determine_cte_colref(dbObjects, get<Idx>(subselectColRefs), get<Idx>(explicitColRefs))...};
+            } else {
                 return subselectColRefs;
             }
         }
