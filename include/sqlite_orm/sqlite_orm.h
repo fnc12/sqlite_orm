@@ -6538,23 +6538,19 @@ namespace sqlite_orm {
     }
 
     /**
-     *  MAX(X, ...) aggregate or simple multi-argument function.
-     *  The return type is deduced from the first argument.
+     *  MAX(X) aggregate function.
      */
-    template<class X, class... Rest>
-    internal::built_in_aggregate_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X, Rest...>
-    max(X x, Rest... rest) {
-        return {std::tuple<X, Rest...>{std::forward<X>(x), std::forward<Rest>(rest)...}};
+    template<class X>
+    internal::built_in_aggregate_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X> max(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     /**
-     *  MIN(X, ...) aggregate or simple multi-argument function.
-     *  The return type is deduced from the first argument.
+     *  MIN(X) aggregate function.
      */
-    template<class X, class... Rest>
-    internal::built_in_aggregate_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X, Rest...>
-    min(X x, Rest... rest) {
-        return {std::tuple<X, Rest...>{std::forward<X>(x), std::forward<Rest>(rest)...}};
+    template<class X>
+    internal::built_in_aggregate_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X> min(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     /**
@@ -11803,9 +11799,6 @@ namespace sqlite_orm {
         struct connection_holder {
 
             connection_holder(std::string filename_) : filename(move(filename_)) {}
-
-            connection_holder(connection_holder* connection) :
-                filename{connection->filename}, db{connection->db}, _retain_count{++connection->_retain_count} {}
 
             void retain() {
                 if(1 == ++this->_retain_count) {
