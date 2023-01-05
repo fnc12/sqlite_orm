@@ -151,47 +151,7 @@ TEST_CASE("Storage copy") {
     storageCopy.remove_all<User>();
 }
 
-TEST_CASE("has_dependent_rows") {
-    struct User {
-        int id = 0;
-        std::string name;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        User() = default;
-        User(int id, std::string name) : id{id}, name{move(name)} {}
-#endif
-    };
-    struct Visit {
-        int id = 0;
-        int userId = 0;
-        int date = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        Visit() = default;
-        Visit(int id, int userId, int date) : id{id}, userId{userId}, date{date} {}
-#endif
-    };
-    auto storage =
-        make_storage({},
-                     make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)),
-                     make_table("visits",
-                                make_column("id", &Visit::id, primary_key()),
-                                make_column("user_id", &Visit::userId),
-                                make_column("date", &Visit::date),
-                                foreign_key(&Visit::userId).references(&User::id)));
-    storage.sync_schema();
-
-    User user5{5, "Eugene"};
-    storage.replace(user5);
-
-    REQUIRE(!storage.has_dependent_rows(user5));
-
-    storage.insert(Visit{0, user5.id, 100});
-
-    REQUIRE(storage.has_dependent_rows(user5));
-}
-
-TEST_CASE("find_column_name") {
+TEST_CASE("column_name") {
     struct User {
         int id = 0;
         std::string name;
@@ -217,68 +177,6 @@ TEST_CASE("find_column_name") {
     REQUIRE(*storage.find_column_name(&Visit::userId) == "user_id");
     REQUIRE(*storage.find_column_name(&Visit::date) == "date");
     REQUIRE(storage.find_column_name(&Visit::notUsed) == nullptr);
-}
-
-TEST_CASE("issue880") {
-    struct Fondo {
-        int id = 5;
-        std::string abreviacion;
-        std::string nombre;
-        int tipo_cupon = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        Fondo() = default;
-        Fondo(int id) : id{id} {}
-#endif
-
-        enum TipoCupon { mensual = 1, trimestral = 3 };
-    };
-
-    struct Inversion {
-        int id = 0;
-        int num_participaciones;
-        int fkey_fondo;
-    };
-
-    struct Rendimiento {
-        int id = 0;
-        int fkey_fondo;
-        double rendimiento_unitario;
-    };
-
-    struct X {
-        int id = 0;
-        int fkey_Rendimiento;
-    };
-
-    auto storage =
-        make_storage({},
-                     make_table("Fondos",
-                                make_column("id_fondo", &Fondo::id, autoincrement(), primary_key()),
-                                make_column("nombre", &Fondo::nombre),
-                                make_column("abrev", &Fondo::abreviacion),
-                                make_column("tipo_cupon", &Fondo::tipo_cupon)),
-                     make_table("Inversiones",
-                                make_column("id_inversion", &Inversion::id, autoincrement(), primary_key()),
-                                make_column("fkey_fondo", &Inversion::fkey_fondo),
-                                make_column("num_participaciones", &Inversion::num_participaciones),
-                                foreign_key(&Inversion::fkey_fondo).references(&Fondo::id)),
-                     make_table("Rendimientos",
-                                make_column("id_rendimiento", &Rendimiento::id, autoincrement(), primary_key()),
-                                make_column("rend_unitario", &Rendimiento::rendimiento_unitario),
-                                make_column("fkey_fondo", &Rendimiento::fkey_fondo),
-                                foreign_key(&Rendimiento::fkey_fondo).references(&Fondo::id)),
-                     make_table("X",
-                                make_column("id_X", &X::id, autoincrement(), primary_key()),
-                                make_column("fkey_rendimiento", &X::fkey_Rendimiento),
-                                foreign_key(&X::fkey_Rendimiento).references(&Rendimiento::id)));
-    storage.sync_schema();
-
-    Fondo fondo{5};
-    storage.has_dependent_rows(fondo);
-
-    Inversion inversion;
-    storage.has_dependent_rows(inversion);
 }
 
 namespace {

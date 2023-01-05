@@ -289,12 +289,12 @@ namespace {
 TEST_CASE("Case") {
     auto storage = make_storage({},
                                 make_table("users",
-                                           make_column("id", &User2::id, autoincrement(), primary_key()),
+                                           make_column("id", &User2::id, primary_key().autoincrement()),
                                            make_column("first_name", &User2::firstName),
                                            make_column("last_name", &User2::lastName),
                                            make_column("country", &User2::country)),
                                 make_table("tracks",
-                                           make_column("trackid", &Track2::id, autoincrement(), primary_key()),
+                                           make_column("trackid", &Track2::id, primary_key().autoincrement()),
                                            make_column("name", &Track2::name),
                                            make_column("milliseconds", &Track2::milliseconds)));
     storage.sync_schema();

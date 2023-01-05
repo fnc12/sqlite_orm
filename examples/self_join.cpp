@@ -47,7 +47,7 @@ int main() {
     auto storage =
         make_storage("self_join.sqlite",
                      make_table("employees",
-                                make_column("EmployeeId", &Employee::employeeId, autoincrement(), primary_key()),
+                                make_column("EmployeeId", &Employee::employeeId, primary_key().autoincrement()),
                                 make_column("LastName", &Employee::lastName),
                                 make_column("FirstName", &Employee::firstName),
                                 make_column("Title", &Employee::title),

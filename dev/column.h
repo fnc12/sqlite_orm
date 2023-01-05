@@ -65,7 +65,7 @@ namespace sqlite_orm {
         /*
          *  Encapsulates a tuple of column constraints.
          *  
-         *  Op... is a constraints pack, e.g. primary_key_t, autoincrement_t etc
+         *  Op... is a constraints pack, e.g. primary_key_t, unique_t etc
          */
         template<class... Op>
         struct column_constraints {

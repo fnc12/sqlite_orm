@@ -252,7 +252,6 @@ namespace sqlite_orm {
                     [](sqlite3_context* context, void* functionVoidPointer, int argsCount, sqlite3_value** values) {
                         auto& function = *static_cast<F*>(functionVoidPointer);
                         args_tuple argsTuple;
-                        using tuple_size = std::tuple_size<args_tuple>;
                         values_to_tuple{}(values, argsTuple, argsCount);
                         auto result = call(function, std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
@@ -315,7 +314,6 @@ namespace sqlite_orm {
                     [](sqlite3_context*, void* functionVoidPointer, int argsCount, sqlite3_value** values) {
                         auto& function = *static_cast<F*>(functionVoidPointer);
                         args_tuple argsTuple;
-                        using tuple_size = std::tuple_size<args_tuple>;
                         values_to_tuple{}(values, argsTuple, argsCount);
                         call(function, &F::step, move(argsTuple));
                     },

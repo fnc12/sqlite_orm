@@ -501,7 +501,7 @@ void select_from_subselect() {
 
     auto storage = make_storage("",
                                 make_table("Emp",
-                                           make_column("empno", &Employee::m_empno, primary_key(), autoincrement()),
+                                           make_column("empno", &Employee::m_empno, primary_key().autoincrement()),
                                            make_column("ename", &Employee::m_ename),
                                            make_column("salary", &Employee::m_salary),
                                            make_column("comm", &Employee::m_commission)));

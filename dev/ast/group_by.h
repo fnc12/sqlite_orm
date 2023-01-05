@@ -68,7 +68,7 @@ namespace sqlite_orm {
      *  Example: storage.get_all<Employee>(group_by(&Employee::name), having(greater_than(count(&Employee::name), 2)));
      */
     template<class T>
-    internal::having_t<T> having(T expression) {
+    [[deprecated("Use group_by(...).having(...) instead")]] internal::having_t<T> having(T expression) {
         return {std::move(expression)};
     }
 }
