@@ -16105,8 +16105,8 @@ namespace sqlite_orm {
                     } else if constexpr(polyfill::is_specialization_of_v<ColRef, column_t>) {
                         columnNames[idx] = colRef.name;
                     } else if constexpr(std::is_same_v<ColRef, std::string>) {
-                        if(std::string name = colRef; !name.empty()) {
-                            columnNames[idx] = move(name);
+                        if(!colRef.empty()) {
+                            columnNames[idx] = colRef;
                         }
                     } else if constexpr(std::is_same_v<ColRef, polyfill::remove_cvref_t<decltype(std::ignore)>>) {
                         if(columnNames[idx].empty()) {
