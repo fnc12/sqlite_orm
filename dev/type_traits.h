@@ -71,13 +71,6 @@ namespace sqlite_orm {
 
         template<typename T>
         using cte_mapper_type_t = typename T::cte_mapper_type;
-#endif
-
-        template<typename T>
-        using expression_type_t = typename T::expression_type;
-
-        template<class As>
-        using alias_type_t = typename As::alias_type;
 
         // T::alias_type or nonesuch
         template<class T>
@@ -85,5 +78,12 @@ namespace sqlite_orm {
 
         template<class T>
         using alias_holder_type_or_none_t = typename alias_holder_type_or_none<T>::type;
+#endif
+
+        template<typename T>
+        using expression_type_t = typename T::expression_type;
+
+        template<class As>
+        using alias_type_t = typename As::alias_type;
     }
 }

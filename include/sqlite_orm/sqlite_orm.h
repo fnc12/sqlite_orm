@@ -359,13 +359,6 @@ namespace sqlite_orm {
 
         template<typename T>
         using cte_mapper_type_t = typename T::cte_mapper_type;
-#endif
-
-        template<typename T>
-        using expression_type_t = typename T::expression_type;
-
-        template<class As>
-        using alias_type_t = typename As::alias_type;
 
         // T::alias_type or nonesuch
         template<class T>
@@ -373,6 +366,13 @@ namespace sqlite_orm {
 
         template<class T>
         using alias_holder_type_or_none_t = typename alias_holder_type_or_none<T>::type;
+#endif
+
+        template<typename T>
+        using expression_type_t = typename T::expression_type;
+
+        template<class As>
+        using alias_type_t = typename As::alias_type;
     }
 }
 #pragma once
@@ -11355,6 +11355,8 @@ namespace sqlite_orm {
         /**
          *  Materialize column pointer:
          *  3. by label type and alias_holder<>.
+         *  
+         *  internal note: there's an overload for `find_column_name()` that avoids going through `table_t<>::find_column_name()`
          */
         template<class Label, class ColAlias, class DBOs, satisfies<is_db_objects, DBOs> = true>
         constexpr decltype(auto) materialize_column_pointer(const DBOs&,
@@ -11370,7 +11372,7 @@ namespace sqlite_orm {
             constexpr auto ColIdx = tuple_index_of_v<ColAlias, alias_types_tuple>;
             static_assert(ColIdx != -1, "No such column mapped into the CTE.");
 
-            return &aliased_field<ColAlias, std::tuple_element_t<ColIdx, cte_mapper_type::fields_type>>;
+            return &aliased_field<ColAlias, std::tuple_element_t<ColIdx, cte_mapper_type::fields_type>>::field;
         }
 #endif
 
