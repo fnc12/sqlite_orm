@@ -5,7 +5,6 @@
 #include <string>
 #include <vector>
 
-#include "tuple_helper/tuple_fy.h"
 #include "is_base_of_template.h"
 #include "table_type_of.h"
 #include "column_result.h"

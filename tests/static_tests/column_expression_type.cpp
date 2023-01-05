@@ -44,7 +44,6 @@ TEST_CASE("column_expression_of_t") {
 
     runTest<storage_type, column_pointer<Derived, int64 Org::*>>(column<Derived>(&Org::id));
     runTest<storage_type, column_pointer<cte_1, int64 Org::*>>(column<cte_1>(&Org::id));
-    runTest<storage_type, column_pointer<cte_1, int64 Org::*>>(column<cte_1>()->*&Org::id);
     runTest<storage_type, column_pointer<cte_1, int64 Org::*>>(column<cte_1>->*&Org::id);
     runTest<storage_type, column_pointer<cte_1, int64 Org::*>>(cte_1{}->*&Org::id);
     runTest<storage_type, column_pointer<cte_1, alias_holder<internal::column_alias<'1'>>>>(column<cte_1>(1_colalias));

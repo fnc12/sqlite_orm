@@ -535,7 +535,6 @@ void select_from_subselect() {
 }
 
 void apfelmaennchen() {
-#if __cplusplus >= 201703L  // use of C++17 or higher
     auto storage = make_storage("");
 
     //WITH RECURSIVE
@@ -584,7 +583,7 @@ void apfelmaennchen() {
             cte<a>(t_col)(select(group_concat(substr(" .+*#", 1 + min<>(m2->*iter_col / c(7.0), 4.0), 1), ""),
                                  group_by(m2->*cy_col)))),
         select(group_concat(rtrim(a->*t_col), "\n")));
-#elif __cplusplus >= 201703L  // C++17 or later
+#else
     using cte_xaxis = decltype(1_ctealias);
     using cte_yaxis = decltype(2_ctealias);
     using cte_m = decltype(3_ctealias);
@@ -637,7 +636,6 @@ void apfelmaennchen() {
         cout << rowString << '\n';
     }
     cout << endl;
-#endif
 }
 
 void show_mapping_and_backreferencing() {
@@ -685,16 +683,6 @@ void show_mapping_and_backreferencing() {
     // map column via alias_holder into cte,
     // back-reference via `column_pointer<cte_1, alias_holder>`
     {
-        auto ast =
-            with(cte<cte_1>("x")(union_all(select(as<cnt>(1)), select(column<cte_1>()->*cnt{} + c(1), limit(10)))),
-                 select(column<cte_1>()->*cnt{}));
-
-        string sql = storage.dump(ast);
-        auto stmt = storage.prepare(ast);
-    }
-    // map column via alias_holder into cte,
-    // back-reference via `column_pointer<cte_1, alias_holder>`
-    {
         auto ast = with(cte<cte_1>("x")(union_all(select(as<cnt>(1)), select(cte_1{}->*cnt{} + c(1), limit(10)))),
                         select(cte_1{}->*cnt{}));
 
@@ -702,9 +690,25 @@ void show_mapping_and_backreferencing() {
         auto stmt = storage.prepare(ast);
     }
 
-    // explicitly state that column name should be taken from subselect
+    // implicitly remap column into cte
     {
         auto ast = with(cte<cte_1>(std::ignore)(select(&Object::id)), select(column<cte_1>(&Object::id)));
+
+        string sql = storage.dump(ast);
+        auto stmt = storage.prepare(ast);
+    }
+
+    // explicitly remap column into cte (independent of subselect)
+    {
+        auto ast = with(cte<cte_1>(&Object::id)(select(&Object::id)), select(column<cte_1>(&Object::id)));
+
+        string sql = storage.dump(ast);
+        auto stmt = storage.prepare(ast);
+    }
+
+    // explicitly remap column as an alias into cte (independent of subselect)
+    {
+        auto ast = with(cte<cte_1>(cnt{})(select(&Object::id)), select(column<cte_1>(get<cnt>())));
 
         string sql = storage.dump(ast);
         auto stmt = storage.prepare(ast);
@@ -713,7 +717,9 @@ void show_mapping_and_backreferencing() {
     // explicitly state that column name should be taken from subselect
     {
         struct CTEObject : alias_tag {
+            // a CTE object is its own table alias
             using type = CTEObject;
+
             static std::string get() {
                 return "CTEObj";
             }

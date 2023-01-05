@@ -115,7 +115,7 @@ namespace sqlite_orm {
         /*
          * Encapsulates extracting the alias identifier of an alias.
          * 
-         * `extract()` always returns the aliase identifier.
+         * `extract()` always returns the alias identifier.
          * `as_alias()` is used in contexts where a table is aliased.
          *   In case of a CTE the alias is empty since the CTE identifier is already the alias itself.
          */
@@ -291,7 +291,7 @@ namespace sqlite_orm {
     using colalias_h = internal::column_alias<'h'>;
     using colalias_i = internal::column_alias<'i'>;
 
-#if __cplusplus >= 201703L  // C++17 or later
+#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
     namespace internal {
         template<class T>
         inline constexpr bool is_builtin_numeric_column_alias_v = false;

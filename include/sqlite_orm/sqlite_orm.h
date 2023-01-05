@@ -1046,7 +1046,7 @@ namespace sqlite_orm {
 namespace sqlite_orm {
     namespace internal {
 
-#if __cplusplus >= 201703L  // C++17 or later
+#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
         // cudos to OznOg https://stackoverflow.com/a/64606884/279251
         template<class X, class Tuple>
         struct tuple_index_of;
@@ -4271,7 +4271,7 @@ namespace sqlite_orm {
         /*
          * Encapsulates extracting the alias identifier of an alias.
          * 
-         * `extract()` always returns the aliase identifier.
+         * `extract()` always returns the alias identifier.
          * `as_alias()` is used in contexts where a table is aliased.
          *   In case of a CTE the alias is empty since the CTE identifier is already the alias itself.
          */
@@ -4447,7 +4447,7 @@ namespace sqlite_orm {
     using colalias_h = internal::column_alias<'h'>;
     using colalias_i = internal::column_alias<'i'>;
 
-#if __cplusplus >= 201703L  // C++17 or later
+#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
     namespace internal {
         template<class T>
         inline constexpr bool is_builtin_numeric_column_alias_v = false;
@@ -7093,21 +7093,12 @@ namespace sqlite_orm {
 
             using mapped_type = A;
 
-            /** 
-             *  Instantiate table alias object A in order to use it with the overloaded pointer-to-member operator.
-             */
-            constexpr mapped_type operator()() const {
-                return mapped_type{};
-            }
-
             /**
              *  Explicitly refer to a column alias mapped into a CTE or subquery.
              *  
              *  Example:
              *  struct Object { ... };
-             *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(1_colalias)));
-             *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(0_col)));
-             *  storage.with(cte<cte_1>()(select(as<colalias_a>(&Object::id))), select(column<cte_1>(get<colalias_a>())));
+             *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(&Object::id)));
              */
             template<class F, satisfies_not<is_column_alias, F> = true>
             constexpr column_pointer<mapped_type, F> operator()(F field) const {
@@ -7119,10 +7110,25 @@ namespace sqlite_orm {
              *  
              *  Example:
              *  struct Object { ... };
+             *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(1_colalias)));
              *  storage.with(cte<cte_1>()(select(as<colalias_a>(&Object::id))), select(column<cte_1>(colalias_a{})));
+             *  storage.with(cte<cte_1>(colalias_a{})(select(&Object::id)), select(column<cte_1>(colalias_a{})));
              */
             template<class ColAlias, satisfies<is_column_alias, ColAlias> = true>
             constexpr column_pointer<mapped_type, alias_holder<ColAlias>> operator()(const ColAlias&) const {
+                return {{}};
+            }
+
+            /**
+             *  Explicitly refer to a column alias mapped into a CTE or subquery.
+             *
+             *  Example:
+             *  struct Object { ... };
+             *  storage.with(cte<cte_1>()(select(as<colalias_a>(&Object::id))), select(column<cte_1>(get<colalias_a>())));
+             */
+            template<class ColAlias, satisfies<is_column_alias, ColAlias> = true>
+            constexpr column_pointer<mapped_type, alias_holder<ColAlias>>
+            operator()(const alias_holder<ColAlias>&) const {
                 return {{}};
             }
         };
@@ -7513,8 +7519,8 @@ namespace sqlite_orm {
      *  
      *  Example:
      *  struct Object { ... };
-     *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>()->*&Object::id));
-     *  storage.with(cte<cte_1>()(select(&Object::id)), select(cte_1{}->*&Object::id));
+     *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>->*&Object::id));
+     *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>->*1_colalias));
      */
     template<class A, class F, internal::satisfies<internal::is_table_alias, A> = true>
     constexpr auto operator->*(const A& /*tableAlias*/, F field) {
@@ -7526,7 +7532,8 @@ namespace sqlite_orm {
      *  
      *  Use it like this:
      *  struct Object { ... };
-     *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>->*0_col));
+     *  storage.with(cte<cte_1>()(select(&Object::id)), select(1_ctealias->*&Object::id));
+     *  storage.with(cte<cte_1>()(select(&Object::id)), select(1_ctealias->*1_colalias));
      */
     template<class A, class F, internal::satisfies<internal::is_table_alias, A> = true>
     constexpr auto operator->*(const internal::column_pointer_builder<A>&, F field) {
@@ -7588,7 +7595,7 @@ namespace sqlite_orm {
                               bool> = true>
     auto cte(ExplicitCols... explicitColumns) {
         static_assert(internal::is_cte_alias_v<Label>, "Label must be a CTE alias");
-#if __cplusplus >= 201703L  // C++17 or later
+#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
         static_assert((!internal::is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
 #endif
@@ -9909,9 +9916,9 @@ namespace sqlite_orm {
 // #include "storage_lookup.h"
 
 
-#include <type_traits>  //  std::true_type, std::false_type, std::remove_const, std::enable_if, std::is_base_of
+#include <type_traits>  //  std::true_type, std::false_type, std::remove_const, std::enable_if, std::is_base_of, std::is_void
 #include <tuple>
-#include <utility>  //  std::index_sequence
+#include <utility>  //  std::index_sequence, std::make_index_sequence
 
 // #include "functional/cxx_universal.h"
 
@@ -10083,7 +10090,7 @@ namespace sqlite_orm {
          * 
          *  Note: This function requires Lookup to be mapped, otherwise it is removed from the overload resolution set.
          */
-        template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs> = true>
+        template<class Lookup, class DBOs, satisfies<is_mapped, DBOs, Lookup> = true>
         auto& pick_table(DBOs& dbObjects) {
             using table_type = storage_pick_table_t<Lookup, DBOs>;
             return std::get<table_type>(dbObjects);
@@ -16969,7 +16976,7 @@ namespace sqlite_orm {
             using statement_type = conflict_clause_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type& statement, const Ctx& /*context*/) const {
                 switch(statement) {
                     case conflict_clause_t::rollback:
                         return "ROLLBACK";
@@ -18273,8 +18280,6 @@ namespace sqlite_orm {
 #include <string>
 #include <vector>
 
-// #include "tuple_helper/tuple_fy.h"
-
 // #include "is_base_of_template.h"
 
 // #include "table_type_of.h"
@@ -18290,6 +18295,8 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
+// #include "tuple_helper/tuple_transformer.h"
+
 // #include "type_traits.h"
 
 // #include "select_constraints.h"
@@ -18297,8 +18304,6 @@ namespace sqlite_orm {
 // #include "alias.h"
 
 // #include "storage_traits.h"
-
-// #include "tuple_helper/tuple_transformer.h"
 
 
 namespace sqlite_orm {
@@ -20165,10 +20170,7 @@ namespace sqlite_orm {
 }
 #pragma once
 
-#include <type_traits>
-#include <string>
-
-// #include "functional/cxx_type_traits_polyfill.h"
+#include <utility>  //  std::make_index_sequence
 
 // #include "alias.h"
 
@@ -20184,22 +20186,6 @@ namespace sqlite_orm {
             : table_alias<cte_alias<C, X...> /* refer to self, since a label is both, an alias and a lookup type */,
                           C,
                           X...> {};
-    }
-
-#if __cplusplus >= 201703L  // C++17 or later
-    namespace internal {
-        constexpr size_t _10_pow(size_t n) {
-            if(n == 0) {
-                return 1;
-            } else {
-                return 10 * _10_pow(n - 1);
-            }
-        }
-
-        template<class... Chars, size_t... Is>
-        constexpr size_t n_from_literal(std::index_sequence<Is...>, Chars... chars) {
-            return (((chars - '0') * _10_pow(sizeof...(Is) - 1u - Is /*reversed index sequence*/)) + ...);
-        }
     }
 
     /**
@@ -20244,7 +20230,6 @@ namespace sqlite_orm {
     using cte_7 = decltype(7_ctealias);
     using cte_8 = decltype(8_ctealias);
     using cte_9 = decltype(9_ctealias);
-#endif
 #endif
 }
 #pragma once

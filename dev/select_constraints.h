@@ -156,21 +156,12 @@ namespace sqlite_orm {
 
             using mapped_type = A;
 
-            /** 
-             *  Instantiate table alias object A in order to use it with the overloaded pointer-to-member operator.
-             */
-            constexpr mapped_type operator()() const {
-                return mapped_type{};
-            }
-
             /**
              *  Explicitly refer to a column alias mapped into a CTE or subquery.
              *  
              *  Example:
              *  struct Object { ... };
-             *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(1_colalias)));
-             *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(0_col)));
-             *  storage.with(cte<cte_1>()(select(as<colalias_a>(&Object::id))), select(column<cte_1>(get<colalias_a>())));
+             *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(&Object::id)));
              */
             template<class F, satisfies_not<is_column_alias, F> = true>
             constexpr column_pointer<mapped_type, F> operator()(F field) const {
@@ -182,10 +173,25 @@ namespace sqlite_orm {
              *  
              *  Example:
              *  struct Object { ... };
+             *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(1_colalias)));
              *  storage.with(cte<cte_1>()(select(as<colalias_a>(&Object::id))), select(column<cte_1>(colalias_a{})));
+             *  storage.with(cte<cte_1>(colalias_a{})(select(&Object::id)), select(column<cte_1>(colalias_a{})));
              */
             template<class ColAlias, satisfies<is_column_alias, ColAlias> = true>
             constexpr column_pointer<mapped_type, alias_holder<ColAlias>> operator()(const ColAlias&) const {
+                return {{}};
+            }
+
+            /**
+             *  Explicitly refer to a column alias mapped into a CTE or subquery.
+             *
+             *  Example:
+             *  struct Object { ... };
+             *  storage.with(cte<cte_1>()(select(as<colalias_a>(&Object::id))), select(column<cte_1>(get<colalias_a>())));
+             */
+            template<class ColAlias, satisfies<is_column_alias, ColAlias> = true>
+            constexpr column_pointer<mapped_type, alias_holder<ColAlias>>
+            operator()(const alias_holder<ColAlias>&) const {
                 return {{}};
             }
         };
@@ -576,8 +582,8 @@ namespace sqlite_orm {
      *  
      *  Example:
      *  struct Object { ... };
-     *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>()->*&Object::id));
-     *  storage.with(cte<cte_1>()(select(&Object::id)), select(cte_1{}->*&Object::id));
+     *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>->*&Object::id));
+     *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>->*1_colalias));
      */
     template<class A, class F, internal::satisfies<internal::is_table_alias, A> = true>
     constexpr auto operator->*(const A& /*tableAlias*/, F field) {
@@ -589,7 +595,8 @@ namespace sqlite_orm {
      *  
      *  Use it like this:
      *  struct Object { ... };
-     *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>->*0_col));
+     *  storage.with(cte<cte_1>()(select(&Object::id)), select(1_ctealias->*&Object::id));
+     *  storage.with(cte<cte_1>()(select(&Object::id)), select(1_ctealias->*1_colalias));
      */
     template<class A, class F, internal::satisfies<internal::is_table_alias, A> = true>
     constexpr auto operator->*(const internal::column_pointer_builder<A>&, F field) {
@@ -651,7 +658,7 @@ namespace sqlite_orm {
                               bool> = true>
     auto cte(ExplicitCols... explicitColumns) {
         static_assert(internal::is_cte_alias_v<Label>, "Label must be a CTE alias");
-#if __cplusplus >= 201703L  // C++17 or later
+#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
         static_assert((!internal::is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
 #endif

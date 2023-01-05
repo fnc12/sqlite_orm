@@ -11,7 +11,7 @@
 namespace sqlite_orm {
     namespace internal {
 
-#if __cplusplus >= 201703L  // C++17 or later
+#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
         // cudos to OznOg https://stackoverflow.com/a/64606884/279251
         template<class X, class Tuple>
         struct tuple_index_of;

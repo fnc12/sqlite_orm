@@ -1,9 +1,7 @@
 #pragma once
 
-#include <type_traits>
-#include <string>
+#include <utility>  //  std::make_index_sequence
 
-#include "functional/cxx_type_traits_polyfill.h"
 #include "alias.h"
 
 namespace sqlite_orm {
@@ -17,22 +15,6 @@ namespace sqlite_orm {
             : table_alias<cte_alias<C, X...> /* refer to self, since a label is both, an alias and a lookup type */,
                           C,
                           X...> {};
-    }
-
-#if __cplusplus >= 201703L  // C++17 or later
-    namespace internal {
-        constexpr size_t _10_pow(size_t n) {
-            if(n == 0) {
-                return 1;
-            } else {
-                return 10 * _10_pow(n - 1);
-            }
-        }
-
-        template<class... Chars, size_t... Is>
-        constexpr size_t n_from_literal(std::index_sequence<Is...>, Chars... chars) {
-            return (((chars - '0') * _10_pow(sizeof...(Is) - 1u - Is /*reversed index sequence*/)) + ...);
-        }
     }
 
     /**
@@ -77,6 +59,5 @@ namespace sqlite_orm {
     using cte_7 = decltype(7_ctealias);
     using cte_8 = decltype(8_ctealias);
     using cte_9 = decltype(9_ctealias);
-#endif
 #endif
 }
