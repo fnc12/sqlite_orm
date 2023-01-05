@@ -1,24 +1,29 @@
 #pragma once
 
+#include "functional/cxx_core_features.h"
+#ifdef SQLITE_ORM_WITH_CTE
 #include <type_traits>
 #include <tuple>
 #include <string>
 #include <vector>
 
+#include "functional/cxx_universal.h"
 #include "is_base_of_template.h"
 #include "table_type_of.h"
 #include "column_result.h"
-#include "column_expression.h"
 #include "select_constraints.h"
 #include "table.h"
 #include "alias.h"
 #include "cte_types.h"
 #include "cte_column_names_collector.h"
+#endif
+#include "column_expression.h"
 #include "storage_lookup.h"
 
 namespace sqlite_orm {
     namespace internal {
 
+#ifdef SQLITE_ORM_WITH_CTE
         // F = field_type
         template<typename Label,
                  typename ExplicitColRefs,
@@ -310,14 +315,6 @@ namespace sqlite_orm {
         }
 
         /**
-         *  Return DBOs of storage_t.
-         */
-        template<class S, class E, satisfies<is_storage, S> = true>
-        decltype(auto) storage_for_expression(S& storage, const E&) {
-            return obtain_db_objects(storage);
-        }
-
-        /**
          *  Return new DBOs for CTE expressions.
          */
         template<class S, class E, class... CTEs, satisfies<is_storage, S> = true>
@@ -325,6 +322,15 @@ namespace sqlite_orm {
             return make_recursive_cte_storage_using_table_indices(obtain_db_objects(storage),
                                                                   e.cte,
                                                                   std::index_sequence_for<CTEs...>{});
+        }
+#endif
+
+        /**
+         *  Return DBOs of storage_t.
+         */
+        template<class S, class E, satisfies<is_storage, S> = true>
+        decltype(auto) storage_for_expression(S& storage, const E&) {
+            return obtain_db_objects(storage);
         }
     }
 }

@@ -111,10 +111,12 @@ TEST_CASE("column_result_of_t") {
     runTest<Storage, std::tuple<int, std::string>>(columns(&User::id, &User::name));
     runTest<Storage, int>(column<User>(&User::id));
     runTest<Storage, User>(object<User>());
+#ifdef SQLITE_ORM_WITH_CTE
     runTest<Storage, int>(column<cte_1>(&User::id));
     runTest<Storage, int>(column<cte_1>->*&User::id);
     runTest<Storage, int>(1_ctealias->*&User::id);
 #ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
     runTest<Storage, int>("1"_cte->*&User::id);
+#endif
 #endif
 }

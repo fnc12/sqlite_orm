@@ -43,6 +43,7 @@ TEST_CASE("column_expression_of_t") {
     runTest<storage_type, internal::as_t<colalias_a, int>>(as<colalias_a>(1));
 
     runTest<storage_type, column_pointer<Derived, int64 Org::*>>(column<Derived>(&Org::id));
+#ifdef SQLITE_ORM_WITH_CTE
     runTest<storage_type, column_pointer<cte_1, int64 Org::*>>(column<cte_1>(&Org::id));
     runTest<storage_type, column_pointer<cte_1, int64 Org::*>>(column<cte_1>->*&Org::id);
     runTest<storage_type, column_pointer<cte_1, int64 Org::*>>(cte_1{}->*&Org::id);
@@ -50,5 +51,6 @@ TEST_CASE("column_expression_of_t") {
     runTest<storage_type, column_pointer<cte_1, alias_holder<colalias_c>>>(1_ctealias->*colalias_c{});
 #ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
     runTest<storage_type, column_pointer<cte_1, alias_holder<colalias_c>>>("1"_cte->*"c"_col);
+#endif
 #endif
 }

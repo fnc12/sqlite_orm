@@ -74,3 +74,7 @@
 #if __cpp_nontype_template_args >= 201911
 #define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
 #endif
+
+#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
+#define SQLITE_ORM_WITH_CTE
+#endif

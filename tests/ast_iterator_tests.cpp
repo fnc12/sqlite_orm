@@ -5,7 +5,6 @@ using namespace sqlite_orm;
 using internal::alias_holder;
 using internal::column_alias;
 using internal::column_pointer;
-using internal::cte_alias;
 
 TEST_CASE("ast_iterator") {
     struct User {
@@ -268,18 +267,20 @@ TEST_CASE("ast_iterator") {
         expected.push_back(typeid(&User::id));
         internal::iterate_ast(node, lambda);
     }
+#ifdef SQLITE_ORM_WITH_CTE
     SECTION("with") {
         auto expression =
-            with(cte<cte_alias<'1'>>()(
+            with(cte<cte_1>()(
                      union_all(select(1), select(1_ctealias->*1_colalias + c(1), where(1_ctealias->*1_colalias < 10)))),
                  select(1_ctealias->*1_colalias));
         expected.push_back(typeid(int));
-        expected.push_back(typeid(column_pointer<cte_alias<'1'>, alias_holder<column_alias<'1'>>>));
+        expected.push_back(typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>));
         expected.push_back(typeid(int));
-        expected.push_back(typeid(column_pointer<cte_alias<'1'>, alias_holder<column_alias<'1'>>>));
+        expected.push_back(typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>));
         expected.push_back(typeid(int));
-        expected.push_back(typeid(column_pointer<cte_alias<'1'>, alias_holder<column_alias<'1'>>>));
+        expected.push_back(typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>));
         internal::iterate_ast(expression, lambda);
     }
+#endif
     REQUIRE(typeIndexes == expected);
 }

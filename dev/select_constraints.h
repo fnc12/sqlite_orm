@@ -150,6 +150,7 @@ namespace sqlite_orm {
             }
         };
 
+#ifdef SQLITE_ORM_WITH_CTE
         template<class A>
         struct column_pointer_builder<A, match_if<is_alias, A>> {
             static_assert(is_cte_alias_v<A>, "`A' must be a mapped table alias");
@@ -195,6 +196,7 @@ namespace sqlite_orm {
                 return {{}};
             }
         };
+#endif
 
         /**
          *  Subselect object type.
@@ -301,6 +303,7 @@ namespace sqlite_orm {
             using super::super;
         };
 
+#ifdef SQLITE_ORM_WITH_CTE
         struct with_string {
             explicit operator std::string() const {
                 return "WITH";
@@ -416,6 +419,7 @@ namespace sqlite_orm {
                 this->expression.highest_level = true;
             }
         };
+#endif
 
         /**
          *  Generic way to get DISTINCT value from any type.
@@ -638,6 +642,7 @@ namespace sqlite_orm {
         return {std::move(lhs), std::move(rhs)};
     }
 
+#ifdef SQLITE_ORM_WITH_CTE
     /**
      *  Example : cte<cte_1>()(select(&Object::id));
      *  The list of explicit columns is optional;
@@ -706,6 +711,7 @@ namespace sqlite_orm {
     with(internal::common_table_expression<Label, Select, ExplicitCols> cte, E expression) {
         return {std::make_tuple(move(cte)), std::move(expression)};
     }
+#endif
 
     /**
      *  Public function for UNION ALL operator.

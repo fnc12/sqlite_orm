@@ -2,12 +2,14 @@
  *  Examples partially from https://sqlite.org/lang_with.html
  */
 
-#include <tuple>
-#include <iostream>
 #include <sqlite_orm/sqlite_orm.h>
+#ifdef SQLITE_ORM_WITH_CTE
+
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>
 #endif
+#include <tuple>
+#include <iostream>
 
 using std::cout;
 using std::endl;
@@ -750,3 +752,5 @@ int main() {
 
     return 0;
 }
+
+#endif

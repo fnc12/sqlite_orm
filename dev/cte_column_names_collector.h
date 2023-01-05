@@ -1,10 +1,13 @@
 #pragma once
 
+#include "functional/cxx_core_features.h"
+#ifdef SQLITE_ORM_WITH_CTE
 #include <string>
 #include <vector>
 #include <functional>  //  std::reference_wrapper
 #include <system_error>
 
+#include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
 #include "is_base_of_template.h"
 #include "type_traits.h"
@@ -199,3 +202,5 @@ namespace sqlite_orm {
         }
     }
 }
+
+#endif

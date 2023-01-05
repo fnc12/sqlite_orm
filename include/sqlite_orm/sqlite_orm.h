@@ -10,30 +10,7 @@ __pragma(push_macro("max"))
 
 #include <type_traits>  //  std::enable_if, std::is_same
 
-// #include "functional/cxx_type_traits_polyfill.h"
-
-#include <type_traits>
-
-// #include "cxx_universal.h"
-
-
-/*
- *  This header makes central C++ functionality on which sqlite_orm depends universally available:
- *  - alternative operator representations
- *  - ::size_t, ::ptrdiff_t, ::nullptr_t
- *  - C++ core feature macros
- *  - macros for dealing with compiler quirks
- */
-
-#include <iso646.h>  //  alternative operator representations
-#include <cstddef>  //  sqlite_orm is using size_t, ptrdiff_t, nullptr_t everywhere, pull it in early
-
-// earlier clang versions didn't make nullptr_t available in the global namespace via stddef.h,
-// though it should have according to C++ documentation (see https://en.cppreference.com/w/cpp/types/nullptr_t#Notes).
-// actually it should be available when including stddef.h
-using std::nullptr_t;
-
-// #include "cxx_core_features.h"
+// #include "functional/cxx_core_features.h"
 
 
 #ifdef __has_cpp_attribute
@@ -110,6 +87,35 @@ using std::nullptr_t;
 #if __cpp_nontype_template_args >= 201911
 #define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
 #endif
+
+#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
+#define SQLITE_ORM_WITH_CTE
+#endif
+
+// #include "functional/cxx_type_traits_polyfill.h"
+
+#include <type_traits>
+
+// #include "cxx_universal.h"
+
+
+/*
+ *  This header makes central C++ functionality on which sqlite_orm depends universally available:
+ *  - alternative operator representations
+ *  - ::size_t, ::ptrdiff_t, ::nullptr_t
+ *  - C++ core feature macros
+ *  - macros for dealing with compiler quirks
+ */
+
+#include <iso646.h>  //  alternative operator representations
+#include <cstddef>  //  sqlite_orm is using size_t, ptrdiff_t, nullptr_t everywhere, pull it in early
+
+// earlier clang versions didn't make nullptr_t available in the global namespace via stddef.h,
+// though it should have according to C++ documentation (see https://en.cppreference.com/w/cpp/types/nullptr_t#Notes).
+// actually it should be available when including stddef.h
+using std::nullptr_t;
+
+// #include "cxx_core_features.h"
 
 // #include "cxx_compiler_quirks.h"
 
@@ -344,6 +350,7 @@ namespace sqlite_orm {
         template<typename T>
         using target_type_t = typename T::target_type;
 
+#ifdef SQLITE_ORM_WITH_CTE
         template<typename T>
         using cte_label_type_t = typename T::cte_label_type;
 
@@ -352,6 +359,7 @@ namespace sqlite_orm {
 
         template<typename T>
         using cte_mapper_type_t = typename T::cte_mapper_type;
+#endif
 
         template<typename T>
         using expression_type_t = typename T::expression_type;
@@ -4159,6 +4167,8 @@ namespace sqlite_orm {
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string
 
+// #include "functional/cxx_universal.h"
+
 // #include "functional/cxx_type_traits_polyfill.h"
 
 
@@ -4194,7 +4204,8 @@ namespace sqlite_orm {
         template<class A>
         using is_table_alias = polyfill::bool_constant<is_table_alias_v<A>>;
 
-        /** 
+#ifdef SQLITE_ORM_WITH_CTE
+        /**
          *  A CTE alias is a specialization of a table alias, which is both, a storage lookup type (mapping type) and an alias.
          */
         template<class A>
@@ -4225,6 +4236,7 @@ namespace sqlite_orm {
         consteval auto to_alias(std::index_sequence<Idx...>) {
             return Alias<t.id[Idx]...>{};
         }
+#endif
 #endif
     }
 
@@ -4326,6 +4338,7 @@ namespace sqlite_orm {
             alias_holder(const T&) noexcept {}
         };
 
+#ifdef SQLITE_ORM_WITH_CTE
         template<size_t n, char... C>
         SQLITE_ORM_CONSTEVAL auto n_to_colalias() {
             constexpr column_alias<'1' + n % 10, C...> colalias{};
@@ -4335,6 +4348,12 @@ namespace sqlite_orm {
                 return colalias;
             }
         }
+
+        template<class T>
+        inline constexpr bool is_builtin_numeric_column_alias_v = false;
+        template<char... C>
+        inline constexpr bool is_builtin_numeric_column_alias_v<column_alias<C...>> = ((C >= '0' && C <= '9') && ...);
+#endif
     }
 
     /**
@@ -4447,14 +4466,6 @@ namespace sqlite_orm {
     using colalias_h = internal::column_alias<'h'>;
     using colalias_i = internal::column_alias<'i'>;
 
-#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
-    namespace internal {
-        template<class T>
-        inline constexpr bool is_builtin_numeric_column_alias_v = false;
-        template<char... C>
-        inline constexpr bool is_builtin_numeric_column_alias_v<column_alias<C...>> = ((C >= '0' && C <= '9') && ...);
-    }
-
     /**
      *  column_alias<'1'[, ...]> from a numeric literal.
      *  E.g. 1_colalias, 2_colalias
@@ -4466,7 +4477,6 @@ namespace sqlite_orm {
         static_assert(std::array{Chars...}[0] > '0');
         return internal::column_alias<Chars...>{};
     }
-#endif
 
 #ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
     /**
@@ -7087,6 +7097,7 @@ namespace sqlite_orm {
             }
         };
 
+#ifdef SQLITE_ORM_WITH_CTE
         template<class A>
         struct column_pointer_builder<A, match_if<is_alias, A>> {
             static_assert(is_cte_alias_v<A>, "`A' must be a mapped table alias");
@@ -7132,6 +7143,7 @@ namespace sqlite_orm {
                 return {{}};
             }
         };
+#endif
 
         /**
          *  Subselect object type.
@@ -7238,6 +7250,7 @@ namespace sqlite_orm {
             using super::super;
         };
 
+#ifdef SQLITE_ORM_WITH_CTE
         struct with_string {
             explicit operator std::string() const {
                 return "WITH";
@@ -7353,6 +7366,7 @@ namespace sqlite_orm {
                 this->expression.highest_level = true;
             }
         };
+#endif
 
         /**
          *  Generic way to get DISTINCT value from any type.
@@ -7575,6 +7589,7 @@ namespace sqlite_orm {
         return {std::move(lhs), std::move(rhs)};
     }
 
+#ifdef SQLITE_ORM_WITH_CTE
     /**
      *  Example : cte<cte_1>()(select(&Object::id));
      *  The list of explicit columns is optional;
@@ -7643,6 +7658,7 @@ namespace sqlite_orm {
     with(internal::common_table_expression<Label, Select, ExplicitCols> cte, E expression) {
         return {std::make_tuple(move(cte)), std::move(expression)};
     }
+#endif
 
     /**
      *  Public function for UNION ALL operator.
@@ -9956,6 +9972,7 @@ namespace sqlite_orm {
         template<class... DBO>
         struct is_db_objects<const db_objects_tuple<DBO...>> : std::true_type {};
 
+#ifdef SQLITE_ORM_WITH_CTE
         /**
          *  A data type's label type, void otherwise.
          */
@@ -9970,6 +9987,7 @@ namespace sqlite_orm {
          */
         template<typename T>
         using cte_label_or_nested_t = polyfill::detected_or_t<T, cte_label_type_t, T>;
+#endif
 
         /**
          *  std::true_type if given 'table' type matches, std::false_type otherwise.
@@ -9991,6 +10009,7 @@ namespace sqlite_orm {
         struct object_type_matches : polyfill::conjunction<polyfill::negation<std::is_void<object_type_t<DBO>>>,
                                                            std::is_same<Lookup, object_type_t<DBO>>> {};
 
+#ifdef SQLITE_ORM_WITH_CTE
         /**
          *  std::true_type if given label is mapped, std::false_type otherwise
          *
@@ -10001,14 +10020,19 @@ namespace sqlite_orm {
         using cte_label_type_matches =
             polyfill::conjunction<polyfill::negation<std::is_void<label_of_or_void_t<DBO>>>,
                                   std::is_same<cte_label_or_nested_t<Label>, label_of_or_void_t<DBO>>>;
+#endif
 
         /**
          *  std::true_type if given lookup type (object or label) is mapped, std::false_type otherwise.
          */
         template<typename DBO, typename Lookup>
-        using lookup_type_matches = typename polyfill::disjunction<dbo_type_matches<DBO, Lookup>,
-                                                                   object_type_matches<DBO, Lookup>,
-                                                                   cte_label_type_matches<DBO, Lookup>>::type;
+        using lookup_type_matches = typename polyfill::disjunction<object_type_matches<DBO, Lookup>
+#ifdef SQLITE_ORM_WITH_CTE
+                                                                   ,
+                                                                   dbo_type_matches<DBO, Lookup>,
+                                                                   cte_label_type_matches<DBO, Lookup>
+#endif
+                                                                   >::type;
     }
 
     // pick/lookup metafunctions
@@ -10585,6 +10609,7 @@ namespace sqlite_orm {
         template<class DBOs, class T, class F>
         struct column_result_t<DBOs, column_pointer<T, F>, void> : column_result_t<DBOs, F> {};
 
+#ifdef SQLITE_ORM_WITH_CTE
         template<class DBOs, class Label, class ColAlias>
         struct column_result_t<DBOs, column_pointer<Label, alias_holder<ColAlias>>, void> {
             using table_type = storage_pick_table_t<Label, DBOs>;
@@ -10600,6 +10625,7 @@ namespace sqlite_orm {
 
             using type = std::tuple_element_t<ColIdx, typename cte_mapper_type::fields_type>;
         };
+#endif
 
         template<class DBOs, class... Args>
         struct column_result_t<DBOs, columns_t<Args...>, void> {
@@ -10936,6 +10962,7 @@ namespace sqlite_orm {
 
     namespace internal {
 
+#ifdef SQLITE_ORM_WITH_CTE
         /**
          *  A data type's label type, void otherwise.
          */
@@ -10948,6 +10975,7 @@ namespace sqlite_orm {
          */
         template<typename O>
         using mapped_object_type_for_t = polyfill::detected_or_t<O, cte_label_type_t, O>;
+#endif
 
         struct basic_table {
 
@@ -10963,11 +10991,15 @@ namespace sqlite_orm {
         template<class O, bool WithoutRowId, class... Cs>
         struct table_t : basic_table {
             using super = basic_table;
+#ifdef SQLITE_ORM_WITH_CTE
             // this typename is used in contexts where it is known that the 'table' holds a subselect_mapper
             // instead of a regular object type
             using cte_mapper_type = O;
             using cte_label_type = label_of_or_void_t<O>;
             using object_type = mapped_object_type_for_t<O>;
+#else
+            using object_type = O;
+#endif
             using elements_type = std::tuple<Cs...>;
 
             static constexpr bool is_without_rowid_v = WithoutRowId;
@@ -11319,6 +11351,7 @@ namespace sqlite_orm {
             return cp.field;
         }
 
+#ifdef SQLITE_ORM_WITH_CTE
         /**
          *  Materialize column pointer:
          *  3. by label type and alias_holder<>.
@@ -11339,6 +11372,7 @@ namespace sqlite_orm {
 
             return &aliased_field<ColAlias, std::tuple_element_t<ColIdx, cte_mapper_type::fields_type>>;
         }
+#endif
 
         /**
          *  Find column name by:
@@ -11351,6 +11385,7 @@ namespace sqlite_orm {
             return pick_table<O>(dbObjects).find_column_name(field);
         }
 
+#ifdef SQLITE_ORM_WITH_CTE
         /**
          *  Find column name by:
          *  3. by label type and alias_holder<>.
@@ -11379,6 +11414,7 @@ namespace sqlite_orm {
             auto& table = pick_table<Label>(dboObjects);
             return &std::get<ColIdx>(table.elements).name;
         }
+#endif
     }
 }
 #pragma once
@@ -12924,6 +12960,7 @@ namespace sqlite_orm {
             }
         };
 
+#ifdef SQLITE_ORM_WITH_CTE
         template<class CTE>
         struct ast_iterator<CTE, match_specialization_of<CTE, common_table_expression>> {
             using node_type = CTE;
@@ -12944,6 +12981,7 @@ namespace sqlite_orm {
                 iterate_ast(c.expression, lambda);
             }
         };
+#endif
 
         template<class T>
         struct ast_iterator<T, std::enable_if_t<is_base_of_template_v<T, compound_operator>>> {
@@ -15887,10 +15925,15 @@ namespace sqlite_orm {
 // #include "cte_column_names_collector.h"
 
 
+// #include "functional/cxx_core_features.h"
+
+#ifdef SQLITE_ORM_WITH_CTE
 #include <string>
 #include <vector>
 #include <functional>  //  std::reference_wrapper
 #include <system_error>
+
+// #include "functional/cxx_universal.h"
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
@@ -16094,6 +16137,8 @@ namespace sqlite_orm {
         }
     }
 }
+
+#endif
 
 // #include "order_by_serializer.h"
 
@@ -16648,6 +16693,7 @@ namespace sqlite_orm {
             }
         };
 
+#ifdef SQLITE_ORM_WITH_CTE
         template<class CTE>
         struct statement_serializer<CTE, match_specialization_of<CTE, common_table_expression>> {
             using statement_type = CTE;
@@ -16688,6 +16734,7 @@ namespace sqlite_orm {
                 return ss.str();
             }
         };
+#endif
 
         template<class T>
         struct statement_serializer<T, std::enable_if_t<is_base_of_template_v<T, compound_operator>>> {
@@ -18275,10 +18322,15 @@ namespace sqlite_orm {
 // #include "cte_storage.h"
 
 
+// #include "functional/cxx_core_features.h"
+
+#ifdef SQLITE_ORM_WITH_CTE
 #include <type_traits>
 #include <tuple>
 #include <string>
 #include <vector>
+
+// #include "functional/cxx_universal.h"
 
 // #include "is_base_of_template.h"
 
@@ -18286,6 +18338,17 @@ namespace sqlite_orm {
 
 // #include "column_result.h"
 
+// #include "select_constraints.h"
+
+// #include "table.h"
+
+// #include "alias.h"
+
+// #include "cte_types.h"
+
+// #include "cte_column_names_collector.h"
+
+#endif
 // #include "column_expression.h"
 
 
@@ -18390,22 +18453,13 @@ namespace sqlite_orm {
     }
 }
 
-// #include "select_constraints.h"
-
-// #include "table.h"
-
-// #include "alias.h"
-
-// #include "cte_types.h"
-
-// #include "cte_column_names_collector.h"
-
 // #include "storage_lookup.h"
 
 
 namespace sqlite_orm {
     namespace internal {
 
+#ifdef SQLITE_ORM_WITH_CTE
         // F = field_type
         template<typename Label,
                  typename ExplicitColRefs,
@@ -18697,14 +18751,6 @@ namespace sqlite_orm {
         }
 
         /**
-         *  Return DBOs of storage_t.
-         */
-        template<class S, class E, satisfies<is_storage, S> = true>
-        decltype(auto) storage_for_expression(S& storage, const E&) {
-            return obtain_db_objects(storage);
-        }
-
-        /**
          *  Return new DBOs for CTE expressions.
          */
         template<class S, class E, class... CTEs, satisfies<is_storage, S> = true>
@@ -18712,6 +18758,15 @@ namespace sqlite_orm {
             return make_recursive_cte_storage_using_table_indices(obtain_db_objects(storage),
                                                                   e.cte,
                                                                   std::index_sequence_for<CTEs...>{});
+        }
+#endif
+
+        /**
+         *  Return DBOs of storage_t.
+         */
+        template<class S, class E, satisfies<is_storage, S> = true>
+        decltype(auto) storage_for_expression(S& storage, const E&) {
+            return obtain_db_objects(storage);
         }
     }
 }
@@ -19243,6 +19298,7 @@ namespace sqlite_orm {
                 return this->execute(statement);
             }
 
+#ifdef SQLITE_ORM_WITH_CTE
             /**
              *  Using a CTE, select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
              */
@@ -19282,6 +19338,7 @@ namespace sqlite_orm {
                 auto statement = this->prepare(sqlite_orm::with(move(cte), sqlite_orm::select(std::move(sel))));
                 return this->execute(statement);
             }
+#endif
 
             template<class T, satisfies<is_prepared_statement, T> = true>
             std::string dump(const T& preparedStatement, bool parametrized = true) const {
@@ -19719,11 +19776,13 @@ namespace sqlite_orm {
 
             using storage_base::table_exists;  // now that it is in storage_base make it into overload set
 
+#ifdef SQLITE_ORM_WITH_CTE
             template<class... CTEs, class T, class... Args>
             prepared_statement_t<with_t<select_t<T, Args...>, CTEs...>>
             prepare(with_t<select_t<T, Args...>, CTEs...> sel) {
                 return prepare_impl<with_t<select_t<T, Args...>, CTEs...>>(std::move(sel));
             }
+#endif
 
             template<class T, class... Args>
             prepared_statement_t<select_t<T, Args...>> prepare(select_t<T, Args...> sel) {
@@ -20087,6 +20146,7 @@ namespace sqlite_orm {
                 return res;
             }
 
+#ifdef SQLITE_ORM_WITH_CTE
             template<class... CTEs, class T, class... Args>
             auto execute(const prepared_statement_t<with_t<select_t<T, Args...>, CTEs...>>& statement) {
                 using DBOs =
@@ -20094,6 +20154,7 @@ namespace sqlite_orm {
                 using R = column_result_of_t<DBOs, T>;
                 return _execute_select<R>(statement);
             }
+#endif
 
             template<class T, class... Args>
             auto execute(const prepared_statement_t<select_t<T, Args...>>& statement) {
@@ -20170,6 +20231,9 @@ namespace sqlite_orm {
 }
 #pragma once
 
+// #include "functional/cxx_core_features.h"
+
+#ifdef SQLITE_ORM_WITH_CTE
 #include <utility>  //  std::make_index_sequence
 
 // #include "alias.h"
@@ -20232,6 +20296,7 @@ namespace sqlite_orm {
     using cte_9 = decltype(9_ctealias);
 #endif
 }
+#endif
 #pragma once
 
 #include <type_traits>  //  std::enable_if
@@ -20382,6 +20447,7 @@ namespace sqlite_orm {
             using type = tuple_cat_t<left_tuple, right_tuple>;
         };
 
+#ifdef SQLITE_ORM_WITH_CTE
         template<class CTE>
         struct node_tuple<CTE, std::enable_if_t<polyfill::is_specialization_of_v<CTE, common_table_expression>>> {
             using node_type = CTE;
@@ -20395,6 +20461,7 @@ namespace sqlite_orm {
             using expression_tuple = node_tuple_t<typename node_type::expression_type>;
             using type = typename conc_tuple<cte_tuple, expression_tuple>::type;
         };
+#endif
 
         template<class T, class... Args>
         struct node_tuple<select_t<T, Args...>, void> {

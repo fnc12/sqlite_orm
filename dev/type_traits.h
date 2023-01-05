@@ -2,6 +2,7 @@
 
 #include <type_traits>  //  std::enable_if, std::is_same
 
+#include "functional/cxx_core_features.h"
 #include "functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
@@ -61,6 +62,7 @@ namespace sqlite_orm {
         template<typename T>
         using target_type_t = typename T::target_type;
 
+#ifdef SQLITE_ORM_WITH_CTE
         template<typename T>
         using cte_label_type_t = typename T::cte_label_type;
 
@@ -69,6 +71,7 @@ namespace sqlite_orm {
 
         template<typename T>
         using cte_mapper_type_t = typename T::cte_mapper_type;
+#endif
 
         template<typename T>
         using expression_type_t = typename T::expression_type;

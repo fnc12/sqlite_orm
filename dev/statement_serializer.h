@@ -502,6 +502,7 @@ namespace sqlite_orm {
             }
         };
 
+#ifdef SQLITE_ORM_WITH_CTE
         template<class CTE>
         struct statement_serializer<CTE, match_specialization_of<CTE, common_table_expression>> {
             using statement_type = CTE;
@@ -542,6 +543,7 @@ namespace sqlite_orm {
                 return ss.str();
             }
         };
+#endif
 
         template<class T>
         struct statement_serializer<T, std::enable_if_t<is_base_of_template_v<T, compound_operator>>> {

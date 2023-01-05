@@ -133,6 +133,7 @@ namespace sqlite_orm {
             using type = tuple_cat_t<left_tuple, right_tuple>;
         };
 
+#ifdef SQLITE_ORM_WITH_CTE
         template<class CTE>
         struct node_tuple<CTE, std::enable_if_t<polyfill::is_specialization_of_v<CTE, common_table_expression>>> {
             using node_type = CTE;
@@ -146,6 +147,7 @@ namespace sqlite_orm {
             using expression_tuple = node_tuple_t<typename node_type::expression_type>;
             using type = typename conc_tuple<cte_tuple, expression_tuple>::type;
         };
+#endif
 
         template<class T, class... Args>
         struct node_tuple<select_t<T, Args...>, void> {

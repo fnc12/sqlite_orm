@@ -1,5 +1,8 @@
-#include <type_traits>  //  std::is_same, std::is_constructible
 #include <sqlite_orm/sqlite_orm.h>
+#ifdef SQLITE_ORM_WITH_CTE
+#include <type_traits>  //  std::is_same, std::is_constructible
+#include <tuple>    //  std::ignore
+#include <string>   //  std::string
 #include <catch2/catch.hpp>
 
 using namespace sqlite_orm;
@@ -39,3 +42,4 @@ TEST_CASE("CTE type traits") {
         runTest<tuple<std::string>>("");
     }
 }
+#endif

@@ -77,6 +77,7 @@ namespace sqlite_orm {
             return cp.field;
         }
 
+#ifdef SQLITE_ORM_WITH_CTE
         /**
          *  Materialize column pointer:
          *  3. by label type and alias_holder<>.
@@ -97,6 +98,7 @@ namespace sqlite_orm {
 
             return &aliased_field<ColAlias, std::tuple_element_t<ColIdx, cte_mapper_type::fields_type>>;
         }
+#endif
 
         /**
          *  Find column name by:
@@ -109,6 +111,7 @@ namespace sqlite_orm {
             return pick_table<O>(dbObjects).find_column_name(field);
         }
 
+#ifdef SQLITE_ORM_WITH_CTE
         /**
          *  Find column name by:
          *  3. by label type and alias_holder<>.
@@ -137,5 +140,6 @@ namespace sqlite_orm {
             auto& table = pick_table<Label>(dboObjects);
             return &std::get<ColIdx>(table.elements).name;
         }
+#endif
     }
 }

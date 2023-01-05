@@ -192,6 +192,7 @@ namespace sqlite_orm {
             }
         };
 
+#ifdef SQLITE_ORM_WITH_CTE
         template<class CTE>
         struct ast_iterator<CTE, match_specialization_of<CTE, common_table_expression>> {
             using node_type = CTE;
@@ -212,6 +213,7 @@ namespace sqlite_orm {
                 iterate_ast(c.expression, lambda);
             }
         };
+#endif
 
         template<class T>
         struct ast_iterator<T, std::enable_if_t<is_base_of_template_v<T, compound_operator>>> {

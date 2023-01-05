@@ -577,6 +577,7 @@ namespace sqlite_orm {
                 return this->execute(statement);
             }
 
+#ifdef SQLITE_ORM_WITH_CTE
             /**
              *  Using a CTE, select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
              */
@@ -616,6 +617,7 @@ namespace sqlite_orm {
                 auto statement = this->prepare(sqlite_orm::with(move(cte), sqlite_orm::select(std::move(sel))));
                 return this->execute(statement);
             }
+#endif
 
             template<class T, satisfies<is_prepared_statement, T> = true>
             std::string dump(const T& preparedStatement, bool parametrized = true) const {
@@ -1053,11 +1055,13 @@ namespace sqlite_orm {
 
             using storage_base::table_exists;  // now that it is in storage_base make it into overload set
 
+#ifdef SQLITE_ORM_WITH_CTE
             template<class... CTEs, class T, class... Args>
             prepared_statement_t<with_t<select_t<T, Args...>, CTEs...>>
             prepare(with_t<select_t<T, Args...>, CTEs...> sel) {
                 return prepare_impl<with_t<select_t<T, Args...>, CTEs...>>(std::move(sel));
             }
+#endif
 
             template<class T, class... Args>
             prepared_statement_t<select_t<T, Args...>> prepare(select_t<T, Args...> sel) {
@@ -1421,6 +1425,7 @@ namespace sqlite_orm {
                 return res;
             }
 
+#ifdef SQLITE_ORM_WITH_CTE
             template<class... CTEs, class T, class... Args>
             auto execute(const prepared_statement_t<with_t<select_t<T, Args...>, CTEs...>>& statement) {
                 using DBOs =
@@ -1428,6 +1433,7 @@ namespace sqlite_orm {
                 using R = column_result_of_t<DBOs, T>;
                 return _execute_select<R>(statement);
             }
+#endif
 
             template<class T, class... Args>
             auto execute(const prepared_statement_t<select_t<T, Args...>>& statement) {

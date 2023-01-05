@@ -4,6 +4,7 @@
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string
 
+#include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
@@ -38,7 +39,8 @@ namespace sqlite_orm {
         template<class A>
         using is_table_alias = polyfill::bool_constant<is_table_alias_v<A>>;
 
-        /** 
+#ifdef SQLITE_ORM_WITH_CTE
+        /**
          *  A CTE alias is a specialization of a table alias, which is both, a storage lookup type (mapping type) and an alias.
          */
         template<class A>
@@ -69,6 +71,7 @@ namespace sqlite_orm {
         consteval auto to_alias(std::index_sequence<Idx...>) {
             return Alias<t.id[Idx]...>{};
         }
+#endif
 #endif
     }
 
@@ -170,6 +173,7 @@ namespace sqlite_orm {
             alias_holder(const T&) noexcept {}
         };
 
+#ifdef SQLITE_ORM_WITH_CTE
         template<size_t n, char... C>
         SQLITE_ORM_CONSTEVAL auto n_to_colalias() {
             constexpr column_alias<'1' + n % 10, C...> colalias{};
@@ -179,6 +183,12 @@ namespace sqlite_orm {
                 return colalias;
             }
         }
+
+        template<class T>
+        inline constexpr bool is_builtin_numeric_column_alias_v = false;
+        template<char... C>
+        inline constexpr bool is_builtin_numeric_column_alias_v<column_alias<C...>> = ((C >= '0' && C <= '9') && ...);
+#endif
     }
 
     /**
@@ -291,14 +301,6 @@ namespace sqlite_orm {
     using colalias_h = internal::column_alias<'h'>;
     using colalias_i = internal::column_alias<'i'>;
 
-#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
-    namespace internal {
-        template<class T>
-        inline constexpr bool is_builtin_numeric_column_alias_v = false;
-        template<char... C>
-        inline constexpr bool is_builtin_numeric_column_alias_v<column_alias<C...>> = ((C >= '0' && C <= '9') && ...);
-    }
-
     /**
      *  column_alias<'1'[, ...]> from a numeric literal.
      *  E.g. 1_colalias, 2_colalias
@@ -310,7 +312,6 @@ namespace sqlite_orm {
         static_assert(std::array{Chars...}[0] > '0');
         return internal::column_alias<Chars...>{};
     }
-#endif
 
 #ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
     /**

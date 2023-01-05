@@ -1,5 +1,7 @@
 #pragma once
 
+#include "functional/cxx_core_features.h"
+#ifdef SQLITE_ORM_WITH_CTE
 #include <utility>  //  std::make_index_sequence
 
 #include "alias.h"
@@ -61,3 +63,4 @@ namespace sqlite_orm {
     using cte_9 = decltype(9_ctealias);
 #endif
 }
+#endif

@@ -6,7 +6,6 @@ using namespace sqlite_orm;
 using internal::alias_holder;
 using internal::column_alias;
 using internal::column_pointer;
-using internal::cte_alias;
 
 template<class T>
 struct is_pair : std::false_type {};
@@ -940,18 +939,20 @@ TEST_CASE("Node tuple") {
         using ExpectedTuple = tuple<decltype(&User::id)>;
         STATIC_REQUIRE(std::is_same<Tuple, ExpectedTuple>::value);
     }
+#ifdef SQLITE_ORM_WITH_CTE
     SECTION("with") {
         auto expression =
-            with(cte<cte_alias<'1'>>()(
+            with(cte<cte_1>()(
                      union_all(select(1), select(1_ctealias->*1_colalias + c(1), where(1_ctealias->*1_colalias < 10)))),
                  select(1_ctealias->*1_colalias));
         using Tuple = node_tuple_t<decltype(expression)>;
         using ExpectedTuple = tuple<int,
-                                    column_pointer<cte_alias<'1'>, alias_holder<column_alias<'1'>>>,
+                                    column_pointer<cte_1, alias_holder<column_alias<'1'>>>,
                                     int,
-                                    column_pointer<cte_alias<'1'>, alias_holder<column_alias<'1'>>>,
+                                    column_pointer<cte_1, alias_holder<column_alias<'1'>>>,
                                     int,
-                                    column_pointer<cte_alias<'1'>, alias_holder<column_alias<'1'>>>>;
+                                    column_pointer<cte_1, alias_holder<column_alias<'1'>>>>;
         STATIC_REQUIRE(std::is_same_v<Tuple, ExpectedTuple>);
     }
+#endif
 }

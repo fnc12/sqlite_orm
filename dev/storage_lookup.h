@@ -37,6 +37,7 @@ namespace sqlite_orm {
         template<class... DBO>
         struct is_db_objects<const db_objects_tuple<DBO...>> : std::true_type {};
 
+#ifdef SQLITE_ORM_WITH_CTE
         /**
          *  A data type's label type, void otherwise.
          */
@@ -51,6 +52,7 @@ namespace sqlite_orm {
          */
         template<typename T>
         using cte_label_or_nested_t = polyfill::detected_or_t<T, cte_label_type_t, T>;
+#endif
 
         /**
          *  std::true_type if given 'table' type matches, std::false_type otherwise.
@@ -72,6 +74,7 @@ namespace sqlite_orm {
         struct object_type_matches : polyfill::conjunction<polyfill::negation<std::is_void<object_type_t<DBO>>>,
                                                            std::is_same<Lookup, object_type_t<DBO>>> {};
 
+#ifdef SQLITE_ORM_WITH_CTE
         /**
          *  std::true_type if given label is mapped, std::false_type otherwise
          *
@@ -82,14 +85,19 @@ namespace sqlite_orm {
         using cte_label_type_matches =
             polyfill::conjunction<polyfill::negation<std::is_void<label_of_or_void_t<DBO>>>,
                                   std::is_same<cte_label_or_nested_t<Label>, label_of_or_void_t<DBO>>>;
+#endif
 
         /**
          *  std::true_type if given lookup type (object or label) is mapped, std::false_type otherwise.
          */
         template<typename DBO, typename Lookup>
-        using lookup_type_matches = typename polyfill::disjunction<dbo_type_matches<DBO, Lookup>,
-                                                                   object_type_matches<DBO, Lookup>,
-                                                                   cte_label_type_matches<DBO, Lookup>>::type;
+        using lookup_type_matches = typename polyfill::disjunction<object_type_matches<DBO, Lookup>
+#ifdef SQLITE_ORM_WITH_CTE
+                                                                   ,
+                                                                   dbo_type_matches<DBO, Lookup>,
+                                                                   cte_label_type_matches<DBO, Lookup>
+#endif
+                                                                   >::type;
     }
 
     // pick/lookup metafunctions

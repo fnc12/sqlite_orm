@@ -202,6 +202,7 @@ namespace sqlite_orm {
         template<class DBOs, class T, class F>
         struct column_result_t<DBOs, column_pointer<T, F>, void> : column_result_t<DBOs, F> {};
 
+#ifdef SQLITE_ORM_WITH_CTE
         template<class DBOs, class Label, class ColAlias>
         struct column_result_t<DBOs, column_pointer<Label, alias_holder<ColAlias>>, void> {
             using table_type = storage_pick_table_t<Label, DBOs>;
@@ -217,6 +218,7 @@ namespace sqlite_orm {
 
             using type = std::tuple_element_t<ColIdx, typename cte_mapper_type::fields_type>;
         };
+#endif
 
         template<class DBOs, class... Args>
         struct column_result_t<DBOs, columns_t<Args...>, void> {

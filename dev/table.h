@@ -26,6 +26,7 @@ namespace sqlite_orm {
 
     namespace internal {
 
+#ifdef SQLITE_ORM_WITH_CTE
         /**
          *  A data type's label type, void otherwise.
          */
@@ -38,6 +39,7 @@ namespace sqlite_orm {
          */
         template<typename O>
         using mapped_object_type_for_t = polyfill::detected_or_t<O, cte_label_type_t, O>;
+#endif
 
         struct basic_table {
 
@@ -53,11 +55,15 @@ namespace sqlite_orm {
         template<class O, bool WithoutRowId, class... Cs>
         struct table_t : basic_table {
             using super = basic_table;
+#ifdef SQLITE_ORM_WITH_CTE
             // this typename is used in contexts where it is known that the 'table' holds a subselect_mapper
             // instead of a regular object type
             using cte_mapper_type = O;
             using cte_label_type = label_of_or_void_t<O>;
             using object_type = mapped_object_type_for_t<O>;
+#else
+            using object_type = O;
+#endif
             using elements_type = std::tuple<Cs...>;
 
             static constexpr bool is_without_rowid_v = WithoutRowId;
