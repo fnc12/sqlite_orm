@@ -27,7 +27,7 @@ TEST_CASE("is_column_with_insertable_primary_key") {
         make_column("", &User::id, primary_key()),
         make_column("", &User::username, primary_key(), default_value("Clint Eastwood")),
         make_column("", &User::username, primary_key(), default_value(std::vector<int>{})),
-        make_column("", &User::username, primary_key(), autoincrement()));
+        make_column("", &User::username, primary_key().autoincrement()));
 
     auto noninsertable = std::make_tuple(  ///
         make_column("", &User::username, primary_key()),

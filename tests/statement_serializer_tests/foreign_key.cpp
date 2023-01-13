@@ -23,7 +23,7 @@ TEST_CASE("statement_serializer foreign key") {
         };
 
         auto usersTable = make_table("users",
-                                     make_column("id", &User::id, primary_key(), autoincrement()),
+                                     make_column("id", &User::id, primary_key().autoincrement()),
                                      make_column("name", &User::name));
 
         SECTION("simple") {
@@ -34,7 +34,7 @@ TEST_CASE("statement_serializer foreign key") {
             STATIC_REQUIRE(std::is_same<ForeignKey::source_type, Visit>::value);
 
             auto visitsTable = make_table("visits",
-                                          make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                          make_column("id", &Visit::id, primary_key().autoincrement()),
                                           make_column("user_id", &Visit::userId),
                                           make_column("time", &Visit::time),
                                           fk);
@@ -58,7 +58,7 @@ TEST_CASE("statement_serializer foreign key") {
                 STATIC_REQUIRE(std::is_same<ForeignKey::source_type, Visit>::value);
 
                 auto visitsTable = make_table("visits",
-                                              make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                              make_column("id", &Visit::id, primary_key().autoincrement()),
                                               make_column("user_id", &Visit::userId),
                                               make_column("time", &Visit::time),
                                               fk);
@@ -81,7 +81,7 @@ TEST_CASE("statement_serializer foreign key") {
                 STATIC_REQUIRE(std::is_same<ForeignKey::source_type, Visit>::value);
 
                 auto visitsTable = make_table("visits",
-                                              make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                              make_column("id", &Visit::id, primary_key().autoincrement()),
                                               make_column("user_id", &Visit::userId),
                                               make_column("time", &Visit::time),
                                               fk);
@@ -104,7 +104,7 @@ TEST_CASE("statement_serializer foreign key") {
                 STATIC_REQUIRE(std::is_same<ForeignKey::source_type, Visit>::value);
 
                 auto visitsTable = make_table("visits",
-                                              make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                              make_column("id", &Visit::id, primary_key().autoincrement()),
                                               make_column("user_id", &Visit::userId),
                                               make_column("time", &Visit::time),
                                               fk);
@@ -127,7 +127,7 @@ TEST_CASE("statement_serializer foreign key") {
                 STATIC_REQUIRE(std::is_same<ForeignKey::source_type, Visit>::value);
 
                 auto visitsTable = make_table("visits",
-                                              make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                              make_column("id", &Visit::id, primary_key().autoincrement()),
                                               make_column("user_id", &Visit::userId),
                                               make_column("time", &Visit::time),
                                               fk);
@@ -150,7 +150,7 @@ TEST_CASE("statement_serializer foreign key") {
                 STATIC_REQUIRE(std::is_same<ForeignKey::source_type, Visit>::value);
 
                 auto visitsTable = make_table("visits",
-                                              make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                              make_column("id", &Visit::id, primary_key().autoincrement()),
                                               make_column("user_id", &Visit::userId),
                                               make_column("time", &Visit::time),
                                               fk);
@@ -175,7 +175,7 @@ TEST_CASE("statement_serializer foreign key") {
                 STATIC_REQUIRE(std::is_same<ForeignKey::source_type, Visit>::value);
 
                 auto visitsTable = make_table("visits",
-                                              make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                              make_column("id", &Visit::id, primary_key().autoincrement()),
                                               make_column("user_id", &Visit::userId),
                                               make_column("time", &Visit::time),
                                               fk);
@@ -198,7 +198,7 @@ TEST_CASE("statement_serializer foreign key") {
                 STATIC_REQUIRE(std::is_same<ForeignKey::source_type, Visit>::value);
 
                 auto visitsTable = make_table("visits",
-                                              make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                              make_column("id", &Visit::id, primary_key().autoincrement()),
                                               make_column("user_id", &Visit::userId),
                                               make_column("time", &Visit::time),
                                               fk);
@@ -221,7 +221,7 @@ TEST_CASE("statement_serializer foreign key") {
                 STATIC_REQUIRE(std::is_same<ForeignKey::source_type, Visit>::value);
 
                 auto visitsTable = make_table("visits",
-                                              make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                              make_column("id", &Visit::id, primary_key().autoincrement()),
                                               make_column("user_id", &Visit::userId),
                                               make_column("time", &Visit::time),
                                               fk);
@@ -244,7 +244,7 @@ TEST_CASE("statement_serializer foreign key") {
                 STATIC_REQUIRE(std::is_same<ForeignKey::source_type, Visit>::value);
 
                 auto visitsTable = make_table("visits",
-                                              make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                              make_column("id", &Visit::id, primary_key().autoincrement()),
                                               make_column("user_id", &Visit::userId),
                                               make_column("time", &Visit::time),
                                               fk);
@@ -267,7 +267,7 @@ TEST_CASE("statement_serializer foreign key") {
                 STATIC_REQUIRE(std::is_same<ForeignKey::source_type, Visit>::value);
 
                 auto visitsTable = make_table("visits",
-                                              make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                              make_column("id", &Visit::id, primary_key().autoincrement()),
                                               make_column("user_id", &Visit::userId),
                                               make_column("time", &Visit::time),
                                               fk);

@@ -168,7 +168,7 @@ namespace sqlite_orm {
                               call_as_template_base<column_field>([&lambda](const auto& column) {
                                   lambda(column.member_pointer);
                               }));
-                this->for_each_primary_key([this, &lambda](auto& primaryKey) {
+                this->for_each_primary_key([&lambda](auto& primaryKey) {
                     iterate_tuple(primaryKey.columns, lambda);
                 });
             }

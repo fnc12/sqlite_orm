@@ -1251,29 +1251,34 @@ namespace sqlite_orm {
          */
         struct autoincrement_t {};
 
+        enum class conflict_clause_t {
+            rollback,
+            abort,
+            fail,
+            ignore,
+            replace,
+        };
+
         struct primary_key_base {
             enum class order_by {
                 unspecified,
                 ascending,
                 descending,
             };
+            struct {
+                order_by asc_option = order_by::unspecified;
+                conflict_clause_t conflict_clause = conflict_clause_t::rollback;
+                bool conflict_clause_is_on = false;
+            } options;
+        };
 
-            order_by asc_option = order_by::unspecified;
+        template<class T>
+        struct primary_key_with_autoincrement {
+            using primary_key_type = T;
 
-            operator std::string() const {
-                std::string res = "PRIMARY KEY";
-                switch(this->asc_option) {
-                    case order_by::ascending:
-                        res += " ASC";
-                        break;
-                    case order_by::descending:
-                        res += " DESC";
-                        break;
-                    default:
-                        break;
-                }
-                return res;
-            }
+            primary_key_type primary_key;
+
+            primary_key_with_autoincrement(primary_key_type primary_key_) : primary_key(primary_key_) {}
         };
 
         /**
@@ -1283,22 +1288,62 @@ namespace sqlite_orm {
          */
         template<class... Cs>
         struct primary_key_t : primary_key_base {
+            using self = primary_key_t<Cs...>;
             using order_by = primary_key_base::order_by;
             using columns_tuple = std::tuple<Cs...>;
 
             columns_tuple columns;
 
-            primary_key_t(decltype(columns) c) : columns(move(c)) {}
+            primary_key_t(decltype(columns) columns) : columns(move(columns)) {}
 
-            primary_key_t<Cs...> asc() const {
+            self asc() const {
                 auto res = *this;
-                res.asc_option = order_by::ascending;
+                res.options.asc_option = order_by::ascending;
                 return res;
             }
 
-            primary_key_t<Cs...> desc() const {
+            self desc() const {
                 auto res = *this;
-                res.asc_option = order_by::descending;
+                res.options.asc_option = order_by::descending;
+                return res;
+            }
+
+            primary_key_with_autoincrement<self> autoincrement() const {
+                return {*this};
+            }
+
+            self on_conflict_rollback() const {
+                auto res = *this;
+                res.options.conflict_clause_is_on = true;
+                res.options.conflict_clause = conflict_clause_t::rollback;
+                return res;
+            }
+
+            self on_conflict_abort() const {
+                auto res = *this;
+                res.options.conflict_clause_is_on = true;
+                res.options.conflict_clause = conflict_clause_t::abort;
+                return res;
+            }
+
+            self on_conflict_fail() const {
+                auto res = *this;
+                res.options.conflict_clause_is_on = true;
+                res.options.conflict_clause = conflict_clause_t::fail;
+                return res;
+            }
+
+            self on_conflict_ignore() const {
+                auto res = *this;
+                res.options.conflict_clause_is_on = true;
+                res.options.conflict_clause = conflict_clause_t::ignore;
+                return res;
+            }
+
+            self on_conflict_replace() const {
+                auto res = *this;
+                res.options.conflict_clause_is_on = true;
+                res.options.conflict_clause = conflict_clause_t::replace;
                 return res;
             }
         };
@@ -1607,7 +1652,13 @@ namespace sqlite_orm {
         using is_foreign_key = polyfill::bool_constant<is_foreign_key_v<T>>;
 
         template<class T>
-        using is_primary_key = polyfill::is_specialization_of<T, primary_key_t>;
+        struct is_primary_key : std::false_type {};
+
+        template<class... Cs>
+        struct is_primary_key<primary_key_t<Cs...>> : std::true_type {};
+
+        template<class T>
+        struct is_primary_key<primary_key_with_autoincrement<T>> : std::true_type {};
 
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_primary_key_v = is_primary_key<T>::value;
@@ -1629,10 +1680,12 @@ namespace sqlite_orm {
          */
         template<typename T>
         struct is_primary_key_insertable
-            : polyfill::disjunction<mpl::instantiate<mpl::disjunction<check_if_tuple_has<is_autoincrement>,
-                                                                      check_if_tuple_has_template<default_t>>,
-                                                     constraints_type_t<T>>,
-                                    std::is_base_of<integer_printer, type_printer<field_type_t<T>>>> {
+            : polyfill::disjunction<
+                  mpl::instantiate<mpl::disjunction<check_if_tuple_has<is_autoincrement>,
+                                                    check_if_tuple_has_template<default_t>,
+                                                    check_if_tuple_has_template<primary_key_with_autoincrement>>,
+                                   constraints_type_t<T>>,
+                  std::is_base_of<integer_printer, type_printer<field_type_t<T>>>> {
 
             static_assert(tuple_has<is_primary_key, constraints_type_t<T>>::value, "an unexpected type was passed");
         };
@@ -1645,6 +1698,7 @@ namespace sqlite_orm {
                                               check_if_is_template<unique_t>,
                                               check_if_is_template<default_t>,
                                               check_if_is_template<check_t>,
+                                              check_if_is_template<primary_key_with_autoincrement>,
                                               check_if_is_type<collate_constraint_t>,
 #if SQLITE_VERSION_NUMBER >= 3031000
                                               check_if<is_generated_always>,
@@ -1689,7 +1743,11 @@ namespace sqlite_orm {
         return {{}};
     }
 
-    inline internal::autoincrement_t autoincrement() {
+    /**
+     *  AUTOINCREMENT keyword. [Deprecation notice] Use `primary_key().autoincrement()` instead of using this function.
+     *  This function will be removed in 1.9
+     */
+    [[deprecated("Use primary_key().autoincrement()` instead")]] inline internal::autoincrement_t autoincrement() {
         return {};
     }
 
@@ -2232,7 +2290,7 @@ namespace sqlite_orm {
         /*
          *  Encapsulates a tuple of column constraints.
          *  
-         *  Op... is a constraints pack, e.g. primary_key_t, autoincrement_t etc
+         *  Op... is a constraints pack, e.g. primary_key_t, unique_t etc
          */
         template<class... Op>
         struct column_constraints {
@@ -6539,7 +6597,7 @@ namespace sqlite_orm {
      *  Example: storage.get_all<Employee>(group_by(&Employee::name), having(greater_than(count(&Employee::name), 2)));
      */
     template<class T>
-    internal::having_t<T> having(T expression) {
+    [[deprecated("Use group_by(...).having(...) instead")]] internal::having_t<T> having(T expression) {
         return {std::move(expression)};
     }
 }
@@ -10219,7 +10277,7 @@ namespace sqlite_orm {
                               call_as_template_base<column_field>([&lambda](const auto& column) {
                                   lambda(column.member_pointer);
                               }));
-                this->for_each_primary_key([this, &lambda](auto& primaryKey) {
+                this->for_each_primary_key([&lambda](auto& primaryKey) {
                     iterate_tuple(primaryKey.columns, lambda);
                 });
             }
@@ -13920,7 +13978,6 @@ namespace sqlite_orm {
                     [](sqlite3_context* context, void* functionVoidPointer, int argsCount, sqlite3_value** values) {
                         auto& function = *static_cast<F*>(functionVoidPointer);
                         args_tuple argsTuple;
-                        using tuple_size = std::tuple_size<args_tuple>;
                         values_to_tuple{}(values, argsTuple, argsCount);
                         auto result = call(function, std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
@@ -13983,7 +14040,6 @@ namespace sqlite_orm {
                     [](sqlite3_context*, void* functionVoidPointer, int argsCount, sqlite3_value** values) {
                         auto& function = *static_cast<F*>(functionVoidPointer);
                         args_tuple argsTuple;
-                        using tuple_size = std::tuple_size<args_tuple>;
                         values_to_tuple{}(values, argsTuple, argsCount);
                         call(function, &F::step, move(argsTuple));
                     },
@@ -15704,18 +15760,63 @@ namespace sqlite_orm {
             }
         };
 
+        template<>
+        struct statement_serializer<conflict_clause_t, void> {
+            using statement_type = conflict_clause_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                switch(statement) {
+                    case conflict_clause_t::rollback:
+                        return "ROLLBACK";
+                    case conflict_clause_t::abort:
+                        return "ABORT";
+                    case conflict_clause_t::fail:
+                        return "FAIL";
+                    case conflict_clause_t::ignore:
+                        return "IGNORE";
+                    case conflict_clause_t::replace:
+                        return "REPLACE";
+                }
+                return {};
+            }
+        };
+
+        template<class T>
+        struct statement_serializer<primary_key_with_autoincrement<T>, void> {
+            using statement_type = primary_key_with_autoincrement<T>;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                return serialize(statement.primary_key, context) + " AUTOINCREMENT";
+            }
+        };
+
         template<class... Cs>
         struct statement_serializer<primary_key_t<Cs...>, void> {
             using statement_type = primary_key_t<Cs...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
-                ss << static_cast<std::string>(c);
+                ss << "PRIMARY KEY";
+                switch(statement.options.asc_option) {
+                    case statement_type::order_by::ascending:
+                        ss << " ASC";
+                        break;
+                    case statement_type::order_by::descending:
+                        ss << " DESC";
+                        break;
+                    default:
+                        break;
+                }
+                if(statement.options.conflict_clause_is_on) {
+                    ss << " ON CONFLICT " << serialize(statement.options.conflict_clause, context);
+                }
                 using columns_tuple = typename statement_type::columns_tuple;
                 const size_t columnsCount = std::tuple_size<columns_tuple>::value;
                 if(columnsCount) {
-                    ss << "(" << streaming_mapped_columns_expressions(c.columns, context) << ")";
+                    ss << "(" << streaming_mapped_columns_expressions(statement.columns, context) << ")";
                 }
                 return ss.str();
             }
@@ -18314,49 +18415,6 @@ namespace sqlite_orm {
                 return res;
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
-
-            template<class O>
-            bool has_dependent_rows(const O& object) {
-                auto res = false;
-                iterate_tuple<true>(
-                    this->db_objects,
-                    tables_index_sequence<db_objects_type>{},
-                    [this, &object, &res](auto& table) {
-                        if(res) {
-                            return;
-                        }
-                        table.template for_each_foreign_key_to<O>([this, &table, &object, &res](auto& foreignKey) {
-                            std::stringstream ss;
-                            ss << "SELECT COUNT(*)"
-                               << " FROM " << streaming_identifier(table.name) << " WHERE ";
-                            iterate_tuple(foreignKey.columns, [&ss, &table, first = true](auto& colRef) mutable {
-                                auto* columnName = table.find_column_name(colRef);
-                                if(!columnName) {
-                                    throw std::system_error{orm_error_code::column_not_found};
-                                }
-
-                                constexpr std::array<const char*, 2> sep = {" AND ", ""};
-                                ss << sep[std::exchange(first, false)] << streaming_identifier(*columnName) << " = ?";
-                            });
-                            ss.flush();
-
-                            auto con = this->get_connection();
-                            sqlite3_stmt* stmt = prepare_stmt(con.get(), ss.str());
-                            statement_finalizer finalizer{stmt};
-
-                            auto& targetTable = this->get_table<O>();
-                            tuple_value_binder{stmt}(foreignKey.references,
-                                                     [&targetTable, &object](auto& memberPointer) {
-                                                         return targetTable.object_field_value(object, memberPointer);
-                                                     });
-                            perform_step<SQLITE_ROW>(stmt);
-                            auto countResult = sqlite3_column_int(stmt, 0);
-                            res = countResult > 0;
-                            perform_step(stmt);
-                        });
-                    });
-                return res;
-            }
         };  // struct storage_t
     }
 

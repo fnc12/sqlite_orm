@@ -72,7 +72,7 @@ TEST_CASE("pointer-passing") {
     };
 
     auto storage =
-        make_storage("", make_table("objects", make_column("id", &Object::id, autoincrement(), primary_key())));
+        make_storage("", make_table("objects", make_column("id", &Object::id, primary_key().autoincrement())));
     storage.sync_schema();
 
     storage.insert(Object{});

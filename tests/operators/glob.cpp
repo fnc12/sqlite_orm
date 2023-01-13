@@ -26,7 +26,7 @@ namespace {
 TEST_CASE("Glob") {
     auto storage = make_storage({},
                                 make_table("emp_master",
-                                           make_column("emp_id", &Employee::id, primary_key(), autoincrement()),
+                                           make_column("emp_id", &Employee::id, primary_key().autoincrement()),
                                            make_column("first_name", &Employee::firstName),
                                            make_column("last_name", &Employee::lastName),
                                            make_column("salary", &Employee::salary),
