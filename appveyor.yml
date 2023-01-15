@@ -96,17 +96,15 @@ for:
       if "%appveyor_build_worker_image%"=="Visual Studio 2015" (set generator="Visual Studio 14 2015" %architecture%)
   install:
     - |-
-      cd C:\Tools\vcpkg
       git clone --depth 1 --branch 2023.01.09 https://github.com/microsoft/vcpkg.git "$HOME/vcpkg"
-      .\bootstrap-vcpkg.bat
-      cd "%APPVEYOR_BUILD_FOLDER%"
+      C:\Tools\vcpkg\bootstrap-vcpkg.bat
       C:\Tools\vcpkg\vcpkg integrate install
       vcpkg install sqlite3:%platform%-windows
   before_build:
     - |-
       mkdir compile
       cd compile
-      cmake %SQLITE_ORM_CXX_STANDARD% -DSqliteOrm_BuildTests=ON .. -G %generator% -DCMAKE_TOOLCHAIN_FILE=C:/Tools/vcpkg/scripts/buildsystems/vcpkg.cmake
+      cmake %SQLITE_ORM_CXX_STANDARD% .. -G %generator% -DCMAKE_TOOLCHAIN_FILE=C:/Tools/vcpkg/scripts/buildsystems/vcpkg.cmake
   # build examples, and run tests (ie make & make test)
   build_script:
     - |-
@@ -126,14 +124,14 @@ for:
   install:
     - |-
       git clone --depth 1 --branch 2023.01.09 https://github.com/microsoft/vcpkg.git $HOME/vcpkg
-      $HOME/vcpkg/booststrap.sh
+      $HOME/vcpkg/bootstrap-vcpkg.sh
       $HOME/vcpkg/vcpkg integrate install --overlay-triplets=vcpkg/triplets
       vcpkg install sqlite3 --overlay-triplets=vcpkg/triplets
   before_build:
     - |-
       mkdir compile
       cd compile
-      cmake $SQLITE_ORM_CXX_STANDARD -DSqliteOrm_BuildTests=ON .. -DCMAKE_TOOLCHAIN_FILE=$HOME/vcpkg/scripts/buildsystems/vcpkg.cmake
+      cmake $SQLITE_ORM_CXX_STANDARD .. -DCMAKE_TOOLCHAIN_FILE=$HOME/vcpkg/scripts/buildsystems/vcpkg.cmake
   # build examples, and run tests (ie make & make test)
   build_script:
     - |-
@@ -152,14 +150,14 @@ for:
   install:
     - |-
       git clone --depth 1 --branch 2023.01.09 https://github.com/microsoft/vcpkg.git $HOME/vcpkg
-      $HOME/vcpkg/booststrap.sh
+      $HOME/vcpkg/bootstrap-vcpkg.sh
       $HOME/vcpkg/vcpkg integrate install --overlay-triplets=vcpkg/triplets
       vcpkg install sqlite3 --overlay-triplets=vcpkg/triplets
   before_build:
     - |-
       mkdir compile
       cd compile
-      cmake $SQLITE_ORM_CXX_STANDARD -DSqliteOrm_BuildTests=ON .. -DCMAKE_TOOLCHAIN_FILE=$HOME/vcpkg/scripts/buildsystems/vcpkg.cmake
+      cmake $SQLITE_ORM_CXX_STANDARD .. -DCMAKE_TOOLCHAIN_FILE=$HOME/vcpkg/scripts/buildsystems/vcpkg.cmake
   # build examples, and run tests (ie make & make test)
   build_script:
     - |-
