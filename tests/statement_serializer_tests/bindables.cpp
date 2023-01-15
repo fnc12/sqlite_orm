@@ -3,7 +3,7 @@
 #include <tuple>
 #include <algorithm>  //  std::fill_n
 #include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 using std::array;
 using std::index_sequence;

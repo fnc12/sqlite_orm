@@ -1,5 +1,5 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -357,7 +357,7 @@ int FirstFunction::objectsCount = 0;
 int FirstFunction::callsCount = 0;
 
 TEST_CASE("custom functions") {
-    using Catch::Matchers::Contains;
+    using Catch::Matchers::ContainsSubstring;
 
     SqrtFunction::callsCount = 0;
     HasPrefixFunction::callsCount = 0;
@@ -382,7 +382,7 @@ TEST_CASE("custom functions") {
     auto storage = make_storage(path, make_table("users", make_column("id", &User::id)));
     storage.sync_schema();
     //   call before creation
-    REQUIRE_THROWS_WITH(storage.select(func<SqrtFunction>(4)), Contains("no such function"));
+    REQUIRE_THROWS_WITH(storage.select(func<SqrtFunction>(4)), ContainsSubstring("no such function"));
 
     //  create function
     REQUIRE(SqrtFunction::callsCount == 0);

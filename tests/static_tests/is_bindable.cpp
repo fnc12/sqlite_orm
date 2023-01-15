@@ -1,5 +1,5 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 #include <memory>  //  std::unique_ptr, std::shared_ptr
 #include <string>  //  std::string
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED

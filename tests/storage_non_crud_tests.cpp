@@ -1,5 +1,5 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 using namespace sqlite_orm;
 
@@ -498,7 +498,7 @@ TEST_CASE("Remove all") {
 }
 
 TEST_CASE("Explicit insert") {
-    using Catch::Matchers::Contains;
+    using Catch::Matchers::ContainsSubstring;
 
     struct User {
         int id;
@@ -587,7 +587,7 @@ TEST_CASE("Explicit insert") {
         SECTION("one column") {
             User user4;
             user4.name = "Egor";
-            REQUIRE_THROWS_WITH(storage.insert(user4, columns(&User::name)), Contains("NOT NULL constraint failed"));
+            REQUIRE_THROWS_WITH(storage.insert(user4, columns(&User::name)), ContainsSubstring("NOT NULL constraint failed"));
         }
     }
     SECTION("visit") {
@@ -620,7 +620,7 @@ TEST_CASE("Explicit insert") {
             visit3.setId(10);
             SECTION("getter") {
                 REQUIRE_THROWS_WITH(storage.insert(visit3, columns(&Visit::id)),
-                                    Contains("NOT NULL constraint failed"));
+                                    ContainsSubstring("NOT NULL constraint failed"));
             }
         }
     }

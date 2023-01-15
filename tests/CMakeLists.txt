@@ -159,11 +159,9 @@ endif()
 
 target_precompile_headers(unit_tests PRIVATE
     <sqlite_orm/sqlite_orm.h>
-    <catch2/catch.hpp>)
-# tests.cpp contains CATCH_CONFIG_MAIN
-set_source_files_properties(tests.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
+    <catch2/catch_all.hpp>)
 
-target_link_libraries(unit_tests PRIVATE sqlite_orm Catch2::Catch2)
+target_link_libraries(unit_tests PRIVATE sqlite_orm Catch2::Catch2WithMain)
 
 add_test(NAME "All_in_one_unit_test"
     COMMAND unit_tests

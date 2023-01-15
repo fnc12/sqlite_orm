@@ -1,5 +1,5 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 #include <typeindex>  //  std::type_index
 #include <string>  //  std::string
 #include <type_traits>  //  std::remove_pointer

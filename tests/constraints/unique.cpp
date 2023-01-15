@@ -1,10 +1,10 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 using namespace sqlite_orm;
 
 TEST_CASE("Unique") {
-    using Catch::Matchers::Contains;
+    using Catch::Matchers::ContainsSubstring;
 
     struct Contact {
         int id = 0;
@@ -57,11 +57,11 @@ TEST_CASE("Unique") {
     storage.insert(Contact{0, "John", "Doe", "john.doe@gmail.com"});
 
     REQUIRE_THROWS_WITH(storage.insert(Contact{0, "Johnny", "Doe", "john.doe@gmail.com"}),
-                        Contains("constraint failed"));
+                        ContainsSubstring("constraint failed"));
 
     storage.insert(Shape{0, "red", "green"});
     storage.insert(Shape{0, "red", "blue"});
-    REQUIRE_THROWS_WITH(storage.insert(Shape{0, "red", "green"}), Contains("constraint failed"));
+    REQUIRE_THROWS_WITH(storage.insert(Shape{0, "red", "green"}), ContainsSubstring("constraint failed"));
 
     std::vector<List> lists(2);
     REQUIRE_NOTHROW(storage.insert_range(lists.begin(), lists.end()));

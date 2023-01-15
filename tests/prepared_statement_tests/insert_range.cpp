@@ -1,5 +1,5 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 #include <algorithm>
 
 #include "prepared_common.h"
@@ -8,7 +8,7 @@ using namespace sqlite_orm;
 
 TEST_CASE("Prepared insert range") {
     using namespace PreparedStatementTests;
-    using Catch::Matchers::Contains;
+    using Catch::Matchers::ContainsSubstring;
     using Catch::Matchers::UnorderedEquals;
 
     const int defaultVisitTime = 50;
@@ -48,14 +48,14 @@ TEST_CASE("Prepared insert range") {
     SECTION("empty") {
         SECTION("strict") {
             REQUIRE_THROWS_WITH(storage.prepare(insert_range(users.begin(), users.end())),
-                                Contains("incomplete input"));
+                                ContainsSubstring("incomplete input"));
         }
         SECTION("container with pointers") {
             std::vector<std::unique_ptr<User>> usersPointers;
             REQUIRE_THROWS_WITH(
                 storage.prepare(
                     insert_range(usersPointers.begin(), usersPointers.end(), &std::unique_ptr<User>::operator*)),
-                Contains("incomplete input"));
+                ContainsSubstring("incomplete input"));
         }
     }
     SECTION("one") {

@@ -1,8 +1,5 @@
 #include <sqlite_orm/sqlite_orm.h>
-
-#define CATCH_CONFIG_MAIN
-
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 #include <vector>  //  std::vector
 #include <string>  //  std::string
@@ -107,7 +104,7 @@ TEST_CASE("Limits") {
 }
 
 TEST_CASE("Custom collate") {
-    using Catch::Matchers::Contains;
+    using Catch::Matchers::ContainsSubstring;
 
     struct Item {
         int id;
@@ -193,11 +190,11 @@ TEST_CASE("Custom collate") {
         storage.delete_collation<OtotoCollation>();
     }
     REQUIRE_THROWS_WITH(storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo"))),
-                        Contains("no such collation sequence"));
+                        ContainsSubstring("no such collation sequence"));
     REQUIRE_THROWS_WITH(storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate<OtotoCollation>())),
-                        Contains("no such collation sequence"));
+                        ContainsSubstring("no such collation sequence"));
     REQUIRE_THROWS_WITH(storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo2"))),
-                        Contains("no such collation sequence"));
+                        ContainsSubstring("no such collation sequence"));
 
     rows = storage.select(&Item::name,
                           where(is_equal(&Item::name, "Mercury").collate("alwaysequal")),
