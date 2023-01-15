@@ -6,6 +6,10 @@
 #include <format>
 
 #if __cpp_lib_chrono >= 201907L && __cpp_lib_format >= 201907L
+#define ENABLE_THIS_EXAMPLE
+#endif
+
+#ifdef ENABLE_THIS_EXAMPLE
 
 ///////////////////////////////
 /// sys_days binding as TEXT
@@ -13,11 +17,6 @@
 
 #include <sstream>
 #include <regex>
-
-static std::chrono::sys_days today() {
-    const auto today = std::chrono::sys_days{floor<std::chrono::days>(std::chrono::system_clock::now())};
-    return today;
-}
 
 /**
  *  This is the date we want to map to our sqlite db.
@@ -143,10 +142,10 @@ struct Person {
     std::string name;
     std::chrono::sys_days birthdate;
 };
+#endif
 
-int main(int argc, const char* argv[]) {
-    cout << argv[0] << endl;
-
+int main(int, char**) {
+#ifdef ENABLE_THIS_EXAMPLE
     const std::string db_name = "sys_days.sqlite";
     ::remove(db_name.c_str());
 
@@ -168,6 +167,5 @@ int main(int argc, const char* argv[]) {
     auto pers = storage.get<Person>(1);
     year_month_day ymd = pers.birthdate;  // using the implicit operator from sys_days to year_month_day
     assert(ymd == birthdate);
-}
-
 #endif
+}
