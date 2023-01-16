@@ -587,7 +587,8 @@ TEST_CASE("Explicit insert") {
         SECTION("one column") {
             User user4;
             user4.name = "Egor";
-            REQUIRE_THROWS_WITH(storage.insert(user4, columns(&User::name)), ContainsSubstring("NOT NULL constraint failed"));
+            REQUIRE_THROWS_WITH(storage.insert(user4, columns(&User::name)),
+                                ContainsSubstring("NOT NULL constraint failed"));
         }
     }
     SECTION("visit") {
