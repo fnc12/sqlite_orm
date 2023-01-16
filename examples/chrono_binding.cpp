@@ -1,15 +1,14 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <cassert>
-#include <string>
-#include <iostream>
-#include <chrono>
-#include <format>
-
 #if __cpp_lib_chrono >= 201907L && __cpp_lib_format >= 201907L
 #define ENABLE_THIS_EXAMPLE
 #endif
 
 #ifdef ENABLE_THIS_EXAMPLE
+#include <cassert>
+#include <string>
+#include <iostream>
+#include <chrono>
+#include <format>
 
 ///////////////////////////////
 /// sys_days binding as TEXT
@@ -168,4 +167,5 @@ int main(int, char**) {
     year_month_day ymd = pers.birthdate;  // using the implicit operator from sys_days to year_month_day
     assert(ymd == birthdate);
 #endif
+    return 0;
 }

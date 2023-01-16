@@ -16,7 +16,12 @@
  *
  *  Note: pointers are only accessible within application code, and therefore unleakable.
  */
+#include <sqlite_orm/sqlite_orm.h>
 #ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
+#define ENABLE_THIS_EXAMPLE
+#endif
+
+#ifdef ENABLE_THIS_EXAMPLE
 #include <type_traits>
 #include <tuple>
 #include <system_error>
@@ -24,7 +29,6 @@
 #include <string>
 #include <algorithm>
 #include <iostream>
-#include <sqlite_orm/sqlite_orm.h>
 
 using namespace sqlite_orm;
 
@@ -72,8 +76,10 @@ struct str_alias : alias_tag {
         return str;
     }
 };
+#endif
 
 int main() {
+#ifdef ENABLE_THIS_EXAMPLE
     // table structure for results of some type
     struct Result {
         int id = 0;
@@ -217,6 +223,6 @@ int main() {
         cout << endl;
     }
 
+#endif
     return 0;
 }
-#endif
