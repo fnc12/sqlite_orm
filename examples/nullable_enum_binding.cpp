@@ -99,7 +99,7 @@ namespace sqlite_orm {
      *  specializing type_is_nullable<T> and deriving from std::true_type.
      */
     template<>
-    struct type_is_nullable<Gender> : public std::true_type {
+    struct type_is_nullable<Gender> : std::true_type {
 
         //  this function must return whether value null or not (false is null). Don't forget to implement it
         bool operator()(const Gender& g) const {
