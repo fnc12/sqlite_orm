@@ -101,7 +101,8 @@ for:
       popd
       C:\Tools\vcpkg\bootstrap-vcpkg.bat -disableMetrics
       C:\Tools\vcpkg\vcpkg integrate install
-      vcpkg install sqlite3:%platform%-windows
+      set VCPKG_DEFAULT_TRIPLET=%platform%-windows
+      vcpkg install sqlite3 catch2
   before_build:
     - |-
       mkdir compile
@@ -130,7 +131,7 @@ for:
       popd
       $HOME/vcpkg/bootstrap-vcpkg.sh -disableMetrics
       $HOME/vcpkg/vcpkg integrate install --overlay-triplets=vcpkg/triplets
-      vcpkg install sqlite3 --overlay-triplets=vcpkg/triplets
+      vcpkg install sqlite3 catch2 --overlay-triplets=vcpkg/triplets
   before_build:
     - |-
       mkdir compile
@@ -156,7 +157,7 @@ for:
       git clone --depth 1 --branch 2023.01.09 https://github.com/microsoft/vcpkg.git $HOME/vcpkg
       $HOME/vcpkg/bootstrap-vcpkg.sh -disableMetrics
       $HOME/vcpkg/vcpkg integrate install --overlay-triplets=vcpkg/triplets
-      vcpkg install sqlite3 --overlay-triplets=vcpkg/triplets
+      vcpkg install sqlite3 catch2 --overlay-triplets=vcpkg/triplets
   before_build:
     - |-
       mkdir compile

@@ -1,5 +1,7 @@
 cmake_minimum_required (VERSION 3.2)
 
+find_package(Catch2 3 CONFIG REQUIRED)
+
 option(SQLITE_ORM_OMITS_CODECVT "Omits codec testing" OFF)
 
 add_executable(unit_tests
