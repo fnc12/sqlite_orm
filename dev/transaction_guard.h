@@ -31,7 +31,7 @@ namespace sqlite_orm {
                 connection(std::move(connection_)),
                 commit_func(move(commit_func_)), rollback_func(move(rollback_func_)) {}
 
-            transaction_guard_t(transaction_guard_t &&other) :
+            transaction_guard_t(transaction_guard_t&& other) :
                 commit_on_destroy(other.commit_on_destroy), connection(std::move(other.connection)),
                 commit_func(move(other.commit_func)), rollback_func(move(other.rollback_func)),
                 gotta_fire(other.gotta_fire) {
@@ -48,7 +48,7 @@ namespace sqlite_orm {
                 }
             }
 
-            transaction_guard_t &operator=(transaction_guard_t &&) = delete;
+            transaction_guard_t& operator=(transaction_guard_t&&) = delete;
 
             /**
              *  Call `COMMIT` explicitly. After this call

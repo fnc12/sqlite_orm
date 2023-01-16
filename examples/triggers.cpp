@@ -147,7 +147,7 @@ int main() {
     //  VALUES('John', 'Doe', 'jjj', '4089009334');
     try {
         storage.insert(Lead{0, "John", "Doe", "jjj", "4089009334"});
-    } catch(const std::system_error &systemError) {
+    } catch(const std::system_error& systemError) {
         cout << "error: " << systemError.what() << endl;
     }
 
@@ -157,7 +157,7 @@ int main() {
     storage.insert(Lead{0, "John", "Doe", "john.doe@sqlitetutorial.net", "4089009334"});
 
     cout << "Leads:" << endl;
-    for(auto &lead: storage.iterate<Lead>()) {
+    for(auto& lead: storage.iterate<Lead>()) {
         cout << storage.dump(lead) << endl;
     }
 
@@ -178,7 +178,7 @@ int main() {
 
     cout << "Logs count = " << storage.count<LeadLog>() << endl;
 
-    for(auto &leadLog: storage.iterate<LeadLog>()) {
+    for(auto& leadLog: storage.iterate<LeadLog>()) {
         cout << storage.dump(leadLog) << endl;
     }
 

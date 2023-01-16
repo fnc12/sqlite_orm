@@ -185,7 +185,7 @@ TEST_CASE("InsertRange") {
 }
 
 TEST_CASE("Select") {
-    sqlite3 *db;
+    sqlite3* db;
     auto dbFileName = "test.db";
     auto rc = sqlite3_open(dbFileName, &db);
     REQUIRE(rc == SQLITE_OK);
@@ -196,11 +196,11 @@ TEST_CASE("Select") {
                "AFTER_WORD            TEXT     NOT NULL,"
                "OCCURANCES            INT      NOT NULL);";
 
-    char *errMsg = nullptr;
+    char* errMsg = nullptr;
     rc = sqlite3_exec(db, sql, nullptr, nullptr, &errMsg);
     REQUIRE(rc == SQLITE_OK);
 
-    sqlite3_stmt *stmt;
+    sqlite3_stmt* stmt;
 
     //  delete previous words. This command is excess in travis or other docker based CI tools
     //  but it is required on local machine
@@ -263,9 +263,9 @@ TEST_CASE("Select") {
             throw std::runtime_error(sqlite3_errmsg(db));
         }
         REQUIRE(sqlite3_column_int(stmt, 0) == firstId);
-        REQUIRE(::strcmp((const char *)sqlite3_column_text(stmt, 1), "best") == 0);
-        REQUIRE(::strcmp((const char *)sqlite3_column_text(stmt, 2), "behaviour") == 0);
-        REQUIRE(::strcmp((const char *)sqlite3_column_text(stmt, 3), "hey") == 0);
+        REQUIRE(::strcmp((const char*)sqlite3_column_text(stmt, 1), "best") == 0);
+        REQUIRE(::strcmp((const char*)sqlite3_column_text(stmt, 2), "behaviour") == 0);
+        REQUIRE(::strcmp((const char*)sqlite3_column_text(stmt, 3), "hey") == 0);
         REQUIRE(sqlite3_column_int(stmt, 4) == 5);
         sqlite3_finalize(stmt);
     }
@@ -311,7 +311,7 @@ TEST_CASE("Select") {
     REQUIRE(rawTuples.size() == 1);
 
     {
-        auto &firstTuple = rawTuples.front();
+        auto& firstTuple = rawTuples.front();
         REQUIRE(std::get<0>(firstTuple) == firstId);
         REQUIRE(std::get<1>(firstTuple) == "best");
         REQUIRE(std::get<2>(firstTuple) == "behaviour");
@@ -323,7 +323,7 @@ TEST_CASE("Select") {
     REQUIRE(rawTuples.size() == 1);
 
     {
-        auto &secondTuple = rawTuples.front();
+        auto& secondTuple = rawTuples.front();
         REQUIRE(std::get<0>(secondTuple) == secondId);
         REQUIRE(std::get<1>(secondTuple) == "corruption");
         REQUIRE(std::get<2>(secondTuple) == "blood");
@@ -509,7 +509,7 @@ TEST_CASE("Explicit insert") {
 
     class Visit {
       public:
-        const int &id() const {
+        const int& id() const {
             return _id;
         }
 
@@ -517,7 +517,7 @@ TEST_CASE("Explicit insert") {
             _id = newValue;
         }
 
-        const time_t &createdAt() const {
+        const time_t& createdAt() const {
             return _createdAt;
         }
 
@@ -525,7 +525,7 @@ TEST_CASE("Explicit insert") {
             _createdAt = newValue;
         }
 
-        const int &usedId() const {
+        const int& usedId() const {
             return _usedId;
         }
 

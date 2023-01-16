@@ -82,7 +82,7 @@ TEST_CASE("insert with generated column") {
             name{move(name)}, price{price}, discount{discount}, tax{tax}, netPrice{netPrice} {}
 #endif
 
-        bool operator==(const Product &other) const {
+        bool operator==(const Product& other) const {
             return this->name == other.name && this->price == other.price && this->discount == other.discount &&
                    this->tax == other.tax && this->netPrice == other.netPrice;
         }
@@ -171,7 +171,7 @@ TEST_CASE("insert") {
     SECTION("pointers") {
         std::vector<unique_ptr<Object>> pointers;
         pointers.reserve(initList.size());
-        std::transform(initList.begin(), initList.end(), std::back_inserter(pointers), [](const Object &object) {
+        std::transform(initList.begin(), initList.end(), std::back_inserter(pointers), [](const Object& object) {
             return std::make_unique<Object>(Object{object});
         });
         storage.insert_range(pointers.begin(), pointers.end(), &std::unique_ptr<Object>::operator*);
@@ -197,7 +197,7 @@ struct SqrtFunction {
         return std::sqrt(arg);
     }
 
-    static const char *name() {
+    static const char* name() {
         return "SQRT_CUSTOM";
     }
 };
@@ -212,11 +212,11 @@ struct HasPrefixFunction {
         ++objectsCount;
     }
 
-    HasPrefixFunction(const HasPrefixFunction &) {
+    HasPrefixFunction(const HasPrefixFunction&) {
         ++objectsCount;
     }
 
-    HasPrefixFunction(HasPrefixFunction &&) {
+    HasPrefixFunction(HasPrefixFunction&&) {
         ++objectsCount;
     }
 
@@ -224,7 +224,7 @@ struct HasPrefixFunction {
         --objectsCount;
     }
 
-    bool operator()(const std::string &str, const std::string &prefix) {
+    bool operator()(const std::string& str, const std::string& prefix) {
         ++callsCount;
         return str.compare(0, prefix.size(), prefix) == 0;
     }
@@ -247,11 +247,11 @@ struct MeanFunction {
         ++objectsCount;
     }
 
-    MeanFunction(const MeanFunction &) {
+    MeanFunction(const MeanFunction&) {
         ++objectsCount;
     }
 
-    MeanFunction(MeanFunction &&) {
+    MeanFunction(MeanFunction&&) {
         ++objectsCount;
     }
 
@@ -283,11 +283,11 @@ struct FirstFunction {
         ++objectsCount;
     }
 
-    FirstFunction(const MeanFunction &) {
+    FirstFunction(const MeanFunction&) {
         ++objectsCount;
     }
 
-    FirstFunction(MeanFunction &&) {
+    FirstFunction(MeanFunction&&) {
         ++objectsCount;
     }
 
@@ -295,7 +295,7 @@ struct FirstFunction {
         --objectsCount;
     }
 
-    std::string operator()(const arg_values &args) const {
+    std::string operator()(const arg_values& args) const {
         ++callsCount;
         std::string res;
         res.reserve(args.size());
@@ -308,7 +308,7 @@ struct FirstFunction {
         return res;
     }
 
-    static const char *name() {
+    static const char* name() {
         return "FIRST";
     }
 };
@@ -322,11 +322,11 @@ struct MultiSum {
         ++objectsCount;
     }
 
-    MultiSum(const MeanFunction &) {
+    MultiSum(const MeanFunction&) {
         ++objectsCount;
     }
 
-    MultiSum(MeanFunction &&) {
+    MultiSum(MeanFunction&&) {
         ++objectsCount;
     }
 
@@ -334,7 +334,7 @@ struct MultiSum {
         --objectsCount;
     }
 
-    void step(const arg_values &args) {
+    void step(const arg_values& args) {
         for(auto it = args.begin(); it != args.end(); ++it) {
             if(!it->empty() && (it->is_integer() || it->is_float())) {
                 this->sum += it->get<double>();
@@ -346,7 +346,7 @@ struct MultiSum {
         return this->sum;
     }
 
-    static const char *name() {
+    static const char* name() {
         return "MULTI_SUM";
     }
 };
@@ -497,7 +497,7 @@ TEST_CASE("custom functions") {
 // Wrap std::default_delete in a function
 #ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
 template<typename T>
-void delete_default(std::conditional_t<std::is_array<T>::value, std::decay_t<T>, T *> o) noexcept(
+void delete_default(std::conditional_t<std::is_array<T>::value, std::decay_t<T>, T*> o) noexcept(
     noexcept(std::default_delete<T>{}(o))) {
     std::default_delete<T>{}(o);
 }
@@ -528,7 +528,7 @@ TEST_CASE("obtain_xdestroy_for") {
 
     // class yielding a function pointer not of type xdestroy_fn_t
     struct int_destroy_holder {
-        using destroy_fn_t = void (*)(int *);
+        using destroy_fn_t = void (*)(int*);
 
         destroy_fn_t destroy = nullptr;
 
@@ -538,10 +538,10 @@ TEST_CASE("obtain_xdestroy_for") {
     };
 
     {
-        constexpr int *int_nullptr = nullptr;
+        constexpr int* int_nullptr = nullptr;
 #if !defined(SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION) ||                                                             \
     (__cpp_constexpr >= 201907L)  //  Trivial default initialization in constexpr functions
-        constexpr const int *const_int_nullptr = nullptr;
+        constexpr const int* const_int_nullptr = nullptr;
 #endif
 
         // null_xdestroy_f(int*)
@@ -561,14 +561,14 @@ TEST_CASE("obtain_xdestroy_for") {
 
 #if __cpp_constexpr >= 201603L  //  constexpr lambda
         // [](void* p){}
-        constexpr auto lambda4_1 = [](void *) {};
+        constexpr auto lambda4_1 = [](void*) {};
         constexpr xdestroy_fn_t xDestroy4_1 = obtain_xdestroy_for(lambda4_1, int_nullptr);
         STATIC_REQUIRE(xDestroy4_1 == lambda4_1);
         REQUIRE(xDestroy4_1 == lambda4_1);
 #else
 #if !defined(_MSC_VER) || (_MSC_VER >= 1914)  //  conversion of lambda closure to function pointer using `+`
         // [](void* p){}
-        auto lambda4_1 = [](void *) {};
+        auto lambda4_1 = [](void*) {};
         xdestroy_fn_t xDestroy4_1 = obtain_xdestroy_for(lambda4_1, int_nullptr);
         REQUIRE(xDestroy4_1 == lambda4_1);
 #endif
@@ -576,7 +576,7 @@ TEST_CASE("obtain_xdestroy_for") {
 
         // [](int* p) { delete p; }
 #if __cplusplus >= 202002L  //  default-constructible non-capturing lambdas
-        constexpr auto lambda4_2 = [](int *p) {
+        constexpr auto lambda4_2 = [](int* p) {
             delete p;
         };
         using lambda4_2_t = std::remove_const_t<decltype(lambda4_2)>;

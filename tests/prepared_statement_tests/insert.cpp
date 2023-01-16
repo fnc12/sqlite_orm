@@ -17,14 +17,14 @@ TEST_CASE("Prepared insert") {
 
         Artist(decltype(id) id_, decltype(name) name_) : id(id_), name(move(name_)) {}
 
-        Artist(const Artist &other) :
+        Artist(const Artist& other) :
             id(other.id), name(other.name ? std::make_unique<std::string>(*other.name) : nullptr) {}
 
-        bool operator==(const Artist &other) const {
+        bool operator==(const Artist& other) const {
             return this->id == other.id && this->compareNames(this->name, other.name);
         }
 
-        bool compareNames(const decltype(name) &lhs, const decltype(name) &rhs) const {
+        bool compareNames(const decltype(name)& lhs, const decltype(name)& rhs) const {
             if(lhs && rhs) {
                 return *lhs == *rhs;
             } else if(!lhs && !rhs) {
@@ -172,7 +172,7 @@ TEST_CASE("Prepared insert") {
                 }
                 REQUIRE(insertedId == 4);
                 user.name = "Sia";
-                std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
+                std::ignore = get<0>(static_cast<const decltype(statement)&>(statement));
                 REQUIRE(get<0>(statement) == user);
                 REQUIRE(&get<0>(statement) == &user);
                 insertedId = storage.execute(statement);
