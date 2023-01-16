@@ -97,7 +97,7 @@ for:
   install:
     - |-
       git clone --depth 1 --branch 2023.01.09 https://github.com/microsoft/vcpkg.git "$HOME/vcpkg"
-      C:\Tools\vcpkg\bootstrap-vcpkg.bat
+      C:\Tools\vcpkg\bootstrap-vcpkg.bat -disableMetrics
       C:\Tools\vcpkg\vcpkg integrate install
       vcpkg install sqlite3:%platform%-windows
   before_build:
@@ -124,7 +124,7 @@ for:
   install:
     - |-
       git clone --depth 1 --branch 2023.01.09 https://github.com/microsoft/vcpkg.git $HOME/vcpkg
-      $HOME/vcpkg/bootstrap-vcpkg.sh
+      $HOME/vcpkg/bootstrap-vcpkg.sh -disableMetrics
       $HOME/vcpkg/vcpkg integrate install --overlay-triplets=vcpkg/triplets
       vcpkg install sqlite3 --overlay-triplets=vcpkg/triplets
   before_build:
@@ -150,7 +150,7 @@ for:
   install:
     - |-
       git clone --depth 1 --branch 2023.01.09 https://github.com/microsoft/vcpkg.git $HOME/vcpkg
-      $HOME/vcpkg/bootstrap-vcpkg.sh
+      $HOME/vcpkg/bootstrap-vcpkg.sh -disableMetrics
       $HOME/vcpkg/vcpkg integrate install --overlay-triplets=vcpkg/triplets
       vcpkg install sqlite3 --overlay-triplets=vcpkg/triplets
   before_build:
