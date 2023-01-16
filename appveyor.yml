@@ -96,7 +96,9 @@ for:
       if "%appveyor_build_worker_image%"=="Visual Studio 2015" (set generator="Visual Studio 14 2015" %architecture%)
   install:
     - |-
-      git clone --depth 1 --branch 2023.01.09 https://github.com/microsoft/vcpkg.git "$HOME/vcpkg"
+      pushd C:\Tools\vcpkg
+      git fetch --tags && git checkout 2023.01.09
+      popd
       C:\Tools\vcpkg\bootstrap-vcpkg.bat -disableMetrics
       C:\Tools\vcpkg\vcpkg integrate install
       vcpkg install sqlite3:%platform%-windows
@@ -123,7 +125,9 @@ for:
   # using custom vcpkg triplets for building and linking dynamic dependent libraries
   install:
     - |-
-      git clone --depth 1 --branch 2023.01.09 https://github.com/microsoft/vcpkg.git $HOME/vcpkg
+      pushd $HOME/vcpkg
+      git fetch --tags && git checkout 2023.01.09
+      popd
       $HOME/vcpkg/bootstrap-vcpkg.sh -disableMetrics
       $HOME/vcpkg/vcpkg integrate install --overlay-triplets=vcpkg/triplets
       vcpkg install sqlite3 --overlay-triplets=vcpkg/triplets
