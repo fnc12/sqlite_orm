@@ -99,7 +99,7 @@ for:
       cd C:\Tools\vcpkg
       git fetch --tags && git checkout 2023.01.09
       cd %APPVEYOR_BUILD_FOLDER%
-      C:\Tools\vcpkg\vcpkg\bootstrap-vcpkg.bat -disableMetrics
+      C:\Tools\vcpkg\bootstrap-vcpkg.bat -disableMetrics
       C:\Tools\vcpkg\vcpkg integrate install
       set VCPKG_DEFAULT_TRIPLET=%platform%-windows
       vcpkg install sqlite3 catch2
