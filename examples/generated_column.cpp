@@ -18,6 +18,12 @@ int main() {
         int quantity = 0;
         float price = 0;
         float totalValue = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        Product() {}
+        Product(int id, std::string name, int quantity, float price, float totalValue = 0.f) :
+            id{id}, name{move(name)}, quantity{quantity}, price{price}, totalValue{totalValue} {}
+#endif
     };
     auto storage = make_storage({},
                                 make_table("products",

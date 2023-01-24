@@ -16,6 +16,12 @@ struct Lead {
     std::string lastName;
     std::string email;
     std::string phone;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+    Lead() = default;
+    Lead(int id, std::string firstName, std::string lastName, std::string email, std::string phone) :
+        id{id}, firstName{move(firstName)}, lastName{move(lastName)}, email{move(email)}, phone{move(phone)} {}
+#endif
 };
 
 struct LeadLog {

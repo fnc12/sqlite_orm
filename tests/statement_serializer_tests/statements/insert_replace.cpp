@@ -14,7 +14,7 @@ TEST_CASE("statement_serializer insert/replace") {
         int id = 0;
         std::string name;
 
-#if !defined(SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED) || !defined(SQLITE_ORM_AGGREGATE_BASES_SUPPORTED)
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         User() = default;
         User(int id, std::string name) : id{id}, name{move(name)} {}
 #endif

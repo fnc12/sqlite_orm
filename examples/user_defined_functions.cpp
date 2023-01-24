@@ -112,6 +112,11 @@ int main() {
         int a = 0;
         int b = 0;
         int c = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        Table() = default;
+        Table(int a, int b, int c) : a{a}, b{b}, c{c} {}
+#endif
     };
 
     auto storage = make_storage(
