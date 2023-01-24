@@ -1,1 +1,1 @@
-FetchContent_MakeAvailable(catch2)
+FetchContent_MakeAvailable(Catch2)

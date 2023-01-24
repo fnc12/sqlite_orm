@@ -18,18 +18,36 @@ struct Doctor {
     int doctor_id = 0;
     std::string doctor_name;
     std::string degree;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+    Doctor() = default;
+    Doctor(int doctor_id, std::string doctor_name, std::string degree) :
+        doctor_id{doctor_id}, doctor_name{move(doctor_name)}, degree{move(degree)} {}
+#endif
 };
 
 struct Speciality {
     int spl_id = 0;
     std::string spl_descrip;
     int doctor_id = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+    Speciality() = default;
+    Speciality(int spl_id, std::string spl_descrip, int doctor_id) :
+        spl_id{spl_id}, spl_descrip{move(spl_descrip)}, doctor_id{doctor_id} {}
+#endif
 };
 
 struct Visit {
     int doctor_id = 0;
     std::string patient_name;
     std::string vdate;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+    Visit() = default;
+    Visit(int doctor_id, std::string patient_name, std::string vdate) :
+        doctor_id{doctor_id}, patient_name{move(patient_name)}, vdate{move(vdate)} {}
+#endif
 };
 
 int main() {

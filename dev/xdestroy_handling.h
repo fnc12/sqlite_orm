@@ -19,30 +19,30 @@ namespace sqlite_orm {
     namespace internal {
 #ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
         /**
-         *  Constraints a deleter to be state-less.
+         *  Constrains a deleter to be state-less.
          */
         template<typename D>
         concept stateless_deleter = std::is_empty_v<D> && std::is_default_constructible_v<D>;
 
         /**
-         *  Constraints a deleter to be an integral function constant.
+         *  Constrains a deleter to be an integral function constant.
          */
         template<typename D>
         concept integral_fp_c = requires {
-            typename D::value_type;
-            D::value;
-            requires std::is_function_v<std::remove_pointer_t<typename D::value_type>>;
-        };
+                                    typename D::value_type;
+                                    D::value;
+                                    requires std::is_function_v<std::remove_pointer_t<typename D::value_type>>;
+                                };
 
         /**
-         *  Constraints a deleter to be or to yield a function pointer.
+         *  Constrains a deleter to be or to yield a function pointer.
          */
         template<typename D>
         concept yields_fp = requires(D d) {
-            // yielding function pointer by using the plus trick
-            {+d};
-            requires std::is_function_v<std::remove_pointer_t<decltype(+d)>>;
-        };
+                                // yielding function pointer by using the plus trick
+                                { +d };
+                                requires std::is_function_v<std::remove_pointer_t<decltype(+d)>>;
+                            };
 #endif
 
 #if __cpp_lib_concepts >= 201907L
@@ -57,7 +57,7 @@ namespace sqlite_orm {
 
         template<typename D>
         SQLITE_ORM_INLINE_VAR constexpr bool is_stateless_deleter_v =
-            std::is_empty<D>::value&& std::is_default_constructible<D>::value;
+            std::is_empty<D>::value && std::is_default_constructible<D>::value;
 
         template<typename D, typename SFINAE = void>
         struct is_integral_fp_c : std::false_type {};
@@ -118,7 +118,8 @@ namespace sqlite_orm {
          *  it doesn't check so explicitly, but a compiler error will occur.
          */
         template<typename D, typename P>
-        requires(!integral_fp_c<D>) void xdestroy_proxy(void* p) noexcept {
+            requires(!integral_fp_c<D>)
+        void xdestroy_proxy(void* p) noexcept {
             // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>
             auto o = (P*)p;
             // ignoring return code
@@ -146,7 +147,7 @@ namespace sqlite_orm {
 
         template<typename D>
         SQLITE_ORM_INLINE_VAR constexpr bool can_yield_xdestroy_v =
-            can_yield_fp_v<D>&& std::is_convertible<yielded_fn_t<D>, xdestroy_fn_t>::value;
+            can_yield_fp_v<D> && std::is_convertible<yielded_fn_t<D>, xdestroy_fn_t>::value;
 
         template<typename D, typename P>
         SQLITE_ORM_INLINE_VAR constexpr bool needs_xdestroy_proxy_v =
@@ -181,7 +182,9 @@ namespace sqlite_orm {
      *  Explicitly declared for better error messages.
      */
     template<typename D, typename P>
-    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) noexcept requires(internal::is_unusable_for_xdestroy<D>) {
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) noexcept
+        requires(internal::is_unusable_for_xdestroy<D>)
+    {
         static_assert(polyfill::always_false_v<D>,
                       "A function pointer, which is not of type xdestroy_fn_t, is prohibited.");
         return nullptr;
@@ -200,7 +203,9 @@ namespace sqlite_orm {
      *  is invocable with the non-q-qualified pointer value.
      */
     template<typename D, typename P>
-    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) noexcept requires(internal::needs_xdestroy_proxy<D, P>) {
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) noexcept
+        requires(internal::needs_xdestroy_proxy<D, P>)
+    {
         return internal::xdestroy_proxy<D, P>;
     }
 
@@ -219,7 +224,9 @@ namespace sqlite_orm {
      *  is invocable with the non-q-qualified pointer value.
      */
     template<typename D, typename P>
-    constexpr xdestroy_fn_t obtain_xdestroy_for(D d, P*) noexcept requires(internal::yields_xdestroy<D>) {
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D d, P*) noexcept
+        requires(internal::yields_xdestroy<D>)
+    {
         return d;
     }
 #else

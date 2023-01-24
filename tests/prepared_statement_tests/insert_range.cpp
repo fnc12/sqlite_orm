@@ -1,5 +1,5 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 #include <algorithm>
 
 #include "prepared_common.h"
@@ -8,7 +8,7 @@ using namespace sqlite_orm;
 
 TEST_CASE("Prepared insert range") {
     using namespace PreparedStatementTests;
-    using Catch::Matchers::Contains;
+    using Catch::Matchers::ContainsSubstring;
     using Catch::Matchers::UnorderedEquals;
 
     const int defaultVisitTime = 50;
@@ -48,14 +48,14 @@ TEST_CASE("Prepared insert range") {
     SECTION("empty") {
         SECTION("strict") {
             REQUIRE_THROWS_WITH(storage.prepare(insert_range(users.begin(), users.end())),
-                                Contains("incomplete input"));
+                                ContainsSubstring("incomplete input"));
         }
         SECTION("container with pointers") {
             std::vector<std::unique_ptr<User>> usersPointers;
             REQUIRE_THROWS_WITH(
                 storage.prepare(
                     insert_range(usersPointers.begin(), usersPointers.end(), &std::unique_ptr<User>::operator*)),
-                Contains("incomplete input"));
+                ContainsSubstring("incomplete input"));
         }
     }
     SECTION("one") {
@@ -70,7 +70,7 @@ TEST_CASE("Prepared insert range") {
         SECTION("container of pointers") {
             std::vector<std::unique_ptr<User>> usersPointers;
             usersPointers.reserve(users.size());
-            std::transform(users.begin(), users.end(), std::back_inserter(usersPointers), [](const User &user) {
+            std::transform(users.begin(), users.end(), std::back_inserter(usersPointers), [](const User& user) {
                 return std::make_unique<User>(user);
             });
             auto statement = storage.prepare(
@@ -98,19 +98,19 @@ TEST_CASE("Prepared insert range") {
             decltype(users) otherUsers;
             otherUsers.push_back(User{6, "DJ Alban"});
             otherUsers.push_back(User{7, "Flo Rida"});
-            for(auto &user: otherUsers) {
+            for(auto& user: otherUsers) {
                 expected.push_back(user);
             }
             get<0>(statement) = otherUsers.begin();
             get<1>(statement) = otherUsers.end();
             storage.execute(statement);
 
-            std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
-            std::ignore = get<1>(static_cast<const decltype(statement) &>(statement));
+            std::ignore = get<0>(static_cast<const decltype(statement)&>(statement));
+            std::ignore = get<1>(static_cast<const decltype(statement)&>(statement));
         }
         SECTION("container of pointers") {
             std::vector<std::unique_ptr<User>> usersPointers;
-            std::transform(users.begin(), users.end(), std::back_inserter(usersPointers), [](const User &user) {
+            std::transform(users.begin(), users.end(), std::back_inserter(usersPointers), [](const User& user) {
                 return std::make_unique<User>(user);
             });
             auto statement = storage.prepare(
@@ -124,15 +124,15 @@ TEST_CASE("Prepared insert range") {
             decltype(usersPointers) otherUsers;
             otherUsers.emplace_back(new User{6, "DJ Alban"});
             otherUsers.emplace_back(new User{7, "Flo Rida"});
-            for(auto &user: otherUsers) {
+            for(auto& user: otherUsers) {
                 expected.push_back(*user);
             }
             get<0>(statement) = otherUsers.begin();
             get<1>(statement) = otherUsers.end();
             storage.execute(statement);
 
-            std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
-            std::ignore = get<1>(static_cast<const decltype(statement) &>(statement));
+            std::ignore = get<0>(static_cast<const decltype(statement)&>(statement));
+            std::ignore = get<1>(static_cast<const decltype(statement)&>(statement));
         }
     }
     auto rows = storage.get_all<User>();
