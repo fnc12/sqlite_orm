@@ -40,7 +40,7 @@ namespace sqlite_orm {
             partial_trigger_t(T trigger_base, S... statements) :
                 base{std::move(trigger_base)}, statements{std::make_tuple<S...>(std::forward<S>(statements)...)} {}
 
-            partial_trigger_t &end() {
+            partial_trigger_t& end() {
                 return *this;
             }
         };
@@ -109,7 +109,7 @@ namespace sqlite_orm {
 
             trigger_base_t(trigger_type_base type_base_) : type_base(std::move(type_base_)) {}
 
-            trigger_base_t &for_each_row() {
+            trigger_base_t& for_each_row() {
                 this->do_for_each_row = true;
                 return *this;
             }
@@ -270,7 +270,7 @@ namespace sqlite_orm {
     }
 
     template<class T, class... S>
-    internal::trigger_t<T, S...> make_trigger(std::string name, const internal::partial_trigger_t<T, S...> &part) {
+    internal::trigger_t<T, S...> make_trigger(std::string name, const internal::partial_trigger_t<T, S...>& part) {
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {move(name), std::move(part.base), std::move(part.statements)});
     }
 

@@ -1,5 +1,5 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 using namespace sqlite_orm;
 
@@ -14,11 +14,11 @@ TEST_CASE("In") {
             User(int id) : id{id} {}
 #endif
 
-            bool operator==(const User &other) const {
+            bool operator==(const User& other) const {
                 return this->id == other.id;
             }
 
-            std::ostream &operator<<(std::ostream &os) const {
+            std::ostream& operator<<(std::ostream& os) const {
                 return os << this->id;
             }
         };

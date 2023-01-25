@@ -10,7 +10,7 @@ namespace sqlite_orm {
 
         arg_value() : arg_value(nullptr) {}
 
-        arg_value(sqlite3_value *value_) : value(value_) {}
+        arg_value(sqlite3_value* value_) : value(value_) {}
 
         template<class T>
         T get() const {
@@ -47,18 +47,18 @@ namespace sqlite_orm {
         }
 
       private:
-        sqlite3_value *value = nullptr;
+        sqlite3_value* value = nullptr;
     };
 
     struct arg_values {
 
         struct iterator {
 
-            iterator(const arg_values &container_, int index_) :
+            iterator(const arg_values& container_, int index_) :
                 container(container_), index(index_),
                 currentValue(index_ < int(container_.size()) ? container_[index_] : arg_value()) {}
 
-            iterator &operator++() {
+            iterator& operator++() {
                 ++this->index;
                 if(this->index < int(this->container.size())) {
                     this->currentValue = this->container[this->index];
@@ -87,27 +87,27 @@ namespace sqlite_orm {
                 }
             }
 
-            arg_value *operator->() const {
+            arg_value* operator->() const {
                 return &this->currentValue;
             }
 
-            bool operator==(const iterator &other) const {
+            bool operator==(const iterator& other) const {
                 return &other.container == &this->container && other.index == this->index;
             }
 
-            bool operator!=(const iterator &other) const {
+            bool operator!=(const iterator& other) const {
                 return !(*this == other);
             }
 
           private:
-            const arg_values &container;
+            const arg_values& container;
             int index = 0;
             mutable arg_value currentValue;
         };
 
         arg_values() : arg_values(0, nullptr) {}
 
-        arg_values(int argsCount_, sqlite3_value **values_) : argsCount(argsCount_), values(values_) {}
+        arg_values(int argsCount_, sqlite3_value** values_) : argsCount(argsCount_), values(values_) {}
 
         size_t size() const {
             return this->argsCount;
@@ -119,7 +119,7 @@ namespace sqlite_orm {
 
         arg_value operator[](int index) const {
             if(index < this->argsCount && index >= 0) {
-                sqlite3_value *value = this->values[index];
+                sqlite3_value* value = this->values[index];
                 return {value};
             } else {
                 throw std::system_error{orm_error_code::index_is_out_of_bounds};
@@ -140,6 +140,6 @@ namespace sqlite_orm {
 
       private:
         int argsCount = 0;
-        sqlite3_value **values = nullptr;
+        sqlite3_value** values = nullptr;
     };
 }
