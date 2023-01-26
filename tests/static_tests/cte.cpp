@@ -1,9 +1,9 @@
 #include <sqlite_orm/sqlite_orm.h>
 #ifdef SQLITE_ORM_WITH_CTE
 #include <type_traits>  //  std::is_same, std::is_constructible
-#include <tuple>    //  std::ignore
-#include <string>   //  std::string
-#include <catch2/catch.hpp>
+#include <tuple>  //  std::ignore
+#include <string>  //  std::string
+#include <catch2/catch_all.hpp>
 
 using namespace sqlite_orm;
 using internal::alias_holder;

@@ -19,13 +19,13 @@ namespace sqlite_orm {
     namespace internal {
 #ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
         /**
-         *  Constraints a deleter to be state-less.
+         *  Constrains a deleter to be state-less.
          */
         template<typename D>
         concept stateless_deleter = std::is_empty_v<D> && std::is_default_constructible_v<D>;
 
         /**
-         *  Constraints a deleter to be an integral function constant.
+         *  Constrains a deleter to be an integral function constant.
          */
         template<typename D>
         concept integral_fp_c = requires {
@@ -35,7 +35,7 @@ namespace sqlite_orm {
                                 };
 
         /**
-         *  Constraints a deleter to be or to yield a function pointer.
+         *  Constrains a deleter to be or to yield a function pointer.
          */
         template<typename D>
         concept yields_fp = requires(D d) {

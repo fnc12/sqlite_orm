@@ -1,5 +1,5 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 #include "prepared_common.h"
 
@@ -7,7 +7,7 @@ using namespace sqlite_orm;
 
 TEST_CASE("Prepared insert explicit") {
     using namespace PreparedStatementTests;
-    using Catch::Matchers::Contains;
+    using Catch::Matchers::ContainsSubstring;
     using Catch::Matchers::UnorderedEquals;
 
     const int defaultVisitTime = 50;
@@ -67,7 +67,7 @@ TEST_CASE("Prepared insert explicit") {
             {
                 user.id = 6;
                 user.name = "Nate Dogg";
-                REQUIRE_THROWS_WITH(storage.execute(statement), Contains("constraint failed"));
+                REQUIRE_THROWS_WITH(storage.execute(statement), ContainsSubstring("constraint failed"));
 
                 get<0>(statement) = user;
                 auto insertedId = storage.execute(statement);

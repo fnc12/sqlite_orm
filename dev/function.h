@@ -24,13 +24,13 @@ namespace sqlite_orm {
 
         struct user_defined_function_base {
             using func_call = std::function<
-                void(sqlite3_context *context, void *functionPointer, int argsCount, sqlite3_value **values)>;
-            using final_call = std::function<void(sqlite3_context *context, void *functionPointer)>;
+                void(sqlite3_context* context, void* functionPointer, int argsCount, sqlite3_value** values)>;
+            using final_call = std::function<void(sqlite3_context* context, void* functionPointer)>;
 
             std::string name;
             int argumentsCount = 0;
-            std::function<int *()> create;
-            void (*destroy)(int *) = nullptr;
+            std::function<int*()> create;
+            void (*destroy)(int*) = nullptr;
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
             user_defined_function_base(decltype(name) name_,
@@ -162,7 +162,7 @@ namespace sqlite_orm {
         constexpr bool is_same_pvt_v<I, PointerArg, nullptr_t, polyfill::void_t<typename PointerArg::tag>> = true;
 
 #if __cplusplus >= 201703L  // C++17 or later
-        template<size_t I, const char *PointerArg, const char *Binding>
+        template<size_t I, const char* PointerArg, const char* Binding>
         SQLITE_ORM_CONSTEVAL bool assert_same_pointer_type() {
             constexpr bool valid = Binding == PointerArg;
             static_assert(valid, "Pointer value types of I-th argument do not match");

@@ -832,7 +832,7 @@ namespace sqlite_orm {
             using statement_type = conflict_clause_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& /*context*/) const {
+            std::string operator()(const statement_type& statement, const Ctx&) const {
                 switch(statement) {
                     case conflict_clause_t::rollback:
                         return "ROLLBACK";

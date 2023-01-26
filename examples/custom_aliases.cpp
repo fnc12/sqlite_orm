@@ -17,12 +17,23 @@ struct Employee {
     int age = 0;
     std::string address;
     float salary = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+    Employee() {}
+    Employee(int id, std::string name, int age, std::string address, float salary) :
+        id{id}, name{move(name)}, age{age}, address{move(address)}, salary{salary} {}
+#endif
 };
 
 struct Department {
     int id = 0;
     std::string dept;
     int empId = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+    Department() {}
+    Department(int id, std::string dept, int empId) : id{id}, dept{move(dept)}, empId{empId} {}
+#endif
 };
 
 using namespace sqlite_orm;

@@ -1,6 +1,6 @@
 #include <type_traits>  //  std::is_same
 #include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 using namespace sqlite_orm;
 using internal::alias_holder;

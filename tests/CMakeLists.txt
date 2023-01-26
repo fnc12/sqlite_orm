@@ -1,5 +1,7 @@
 cmake_minimum_required (VERSION 3.2)
 
+find_package(Catch2 3 CONFIG REQUIRED)
+
 option(SQLITE_ORM_OMITS_CODECVT "Omits codec testing" OFF)
 
 add_executable(unit_tests
@@ -143,29 +145,27 @@ if (MSVC)
     if (MSVC_VERSION LESS_EQUAL 1900)
         target_compile_options(unit_tests PUBLIC
             # C4503: decorated name length exceeded
-            /wd"4503"
+            /wd4503
             # C4800: forcing value to bool (performance warning)
-            /wd"4800")
+            /wd4800)
     else()
         target_compile_options(unit_tests PUBLIC
             # warning-level 4
             /W4
             # C4127: conditional expression is constant
-            /wd"4127"
+            /wd4127
             # C4456: declaration of 'symbol' hides previous local declaration
-            /wd"4456"
+            /wd4456
             # C4458: declaration of 'symbol' hides class member
-            /wd"4458")
+            /wd4458)
     endif()
 endif()
 
 target_precompile_headers(unit_tests PRIVATE
     <sqlite_orm/sqlite_orm.h>
-    <catch2/catch.hpp>)
-# tests.cpp contains CATCH_CONFIG_MAIN
-set_source_files_properties(tests.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
+    <catch2/catch_all.hpp>)
 
-target_link_libraries(unit_tests PRIVATE sqlite_orm Catch2::Catch2)
+target_link_libraries(unit_tests PRIVATE sqlite_orm Catch2::Catch2WithMain)
 
 add_test(NAME "All_in_one_unit_test"
     COMMAND unit_tests

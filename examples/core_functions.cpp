@@ -10,6 +10,12 @@ struct MarvelHero {
     std::string name;
     std::string abilities;
     short points = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+    MarvelHero() {}
+    MarvelHero(int id, std::string name, std::string abilities, short points) :
+        id{id}, name{move(name)}, abilities{move(abilities)}, points{points} {}
+#endif
 };
 
 struct Contact {
@@ -17,6 +23,12 @@ struct Contact {
     std::string firstName;
     std::string lastName;
     std::string phone;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+    Contact() {}
+    Contact(int id, std::string firstName, std::string lastName, std::string phone) :
+        id{id}, firstName{move(firstName)}, lastName{move(lastName)}, phone{move(phone)} {}
+#endif
 };
 
 struct Customer {
@@ -33,6 +45,27 @@ struct Customer {
     std::unique_ptr<std::string> fax;
     std::string email;
     int supportRepId = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+    Customer() {}
+    Customer(int id,
+             std::string firstName,
+             std::string lastName,
+             std::string company,
+             std::string address,
+             std::string city,
+             std::string state,
+             std::string country,
+             std::string postalCode,
+             std::string phone,
+             std::unique_ptr<std::string> fax,
+             std::string email,
+             int supportRepId) :
+        id{id},
+        firstName{move(firstName)}, lastName{move(lastName)}, company{move(company)}, address{move(address)},
+        city{move(city)}, state{move(state)}, country{move(country)}, postalCode{move(postalCode)}, phone{move(phone)},
+        fax{move(fax)}, email{move(email)}, supportRepId{supportRepId} {}
+#endif
 };
 
 int main(int, char** argv) {
