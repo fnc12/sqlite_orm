@@ -259,11 +259,11 @@ namespace sqlite_orm {
                 iterate_tuple(this->elements, fk_index_sequence{}, lambda);
             }
 
-            template<class O, class L>
+            template<class Target, class L>
             void for_each_foreign_key_to(L&& lambda) const {
                 using fk_index_sequence = filter_tuple_sequence_t<elements_type, is_foreign_key>;
                 using filtered_index_sequence = filter_tuple_sequence_t<elements_type,
-                                                                        check_if_is_type<O>::template fn,
+                                                                        check_if_is_type<Target>::template fn,
                                                                         target_type_t,
                                                                         fk_index_sequence>;
                 iterate_tuple(this->elements, filtered_index_sequence{}, lambda);
