@@ -48,7 +48,8 @@ namespace sqlite_orm {
          */
         template<class A>
         SQLITE_ORM_INLINE_VAR constexpr bool is_cte_alias_v =
-            polyfill::conjunction_v<std::is_base_of<alias_tag, A>, std::is_same<polyfill::detected_t<type_t, A>, A>>;
+            polyfill::conjunction_v<std::is_base_of<alias_tag, A>,
+                                    std::is_same<polyfill::detected_t<type_t, A>, std::remove_const_t<A>>>;
 
         template<class A>
         using is_cte_alias = polyfill::bool_constant<is_cte_alias_v<A>>;
@@ -198,12 +199,21 @@ namespace sqlite_orm {
      *  @return column with table alias attached. Place it instead of a column statement in case you need to specify a
      *  column with table alias prefix like 'a.column'. For more information please look through self_join.cpp example
      */
-    template<class T, class C>
-    internal::alias_column_t<T, C> alias_column(C c) {
-        static_assert(std::is_member_pointer<C>::value,
-                      "alias_column argument must be a member pointer mapped to a storage");
+    template<class A, class C, internal::satisfies<internal::is_table_alias, A> = true>
+    internal::alias_column_t<A, C> alias_column(C c) {
+        static_assert(internal::is_cte_alias_v<internal::type_t<A>> || std::is_member_pointer<C>::value,
+                      "alias_column argument must be mapped to a storage");
         return {c};
     }
+
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+    template<auto als, class C, internal::satisfies<internal::is_table_alias, decltype(als)> = true>
+    internal::alias_column_t<decltype(als), C> alias_column(C c) {
+        static_assert(internal::is_cte_alias_v<internal::type_t<decltype(als)>> || std::is_member_pointer<C>::value,
+                      "alias_column argument must be mapped to a storage");
+        return {c};
+    }
+#endif
 
     /** 
      *  Alias a column expression.

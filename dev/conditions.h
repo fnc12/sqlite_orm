@@ -813,6 +813,18 @@ namespace sqlite_orm {
         return {};
     }
 
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+    /**
+     *  Explicit FROM function. Usage:
+     *  `storage.select(&User::id, from<"a"_cte>());`
+     */
+    template<auto... args>
+    internal::from_t<decltype(args)...> from() {
+        static_assert(std::tuple_size<std::tuple<decltype(args)...>>::value > 0, "");
+        return {};
+    }
+#endif
+
     template<class T, internal::satisfies<std::is_base_of, internal::negatable_t, T> = true>
     internal::negated_condition_t<T> operator!(T arg) {
         return {std::move(arg)};
