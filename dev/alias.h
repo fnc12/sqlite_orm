@@ -3,6 +3,9 @@
 #include <type_traits>  //  std::enable_if, std::is_base_of, std::is_member_pointer
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string
+#ifdef SQLITE_ORM_WITH_CTE
+#include <array>
+#endif
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
@@ -233,10 +236,17 @@ namespace sqlite_orm {
         return {std::move(expression)};
     }
 
-    template<class T>
-    internal::alias_holder<T> get() {
+    template<class A, internal::satisfies<internal::is_column_alias, A> = true>
+    internal::alias_holder<A> get() {
         return {};
     }
+
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+    template<auto als>
+    internal::alias_holder<decltype(als)> get() {
+        return {};
+    }
+#endif
 
     template<class T>
     using alias_a = internal::table_alias<T, 'a'>;
@@ -301,6 +311,18 @@ namespace sqlite_orm {
     using colalias_h = internal::column_alias<'h'>;
     using colalias_i = internal::column_alias<'i'>;
 
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+    /**
+     *  column_alias<'a'[, ...]> from a string literal.
+     *  E.g. "a"_col, "b"_col
+     */
+    template<internal::string_identifier_template t>
+    [[nodiscard]] consteval auto operator"" _col() {
+        return internal::to_alias<internal::column_alias, t>(std::make_index_sequence<t.size()>{});
+    }
+#endif
+
+#ifdef SQLITE_ORM_WITH_CTE
     /**
      *  column_alias<'1'[, ...]> from a numeric literal.
      *  E.g. 1_colalias, 2_colalias
@@ -311,16 +333,6 @@ namespace sqlite_orm {
         // which start at "1".
         static_assert(std::array{Chars...}[0] > '0');
         return internal::column_alias<Chars...>{};
-    }
-
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
-    /**
-     *  column_alias<'a'[, ...]> from a string literal.
-     *  E.g. "a"_col, "b"_col
-     */
-    template<internal::string_identifier_template t>
-    [[nodiscard]] consteval auto operator"" _col() {
-        return internal::to_alias<internal::column_alias, t>(std::make_index_sequence<t.size()>{});
     }
 #endif
 }

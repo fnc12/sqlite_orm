@@ -692,6 +692,17 @@ namespace sqlite_orm {
             void operator()(const node_type& /*node*/, L& /*lambda*/) const {}
         };
 
+        /**
+         *  Column alias
+         */
+        template<char... C>
+        struct ast_iterator<column_alias<C...>, void> {
+            using node_type = column_alias<C...>;
+
+            template<class L>
+            void operator()(const node_type& /*node*/, L& /*lambda*/) const {}
+        };
+
         template<class E>
         struct ast_iterator<order_by_t<E>, void> {
             using node_type = order_by_t<E>;

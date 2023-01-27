@@ -58,12 +58,26 @@ void marvel_hero_ordered_by_o_pos() {
         }
     }
     cout << endl;
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+    {
+        //  SELECT name, instr(abilities, 'o') i
+        //  FROM marvel
+        //  WHERE i > 0
+        //  ORDER BY i
+        auto rows = storage.select(columns(&MarvelHero::name, as<"i"_col>(instr(&MarvelHero::abilities, "o"))),
+                                   where("i"_col > c(0)),
+                                   order_by("i"_col));
+        for(auto& row: rows) {
+            cout << get<0>(row) << '\t' << get<1>(row) << '\n';
+        }
+    }
+    cout << endl;
+#endif
     {
         //  SELECT name, instr(abilities, 'o')
         //  FROM marvel
         //  ORDER BY 2
-        auto rows =
-            storage.select(columns(&MarvelHero::name, as<colalias_i>(instr(&MarvelHero::abilities, "o"))), order_by(2));
+        auto rows = storage.select(columns(&MarvelHero::name, instr(&MarvelHero::abilities, "o")), order_by(2));
         for(auto& row: rows) {
             cout << get<0>(row) << '\t' << get<1>(row) << '\n';
         }

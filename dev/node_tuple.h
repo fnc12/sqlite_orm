@@ -76,6 +76,12 @@ namespace sqlite_orm {
         struct node_tuple<alias_holder<A>, void> : node_tuple<void> {};
 
         /**
+         *  Column alias
+         */
+        template<char... C>
+        struct node_tuple<column_alias<C...>, void> : node_tuple<void> {};
+
+        /**
          *  Literal
          */
         template<class T>

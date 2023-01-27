@@ -267,18 +267,35 @@ TEST_CASE("ast_iterator") {
         expected.push_back(typeid(&User::id));
         internal::iterate_ast(node, lambda);
     }
+    SECTION("aliases") {
+        SECTION("holder") {
+            auto expression = get<colalias_a>() > c(0);
+            expected.push_back(typeid(int));
+            internal::iterate_ast(expression, lambda);
+        }
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+        {
+            SECTION("direct") {
+                auto expression = "a"_col > c(0);
+                expected.push_back(typeid(int));
+                internal::iterate_ast(expression, lambda);
+            }
+        }
+#endif
+    }
 #ifdef SQLITE_ORM_WITH_CTE
     SECTION("with") {
         auto expression =
             with(cte<cte_1>()(
                      union_all(select(1), select(1_ctealias->*1_colalias + c(1), where(1_ctealias->*1_colalias < 10)))),
                  select(1_ctealias->*1_colalias));
-        expected.push_back(typeid(int));
-        expected.push_back(typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>));
-        expected.push_back(typeid(int));
-        expected.push_back(typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>));
-        expected.push_back(typeid(int));
-        expected.push_back(typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>));
+        expected.insert(expected.cend(),
+                        {typeid(int),
+                         typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>),
+                         typeid(int),
+                         typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>),
+                         typeid(int),
+                         typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>)});
         internal::iterate_ast(expression, lambda);
     }
 #endif
