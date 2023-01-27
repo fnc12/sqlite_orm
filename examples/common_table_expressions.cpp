@@ -640,6 +640,88 @@ void apfelmaennchen() {
     cout << endl;
 }
 
+void sudoku() {
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+    auto storage = make_storage("");
+
+    //WITH RECURSIVE
+    //    input(sud) AS(
+    //        VALUES('53..7....6..195....98....6.8...6...34..8.3..17...2...6.6....28....419..5....8..79')
+    //    ),
+    //    digits(z, lp) AS(
+    //        VALUES('1', 1)
+    //        UNION ALL SELECT
+    //        CAST(lp + 1 AS TEXT), lp + 1 FROM digits WHERE lp < 9
+    //    ),
+    //    x(s, ind) AS(
+    //        SELECT sud, instr(sud, '.') FROM input
+    //        UNION ALL
+    //        SELECT
+    //        substr(s, 1, ind - 1) || z || substr(s, ind + 1),
+    //        instr(substr(s, 1, ind - 1) || z || substr(s, ind + 1), '.')
+    //        FROM x, digits AS z
+    //        WHERE ind > 0
+    //        AND NOT EXISTS(
+    //            SELECT 1
+    //            FROM digits AS lp
+    //            WHERE z.z = substr(s, ((ind - 1) / 9) * 9 + lp, 1)
+    //            OR z.z = substr(s, ((ind - 1) % 9) + (lp - 1) * 9 + 1, 1)
+    //            OR z.z = substr(s, (((ind - 1) / 3) % 3) * 3
+    //                + ((ind - 1) / 27) * 27 + lp
+    //                + ((lp - 1) / 3) * 6, 1)
+    //        )
+    //    )
+    //    SELECT s FROM x WHERE ind = 0;
+
+    constexpr auto input = "input"_cte;
+    constexpr auto digits = "digits"_cte;
+    using z_alias = alias_z<decltype(digits)>;
+    constexpr auto x = "_x"_cte;
+    constexpr auto sud = "sud"_col;
+    constexpr auto z = "z"_col;
+    constexpr auto lp = "lp"_col;
+    constexpr auto s = "s"_col;
+    constexpr auto ind = "ind"_col;
+    auto ast = with(
+        make_tuple(
+            cte<input>(sud)(
+                select("53..7....6..195....98....6.8...6...34..8.3..17...2...6.6....28....419..5....8..79")),
+            cte<digits>(z, lp)(union_all(
+                select(columns("1", 1)),
+                select(columns(cast<std::string>(digits->*lp + c(1)), digits->*lp + c(1)), where(digits->*lp < 9)))),
+            cte<x>(s, ind)(union_all(
+                select(columns(input->*sud, instr(input->*sud, "."))),
+                select(columns(substr(x->*s, 1, x->*ind - c(1)) || c(z) || substr(x->*s, x->*ind + c(1)),
+                               instr(substr(x->*s, 1, x->*ind - c(1)) || c(z) || substr(x->*s, x->*ind + c(1)), ".")),
+                       from<x, z_alias{}>(),
+                       where(x->*ind > 0 and
+                             not exists(select(
+                                 1 >>= lp,
+                                 from<digits>(),
+                                 where(is_equal(alias_column<z_alias>(z),
+                                                substr(x->*s, ((x->*ind - c(1)) / 9) * 9 + lp, 1)) or
+                                       is_equal(alias_column<z_alias>(z),
+                                                substr(x->*s, ((x->*ind - c(1)) % 9) + (lp - c(1)) * 9 + 1, 1)) or
+                                       is_equal(alias_column<z_alias>(z),
+                                                substr(x->*s,
+                                                       (((x->*ind - c(1)) / 3) % 3) * 3 + ((x->*ind - c(1)) / 27) * 27 +
+                                                           lp + ((lp - c(1)) / 3) * 6,
+                                                       1)))))))))),
+        select(x->*s, where(x->*ind == 0)));
+
+    string sql = storage.dump(ast);
+
+    auto stmt = storage.prepare(ast);
+    auto results = storage.execute(stmt);
+
+    cout << "Sudoku solution:\n";
+    for(const string& answer: results) {
+        cout << answer << '\n';
+    }
+    cout << endl;
+#endif
+}
+
 void show_mapping_and_backreferencing() {
     struct Object {
         int64 id;
@@ -745,6 +827,7 @@ int main() {
         depth_or_breadth_first();
         select_from_subselect();
         apfelmaennchen();
+        sudoku();
         show_mapping_and_backreferencing();
     } catch(const system_error& e) {
         cout << "[" << e.code() << "] " << e.what();
