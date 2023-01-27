@@ -16923,7 +16923,9 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
                 ss << "EXISTS ";
-                ss << serialize(statement.expression, context);
+                auto newContext = context;
+                newContext.use_parentheses = true;
+                ss << serialize(statement.expression, newContext);
                 return ss.str();
             }
         };
