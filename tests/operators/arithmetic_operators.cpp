@@ -51,13 +51,22 @@ TEST_CASE("Arithmetic operators") {
             REQUIRE(row == name + suffix);
         }
     }
-    {  //  daisy-chaining ||
+    {  //  daisy-chaining ||, left
         std::string suffix = "ototo";
         auto rows = storage.select(c(&Object::name) || suffix || ".");
         for(size_t i = 0; i < rows.size(); ++i) {
             auto& row = rows[i];
             auto& name = names[i];
             REQUIRE(row == name + suffix + ".");
+        }
+    }
+    {  //  daisy-chaining ||, right
+        std::string prefix = "ototo";
+        auto rows = storage.select(prefix || (c(&Object::name) || "."));
+        for(size_t i = 0; i < rows.size(); ++i) {
+            auto& row = rows[i];
+            auto& name = names[i];
+            REQUIRE(row == prefix + name + ".");
         }
     }
     {  //  ||
