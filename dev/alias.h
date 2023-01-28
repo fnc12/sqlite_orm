@@ -9,6 +9,7 @@
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
+#include "type_traits.h"
 
 namespace sqlite_orm {
 
