@@ -43,14 +43,17 @@ namespace sqlite_orm {
         template<class A>
         using is_table_alias = polyfill::bool_constant<is_table_alias_v<A>>;
 
-#ifdef SQLITE_ORM_WITH_CTE
         /**
          *  A CTE alias is a specialization of a table alias, which is both, a storage lookup type (mapping type) and an alias.
          */
         template<class A>
         SQLITE_ORM_INLINE_VAR constexpr bool is_cte_alias_v =
+#ifdef SQLITE_ORM_WITH_CTE
             polyfill::conjunction_v<std::is_base_of<alias_tag, A>,
                                     std::is_same<polyfill::detected_t<type_t, A>, std::remove_const_t<A>>>;
+#else
+            false;
+#endif
 
         template<class A>
         using is_cte_alias = polyfill::bool_constant<is_cte_alias_v<A>>;
@@ -76,7 +79,6 @@ namespace sqlite_orm {
         consteval auto to_alias(std::index_sequence<Idx...>) {
             return Alias<t.id[Idx]...>{};
         }
-#endif
 #endif
     }
 
