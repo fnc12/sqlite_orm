@@ -33,8 +33,8 @@ environment:
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_14=ON"
 
     # Representative for C++14
-    - job_name: Visual Studio 2015 Update 3, x64, C++14
-      appveyor_build_worker_image: Visual Studio 2015
+    - job_name: Visual Studio 2022, x64, C++14
+      appveyor_build_worker_image: Visual Studio 2022
       platform: x64
       SQLITE_ORM_CXX_STANDARD: ""
 
@@ -96,13 +96,18 @@ for:
       if "%appveyor_build_worker_image%"=="Visual Studio 2015" (set generator="Visual Studio 14 2015" %architecture%)
   install:
     - |-
+      cd C:\Tools\vcpkg
+      git fetch --tags && git checkout 2023.01.09
+      cd %APPVEYOR_BUILD_FOLDER%
+      C:\Tools\vcpkg\bootstrap-vcpkg.bat -disableMetrics
       C:\Tools\vcpkg\vcpkg integrate install
-      vcpkg install sqlite3:%platform%-windows
+      set VCPKG_DEFAULT_TRIPLET=%platform%-windows
+      vcpkg install sqlite3 catch2
   before_build:
     - |-
       mkdir compile
       cd compile
-      cmake %SQLITE_ORM_CXX_STANDARD% -DSqliteOrm_BuildTests=ON .. -G %generator% -DCMAKE_TOOLCHAIN_FILE=C:/Tools/vcpkg/scripts/buildsystems/vcpkg.cmake
+      cmake %SQLITE_ORM_CXX_STANDARD% .. -G %generator% -DCMAKE_TOOLCHAIN_FILE=C:/Tools/vcpkg/scripts/buildsystems/vcpkg.cmake
   # build examples, and run tests (ie make & make test)
   build_script:
     - |-
@@ -121,13 +126,17 @@ for:
   # using custom vcpkg triplets for building and linking dynamic dependent libraries
   install:
     - |-
+      pushd $HOME/vcpkg
+      git fetch --tags && git checkout 2023.01.09
+      popd
+      $HOME/vcpkg/bootstrap-vcpkg.sh -disableMetrics
       $HOME/vcpkg/vcpkg integrate install --overlay-triplets=vcpkg/triplets
-      vcpkg install sqlite3 --overlay-triplets=vcpkg/triplets
+      vcpkg install sqlite3 catch2 --overlay-triplets=vcpkg/triplets
   before_build:
     - |-
       mkdir compile
       cd compile
-      cmake $SQLITE_ORM_CXX_STANDARD -DSqliteOrm_BuildTests=ON .. -DCMAKE_TOOLCHAIN_FILE=$HOME/vcpkg/scripts/buildsystems/vcpkg.cmake
+      cmake $SQLITE_ORM_CXX_STANDARD .. -DCMAKE_TOOLCHAIN_FILE=$HOME/vcpkg/scripts/buildsystems/vcpkg.cmake
   # build examples, and run tests (ie make & make test)
   build_script:
     - |-
@@ -145,15 +154,15 @@ for:
   # using custom vcpkg triplets for building and linking dynamic dependent libraries
   install:
     - |-
-      git clone --depth 1 --branch 2022.05.10 https://github.com/microsoft/vcpkg.git $HOME/vcpkg
-      $HOME/vcpkg/booststrap.sh
+      git clone --depth 1 --branch 2023.01.09 https://github.com/microsoft/vcpkg.git $HOME/vcpkg
+      $HOME/vcpkg/bootstrap-vcpkg.sh -disableMetrics
       $HOME/vcpkg/vcpkg integrate install --overlay-triplets=vcpkg/triplets
-      vcpkg install sqlite3 --overlay-triplets=vcpkg/triplets
+      vcpkg install sqlite3 catch2 --overlay-triplets=vcpkg/triplets
   before_build:
     - |-
       mkdir compile
       cd compile
-      cmake $SQLITE_ORM_CXX_STANDARD -DSqliteOrm_BuildTests=ON .. -DCMAKE_TOOLCHAIN_FILE=$HOME/vcpkg/scripts/buildsystems/vcpkg.cmake
+      cmake $SQLITE_ORM_CXX_STANDARD .. -DCMAKE_TOOLCHAIN_FILE=$HOME/vcpkg/scripts/buildsystems/vcpkg.cmake
   # build examples, and run tests (ie make & make test)
   build_script:
     - |-

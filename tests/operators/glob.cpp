@@ -2,7 +2,7 @@
  *  Obtained from here https://www.tutlane.com/tutorial/sqlite/sqlite-glob-operator
  */
 #include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 #include <vector>  //  std::vector
 #include <algorithm>  //  std::find_if, std::count
 

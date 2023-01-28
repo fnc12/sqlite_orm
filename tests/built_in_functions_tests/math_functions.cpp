@@ -1,5 +1,5 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 using namespace sqlite_orm;
 
@@ -15,7 +15,7 @@ TEST_CASE("math functions") {
     auto storage = make_storage("");
     auto doubleComparator = std::bind(is_double_eq, _1, _2, Epsilon);
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-    auto optionalComparator = [](const std::optional<double> &lhs, const std::optional<double> &rhs) {
+    auto optionalComparator = [](const std::optional<double>& lhs, const std::optional<double>& rhs) {
         if(lhs.has_value() && rhs.has_value()) {
             return is_double_eq(*lhs, *rhs, Epsilon);
         } else if(!lhs.has_value() && !rhs.has_value()) {

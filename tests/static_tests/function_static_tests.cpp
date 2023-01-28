@@ -1,5 +1,5 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 #include <type_traits>  //  std::is_same
 
 using namespace sqlite_orm;
@@ -10,7 +10,7 @@ TEST_CASE("function static") {
     SECTION("scalar") {
         SECTION("variadic") {
             struct FirstFunction {
-                std::string operator()(const arg_values &args) const {
+                std::string operator()(const arg_values& args) const {
                     std::string res;
                     res.reserve(args.size());
                     for(auto value: args) {
@@ -22,7 +22,7 @@ TEST_CASE("function static") {
                     return res;
                 }
 
-                static const char *name() {
+                static const char* name() {
                     return "FIRST";
                 }
             };
@@ -118,7 +118,7 @@ TEST_CASE("function static") {
             }
             SECTION("std::string(const std::string &, const std::string &) const") {
                 struct Function {
-                    std::string operator()(const std::string &arg1, const std::string &arg2) const {
+                    std::string operator()(const std::string& arg1, const std::string& arg2) const {
                         return arg1 + arg2;
                     }
                 };
@@ -127,7 +127,7 @@ TEST_CASE("function static") {
                 STATIC_REQUIRE(!is_aggregate_function_v<Function>);
 
                 using RunMemberFunctionPointer = internal::scalar_call_function_t<Function>;
-                using ExpectedType = std::string (Function::*)(const std::string &, const std::string &) const;
+                using ExpectedType = std::string (Function::*)(const std::string&, const std::string&) const;
                 STATIC_REQUIRE(std::is_same<RunMemberFunctionPointer, ExpectedType>::value);
 
                 using ArgumentsTuple = internal::member_function_arguments<RunMemberFunctionPointer>::tuple_type;
@@ -140,7 +140,7 @@ TEST_CASE("function static") {
             }
             SECTION("std::string(const std::string &, const std::string &)") {
                 struct Function {
-                    std::string operator()(const std::string &arg1, const std::string &arg2) {
+                    std::string operator()(const std::string& arg1, const std::string& arg2) {
                         return arg1 + arg2;
                     }
                 };
@@ -149,7 +149,7 @@ TEST_CASE("function static") {
                 STATIC_REQUIRE(!is_aggregate_function_v<Function>);
 
                 using RunMemberFunctionPointer = internal::scalar_call_function_t<Function>;
-                using ExpectedType = std::string (Function::*)(const std::string &, const std::string &);
+                using ExpectedType = std::string (Function::*)(const std::string&, const std::string&);
                 STATIC_REQUIRE(std::is_same<RunMemberFunctionPointer, ExpectedType>::value);
 
                 using ArgumentsTuple = internal::member_function_arguments<RunMemberFunctionPointer>::tuple_type;

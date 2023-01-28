@@ -1,5 +1,5 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 using namespace sqlite_orm;
 
@@ -189,7 +189,7 @@ TEST_CASE("Transaction guard") {
         REQUIRE(storage.count<Object>() == countBefore);
     }
     SECTION("exception propagated from dtor") {
-        using namespace Catch::Matchers;
+        using Catch::Matchers::ContainsSubstring;
 
         // create a second database connection
         auto storage2 = make_storage("guard.sqlite", table);
@@ -200,7 +200,7 @@ TEST_CASE("Transaction guard") {
         auto guard = new(&buffer) internal::transaction_guard_t{storage.transaction_guard()};
         storage.insert<Object>({});
         guard->commit_on_destroy = true;
-        REQUIRE_THROWS_WITH(guard->~transaction_guard_t(), Contains("database is locked"));
+        REQUIRE_THROWS_WITH(guard->~transaction_guard_t(), ContainsSubstring("database is locked"));
     }
     ::remove("guard.sqlite");
 }

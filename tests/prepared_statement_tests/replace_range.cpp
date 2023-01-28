@@ -1,5 +1,5 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 #include "prepared_common.h"
 
@@ -44,18 +44,18 @@ TEST_CASE("Prepared replace range") {
         return *pointer;
     };
     SECTION("empty") {
-        using namespace Catch::Matchers;
+        using Catch::Matchers::ContainsSubstring;
 
         expected.push_back(User{1, "Team BS"});
         expected.push_back(User{2, "Shy'm"});
         expected.push_back(User{3, "Maître Gims"});
         SECTION("straight") {
             REQUIRE_THROWS_WITH(storage.prepare(replace_range(users.begin(), users.end())),
-                                Contains("incomplete input"));
+                                ContainsSubstring("incomplete input"));
         }
         SECTION("pointers") {
             REQUIRE_THROWS_WITH(storage.prepare(replace_range<User>(userPointers.begin(), userPointers.end(), lambda)),
-                                Contains("incomplete input"));
+                                ContainsSubstring("incomplete input"));
         }
     }
     SECTION("one existing") {
