@@ -3657,6 +3657,16 @@ namespace sqlite_orm {
         return {std::move(l.value), std::move(r.value)};
     }
 
+    template<class R, class E, internal::satisfies<std::is_base_of, internal::conc_string, E> = true>
+    internal::conc_t<E, R> operator||(E expr, R r) {
+        return {std::move(expr), std::move(r)};
+    }
+
+    template<class L, class E, internal::satisfies<std::is_base_of, internal::conc_string, E> = true>
+    internal::conc_t<L, E> operator||(L l, E expr) {
+        return {std::move(l), std::move(expr)};
+    }
+
     template<class T, class R>
     internal::add_t<T, R> operator+(internal::expression_t<T> expr, R r) {
         return {std::move(expr.value), std::move(r)};
