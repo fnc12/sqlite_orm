@@ -4,7 +4,10 @@
 
 #include <sqlite_orm/sqlite_orm.h>
 #ifdef SQLITE_ORM_WITH_CTE
+#define ENABLE_THIS_EXAMPLE
+#endif
 
+#ifdef ENABLE_THIS_EXAMPLE
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>
 #endif
@@ -675,8 +678,8 @@ void sudoku() {
 
     constexpr auto input = "input"_cte;
     constexpr auto digits = "digits"_cte;
-    using z_alias = alias_z<decltype(digits)>;
-    constexpr auto x = "_x"_cte;
+    constexpr auto z_alias = "z"_alias(digits);
+    constexpr auto x = "x_"_cte;
     constexpr auto sud = "sud"_col;
     constexpr auto z = "z"_col;
     constexpr auto lp = "lp"_col;
@@ -688,21 +691,19 @@ void sudoku() {
                 select("53..7....6..195....98....6.8...6...34..8.3..17...2...6.6....28....419..5....8..79")),
             cte<digits>(z, lp)(union_all(
                 select(columns("1", 1)),
-                select(columns(cast<std::string>(digits->*lp + c(1)), digits->*lp + c(1)), where(digits->*lp < 9)))),
+                select(columns(cast<string>(digits->*lp + c(1)), digits->*lp + c(1)), where(digits->*lp < 9)))),
             cte<x>(s, ind)(union_all(
                 select(columns(input->*sud, instr(input->*sud, "."))),
                 select(columns(substr(x->*s, 1, x->*ind - c(1)) || c(z) || substr(x->*s, x->*ind + c(1)),
                                instr(substr(x->*s, 1, x->*ind - c(1)) || c(z) || substr(x->*s, x->*ind + c(1)), ".")),
-                       from<x, z_alias{}>(),
                        where(x->*ind > 0 and
                              not exists(select(
                                  1 >>= lp,
                                  from<digits>(),
-                                 where(is_equal(alias_column<z_alias>(z),
-                                                substr(x->*s, ((x->*ind - c(1)) / 9) * 9 + lp, 1)) or
-                                       is_equal(alias_column<z_alias>(z),
+                                 where(is_equal(z_alias->*z, substr(x->*s, ((x->*ind - c(1)) / 9) * 9 + lp, 1)) or
+                                       is_equal(z_alias->*z,
                                                 substr(x->*s, ((x->*ind - c(1)) % 9) + (lp - c(1)) * 9 + 1, 1)) or
-                                       is_equal(alias_column<z_alias>(z),
+                                       is_equal(z_alias->*z,
                                                 substr(x->*s,
                                                        (((x->*ind - c(1)) / 3) % 3) * 3 + ((x->*ind - c(1)) / 27) * 27 +
                                                            lp + ((lp - c(1)) / 3) * 6,
@@ -817,8 +818,10 @@ void show_mapping_and_backreferencing() {
         auto stmt = storage.prepare(ast);
     }
 }
+#endif
 
 int main() {
+#ifdef ENABLE_THIS_EXAMPLE
     try {
         all_integers_between(1, 10);
         supervisor_chain();
@@ -832,8 +835,7 @@ int main() {
     } catch(const system_error& e) {
         cout << "[" << e.code() << "] " << e.what();
     }
+#endif
 
     return 0;
 }
-
-#endif

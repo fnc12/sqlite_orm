@@ -56,11 +56,14 @@ namespace sqlite_orm {
         };
 
         /**
-         *  Resolve all columns of an object.
+         *  Resolve all columns of a mapped object or CTE.
          *  asterisk_t<O> -> tuple<ColExpr...>
          */
         template<class DBOs, class E>
-        struct column_expression_type<DBOs, asterisk_t<E>, match_if_not<is_table_alias, E>>
+        struct column_expression_type<
+            DBOs,
+            asterisk_t<E>,
+            std::enable_if_t<polyfill::disjunction_v<polyfill::negation<is_any_table_alias<E>>, is_cte_alias<E>>>>
             : storage_traits::storage_mapped_column_expressions<DBOs, E> {};
 
         template<class A>

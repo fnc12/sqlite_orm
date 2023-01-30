@@ -4,10 +4,14 @@
 
 using namespace sqlite_orm;
 
-template<class St, class E, class V>
-void runTest(V /*value*/) {
-    using Type = internal::column_result_of_t<typename St::db_objects_type, V>;
+template<class Type, class E>
+void do_assert() {
     STATIC_REQUIRE(std::is_same<Type, E>::value);
+}
+
+template<class DBOs, class E, class V>
+void runTest(V /*value*/) {
+    do_assert<internal::column_result_of_t<DBOs, V>, E>();
 }
 
 TEST_CASE("column_result_of_t") {
@@ -37,86 +41,94 @@ TEST_CASE("column_result_of_t") {
         int id = 0;
         std::string comment;
     };
-    auto storage =
-        make_storage({}, make_table("users", make_column("id", &User::id), make_column("name", &User::name)));
+    auto dbObjects =
+        std::make_tuple(make_table("users", make_column("id", &User::id), make_column("name", &User::name)));
+    using db_objects_t = decltype(dbObjects);
 
-    using Storage = decltype(storage);
-    runTest<Storage, int>(&User::id);
-    runTest<Storage, std::string>(&User::name);
-    runTest<Storage, bool>(in(&User::id, {1, 2, 3}));
+    runTest<db_objects_t, int>(&User::id);
+    runTest<db_objects_t, std::string>(&User::name);
+    runTest<db_objects_t, bool>(in(&User::id, {1, 2, 3}));
     {
         std::vector<int> vector;
-        vector.push_back(1);
-        vector.push_back(2);
-        vector.push_back(3);
-        runTest<Storage, bool>(in(&User::id, vector));
+        vector.insert(vector.cend(), {1, 2, 3});
+        runTest<db_objects_t, bool>(in(&User::id, vector));
     }
-    runTest<Storage, bool>(in(&User::id, select(&User::id)));
-    runTest<Storage, bool>(c(&User::id).in(1, 2, 3));
-    runTest<Storage, int>(&Visit::getId);
-    runTest<Storage, std::string>(&Visit::getComment);
-    runTest<Storage, int>(&Visit::setId);
-    runTest<Storage, std::string>(&Visit::setComment);
-    runTest<Storage, std::unique_ptr<double>>(sqlite_orm::abs(&User::id));
-    runTest<Storage, int>(sqlite_orm::length(&User::id));
-    runTest<Storage, int>(sqlite_orm::unicode(&User::id));
-    runTest<Storage, std::string>(sqlite_orm::typeof_(&User::id));
-    runTest<Storage, std::string>(sqlite_orm::lower(&User::id));
-    runTest<Storage, std::string>(sqlite_orm::upper(&User::id));
-    runTest<Storage, std::unique_ptr<int>>(max(&User::id, 4));
-    runTest<Storage, std::unique_ptr<int>>(min(&User::id, 4));
-    runTest<Storage, std::unique_ptr<int>>(max(&User::id));
-    runTest<Storage, std::unique_ptr<std::string>>(max(&User::name));
-    runTest<Storage, std::unique_ptr<int>>(min(&User::id));
-    runTest<Storage, std::unique_ptr<std::string>>(min(&User::name));
-    runTest<Storage, int>(count<User>());
-    runTest<Storage, int>(count());
+    runTest<db_objects_t, bool>(in(&User::id, select(&User::id)));
+    runTest<db_objects_t, bool>(c(&User::id).in(1, 2, 3));
+    runTest<db_objects_t, int>(&Visit::getId);
+    runTest<db_objects_t, std::string>(&Visit::getComment);
+    runTest<db_objects_t, int>(&Visit::setId);
+    runTest<db_objects_t, std::string>(&Visit::setComment);
+    runTest<db_objects_t, std::unique_ptr<double>>(sqlite_orm::abs(&User::id));
+    runTest<db_objects_t, int>(sqlite_orm::length(&User::id));
+    runTest<db_objects_t, int>(sqlite_orm::unicode(&User::id));
+    runTest<db_objects_t, std::string>(sqlite_orm::typeof_(&User::id));
+    runTest<db_objects_t, std::string>(sqlite_orm::lower(&User::id));
+    runTest<db_objects_t, std::string>(sqlite_orm::upper(&User::id));
+    runTest<db_objects_t, std::unique_ptr<int>>(max(&User::id, 4));
+    runTest<db_objects_t, std::unique_ptr<int>>(min(&User::id, 4));
+    runTest<db_objects_t, std::unique_ptr<int>>(max(&User::id));
+    runTest<db_objects_t, std::unique_ptr<std::string>>(max(&User::name));
+    runTest<db_objects_t, std::unique_ptr<int>>(min(&User::id));
+    runTest<db_objects_t, std::unique_ptr<std::string>>(min(&User::name));
+    runTest<db_objects_t, int>(count<User>());
+    runTest<db_objects_t, int>(count());
     {
         struct RandomFunc {
             int operator()() const {
                 return 4;
             }
         };
-        runTest<Storage, int>(func<RandomFunc>());
+        runTest<db_objects_t, int>(func<RandomFunc>());
     }
-    runTest<Storage, int>(distinct(&User::id));
-    runTest<Storage, std::string>(distinct(&User::name));
-    runTest<Storage, int>(all(&User::id));
-    runTest<Storage, std::string>(all(&User::name));
-    runTest<Storage, std::string>(conc(&User::name, &User::id));
-    runTest<Storage, std::string>(c(&User::name) || &User::id);
-    runTest<Storage, double>(add(&User::id, 5));
-    runTest<Storage, double>(c(&User::id) + 5);
-    runTest<Storage, double>(sub(&User::id, 5));
-    runTest<Storage, double>(c(&User::id) - 5);
-    runTest<Storage, double>(mul(&User::id, 5));
-    runTest<Storage, double>(c(&User::id) * 5);
-    runTest<Storage, double>(sqlite_orm::div(&User::id, 5));
-    runTest<Storage, double>(c(&User::id) / 5);
-    runTest<Storage, double>(mod(&User::id, 5));
-    runTest<Storage, double>(c(&User::id) % 5);
-    runTest<Storage, int>(bitwise_shift_left(&User::id, 4));
-    runTest<Storage, int>(bitwise_shift_right(&User::id, 4));
-    runTest<Storage, int>(bitwise_and(&User::id, 4));
-    runTest<Storage, int>(bitwise_or(&User::id, 4));
-    runTest<Storage, int>(bitwise_not(&User::id));
-    runTest<Storage, int64>(rowid());
-    runTest<Storage, int64>(oid());
-    runTest<Storage, int64>(_rowid_());
-    runTest<Storage, int64>(rowid<User>());
-    runTest<Storage, int64>(oid<User>());
-    runTest<Storage, int64>(_rowid_<User>());
-    runTest<Storage, std::tuple<int, std::string>>(asterisk<User>());
-    runTest<Storage, std::tuple<int, std::string>>(asterisk<alias_a<User>>());
-    runTest<Storage, std::tuple<int, std::string>>(columns(&User::id, &User::name));
-    runTest<Storage, int>(column<User>(&User::id));
-    runTest<Storage, User>(object<User>());
+    runTest<db_objects_t, int>(distinct(&User::id));
+    runTest<db_objects_t, std::string>(distinct(&User::name));
+    runTest<db_objects_t, int>(all(&User::id));
+    runTest<db_objects_t, std::string>(all(&User::name));
+    runTest<db_objects_t, std::string>(conc(&User::name, &User::id));
+    runTest<db_objects_t, std::string>(c(&User::name) || &User::id);
+    runTest<db_objects_t, double>(add(&User::id, 5));
+    runTest<db_objects_t, double>(c(&User::id) + 5);
+    runTest<db_objects_t, double>(sub(&User::id, 5));
+    runTest<db_objects_t, double>(c(&User::id) - 5);
+    runTest<db_objects_t, double>(mul(&User::id, 5));
+    runTest<db_objects_t, double>(c(&User::id) * 5);
+    runTest<db_objects_t, double>(sqlite_orm::div(&User::id, 5));
+    runTest<db_objects_t, double>(c(&User::id) / 5);
+    runTest<db_objects_t, double>(mod(&User::id, 5));
+    runTest<db_objects_t, double>(c(&User::id) % 5);
+    runTest<db_objects_t, int>(bitwise_shift_left(&User::id, 4));
+    runTest<db_objects_t, int>(bitwise_shift_right(&User::id, 4));
+    runTest<db_objects_t, int>(bitwise_and(&User::id, 4));
+    runTest<db_objects_t, int>(bitwise_or(&User::id, 4));
+    runTest<db_objects_t, int>(bitwise_not(&User::id));
+    runTest<db_objects_t, int64>(rowid());
+    runTest<db_objects_t, int64>(oid());
+    runTest<db_objects_t, int64>(_rowid_());
+    runTest<db_objects_t, int64>(rowid<User>());
+    runTest<db_objects_t, int64>(oid<User>());
+    runTest<db_objects_t, int64>(_rowid_<User>());
+    runTest<db_objects_t, std::tuple<int, std::string>>(asterisk<User>());
+    runTest<db_objects_t, std::tuple<int, std::string>>(asterisk<alias_a<User>>());
+    runTest<db_objects_t, std::tuple<int, std::string>>(columns(&User::id, &User::name));
+    runTest<db_objects_t, int>(column<User>(&User::id));
+    runTest<db_objects_t, int>(alias_column<alias_a<User>>(&User::id));
+    runTest<db_objects_t, User>(object<User>());
 #ifdef SQLITE_ORM_WITH_CTE
-    runTest<Storage, int>(column<cte_1>(&User::id));
-    runTest<Storage, int>(column<cte_1>->*&User::id);
-    runTest<Storage, int>(1_ctealias->*&User::id);
+    // note: even though used with the CTE, &User::id doesn't need to be mapped into the CTE to make column results work;
+    //       this is because the result type is taken from the member pointer just because we can't look it up in the storage definition
+    auto dbObjects2 =
+        internal::storage_db_objects_cat(dbObjects, internal::make_cte_table(dbObjects, cte<cte_1>()(select(1))));
+    using db_objects2_t = decltype(dbObjects2);
+    runTest<db_objects_t, int>(column<cte_1>(&User::id));
+    runTest<db_objects_t, int>(column<cte_1>->*&User::id);
+    runTest<db_objects_t, int>(1_ctealias->*&User::id);
+    runTest<db_objects_t, int>(alias_column<alias_a<cte_1>>(&User::id));
+    runTest<db_objects2_t, int>(alias_column<alias_a<cte_1>>(1_colalias));
+    runTest<db_objects2_t, std::tuple<int>>(asterisk<cte_1>());
+    runTest<db_objects2_t, std::tuple<int>>(asterisk<alias_a<cte_1>>());
 #ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
-    runTest<Storage, int>("1"_cte->*&User::id);
+    runTest<db_objects_t, int>("1"_cte->*&User::id);
 #endif
 #endif
 }

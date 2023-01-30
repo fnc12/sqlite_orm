@@ -43,11 +43,11 @@ namespace sqlite_orm {
                 table_names.emplace(move(tableName), alias_extractor<T>::as_alias());
             }
 
-            template<class T, class C>
-            void operator()(const alias_column_t<T, C>&) const {
+            template<class A, class C>
+            void operator()(const alias_column_t<A, C>&) const {
                 // note: instead of accessing the column, we are interested in the type the column is aliased into
-                auto tableName = this->find_table_name(typeid(mapped_type_proxy_t<T>));
-                table_names.emplace(move(tableName), alias_extractor<T>::as_alias());
+                auto tableName = this->find_table_name(typeid(mapped_type_proxy_t<A>));
+                table_names.emplace(move(tableName), alias_extractor<A>::as_alias());
             }
 
             template<class T>

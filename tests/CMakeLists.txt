@@ -131,6 +131,7 @@ add_executable(unit_tests
     row_id.cpp
     trigger_tests.cpp
     ast_iterator_tests.cpp
+    table_name_collector.cpp
     pointer_passing_interface.cpp
 )
 

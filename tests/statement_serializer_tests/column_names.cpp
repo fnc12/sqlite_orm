@@ -138,6 +138,40 @@ TEST_CASE("statement_serializer column names") {
             }
         }
     }
+    SECTION("aliased column") {
+        struct Object {
+            int id = 0;
+        };
+        struct Object2 {
+            int id = 0;
+        };
+        auto table = make_table("object", make_column("id", &Object::id));
+        using db_objects_t = internal::db_objects_tuple<decltype(table)>;
+        db_objects_t dbObjects{table};
+        SECTION("regular") {
+            using context_t = internal::serializer_context<db_objects_t>;
+            context_t context{dbObjects};
+            context.skip_table_name = false;
+            using als = alias_a<Object>;
+            auto value = serialize(alias_column<als>(&Object::id), context);
+            REQUIRE(value == R"("a"."id")");
+        }
+#ifdef SQLITE_ORM_WITH_CTE
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+        SECTION("cte") {
+            auto dbObjects2 =
+                internal::storage_db_objects_cat(dbObjects,
+                                                 internal::make_cte_table(dbObjects, cte<1_ctealias>()(select(1))));
+            using context_t = internal::serializer_context<decltype(dbObjects2)>;
+            context_t context{dbObjects2};
+            context.skip_table_name = false;
+            constexpr auto als = "a"_alias(1_ctealias);
+            auto value = serialize(als->*1_colalias, context);
+            REQUIRE(value == R"("a"."1")");
+        }
+#endif
+#endif
+    }
     SECTION("escaped identifiers") {
         struct Object1 {
             int id = 0;

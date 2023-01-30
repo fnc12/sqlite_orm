@@ -6,6 +6,7 @@
 #include "tuple_helper/tuple_iteration.h"
 #include "type_traits.h"
 #include "conditions.h"
+#include "alias.h"
 #include "select_constraints.h"
 #include "operators.h"
 #include "core_functions.h"
@@ -29,8 +30,8 @@ namespace sqlite_orm {
          *  E.g. if we pass `where(is_equal(5, max(&User::id, 10))` then
          *  callable object will be called with 5, &User::id and 10.
          *  ast_iterator is used mostly in finding literals to be bound to
-         *  a statement. To use it just call `iterate_ast(object, callable);`
-         *  T is an ast element. E.g. where_t
+         *  a statement, and collecting table names.
+         *  To use it just call `iterate_ast(object, callable);` T is an ast element.
          */
         template<class T, class SFINAE = void>
         struct ast_iterator {
@@ -204,7 +205,7 @@ namespace sqlite_orm {
         };
 
         template<class With>
-        struct ast_iterator<With, std::enable_if_t<polyfill::is_specialization_of_v<With, with_t>>> {
+        struct ast_iterator<With, match_specialization_of<With, with_t>> {
             using node_type = With;
 
             template<class L>
@@ -679,7 +680,7 @@ namespace sqlite_orm {
         };
 
         /**
-         *  Column alias or literal
+         *  Column alias or literal: skipped
          */
         template<class T>
         struct ast_iterator<
@@ -693,7 +694,7 @@ namespace sqlite_orm {
         };
 
         /**
-         *  Column alias
+         *  Column alias: skipped
          */
         template<char... C>
         struct ast_iterator<column_alias<C...>, void> {

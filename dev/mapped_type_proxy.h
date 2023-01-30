@@ -17,7 +17,7 @@ namespace sqlite_orm {
         struct mapped_type_proxy : std::remove_const<T> {};
 
         template<class T>
-        struct mapped_type_proxy<T, match_if<is_table_alias, T>> {
+        struct mapped_type_proxy<T, match_if<is_any_table_alias, T>> {
             using type = std::remove_const_t<type_t<T>>;
         };
 

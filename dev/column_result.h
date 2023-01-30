@@ -267,11 +267,11 @@ namespace sqlite_orm {
         struct column_result_t<DBOs, as_t<T, E>, void> : column_result_t<DBOs, std::decay_t<E>> {};
 
         template<class DBOs, class T>
-        struct column_result_t<DBOs, asterisk_t<T>, match_if_not<is_table_alias, T>>
+        struct column_result_t<DBOs, asterisk_t<T>, match_if_not<is_any_table_alias, T>>
             : storage_traits::storage_mapped_columns<DBOs, T> {};
 
         template<class DBOs, class A>
-        struct column_result_t<DBOs, asterisk_t<A>, match_if<is_table_alias, A>>
+        struct column_result_t<DBOs, asterisk_t<A>, match_if<is_any_table_alias, A>>
             : storage_traits::storage_mapped_columns<DBOs, type_t<A>> {};
 
         template<class DBOs, class T>
