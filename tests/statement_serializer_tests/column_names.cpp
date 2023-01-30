@@ -157,7 +157,7 @@ TEST_CASE("statement_serializer column names") {
             REQUIRE(value == R"("a"."id")");
         }
 #ifdef SQLITE_ORM_WITH_CTE
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
         SECTION("cte") {
             auto dbObjects2 =
                 internal::storage_db_objects_cat(dbObjects,

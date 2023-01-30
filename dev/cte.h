@@ -1,6 +1,6 @@
 #pragma once
 
-#include "functional/cxx_core_features.h"
+#include "functional/cxx_universal.h"
 #ifdef SQLITE_ORM_WITH_CTE
 #include <utility>  //  std::make_index_sequence
 
@@ -27,7 +27,7 @@ namespace sqlite_orm {
     [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator"" _ctealias() {
         return internal::cte_alias<Chars...>{};
     }
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
     /**
      *  cte_alias<'1'[, ...]> from a string literal.
      *  E.g. "1"_cte, "2"_cte
@@ -41,7 +41,7 @@ namespace sqlite_orm {
     }
 #endif
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
     using cte_1 = decltype("1"_cte);
     using cte_2 = decltype("2"_cte);
     using cte_3 = decltype("3"_cte);

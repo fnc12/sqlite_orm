@@ -31,7 +31,7 @@ void all_integers_between(int from, int end) {
         //WITH RECURSIVE
         //    cnt(x) AS(VALUES(1) UNION ALL SELECT x + 1 FROM cnt WHERE x < 1000000)
         //    SELECT x FROM cnt;
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
         constexpr auto cnt_cte = "cnt"_cte;
         auto ast =
             with(cte<cnt_cte>()(
@@ -73,7 +73,7 @@ void all_integers_between(int from, int end) {
         //        LIMIT 1000000
         //    )
         //    SELECT x FROM cnt;
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
         auto ast = with(cte<"cnt"_cte>("y"_col)(
                             union_all(select(from >>= "x"_col), select("cnt"_cte->*"y"_col + c(1), limit(end)))),
                         select("cnt"_cte->*"y"_col));
@@ -154,7 +154,7 @@ void supervisor_chain() {
         //        WHERE parent.name = chain.boss
         //    )
         //    SELECT name FROM chain;
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
         auto ast = with(cte<"chain"_cte>()(union_all(
                             select(asterisk<Org>(), where(&Org::name == c("Fred"))),
                             select(asterisk<alias_a<Org>>(),
@@ -220,7 +220,7 @@ void works_for_alice() {
         //    )
         //    SELECT avg(height) FROM org
         //    WHERE org.name IN works_for_alice;
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
         constexpr auto works_for_alice = "works_for_alice"_cte;
         auto ast =
             with(cte<works_for_alice>("n"_col)(
@@ -305,7 +305,7 @@ void family_tree() {
     //    WHERE ancestor_of_alice.name = family.name
     //    AND died IS NULL
     //    ORDER BY born;
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
     constexpr auto parent_of = "parent_of"_cte;
     constexpr auto ancestor_of_alice = "ancestor_of_alice"_cte;
     constexpr auto parent_col = "parent"_col;
@@ -423,7 +423,7 @@ void depth_or_breadth_first() {
         //        ORDER BY 2
         //    )
         //    SELECT substr('..........', 1, level * 3) || name FROM under_alice;
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
         constexpr auto under_alice = "under_alice"_cte;
         constexpr auto level_col = "level"_col;
         auto ast = with(cte<under_alice>(&Org::name, level_col)(
@@ -464,7 +464,7 @@ void depth_or_breadth_first() {
         //        ORDER BY 2
         //    )
         //    SELECT substr('..........', 1, level * 3) || name FROM under_alice;
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
         constexpr auto under_alice = "under_alice"_cte;
         constexpr auto level_col = "level"_col;
         auto ast = with(cte<under_alice>(&Org::name, level_col)(
@@ -518,7 +518,7 @@ void select_from_subselect() {
     });
 
     // SELECT * FROM (SELECT salary, comm AS commmission FROM emp) WHERE salary < 5000
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
     constexpr auto sub = "sub"_cte;
     auto expression = with(cte<sub>()(select(columns(&Employee::m_salary, &Employee::m_commission))),
                            select(asterisk<sub>(), where(c(sub->*&Employee::m_salary) < 5000)));
@@ -559,7 +559,7 @@ void apfelmaennchen() {
     //        FROM m2 GROUP BY cy
     //    )
     //    SELECT group_concat(rtrim(t), x'0a') FROM a;
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
     constexpr auto xaxis = "xaxis"_cte;
     constexpr auto yaxis = "yaxis"_cte;
     constexpr auto m = "mi"_cte;
@@ -644,7 +644,7 @@ void apfelmaennchen() {
 }
 
 void sudoku() {
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
     auto storage = make_storage("");
 
     //WITH RECURSIVE

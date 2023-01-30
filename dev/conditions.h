@@ -813,7 +813,7 @@ namespace sqlite_orm {
         return {};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
     /**
      *  Explicit FROM function. Usage:
      *  `storage.select(&User::id, from<"a"_cte>());`
@@ -1022,7 +1022,7 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
     template<auto als, class O>
     internal::left_join_t<decltype(als), O> left_join(O o) {
         return {std::move(o)};
@@ -1034,7 +1034,7 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
     template<auto als, class O>
     internal::join_t<decltype(als), O> join(O o) {
         return {std::move(o)};
@@ -1046,7 +1046,7 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
     template<auto als, class O>
     internal::left_outer_join_t<decltype(als), O> left_outer_join(O o) {
         return {std::move(o)};
@@ -1058,7 +1058,7 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
     template<auto als, class O>
     internal::inner_join_t<decltype(als), O> inner_join(O o) {
         return {std::move(o)};

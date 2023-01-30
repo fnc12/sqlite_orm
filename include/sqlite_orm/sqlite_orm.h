@@ -83,8 +83,8 @@ __pragma(push_macro("max"))
 #define SQLITE_ORM_CONCEPTS_SUPPORTED
 #endif
 
-#if __cpp_nontype_template_args >= 201911
-#define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#if __cpp_nontype_template_args >= 201911L
+#define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
 #endif
 
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
@@ -144,6 +144,12 @@ using std::nullptr_t;
 
 #if defined(_MSC_VER) && (_MSC_VER < 1920)
 #define SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+#endif
+
+// overwrite SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#if(__cpp_nontype_template_args < 201911L) &&                                                                          \
+    (defined(__clang__) && (__clang_major__ >= 12) && (__cplusplus >= 202002L))
+#define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
 #endif
 
 namespace sqlite_orm {
@@ -3659,7 +3665,7 @@ namespace sqlite_orm {
         return {};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
     /**
      *  Explicit FROM function. Usage:
      *  `storage.select(&User::id, from<"a"_cte>());`
@@ -3868,7 +3874,7 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
     template<auto als, class O>
     internal::left_join_t<decltype(als), O> left_join(O o) {
         return {std::move(o)};
@@ -3880,7 +3886,7 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
     template<auto als, class O>
     internal::join_t<decltype(als), O> join(O o) {
         return {std::move(o)};
@@ -3892,7 +3898,7 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
     template<auto als, class O>
     internal::left_outer_join_t<decltype(als), O> left_outer_join(O o) {
         return {std::move(o)};
@@ -3904,7 +3910,7 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
     template<auto als, class O>
     internal::inner_join_t<decltype(als), O> inner_join(O o) {
         return {std::move(o)};
@@ -4407,7 +4413,7 @@ namespace sqlite_orm {
 
     namespace internal {
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
         /*
          *  Helper class to facilitate user-defined string literal operator template
          */
@@ -4574,7 +4580,7 @@ namespace sqlite_orm {
         }
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
     template<auto als,
              class C,
              std::enable_if_t<polyfill::conjunction_v<internal::is_table_alias<decltype(als)>,
@@ -4612,7 +4618,7 @@ namespace sqlite_orm {
         return {std::move(expression)};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
     template<auto als, class E>
     internal::as_t<decltype(als), E> as(E expression) {
         return {std::move(expression)};
@@ -4640,7 +4646,7 @@ namespace sqlite_orm {
         return {};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
     template<auto als>
     internal::alias_holder<decltype(als)> get() {
         return {};
@@ -4700,7 +4706,7 @@ namespace sqlite_orm {
     template<class T>
     using alias_z = internal::table_alias<T, 'z'>;
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
 #ifdef SQLITE_ORM_WITH_CTE
     namespace internal {
         template<char A, char... C>
@@ -4740,7 +4746,7 @@ namespace sqlite_orm {
     using colalias_h = internal::column_alias<'h'>;
     using colalias_i = internal::column_alias<'i'>;
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
     /**
      *  column_alias<'a'[, ...]> from a string literal.
      *  E.g. "a"_col, "b"_col
@@ -7741,7 +7747,7 @@ namespace sqlite_orm {
         return builder_type{{std::move(explicitColumns)...}};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
     template<auto label,
              class... ExplicitCols,
              std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
@@ -7814,7 +7820,7 @@ namespace sqlite_orm {
         return {definedOrder};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
     template<auto A, internal::satisfies<internal::is_any_table_alias, decltype(A)> = true>
     internal::asterisk_t<decltype(A)> asterisk(bool definedOrder = false) {
         return {definedOrder};
@@ -11463,7 +11469,7 @@ namespace sqlite_orm {
             constexpr auto ColIdx = tuple_index_of_v<ColAlias, alias_types_tuple>;
             static_assert(ColIdx != -1, "No such column mapped into the CTE.");
 
-            return &aliased_field<ColAlias, std::tuple_element_t<ColIdx, cte_mapper_type::fields_type>>::field;
+            return &aliased_field<ColAlias, std::tuple_element_t<ColIdx, typename cte_mapper_type::fields_type>>::field;
         }
 #endif
 
@@ -11497,7 +11503,7 @@ namespace sqlite_orm {
                 transform_tuple_t<typename cte_mapper_type::final_colrefs_tuple, alias_holder_type_or_none_t>;
 
             // lookup index of ColAlias in alias_types_tuple
-            static constexpr auto I = tuple_index_of_v<ColAlias, alias_types_tuple>;
+            constexpr auto I = tuple_index_of_v<ColAlias, alias_types_tuple>;
             static_assert(I != -1, "No such column mapped into the CTE.");
 
             // note: we could "materialize" the alias to an `aliased_field<>::*` and use the regular `table_t<>::find_column_name()` mechanism;
@@ -20323,7 +20329,7 @@ namespace sqlite_orm {
     [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator"" _ctealias() {
         return internal::cte_alias<Chars...>{};
     }
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
     /**
      *  cte_alias<'1'[, ...]> from a string literal.
      *  E.g. "1"_cte, "2"_cte
@@ -20337,7 +20343,7 @@ namespace sqlite_orm {
     }
 #endif
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
     using cte_1 = decltype("1"_cte);
     using cte_2 = decltype("2"_cte);
     using cte_3 = decltype("3"_cte);

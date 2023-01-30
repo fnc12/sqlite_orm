@@ -21,7 +21,7 @@ void runTest(ColAlias /*colRef*/) {
 TEST_CASE("aliases") {
     SECTION("column alias expressions") {
         runTest<alias_holder<column_alias<'a'>>>(get<colalias_a>());
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
         runTest<alias_holder<column_alias<'a'>>>(get<"a"_col>());
         runTest<column_alias<'a'>>("a"_col);
         constexpr auto z_alias = "z"_alias("1"_cte);

@@ -279,7 +279,7 @@ TEST_CASE("ast_iterator") {
             expected.push_back(typeid(int));
             iterate_ast(expression, lambda);
         }
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
         {
             SECTION("direct") {
                 auto expression = "a"_col > c(0);
@@ -316,7 +316,7 @@ TEST_CASE("ast_iterator") {
                          typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>)});
         iterate_ast(expression, lambda);
     }
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
     SECTION("aliased CTE column pointer") {
         constexpr auto c = "1"_cte;
         constexpr auto z_alias = "z"_alias(c);

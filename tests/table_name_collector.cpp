@@ -69,7 +69,7 @@ TEST_CASE("table name collector") {
             expected.emplace(alias_extractor<decltype(c)>::extract(), "");
             iterate_ast(expression, collector);
         }
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
         SECTION("aliased CTE column") {
             constexpr auto c = "1"_cte;
             constexpr auto z_alias = "z"_alias(c);

@@ -28,3 +28,9 @@
 #if defined(_MSC_VER) && (_MSC_VER < 1920)
 #define SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
 #endif
+
+// overwrite SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#if(__cpp_nontype_template_args < 201911L) &&                                                                          \
+    (defined(__clang__) && (__clang_major__ >= 12) && (__cplusplus >= 202002L))
+#define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#endif

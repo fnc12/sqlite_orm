@@ -88,7 +88,7 @@ TEST_CASE("statement_serializer select constraints") {
             value = serialize(expression, context);
             expected = R"(FROM "1" "z")";
         }
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
         SECTION("without alias 2") {
             auto expression = from<"1"_cte>();
             value = serialize(expression, context);

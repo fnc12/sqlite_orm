@@ -534,7 +534,7 @@ namespace sqlite_orm {
         return builder_type{{std::move(explicitColumns)...}};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
     template<auto label,
              class... ExplicitCols,
              std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
@@ -607,7 +607,7 @@ namespace sqlite_orm {
         return {definedOrder};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
     template<auto A, internal::satisfies<internal::is_any_table_alias, decltype(A)> = true>
     internal::asterisk_t<decltype(A)> asterisk(bool definedOrder = false) {
         return {definedOrder};

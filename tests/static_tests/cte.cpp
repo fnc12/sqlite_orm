@@ -34,7 +34,7 @@ TEST_CASE("CTE type traits") {
         runTest<tuple<decltype(&Org::id)>>(&Org::id);
         runTest<tuple<decltype(&Org::getId)>>(&Org::getId);
         runTest<tuple<alias_holder<column_alias<'1'>>>>(1_colalias);
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
         runTest<tuple<alias_holder<column_alias<'a'>>>>("a"_col);
 #endif
         runTest<tuple<column_t<int64 Org::*, internal::empty_setter>>>(make_column("id", &Org::id));
