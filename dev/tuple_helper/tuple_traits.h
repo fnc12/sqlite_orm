@@ -1,7 +1,8 @@
 #pragma once
 
 #include <type_traits>  //  std::is_same
-#include <utility>  //  std::index_sequence, std::make_index_sequence
+#include <utility>  //  std::index_sequence, std::index_sequence_for
+#include <algorithm>  //  std::max
 #include <tuple>
 
 #include "../functional/cxx_universal.h"

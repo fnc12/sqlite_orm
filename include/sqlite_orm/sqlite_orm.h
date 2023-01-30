@@ -1033,7 +1033,8 @@ namespace sqlite_orm {
 // #include "tuple_helper/tuple_traits.h"
 
 #include <type_traits>  //  std::is_same
-#include <utility>  //  std::index_sequence, std::make_index_sequence
+#include <utility>  //  std::index_sequence, std::index_sequence_for
+#include <algorithm>  //  std::max
 #include <tuple>
 
 // #include "../functional/cxx_universal.h"
@@ -20301,7 +20302,7 @@ namespace sqlite_orm {
 }
 #pragma once
 
-// #include "functional/cxx_core_features.h"
+// #include "functional/cxx_universal.h"
 
 #ifdef SQLITE_ORM_WITH_CTE
 #include <utility>  //  std::make_index_sequence
