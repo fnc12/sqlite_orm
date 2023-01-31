@@ -260,8 +260,9 @@ namespace sqlite_orm {
                 this->execute(statement);
             }
 
-            template<class... Args, class... Wargs>
-            void update_all(internal::set_t<Args...> set, Wargs... wh) {
+            template<class S, class... Wargs>
+            void update_all(S set, Wargs... wh) {
+                static_assert(internal::is_set<S>::value, "first argument in update_all can be either set or dynamic_set");
                 auto statement = this->prepare(sqlite_orm::update_all(std::move(set), std::forward<Wargs>(wh)...));
                 this->execute(statement);
             }
@@ -1041,10 +1042,10 @@ namespace sqlite_orm {
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
-            template<class... Args, class... Wargs>
-            prepared_statement_t<update_all_t<set_t<Args...>, Wargs...>>
-            prepare(update_all_t<set_t<Args...>, Wargs...> upd) {
-                return prepare_impl<update_all_t<set_t<Args...>, Wargs...>>(std::move(upd));
+            template<class S, class... Wargs>
+            prepared_statement_t<update_all_t<S, Wargs...>>
+            prepare(update_all_t<S, Wargs...> upd) {
+                return prepare_impl<update_all_t<S, Wargs...>>(std::move(upd));
             }
 
             template<class T, class... Args>
@@ -1344,13 +1345,11 @@ namespace sqlite_orm {
                 perform_step(stmt);
             }
 
-            template<class... Args, class... Wargs>
-            void execute(const prepared_statement_t<update_all_t<set_t<Args...>, Wargs...>>& statement) {
+            template<class S, class... Wargs>
+            void execute(const prepared_statement_t<update_all_t<S, Wargs...>>& statement) {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
                 conditional_binder bind_node{stmt};
-                iterate_tuple(statement.expression.set.assigns, [&bind_node](auto& setArg) {
-                    iterate_ast(setArg, bind_node);
-                });
+                iterate_ast(statement.expression.set, bind_node);
                 iterate_ast(statement.expression.conditions, bind_node);
                 perform_step(stmt);
             }

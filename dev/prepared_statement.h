@@ -15,6 +15,7 @@
 #include "select_constraints.h"
 #include "values.h"
 #include "ast/upsert_clause.h"
+#include "ast/set.h"
 
 namespace sqlite_orm {
 
@@ -128,13 +129,12 @@ namespace sqlite_orm {
         };
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
-        template<class T, class... Wargs>
-        struct update_all_t;
-
-        template<class... Args, class... Wargs>
-        struct update_all_t<set_t<Args...>, Wargs...> {
-            using set_type = set_t<Args...>;
+        template<class S, class... Wargs>
+        struct update_all_t {
+            using set_type = S;
             using conditions_type = std::tuple<Wargs...>;
+
+            static_assert(is_set<S>::value, "update_all_t must have set or dynamic set as the first argument");
 
             set_type set;
             conditions_type conditions;
@@ -687,8 +687,9 @@ namespace sqlite_orm {
      *  Create an update all statement.
      *  Usage: storage.update_all(set(...), ...);
      */
-    template<class... Args, class... Wargs>
-    internal::update_all_t<internal::set_t<Args...>, Wargs...> update_all(internal::set_t<Args...> set, Wargs... wh) {
+    template<class S, class... Wargs>
+    internal::update_all_t<S, Wargs...> update_all(S set, Wargs... wh) {
+        static_assert(internal::is_set<S>::value, "first argument in update_all can be either set or dynamic_set");
         using args_tuple = std::tuple<Wargs...>;
         internal::validate_conditions<args_tuple>();
         args_tuple conditions{std::forward<Wargs>(wh)...};

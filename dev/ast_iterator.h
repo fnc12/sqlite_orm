@@ -17,6 +17,7 @@
 #include "ast/into.h"
 #include "ast/group_by.h"
 #include "ast/exists.h"
+#include "ast/set.h"
 
 namespace sqlite_orm {
 
@@ -275,9 +276,9 @@ namespace sqlite_orm {
         };
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
-        template<class... Args, class... Wargs>
-        struct ast_iterator<update_all_t<set_t<Args...>, Wargs...>, void> {
-            using node_type = update_all_t<set_t<Args...>, Wargs...>;
+        template<class S, class... Wargs>
+        struct ast_iterator<update_all_t<S, Wargs...>, void> {
+            using node_type = update_all_t<S, Wargs...>;
 
             template<class L>
             void operator()(const node_type& u, L& lambda) const {
@@ -301,8 +302,18 @@ namespace sqlite_orm {
             using node_type = set_t<Args...>;
 
             template<class L>
-            void operator()(const node_type& s, L& lambda) const {
-                iterate_ast(s.assigns, lambda);
+            void operator()(const node_type& node, L& lambda) const {
+                iterate_ast(node.assigns, lambda);
+            }
+        };
+
+        template<class S>
+        struct ast_iterator<dynamic_set_t<S>, void> {
+            using node_type = dynamic_set_t<S>;
+
+            template<class L>
+            void operator()(const node_type& node, L& lambda) const {
+                iterate_ast(node.entries, lambda);
             }
         };
 

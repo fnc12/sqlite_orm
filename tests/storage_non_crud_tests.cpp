@@ -58,6 +58,22 @@ TEST_CASE("explicit from") {
     REQUIRE(expected == rows);
 }
 
+TEST_CASE("update_all") {
+    struct Record {
+        int id = 0;
+        std::string name;
+    };
+    auto storage = make_storage({},
+                                make_table("records",
+                                           make_column("id", &Record::id, primary_key()),
+                                           make_column("name", &Record::name)));
+    storage.sync_schema();
+    auto vars = dynamic_set( storage );
+    vars.push_back(assign(&Record::name, "Bob"));
+    storage.update_all(vars, where(is_equal(&Record::id, 10)));
+
+}
+
 TEST_CASE("update set null") {
 
     struct User {
