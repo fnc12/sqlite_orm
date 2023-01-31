@@ -527,7 +527,9 @@ namespace sqlite_orm {
                 auto newContext = this->context;
                 newContext.skip_table_name = true;
                 auto columnName = serialize(order_by.expression, newContext);
-                this->entries.emplace_back(std::move(columnName), order_by.asc_desc, std::move(order_by._collate_argument));
+                this->entries.emplace_back(std::move(columnName),
+                                           order_by.asc_desc,
+                                           std::move(order_by._collate_argument));
             }
 
             const_iterator begin() const {

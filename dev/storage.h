@@ -262,7 +262,8 @@ namespace sqlite_orm {
 
             template<class S, class... Wargs>
             void update_all(S set, Wargs... wh) {
-                static_assert(internal::is_set<S>::value, "first argument in update_all can be either set or dynamic_set");
+                static_assert(internal::is_set<S>::value,
+                              "first argument in update_all can be either set or dynamic_set");
                 auto statement = this->prepare(sqlite_orm::update_all(std::move(set), std::forward<Wargs>(wh)...));
                 this->execute(statement);
             }
@@ -1043,8 +1044,7 @@ namespace sqlite_orm {
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
             template<class S, class... Wargs>
-            prepared_statement_t<update_all_t<S, Wargs...>>
-            prepare(update_all_t<S, Wargs...> upd) {
+            prepared_statement_t<update_all_t<S, Wargs...>> prepare(update_all_t<S, Wargs...> upd) {
                 return prepare_impl<update_all_t<S, Wargs...>>(std::move(upd));
             }
 

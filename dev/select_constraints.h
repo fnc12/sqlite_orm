@@ -136,7 +136,8 @@ namespace sqlite_orm {
             bool highest_level = false;
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            select_t(return_type col, conditions_type conditions) : col{std::move(col)}, conditions{std::move(conditions)} {}
+            select_t(return_type col, conditions_type conditions) :
+                col{std::move(col)}, conditions{std::move(conditions)} {}
 #endif
         };
 

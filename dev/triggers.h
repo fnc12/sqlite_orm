@@ -271,7 +271,8 @@ namespace sqlite_orm {
 
     template<class T, class... S>
     internal::trigger_t<T, S...> make_trigger(std::string name, const internal::partial_trigger_t<T, S...>& part) {
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name), std::move(part.base), std::move(part.statements)});
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
+            return {std::move(name), std::move(part.base), std::move(part.statements)});
     }
 
     inline internal::trigger_timing_t before() {

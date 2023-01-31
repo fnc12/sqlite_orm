@@ -48,7 +48,8 @@ namespace sqlite_orm {
             elements_type elements;
 
 #ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            table_t(std::string name_, elements_type elements_) : basic_table{std::move(name_)}, elements{std::move(elements_)} {}
+            table_t(std::string name_, elements_type elements_) :
+                basic_table{std::move(name_)}, elements{std::move(elements_)} {}
 #endif
 
             table_t<T, true, Cs...> without_rowid() const {
