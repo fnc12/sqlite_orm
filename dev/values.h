@@ -38,7 +38,7 @@ namespace sqlite_orm {
 
     template<class T>
     internal::dynamic_values_t<T> values(std::vector<T> vector) {
-        return {{move(vector)}};
+        return {{std::move(vector)}};
     }
 
 }

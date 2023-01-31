@@ -1603,10 +1603,10 @@ namespace sqlite_orm {
                         auto newContext = context;
                         newContext.use_parentheses = false;
                         auto whereString = serialize(value, newContext);
-                        columnNames.push_back(move(whereString));
+                        columnNames.push_back(std::move(whereString));
                     } else {
                         auto columnName = serialize(value, context);
-                        whereString = move(columnName);
+                        whereString = std::move(columnName);
                     }
                 });
                 ss << " (" << streaming_serialized(columnNames) << ")";

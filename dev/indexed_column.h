@@ -25,7 +25,7 @@ namespace sqlite_orm {
 
             indexed_column_t<column_type> collate(std::string name) {
                 auto res = std::move(*this);
-                res._collation_name = move(name);
+                res._collation_name = std::move(name);
                 return res;
             }
 

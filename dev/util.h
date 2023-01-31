@@ -27,7 +27,7 @@ namespace sqlite_orm {
      */
     inline std::string quote_string_literal(std::string v) {
         constexpr char quoteChar = '\'';
-        return quoteChar + sql_escape(move(v), quoteChar) + quoteChar;
+        return quoteChar + sql_escape(std::move(v), quoteChar) + quoteChar;
     }
 
     /** 
@@ -36,7 +36,7 @@ namespace sqlite_orm {
      */
     inline std::string quote_blob_literal(std::string v) {
         constexpr char quoteChar = '\'';
-        return std::string{char('x'), quoteChar} + move(v) + quoteChar;
+        return std::string{char('x'), quoteChar} + std::move(v) + quoteChar;
     }
 
     /** 
@@ -45,7 +45,7 @@ namespace sqlite_orm {
      */
     inline std::string quote_identifier(std::string identifier) {
         constexpr char quoteChar = '"';
-        return quoteChar + sql_escape(move(identifier), quoteChar) + quoteChar;
+        return quoteChar + sql_escape(std::move(identifier), quoteChar) + quoteChar;
     }
 
     namespace internal {

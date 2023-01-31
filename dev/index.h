@@ -18,7 +18,7 @@ namespace sqlite_orm {
             bool unique = false;
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            index_base(std::string name, bool unique) : name{move(name)}, unique{unique} {}
+            index_base(std::string name, bool unique) : name{std::move(name)}, unique{unique} {}
 #endif
         };
 
@@ -30,7 +30,7 @@ namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
             index_t(std::string name_, bool unique_, elements_type elements_) :
-                index_base{move(name_), unique_}, elements(move(elements_)) {}
+                index_base{std::move(name_), unique_}, elements(std::move(elements_)) {}
 #endif
 
             elements_type elements;
@@ -44,7 +44,7 @@ namespace sqlite_orm {
         static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
                       "amount of where arguments can be 0 or 1");
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {move(name), false, std::make_tuple(internal::make_indexed_column(std::move(cols))...)});
+            return {std::move(name), false, std::make_tuple(internal::make_indexed_column(std::move(cols))...)});
     }
 
     template<class... Cols>
@@ -66,6 +66,6 @@ namespace sqlite_orm {
         static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
                       "amount of where arguments can be 0 or 1");
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {move(name), true, std::make_tuple(internal::make_indexed_column(std::move(cols))...)});
+            return {std::move(name), true, std::make_tuple(internal::make_indexed_column(std::move(cols))...)});
     }
 }

@@ -70,7 +70,7 @@ namespace sqlite_orm {
             static constexpr int count = std::tuple_size<columns_type>::value;
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            columns_t(columns_type columns) : columns{move(columns)} {}
+            columns_t(columns_type columns) : columns{std::move(columns)} {}
 #endif
         };
 
@@ -136,7 +136,7 @@ namespace sqlite_orm {
             bool highest_level = false;
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            select_t(return_type col, conditions_type conditions) : col{std::move(col)}, conditions{move(conditions)} {}
+            select_t(return_type col, conditions_type conditions) : col{std::move(col)}, conditions{std::move(conditions)} {}
 #endif
         };
 

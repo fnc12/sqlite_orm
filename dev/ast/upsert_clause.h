@@ -19,12 +19,12 @@ namespace sqlite_orm {
             args_tuple args;
 
             upsert_clause<args_tuple, std::tuple<>> do_nothing() {
-                return {move(this->args), {}};
+                return {std::move(this->args), {}};
             }
 
             template<class... ActionsArgs>
             upsert_clause<args_tuple, std::tuple<ActionsArgs...>> do_update(ActionsArgs... actions) {
-                return {move(this->args), {std::make_tuple(std::forward<ActionsArgs>(actions)...)}};
+                return {std::move(this->args), {std::make_tuple(std::forward<ActionsArgs>(actions)...)}};
             }
         };
 
