@@ -1,5 +1,5 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 #include <typeindex>  //  std::type_index
 #include <string>  //  std::string
 #include <type_traits>  //  std::remove_pointer
@@ -12,7 +12,7 @@ TEST_CASE("tuple iteration") {
     std::vector<std::type_index> expected;
     std::vector<std::type_index> types;
     SECTION("iterate_tuple with tuple instance") {
-        auto lambda = [&types](const auto &item) {
+        auto lambda = [&types](const auto& item) {
             types.emplace_back(typeid(item));
         };
         SECTION("empty") {
@@ -37,7 +37,7 @@ TEST_CASE("tuple iteration") {
         }
     }
     SECTION("iterate_tuple with no tuple instance") {
-        auto lambda = [&types](auto *itemPointer) {
+        auto lambda = [&types](auto* itemPointer) {
             using Item = std::remove_pointer_t<decltype(itemPointer)>;
             types.emplace_back(typeid(Item));
         };
@@ -67,15 +67,15 @@ TEST_CASE("creation from tuple") {
         REQUIRE_THAT(strings, Equals(expected));
     }
     SECTION("projected") {
-        std::vector<const char *> expected{get<0>(tpl).c_str(), get<1>(tpl).c_str()};
-        auto strings = create_from_tuple<std::vector<const char *>>(tpl, &std::string::c_str);
+        std::vector<const char*> expected{get<0>(tpl).c_str(), get<1>(tpl).c_str()};
+        auto strings = create_from_tuple<std::vector<const char*>>(tpl, &std::string::c_str);
         REQUIRE_THAT(strings, Equals(expected));
     }
     SECTION("index selection") {
         constexpr size_t selectedIdx = 1;
-        std::vector<const char *> expected{get<selectedIdx>(tpl).c_str()};
+        std::vector<const char*> expected{get<selectedIdx>(tpl).c_str()};
         auto strings =
-            create_from_tuple<std::vector<const char *>>(tpl, std::index_sequence<selectedIdx>{}, &std::string::c_str);
+            create_from_tuple<std::vector<const char*>>(tpl, std::index_sequence<selectedIdx>{}, &std::string::c_str);
         REQUIRE_THAT(strings, Equals(expected));
     }
 }

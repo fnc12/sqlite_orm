@@ -1,5 +1,5 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 using namespace sqlite_orm;
 
@@ -49,6 +49,24 @@ TEST_CASE("Arithmetic operators") {
             auto& row = rows[i];
             auto& name = names[i];
             REQUIRE(row == name + suffix);
+        }
+    }
+    {  //  daisy-chaining ||, left
+        std::string suffix = "ototo";
+        auto rows = storage.select(c(&Object::name) || suffix || ".");
+        for(size_t i = 0; i < rows.size(); ++i) {
+            auto& row = rows[i];
+            auto& name = names[i];
+            REQUIRE(row == name + suffix + ".");
+        }
+    }
+    {  //  daisy-chaining ||, right
+        std::string prefix = "ototo";
+        auto rows = storage.select(prefix || (c(&Object::name) || "."));
+        for(size_t i = 0; i < rows.size(); ++i) {
+            auto& row = rows[i];
+            auto& name = names[i];
+            REQUIRE(row == prefix + name + ".");
         }
     }
     {  //  ||

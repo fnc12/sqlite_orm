@@ -1,5 +1,5 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 using namespace sqlite_orm;
 
@@ -62,7 +62,7 @@ TEST_CASE("index") {
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 TEST_CASE("filtered index") {
-    using Catch::Matchers::Contains;
+    using Catch::Matchers::ContainsSubstring;
 
     struct Test {
         std::optional<int> field1 = 0;
@@ -76,7 +76,7 @@ TEST_CASE("filtered index") {
         REQUIRE_NOTHROW(storage.sync_schema());
 
         storage.insert(Test{1, std::nullopt});
-        REQUIRE_THROWS_WITH(storage.insert(Test{1, std::nullopt}), Contains("constraint failed"));
+        REQUIRE_THROWS_WITH(storage.insert(Test{1, std::nullopt}), ContainsSubstring("constraint failed"));
     }
     SECTION("2") {
         auto storage = make_storage(

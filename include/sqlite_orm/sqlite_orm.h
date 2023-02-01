@@ -1969,6 +1969,7 @@ namespace sqlite_orm {
 }
 #pragma once
 
+#include <type_traits>  //  std::false_type, std::true_type, std::enable_if
 #include <memory>  //  std::shared_ptr, std::unique_ptr
 // #include "functional/cxx_optional.h"
 
@@ -1985,13 +1986,28 @@ namespace sqlite_orm {
      *  custom type as `NULL` (for example: boost::optional) you have to create a specialiation
      *  of type_is_nullable for your type and derive from `std::true_type`.
      */
+    template<class T, class SFINAE = void>
+    struct type_is_nullable : std::false_type {
+        bool operator()(const T&) const {
+            return true;
+        }
+    };
+
+    /**
+     *  This is a specialization for std::shared_ptr, std::unique_ptr, std::optional, which are nullable in sqlite_orm.
+     */
     template<class T>
-    using type_is_nullable = polyfill::disjunction<
+    struct type_is_nullable<T,
+                            std::enable_if_t<polyfill::disjunction_v<
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-        polyfill::is_specialization_of<T, std::optional>,
+                                polyfill::is_specialization_of<T, std::optional>,
 #endif
-        polyfill::is_specialization_of<T, std::unique_ptr>,
-        polyfill::is_specialization_of<T, std::shared_ptr>>;
+                                polyfill::is_specialization_of<T, std::unique_ptr>,
+                                polyfill::is_specialization_of<T, std::shared_ptr>>>> : std::true_type {
+        bool operator()(const T& t) const {
+            return static_cast<bool>(t);
+        }
+    };
 
 }
 #pragma once
@@ -3815,6 +3831,16 @@ namespace sqlite_orm {
     template<class L, class R>
     internal::conc_t<L, R> operator||(internal::expression_t<L> l, internal::expression_t<R> r) {
         return {std::move(l.value), std::move(r.value)};
+    }
+
+    template<class R, class E, internal::satisfies<std::is_base_of, internal::conc_string, E> = true>
+    internal::conc_t<E, R> operator||(E expr, R r) {
+        return {std::move(expr), std::move(r)};
+    }
+
+    template<class L, class E, internal::satisfies<std::is_base_of, internal::conc_string, E> = true>
+    internal::conc_t<L, E> operator||(L l, E expr) {
+        return {std::move(l), std::move(expr)};
     }
 
     template<class T, class R>
@@ -7593,30 +7619,30 @@ namespace sqlite_orm {
     namespace internal {
 #ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
         /**
-         *  Constraints a deleter to be state-less.
+         *  Constrains a deleter to be state-less.
          */
         template<typename D>
         concept stateless_deleter = std::is_empty_v<D> && std::is_default_constructible_v<D>;
 
         /**
-         *  Constraints a deleter to be an integral function constant.
+         *  Constrains a deleter to be an integral function constant.
          */
         template<typename D>
         concept integral_fp_c = requires {
-            typename D::value_type;
-            D::value;
-            requires std::is_function_v<std::remove_pointer_t<typename D::value_type>>;
-        };
+                                    typename D::value_type;
+                                    D::value;
+                                    requires std::is_function_v<std::remove_pointer_t<typename D::value_type>>;
+                                };
 
         /**
-         *  Constraints a deleter to be or to yield a function pointer.
+         *  Constrains a deleter to be or to yield a function pointer.
          */
         template<typename D>
         concept yields_fp = requires(D d) {
-            // yielding function pointer by using the plus trick
-            {+d};
-            requires std::is_function_v<std::remove_pointer_t<decltype(+d)>>;
-        };
+                                // yielding function pointer by using the plus trick
+                                { +d };
+                                requires std::is_function_v<std::remove_pointer_t<decltype(+d)>>;
+                            };
 #endif
 
 #if __cpp_lib_concepts >= 201907L
@@ -7631,7 +7657,7 @@ namespace sqlite_orm {
 
         template<typename D>
         SQLITE_ORM_INLINE_VAR constexpr bool is_stateless_deleter_v =
-            std::is_empty<D>::value&& std::is_default_constructible<D>::value;
+            std::is_empty<D>::value && std::is_default_constructible<D>::value;
 
         template<typename D, typename SFINAE = void>
         struct is_integral_fp_c : std::false_type {};
@@ -7692,7 +7718,8 @@ namespace sqlite_orm {
          *  it doesn't check so explicitly, but a compiler error will occur.
          */
         template<typename D, typename P>
-        requires(!integral_fp_c<D>) void xdestroy_proxy(void* p) noexcept {
+            requires(!integral_fp_c<D>)
+        void xdestroy_proxy(void* p) noexcept {
             // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>
             auto o = (P*)p;
             // ignoring return code
@@ -7720,7 +7747,7 @@ namespace sqlite_orm {
 
         template<typename D>
         SQLITE_ORM_INLINE_VAR constexpr bool can_yield_xdestroy_v =
-            can_yield_fp_v<D>&& std::is_convertible<yielded_fn_t<D>, xdestroy_fn_t>::value;
+            can_yield_fp_v<D> && std::is_convertible<yielded_fn_t<D>, xdestroy_fn_t>::value;
 
         template<typename D, typename P>
         SQLITE_ORM_INLINE_VAR constexpr bool needs_xdestroy_proxy_v =
@@ -7755,7 +7782,9 @@ namespace sqlite_orm {
      *  Explicitly declared for better error messages.
      */
     template<typename D, typename P>
-    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) noexcept requires(internal::is_unusable_for_xdestroy<D>) {
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) noexcept
+        requires(internal::is_unusable_for_xdestroy<D>)
+    {
         static_assert(polyfill::always_false_v<D>,
                       "A function pointer, which is not of type xdestroy_fn_t, is prohibited.");
         return nullptr;
@@ -7774,7 +7803,9 @@ namespace sqlite_orm {
      *  is invocable with the non-q-qualified pointer value.
      */
     template<typename D, typename P>
-    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) noexcept requires(internal::needs_xdestroy_proxy<D, P>) {
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) noexcept
+        requires(internal::needs_xdestroy_proxy<D, P>)
+    {
         return internal::xdestroy_proxy<D, P>;
     }
 
@@ -7793,7 +7824,9 @@ namespace sqlite_orm {
      *  is invocable with the non-q-qualified pointer value.
      */
     template<typename D, typename P>
-    constexpr xdestroy_fn_t obtain_xdestroy_for(D d, P*) noexcept requires(internal::yields_xdestroy<D>) {
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D d, P*) noexcept
+        requires(internal::yields_xdestroy<D>)
+    {
         return d;
     }
 #else
@@ -16031,8 +16064,9 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
-                ss << "EXISTS ";
-                ss << serialize(statement.expression, context);
+                auto newContext = context;
+                newContext.use_parentheses = true;
+                ss << "EXISTS " << serialize(statement.expression, newContext);
                 return ss.str();
             }
         };
@@ -16052,7 +16086,7 @@ namespace sqlite_orm {
             using statement_type = conflict_clause_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type& statement, const Ctx&) const {
                 switch(statement) {
                     case conflict_clause_t::rollback:
                         return "ROLLBACK";
@@ -17913,7 +17947,7 @@ namespace sqlite_orm {
                 static_assert(is_preparable_v<self, Ex>, "Expression must be a high-level statement");
 
                 decltype(auto) e2 = static_if<is_select_v<Ex>>(
-                    [](auto expression) -> auto {
+                    [](auto expression) -> auto{
                         expression.highest_level = true;
                         return expression;
                     },

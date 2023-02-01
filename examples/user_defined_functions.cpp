@@ -30,7 +30,7 @@ struct SignFunction {
         }
     }
 
-    static const char *name() {
+    static const char* name() {
         return "SIGN";
     }
 };
@@ -72,7 +72,7 @@ struct AcceleratedSumFunction {
     /**
      *  `const std::string &` is also a valid type of name cause it has `operator<<(std::ostream &` overload
      */
-    static const std::string &name() {
+    static const std::string& name() {
         static const std::string result = "ASUM";
         return result;
     }
@@ -85,7 +85,7 @@ struct AcceleratedSumFunction {
  */
 struct ArithmeticMeanFunction {
 
-    double operator()(const arg_values &args) const {
+    double operator()(const arg_values& args) const {
         double result = 0;
         for(auto arg_value: args) {
             if(arg_value.is_float()) {
@@ -100,7 +100,7 @@ struct ArithmeticMeanFunction {
         return result;
     }
 
-    static const std::string &name() {
+    static const std::string& name() {
         static const std::string result = "ARITHMETIC_MEAN";
         return result;
     }
@@ -112,6 +112,11 @@ int main() {
         int a = 0;
         int b = 0;
         int c = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        Table() = default;
+        Table(int a, int b, int c) : a{a}, b{b}, c{c} {}
+#endif
     };
 
     auto storage = make_storage(
@@ -142,7 +147,7 @@ int main() {
                                            func<AcceleratedSumFunction>(&Table::b),
                                            func<AcceleratedSumFunction>(&Table::c)));
     cout << "SELECT ASUM(a), ASUM(b), ASUM(c) FROM t:" << endl;
-    for(auto &row: aSumRows) {
+    for(auto& row: aSumRows) {
         cout << '\t' << get<0>(row) << endl;
         cout << '\t' << get<1>(row) << endl;
         cout << '\t' << get<2>(row) << endl;

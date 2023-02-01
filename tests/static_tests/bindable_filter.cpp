@@ -1,5 +1,5 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 #include <type_traits>  //  std::is_same
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>

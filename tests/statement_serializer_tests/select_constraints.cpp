@@ -1,5 +1,5 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 using namespace sqlite_orm;
 
@@ -85,6 +85,13 @@ TEST_CASE("statement_serializer select constraints") {
         auto expression = func<Func>(&User::id);
         value = serialize(expression, context);
         expected = R"(EVEN("id"))";
+    }
+    SECTION("exists") {
+        // EXISTS must use parentheses in a new context
+        context.use_parentheses = false;
+        auto expression = exists(select(1));
+        value = serialize(expression, context);
+        expected = "EXISTS (SELECT 1)";
     }
     REQUIRE(value == expected);
 }
