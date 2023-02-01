@@ -127,7 +127,7 @@ TEST_CASE("statement_serializer select constraints") {
         expected = R"(EVEN("id"))";
     }
     SECTION("exists") {
-        // EXISTS must use parentheses
+        // EXISTS must use parentheses in a new context
         context.use_parentheses = false;
         auto expression = exists(select(1));
         value = serialize(expression, context);

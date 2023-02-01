@@ -527,7 +527,7 @@ namespace sqlite_orm {
                 auto newContext = this->context;
                 newContext.skip_table_name = true;
                 auto columnName = serialize(order_by.expression, newContext);
-                entries.emplace_back(move(columnName), order_by.asc_desc, move(order_by._collate_argument));
+                this->entries.emplace_back(move(columnName), order_by.asc_desc, move(order_by._collate_argument));
             }
 
             const_iterator begin() const {
