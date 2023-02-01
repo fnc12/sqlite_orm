@@ -1071,6 +1071,26 @@ namespace sqlite_orm {
             }
         };
 
+        template<class C>
+        struct statement_serializer<dynamic_set_t<C>, void> {
+            using statement_type = dynamic_set_t<C>;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                std::stringstream ss;
+                ss << "SET ";
+                int index = 0;
+                for(const dynamic_set_entry& entry: statement) {
+                    if(index > 0) {
+                        ss << ", ";
+                    }
+                    ss << entry.serialized_value;
+                    ++index;
+                }
+                return ss.str();
+            }
+        };
+
         template<class... Args>
         struct statement_serializer<set_t<Args...>, void> {
             using statement_type = set_t<Args...>;
@@ -1090,38 +1110,62 @@ namespace sqlite_orm {
             }
         };
 
-        template<class... Args, class... Wargs>
-        struct statement_serializer<update_all_t<set_t<Args...>, Wargs...>, void> {
-            using statement_type = update_all_t<set_t<Args...>, Wargs...>;
+        template<class S>
+        struct table_name_collector_holder;
+
+        template<class... Args>
+        struct table_name_collector_holder<set_t<Args...>> {
+
+            table_name_collector_holder(table_name_collector::find_table_name_t find_table_name) :
+                collector(move(find_table_name)) {}
+
+            table_name_collector collector;
+        };
+
+        template<class C>
+        struct table_name_collector_holder<dynamic_set_t<C>> {
+
+            table_name_collector_holder(const table_name_collector& collector) : collector(collector) {}
+
+            const table_name_collector& collector;
+        };
+
+        template<class Ctx, class... Args>
+        table_name_collector_holder<set_t<Args...>> make_table_name_collector_holder(const set_t<Args...>& set,
+                                                                                     const Ctx& context) {
+            table_name_collector_holder<set_t<Args...>> holder([&context](const std::type_index& ti) {
+                return find_table_name(context.db_objects, ti);
+            });
+            iterate_ast(set, holder.collector);
+            return holder;
+        }
+
+        template<class C, class Ctx>
+        table_name_collector_holder<dynamic_set_t<C>> make_table_name_collector_holder(const dynamic_set_t<C>& set,
+                                                                                       const Ctx&) {
+            return {set.collector};
+        }
+
+        template<class S, class... Wargs>
+        struct statement_serializer<update_all_t<S, Wargs...>, void> {
+            using statement_type = update_all_t<S, Wargs...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& upd, const Ctx& context) const {
-                table_name_collector collector([&context](const std::type_index& ti) {
-                    return find_table_name(context.db_objects, ti);
-                });
-                iterate_ast(upd.set.assigns, collector);
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                std::string tableName;
 
+                auto collectorHolder = make_table_name_collector_holder(statement.set, context);
+                const table_name_collector& collector = collectorHolder.collector;
                 if(collector.table_names.empty()) {
                     throw std::system_error{orm_error_code::no_tables_specified};
                 }
+                tableName = collector.table_names.begin()->first;
 
                 std::stringstream ss;
-                ss << "UPDATE " << streaming_identifier(collector.table_names.begin()->first) << " SET ";
-                {
-                    std::vector<std::string> setPairs;
-                    setPairs.reserve(std::tuple_size<typename set_t<Args...>::assigns_type>::value);
-                    auto leftContext = context;
-                    leftContext.skip_table_name = true;
-                    iterate_tuple(upd.set.assigns, [&context, &leftContext, &setPairs](auto& asgn) {
-                        std::stringstream sss;
-                        sss << serialize(asgn.lhs, leftContext);
-                        sss << ' ' << asgn.serialize() << ' ';
-                        sss << serialize(asgn.rhs, context);
-                        setPairs.push_back(sss.str());
-                    });
-                    ss << streaming_serialized(setPairs) << streaming_conditions_tuple(upd.conditions, context);
-                    return ss.str();
-                }
+                ss << "UPDATE " << streaming_identifier(tableName);
+                ss << ' ' << serialize(statement.set, context);
+                ss << streaming_conditions_tuple(statement.conditions, context);
+                return ss.str();
             }
         };
 
@@ -1537,9 +1581,9 @@ namespace sqlite_orm {
             }
         };
 
-        template<class... Cols>
-        struct statement_serializer<index_t<Cols...>, void> {
-            using statement_type = index_t<Cols...>;
+        template<class T, class... Cols>
+        struct statement_serializer<index_t<T, Cols...>, void> {
+            using statement_type = index_t<T, Cols...>;
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
@@ -1548,9 +1592,7 @@ namespace sqlite_orm {
                 if(statement.unique) {
                     ss << "UNIQUE ";
                 }
-                using elements_type = typename std::decay_t<decltype(statement)>::elements_type;
-                using head_t = typename std::tuple_element_t<0, elements_type>::column_type;
-                using indexed_type = table_type_of_t<head_t>;
+                using indexed_type = typename std::decay_t<decltype(statement)>::table_mapped_type;
                 ss << "INDEX IF NOT EXISTS " << streaming_identifier(statement.name) << " ON "
                    << streaming_identifier(lookup_table_name<indexed_type>(context.db_objects));
                 std::vector<std::string> columnNames;
