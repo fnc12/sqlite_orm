@@ -79,7 +79,7 @@ TEST_CASE("insert with generated column") {
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         Product() = default;
         Product(std::string name, double price, double discount, double tax, double netPrice) :
-            name{move(name)}, price{price}, discount{discount}, tax{tax}, netPrice{netPrice} {}
+            name{std::move(name)}, price{price}, discount{discount}, tax{tax}, netPrice{netPrice} {}
 #endif
 
         bool operator==(const Product& other) const {

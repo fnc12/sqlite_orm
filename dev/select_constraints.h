@@ -228,7 +228,7 @@ namespace sqlite_orm {
             expression_type subselect;
 
             common_table_expression(explicit_colrefs_tuple explicitColumns, expression_type subselect) :
-                explicitColumns{move(explicitColumns)}, subselect{std::move(subselect)} {
+                explicitColumns{std::move(explicitColumns)}, subselect{std::move(subselect)} {
                 this->subselect.highest_level = true;
             }
         };
@@ -241,52 +241,52 @@ namespace sqlite_orm {
 
             template<class T, class... Args>
             common_table_expression<Label, select_t<T, Args...>, ExplicitCols> operator()(select_t<T, Args...> sel) && {
-                return {move(this->explicitColumns), std::move(sel)};
+                return {std::move(this->explicitColumns), std::move(sel)};
             }
 
             template<class Compound,
                      std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
             common_table_expression<Label, select_t<Compound>, ExplicitCols> operator()(Compound sel) && {
-                return {move(this->explicitColumns), {std::move(sel)}};
+                return {std::move(this->explicitColumns), {std::move(sel)}};
             }
 
             template<class T, class... Args>
             common_table_expression<Label, select_t<T, Args...>, ExplicitCols> as(select_t<T, Args...> sel) && {
-                return {move(this->explicitColumns), std::move(sel)};
+                return {std::move(this->explicitColumns), std::move(sel)};
             }
 
             template<class Compound,
                      std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
             common_table_expression<Label, select_t<Compound>, ExplicitCols> as(Compound sel) && {
-                return {move(this->explicitColumns), {std::move(sel)}};
+                return {std::move(this->explicitColumns), {std::move(sel)}};
             }
 
             template<class T, class... Args>
             common_table_expression<Label, select_t<T, Args...>, ExplicitCols>
             materialized(select_t<T, Args...> sel) && {
                 static_assert(polyfill::always_false_v<T>, "`WITH ... AS MATERIALIZED` is unimplemented");
-                return {move(this->explicitColumns), std::move(sel)};
+                return {std::move(this->explicitColumns), std::move(sel)};
             }
 
             template<class Compound,
                      std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
             common_table_expression<Label, select_t<Compound>, ExplicitCols> materialized(Compound sel) && {
                 static_assert(polyfill::always_false_v<Compound>, "`WITH ... AS MATERIALIZED` is unimplemented");
-                return {move(this->explicitColumns), {std::move(sel)}};
+                return {std::move(this->explicitColumns), {std::move(sel)}};
             }
 
             template<class T, class... Args>
             common_table_expression<Label, select_t<T, Args...>, ExplicitCols>
             not_materialized(select_t<T, Args...> sel) && {
                 static_assert(polyfill::always_false_v<T>, "`WITH ... AS NOT MATERIALIZED` is unimplemented");
-                return {move(this->explicitColumns), std::move(sel)};
+                return {std::move(this->explicitColumns), std::move(sel)};
             }
 
             template<class Compound,
                      std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
             common_table_expression<Label, select_t<Compound>, ExplicitCols> not_materialized(Compound sel) && {
                 static_assert(polyfill::always_false_v<Compound>, "`WITH ... AS NOT MATERIALIZED` is unimplemented");
-                return {move(this->explicitColumns), {std::move(sel)}};
+                return {std::move(this->explicitColumns), {std::move(sel)}};
             }
         };
 
@@ -301,7 +301,7 @@ namespace sqlite_orm {
             cte_type cte;
             expression_type expression;
 
-            with_t(cte_type cte, expression_type expression) : cte{move(cte)}, expression{std::move(expression)} {
+            with_t(cte_type cte, expression_type expression) : cte{std::move(cte)}, expression{std::move(expression)} {
                 this->expression.highest_level = true;
             }
         };
@@ -541,7 +541,7 @@ namespace sqlite_orm {
     template<class E, class... Labels, class... Selects, class... ExplicitCols>
     internal::with_t<E, internal::common_table_expression<Labels, Selects, ExplicitCols>...>
     with(std::tuple<internal::common_table_expression<Labels, Selects, ExplicitCols>...> cte, E expression) {
-        return {move(cte), std::move(expression)};
+        return {std::move(cte), std::move(expression)};
     }
 
     /** A single CTE.
@@ -550,7 +550,7 @@ namespace sqlite_orm {
     template<class E, class Label, class Select, class ExplicitCols>
     internal::with_t<E, internal::common_table_expression<Label, Select, ExplicitCols>>
     with(internal::common_table_expression<Label, Select, ExplicitCols> cte, E expression) {
-        return {std::make_tuple(move(cte)), std::move(expression)};
+        return {std::make_tuple(std::move(cte)), std::move(expression)};
     }
 #endif
 

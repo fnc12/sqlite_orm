@@ -594,7 +594,7 @@ namespace sqlite_orm {
              */
             template<class... CTEs, class T, class... Args>
             auto with(common_table_expressions<CTEs...> cte, select_t<T, Args...> sel) {
-                auto statement = this->prepare(sqlite_orm::with(move(cte), std::move(sel)));
+                auto statement = this->prepare(sqlite_orm::with(std::move(cte), std::move(sel)));
                 return this->execute(statement);
             }
 
@@ -616,7 +616,7 @@ namespace sqlite_orm {
                      class Compound,
                      std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
             auto with(common_table_expressions<CTEs...> cte, Compound sel) {
-                auto statement = this->prepare(sqlite_orm::with(move(cte), sqlite_orm::select(std::move(sel))));
+                auto statement = this->prepare(sqlite_orm::with(std::move(cte), sqlite_orm::select(std::move(sel))));
                 return this->execute(statement);
             }
 #endif

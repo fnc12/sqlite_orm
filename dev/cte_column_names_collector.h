@@ -61,7 +61,7 @@ namespace sqlite_orm {
                     throw std::system_error{orm_error_code::column_not_found};
                 }
                 unquote_or_erase(columnName);
-                return {move(columnName)};
+                return {std::move(columnName)};
             }
         };
 
@@ -136,7 +136,7 @@ namespace sqlite_orm {
                         columnName = serialize(m, newContext);
                     }
                     if(!columnName.empty()) {
-                        columnNames.push_back(move(columnName));
+                        columnNames.push_back(std::move(columnName));
                     } else {
                         throw std::system_error{orm_error_code::column_not_found};
                     }

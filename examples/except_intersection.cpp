@@ -14,7 +14,7 @@ struct DeptMaster {
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
     DeptMaster() = default;
-    DeptMaster(int deptId, std::string deptName) : deptId{deptId}, deptName{move(deptName)} {}
+    DeptMaster(int deptId, std::string deptName) : deptId{deptId}, deptName{std::move(deptName)} {}
 #endif
 };
 
@@ -33,7 +33,7 @@ struct EmpMaster {
               long salary,
               decltype(DeptMaster::deptId) deptId) :
         empId{empId},
-        firstName{move(firstName)}, lastName{move(lastName)}, salary{salary}, deptId{deptId} {}
+        firstName{std::move(firstName)}, lastName{std::move(lastName)}, salary{salary}, deptId{deptId} {}
 #endif
 };
 

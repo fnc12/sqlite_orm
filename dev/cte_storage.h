@@ -66,7 +66,7 @@ namespace sqlite_orm {
         static auto make_cte_column(std::string name, const ColRef& /*finalColRef*/) {
             using object_type = aliased_field<type_t<ColRef>, F>;
 
-            return sqlite_orm::make_column<>(move(name), &object_type::field);
+            return sqlite_orm::make_column<>(std::move(name), &object_type::field);
         }
 
         // F O::*
@@ -75,7 +75,7 @@ namespace sqlite_orm {
             using object_type = table_type_of_t<ColRef>;
             using column_type = column_t<ColRef, empty_setter>;
 
-            return column_type{move(name), finalColRef, empty_setter{}};
+            return column_type{std::move(name), finalColRef, empty_setter{}};
         }
 
         /**
@@ -250,8 +250,8 @@ namespace sqlite_orm {
                                                  const ColRefs& finalColRefs,
                                                  std::index_sequence<CIs...>) {
             return make_table<Mapper>(
-                move(tableName),
-                make_cte_column<std::tuple_element_t<CIs, typename Mapper::fields_type>>(move(columnNames.at(CIs)),
+                std::move(tableName),
+                make_cte_column<std::tuple_element_t<CIs, typename Mapper::fields_type>>(std::move(columnNames.at(CIs)),
                                                                                          get<CIs>(finalColRefs))...);
         }
 
@@ -286,8 +286,8 @@ namespace sqlite_orm {
                                                     polyfill::remove_cvref_t<decltype(finalColRefs)>,
                                                     column_results>;
             return make_cte_table_using_column_indices<mapper_type>(dbObjects,
-                                                                    move(tableName),
-                                                                    move(columnNames),
+                                                                    std::move(tableName),
+                                                                    std::move(columnNames),
                                                                     finalColRefs,
                                                                     index_sequence{});
         }

@@ -50,7 +50,7 @@ namespace sqlite_orm {
 
     /**
      *  Generalized form of the 'remember' SQL function that is a pass-through for values
-     *  (it returns its argument unchanged using move semantics) but also saves the
+     *  (it returns its argument unchanged using std::move semantics) but also saves the
      *  value that is passed through into a bound variable.
      */
     template<typename P>

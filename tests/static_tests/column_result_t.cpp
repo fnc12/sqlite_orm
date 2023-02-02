@@ -30,7 +30,7 @@ TEST_CASE("column_result_of_t") {
         }
 
         void setComment(std::string comment) {
-            this->comment = move(comment);
+            this->comment = std::move(comment);
         }
 
         const std::string& getComment() const {

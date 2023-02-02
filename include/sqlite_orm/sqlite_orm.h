@@ -7523,7 +7523,7 @@ namespace sqlite_orm {
             expression_type subselect;
 
             common_table_expression(explicit_colrefs_tuple explicitColumns, expression_type subselect) :
-                explicitColumns{move(explicitColumns)}, subselect{std::move(subselect)} {
+                explicitColumns{std::move(explicitColumns)}, subselect{std::move(subselect)} {
                 this->subselect.highest_level = true;
             }
         };
@@ -7536,52 +7536,52 @@ namespace sqlite_orm {
 
             template<class T, class... Args>
             common_table_expression<Label, select_t<T, Args...>, ExplicitCols> operator()(select_t<T, Args...> sel) && {
-                return {move(this->explicitColumns), std::move(sel)};
+                return {std::move(this->explicitColumns), std::move(sel)};
             }
 
             template<class Compound,
                      std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
             common_table_expression<Label, select_t<Compound>, ExplicitCols> operator()(Compound sel) && {
-                return {move(this->explicitColumns), {std::move(sel)}};
+                return {std::move(this->explicitColumns), {std::move(sel)}};
             }
 
             template<class T, class... Args>
             common_table_expression<Label, select_t<T, Args...>, ExplicitCols> as(select_t<T, Args...> sel) && {
-                return {move(this->explicitColumns), std::move(sel)};
+                return {std::move(this->explicitColumns), std::move(sel)};
             }
 
             template<class Compound,
                      std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
             common_table_expression<Label, select_t<Compound>, ExplicitCols> as(Compound sel) && {
-                return {move(this->explicitColumns), {std::move(sel)}};
+                return {std::move(this->explicitColumns), {std::move(sel)}};
             }
 
             template<class T, class... Args>
             common_table_expression<Label, select_t<T, Args...>, ExplicitCols>
             materialized(select_t<T, Args...> sel) && {
                 static_assert(polyfill::always_false_v<T>, "`WITH ... AS MATERIALIZED` is unimplemented");
-                return {move(this->explicitColumns), std::move(sel)};
+                return {std::move(this->explicitColumns), std::move(sel)};
             }
 
             template<class Compound,
                      std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
             common_table_expression<Label, select_t<Compound>, ExplicitCols> materialized(Compound sel) && {
                 static_assert(polyfill::always_false_v<Compound>, "`WITH ... AS MATERIALIZED` is unimplemented");
-                return {move(this->explicitColumns), {std::move(sel)}};
+                return {std::move(this->explicitColumns), {std::move(sel)}};
             }
 
             template<class T, class... Args>
             common_table_expression<Label, select_t<T, Args...>, ExplicitCols>
             not_materialized(select_t<T, Args...> sel) && {
                 static_assert(polyfill::always_false_v<T>, "`WITH ... AS NOT MATERIALIZED` is unimplemented");
-                return {move(this->explicitColumns), std::move(sel)};
+                return {std::move(this->explicitColumns), std::move(sel)};
             }
 
             template<class Compound,
                      std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
             common_table_expression<Label, select_t<Compound>, ExplicitCols> not_materialized(Compound sel) && {
                 static_assert(polyfill::always_false_v<Compound>, "`WITH ... AS NOT MATERIALIZED` is unimplemented");
-                return {move(this->explicitColumns), {std::move(sel)}};
+                return {std::move(this->explicitColumns), {std::move(sel)}};
             }
         };
 
@@ -7596,7 +7596,7 @@ namespace sqlite_orm {
             cte_type cte;
             expression_type expression;
 
-            with_t(cte_type cte, expression_type expression) : cte{move(cte)}, expression{std::move(expression)} {
+            with_t(cte_type cte, expression_type expression) : cte{std::move(cte)}, expression{std::move(expression)} {
                 this->expression.highest_level = true;
             }
         };
@@ -7836,7 +7836,7 @@ namespace sqlite_orm {
     template<class E, class... Labels, class... Selects, class... ExplicitCols>
     internal::with_t<E, internal::common_table_expression<Labels, Selects, ExplicitCols>...>
     with(std::tuple<internal::common_table_expression<Labels, Selects, ExplicitCols>...> cte, E expression) {
-        return {move(cte), std::move(expression)};
+        return {std::move(cte), std::move(expression)};
     }
 
     /** A single CTE.
@@ -7845,7 +7845,7 @@ namespace sqlite_orm {
     template<class E, class Label, class Select, class ExplicitCols>
     internal::with_t<E, internal::common_table_expression<Label, Select, ExplicitCols>>
     with(internal::common_table_expression<Label, Select, ExplicitCols> cte, E expression) {
-        return {std::make_tuple(move(cte)), std::move(expression)};
+        return {std::make_tuple(std::move(cte)), std::move(expression)};
     }
 #endif
 
@@ -9822,7 +9822,7 @@ namespace sqlite_orm {
         static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
                       "amount of where arguments can be 0 or 1");
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {move(name), false, std::make_tuple(internal::make_indexed_column(std::move(cols))...)});
+            return {std::move(name), false, std::make_tuple(internal::make_indexed_column(std::move(cols))...)});
     }
 
     template<class... Cols>
@@ -12125,14 +12125,14 @@ namespace sqlite_orm {
             template<class T, class F>
             void operator()(const column_pointer<T, F>&) const {
                 auto tableName = this->find_table_name(typeid(mapped_type_proxy_t<T>));
-                table_names.emplace(move(tableName), alias_extractor<T>::as_alias());
+                table_names.emplace(std::move(tableName), alias_extractor<T>::as_alias());
             }
 
             template<class A, class C>
             void operator()(const alias_column_t<A, C>&) const {
                 // note: instead of accessing the column, we are interested in the type the column is aliased into
                 auto tableName = this->find_table_name(typeid(mapped_type_proxy_t<A>));
-                table_names.emplace(move(tableName), alias_extractor<A>::as_alias());
+                table_names.emplace(std::move(tableName), alias_extractor<A>::as_alias());
             }
 
             template<class T>
@@ -12146,7 +12146,7 @@ namespace sqlite_orm {
             template<class T>
             void operator()(const asterisk_t<T>&) const {
                 auto tableName = this->find_table_name(typeid(mapped_type_proxy_t<T>));
-                table_names.emplace(move(tableName), alias_extractor<T>::as_alias());
+                table_names.emplace(std::move(tableName), alias_extractor<T>::as_alias());
             }
 
             template<class T>
@@ -12217,11 +12217,11 @@ namespace sqlite_orm {
             }
 
             dynamic_set_t(dynamic_set_t&& other) :
-                entries(move(other.entries)), context(std::move(other.context)),
+                entries(std::move(other.entries)), context(std::move(other.context)),
                 collector([this](const std::type_index& ti) {
                     return find_table_name(this->context.db_objects, ti);
                 }) {
-                collector.table_names = move(other.collector.table_names);
+                collector.table_names = std::move(other.collector.table_names);
             }
 
             dynamic_set_t& operator=(const dynamic_set_t& other) {
@@ -12234,12 +12234,12 @@ namespace sqlite_orm {
             }
 
             dynamic_set_t& operator=(dynamic_set_t&& other) {
-                this->entries = move(other.entries);
+                this->entries = std::move(other.entries);
                 this->context = std::move(other.context);
                 this->collector = table_name_collector([this](const std::type_index& ti) {
                     return find_table_name(this->context.db_objects, ti);
                 });
-                this->collector.table_names = move(other.collector.table_names);
+                this->collector.table_names = std::move(other.collector.table_names);
             }
 
             template<class L, class R>
@@ -16225,7 +16225,7 @@ namespace sqlite_orm {
                     throw std::system_error{orm_error_code::column_not_found};
                 }
                 unquote_or_erase(columnName);
-                return {move(columnName)};
+                return {std::move(columnName)};
             }
         };
 
@@ -16300,7 +16300,7 @@ namespace sqlite_orm {
                         columnName = serialize(m, newContext);
                     }
                     if(!columnName.empty()) {
-                        columnNames.push_back(move(columnName));
+                        columnNames.push_back(std::move(columnName));
                     } else {
                         throw std::system_error{orm_error_code::column_not_found};
                     }
@@ -17591,7 +17591,7 @@ namespace sqlite_orm {
         struct table_name_collector_holder<set_t<Args...>> {
 
             table_name_collector_holder(table_name_collector::find_table_name_t find_table_name) :
-                collector(move(find_table_name)) {}
+                collector(std::move(find_table_name)) {}
 
             table_name_collector collector;
         };
@@ -18783,7 +18783,7 @@ namespace sqlite_orm {
         static auto make_cte_column(std::string name, const ColRef& /*finalColRef*/) {
             using object_type = aliased_field<type_t<ColRef>, F>;
 
-            return sqlite_orm::make_column<>(move(name), &object_type::field);
+            return sqlite_orm::make_column<>(std::move(name), &object_type::field);
         }
 
         // F O::*
@@ -18792,7 +18792,7 @@ namespace sqlite_orm {
             using object_type = table_type_of_t<ColRef>;
             using column_type = column_t<ColRef, empty_setter>;
 
-            return column_type{move(name), finalColRef, empty_setter{}};
+            return column_type{std::move(name), finalColRef, empty_setter{}};
         }
 
         /**
@@ -18967,8 +18967,8 @@ namespace sqlite_orm {
                                                  const ColRefs& finalColRefs,
                                                  std::index_sequence<CIs...>) {
             return make_table<Mapper>(
-                move(tableName),
-                make_cte_column<std::tuple_element_t<CIs, typename Mapper::fields_type>>(move(columnNames.at(CIs)),
+                std::move(tableName),
+                make_cte_column<std::tuple_element_t<CIs, typename Mapper::fields_type>>(std::move(columnNames.at(CIs)),
                                                                                          get<CIs>(finalColRefs))...);
         }
 
@@ -19003,8 +19003,8 @@ namespace sqlite_orm {
                                                     polyfill::remove_cvref_t<decltype(finalColRefs)>,
                                                     column_results>;
             return make_cte_table_using_column_indices<mapper_type>(dbObjects,
-                                                                    move(tableName),
-                                                                    move(columnNames),
+                                                                    std::move(tableName),
+                                                                    std::move(columnNames),
                                                                     finalColRefs,
                                                                     index_sequence{});
         }
@@ -19595,7 +19595,7 @@ namespace sqlite_orm {
              */
             template<class... CTEs, class T, class... Args>
             auto with(common_table_expressions<CTEs...> cte, select_t<T, Args...> sel) {
-                auto statement = this->prepare(sqlite_orm::with(move(cte), std::move(sel)));
+                auto statement = this->prepare(sqlite_orm::with(std::move(cte), std::move(sel)));
                 return this->execute(statement);
             }
 
@@ -19617,7 +19617,7 @@ namespace sqlite_orm {
                      class Compound,
                      std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
             auto with(common_table_expressions<CTEs...> cte, Compound sel) {
-                auto statement = this->prepare(sqlite_orm::with(move(cte), sqlite_orm::select(std::move(sel))));
+                auto statement = this->prepare(sqlite_orm::with(std::move(cte), sqlite_orm::select(std::move(sel))));
                 return this->execute(statement);
             }
 #endif
@@ -21153,7 +21153,7 @@ namespace sqlite_orm {
 
     /**
      *  Generalized form of the 'remember' SQL function that is a pass-through for values
-     *  (it returns its argument unchanged using move semantics) but also saves the
+     *  (it returns its argument unchanged using std::move semantics) but also saves the
      *  value that is passed through into a bound variable.
      */
     template<typename P>

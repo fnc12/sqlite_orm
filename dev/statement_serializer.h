@@ -1173,7 +1173,7 @@ namespace sqlite_orm {
         struct table_name_collector_holder<set_t<Args...>> {
 
             table_name_collector_holder(table_name_collector::find_table_name_t find_table_name) :
-                collector(move(find_table_name)) {}
+                collector(std::move(find_table_name)) {}
 
             table_name_collector collector;
         };
