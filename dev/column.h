@@ -106,8 +106,8 @@ namespace sqlite_orm {
         struct column_t : column_identifier, column_field<G, S>, column_constraints<Op...> {
 #ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
             column_t(std::string name, G memberPointer, S setter, std::tuple<Op...> op) :
-                column_identifier{move(name)}, column_field<G, S>{memberPointer, setter}, column_constraints<Op...>{
-                                                                                              move(op)} {}
+                column_identifier{std::move(name)}, column_field<G, S>{memberPointer, setter},
+                column_constraints<Op...>{std::move(op)} {}
 #endif
         };
 
@@ -144,7 +144,7 @@ namespace sqlite_orm {
     internal::column_t<M, internal::empty_setter, Op...> make_column(std::string name, M m, Op... constraints) {
         static_assert(polyfill::conjunction_v<internal::is_constraint<Op>...>, "Incorrect constraints pack");
 
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {move(name), m, {}, std::make_tuple(constraints...)});
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name), m, {}, std::make_tuple(constraints...)});
     }
 
     /**
@@ -160,7 +160,8 @@ namespace sqlite_orm {
                       "Getter and setter must get and set same data type");
         static_assert(polyfill::conjunction_v<internal::is_constraint<Op>...>, "Incorrect constraints pack");
 
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {move(name), getter, setter, std::make_tuple(constraints...)});
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
+            return {std::move(name), getter, setter, std::make_tuple(constraints...)});
     }
 
     /**
@@ -177,6 +178,7 @@ namespace sqlite_orm {
                       "Getter and setter must get and set same data type");
         static_assert(polyfill::conjunction_v<internal::is_constraint<Op>...>, "Incorrect constraints pack");
 
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {move(name), getter, setter, std::make_tuple(constraints...)});
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
+            return {std::move(name), getter, setter, std::make_tuple(constraints...)});
     }
 }

@@ -65,7 +65,7 @@ namespace sqlite_orm {
 
             iterator_t(){};
 
-            iterator_t(statement_finalizer stmt_, view_type& view_) : stmt{move(stmt_)}, view{&view_} {
+            iterator_t(statement_finalizer stmt_, view_type& view_) : stmt{std::move(stmt_)}, view{&view_} {
                 next();
             }
 

@@ -30,7 +30,7 @@ namespace sqlite_orm {
             res.reserve(argc);
             for(decltype(argc) i = 0; i < argc; ++i) {
                 auto rowString = row_extractor<std::string>().extract(argv[i]);
-                res.push_back(move(rowString));
+                res.push_back(std::move(rowString));
             }
             return 0;
         }
@@ -38,7 +38,7 @@ namespace sqlite_orm {
         struct pragma_t {
             using get_connection_t = std::function<internal::connection_ref()>;
 
-            pragma_t(get_connection_t get_connection_) : get_connection(move(get_connection_)) {}
+            pragma_t(get_connection_t get_connection_) : get_connection(std::move(get_connection_)) {}
 
             void busy_timeout(int value) {
                 this->set_pragma("busy_timeout", value);
@@ -139,7 +139,13 @@ namespace sqlite_orm {
                             ++index;
                             auto pk = std::atoi(argv[index++]);
                             auto hidden = std::atoi(argv[index++]);
-                            res.emplace_back(cid, move(name), move(type), notnull, move(dflt_value), pk, hidden);
+                            res.emplace_back(cid,
+                                             std::move(name),
+                                             std::move(type),
+                                             notnull,
+                                             std::move(dflt_value),
+                                             pk,
+                                             hidden);
                         }
                         return 0;
                     },
@@ -169,7 +175,7 @@ namespace sqlite_orm {
                             std::string dflt_value = argv[index] ? argv[index] : "";
                             ++index;
                             auto pk = std::atoi(argv[index++]);
-                            res.emplace_back(cid, move(name), move(type), notnull, move(dflt_value), pk);
+                            res.emplace_back(cid, std::move(name), std::move(type), notnull, std::move(dflt_value), pk);
                         }
                         return 0;
                     },
