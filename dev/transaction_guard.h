@@ -29,11 +29,11 @@ namespace sqlite_orm {
                                 std::function<void()> commit_func_,
                                 std::function<void()> rollback_func_) :
                 connection(std::move(connection_)),
-                commit_func(move(commit_func_)), rollback_func(move(rollback_func_)) {}
+                commit_func(std::move(commit_func_)), rollback_func(std::move(rollback_func_)) {}
 
             transaction_guard_t(transaction_guard_t&& other) :
                 commit_on_destroy(other.commit_on_destroy), connection(std::move(other.connection)),
-                commit_func(move(other.commit_func)), rollback_func(move(other.rollback_func)),
+                commit_func(std::move(other.commit_func)), rollback_func(std::move(other.rollback_func)),
                 gotta_fire(other.gotta_fire) {
                 other.gotta_fire = false;
             }

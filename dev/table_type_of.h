@@ -1,5 +1,7 @@
 #pragma once
 
+#include "indexed_column.h"
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -27,6 +29,11 @@ namespace sqlite_orm {
         template<class T, class F>
         struct table_type_of<column_pointer<T, F>> {
             using type = T;
+        };
+
+        template<class C>
+        struct table_type_of<indexed_column_t<C>> {
+            using type = typename table_type_of<C>::type;
         };
 
         template<class T>

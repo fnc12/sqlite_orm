@@ -55,7 +55,7 @@ namespace sqlite_orm {
 
                 statement_finalizer stmt{prepare_stmt(this->connection.get(), serialize(this->args, context))};
                 iterate_ast(this->args.conditions, conditional_binder{stmt.get()});
-                return {move(stmt), *this};
+                return {std::move(stmt), *this};
             }
 
             iterator_t<self> end() {

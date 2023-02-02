@@ -79,7 +79,7 @@ namespace sqlite_orm {
              *  @param dbObjects db_objects_tuple
              */
             storage_t(std::string filename, db_objects_type dbObjects) :
-                storage_base{move(filename), foreign_keys_count(dbObjects)}, db_objects{std::move(dbObjects)} {}
+                storage_base{std::move(filename), foreign_keys_count(dbObjects)}, db_objects{std::move(dbObjects)} {}
 
           private:
             db_objects_type db_objects;
@@ -156,7 +156,7 @@ namespace sqlite_orm {
                         ss << suffix << std::flush;
                         auto anotherBackupTableName = backupTableName + ss.str();
                         if(!this->table_exists(db, anotherBackupTableName)) {
-                            backupTableName = move(anotherBackupTableName);
+                            backupTableName = std::move(anotherBackupTableName);
                             break;
                         }
                         ++suffix;
@@ -260,8 +260,10 @@ namespace sqlite_orm {
                 this->execute(statement);
             }
 
-            template<class... Args, class... Wargs>
-            void update_all(internal::set_t<Args...> set, Wargs... wh) {
+            template<class S, class... Wargs>
+            void update_all(S set, Wargs... wh) {
+                static_assert(internal::is_set<S>::value,
+                              "first argument in update_all can be either set or dynamic_set");
                 auto statement = this->prepare(sqlite_orm::update_all(std::move(set), std::forward<Wargs>(wh)...));
                 this->execute(statement);
             }
@@ -272,12 +274,12 @@ namespace sqlite_orm {
                 this->assert_mapped_type<O>();
                 std::vector<std::string> rows;
                 if(y) {
-                    rows = this->select(sqlite_orm::group_concat(m, move(*y)), std::forward<Args>(args)...);
+                    rows = this->select(sqlite_orm::group_concat(m, std::move(*y)), std::forward<Args>(args)...);
                 } else {
                     rows = this->select(sqlite_orm::group_concat(m), std::forward<Args>(args)...);
                 }
                 if(!rows.empty()) {
-                    return move(rows.front());
+                    return std::move(rows.front());
                 } else {
                     return {};
                 }
@@ -475,7 +477,7 @@ namespace sqlite_orm {
             template<class F, class O, class... Args>
             std::string group_concat(F O::*m, std::string y, Args&&... args) {
                 return this->group_concat_internal(m,
-                                                   std::make_unique<std::string>(move(y)),
+                                                   std::make_unique<std::string>(std::move(y)),
                                                    std::forward<Args>(args)...);
             }
 
@@ -487,7 +489,7 @@ namespace sqlite_orm {
                 } else {
                     str = std::make_unique<std::string>();
                 }
-                return this->group_concat_internal(m, move(str), std::forward<Args>(args)...);
+                return this->group_concat_internal(m, std::move(str), std::forward<Args>(args)...);
             }
 
             /**
@@ -788,7 +790,7 @@ namespace sqlite_orm {
             void rename_table(std::string name) {
                 this->assert_mapped_type<O>();
                 auto& table = this->get_table<O>();
-                table.name = move(name);
+                table.name = std::move(name);
             }
 
             using storage_base::rename_table;
@@ -1041,10 +1043,9 @@ namespace sqlite_orm {
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
-            template<class... Args, class... Wargs>
-            prepared_statement_t<update_all_t<set_t<Args...>, Wargs...>>
-            prepare(update_all_t<set_t<Args...>, Wargs...> upd) {
-                return prepare_impl<update_all_t<set_t<Args...>, Wargs...>>(std::move(upd));
+            template<class S, class... Wargs>
+            prepared_statement_t<update_all_t<S, Wargs...>> prepare(update_all_t<S, Wargs...> upd) {
+                return prepare_impl<update_all_t<S, Wargs...>>(std::move(upd));
             }
 
             template<class T, class... Args>
@@ -1316,7 +1317,7 @@ namespace sqlite_orm {
                 if(!res.has_value()) {
                     throw std::system_error{orm_error_code::not_found};
                 }
-                return move(res).value();
+                return std::move(res).value();
 #else
                 auto& table = this->get_table<T>();
                 auto stepRes = sqlite3_step(stmt);
@@ -1344,13 +1345,11 @@ namespace sqlite_orm {
                 perform_step(stmt);
             }
 
-            template<class... Args, class... Wargs>
-            void execute(const prepared_statement_t<update_all_t<set_t<Args...>, Wargs...>>& statement) {
+            template<class S, class... Wargs>
+            void execute(const prepared_statement_t<update_all_t<S, Wargs...>>& statement) {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
                 conditional_binder bind_node{stmt};
-                iterate_tuple(statement.expression.set.assigns, [&bind_node](auto& setArg) {
-                    iterate_ast(setArg, bind_node);
-                });
+                iterate_ast(statement.expression.set, bind_node);
                 iterate_ast(statement.expression.conditions, bind_node);
                 perform_step(stmt);
             }
@@ -1397,7 +1396,7 @@ namespace sqlite_orm {
                     auto obj = std::make_unique<T>();
                     object_from_column_builder<T> builder{*obj, stmt};
                     table.for_each_column(builder);
-                    res.push_back(move(obj));
+                    res.push_back(std::move(obj));
                 });
                 return res;
             }
@@ -1414,7 +1413,7 @@ namespace sqlite_orm {
                     auto obj = std::make_optional<T>();
                     object_from_column_builder<T> builder{*obj, stmt};
                     table.for_each_column(builder);
-                    res.push_back(move(obj));
+                    res.push_back(std::move(obj));
                 });
                 return res;
             }
@@ -1427,7 +1426,7 @@ namespace sqlite_orm {
      */
     template<class... DBO>
     internal::storage_t<DBO...> make_storage(std::string filename, DBO... dbObjects) {
-        return {move(filename), internal::db_objects_tuple<DBO...>{std::forward<DBO>(dbObjects)...}};
+        return {std::move(filename), internal::db_objects_tuple<DBO...>{std::forward<DBO>(dbObjects)...}};
     }
 
     /**

@@ -70,7 +70,7 @@ namespace sqlite_orm {
             static constexpr int count = std::tuple_size<columns_type>::value;
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            columns_t(columns_type columns) : columns{move(columns)} {}
+            columns_t(columns_type columns) : columns{std::move(columns)} {}
 #endif
         };
 
@@ -79,13 +79,6 @@ namespace sqlite_orm {
 
         template<class T>
         using is_columns = polyfill::bool_constant<is_columns_v<T>>;
-
-        template<class... Args>
-        struct set_t {
-            using assigns_type = std::tuple<Args...>;
-
-            assigns_type assigns;
-        };
 
         /**
          *  This class is used to store explicit mapped type T and its column descriptor (member pointer/getter/setter).
@@ -143,7 +136,8 @@ namespace sqlite_orm {
             bool highest_level = false;
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            select_t(return_type col, conditions_type conditions) : col{std::move(col)}, conditions{move(conditions)} {}
+            select_t(return_type col, conditions_type conditions) :
+                col{std::move(col)}, conditions{std::move(conditions)} {}
 #endif
         };
 
@@ -369,19 +363,6 @@ namespace sqlite_orm {
     internal::columns_t<Args...> distinct(internal::columns_t<Args...> cols) {
         cols.distinct = true;
         return cols;
-    }
-
-    /**
-     *  SET keyword used in UPDATE ... SET queries.
-     *  Args must have `assign_t` type. E.g. set(assign(&User::id, 5)) or set(c(&User::id) = 5)
-     */
-    template<class... Args>
-    internal::set_t<Args...> set(Args... args) {
-        using arg_tuple = std::tuple<Args...>;
-        static_assert(std::tuple_size<arg_tuple>::value ==
-                          internal::count_tuple<arg_tuple, internal::is_assign_t>::value,
-                      "set function accepts assign operators only");
-        return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
     template<class... Args>

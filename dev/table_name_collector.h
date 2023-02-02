@@ -24,7 +24,7 @@ namespace sqlite_orm {
 
             table_name_collector() = default;
 
-            table_name_collector(find_table_name_t find_table_name) : find_table_name{move(find_table_name)} {}
+            table_name_collector(find_table_name_t find_table_name) : find_table_name{std::move(find_table_name)} {}
 
             template<class T>
             table_name_set operator()(const T&) const {
@@ -33,7 +33,7 @@ namespace sqlite_orm {
 
             template<class F, class O>
             void operator()(F O::*, std::string alias = {}) const {
-                table_names.emplace(this->find_table_name(typeid(O)), move(alias));
+                table_names.emplace(this->find_table_name(typeid(O)), std::move(alias));
             }
 
             template<class T, class F>
@@ -50,7 +50,7 @@ namespace sqlite_orm {
             void operator()(const count_asterisk_t<T>&) const {
                 auto tableName = this->find_table_name(typeid(T));
                 if(!tableName.empty()) {
-                    table_names.emplace(move(tableName), "");
+                    table_names.emplace(std::move(tableName), "");
                 }
             }
 
@@ -65,7 +65,7 @@ namespace sqlite_orm {
                 static_assert(polyfill::is_detected_v<type_t, T>,
                               "alias<O> must have a nested alias<O>::type typename");
                 auto tableName = this->find_table_name(typeid(type_t<T>));
-                table_names.emplace(move(tableName), alias_extractor<T>::get());
+                table_names.emplace(std::move(tableName), alias_extractor<T>::get());
             }
 
             template<class T>
