@@ -22,7 +22,8 @@ namespace sqlite_orm {
                    decltype(dflt_value) dflt_value_,
                    decltype(pk) pk_) :
             cid(cid_),
-            name(move(name_)), type(move(type_)), notnull(notnull_), dflt_value(move(dflt_value_)), pk(pk_) {}
+            name(std::move(name_)), type(std::move(type_)), notnull(notnull_), dflt_value(std::move(dflt_value_)),
+            pk(pk_) {}
 #endif
     };
 
@@ -44,7 +45,7 @@ namespace sqlite_orm {
                     decltype(pk) pk_,
                     decltype(hidden) hidden_) :
             cid(cid_),
-            name(move(name_)), type(move(type_)), notnull(notnull_), dflt_value(move(dflt_value_)),
+            name(std::move(name_)), type(std::move(type_)), notnull(notnull_), dflt_value(std::move(dflt_value_)),
             pk(pk_), hidden{hidden_} {}
 #endif
     };

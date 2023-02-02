@@ -426,7 +426,7 @@ namespace sqlite_orm {
             order_by_base() = default;
 
             order_by_base(decltype(asc_desc) asc_desc_, decltype(_collate_argument) _collate_argument_) :
-                asc_desc(asc_desc_), _collate_argument(move(_collate_argument_)) {}
+                asc_desc(asc_desc_), _collate_argument(std::move(_collate_argument_)) {}
 #endif
         };
 
@@ -508,7 +508,7 @@ namespace sqlite_orm {
             std::string name;
 
             dynamic_order_by_entry_t(decltype(name) name_, int asc_desc_, std::string collate_argument_) :
-                order_by_base{asc_desc_, move(collate_argument_)}, name(move(name_)) {}
+                order_by_base{asc_desc_, std::move(collate_argument_)}, name(std::move(name_)) {}
         };
 
         /**
@@ -527,7 +527,9 @@ namespace sqlite_orm {
                 auto newContext = this->context;
                 newContext.skip_table_name = true;
                 auto columnName = serialize(order_by.expression, newContext);
-                this->entries.emplace_back(move(columnName), order_by.asc_desc, move(order_by._collate_argument));
+                this->entries.emplace_back(std::move(columnName),
+                                           order_by.asc_desc,
+                                           std::move(order_by._collate_argument));
             }
 
             const_iterator begin() const {

@@ -74,7 +74,7 @@ namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
             trigger_t(std::string name, T trigger_base, elements_type statements) :
-                base_trigger{move(name)}, base(std::move(trigger_base)), elements(move(statements)) {}
+                base_trigger{std::move(name)}, base(std::move(trigger_base)), elements(std::move(statements)) {}
 #endif
         };
 
@@ -206,7 +206,7 @@ namespace sqlite_orm {
             std::string message;
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            raise_t(type_t type, std::string message) : type{type}, message{move(message)} {}
+            raise_t(type_t type, std::string message) : type{type}, message{std::move(message)} {}
 #endif
         };
 
@@ -252,26 +252,27 @@ namespace sqlite_orm {
      *  RAISE(ROLLBACK, %message%) expression used within TRIGGER expressions
      */
     inline internal::raise_t raise_rollback(std::string message) {
-        return {internal::raise_t::type_t::rollback, move(message)};
+        return {internal::raise_t::type_t::rollback, std::move(message)};
     }
 
     /**
      *  RAISE(ABORT, %message%) expression used within TRIGGER expressions
      */
     inline internal::raise_t raise_abort(std::string message) {
-        return {internal::raise_t::type_t::abort, move(message)};
+        return {internal::raise_t::type_t::abort, std::move(message)};
     }
 
     /**
      *  RAISE(FAIL, %message%) expression used within TRIGGER expressions
      */
     inline internal::raise_t raise_fail(std::string message) {
-        return {internal::raise_t::type_t::fail, move(message)};
+        return {internal::raise_t::type_t::fail, std::move(message)};
     }
 
     template<class T, class... S>
     internal::trigger_t<T, S...> make_trigger(std::string name, const internal::partial_trigger_t<T, S...>& part) {
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {move(name), std::move(part.base), std::move(part.statements)});
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
+            return {std::move(name), std::move(part.base), std::move(part.statements)});
     }
 
     inline internal::trigger_timing_t before() {

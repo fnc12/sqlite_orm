@@ -593,7 +593,7 @@ namespace sqlite_orm {
     template<class T, class... Ids>
     internal::remove_t<T, Ids...> remove(Ids... ids) {
         std::tuple<Ids...> idsTuple{std::forward<Ids>(ids)...};
-        return {move(idsTuple)};
+        return {std::move(idsTuple)};
     }
 
     /**
@@ -616,7 +616,7 @@ namespace sqlite_orm {
     template<class T, class... Ids>
     internal::get_t<T, Ids...> get(Ids... ids) {
         std::tuple<Ids...> idsTuple{std::forward<Ids>(ids)...};
-        return {move(idsTuple)};
+        return {std::move(idsTuple)};
     }
 
     /**
@@ -627,7 +627,7 @@ namespace sqlite_orm {
     template<class T, class... Ids>
     internal::get_pointer_t<T, Ids...> get_pointer(Ids... ids) {
         std::tuple<Ids...> idsTuple{std::forward<Ids>(ids)...};
-        return {move(idsTuple)};
+        return {std::move(idsTuple)};
     }
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -639,7 +639,7 @@ namespace sqlite_orm {
     template<class T, class... Ids>
     internal::get_optional_t<T, Ids...> get_optional(Ids... ids) {
         std::tuple<Ids...> idsTuple{std::forward<Ids>(ids)...};
-        return {move(idsTuple)};
+        return {std::move(idsTuple)};
     }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
@@ -653,7 +653,7 @@ namespace sqlite_orm {
         using args_tuple = std::tuple<Args...>;
         internal::validate_conditions<args_tuple>();
         args_tuple conditions{std::forward<Args>(args)...};
-        return {move(conditions)};
+        return {std::move(conditions)};
     }
 
     /**
@@ -666,7 +666,7 @@ namespace sqlite_orm {
         using args_tuple = std::tuple<Args...>;
         internal::validate_conditions<args_tuple>();
         args_tuple conditions{std::forward<Args>(args)...};
-        return {move(conditions)};
+        return {std::move(conditions)};
     }
 
     /**
@@ -680,7 +680,7 @@ namespace sqlite_orm {
         using args_tuple = std::tuple<Args...>;
         internal::validate_conditions<args_tuple>();
         args_tuple conditions{std::forward<Args>(args)...};
-        return {move(conditions)};
+        return {std::move(conditions)};
     }
 
     /**
@@ -693,7 +693,7 @@ namespace sqlite_orm {
         using args_tuple = std::tuple<Wargs...>;
         internal::validate_conditions<args_tuple>();
         args_tuple conditions{std::forward<Wargs>(wh)...};
-        return {std::move(set), move(conditions)};
+        return {std::move(set), std::move(conditions)};
     }
 
     /**
@@ -706,7 +706,7 @@ namespace sqlite_orm {
         using args_tuple = std::tuple<Args...>;
         internal::validate_conditions<args_tuple>();
         args_tuple conditions{std::forward<Args>(args)...};
-        return {move(conditions)};
+        return {std::move(conditions)};
     }
     /**
      *  Create a get all pointer statement.
@@ -719,7 +719,7 @@ namespace sqlite_orm {
         using args_tuple = std::tuple<Args...>;
         internal::validate_conditions<args_tuple>();
         args_tuple conditions{std::forward<Args>(args)...};
-        return {move(conditions)};
+        return {std::move(conditions)};
     }
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -733,7 +733,7 @@ namespace sqlite_orm {
         using args_tuple = std::tuple<Args...>;
         internal::validate_conditions<args_tuple>();
         args_tuple conditions{std::forward<Args>(args)...};
-        return {move(conditions)};
+        return {std::move(conditions)};
     }
 
     /**
@@ -747,7 +747,7 @@ namespace sqlite_orm {
         using args_tuple = std::tuple<Args...>;
         internal::validate_conditions<args_tuple>();
         args_tuple conditions{std::forward<Args>(args)...};
-        return {move(conditions)};
+        return {std::move(conditions)};
     }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 }

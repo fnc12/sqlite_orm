@@ -30,7 +30,7 @@ namespace sqlite_orm {
                 newContext.skip_table_name = false;
                 auto columnName = serialize(t, newContext);
                 if(!columnName.empty()) {
-                    return {move(columnName)};
+                    return {std::move(columnName)};
                 } else {
                     throw std::system_error{orm_error_code::column_not_found};
                 }

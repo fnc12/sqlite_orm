@@ -29,7 +29,7 @@ namespace sqlite_orm {
 
             template<class T>
             group_by_with_having<T, Args...> having(T expression) {
-                return {move(this->args), std::move(expression)};
+                return {std::move(this->args), std::move(expression)};
             }
         };
 
