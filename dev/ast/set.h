@@ -51,11 +51,11 @@ namespace sqlite_orm {
             }
 
             dynamic_set_t(dynamic_set_t&& other) :
-                entries(move(other.entries)), context(std::move(other.context)),
+                entries(std::move(other.entries)), context(std::move(other.context)),
                 collector([this](const std::type_index& ti) {
                     return find_table_name(this->context.db_objects, ti);
                 }) {
-                collector.table_names = move(other.collector.table_names);
+                collector.table_names = std::move(other.collector.table_names);
             }
 
             dynamic_set_t& operator=(const dynamic_set_t& other) {
@@ -68,12 +68,12 @@ namespace sqlite_orm {
             }
 
             dynamic_set_t& operator=(dynamic_set_t&& other) {
-                this->entries = move(other.entries);
+                this->entries = std::move(other.entries);
                 this->context = std::move(other.context);
                 this->collector = table_name_collector([this](const std::type_index& ti) {
                     return find_table_name(this->context.db_objects, ti);
                 });
-                this->collector.table_names = move(other.collector.table_names);
+                this->collector.table_names = std::move(other.collector.table_names);
             }
 
             template<class L, class R>

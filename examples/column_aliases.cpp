@@ -17,7 +17,7 @@ void marvel_hero_ordered_by_o_pos() {
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         MarvelHero() {}
         MarvelHero(int id, std::string name, std::string abilities, short points) :
-            id{id}, name{move(name)}, abilities{move(abilities)}, points{points} {}
+            id{id}, name{std::move(name)}, abilities{std::move(abilities)}, points{points} {}
 #endif
     };
 

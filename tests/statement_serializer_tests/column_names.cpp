@@ -48,7 +48,7 @@ TEST_CASE("statement_serializer column names") {
             }
 
             void setName(std::string value) {
-                this->name = move(value);
+                this->name = std::move(value);
             }
 
           private:

@@ -201,7 +201,7 @@ TEST_CASE("function static") {
                 }
 
                 std::string fin() {
-                    return move(result);
+                    return std::move(result);
                 }
             };
 

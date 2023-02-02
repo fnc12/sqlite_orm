@@ -9078,7 +9078,7 @@ namespace sqlite_orm {
         static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
                       "amount of where arguments can be 0 or 1");
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {move(name), false, std::make_tuple(internal::make_indexed_column(std::move(cols))...)});
+            return {std::move(name), false, std::make_tuple(internal::make_indexed_column(std::move(cols))...)});
     }
 
     template<class... Cols>
@@ -11239,11 +11239,11 @@ namespace sqlite_orm {
             }
 
             dynamic_set_t(dynamic_set_t&& other) :
-                entries(move(other.entries)), context(std::move(other.context)),
+                entries(std::move(other.entries)), context(std::move(other.context)),
                 collector([this](const std::type_index& ti) {
                     return find_table_name(this->context.db_objects, ti);
                 }) {
-                collector.table_names = move(other.collector.table_names);
+                collector.table_names = std::move(other.collector.table_names);
             }
 
             dynamic_set_t& operator=(const dynamic_set_t& other) {
@@ -11256,12 +11256,12 @@ namespace sqlite_orm {
             }
 
             dynamic_set_t& operator=(dynamic_set_t&& other) {
-                this->entries = move(other.entries);
+                this->entries = std::move(other.entries);
                 this->context = std::move(other.context);
                 this->collector = table_name_collector([this](const std::type_index& ti) {
                     return find_table_name(this->context.db_objects, ti);
                 });
-                this->collector.table_names = move(other.collector.table_names);
+                this->collector.table_names = std::move(other.collector.table_names);
             }
 
             template<class L, class R>
@@ -16295,7 +16295,7 @@ namespace sqlite_orm {
         struct table_name_collector_holder<set_t<Args...>> {
 
             table_name_collector_holder(table_name_collector::find_table_name_t find_table_name) :
-                collector(move(find_table_name)) {}
+                collector(std::move(find_table_name)) {}
 
             table_name_collector collector;
         };
@@ -19229,7 +19229,7 @@ namespace sqlite_orm {
 
     /**
      *  Generalized form of the 'remember' SQL function that is a pass-through for values
-     *  (it returns its argument unchanged using move semantics) but also saves the
+     *  (it returns its argument unchanged using std::move semantics) but also saves the
      *  value that is passed through into a bound variable.
      */
     template<typename P>
