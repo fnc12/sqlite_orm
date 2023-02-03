@@ -11,7 +11,7 @@ TEST_CASE("substr") {
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         Test() = default;
-        Test(std::string text, int x, int y) : text{move(text)}, x{x}, y{y} {}
+        Test(std::string text, int x, int y) : text{std::move(text)}, x{x}, y{y} {}
 #endif
     };
     auto storage = make_storage(
@@ -184,7 +184,7 @@ TEST_CASE("quote") {
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         Department() = default;
         Department(int id, std::string name, int managerId, int locationId) :
-            id{id}, name{move(name)}, managerId{managerId}, locationId{locationId} {}
+            id{id}, name{std::move(name)}, managerId{managerId}, locationId{locationId} {}
 #endif
     };
     auto storage = make_storage({},
@@ -268,7 +268,7 @@ TEST_CASE("instr") {
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         Employee() = default;
         Employee(int id, std::string firstName, std::string lastName, std::string address) :
-            id{id}, firstName{move(firstName)}, lastName{move(lastName)}, address{move(address)} {}
+            id{id}, firstName{std::move(firstName)}, lastName{std::move(lastName)}, address{std::move(address)} {}
 #endif
     };
 
@@ -340,7 +340,7 @@ namespace replace_func_local {
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         Contact() = default;
         Contact(int id, std::string firstName, std::string lastName, std::string phone) :
-            id{id}, firstName{move(firstName)}, lastName{move(lastName)}, phone{move(phone)} {}
+            id{id}, firstName{std::move(firstName)}, lastName{std::move(lastName)}, phone{std::move(phone)} {}
 #endif
     };
 
@@ -541,9 +541,10 @@ TEST_CASE("ifnull") {
                  std::string email,
                  int supportRepId) :
             id{id},
-            firstName{move(firstName)}, lastName{move(lastName)}, company{move(company)}, address{move(address)},
-            city{move(city)}, state{move(state)}, country{move(country)}, postalCode{move(postalCode)},
-            phone{move(phone)}, fax{move(fax)}, email{move(email)}, supportRepId{supportRepId} {}
+            firstName{std::move(firstName)}, lastName{std::move(lastName)}, company{std::move(company)},
+            address{std::move(address)}, city{std::move(city)}, state{std::move(state)}, country{std::move(country)},
+            postalCode{std::move(postalCode)}, phone{std::move(phone)}, fax{std::move(fax)}, email{std::move(email)},
+            supportRepId{supportRepId} {}
 #endif
     };
     auto storage = make_storage({},

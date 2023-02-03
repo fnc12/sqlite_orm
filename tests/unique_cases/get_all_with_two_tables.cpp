@@ -9,7 +9,7 @@ namespace {
 
 #ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
         Pattern() = default;
-        Pattern(std::string value) : value{move(value)} {}
+        Pattern(std::string value) : value{std::move(value)} {}
 #endif
     };
     struct Item {
@@ -18,7 +18,7 @@ namespace {
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         Item() = default;
-        Item(int id, std::string attributes) : id{id}, attributes{move(attributes)} {}
+        Item(int id, std::string attributes) : id{id}, attributes{std::move(attributes)} {}
 #endif
     };
 

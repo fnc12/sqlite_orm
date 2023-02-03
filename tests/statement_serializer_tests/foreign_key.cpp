@@ -297,7 +297,7 @@ TEST_CASE("statement_serializer foreign key") {
         struct User : Object {
             std::string name;
 
-            User(decltype(id) id_, decltype(name) name_) : Object{id_}, name(move(name_)) {}
+            User(decltype(id) id_, decltype(name) name_) : Object{id_}, name(std::move(name_)) {}
         };
 
         struct Token : Object {

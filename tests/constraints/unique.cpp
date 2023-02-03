@@ -15,7 +15,7 @@ TEST_CASE("Unique") {
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         Contact() = default;
         Contact(int id, std::string firstName, std::string lastName, std::string email) :
-            id{id}, firstName{move(firstName)}, lastName{move(lastName)}, email{move(email)} {}
+            id{id}, firstName{std::move(firstName)}, lastName{std::move(lastName)}, email{std::move(email)} {}
 #endif
     };
     struct Shape {
@@ -26,7 +26,7 @@ TEST_CASE("Unique") {
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         Shape() = default;
         Shape(int id, std::string backgroundColor, std::string foregroundColor) :
-            id{id}, backgroundColor{move(backgroundColor)}, foregroundColor{move(foregroundColor)} {}
+            id{id}, backgroundColor{std::move(backgroundColor)}, foregroundColor{std::move(foregroundColor)} {}
 #endif
     };
     struct List {
@@ -35,7 +35,7 @@ TEST_CASE("Unique") {
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         List() = default;
-        List(int id, decltype(email) email) : id{id}, email{move(email)} {}
+        List(int id, decltype(email) email) : id{id}, email{std::move(email)} {}
 #endif
     };
 

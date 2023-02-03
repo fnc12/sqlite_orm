@@ -19,7 +19,7 @@ int main() {
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         Student() {}
         Student(int id, std::string name, std::string email, float marks) :
-            id{id}, name{move(name)}, email{move(email)}, marks{marks} {}
+            id{id}, name{std::move(name)}, email{std::move(email)}, marks{marks} {}
 #endif
     };
 
