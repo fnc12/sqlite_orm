@@ -4,6 +4,8 @@
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string
 
+#include "type_traits.h"
+
 namespace sqlite_orm {
 
     /**
@@ -86,10 +88,11 @@ namespace sqlite_orm {
      *  @return column with table alias attached. Place it instead of a column statement in case you need to specify a
      *  column with table alias prefix like 'a.column'. For more information please look through self_join.cpp example
      */
-    template<class T, class C>
-    internal::alias_column_t<T, C> alias_column(C c) {
-        static_assert(std::is_member_pointer<C>::value,
-                      "alias_column argument must be a member pointer mapped to a storage");
+    template<class A, class C>
+    internal::alias_column_t<A, C> alias_column(C c) {
+        using table_type = internal::type_t<A>;
+        static_assert(std::is_same<internal::table_type_of_t<C>, table_type>::value,
+                      "Column must be from aliased table");
         return {c};
     }
 

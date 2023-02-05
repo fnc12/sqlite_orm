@@ -4,6 +4,7 @@
 #include <string>  //  std::string
 #include <functional>  //  std::function
 #include <typeindex>  //  std::type_index
+#include <utility>  //  std::move
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"
@@ -41,9 +42,11 @@ namespace sqlite_orm {
                 table_names.emplace(this->find_table_name(typeid(T)), "");
             }
 
-            template<class T, class C>
-            void operator()(const alias_column_t<T, C>& a) const {
-                (*this)(a.column, alias_extractor<T>::get());
+            template<class A, class C>
+            void operator()(const alias_column_t<A, C>&) const {
+                // note: instead of accessing the column, we are interested in the type the column is aliased into
+                auto tableName = this->find_table_name(typeid(mapped_type_proxy_t<A>));
+                table_names.emplace(std::move(tableName), alias_extractor<A>::get());
             }
 
             template<class T>

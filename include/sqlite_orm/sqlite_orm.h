@@ -1206,164 +1206,15 @@ namespace sqlite_orm {
 
 // #include "table_type_of.h"
 
-// #include "indexed_column.h"
-
-#include <string>  //  std::string
-#include <utility>  //  std::move
-
-// #include "functional/cxx_universal.h"
-
-// #include "ast/where.h"
-
-#include <type_traits>  //  std::false_type, std::true_type
-#include <utility>  //  std::move
-
-// #include "../functional/cxx_universal.h"
-
-// #include "../functional/cxx_type_traits_polyfill.h"
-
-// #include "../serialize_result_type.h"
-
-// #include "functional/cxx_string_view.h"
-
-// #include "cxx_core_features.h"
-
-#if SQLITE_ORM_HAS_INCLUDE(<string_view>)
-#include <string_view>
-#endif
-
-#if __cpp_lib_string_view >= 201606L
-#define SQLITE_ORM_STRING_VIEW_SUPPORTED
-#endif
-
-#ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
-#include <string>  //  std::string
-#endif
-
-namespace sqlite_orm {
-    namespace internal {
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-        using serialize_result_type = std::string_view;
-#else
-        using serialize_result_type = std::string;
-#endif
-    }
-}
-
-namespace sqlite_orm {
-    namespace internal {
-
-        struct where_string {
-            serialize_result_type serialize() const {
-                return "WHERE";
-            }
-        };
-
-        /**
-         *  WHERE argument holder.
-         *  C is expression type. Can be any expression like: is_equal_t, is_null_t, exists_t etc
-         *  Don't construct it manually. Call `where(...)` function instead.
-         */
-        template<class C>
-        struct where_t : where_string {
-            using expression_type = C;
-
-            expression_type expression;
-
-            where_t(expression_type expression_) : expression(std::move(expression_)) {}
-        };
-
-        template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_where_v = polyfill::is_specialization_of_v<T, where_t>;
-
-        template<class T>
-        using is_where = polyfill::bool_constant<is_where_v<T>>;
-    }
-
-    /**
-     *  WHERE clause. Use it to add WHERE conditions wherever you like.
-     *  C is expression type. Can be any expression like: is_equal_t, is_null_t, exists_t etc
-     *  @example
-     *  //  SELECT name
-     *  //  FROM letters
-     *  //  WHERE id > 3
-     *  auto rows = storage.select(&Letter::name, where(greater_than(&Letter::id, 3)));
-     */
-    template<class C>
-    internal::where_t<C> where(C expression) {
-        return {std::move(expression)};
-    }
-}
-
-namespace sqlite_orm {
-
-    namespace internal {
-
-        template<class C>
-        struct indexed_column_t {
-            using column_type = C;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            indexed_column_t(column_type _column_or_expression) :
-                column_or_expression(std::move(_column_or_expression)) {}
-#endif
-
-            column_type column_or_expression;
-            std::string _collation_name;
-            int _order = 0;  //  -1 = desc, 1 = asc, 0 = not specified
-
-            indexed_column_t<column_type> collate(std::string name) {
-                auto res = std::move(*this);
-                res._collation_name = std::move(name);
-                return res;
-            }
-
-            indexed_column_t<column_type> asc() {
-                auto res = std::move(*this);
-                res._order = 1;
-                return res;
-            }
-
-            indexed_column_t<column_type> desc() {
-                auto res = std::move(*this);
-                res._order = -1;
-                return res;
-            }
-        };
-
-        template<class C>
-        indexed_column_t<C> make_indexed_column(C col) {
-            return {std::move(col)};
-        }
-
-        template<class C>
-        where_t<C> make_indexed_column(where_t<C> wher) {
-            return std::move(wher);
-        }
-
-        template<class C>
-        indexed_column_t<C> make_indexed_column(indexed_column_t<C> col) {
-            return std::move(col);
-        }
-    }
-
-    /**
-     * Use this function to specify indexed column inside `make_index` function call.
-     * Example: make_index("index_name", indexed_column(&User::id).asc())
-     */
-    template<class C>
-    internal::indexed_column_t<C> indexed_column(C column_or_expression) {
-        return {std::move(column_or_expression)};
-    }
-
-}
-
 namespace sqlite_orm {
 
     namespace internal {
 
         template<class T, class F>
         struct column_pointer;
+
+        template<class C>
+        struct indexed_column_t;
 
         /**
          *  Trait class used to define table mapped type by setter/getter/member
@@ -2000,6 +1851,32 @@ namespace sqlite_orm {
 }
 
 // #include "serialize_result_type.h"
+
+// #include "functional/cxx_string_view.h"
+
+// #include "cxx_core_features.h"
+
+#if SQLITE_ORM_HAS_INCLUDE(<string_view>)
+#include <string_view>
+#endif
+
+#if __cpp_lib_string_view >= 201606L
+#define SQLITE_ORM_STRING_VIEW_SUPPORTED
+#endif
+
+#ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
+#include <string>  //  std::string
+#endif
+
+namespace sqlite_orm {
+    namespace internal {
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+        using serialize_result_type = std::string_view;
+#else
+        using serialize_result_type = std::string;
+#endif
+    }
+}
 
 namespace sqlite_orm {
 
@@ -4175,6 +4052,8 @@ namespace sqlite_orm {
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string
 
+// #include "type_traits.h"
+
 namespace sqlite_orm {
 
     /**
@@ -4257,10 +4136,11 @@ namespace sqlite_orm {
      *  @return column with table alias attached. Place it instead of a column statement in case you need to specify a
      *  column with table alias prefix like 'a.column'. For more information please look through self_join.cpp example
      */
-    template<class T, class C>
-    internal::alias_column_t<T, C> alias_column(C c) {
-        static_assert(std::is_member_pointer<C>::value,
-                      "alias_column argument must be a member pointer mapped to a storage");
+    template<class A, class C>
+    internal::alias_column_t<A, C> alias_column(C c) {
+        using table_type = internal::type_t<A>;
+        static_assert(std::is_same<internal::table_type_of_t<C>, table_type>::value,
+                      "Column must be from aliased table");
         return {c};
     }
 
@@ -6633,6 +6513,60 @@ namespace sqlite_orm {
 // #include "optional_container.h"
 
 // #include "ast/where.h"
+
+#include <type_traits>  //  std::false_type, std::true_type
+#include <utility>  //  std::move
+
+// #include "../functional/cxx_universal.h"
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../serialize_result_type.h"
+
+namespace sqlite_orm {
+    namespace internal {
+
+        struct where_string {
+            serialize_result_type serialize() const {
+                return "WHERE";
+            }
+        };
+
+        /**
+         *  WHERE argument holder.
+         *  C is expression type. Can be any expression like: is_equal_t, is_null_t, exists_t etc
+         *  Don't construct it manually. Call `where(...)` function instead.
+         */
+        template<class C>
+        struct where_t : where_string {
+            using expression_type = C;
+
+            expression_type expression;
+
+            where_t(expression_type expression_) : expression(std::move(expression_)) {}
+        };
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_where_v = polyfill::is_specialization_of_v<T, where_t>;
+
+        template<class T>
+        using is_where = polyfill::bool_constant<is_where_v<T>>;
+    }
+
+    /**
+     *  WHERE clause. Use it to add WHERE conditions wherever you like.
+     *  C is expression type. Can be any expression like: is_equal_t, is_null_t, exists_t etc
+     *  @example
+     *  //  SELECT name
+     *  //  FROM letters
+     *  //  WHERE id > 3
+     *  auto rows = storage.select(&Letter::name, where(greater_than(&Letter::id, 3)));
+     */
+    template<class C>
+    internal::where_t<C> where(C expression) {
+        return {std::move(expression)};
+    }
+}
 
 // #include "ast/group_by.h"
 
@@ -9030,6 +8964,76 @@ namespace sqlite_orm {
 
 // #include "indexed_column.h"
 
+#include <string>  //  std::string
+#include <utility>  //  std::move
+
+// #include "functional/cxx_universal.h"
+
+// #include "ast/where.h"
+
+namespace sqlite_orm {
+
+    namespace internal {
+
+        template<class C>
+        struct indexed_column_t {
+            using column_type = C;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            indexed_column_t(column_type _column_or_expression) :
+                column_or_expression(std::move(_column_or_expression)) {}
+#endif
+
+            column_type column_or_expression;
+            std::string _collation_name;
+            int _order = 0;  //  -1 = desc, 1 = asc, 0 = not specified
+
+            indexed_column_t<column_type> collate(std::string name) {
+                auto res = std::move(*this);
+                res._collation_name = std::move(name);
+                return res;
+            }
+
+            indexed_column_t<column_type> asc() {
+                auto res = std::move(*this);
+                res._order = 1;
+                return res;
+            }
+
+            indexed_column_t<column_type> desc() {
+                auto res = std::move(*this);
+                res._order = -1;
+                return res;
+            }
+        };
+
+        template<class C>
+        indexed_column_t<C> make_indexed_column(C col) {
+            return {std::move(col)};
+        }
+
+        template<class C>
+        where_t<C> make_indexed_column(where_t<C> wher) {
+            return std::move(wher);
+        }
+
+        template<class C>
+        indexed_column_t<C> make_indexed_column(indexed_column_t<C> col) {
+            return std::move(col);
+        }
+    }
+
+    /**
+     * Use this function to specify indexed column inside `make_index` function call.
+     * Example: make_index("index_name", indexed_column(&User::id).asc())
+     */
+    template<class C>
+    internal::indexed_column_t<C> indexed_column(C column_or_expression) {
+        return {std::move(column_or_expression)};
+    }
+
+}
+
 // #include "table_type_of.h"
 
 namespace sqlite_orm {
@@ -11103,6 +11107,7 @@ namespace sqlite_orm {
 #include <string>  //  std::string
 #include <functional>  //  std::function
 #include <typeindex>  //  std::type_index
+#include <utility>  //  std::move
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
@@ -11144,9 +11149,11 @@ namespace sqlite_orm {
                 table_names.emplace(this->find_table_name(typeid(T)), "");
             }
 
-            template<class T, class C>
-            void operator()(const alias_column_t<T, C>& a) const {
-                (*this)(a.column, alias_extractor<T>::get());
+            template<class A, class C>
+            void operator()(const alias_column_t<A, C>&) const {
+                // note: instead of accessing the column, we are interested in the type the column is aliased into
+                auto tableName = this->find_table_name(typeid(mapped_type_proxy_t<A>));
+                table_names.emplace(std::move(tableName), alias_extractor<A>::get());
             }
 
             template<class T>
@@ -14967,6 +14974,8 @@ namespace sqlite_orm {
 #include <array>
 // #include "functional/cxx_string_view.h"
 
+// #include "functional/cxx_optional.h"
+
 // #include "functional/cxx_universal.h"
 
 // #include "functional/cxx_functional_polyfill.h"
@@ -16254,7 +16263,7 @@ namespace sqlite_orm {
             using statement_type = dynamic_set_t<C>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type& statement, const Ctx&) const {
                 std::stringstream ss;
                 ss << "SET ";
                 int index = 0;
@@ -19229,7 +19238,7 @@ namespace sqlite_orm {
 
     /**
      *  Generalized form of the 'remember' SQL function that is a pass-through for values
-     *  (it returns its argument unchanged using std::move semantics) but also saves the
+     *  (it returns its argument unchanged using move semantics) but also saves the
      *  value that is passed through into a bound variable.
      */
     template<typename P>

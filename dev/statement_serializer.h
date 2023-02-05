@@ -11,6 +11,7 @@
 #include <memory>
 #include <array>
 #include "functional/cxx_string_view.h"
+#include "functional/cxx_optional.h"
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_functional_polyfill.h"
@@ -1076,7 +1077,7 @@ namespace sqlite_orm {
             using statement_type = dynamic_set_t<C>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type& statement, const Ctx&) const {
                 std::stringstream ss;
                 ss << "SET ";
                 int index = 0;
