@@ -10,7 +10,7 @@ TEST_CASE("explicit from") {
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         User() = default;
-        User(int id, std::string name) : id{id}, name{move(name)} {}
+        User(int id, std::string name) : id{id}, name{std::move(name)} {}
 #endif
     };
     auto storage = make_storage(
@@ -80,7 +80,7 @@ TEST_CASE("update set null") {
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         User() = default;
-        User(int id, decltype(name) name) : id{id}, name{move(name)} {}
+        User(int id, decltype(name) name) : id{id}, name{std::move(name)} {}
 #endif
     };
 
@@ -127,7 +127,7 @@ TEST_CASE("InsertRange") {
 
 #ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
         Object() = default;
-        Object(int id, std::string name) : id{id}, name{move(name)} {}
+        Object(int id, std::string name) : id{id}, name{std::move(name)} {}
 #endif
     };
 
@@ -137,7 +137,7 @@ TEST_CASE("InsertRange") {
 
 #ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
         ObjectWithoutRowid() = default;
-        ObjectWithoutRowid(int id, std::string name) : id{id}, name{move(name)} {}
+        ObjectWithoutRowid(int id, std::string name) : id{id}, name{std::move(name)} {}
 #endif
     };
 
@@ -391,13 +391,13 @@ TEST_CASE("Replace query") {
 
 #ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
         Object() = default;
-        Object(int id, std::string name) : id{id}, name{move(name)} {}
+        Object(int id, std::string name) : id{id}, name{std::move(name)} {}
 #endif
     };
 
     struct User {
 
-        User(int id_, std::string name_) : id(id_), name(move(name_)) {}
+        User(int id_, std::string name_) : id(id_), name(std::move(name_)) {}
 
         int getId() const {
             return this->id;
@@ -412,7 +412,7 @@ TEST_CASE("Replace query") {
         }
 
         void setName(std::string name_) {
-            this->name = move(name_);
+            this->name = std::move(name_);
         }
 
       private:

@@ -97,7 +97,7 @@ TEST_CASE("json_array_length nullable") {
         rows = storage.select(json_array_length<Type>("{\"one\":[1,2,3]}", "$.two"));
         expected = nullptr;
     }
-    value = move(rows[0]);
+    value = std::move(rows[0]);
     REQUIRE(rows.size() == 1);
     REQUIRE(bool(expected) == bool(value));
     if(expected) {
