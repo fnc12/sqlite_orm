@@ -37,18 +37,6 @@ namespace sqlite_orm {
                 empty_callable<nullptr_t>())(dbObjects);
         }
 
-        template<class DBOs, satisfies<is_db_objects, DBOs> = true>
-        std::string find_table_name(const DBOs& dbObjects, const std::type_index& ti) {
-            std::string res;
-            iterate_tuple<true>(dbObjects, tables_index_sequence<DBOs>{}, [&ti, &res](const auto& table) {
-                using table_type = std::decay_t<decltype(table)>;
-                if(ti == typeid(object_type_t<table_type>)) {
-                    res = table.name;
-                }
-            });
-            return res;
-        }
-
         template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs> = true>
         std::string lookup_table_name(const DBOs& dbObjects) {
             return static_if<is_mapped_v<DBOs, Lookup>>(

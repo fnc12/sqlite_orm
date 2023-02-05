@@ -13,13 +13,11 @@ TEST_CASE("table name collector") {
     auto table = make_table("users", make_column("id", &User::id), make_column("name", &User::name));
     using db_objects_t = internal::db_objects_tuple<decltype(table)>;
     auto dbObjects = db_objects_t{table};
-    internal::table_name_collector::table_name_set expected;
+    internal::table_name_collector_base::table_name_set expected;
 
     SECTION("from table") {
         internal::serializer_context<db_objects_t> context{dbObjects};
-        internal::table_name_collector collector([&context](const std::type_index& ti) {
-            return internal::find_table_name(context.db_objects, ti);
-        });
+        auto collector = internal::make_table_name_collector(context.db_objects);
 
         SECTION("regular column") {
             using als = alias_z<User>;
