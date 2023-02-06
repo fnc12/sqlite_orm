@@ -1124,6 +1124,14 @@ namespace sqlite_orm {
             return set.collector.table_names;
         }
 
+        template<class Ctx, class T, satisfies<is_select, T> = true>
+        std::set<std::pair<std::string, std::string>> collect_table_names(const T& sel, const Ctx& ctx) {
+            auto collector = make_table_name_collector(ctx.db_objects);
+            iterate_ast(sel.col, collector);
+            iterate_ast(sel.conditions, collector);
+            return std::move(collector.table_names);
+        }
+
         template<class S, class... Wargs>
         struct statement_serializer<update_all_t<S, Wargs...>, void> {
             using statement_type = update_all_t<S, Wargs...>;
@@ -1498,22 +1506,20 @@ namespace sqlite_orm {
                     ss << static_cast<std::string>(distinct(0)) << " ";
                 }
                 ss << streaming_serialized(get_column_names(sel.col, context));
-                auto collector = make_table_name_collector(context.db_objects);
                 constexpr bool explicitFromItemsCount = count_tuple<std::tuple<Args...>, is_from>::value;
                 if(!explicitFromItemsCount) {
-                    iterate_ast(sel.col, collector);
-                    iterate_ast(sel.conditions, collector);
-                    join_iterator<Args...>()([&collector, &context](const auto& c) {
+                    auto tableNames = collect_table_names(sel, context);
+                    join_iterator<Args...>()([&tableNames, &context](const auto& c) {
                         using original_join_type = typename std::decay_t<decltype(c)>::join_type::type;
                         using cross_join_type = mapped_type_proxy_t<original_join_type>;
                         auto crossJoinedTableName = lookup_table_name<cross_join_type>(context.db_objects);
                         auto tableAliasString = alias_extractor<original_join_type>::get();
                         std::pair<std::string, std::string> tableNameWithAlias{std::move(crossJoinedTableName),
                                                                                std::move(tableAliasString)};
-                        collector.table_names.erase(tableNameWithAlias);
+                        tableNames.erase(tableNameWithAlias);
                     });
-                    if(!collector.table_names.empty() && !isCompoundOperator) {
-                        ss << " FROM " << streaming_identifiers(collector.table_names);
+                    if(!tableNames.empty() && !isCompoundOperator) {
+                        ss << " FROM " << streaming_identifiers(tableNames);
                     }
                 }
                 ss << streaming_conditions_tuple(sel.conditions, context);
