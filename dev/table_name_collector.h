@@ -9,6 +9,7 @@
 #include "select_constraints.h"
 #include "alias.h"
 #include "core_functions.h"
+#include "storage_lookup.h"
 
 namespace sqlite_orm {
 
@@ -93,7 +94,7 @@ namespace sqlite_orm {
             }
         };
 
-        template<class DBOs>
+        template<class DBOs, satisfies<is_db_objects, DBOs> = true>
         table_name_collector<DBOs> make_table_name_collector(const DBOs& dbObjects) {
             return {dbObjects};
         }

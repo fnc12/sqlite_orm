@@ -11089,7 +11089,7 @@ namespace sqlite_orm {
 #include <sstream>  //  std::stringstream
 #include <type_traits>  //  std::false_type, std::true_type
 
-// #include "table_name_collector.h"
+// #include "../table_name_collector.h"
 
 #include <set>  //  std::set
 #include <string>  //  std::string
@@ -11104,6 +11104,8 @@ namespace sqlite_orm {
 // #include "alias.h"
 
 // #include "core_functions.h"
+
+// #include "storage_lookup.h"
 
 namespace sqlite_orm {
 
@@ -11188,7 +11190,7 @@ namespace sqlite_orm {
             }
         };
 
-        template<class DBOs>
+        template<class DBOs, satisfies<is_db_objects, DBOs> = true>
         table_name_collector<DBOs> make_table_name_collector(const DBOs& dbObjects) {
             return {dbObjects};
         }
@@ -11229,30 +11231,10 @@ namespace sqlite_orm {
 
             dynamic_set_t(const context_t& context_) : context(context_), collector(this->context.db_objects) {}
 
-            dynamic_set_t(const dynamic_set_t& other) :
-                entries(other.entries), context(other.context), collector(this->context.db_objects) {
-                collector.table_names = other.collector.table_names;
-            }
-
-            dynamic_set_t(dynamic_set_t&& other) :
-                entries(std::move(other.entries)), context(std::move(other.context)),
-                collector(this->context.db_objects) {
-                collector.table_names = std::move(other.collector.table_names);
-            }
-
-            dynamic_set_t& operator=(const dynamic_set_t& other) {
-                this->entries = other.entries;
-                this->context = other.context;
-                this->collector = table_name_collector(this->context.db_objects);
-                this->collector.table_names = other.collector.table_names;
-            }
-
-            dynamic_set_t& operator=(dynamic_set_t&& other) {
-                this->entries = std::move(other.entries);
-                this->context = std::move(other.context);
-                this->collector = table_name_collector(this->context.db_objects);
-                this->collector.table_names = std::move(other.collector.table_names);
-            }
+            dynamic_set_t(const dynamic_set_t& other) = default;
+            dynamic_set_t(dynamic_set_t&& other) = default;
+            dynamic_set_t& operator=(const dynamic_set_t& other) = default;
+            dynamic_set_t& operator=(dynamic_set_t&& other) = default;
 
             template<class L, class R>
             void push_back(assign_t<L, R> assign) {
