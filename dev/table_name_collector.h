@@ -18,7 +18,7 @@ namespace sqlite_orm {
         struct table_name_collector_base {
             using table_name_set = std::set<std::pair<std::string, std::string>>;
 
-            mutable table_name_set table_names;
+            table_name_set table_names;
         };
 
         template<class DBOs>
@@ -35,24 +35,24 @@ namespace sqlite_orm {
             void operator()(const T&) const {}
 
             template<class F, class O>
-            void operator()(F O::*, std::string alias = {}) const {
-                this->table_names.emplace(lookup_table_name<O>(this->db_objects), std::move(alias));
+            void operator()(F O::*) {
+                this->table_names.emplace(lookup_table_name<O>(this->db_objects), "");
             }
 
             template<class T, class F>
-            void operator()(const column_pointer<T, F>&) const {
+            void operator()(const column_pointer<T, F>&) {
                 this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
             }
 
             template<class A, class C>
-            void operator()(const alias_column_t<A, C>&) const {
+            void operator()(const alias_column_t<A, C>&) {
                 // note: instead of accessing the column, we are interested in the type the column is aliased into
                 auto tableName = lookup_table_name<mapped_type_proxy_t<A>>(this->db_objects);
                 this->table_names.emplace(std::move(tableName), alias_extractor<A>::get());
             }
 
             template<class T>
-            void operator()(const count_asterisk_t<T>&) const {
+            void operator()(const count_asterisk_t<T>&) {
                 auto tableName = lookup_table_name<T>(this->db_objects);
                 if(!tableName.empty()) {
                     this->table_names.emplace(std::move(tableName), "");
@@ -60,12 +60,12 @@ namespace sqlite_orm {
             }
 
             template<class T, satisfies_not<std::is_base_of, alias_tag, T> = true>
-            void operator()(const asterisk_t<T>&) const {
-                this->table_names.emplace(lookup_table_name<T>(db_objects), "");
+            void operator()(const asterisk_t<T>&) {
+                this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
             }
 
             template<class T, satisfies<std::is_base_of, alias_tag, T> = true>
-            void operator()(const asterisk_t<T>&) const {
+            void operator()(const asterisk_t<T>&) {
                 // note: not all alias classes have a nested A::type
                 static_assert(polyfill::is_detected_v<type_t, T>,
                               "alias<O> must have a nested alias<O>::type typename");
@@ -74,22 +74,22 @@ namespace sqlite_orm {
             }
 
             template<class T>
-            void operator()(const object_t<T>&) const {
+            void operator()(const object_t<T>&) {
                 this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
             }
 
             template<class T>
-            void operator()(const table_rowid_t<T>&) const {
+            void operator()(const table_rowid_t<T>&) {
                 this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
             }
 
             template<class T>
-            void operator()(const table_oid_t<T>&) const {
+            void operator()(const table_oid_t<T>&) {
                 this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
             }
 
             template<class T>
-            void operator()(const table__rowid_t<T>&) const {
+            void operator()(const table__rowid_t<T>&) {
                 this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
             }
         };

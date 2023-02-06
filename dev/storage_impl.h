@@ -1,12 +1,10 @@
 #pragma once
 
-#include <tuple>  //  std::tuple_size
-#include <typeindex>  //  std::type_index
 #include <string>  //  std::string
-#include <type_traits>  //  std::is_same, std::decay, std::make_index_sequence, std::index_sequence
 
-#include "functional/cxx_universal.h"
+#include "functional/cxx_universal.h"  //  ::nullptr_t
 #include "functional/static_magic.h"
+#include "tuple_helper/tuple_filter.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "type_traits.h"
 #include "select_constraints.h"

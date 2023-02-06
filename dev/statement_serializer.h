@@ -136,7 +136,7 @@ namespace sqlite_orm {
          *  Serializer for literal values.
          */
         template<class T>
-        struct statement_serializer<T, internal::match_specialization_of<T, literal_holder>> {
+        struct statement_serializer<T, match_specialization_of<T, literal_holder>> {
             using statement_type = T;
 
             template<class Ctx>
@@ -1132,6 +1132,11 @@ namespace sqlite_orm {
             return std::move(collector.table_names);
         }
 
+        template<class Ctx, class T, satisfies<is_table, T> = true>
+        std::set<std::pair<std::string, std::string>> collect_table_names(const T& table, const Ctx&) {
+            return {{table.name, ""}};
+        }
+
         template<class S, class... Wargs>
         struct statement_serializer<update_all_t<S, Wargs...>, void> {
             using statement_type = update_all_t<S, Wargs...>;
@@ -1357,17 +1362,12 @@ namespace sqlite_orm {
         std::string serialize_get_all_impl(const T& get, const Ctx& context) {
             using primary_type = type_t<T>;
 
-            auto collector = make_table_name_collector(context.db_objects);
-            collector.table_names.emplace(lookup_table_name<primary_type>(context.db_objects), "");
-            // note: not collecting table names from get.conditions;
-
             auto& table = pick_table<primary_type>(context.db_objects);
+            auto tableNames = collect_table_names(table, context);
+
             std::stringstream ss;
-            ss << "SELECT " << streaming_table_column_names(table, true);
-            if(!collector.table_names.empty()) {
-                ss << " FROM " << streaming_identifiers(collector.table_names);
-            }
-            ss << streaming_conditions_tuple(get.conditions, context);
+            ss << "SELECT " << streaming_table_column_names(table, true) << " FROM "
+               << streaming_identifiers(tableNames) << streaming_conditions_tuple(get.conditions, context);
             return ss.str();
         }
 

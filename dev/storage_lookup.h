@@ -133,5 +133,12 @@ namespace sqlite_orm {
             using table_type = storage_pick_table_t<Lookup, DBOs>;
             return std::get<table_type>(dbObjects);
         }
+
+        template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs>>
+        auto lookup_table(const DBOs& dbObjects);
+
+        template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs>>
+        std::string lookup_table_name(const DBOs& dbObjects);
+
     }
 }

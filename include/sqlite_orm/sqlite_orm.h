@@ -8225,7 +8225,7 @@ namespace sqlite_orm {
     template<>
     struct statement_binder<std::vector<char>, void> {
         int bind(sqlite3_stmt* stmt, int index, const std::vector<char>& value) const {
-            if(value.size()) {
+            if(!value.empty()) {
                 return sqlite3_bind_blob(stmt, index, (const void*)&value.front(), int(value.size()), SQLITE_TRANSIENT);
             } else {
                 return sqlite3_bind_blob(stmt, index, "", 0, SQLITE_TRANSIENT);
@@ -8233,7 +8233,7 @@ namespace sqlite_orm {
         }
 
         void result(sqlite3_context* context, const std::vector<char>& value) const {
-            if(value.size()) {
+            if(!value.empty()) {
                 sqlite3_result_blob(context, (const void*)&value.front(), int(value.size()), nullptr);
             } else {
                 sqlite3_result_blob(context, "", 0, nullptr);
@@ -9389,6 +9389,13 @@ namespace sqlite_orm {
             using table_type = storage_pick_table_t<Lookup, DBOs>;
             return std::get<table_type>(dbObjects);
         }
+
+        template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs>>
+        auto lookup_table(const DBOs& dbObjects);
+
+        template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs>>
+        std::string lookup_table_name(const DBOs& dbObjects);
+
     }
 }
 
@@ -9954,7 +9961,9 @@ namespace sqlite_orm {
 
 // #include "functional/static_magic.h"
 
+#ifndef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
 #include <type_traits>  //  std::false_type, std::true_type, std::integral_constant
+#endif
 #include <utility>  //  std::forward
 
 namespace sqlite_orm {
@@ -10463,14 +10472,13 @@ namespace sqlite_orm {
 }
 #pragma once
 
-#include <tuple>  //  std::tuple_size
-#include <typeindex>  //  std::type_index
 #include <string>  //  std::string
-#include <type_traits>  //  std::is_same, std::decay, std::make_index_sequence, std::index_sequence
 
 // #include "functional/cxx_universal.h"
-
+//  ::nullptr_t
 // #include "functional/static_magic.h"
+
+// #include "tuple_helper/tuple_filter.h"
 
 // #include "tuple_helper/tuple_iteration.h"
 
@@ -11114,7 +11122,7 @@ namespace sqlite_orm {
         struct table_name_collector_base {
             using table_name_set = std::set<std::pair<std::string, std::string>>;
 
-            mutable table_name_set table_names;
+            table_name_set table_names;
         };
 
         template<class DBOs>
@@ -11131,24 +11139,24 @@ namespace sqlite_orm {
             void operator()(const T&) const {}
 
             template<class F, class O>
-            void operator()(F O::*, std::string alias = {}) const {
-                this->table_names.emplace(lookup_table_name<O>(this->db_objects), std::move(alias));
+            void operator()(F O::*) {
+                this->table_names.emplace(lookup_table_name<O>(this->db_objects), "");
             }
 
             template<class T, class F>
-            void operator()(const column_pointer<T, F>&) const {
+            void operator()(const column_pointer<T, F>&) {
                 this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
             }
 
             template<class A, class C>
-            void operator()(const alias_column_t<A, C>&) const {
+            void operator()(const alias_column_t<A, C>&) {
                 // note: instead of accessing the column, we are interested in the type the column is aliased into
                 auto tableName = lookup_table_name<mapped_type_proxy_t<A>>(this->db_objects);
                 this->table_names.emplace(std::move(tableName), alias_extractor<A>::get());
             }
 
             template<class T>
-            void operator()(const count_asterisk_t<T>&) const {
+            void operator()(const count_asterisk_t<T>&) {
                 auto tableName = lookup_table_name<T>(this->db_objects);
                 if(!tableName.empty()) {
                     this->table_names.emplace(std::move(tableName), "");
@@ -11156,12 +11164,12 @@ namespace sqlite_orm {
             }
 
             template<class T, satisfies_not<std::is_base_of, alias_tag, T> = true>
-            void operator()(const asterisk_t<T>&) const {
-                this->table_names.emplace(lookup_table_name<T>(db_objects), "");
+            void operator()(const asterisk_t<T>&) {
+                this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
             }
 
             template<class T, satisfies<std::is_base_of, alias_tag, T> = true>
-            void operator()(const asterisk_t<T>&) const {
+            void operator()(const asterisk_t<T>&) {
                 // note: not all alias classes have a nested A::type
                 static_assert(polyfill::is_detected_v<type_t, T>,
                               "alias<O> must have a nested alias<O>::type typename");
@@ -11170,22 +11178,22 @@ namespace sqlite_orm {
             }
 
             template<class T>
-            void operator()(const object_t<T>&) const {
+            void operator()(const object_t<T>&) {
                 this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
             }
 
             template<class T>
-            void operator()(const table_rowid_t<T>&) const {
+            void operator()(const table_rowid_t<T>&) {
                 this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
             }
 
             template<class T>
-            void operator()(const table_oid_t<T>&) const {
+            void operator()(const table_oid_t<T>&) {
                 this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
             }
 
             template<class T>
-            void operator()(const table__rowid_t<T>&) const {
+            void operator()(const table__rowid_t<T>&) {
                 this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
             }
         };
@@ -12111,9 +12119,16 @@ namespace sqlite_orm {
          *  which will be called for any node of provided expression.
          *  E.g. if we pass `where(is_equal(5, max(&User::id, 10))` then
          *  callable object will be called with 5, &User::id and 10.
-         *  ast_iterator is used mostly in finding literals to be bound to
-         *  a statement. To use it just call `iterate_ast(object, callable);`
-         *  T is an ast element. E.g. where_t
+         *  ast_iterator is used in finding literals to be bound to
+         *  a statement, and to collect table names.
+         *  
+         *  Note that not all leaves of the expression tree are always visited:
+         *  Column expressions can be more complex, but are passed as a whole to the callable.
+         *  Examples are `column_pointer<>` and `alias_column_t<>`.
+         *  
+         *  To use `ast_iterator` call `iterate_ast(object, callable);`
+         *  
+         *  `T` is an ast element, e.g. where_t
          */
         template<class T, class SFINAE = void>
         struct ast_iterator {
@@ -15287,7 +15302,7 @@ namespace sqlite_orm {
          *  Serializer for literal values.
          */
         template<class T>
-        struct statement_serializer<T, internal::match_specialization_of<T, literal_holder>> {
+        struct statement_serializer<T, match_specialization_of<T, literal_holder>> {
             using statement_type = T;
 
             template<class Ctx>
@@ -16283,6 +16298,11 @@ namespace sqlite_orm {
             return std::move(collector.table_names);
         }
 
+        template<class Ctx, class T, satisfies<is_table, T> = true>
+        std::set<std::pair<std::string, std::string>> collect_table_names(const T& table, const Ctx&) {
+            return {{table.name, ""}};
+        }
+
         template<class S, class... Wargs>
         struct statement_serializer<update_all_t<S, Wargs...>, void> {
             using statement_type = update_all_t<S, Wargs...>;
@@ -16508,17 +16528,12 @@ namespace sqlite_orm {
         std::string serialize_get_all_impl(const T& get, const Ctx& context) {
             using primary_type = type_t<T>;
 
-            auto collector = make_table_name_collector(context.db_objects);
-            collector.table_names.emplace(lookup_table_name<primary_type>(context.db_objects), "");
-            // note: not collecting table names from get.conditions;
-
             auto& table = pick_table<primary_type>(context.db_objects);
+            auto tableNames = collect_table_names(table, context);
+
             std::stringstream ss;
-            ss << "SELECT " << streaming_table_column_names(table, true);
-            if(!collector.table_names.empty()) {
-                ss << " FROM " << streaming_identifiers(collector.table_names);
-            }
-            ss << streaming_conditions_tuple(get.conditions, context);
+            ss << "SELECT " << streaming_table_column_names(table, true) << " FROM "
+               << streaming_identifiers(tableNames) << streaming_conditions_tuple(get.conditions, context);
             return ss.str();
         }
 
