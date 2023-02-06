@@ -26,7 +26,7 @@ namespace sqlite_orm {
             return res;
         }
 
-        template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs> = true>
+        template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs>>
         auto lookup_table(const DBOs& dbObjects) {
             return static_if<is_mapped_v<DBOs, Lookup>>(
                 [](const auto& dbObjects) {
@@ -35,7 +35,7 @@ namespace sqlite_orm {
                 empty_callable<nullptr_t>())(dbObjects);
         }
 
-        template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs> = true>
+        template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs>>
         std::string lookup_table_name(const DBOs& dbObjects) {
             return static_if<is_mapped_v<DBOs, Lookup>>(
                 [](const auto& dbObjects) {
