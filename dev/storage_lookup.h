@@ -138,7 +138,7 @@ namespace sqlite_orm {
         auto lookup_table(const DBOs& dbObjects);
 
         template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs> = true>
-        std::string lookup_table_name(const DBOs& dbObjects);
+        decltype(auto) lookup_table_name(const DBOs& dbObjects);
 
     }
 }
