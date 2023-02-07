@@ -16,8 +16,8 @@
 #include "alias.h"
 #include "cte_types.h"
 #include "cte_column_names_collector.h"
-#include "column_expression.h"
 #endif
+#include "column_expression.h"
 #include "storage_lookup.h"
 
 namespace sqlite_orm {

@@ -18628,6 +18628,7 @@ namespace sqlite_orm {
 
 // #include "cte_column_names_collector.h"
 
+#endif
 // #include "column_expression.h"
 
 #include <type_traits>  //  std::enable_if, std::is_same, std::decay, std::is_arithmetic
@@ -18733,7 +18734,6 @@ namespace sqlite_orm {
     }
 }
 
-#endif
 // #include "storage_lookup.h"
 
 namespace sqlite_orm {
