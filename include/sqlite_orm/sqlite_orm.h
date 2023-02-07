@@ -16293,18 +16293,17 @@ namespace sqlite_orm {
                 iterate_tuple(cols.columns, [&columnNames, &newContext](auto& m) {
                     using value_type = polyfill::remove_cvref_t<decltype(m)>;
 
-                    std::string columnName;
                     if constexpr(polyfill::is_specialization_of_v<value_type, as_t>) {
-                        columnName = alias_extractor<alias_type_t<value_type>>::extract();
+                        columnNames.push_back(alias_extractor<alias_type_t<value_type>>::extract());
                     } else {
-                        columnName = serialize(m, newContext);
+                        std::string columnName = serialize(m, newContext);
+                        if(!columnName.empty()) {
+                            columnNames.push_back(std::move(columnName));
+                        } else {
+                            throw std::system_error{orm_error_code::column_not_found};
+                        }
+                        unquote_or_erase(columnNames.back());
                     }
-                    if(!columnName.empty()) {
-                        columnNames.push_back(std::move(columnName));
-                    } else {
-                        throw std::system_error{orm_error_code::column_not_found};
-                    }
-                    unquote_or_erase(columnNames.back());
                 });
                 return columnNames;
             }
