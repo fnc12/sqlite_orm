@@ -13,6 +13,7 @@
 #endif
 #include <tuple>
 #include <iostream>
+#include <iomanip>
 
 using std::cout;
 using std::endl;
@@ -818,6 +819,104 @@ void show_mapping_and_backreferencing() {
         auto stmt = storage.prepare(ast);
     }
 }
+
+void neevek_issue_222() {
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+    //WITH
+    //    register_user AS(
+    //        SELECT
+    //        uid, MIN(DATE(user_activity.timestamp)) register_date
+    //        FROM user_activity
+    //        GROUP BY uid
+    //        HAVING register_date >= DATE('now', '-7 days')
+    //    ),
+    //    register_user_count AS(
+    //        SELECT
+    //        R.register_date,
+    //        COUNT(DISTINCT R.uid) AS user_count
+    //        FROM register_user R
+    //        GROUP BY R.register_date
+    //    )
+    //    SELECT
+    //    R.register_date,
+    //    CAST(julianday(DATE(A.timestamp)) AS INT) - CAST(julianday(R.register_date) AS INT) AS ndays,
+    //    COUNT(DISTINCT A.uid) AS retention,
+    //    C.user_count
+    //    FROM user_activity A
+    //    LEFT JOIN register_user R ON A.uid = R.uid
+    //    LEFT JOIN register_user_count C ON R.register_date = C.register_date
+    //    GROUP BY R.register_date, ndays
+    //    HAVING DATE(A.timestamp) >= DATE('now', '-7 days');
+
+    struct user_activity {
+        int64 id;
+        int64 uid;
+        __time64_t timestamp;
+    };
+
+    auto storage = make_storage("",
+                                make_table("user_activity",
+                                           make_column("id", &user_activity::id, primary_key().autoincrement()),
+                                           make_column("uid", &user_activity::uid),
+                                           make_column("timestamp", &user_activity::timestamp)));
+    storage.sync_schema();
+    storage.transaction([&storage]() {
+        __time64_t now = _time64(nullptr);
+        auto values = {user_activity{0, 1, now - 86400 * 3},
+                       user_activity{0, 1, now - 86400 * 2},
+                       user_activity{0, 1, now},
+                       user_activity{0, 2, now}};
+        storage.insert_range(values.begin(), values.end());
+        return true;
+    });
+
+    constexpr auto register_user = "register_user"_cte;
+    constexpr auto registered_cnt = "registered_cnt"_cte;
+    constexpr auto register_date = "register_date"_col;
+    constexpr auto user_count = "user_count"_col;
+    constexpr auto ndays = "ndays"_col;
+    auto expression = with(
+        make_tuple(
+            cte<register_user>()(select(
+                columns(&user_activity::uid, min(date(&user_activity::timestamp, "unixepoch")) >>= register_date),
+                group_by(&user_activity::uid).having(greater_or_equal(register_date, date("now", "-7 days"))))),
+            cte<registered_cnt>()(select(columns(register_user->*register_date,
+                                                 count(distinct(register_user->*&user_activity::uid)) >>= user_count),
+                                         group_by(register_user->*register_date)))),
+        select(columns(register_user->*register_date,
+                       c(cast<int>(julianday(date(&user_activity::timestamp, "unixepoch")))) -
+                           cast<int>(julianday(register_user->*register_date)) >>= ndays,
+                       count(distinct(&user_activity::uid)) >>= "retention"_col,
+                       registered_cnt->*user_count),
+               left_join<register_user>(using_(&user_activity::uid)),
+               left_join<registered_cnt>(using_(registered_cnt->*register_date)),
+               group_by(register_user->*register_date, ndays)
+                   .having(date(&user_activity::timestamp, "unixepoch") >= date("now", "-7 days"))));
+
+    string sql = storage.dump(expression);
+
+    auto stmt = storage.prepare(expression);
+    auto results = storage.execute(stmt);
+
+    cout << "User Retention:\n";
+    for(const char* colName: {"register_date", "ndays", "retention", "user_count"}) {
+        cout << " " << std::setw(13) << colName;
+    }
+    cout << '\n';
+    for(int i = 0; i < 4; ++i) {
+        cout << std::setfill(' ') << " " << std::setw(13) << std::setfill('_') << "";
+    }
+    cout << std::setfill(' ') << '\n';
+    for(auto& result: results) {
+        cout << " " << std::setw(13) << *get<0>(result);
+        cout << " " << std::setw(13) << get<1>(result);
+        cout << " " << std::setw(13) << get<2>(result);
+        cout << " " << std::setw(13) << get<3>(result);
+        cout << '\n';
+    }
+    cout << endl;
+#endif
+}
 #endif
 
 int main() {
@@ -828,9 +927,10 @@ int main() {
         works_for_alice();
         family_tree();
         depth_or_breadth_first();
-        select_from_subselect();
         apfelmaennchen();
         sudoku();
+        neevek_issue_222();
+        select_from_subselect();
         show_mapping_and_backreferencing();
     } catch(const system_error& e) {
         cout << "[" << e.code() << "] " << e.what();
