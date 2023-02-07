@@ -111,7 +111,7 @@ for:
   # build examples, and run tests (ie make & make test)
   build_script:
     - |-
-      cmake --build . --config %configuration%
+      cmake --build . --config %configuration% -- /m
       ctest --verbose --output-on-failure --build-config %configuration%
 
 -
@@ -140,7 +140,7 @@ for:
   # build examples, and run tests (ie make & make test)
   build_script:
     - |-
-      cmake --build .
+      cmake --build . --parallel
       ctest --verbose --output-on-failure
 -
   # macOS
@@ -166,5 +166,5 @@ for:
   # build examples, and run tests (ie make & make test)
   build_script:
     - |-
-      cmake --build .
+      cmake --build . --parallel
       ctest --verbose --output-on-failure
