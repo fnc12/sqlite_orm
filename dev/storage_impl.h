@@ -1,12 +1,10 @@
 #pragma once
 
-#include <tuple>  //  std::tuple_size
-#include <typeindex>  //  std::type_index
 #include <string>  //  std::string
-#include <type_traits>  //  std::is_same, std::decay, std::make_index_sequence, std::index_sequence
 
-#include "functional/cxx_universal.h"
+#include "functional/cxx_universal.h"  //  ::nullptr_t
 #include "functional/static_magic.h"
+#include "tuple_helper/tuple_filter.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "type_traits.h"
 #include "select_constraints.h"
@@ -28,7 +26,7 @@ namespace sqlite_orm {
             return res;
         }
 
-        template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs> = true>
+        template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs>>
         auto lookup_table(const DBOs& dbObjects) {
             return static_if<is_mapped_v<DBOs, Lookup>>(
                 [](const auto& dbObjects) {
@@ -37,22 +35,10 @@ namespace sqlite_orm {
                 empty_callable<nullptr_t>())(dbObjects);
         }
 
-        template<class DBOs, satisfies<is_db_objects, DBOs> = true>
-        std::string find_table_name(const DBOs& dbObjects, const std::type_index& ti) {
-            std::string res;
-            iterate_tuple<true>(dbObjects, tables_index_sequence<DBOs>{}, [&ti, &res](const auto& table) {
-                using table_type = std::decay_t<decltype(table)>;
-                if(ti == typeid(object_type_t<table_type>)) {
-                    res = table.name;
-                }
-            });
-            return res;
-        }
-
-        template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs> = true>
-        std::string lookup_table_name(const DBOs& dbObjects) {
+        template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs>>
+        decltype(auto) lookup_table_name(const DBOs& dbObjects) {
             return static_if<is_mapped_v<DBOs, Lookup>>(
-                [](const auto& dbObjects) {
+                [](const auto& dbObjects) -> const std::string& {
                     return pick_table<Lookup>(dbObjects).name;
                 },
                 empty_callable<std::string>())(dbObjects);

@@ -240,7 +240,7 @@ namespace sqlite_orm {
     template<>
     struct statement_binder<std::vector<char>, void> {
         int bind(sqlite3_stmt* stmt, int index, const std::vector<char>& value) const {
-            if(value.size()) {
+            if(!value.empty()) {
                 return sqlite3_bind_blob(stmt, index, (const void*)&value.front(), int(value.size()), SQLITE_TRANSIENT);
             } else {
                 return sqlite3_bind_blob(stmt, index, "", 0, SQLITE_TRANSIENT);
@@ -248,7 +248,7 @@ namespace sqlite_orm {
         }
 
         void result(sqlite3_context* context, const std::vector<char>& value) const {
-            if(value.size()) {
+            if(!value.empty()) {
                 sqlite3_result_blob(context, (const void*)&value.front(), int(value.size()), nullptr);
             } else {
                 sqlite3_result_blob(context, "", 0, nullptr);

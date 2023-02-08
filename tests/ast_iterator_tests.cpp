@@ -1,6 +1,8 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 
+#include <typeindex>  //  std::type_index
+
 using namespace sqlite_orm;
 
 TEST_CASE("ast_iterator") {
