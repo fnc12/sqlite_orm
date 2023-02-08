@@ -1,13 +1,14 @@
 #pragma once
 
-#include "indexed_column.h"
-
 namespace sqlite_orm {
 
     namespace internal {
 
         template<class T, class F>
         struct column_pointer;
+
+        template<class C>
+        struct indexed_column_t;
 
         /**
          *  Trait class used to define table mapped type by setter/getter/member
