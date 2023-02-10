@@ -20,6 +20,7 @@ TEST_CASE("set") {
         SECTION("static") {
             auto expression = set(assign(&User::id, 5));
             value = internal::serialize(expression, context);
+            expected = "SET \"id\" = 5";
         }
         SECTION("dynamic") {
             auto storage = make_storage("", table);
@@ -33,13 +34,14 @@ TEST_CASE("set") {
                 expression.push_back(assign(&User::id, 5));
             }
             value = internal::serialize(expression, context);
+            expected = "SET \"id\" = ?";
         }
-        expected = "SET \"id\" = 5";
     }
     SECTION("two items") {
         SECTION("static") {
             auto expression = set(assign(&User::id, 5), assign(&User::name, "ototo"));
             value = internal::serialize(expression, context);
+            expected = "SET \"id\" = 5, \"name\" = 'ototo'";
         }
         SECTION("dynamic") {
             auto storage = make_storage("", table);
@@ -55,8 +57,8 @@ TEST_CASE("set") {
                 expression.push_back(assign(&User::name, "ototo"));
             }
             value = internal::serialize(expression, context);
+            expected = "SET \"id\" = ?, \"name\" = ?";
         }
-        expected = "SET \"id\" = 5, \"name\" = 'ototo'";
     }
     REQUIRE(value == expected);
 }

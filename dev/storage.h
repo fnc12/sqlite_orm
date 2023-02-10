@@ -1348,9 +1348,9 @@ namespace sqlite_orm {
             template<class S, class... Wargs>
             void execute(const prepared_statement_t<update_all_t<S, Wargs...>>& statement) {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
-                conditional_binder bind_node{stmt};
-                iterate_ast(statement.expression.set, bind_node);
-                iterate_ast(statement.expression.conditions, bind_node);
+                conditional_binder bindNode{stmt};
+                iterate_ast(statement.expression.set, bindNode);
+                iterate_ast(statement.expression.conditions, bindNode);
                 perform_step(stmt);
             }
 

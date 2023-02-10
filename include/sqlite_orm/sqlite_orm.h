@@ -8267,10 +8267,10 @@ namespace sqlite_orm {
             explicit conditional_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
 
             template<class T, satisfies<is_bindable, T> = true>
-            void operator()(const T& t) {
-                int rc = statement_binder<T>{}.bind(this->stmt, this->index++, t);
+            void operator()(const T& value) {
+                const int rc = statement_binder<T>{}.bind(this->stmt, this->index++, value);
                 if(SQLITE_OK != rc) {
-                    throw_translated_sqlite_error(stmt);
+                    throw_translated_sqlite_error(this->stmt);
                 }
             }
 
@@ -11096,6 +11096,9 @@ namespace sqlite_orm {
 #include <vector>  //  std::vector
 #include <sstream>  //  std::stringstream
 #include <type_traits>  //  std::false_type, std::true_type
+#include <ostream>  //  std::ostream
+#include <functional>  //  std::function
+#include <sqlite3.h>
 
 // #include "../table_name_collector.h"
 
@@ -11214,6 +11217,8 @@ namespace sqlite_orm {
         template<class T, class L>
         void iterate_ast(const T& t, L&& lambda);
 
+        struct conditional_binder;
+
         template<class... Args>
         struct set_t {
             using assigns_type = std::tuple<Args...>;
@@ -11229,7 +11234,12 @@ namespace sqlite_orm {
 
         struct dynamic_set_entry {
             std::string serialized_value;
+            std::function<void(conditional_binder&)> bind;
         };
+
+        inline std::ostream& operator<<(std::ostream& os, const dynamic_set_entry& entry) {
+            return os << entry.serialized_value;
+        }
 
         template<class C>
         struct dynamic_set_t {
@@ -11250,9 +11260,10 @@ namespace sqlite_orm {
                 newContext.skip_table_name = true;
                 iterate_ast(assign, this->collector);
                 std::stringstream ss;
-                ss << serialize(assign.lhs, newContext) << ' ' << assign.serialize() << ' '
-                   << serialize(assign.rhs, context);
-                this->entries.push_back({ss.str()});
+                ss << serialize(assign.lhs, newContext) << ' ' << assign.serialize() << " ?";
+                this->entries.push_back({ss.str(), [assign = std::move(assign)](conditional_binder& binder) {
+                                             iterate_ast(assign, binder);
+                                         }});
             }
 
             const_iterator begin() const {
@@ -11261,6 +11272,10 @@ namespace sqlite_orm {
 
             const_iterator end() const {
                 return this->entries.end();
+            }
+
+            size_t size() const {
+                return this->entries.size();
             }
 
             void clear() {
@@ -12114,6 +12129,8 @@ namespace sqlite_orm {
 
     namespace internal {
 
+        struct conditional_binder;
+
         /**
          *  ast_iterator accepts any expression and a callable object
          *  which will be called for any node of provided expression.
@@ -12412,6 +12429,12 @@ namespace sqlite_orm {
             template<class L>
             void operator()(const node_type& node, L& lambda) const {
                 iterate_ast(node.entries, lambda);
+            }
+
+            void operator()(const node_type& node, conditional_binder& binder) const {
+                for(const dynamic_set_entry& entry: node) {
+                    entry.bind(binder);
+                }
             }
         };
 
@@ -13133,8 +13156,9 @@ namespace sqlite_orm {
             const auto& strings = get<1>(tpl);
 
             constexpr std::array<const char*, 2> sep = {", ", ""};
-            for(size_t i = 0, first = true; i < strings.size(); ++i) {
-                ss << sep[std::exchange(first, false)] << strings[i];
+            bool first = true;
+            for(auto it = strings.begin(); it != strings.end(); ++it) {
+                ss << sep[std::exchange(first, false)] << *it;
             }
             return ss;
         }
@@ -16245,15 +16269,7 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx&) const {
                 std::stringstream ss;
-                ss << "SET ";
-                int index = 0;
-                for(const dynamic_set_entry& entry: statement) {
-                    if(index > 0) {
-                        ss << ", ";
-                    }
-                    ss << entry.serialized_value;
-                    ++index;
-                }
+                ss << "SET " << streaming_serialized(statement);
                 return ss.str();
             }
         };
@@ -18554,9 +18570,9 @@ namespace sqlite_orm {
             template<class S, class... Wargs>
             void execute(const prepared_statement_t<update_all_t<S, Wargs...>>& statement) {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
-                conditional_binder bind_node{stmt};
-                iterate_ast(statement.expression.set, bind_node);
-                iterate_ast(statement.expression.conditions, bind_node);
+                conditional_binder bindNode{stmt};
+                iterate_ast(statement.expression.set, bindNode);
+                iterate_ast(statement.expression.conditions, bindNode);
                 perform_step(stmt);
             }
 

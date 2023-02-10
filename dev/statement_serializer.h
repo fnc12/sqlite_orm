@@ -1079,15 +1079,7 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx&) const {
                 std::stringstream ss;
-                ss << "SET ";
-                int index = 0;
-                for(const dynamic_set_entry& entry: statement) {
-                    if(index > 0) {
-                        ss << ", ";
-                    }
-                    ss << entry.serialized_value;
-                    ++index;
-                }
+                ss << "SET " << streaming_serialized(statement);
                 return ss.str();
             }
         };
