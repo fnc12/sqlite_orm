@@ -14,9 +14,14 @@ namespace sqlite_orm {
     namespace internal {
         namespace polyfill {
             // C++20 or later (unfortunately there's no feature test macro).
-            // Stupidly, clang < 11 says C++20, but comes w/o std::identity.
+            // Stupidly, clang says C++20, but `std::identity` was only implemented in libc++ 13 and libstd++-v3 10
+            // (the latter is used on Linux).
+            // gcc got it right and reports C++20 only starting with v10.
+            // The check here doesn't care and checks the library versions in use.
+            //
             // Another way of detection would be the constrained algorithms feature macro __cpp_lib_ranges
-#if(__cplusplus >= 202002L) && (!__clang_major__ || __clang_major__ >= 11)
+#if(__cplusplus >= 202002L) &&                                                                                         \
+    ((!_LIBCPP_VERSION || _LIBCPP_VERSION >= 13) && (!_GLIBCXX_RELEASE || _GLIBCXX_RELEASE >= 10))
             using std::identity;
 #else
             struct identity {
