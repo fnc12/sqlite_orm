@@ -7,7 +7,6 @@
 #include <type_traits>  //  std::false_type, std::true_type
 #include <ostream>  //  std::ostream
 #include <functional>  //  std::function
-#include <sqlite3.h>
 
 #include "../table_name_collector.h"
 
