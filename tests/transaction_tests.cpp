@@ -10,7 +10,7 @@ namespace {
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         Object() = default;
-        Object(int id, std::string name) : id{id}, name{move(name)} {}
+        Object(int id, std::string name) : id{id}, name{std::move(name)} {}
 #endif
 
         bool operator==(const Object& other) const {
@@ -175,7 +175,7 @@ TEST_CASE("Transaction guard") {
         auto countNow = storage.count<Object>();
         REQUIRE(countNow == countBefore + 1);
     }
-    SECTION("move ctor") {
+    SECTION("std::move ctor") {
         std::vector<internal::transaction_guard_t> guards;
         auto countBefore = storage.count<Object>();
         {

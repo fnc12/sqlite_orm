@@ -9,7 +9,7 @@ TEST_CASE("Issue 343") {
       public:
         A() = default;
 
-        A(int id_, std::string name_) : name(move(name_)), id(id_) {}
+        A(int id_, std::string name_) : name(std::move(name_)), id(id_) {}
 
         int getId() const {
             return this->id;

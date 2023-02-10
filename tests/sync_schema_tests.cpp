@@ -145,7 +145,7 @@ TEST_CASE("issue521") {
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         MockDatabasePoco() = default;
         MockDatabasePoco(int id, std::string name, uint32_t alpha, float beta) :
-            id{id}, name{move(name)}, alpha{alpha}, beta{beta} {}
+            id{id}, name{std::move(name)}, alpha{alpha}, beta{beta} {}
 #endif
     };
     std::vector<MockDatabasePoco> pocosToInsert;
@@ -291,7 +291,7 @@ TEST_CASE("sync_schema") {
 
         User(int id_) : id(id_) {}
 
-        User(int id_, std::string name_) : id(id_), name(move(name_)) {}
+        User(int id_, std::string name_) : id(id_), name(std::move(name_)) {}
 
         User(int id_, int age_) : id(id_), age(age_) {}
 

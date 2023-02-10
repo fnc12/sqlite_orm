@@ -70,7 +70,7 @@ namespace sqlite_orm {
 
             columns_tuple columns;
 
-            primary_key_t(decltype(columns) columns) : columns(move(columns)) {}
+            primary_key_t(decltype(columns) columns) : columns(std::move(columns)) {}
 
             self asc() const {
                 auto res = *this;
@@ -139,7 +139,7 @@ namespace sqlite_orm {
 
             columns_tuple columns;
 
-            unique_t(columns_tuple columns_) : columns(move(columns_)) {}
+            unique_t(columns_tuple columns_) : columns(std::move(columns_)) {}
         };
 
         /**
@@ -314,7 +314,7 @@ namespace sqlite_orm {
             static_assert(!std::is_same<target_type, void>::value, "All references must have the same type");
 
             foreign_key_t(columns_type columns_, references_type references_) :
-                columns(move(columns_)), references(move(references_)),
+                columns(std::move(columns_)), references(std::move(references_)),
                 on_update(*this, true, foreign_key_action::none), on_delete(*this, false, foreign_key_action::none) {}
 
             foreign_key_t(const self& other) :

@@ -12,7 +12,7 @@ namespace sqlite_orm {
 
         struct connection_holder {
 
-            connection_holder(std::string filename_) : filename(move(filename_)) {}
+            connection_holder(std::string filename_) : filename(std::move(filename_)) {}
 
             void retain() {
                 if(1 == ++this->_retain_count) {

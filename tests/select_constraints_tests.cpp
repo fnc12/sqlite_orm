@@ -219,7 +219,7 @@ namespace {
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         User1() = default;
-        User1(int id, std::string name) : id{id}, name{move(name)} {}
+        User1(int id, std::string name) : id{id}, name{std::move(name)} {}
 #endif
     };
 
@@ -270,7 +270,7 @@ namespace {
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         User2() = default;
         User2(int id, std::string firstName, std::string lastName, std::string country) :
-            id{id}, firstName{move(firstName)}, lastName{move(lastName)}, country{country} {}
+            id{id}, firstName{std::move(firstName)}, lastName{std::move(lastName)}, country{country} {}
 #endif
     };
 
@@ -281,7 +281,8 @@ namespace {
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         Track2() = default;
-        Track2(int id, std::string name, long milliseconds) : id{id}, name{move(name)}, milliseconds{milliseconds} {}
+        Track2(int id, std::string name, long milliseconds) :
+            id{id}, name{std::move(name)}, milliseconds{milliseconds} {}
 #endif
     };
 
@@ -377,7 +378,7 @@ namespace {
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         User3() = default;
-        User3(int id, int age, std::string name) : id{id}, age{age}, name{move(name)} {}
+        User3(int id, int age, std::string name) : id{id}, age{age}, name{std::move(name)} {}
 #endif
     };
 
@@ -420,7 +421,7 @@ namespace {
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         User4() = default;
-        User4(int id, std::string firstName) : id{id}, firstName{move(firstName)} {}
+        User4(int id, std::string firstName) : id{id}, firstName{std::move(firstName)} {}
 #endif
 
         bool operator==(const User4& user) const {
@@ -457,7 +458,7 @@ namespace {
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         User5() = default;
         User5(int id, std::string firstName, std::string lastName, long registerTime) :
-            id{id}, firstName{move(firstName)}, lastName{move(lastName)}, registerTime{registerTime} {}
+            id{id}, firstName{std::move(firstName)}, lastName{std::move(lastName)}, registerTime{registerTime} {}
 #endif
     };
 
