@@ -254,7 +254,6 @@ TEST_CASE("dynamic_set with blob") {
         auto sets = dynamic_set(db);
         sets.push_back(assign(&Record::data, std::vector<char>{'x', 'y', 'z'}));
         db.update_all(sets, where(assign(&Record::id, lastId)));
-        return 0;
     } catch(...) {
         REQUIRE(false);
     }
