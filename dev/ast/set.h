@@ -33,8 +33,15 @@ namespace sqlite_orm {
         struct is_set<set_t<Args...>> : std::true_type {};
 
         struct dynamic_set_entry {
+            using bind_t = std::function<void(conditional_binder&)>;
+
             std::string serialized_value;
-            std::function<void(conditional_binder&)> bind;
+            bind_t bind;
+
+#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
+            dynamic_set_entry(std::string serialized_value, bind_t bind) :
+                serialized_value{std::move(serialized_value)}, bind{std::move(bind)} {}
+#endif
         };
 
         inline std::ostream& operator<<(std::ostream& os, const dynamic_set_entry& entry) {
@@ -61,9 +68,9 @@ namespace sqlite_orm {
                 iterate_ast(assign, this->collector);
                 std::stringstream ss;
                 ss << serialize(assign.lhs, newContext) << ' ' << assign.serialize() << " ?";
-                this->entries.push_back({ss.str(), [assign = std::move(assign)](conditional_binder& binder) {
-                                             iterate_ast(assign, binder);
-                                         }});
+                this->entries.emplace_back(ss.str(), [assign = std::move(assign)](conditional_binder& binder) {
+                    iterate_ast(assign, binder);
+                });
             }
 
             const_iterator begin() const {

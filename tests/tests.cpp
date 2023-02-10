@@ -237,24 +237,20 @@ TEST_CASE("Vacuum") {
 }
 
 TEST_CASE("dynamic_set with blob") {
-    try {
-        struct Record {
-            int id;
-            std::vector<char> data;
-        };
+    struct Record {
+        int id;
+        std::vector<char> data;
+    };
 
-        auto db = make_storage({},
-                               make_table("record",
-                                          make_column("id", &Record::id, primary_key().autoincrement()),
-                                          make_column("data", &Record::data)));
-        db.sync_schema();
+    auto db = make_storage({},
+                           make_table("record",
+                                      make_column("id", &Record::id, primary_key().autoincrement()),
+                                      make_column("data", &Record::data)));
+    db.sync_schema();
 
-        auto lastId = db.insert(Record{0, {'a', 'b', 'c'}});
+    auto lastId = db.insert(Record{0, {'a', 'b', 'c'}});
 
-        auto sets = dynamic_set(db);
-        sets.push_back(assign(&Record::data, std::vector<char>{'x', 'y', 'z'}));
-        db.update_all(sets, where(assign(&Record::id, lastId)));
-    } catch(...) {
-        REQUIRE(false);
-    }
+    auto sets = dynamic_set(db);
+    sets.push_back(assign(&Record::data, std::vector<char>{'x', 'y', 'z'}));
+    REQUIRE_NOTHROW(db.update_all(sets, where(assign(&Record::id, lastId))));
 }
