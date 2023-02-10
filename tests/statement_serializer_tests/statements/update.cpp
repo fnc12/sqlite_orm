@@ -62,7 +62,7 @@ TEST_CASE("statement_serializer update") {
                     dynamicSet.push_back(assign(&A::value, 5));
                     auto expression = update_all(dynamicSet, where(is_equal(&A::address, 1)));
                     context.replace_bindable_with_question = false;
-                    expected = R"(UPDATE "table" SET "value" = 5 WHERE (("address" = 1)))";
+                    expected = R"(UPDATE "table" SET "value" = ? WHERE (("address" = 1)))";
                     value = serialize(expression, context);
                 }
             }

@@ -23,6 +23,8 @@ namespace sqlite_orm {
 
     namespace internal {
 
+        struct conditional_binder;
+
         /**
          *  ast_iterator accepts any expression and a callable object
          *  which will be called for any node of provided expression.
@@ -321,6 +323,12 @@ namespace sqlite_orm {
             template<class L>
             void operator()(const node_type& node, L& lambda) const {
                 iterate_ast(node.entries, lambda);
+            }
+
+            void operator()(const node_type& node, conditional_binder& binder) const {
+                for(const dynamic_set_entry& entry: node) {
+                    entry.bind(binder);
+                }
             }
         };
 

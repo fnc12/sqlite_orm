@@ -282,10 +282,10 @@ namespace sqlite_orm {
             explicit conditional_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
 
             template<class T, satisfies<is_bindable, T> = true>
-            void operator()(const T& t) {
-                int rc = statement_binder<T>{}.bind(this->stmt, this->index++, t);
+            void operator()(const T& value) {
+                const int rc = statement_binder<T>{}.bind(this->stmt, this->index++, value);
                 if(SQLITE_OK != rc) {
-                    throw_translated_sqlite_error(stmt);
+                    throw_translated_sqlite_error(this->stmt);
                 }
             }
 

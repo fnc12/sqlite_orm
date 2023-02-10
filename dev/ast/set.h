@@ -5,6 +5,8 @@
 #include <vector>  //  std::vector
 #include <sstream>  //  std::stringstream
 #include <type_traits>  //  std::false_type, std::true_type
+#include <ostream>  //  std::ostream
+#include <functional>  //  std::function
 
 #include "../table_name_collector.h"
 
@@ -14,6 +16,8 @@ namespace sqlite_orm {
 
         template<class T, class L>
         void iterate_ast(const T& t, L&& lambda);
+
+        struct conditional_binder;
 
         template<class... Args>
         struct set_t {
@@ -29,8 +33,20 @@ namespace sqlite_orm {
         struct is_set<set_t<Args...>> : std::true_type {};
 
         struct dynamic_set_entry {
+            using bind_t = std::function<void(conditional_binder&)>;
+
             std::string serialized_value;
+            bind_t bind;
+
+#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
+            dynamic_set_entry(std::string serialized_value, bind_t bind) :
+                serialized_value{std::move(serialized_value)}, bind{std::move(bind)} {}
+#endif
         };
+
+        inline std::ostream& operator<<(std::ostream& os, const dynamic_set_entry& entry) {
+            return os << entry.serialized_value;
+        }
 
         template<class C>
         struct dynamic_set_t {
@@ -51,9 +67,10 @@ namespace sqlite_orm {
                 newContext.skip_table_name = true;
                 iterate_ast(assign, this->collector);
                 std::stringstream ss;
-                ss << serialize(assign.lhs, newContext) << ' ' << assign.serialize() << ' '
-                   << serialize(assign.rhs, context);
-                this->entries.push_back({ss.str()});
+                ss << serialize(assign.lhs, newContext) << ' ' << assign.serialize() << " ?";
+                this->entries.emplace_back(ss.str(), [assign = std::move(assign)](conditional_binder& binder) {
+                    iterate_ast(assign, binder);
+                });
             }
 
             const_iterator begin() const {
@@ -62,6 +79,10 @@ namespace sqlite_orm {
 
             const_iterator end() const {
                 return this->entries.end();
+            }
+
+            size_t size() const {
+                return this->entries.size();
             }
 
             void clear() {
