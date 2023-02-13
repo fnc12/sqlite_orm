@@ -307,18 +307,20 @@ namespace sqlite_orm {
             }
         };
 
-        template<class O, class F>
-        struct statement_serializer<F O::*, void> {
-            using statement_type = F O::*;
+        template<class E>
+        struct statement_serializer<
+            E,
+            std::enable_if_t<polyfill::disjunction_v<std::is_member_pointer<E>, is_column_pointer<E>>>> {
+            using statement_type = E;
 
             template<class Ctx>
-            std::string operator()(const statement_type& m, const Ctx& context) const {
+            std::string operator()(const statement_type& e, const Ctx& context) const {
                 std::stringstream ss;
-                if(!context.skip_table_name) {
-                    ss << streaming_identifier(lookup_table_name<O>(context.db_objects)) << ".";
-                }
-                if(auto* columnName = find_column_name(context.db_objects, m)) {
-                    ss << streaming_identifier(*columnName);
+                if(auto* columnName = find_column_name(context.db_objects, e)) {
+                    ss << streaming_identifier(
+                        !context.skip_table_name ? lookup_table_name<table_type_of_t<E>>(context.db_objects) : "",
+                        *columnName,
+                        "");
                 } else {
                     throw std::system_error{orm_error_code::column_not_found};
                 }
@@ -466,25 +468,6 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 auto expr = serialize(c.value, context);
                 ss << static_cast<std::string>(c) << "(" << expr << ")";
-                return ss.str();
-            }
-        };
-
-        template<class T, class F>
-        struct statement_serializer<column_pointer<T, F>, void> {
-            using statement_type = column_pointer<T, F>;
-
-            template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
-                std::stringstream ss;
-                if(!context.skip_table_name) {
-                    ss << streaming_identifier(lookup_table_name<T>(context.db_objects)) << ".";
-                }
-                if(auto* columnName = find_column_name(context.db_objects, c)) {
-                    ss << streaming_identifier(*columnName);
-                } else {
-                    throw std::system_error{orm_error_code::column_not_found};
-                }
                 return ss.str();
             }
         };
@@ -1228,7 +1211,8 @@ namespace sqlite_orm {
                 if(context.use_parentheses) {
                     ss << '(';
                 }
-                ss << streaming_expressions_tuple(statement.columns, context);
+                // note: pass `statement` itself
+                ss << streaming_serialized(get_column_names(statement, context));
                 if(context.use_parentheses) {
                     ss << ')';
                 }
@@ -1493,7 +1477,9 @@ namespace sqlite_orm {
             using statement_type = select_t<T, Args...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& sel, const Ctx& context) const {
+            std::string operator()(const statement_type& sel, Ctx context) const {
+                context.skip_table_name = false;
+
                 std::stringstream ss;
                 constexpr bool isCompoundOperator = is_base_of_template_v<T, compound_operator>;
                 if(!isCompoundOperator) {

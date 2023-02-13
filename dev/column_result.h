@@ -5,6 +5,9 @@
 #include <functional>  //  std::reference_wrapper
 
 #include "functional/cxx_universal.h"
+#include "tuple_helper/tuple_traits.h"
+#include "tuple_helper/tuple_fy.h"
+#include "tuple_helper/tuple_filter.h"
 #include "type_traits.h"
 #include "member_traits/member_traits.h"
 #include "core_functions.h"
@@ -200,7 +203,7 @@ namespace sqlite_orm {
 
         template<class DBOs, class... Args>
         struct column_result_t<DBOs, columns_t<Args...>, void> {
-            using type = std::tuple<column_result_of_t<DBOs, std::decay_t<Args>>...>;
+            using type = tuple_cat_t<tuplify_t<column_result_of_t<DBOs, std::decay_t<Args>>>...>;
         };
 
         template<class DBOs, class T, class... Args>

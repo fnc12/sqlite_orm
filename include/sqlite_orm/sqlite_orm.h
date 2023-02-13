@@ -6754,6 +6754,12 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_column_pointer_v = polyfill::is_specialization_of_v<T, column_pointer>;
+
+        template<class T>
+        using is_column_pointer = polyfill::bool_constant<is_column_pointer_v<T>>;
+
         /**
          *  Subselect object type.
          */
@@ -9204,6 +9210,32 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_universal.h"
 
+// #include "tuple_helper/tuple_traits.h"
+
+// #include "tuple_helper/tuple_fy.h"
+
+#include <tuple>
+
+namespace sqlite_orm {
+
+    namespace internal {
+
+        template<typename T>
+        struct tuplify {
+            using type = std::tuple<T>;
+        };
+        template<typename... Ts>
+        struct tuplify<std::tuple<Ts...>> {
+            using type = std::tuple<Ts...>;
+        };
+
+        template<typename T>
+        using tuplify_t = typename tuplify<T>::type;
+    }
+}
+
+// #include "tuple_helper/tuple_filter.h"
+
 // #include "type_traits.h"
 
 // #include "member_traits/member_traits.h"
@@ -9864,7 +9896,7 @@ namespace sqlite_orm {
 
         template<class DBOs, class... Args>
         struct column_result_t<DBOs, columns_t<Args...>, void> {
-            using type = std::tuple<column_result_of_t<DBOs, std::decay_t<Args>>...>;
+            using type = tuple_cat_t<tuplify_t<column_result_of_t<DBOs, std::decay_t<Args>>>...>;
         };
 
         template<class DBOs, class T, class... Args>
@@ -15005,18 +15037,28 @@ namespace sqlite_orm {
 
 // #include "column_names_getter.h"
 
-#include <system_error>  //  std::system_error
 #include <string>  //  std::string
 #include <vector>  //  std::vector
 #include <functional>  //  std::reference_wrapper
+#include <system_error>
+#include <utility>  //  std::move
+#include <iterator>  //  std::make_move_iterator
+
+// #include "functional/cxx_universal.h"
+//  ::size_t
+// #include "functional/cxx_type_traits_polyfill.h"
+//  polyfill::remove_cvref_t
+// #include "tuple_helper/tuple_traits.h"
 
 // #include "error_code.h"
 
-// #include "serializer_context.h"
-
 // #include "select_constraints.h"
 
-// #include "serializing_util.h"
+// #include "alias.h"
+
+// #include "storage_lookup.h"
+//  pick_table
+// #include "serializer_context.h"
 
 // #include "util.h"
 
@@ -15027,98 +15069,96 @@ namespace sqlite_orm {
         template<class T, class I>
         std::string serialize(const T& t, const serializer_context<I>& context);
 
-        template<class T, class SFINAE = void>
-        struct column_names_getter {
-            using expression_type = T;
-
-            template<class Ctx>
-            std::vector<std::string> operator()(const expression_type& t, const Ctx& context) const {
-                auto newContext = context;
-                newContext.skip_table_name = false;
-                auto columnName = serialize(t, newContext);
-                if(!columnName.empty()) {
-                    return {std::move(columnName)};
+        template<class T, class Ctx>
+        std::vector<std::string>& collect_table_column_names(std::vector<std::string>& collectedExpressions,
+                                                             bool definedOrder,
+                                                             const Ctx& context) {
+            if(definedOrder) {
+                auto& table = pick_table<mapped_type_proxy_t<T>>(context.db_objects);
+                collectedExpressions.reserve(collectedExpressions.size() + table.count_columns_amount());
+                table.for_each_column([qualified = !context.skip_table_name,
+                                       &tableName = table.name,
+                                       &collectedExpressions](const column_identifier& column) {
+                    if(std::is_base_of<alias_tag, T>::value) {
+                        collectedExpressions.push_back(quote_identifier(alias_extractor<T>::get()) + "." +
+                                                       quote_identifier(column.name));
+                    } else if(qualified) {
+                        collectedExpressions.push_back(quote_identifier(tableName) + "." +
+                                                       quote_identifier(column.name));
+                    } else {
+                        collectedExpressions.push_back(quote_identifier(column.name));
+                    }
+                });
+            } else {
+                collectedExpressions.reserve(collectedExpressions.size() + 1);
+                if(std::is_base_of<alias_tag, T>::value) {
+                    collectedExpressions.push_back(quote_identifier(alias_extractor<T>::get()) + ".*");
+                } else if(!context.skip_table_name) {
+                    const basic_table& table = pick_table<mapped_type_proxy_t<T>>(context.db_objects);
+                    collectedExpressions.push_back(quote_identifier(table.name) + ".*");
                 } else {
-                    throw std::system_error{orm_error_code::column_not_found};
+                    collectedExpressions.emplace_back("*");
                 }
             }
+
+            return collectedExpressions;
+        }
+
+        /** @short Column expression collector.
+         */
+        struct column_names_getter {
+            /** 
+             *  The default implementation simply serializes the passed argument.
+             */
+            template<class E, class Ctx>
+            std::vector<std::string>& operator()(const E& t, const Ctx& context) {
+                auto columnExpression = serialize(t, context);
+                if(columnExpression.empty()) {
+                    throw std::system_error{orm_error_code::column_not_found};
+                }
+                collectedExpressions.reserve(collectedExpressions.size() + 1);
+                collectedExpressions.push_back(std::move(columnExpression));
+                return collectedExpressions;
+            }
+
+            template<class T, class Ctx>
+            std::vector<std::string>& operator()(const std::reference_wrapper<T>& expression, const Ctx& context) {
+                return (*this)(expression.get(), context);
+            }
+
+            template<class T, class Ctx>
+            std::vector<std::string>& operator()(const asterisk_t<T>& expression, const Ctx& context) {
+                return collect_table_column_names<T>(collectedExpressions, expression.defined_order, context);
+            }
+
+            template<class T, class Ctx>
+            std::vector<std::string>& operator()(const object_t<T>& expression, const Ctx& context) {
+                return collect_table_column_names<T>(collectedExpressions, expression.defined_order, context);
+            }
+
+            template<class... Args, class Ctx>
+            std::vector<std::string>& operator()(const columns_t<Args...>& cols, const Ctx& context) {
+                collectedExpressions.reserve(collectedExpressions.size() + cols.count);
+                iterate_tuple(cols.columns, [this, &context](auto& colExpr) {
+                    (*this)(colExpr, context);
+                });
+                // note: `capacity() > size()` can occur in case `asterisk_t<>` does spell out the columns in defined order
+                if(mpl::instantiate<check_if_tuple_has_template<asterisk_t>,
+                                    typename columns_t<Args...>::columns_type>::value &&
+                   collectedExpressions.capacity() > collectedExpressions.size()) {
+                    collectedExpressions.shrink_to_fit();
+                }
+                return collectedExpressions;
+            }
+
+            std::vector<std::string> collectedExpressions;
         };
 
         template<class T, class Ctx>
         std::vector<std::string> get_column_names(const T& t, const Ctx& context) {
-            column_names_getter<T> serializer;
+            column_names_getter serializer;
             return serializer(t, context);
         }
-
-        template<class T, class Ctx>
-        std::vector<std::string> collect_table_column_names(bool definedOrder, const Ctx& context) {
-            if(definedOrder) {
-                std::vector<std::string> quotedNames;
-                auto& table = pick_table<mapped_type_proxy_t<T>>(context.db_objects);
-                quotedNames.reserve(table.count_columns_amount());
-                table.for_each_column([&quotedNames](const column_identifier& column) {
-                    if(std::is_base_of<alias_tag, T>::value) {
-                        quotedNames.push_back(quote_identifier(alias_extractor<T>::get()) + "." +
-                                              quote_identifier(column.name));
-                    } else {
-                        quotedNames.push_back(quote_identifier(column.name));
-                    }
-                });
-                return quotedNames;
-            } else if(std::is_base_of<alias_tag, T>::value) {
-                return {quote_identifier(alias_extractor<T>::get()) + ".*"};
-            } else {
-                return {"*"};
-            }
-        }
-
-        template<class T>
-        struct column_names_getter<std::reference_wrapper<T>, void> {
-            using expression_type = std::reference_wrapper<T>;
-
-            template<class Ctx>
-            std::vector<std::string> operator()(const expression_type& expression, const Ctx& context) const {
-                return get_column_names(expression.get(), context);
-            }
-        };
-
-        template<class T>
-        struct column_names_getter<asterisk_t<T>> {
-            using expression_type = asterisk_t<T>;
-
-            template<class Ctx>
-            std::vector<std::string> operator()(const expression_type& expression, const Ctx& context) const {
-                return collect_table_column_names<T>(expression.defined_order, context);
-            }
-        };
-
-        template<class T>
-        struct column_names_getter<object_t<T>, void> {
-            using expression_type = object_t<T>;
-
-            template<class Ctx>
-            std::vector<std::string> operator()(const expression_type& expression, const Ctx& context) const {
-                return collect_table_column_names<T>(expression.defined_order, context);
-            }
-        };
-
-        template<class... Args>
-        struct column_names_getter<columns_t<Args...>, void> {
-            using expression_type = columns_t<Args...>;
-
-            template<class Ctx>
-            std::vector<std::string> operator()(const expression_type& cols, const Ctx& context) const {
-                std::vector<std::string> columnNames;
-                columnNames.reserve(static_cast<size_t>(cols.count));
-                auto newContext = context;
-                newContext.skip_table_name = false;
-                iterate_tuple(cols.columns, [&columnNames, &newContext](auto& m) {
-                    columnNames.push_back(serialize(m, newContext));
-                });
-                return columnNames;
-            }
-        };
-
     }
 }
 
@@ -15478,18 +15518,20 @@ namespace sqlite_orm {
             }
         };
 
-        template<class O, class F>
-        struct statement_serializer<F O::*, void> {
-            using statement_type = F O::*;
+        template<class E>
+        struct statement_serializer<
+            E,
+            std::enable_if_t<polyfill::disjunction_v<std::is_member_pointer<E>, is_column_pointer<E>>>> {
+            using statement_type = E;
 
             template<class Ctx>
-            std::string operator()(const statement_type& m, const Ctx& context) const {
+            std::string operator()(const statement_type& e, const Ctx& context) const {
                 std::stringstream ss;
-                if(!context.skip_table_name) {
-                    ss << streaming_identifier(lookup_table_name<O>(context.db_objects)) << ".";
-                }
-                if(auto* columnName = find_column_name(context.db_objects, m)) {
-                    ss << streaming_identifier(*columnName);
+                if(auto* columnName = find_column_name(context.db_objects, e)) {
+                    ss << streaming_identifier(
+                        !context.skip_table_name ? lookup_table_name<table_type_of_t<E>>(context.db_objects) : "",
+                        *columnName,
+                        "");
                 } else {
                     throw std::system_error{orm_error_code::column_not_found};
                 }
@@ -15637,25 +15679,6 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 auto expr = serialize(c.value, context);
                 ss << static_cast<std::string>(c) << "(" << expr << ")";
-                return ss.str();
-            }
-        };
-
-        template<class T, class F>
-        struct statement_serializer<column_pointer<T, F>, void> {
-            using statement_type = column_pointer<T, F>;
-
-            template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
-                std::stringstream ss;
-                if(!context.skip_table_name) {
-                    ss << streaming_identifier(lookup_table_name<T>(context.db_objects)) << ".";
-                }
-                if(auto* columnName = find_column_name(context.db_objects, c)) {
-                    ss << streaming_identifier(*columnName);
-                } else {
-                    throw std::system_error{orm_error_code::column_not_found};
-                }
                 return ss.str();
             }
         };
@@ -16399,7 +16422,8 @@ namespace sqlite_orm {
                 if(context.use_parentheses) {
                     ss << '(';
                 }
-                ss << streaming_expressions_tuple(statement.columns, context);
+                // note: pass `statement` itself
+                ss << streaming_serialized(get_column_names(statement, context));
                 if(context.use_parentheses) {
                     ss << ')';
                 }
@@ -16664,7 +16688,9 @@ namespace sqlite_orm {
             using statement_type = select_t<T, Args...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& sel, const Ctx& context) const {
+            std::string operator()(const statement_type& sel, Ctx context) const {
+                context.skip_table_name = false;
+
                 std::stringstream ss;
                 constexpr bool isCompoundOperator = is_base_of_template_v<T, compound_operator>;
                 if(!isCompoundOperator) {
