@@ -9773,12 +9773,12 @@ namespace sqlite_orm {
         };
 
         template<class DBOs, class X, class... Rest, class S>
-        struct column_result_t<DBOs, built_in_function_t<internal::unique_ptr_result_of<X>, S, X, Rest...>, void> {
+        struct column_result_t<DBOs, built_in_function_t<unique_ptr_result_of<X>, S, X, Rest...>, void> {
             using type = std::unique_ptr<column_result_of_t<DBOs, X>>;
         };
 
         template<class DBOs, class X, class S>
-        struct column_result_t<DBOs, built_in_aggregate_function_t<internal::unique_ptr_result_of<X>, S, X>, void> {
+        struct column_result_t<DBOs, built_in_aggregate_function_t<unique_ptr_result_of<X>, S, X>, void> {
             using type = std::unique_ptr<column_result_of_t<DBOs, X>>;
         };
 
@@ -9824,7 +9824,7 @@ namespace sqlite_orm {
         };
 
         template<class DBOs, class L, class R>
-        struct column_result_t<DBOs, internal::div_t<L, R>, void> {
+        struct column_result_t<DBOs, div_t<L, R>, void> {
             using type = double;
         };
 
