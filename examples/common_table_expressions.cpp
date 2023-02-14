@@ -917,6 +917,80 @@ void neevek_issue_222() {
     cout << endl;
 #endif
 }
+
+void greatest_n_per_group() {
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+    // Having a table consisting of multiple results for items,
+    // I want to select a single result row per item, based on a condition like an aggregated value.
+    // This is possible using a (self) join and filtering by aggregated value (in case it is unique), or using window functions.
+    //
+    // In this example, we select the most recent (successful) result per item
+
+    struct some_result {
+        int64 result_id;
+        int64 item_id;
+        __time64_t timestamp;
+        bool flag;
+    };
+
+    auto storage =
+        make_storage("",
+                     make_table("some_result",
+                                make_column("result_id", &some_result::result_id, primary_key().autoincrement()),
+                                make_column("item_id", &some_result::item_id) /*foreign key*/,
+                                make_column("timestamp", &some_result::timestamp),
+                                make_column("flag", &some_result::flag)));
+    storage.sync_schema();
+    storage.transaction([&storage]() {
+        __time64_t now = _time64(nullptr);
+        auto values = std::initializer_list<some_result>{{-1, 1, now - 86400 * 3, false},
+                                                         {-1, 1, now - 86400 * 2, true},
+                                                         {-1, 1, now, true},
+                                                         {-1, 2, now, false},
+                                                         {-1, 3, now - 86400 * 2, true}};
+        storage.insert_range(values.begin(), values.end());
+        return true;
+    });
+
+    //select r.*
+    //    from some_result r
+    //    inner join(
+    //        select item_id,
+    //        max(timestamp) as max_date
+    //        from some_result
+    //        group by item)id
+    //    ) wnd
+    //    on wnd.item_id = r.item_id
+    //    and r.timestamp = wnd.max_date
+    //    -- other conditions
+    //where r.flag = 1
+    constexpr auto wnd = "wnd"_cte;
+    constexpr auto max_date = "max_date"_col;
+    auto expression =
+        with(cte<wnd>(&some_result::item_id, max_date)(
+                 select(columns(&some_result::item_id, max(&some_result::timestamp)), group_by(&some_result::item_id))),
+             select(object<some_result>(),
+                    inner_join<wnd>(on(c(&some_result::item_id) == wnd->*&some_result::item_id and
+                                       c(&some_result::timestamp) == wnd->*max_date)),
+                    // additional conditions
+                    where(c(&some_result::flag) == true)));
+    string sql = storage.dump(expression);
+
+    auto stmt = storage.prepare(expression);
+    auto results = storage.execute(stmt);
+
+    cout << "most recent (successful) result per item:\n";
+    for(const char* colName: {"id", "item_id", "timestamp", "flag"}) {
+        cout << "\t" << colName;
+    }
+    cout << '\n';
+    for(auto& result: results) {
+        cout << "\t" << result.result_id << "\t" << result.item_id << "\t" << result.timestamp << "\t" << result.flag
+             << '\n';
+    }
+    cout << endl;
+#endif
+}
 #endif
 
 int main() {
@@ -931,6 +1005,7 @@ int main() {
         sudoku();
         neevek_issue_222();
         select_from_subselect();
+        greatest_n_per_group();
         show_mapping_and_backreferencing();
     } catch(const system_error& e) {
         cout << "[" << e.code() << "] " << e.what();
