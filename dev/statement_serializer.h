@@ -1492,22 +1492,19 @@ namespace sqlite_orm {
                     ss << static_cast<std::string>(distinct(0)) << " ";
                 }
                 ss << streaming_serialized(get_column_names(sel.col, context));
-                using conditions_tuple = std::tuple<Args...>;
+                using conditions_tuple = typename statement_type::conditions_type;
                 constexpr bool hasExplicitFrom = tuple_has<is_from, conditions_tuple>::value;
                 if(!hasExplicitFrom) {
                     auto tableNames = collect_table_names(sel, context);
                     using joins_index_sequence = filter_tuple_sequence_t<conditions_tuple, is_any_join>;
-                    iterate_tuple<conditions_tuple>(
-                        joins_index_sequence{},
-                        [&tableNames, &context](auto* joinTypeDummy) {
-                            using original_join_type = typename std::remove_pointer_t<decltype(joinTypeDummy)>::type;
-                            using cross_join_type = mapped_type_proxy_t<original_join_type>;
-                            auto crossJoinedTableName = lookup_table_name<cross_join_type>(context.db_objects);
-                            auto tableAliasString = alias_extractor<original_join_type>::get();
-                            std::pair<std::string, std::string> tableNameWithAlias{std::move(crossJoinedTableName),
-                                                                                   std::move(tableAliasString)};
-                            tableNames.erase(tableNameWithAlias);
-                        });
+                    iterate_tuple(sel.conditions, joins_index_sequence{}, [&tableNames, &context](auto& join) {
+                        using original_join_type = typename std::decay_t<decltype(join)>::type;
+                        using cross_join_type = mapped_type_proxy_t<original_join_type>;
+                        std::pair<const std::string&, std::string> tableNameWithAlias{
+                            lookup_table_name<cross_join_type>(context.db_objects),
+                            alias_extractor<original_join_type>::get()};
+                        tableNames.erase(tableNameWithAlias);
+                    });
                     if(!tableNames.empty() && !isCompoundOperator) {
                         ss << " FROM " << streaming_identifiers(tableNames);
                     }
