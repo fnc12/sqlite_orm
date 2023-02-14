@@ -12,7 +12,6 @@
 #include "../../dev/field_printer.h"
 #include "../../dev/conditions.h"
 #include "../../dev/alias.h"
-#include "../../dev/join_iterator.h"
 #include "../../dev/core_functions.h"
 #include "../../dev/select_constraints.h"
 #include "../../dev/table_info.h"

@@ -975,7 +975,7 @@ namespace sqlite_orm {
              * specified in `make_storage`, `make_table` and `make_column` calls. The best practice is to call this
              * function right after storage creation.
              *  @param preserve affects function's behaviour in case it is needed to remove a column. If it is `false`
-             * so table will be dropped if there is column to remove if SQLite version is < 3.35.0 and rmeove column if SQLite version >= 3.35.0,
+             * so table will be dropped if there is column to remove if SQLite version is < 3.35.0 and remove column if SQLite version >= 3.35.0,
              * if `true` -  table is being copied into another table, dropped and copied table is renamed with source table name.
              * Warning: sync_schema doesn't check foreign keys cause it is unable to do so in sqlite3. If you know how to get foreign key info please
              * submit an issue https://github.com/fnc12/sqlite_orm/issues
@@ -1160,10 +1160,10 @@ namespace sqlite_orm {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
                 auto processObject = [&table = this->get_table<object_type>(),
-                                      bind_value = field_value_binder{stmt}](auto& object) mutable {
+                                      bindValue = field_value_binder{stmt}](auto& object) mutable {
                     table.template for_each_column_excluding<is_generated_always>(
-                        call_as_template_base<column_field>([&bind_value, &object](auto& column) {
-                            bind_value(polyfill::invoke(column.member_pointer, object));
+                        call_as_template_base<column_field>([&bindValue, &object](auto& column) {
+                            bindValue(polyfill::invoke(column.member_pointer, object));
                         }));
                 };
 
@@ -1201,14 +1201,14 @@ namespace sqlite_orm {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
                 auto processObject = [&table = this->get_table<object_type>(),
-                                      bind_value = field_value_binder{stmt}](auto& object) mutable {
+                                      bindValue = field_value_binder{stmt}](auto& object) mutable {
                     using is_without_rowid = typename std::decay_t<decltype(table)>::is_without_rowid;
                     table.template for_each_column_excluding<
                         mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                          mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
-                        call_as_template_base<column_field>([&table, &bind_value, &object](auto& column) {
+                        call_as_template_base<column_field>([&table, &bindValue, &object](auto& column) {
                             if(!table.exists_in_composite_primary_key(column)) {
-                                bind_value(polyfill::invoke(column.member_pointer, object));
+                                bindValue(polyfill::invoke(column.member_pointer, object));
                             }
                         }));
                 };
@@ -1255,17 +1255,17 @@ namespace sqlite_orm {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
                 auto& table = this->get_table<object_type>();
 
-                field_value_binder bind_value{stmt};
+                field_value_binder bindValue{stmt};
                 auto& object = get_object(statement.expression);
                 table.template for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
-                    call_as_template_base<column_field>([&table, &bind_value, &object](auto& column) {
+                    call_as_template_base<column_field>([&table, &bindValue, &object](auto& column) {
                         if(!table.exists_in_composite_primary_key(column)) {
-                            bind_value(polyfill::invoke(column.member_pointer, object));
+                            bindValue(polyfill::invoke(column.member_pointer, object));
                         }
                     }));
-                table.for_each_column([&table, &bind_value, &object](auto& column) {
+                table.for_each_column([&table, &bindValue, &object](auto& column) {
                     if(column.template is<is_primary_key>() || table.exists_in_composite_primary_key(column)) {
-                        bind_value(polyfill::invoke(column.member_pointer, object));
+                        bindValue(polyfill::invoke(column.member_pointer, object));
                     }
                 });
                 perform_step(stmt);
@@ -1348,9 +1348,9 @@ namespace sqlite_orm {
             template<class S, class... Wargs>
             void execute(const prepared_statement_t<update_all_t<S, Wargs...>>& statement) {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
-                conditional_binder bind_node{stmt};
-                iterate_ast(statement.expression.set, bind_node);
-                iterate_ast(statement.expression.conditions, bind_node);
+                conditional_binder bindNode{stmt};
+                iterate_ast(statement.expression.set, bindNode);
+                iterate_ast(statement.expression.conditions, bindNode);
                 perform_step(stmt);
             }
 

@@ -1,6 +1,6 @@
 {
-	"project": "SQLite ORM",
-	"target": "include/sqlite_orm/sqlite_orm.h",
+  "project": "SQLite ORM",
+  "target": "include/sqlite_orm/sqlite_orm.h",
   "sources": [
     "dev/functional/start_macros.h",
     "dev/type_traits.h",
@@ -14,7 +14,6 @@
     "dev/field_printer.h",
     "dev/conditions.h",
     "dev/alias.h",
-    "dev/join_iterator.h",
     "dev/core_functions.h",
     "dev/typed_comparator.h",
     "dev/select_constraints.h",
@@ -42,5 +41,5 @@
     "dev/interface_definitions.h",
     "dev/functional/finish_macros.h"
   ],
-	"include_paths": ["dev"]
+  "include_paths": [ "dev" ]
 }
