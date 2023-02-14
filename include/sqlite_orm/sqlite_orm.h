@@ -14940,12 +14940,12 @@ namespace sqlite_orm {
 
 // #include "column_names_getter.h"
 
+#include <type_traits>  //  std::is_base_of
 #include <string>  //  std::string
 #include <vector>  //  std::vector
 #include <functional>  //  std::reference_wrapper
 #include <system_error>
 #include <utility>  //  std::move
-#include <iterator>  //  std::make_move_iterator
 
 // #include "functional/cxx_universal.h"
 //  ::size_t

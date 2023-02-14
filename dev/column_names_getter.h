@@ -1,11 +1,11 @@
 #pragma once
 
+#include <type_traits>  //  std::is_base_of
 #include <string>  //  std::string
 #include <vector>  //  std::vector
 #include <functional>  //  std::reference_wrapper
 #include <system_error>
 #include <utility>  //  std::move
-#include <iterator>  //  std::make_move_iterator
 
 #include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/cxx_type_traits_polyfill.h"  //  polyfill::remove_cvref_t
