@@ -803,6 +803,9 @@ namespace sqlite_orm {
 
         template<class T>
         using is_from = polyfill::is_specialization_of<T, from_t>;
+
+        template<class T>
+        using is_any_join = polyfill::is_detected<on_type_t, T>;
     }
 
     /**

@@ -3,6 +3,7 @@
 #include <string>  //  std::string
 #include <utility>  //  std::move
 
+#include "functional/cxx_core_features.h"
 #include "conditions.h"
 #include "alias_traits.h"
 
@@ -50,6 +51,12 @@ namespace sqlite_orm {
                 return {*this, std::move(rhs)};
             }
         };
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_column_pointer_v = polyfill::is_specialization_of_v<T, column_pointer>;
+
+        template<class T>
+        using is_column_pointer = polyfill::bool_constant<is_column_pointer_v<T>>;
 
         template<class O, class SFINAE = void>
         struct column_pointer_builder {

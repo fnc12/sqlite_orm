@@ -62,6 +62,9 @@ namespace sqlite_orm {
         template<typename T>
         using target_type_t = typename T::target_type;
 
+        template<typename T>
+        using on_type_t = typename T::on_type;
+
 #ifdef SQLITE_ORM_WITH_CTE
         template<typename T>
         using cte_label_type_t = typename T::cte_label_type;

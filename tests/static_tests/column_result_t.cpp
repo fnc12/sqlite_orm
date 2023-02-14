@@ -108,9 +108,10 @@ TEST_CASE("column_result_of_t") {
     runTest<db_objects_t, int64>(rowid<User>());
     runTest<db_objects_t, int64>(oid<User>());
     runTest<db_objects_t, int64>(_rowid_<User>());
+    runTest<db_objects_t, std::tuple<int, std::string>>(columns(&User::id, &User::name));
     runTest<db_objects_t, std::tuple<int, std::string>>(asterisk<User>());
     runTest<db_objects_t, std::tuple<int, std::string>>(asterisk<alias_a<User>>());
-    runTest<db_objects_t, std::tuple<int, std::string>>(columns(&User::id, &User::name));
+    runTest<db_objects_t, std::tuple<int, std::string, int, std::string>>(columns(asterisk<User>(), asterisk<User>()));
     runTest<db_objects_t, int>(column<User>(&User::id));
     runTest<db_objects_t, int>(alias_column<alias_a<User>>(&User::id));
     runTest<db_objects_t, User>(object<User>());

@@ -6,20 +6,21 @@
 
 #include <iostream>
 
-struct Employee {
-    int id;
-    std::string name;
-    int age;
-    std::unique_ptr<std::string> address;  //  optional
-    std::unique_ptr<double> salary;  //  optional
-};
-
 using namespace sqlite_orm;
-
 using std::cout;
 using std::endl;
+using std::make_unique;
+using std::string;
 
-int main(int, char**) {
+void all_employees() {
+    struct Employee {
+        int id;
+        std::string name;
+        int age;
+        std::unique_ptr<std::string> address;  //  optional
+        std::unique_ptr<double> salary;  //  optional
+    };
+
     auto storage = make_storage("select.sqlite",
                                 make_table("COMPANY",
                                            make_column("ID", &Employee::id, primary_key()),
@@ -31,13 +32,13 @@ int main(int, char**) {
     storage.remove_all<Employee>();  //  remove all old employees in case they exist in db..
 
     //  create employees..
-    Employee paul{-1, "Paul", 32, std::make_unique<std::string>("California"), std::make_unique<double>(20000.0)};
-    Employee allen{-1, "Allen", 25, std::make_unique<std::string>("Texas"), std::make_unique<double>(15000.0)};
-    Employee teddy{-1, "Teddy", 23, std::make_unique<std::string>("Norway"), std::make_unique<double>(20000.0)};
-    Employee mark{-1, "Mark", 25, std::make_unique<std::string>("Rich-Mond"), std::make_unique<double>(65000.0)};
-    Employee david{-1, "David", 27, std::make_unique<std::string>("Texas"), std::make_unique<double>(85000.0)};
-    Employee kim{-1, "Kim", 22, std::make_unique<std::string>("South-Hall"), std::make_unique<double>(45000.0)};
-    Employee james{-1, "James", 24, std::make_unique<std::string>("Houston"), std::make_unique<double>(10000.0)};
+    Employee paul{-1, "Paul", 32, make_unique<string>("California"), make_unique<double>(20000.0)};
+    Employee allen{-1, "Allen", 25, make_unique<string>("Texas"), make_unique<double>(15000.0)};
+    Employee teddy{-1, "Teddy", 23, make_unique<string>("Norway"), make_unique<double>(20000.0)};
+    Employee mark{-1, "Mark", 25, make_unique<string>("Rich-Mond"), make_unique<double>(65000.0)};
+    Employee david{-1, "David", 27, make_unique<string>("Texas"), make_unique<double>(85000.0)};
+    Employee kim{-1, "Kim", 22, make_unique<string>("South-Hall"), make_unique<double>(45000.0)};
+    Employee james{-1, "James", 24, make_unique<string>("Houston"), make_unique<double>(10000.0)};
 
     //  insert employees. `insert` function returns id of inserted object..
     paul.id = storage.insert(paul);
@@ -65,11 +66,10 @@ int main(int, char**) {
 
     //  now let's select id, name and salary..
     auto idsNamesSalarys = storage.select(columns(&Employee::id, &Employee::name, &Employee::salary));
-    //  decltype(idsNamesSalarys) = vector<tuple<int, string, unique_ptr<double>>>
-    for(auto& tpl: idsNamesSalarys) {
-        cout << "id = " << std::get<0>(tpl) << ", name = " << std::get<1>(tpl) << ", salary = ";
-        if(std::get<2>(tpl)) {
-            cout << *std::get<2>(tpl);
+    for(auto& row: idsNamesSalarys) {  //  row's type is tuple<int, string, unique_ptr<double>>
+        cout << "id = " << get<0>(row) << ", name = " << get<1>(row) << ", salary = ";
+        if(get<2>(row)) {
+            cout << *get<2>(row);
         } else {
             cout << "null";
         }
@@ -78,22 +78,94 @@ int main(int, char**) {
 
     cout << endl;
 
-    auto allEmployeesTuples = storage.select(asterisk<Employee>());
-    cout << "allEmployeesTuples count = " << allEmployeesTuples.size() << endl;
-    for(auto& row: allEmployeesTuples) {  //  row is std::tuple<int, std::string, int, std::unique_ptr<std::string>,
+    auto allEmployeeTuples = storage.select(asterisk<Employee>());
+    cout << "allEmployeeTuples count = " << allEmployeeTuples.size() << endl;
+    for(auto& row: allEmployeeTuples) {  //  row's type is std::tuple<int, string, int, std::unique_ptr<string>,
         //  std::unique_ptr<double>>
-        cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t';
-        if(auto& value = std::get<3>(row)) {
+        cout << get<0>(row) << '\t' << get<1>(row) << '\t' << get<2>(row) << '\t';
+        if(auto& value = get<3>(row)) {
             cout << *value;
         } else {
             cout << "null";
         }
         cout << '\t';
-        if(auto& value = std::get<4>(row)) {
+        if(auto& value = get<4>(row)) {
             cout << *value;
         } else {
             cout << "null";
         }
         cout << '\t' << endl;
     }
+
+    cout << endl;
+
+    auto allEmployeeObjects = storage.select(object<Employee>());
+    cout << "allEmployeeObjects count = " << allEmployeeObjects.size() << endl;
+    for(auto& employee: allEmployeeObjects) {
+        cout << employee.id << '\t' << employee.name << '\t' << employee.age << '\t';
+        if(auto& value = employee.address) {
+            cout << *value;
+        } else {
+            cout << "null";
+        }
+        cout << '\t';
+        if(auto& value = employee.salary) {
+            cout << *value;
+        } else {
+            cout << "null";
+        }
+        cout << '\t' << endl;
+    }
+
+    cout << endl;
+}
+
+void all_artists() {
+    struct Artist {
+        int id;
+        std::string name;
+    };
+
+    struct Album {
+        int id;
+        int artist_id;
+    };
+
+    auto storage = make_storage("",
+                                make_table("artists",
+                                           make_column("id", &Artist::id, primary_key().autoincrement()),
+                                           make_column("name", &Artist::name)),
+                                make_table("albums",
+                                           make_column("id", &Album::id, primary_key().autoincrement()),
+                                           make_column("artist_id", &Album::artist_id),
+                                           foreign_key(&Album::artist_id).references(&Artist::id)));
+    storage.sync_schema();
+    storage.transaction([&storage] {
+        auto artistPk = storage.insert(Artist{-1, "Artist"});
+        storage.insert(Album{-1, artistPk});
+        storage.insert(Album{-1, artistPk});
+        return true;
+    });
+
+    // SELECT artists.*, albums.* FROM artists JOIN albums ON albums.artist_id = artist.id
+
+    cout << "artists.*, albums.*\n";
+    // row's type is std::tuple<int, std::string, id, int>
+    for(auto& row: storage.select(columns(asterisk<Artist>(), asterisk<Album>()),
+                                  join<Album>(on(c(&Album::artist_id) == &Artist::id)))) {
+        cout << get<0>(row) << '\t' << get<1>(row) << '\t' << get<2>(row) << '\t' << get<3>(row) << '\n';
+    }
+    cout << endl;
+}
+
+int main() {
+
+    try {
+        all_employees();
+        all_artists();
+    } catch(const std::system_error& e) {
+        cout << "[" << e.code() << "] " << e.what();
+    }
+
+    return 0;
 }
