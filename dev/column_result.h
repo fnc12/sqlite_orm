@@ -5,6 +5,9 @@
 #include <functional>  //  std::reference_wrapper
 
 #include "functional/cxx_universal.h"
+#include "tuple_helper/tuple_traits.h"
+#include "tuple_helper/tuple_fy.h"
+#include "tuple_helper/tuple_filter.h"
 #include "type_traits.h"
 #include "member_traits/member_traits.h"
 #include "core_functions.h"
@@ -77,12 +80,12 @@ namespace sqlite_orm {
         };
 
         template<class DBOs, class X, class... Rest, class S>
-        struct column_result_t<DBOs, built_in_function_t<internal::unique_ptr_result_of<X>, S, X, Rest...>, void> {
+        struct column_result_t<DBOs, built_in_function_t<unique_ptr_result_of<X>, S, X, Rest...>, void> {
             using type = std::unique_ptr<column_result_of_t<DBOs, X>>;
         };
 
         template<class DBOs, class X, class S>
-        struct column_result_t<DBOs, built_in_aggregate_function_t<internal::unique_ptr_result_of<X>, S, X>, void> {
+        struct column_result_t<DBOs, built_in_aggregate_function_t<unique_ptr_result_of<X>, S, X>, void> {
             using type = std::unique_ptr<column_result_of_t<DBOs, X>>;
         };
 
@@ -128,7 +131,7 @@ namespace sqlite_orm {
         };
 
         template<class DBOs, class L, class R>
-        struct column_result_t<DBOs, internal::div_t<L, R>, void> {
+        struct column_result_t<DBOs, div_t<L, R>, void> {
             using type = double;
         };
 
@@ -200,7 +203,7 @@ namespace sqlite_orm {
 
         template<class DBOs, class... Args>
         struct column_result_t<DBOs, columns_t<Args...>, void> {
-            using type = std::tuple<column_result_of_t<DBOs, std::decay_t<Args>>...>;
+            using type = tuple_cat_t<tuplify_t<column_result_of_t<DBOs, std::decay_t<Args>>>...>;
         };
 
         template<class DBOs, class T, class... Args>
