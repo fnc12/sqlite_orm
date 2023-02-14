@@ -975,7 +975,7 @@ namespace sqlite_orm {
              * specified in `make_storage`, `make_table` and `make_column` calls. The best practice is to call this
              * function right after storage creation.
              *  @param preserve affects function's behaviour in case it is needed to remove a column. If it is `false`
-             * so table will be dropped if there is column to remove if SQLite version is < 3.35.0 and rmeove column if SQLite version >= 3.35.0,
+             * so table will be dropped if there is column to remove if SQLite version is < 3.35.0 and remove column if SQLite version >= 3.35.0,
              * if `true` -  table is being copied into another table, dropped and copied table is renamed with source table name.
              * Warning: sync_schema doesn't check foreign keys cause it is unable to do so in sqlite3. If you know how to get foreign key info please
              * submit an issue https://github.com/fnc12/sqlite_orm/issues
