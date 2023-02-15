@@ -1,5 +1,10 @@
 #pragma once
 
+/*
+ *  This header detects core C++ language features on which sqlite_orm depends.
+ *  May be updated/overwritten by cxx_compiler_quirks.h
+ */
+
 #ifdef __has_cpp_attribute
 #define SQLITE_ORM_HAS_CPP_ATTRIBUTE(attr) __has_cpp_attribute(attr)
 #else

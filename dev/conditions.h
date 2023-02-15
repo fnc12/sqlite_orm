@@ -819,7 +819,7 @@ namespace sqlite_orm {
         return {};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
      *  Explicit FROM function. Usage:
      *  `storage.select(&User::id, from<"a"_alias.for_<User>>());`
@@ -1028,7 +1028,7 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<auto als, class O, internal::satisfies<internal::is_recordset_alias, decltype(als)> = true>
     auto left_join(O o) {
         return internal::left_join_t<std::remove_const_t<decltype(als)>, O>{std::move(o)};
@@ -1040,7 +1040,7 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<auto als, class O, internal::satisfies<internal::is_recordset_alias, decltype(als)> = true>
     auto join(O o) {
         return internal::join_t<std::remove_const_t<decltype(als)>, O>{std::move(o)};
@@ -1052,7 +1052,7 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<auto als, class O, internal::satisfies<internal::is_recordset_alias, decltype(als)> = true>
     auto left_outer_join(O o) {
         return internal::left_outer_join_t<std::remove_const_t<decltype(als)>, O>{std::move(o)};
@@ -1064,7 +1064,7 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<auto als, class O, internal::satisfies<internal::is_recordset_alias, decltype(als)> = true>
     auto inner_join(O o) {
         return internal::inner_join_t<std::remove_const_t<decltype(als)>, O>{std::move(o)};

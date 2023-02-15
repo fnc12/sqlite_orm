@@ -475,7 +475,7 @@ int main(int, char**) {
         //      )
         //  ORDER BY 'c'."PAYMENT_AMT"
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         constexpr auto c_als = "c"_alias.for_<Customer>();
         constexpr auto d = "d"_alias.for_<Customer>();
 

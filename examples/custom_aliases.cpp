@@ -104,7 +104,7 @@ int main(int, char** argv) {
     //  SELECT C.ID, C.NAME, C.AGE, D.DEPT
     //  FROM COMPANY AS C, DEPARTMENT AS D
     //  WHERE  C.ID = D.EMP_ID;
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     constexpr auto c_als = "c"_alias.for_<Employee>();
     constexpr auto d = "d"_alias.for_<Department>();
     static_assert(std::is_empty_v<EmployeeIdAlias>);

@@ -1,5 +1,10 @@
 #pragma once
 
+/*
+ *  This header defines macros for circumventing compiler quirks on which sqlite_orm depends.
+ *  May amend cxx_core_features.h
+ */
+
 #ifdef __clang__
 #define SQLITE_ORM_DO_PRAGMA(...) _Pragma(#__VA_ARGS__)
 #endif

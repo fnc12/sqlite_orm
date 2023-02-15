@@ -10,6 +10,7 @@
 #include "tuple_helper/tuple_filter.h"
 #include "type_traits.h"
 #include "member_traits/member_traits.h"
+#include "mapped_type_proxy.h"
 #include "core_functions.h"
 #include "select_constraints.h"
 #include "operators.h"

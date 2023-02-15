@@ -1346,7 +1346,7 @@ int main(int, char**) {
         //  WHERE salary >(SELECT AVG(salary)
         //      FROM employees
         //      WHERE department_id = e.department_id);
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         constexpr auto e = "e"_alias.for_<Employee>();
         auto rows = storage.select(
             columns(e->*&Employee::lastName, e->*&Employee::salary, e->*&Employee::departmentId),

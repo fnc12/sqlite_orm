@@ -15,7 +15,7 @@ namespace sqlite_orm {
 
     namespace internal {
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         /*
          *  Helper class to facilitate user-defined string literal operator template
          */
@@ -126,7 +126,7 @@ namespace sqlite_orm {
             alias_holder() = default;
         };
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         template<char A, char... C>
         struct table_alias_builder {
             static_assert(sizeof...(C) == 0 && ((A >= 'A' && 'Z' <= A) || (A >= 'a' && 'z' <= A)),
@@ -158,7 +158,7 @@ namespace sqlite_orm {
         return {c};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<auto als,
              class C,
              class A = std::remove_const_t<decltype(als)>,
@@ -184,7 +184,7 @@ namespace sqlite_orm {
         return {std::move(expression)};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<auto als, class E, internal::satisfies<internal::is_column_alias, decltype(als)> = true>
     auto as(E expression) {
         return internal::as_t<std::remove_const_t<decltype(als)>, E>{std::move(expression)};
@@ -204,7 +204,7 @@ namespace sqlite_orm {
         return {};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<auto als, internal::satisfies<internal::is_column_alias, decltype(als)> = true>
     auto get() {
         return internal::alias_holder<std::remove_const_t<decltype(als)>>{};
@@ -274,7 +274,7 @@ namespace sqlite_orm {
     using colalias_h = internal::column_alias<'h'>;
     using colalias_i = internal::column_alias<'i'>;
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /** @short Create aliased tables e.g. `constexpr auto z_alias = alias_<'z'>.for_<User>()`.
      */
     template<char A>

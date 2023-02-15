@@ -28,7 +28,7 @@ TEST_CASE("aliases") {
     SECTION("column alias expressions") {
         runTest<alias_holder<column_alias<'a'>>>(get<colalias_a>());
         runTest<as_t<column_alias<'a'>, int User::*>>(as<colalias_a>(&User::id));
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         runTest<alias_holder<column_alias<'a'>>>(get<"a"_col>());
         runTest<column_alias<'a'>>("a"_col);
         runTest<as_t<column_alias<'a'>, int User::*>>(&User::id >>= "a"_col);

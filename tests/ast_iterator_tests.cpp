@@ -281,7 +281,7 @@ TEST_CASE("ast_iterator") {
             expected.push_back(typeid(int));
             iterate_ast(expression, lambda);
         }
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         {
             SECTION("direct") {
                 auto expression = "a"_col > c(0);
@@ -303,7 +303,7 @@ TEST_CASE("ast_iterator") {
         expected.push_back(typeid(alias_column_t<alias_z<User>, column_pointer<User, decltype(&User::id)>>));
         iterate_ast(expression, lambda);
     }
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     SECTION("aliased regular column 2") {
         constexpr auto z_alias = "z"_alias.for_<User>();
         auto expression = z_alias->*&User::id;
