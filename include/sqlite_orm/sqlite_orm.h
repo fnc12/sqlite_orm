@@ -9598,7 +9598,7 @@ namespace sqlite_orm {
          * 
          *  Note: This function requires Lookup to be mapped, otherwise it is removed from the overload resolution set.
          */
-        template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs> = true>
+        template<class Lookup, class DBOs, satisfies<is_mapped, DBOs, Lookup> = true>
         auto& pick_table(DBOs& dbObjects) {
             using table_type = storage_pick_table_t<Lookup, DBOs>;
             return std::get<table_type>(dbObjects);
