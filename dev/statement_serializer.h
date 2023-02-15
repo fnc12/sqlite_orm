@@ -2036,7 +2036,13 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
-                ss << '(' << streaming_expressions_tuple(statement, context) << ')';
+                if(context.use_parentheses) {
+                    ss << '(';
+                }
+                ss << streaming_expressions_tuple(statement, context);
+                if(context.use_parentheses) {
+                    ss << ')';
+                }
                 return ss.str();
             }
         };
@@ -2051,7 +2057,12 @@ namespace sqlite_orm {
                 if(context.use_parentheses) {
                     ss << '(';
                 }
-                ss << "VALUES " << streaming_expressions_tuple(statement.tuple, context);
+                ss << "VALUES ";
+                {
+                    Ctx tupleContext = context;
+                    tupleContext.use_parentheses = true;
+                    ss << streaming_expressions_tuple(statement.tuple, tupleContext);
+                }
                 if(context.use_parentheses) {
                     ss << ')';
                 }
