@@ -104,6 +104,35 @@ int main(int, char** argv) {
     //  SELECT C.ID, C.NAME, C.AGE, D.DEPT
     //  FROM COMPANY AS C, DEPARTMENT AS D
     //  WHERE  C.ID = D.EMP_ID;
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+    constexpr auto c_als = "c"_alias.for_<Employee>();
+    constexpr auto d = "d"_alias.for_<Department>();
+    static_assert(std::is_empty_v<EmployeeIdAlias>);
+    constexpr auto empId = EmployeeIdAlias{};
+    auto rowsWithTableAliases = storage.select(
+        columns(c_als->*&Employee::id, c_als->*&Employee::name, c_als->*&Employee::age, d->*&Department::dept),
+        where(is_equal(c_als->*&Employee::id, d->*&Department::empId)));
+    assert(rowsWithTableAliases == simpleRows);
+
+    //  SELECT COMPANY.ID as COMPANY_ID, COMPANY.NAME AS COMPANY_NAME, COMPANY.AGE, DEPARTMENT.DEPT
+    //  FROM COMPANY, DEPARTMENT
+    //  WHERE COMPANY_ID = DEPARTMENT.EMP_ID;
+    auto rowsWithColumnAliases = storage.select(
+        columns(&Employee::id >>= empId, as<CompanyNameAlias>(&Employee::name), &Employee::age, &Department::dept),
+        where(is_equal(get<empId>(), &Department::empId)));
+    assert(rowsWithColumnAliases == rowsWithTableAliases);
+
+    //  SELECT C.ID AS COMPANY_ID, C.NAME AS COMPANY_NAME, C.AGE, D.DEPT
+    //  FROM COMPANY AS C, DEPARTMENT AS D
+    //  WHERE  C.ID = D.EMP_ID;
+    auto rowsWithBothTableAndColumnAliases =
+        storage.select(columns(c_als->*& Employee::id >>= empId,
+                               as<CompanyNameAlias>(c_als->*&Employee::name),
+                               c_als->*&Employee::age,
+                               d->*&Department::dept),
+                       where(is_equal(c_als->*&Employee::id, d->*&Department::empId)));
+    assert(rowsWithBothTableAndColumnAliases == rowsWithBothTableAndColumnAliases);
+#else
     using als_c = alias_c<Employee>;
     using als_d = alias_d<Department>;
     auto rowsWithTableAliases =
@@ -134,6 +163,7 @@ int main(int, char** argv) {
                                alias_column<als_d>(&Department::dept)),
                        where(is_equal(alias_column<als_c>(&Employee::id), alias_column<als_d>(&Department::empId))));
     assert(rowsWithBothTableAndColumnAliases == rowsWithBothTableAndColumnAliases);
+#endif
 
     return 0;
 }

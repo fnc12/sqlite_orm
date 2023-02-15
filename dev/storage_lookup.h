@@ -1,8 +1,8 @@
 #pragma once
 
-#include <type_traits>  //  std::true_type, std::false_type, std::remove_const, std::enable_if
+#include <type_traits>  //  std::true_type, std::false_type, std::remove_const, std::enable_if, std::is_base_of, std::is_void
 #include <tuple>
-#include <utility>  //  std::index_sequence
+#include <utility>  //  std::index_sequence, std::make_index_sequence
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"

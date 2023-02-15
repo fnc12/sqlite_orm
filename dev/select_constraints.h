@@ -1,7 +1,8 @@
 #pragma once
 
+#include <type_traits>  //  std::remove_const
 #include <string>  //  std::string
-#include <utility>  //  std::declval
+#include <utility>  //  std::move
 #include <tuple>  //  std::tuple, std::get, std::tuple_size
 #include "functional/cxx_optional.h"
 
@@ -13,6 +14,8 @@
 #include "ast/where.h"
 #include "ast/group_by.h"
 #include "core_functions.h"
+#include "alias_traits.h"
+#include "column_pointer.h"
 
 namespace sqlite_orm {
 
@@ -79,55 +82,6 @@ namespace sqlite_orm {
 
         template<class T>
         using is_columns = polyfill::bool_constant<is_columns_v<T>>;
-
-        /**
-         *  This class is used to store explicit mapped type T and its column descriptor (member pointer/getter/setter).
-         *  Is useful when mapped type is derived from other type and base class has members mapped to a storage.
-         */
-        template<class T, class F>
-        struct column_pointer {
-            using self = column_pointer<T, F>;
-            using type = T;
-            using field_type = F;
-
-            field_type field;
-
-            template<class R>
-            internal::is_equal_t<self, R> operator==(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
-
-            template<class R>
-            internal::is_not_equal_t<self, R> operator!=(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
-
-            template<class R>
-            internal::lesser_than_t<self, R> operator<(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
-
-            template<class R>
-            internal::lesser_or_equal_t<self, R> operator<=(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
-
-            template<class R>
-            internal::greater_than_t<self, R> operator>(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
-
-            template<class R>
-            internal::greater_or_equal_t<self, R> operator>=(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
-        };
-
-        template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_column_pointer_v = polyfill::is_specialization_of_v<T, column_pointer>;
-
-        template<class T>
-        using is_column_pointer = polyfill::bool_constant<is_column_pointer_v<T>>;
 
         /**
          *  Subselect object type.
@@ -454,6 +408,13 @@ namespace sqlite_orm {
     internal::asterisk_t<T> asterisk(bool definedOrder = false) {
         return {definedOrder};
     }
+
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+    template<auto als, internal::satisfies<internal::is_recordset_alias, decltype(als)> = true>
+    auto asterisk(bool definedOrder = false) {
+        return internal::asterisk_t<std::remove_const_t<decltype(als)>>{definedOrder};
+    }
+#endif
 
     /**
      *   `SELECT * FROM T` expression that fetches results as objects of type T.

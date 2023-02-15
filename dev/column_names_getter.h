@@ -7,12 +7,12 @@
 #include <system_error>
 #include <utility>  //  std::move
 
-#include "functional/cxx_universal.h"  //  ::size_t
-#include "functional/cxx_type_traits_polyfill.h"  //  polyfill::remove_cvref_t
 #include "tuple_helper/tuple_traits.h"
+#include "tuple_helper/tuple_iteration.h"
 #include "error_code.h"
+#include "mapped_type_proxy.h"
+#include "alias_traits.h"
 #include "select_constraints.h"
-#include "alias.h"
 #include "storage_lookup.h"  //  pick_table
 #include "serializer_context.h"
 #include "util.h"
@@ -34,8 +34,8 @@ namespace sqlite_orm {
                 table.for_each_column([qualified = !context.skip_table_name,
                                        &tableName = table.name,
                                        &collectedExpressions](const column_identifier& column) {
-                    if(std::is_base_of<alias_tag, T>::value) {
-                        collectedExpressions.push_back(quote_identifier(alias_extractor<T>::get()) + "." +
+                    if(is_alias_v<T>) {
+                        collectedExpressions.push_back(quote_identifier(alias_extractor<T>::extract()) + "." +
                                                        quote_identifier(column.name));
                     } else if(qualified) {
                         collectedExpressions.push_back(quote_identifier(tableName) + "." +
@@ -46,8 +46,8 @@ namespace sqlite_orm {
                 });
             } else {
                 collectedExpressions.reserve(collectedExpressions.size() + 1);
-                if(std::is_base_of<alias_tag, T>::value) {
-                    collectedExpressions.push_back(quote_identifier(alias_extractor<T>::get()) + ".*");
+                if(is_alias_v<T>) {
+                    collectedExpressions.push_back(quote_identifier(alias_extractor<T>::extract()) + ".*");
                 } else if(!context.skip_table_name) {
                     const basic_table& table = pick_table<mapped_type_proxy_t<T>>(context.db_objects);
                     collectedExpressions.push_back(quote_identifier(table.name) + ".*");

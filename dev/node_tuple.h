@@ -1,10 +1,12 @@
 #pragma once
 
+#include <type_traits>  //  std::enable_if
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::pair
 #include <functional>  //  std::reference_wrapper
 #include "functional/cxx_optional.h"
 
+#include "functional/cxx_type_traits_polyfill.h"
 #include "tuple_helper/tuple_filter.h"
 #include "conditions.h"
 #include "operators.h"
@@ -72,6 +74,12 @@ namespace sqlite_orm {
          */
         template<class A>
         struct node_tuple<alias_holder<A>, void> : node_tuple<void> {};
+
+        /**
+         *  Column alias
+         */
+        template<char... C>
+        struct node_tuple<column_alias<C...>, void> : node_tuple<void> {};
 
         /**
          *  Literal

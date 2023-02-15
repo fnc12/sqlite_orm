@@ -37,9 +37,9 @@ namespace sqlite_orm {
         /**
          *  Table definition.
          */
-        template<class T, bool WithoutRowId, class... Cs>
+        template<class O, bool WithoutRowId, class... Cs>
         struct table_t : basic_table {
-            using object_type = T;
+            using object_type = O;
             using elements_type = std::tuple<Cs...>;
 
             static constexpr bool is_without_rowid_v = WithoutRowId;
@@ -52,7 +52,7 @@ namespace sqlite_orm {
                 basic_table{std::move(name_)}, elements{std::move(elements_)} {}
 #endif
 
-            table_t<T, true, Cs...> without_rowid() const {
+            table_t<O, true, Cs...> without_rowid() const {
                 return {this->name, this->elements};
             }
 
@@ -236,11 +236,11 @@ namespace sqlite_orm {
                 iterate_tuple(this->elements, fk_index_sequence{}, lambda);
             }
 
-            template<class O, class L>
+            template<class Target, class L>
             void for_each_foreign_key_to(L&& lambda) const {
                 using fk_index_sequence = filter_tuple_sequence_t<elements_type, is_foreign_key>;
                 using filtered_index_sequence = filter_tuple_sequence_t<elements_type,
-                                                                        check_if_is_type<O>::template fn,
+                                                                        check_if_is_type<Target>::template fn,
                                                                         target_type_t,
                                                                         fk_index_sequence>;
                 iterate_tuple(this->elements, filtered_index_sequence{}, lambda);

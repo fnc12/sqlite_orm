@@ -71,6 +71,20 @@ TEST_CASE("statement_serializer select constraints") {
             value = serialize(expression, context);
             expected = R"(FROM "users" "u")";
         }
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+        {
+            SECTION("with alias 2") {
+                auto expression = from<alias_<'u'>.for_<User>()>();
+                value = serialize(expression, context);
+                expected = R"(FROM "users" "u")";
+            }
+            SECTION("with alias 3") {
+                auto expression = from<"u"_alias.for_<User>()>();
+                value = serialize(expression, context);
+                expected = R"(FROM "users" "u")";
+            }
+        }
+#endif
     }
     SECTION("function_call") {
         struct Func {
