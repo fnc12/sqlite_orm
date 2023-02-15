@@ -1350,8 +1350,10 @@ int main(int, char**) {
         constexpr auto e = "e"_alias.for_<Employee>();
         auto rows = storage.select(
             columns(e->*&Employee::lastName, e->*&Employee::salary, e->*&Employee::departmentId),
+            from<e>(),
             where(greater_than(e->*&Employee::salary,
                                select(avg(&Employee::salary),
+                                      from<Employee>(),
                                       where(is_equal(&Employee::departmentId, e->*&Employee::departmentId))))));
         cout << "last_name   salary      department_id" << endl;
         cout << "----------  ----------  -------------" << endl;
@@ -1364,9 +1366,11 @@ int main(int, char**) {
             columns(alias_column<als>(&Employee::lastName),
                     alias_column<als>(&Employee::salary),
                     alias_column<als>(&Employee::departmentId)),
+            from<als>(),
             where(greater_than(
                 alias_column<als>(&Employee::salary),
                 select(avg(&Employee::salary),
+                       from<Employee>(),
                        where(is_equal(&Employee::departmentId, alias_column<als>(&Employee::departmentId)))))));
         cout << "last_name   salary      department_id" << endl;
         cout << "----------  ----------  -------------" << endl;
