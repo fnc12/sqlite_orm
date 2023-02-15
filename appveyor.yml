@@ -25,12 +25,15 @@ environment:
       CC: clang
       CXX: clang++
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_14=ON"
+      cmake_build_parallel: --parallel
 
     - job_name: gcc, C++14
       appveyor_build_worker_image: Ubuntu
       CC: gcc
       CXX: g++
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_14=ON"
+      # gcc was stuck with a parallel build
+      cmake_build_parallel: ""
 
     # Representative for C++14
     - job_name: Visual Studio 2022, x64, C++14
@@ -43,24 +46,28 @@ environment:
       CC: clang
       CXX: clang++
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
+      cmake_build_parallel: --parallel
 
     - job_name: clang, C++20
       appveyor_build_worker_image: Ubuntu
       CC: clang
       CXX: clang++
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
+      cmake_build_parallel: --parallel
 
     - job_name: gcc, C++17
       appveyor_build_worker_image: Ubuntu
       CC: gcc
       CXX: g++
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
+      cmake_build_parallel: ""
 
     - job_name: gcc, C++20
       appveyor_build_worker_image: Ubuntu
       CC: gcc
       CXX: g++
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
+      cmake_build_parallel: ""
 
     - job_name: Visual Studio 2022, x64, C++17
       appveyor_build_worker_image: Visual Studio 2022
@@ -111,7 +118,7 @@ for:
   # build examples, and run tests (ie make & make test)
   build_script:
     - |-
-      cmake --build . --config %configuration%
+      cmake --build . --config %configuration% -- /m
       ctest --verbose --output-on-failure --build-config %configuration%
 
 -
@@ -140,7 +147,7 @@ for:
   # build examples, and run tests (ie make & make test)
   build_script:
     - |-
-      cmake --build .
+      cmake --build . $cmake_build_parallel
       ctest --verbose --output-on-failure
 -
   # macOS
@@ -166,5 +173,5 @@ for:
   # build examples, and run tests (ie make & make test)
   build_script:
     - |-
-      cmake --build .
+      cmake --build . --parallel
       ctest --verbose --output-on-failure
