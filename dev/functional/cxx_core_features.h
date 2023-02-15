@@ -46,9 +46,7 @@
 #endif
 
 #if __cpp_inline_variables >= 201606L
-#define SQLITE_ORM_INLINE_VAR inline
-#else
-#define SQLITE_ORM_INLINE_VAR
+#define SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 #endif
 
 #if __cpp_generic_lambdas >= 201707L
@@ -56,16 +54,8 @@
 #else
 #endif
 
-#if SQLITE_ORM_HAS_CPP_ATTRIBUTE(no_unique_address) >= 201803L
-#define SQLITE_ORM_NOUNIQUEADDRESS [[no_unique_address]]
-#else
-#define SQLITE_ORM_NOUNIQUEADDRESS
-#endif
-
 #if __cpp_consteval >= 201811L
-#define SQLITE_ORM_CONSTEVAL consteval
-#else
-#define SQLITE_ORM_CONSTEVAL constexpr
+#define SQLITE_ORM_CONSTEVAL_SUPPORTED
 #endif
 
 #if __cpp_aggregate_paren_init >= 201902L
