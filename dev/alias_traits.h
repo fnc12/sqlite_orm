@@ -55,10 +55,21 @@ namespace sqlite_orm {
          */
         template<class A>
         SQLITE_ORM_INLINE_VAR constexpr bool is_table_alias_v = polyfill::conjunction_v<
-            std::is_base_of<alias_tag, A>,
+            is_recordset_alias<A>,
             polyfill::negation<std::is_same<polyfill::detected_t<type_t, A>, std::remove_const_t<A>>>>;
 
         template<class A>
         using is_table_alias = polyfill::bool_constant<is_table_alias_v<A>>;
     }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<class T>
+    concept orm_column_alias = internal::is_column_alias_v<T>;
+
+    template<class T>
+    concept orm_recordset_alias = internal::is_recordset_alias_v<T>;
+
+    template<class T>
+    concept orm_table_alias = internal::is_table_alias_v<T>;
+#endif
 }

@@ -410,7 +410,7 @@ namespace sqlite_orm {
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<auto als, internal::satisfies<internal::is_recordset_alias, decltype(als)> = true>
+    template<orm_recordset_alias auto als>
     auto asterisk(bool definedOrder = false) {
         return internal::asterisk_t<std::remove_const_t<decltype(als)>>{definedOrder};
     }

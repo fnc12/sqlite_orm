@@ -159,20 +159,18 @@ namespace sqlite_orm {
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<auto als,
-             class C,
-             class A = std::remove_const_t<decltype(als)>,
-             std::enable_if_t<internal::is_table_alias_v<A>, bool> = true>
+    template<orm_table_alias auto als, class C>
     auto alias_column(C c) {
+        using A = std::remove_const_t<decltype(als)>;
         using table_type = internal::type_t<A>;
         static_assert(std::is_same_v<polyfill::detected_t<internal::table_type_of_t, C>, table_type>,
                       "Column must be from aliased table");
         return internal::alias_column_t<A, decltype(c)>{c};
     }
 
-    template<class A, class F, std::enable_if_t<internal::is_table_alias_v<A>, bool> = true>
-    constexpr auto operator->*(const A& /*tableAlias*/, F field) {
-        return alias_column<A>(std::move(field));
+    template<orm_table_alias A, class F>
+    constexpr auto operator->*(const A&, F field) {
+        return internal::alias_column_t<A, decltype(field)>{field};
     }
 #endif
 
@@ -185,7 +183,7 @@ namespace sqlite_orm {
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<auto als, class E, internal::satisfies<internal::is_column_alias, decltype(als)> = true>
+    template<orm_column_alias auto als, class E>
     auto as(E expression) {
         return internal::as_t<std::remove_const_t<decltype(als)>, E>{std::move(expression)};
     }
@@ -193,7 +191,7 @@ namespace sqlite_orm {
     /** 
      *  Alias a column expression.
      */
-    template<class A, class E, internal::satisfies<internal::is_column_alias, A> = true>
+    template<orm_column_alias A, class E>
     internal::as_t<A, E> operator>>=(E expression, const A&) {
         return {std::move(expression)};
     }
@@ -205,7 +203,7 @@ namespace sqlite_orm {
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<auto als, internal::satisfies<internal::is_column_alias, decltype(als)> = true>
+    template<orm_column_alias auto als>
     auto get() {
         return internal::alias_holder<std::remove_const_t<decltype(als)>>{};
     }
