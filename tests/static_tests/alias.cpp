@@ -31,8 +31,10 @@ TEST_CASE("aliases") {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         runTest<alias_holder<column_alias<'a'>>>(get<"a"_col>());
         runTest<column_alias<'a'>>("a"_col);
+        runTest<as_t<column_alias<'a'>, int User::*>>(as<"a"_col>(&User::id));
         runTest<as_t<column_alias<'a'>, int User::*>>(&User::id >>= "a"_col);
-        constexpr auto z_alias = alias_<'z'>.for_<User>();
+        runTest<table_alias<User, 'z'>>(alias_<'z'>.for_<User>());
+        constexpr auto z_alias = "z"_alias.for_<User>();
         runTest<table_alias<User, 'z'>>(z_alias);
         runTest<alias_column_t<alias_z<User>, int User::*>>(alias_column<z_alias>(&User::id));
         runTest<alias_column_t<alias_z<User>, int User::*>>(z_alias->*&User::id);
