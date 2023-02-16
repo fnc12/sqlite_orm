@@ -4279,6 +4279,7 @@ namespace sqlite_orm {
         /**
          *  This is a common built-in class used for custom single character table aliases.
          *  For convenience there exist public type aliases `alias_a`, `alias_b`, ...
+         *  The easiest way to create a table alias is using `"z"_alias.for_<Object>()`.
          */
         template<class T, char A, char... X>
         struct table_alias : alias_tag {
@@ -4349,6 +4350,7 @@ namespace sqlite_orm {
         /**
          *  This is a common built-in class used for custom single-character column aliases.
          *  For convenience there exist type aliases `colalias_a`, `colalias_b`, ...
+         *  The easiest way to create a column alias is using `"xyz"_col`.
          */
         template<char A, char... X>
         struct column_alias : alias_tag {
@@ -4371,13 +4373,8 @@ namespace sqlite_orm {
                           "Table alias identifiers shall consist of a single alphabetic character, in order to evade "
                           "clashes with CTE aliases.");
 
-            template<auto t>
-            [[nodiscard]] consteval internal::table_alias<std::remove_const_t<decltype(t)>, A, C...> for_() const {
-                return {};
-            }
-
             template<class T>
-            [[nodiscard]] consteval internal::table_alias<T, A, C...> for_() const {
+            [[nodiscard]] consteval table_alias<T, A, C...> for_() const {
                 return {};
             }
         };
@@ -4390,8 +4387,8 @@ namespace sqlite_orm {
      */
     template<class A, class C, std::enable_if_t<internal::is_table_alias_v<A>, bool> = true>
     internal::alias_column_t<A, C> alias_column(C c) {
-        using table_type = internal::type_t<A>;
-        static_assert(std::is_same<polyfill::detected_t<internal::table_type_of_t, C>, table_type>::value,
+        using aliased_type = internal::type_t<A>;
+        static_assert(std::is_same<polyfill::detected_t<internal::table_type_of_t, C>, aliased_type>::value,
                       "Column must be from aliased table");
         return {c};
     }
@@ -4400,8 +4397,8 @@ namespace sqlite_orm {
     template<orm_table_alias auto als, class C>
     auto alias_column(C c) {
         using A = std::remove_const_t<decltype(als)>;
-        using table_type = internal::type_t<A>;
-        static_assert(std::is_same_v<polyfill::detected_t<internal::table_type_of_t, C>, table_type>,
+        using aliased_type = internal::type_t<A>;
+        static_assert(std::is_same_v<polyfill::detected_t<internal::table_type_of_t, C>, aliased_type>,
                       "Column must be from aliased table");
         return internal::alias_column_t<A, decltype(c)>{c};
     }
