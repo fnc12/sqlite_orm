@@ -678,22 +678,11 @@ namespace sqlite_orm {
          *  Column alias or literal: skipped
          */
         template<class T>
-        struct ast_iterator<
-            T,
-            std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<T, alias_holder>,
-                                                     polyfill::is_specialization_of<T, literal_holder>>>> {
+        struct ast_iterator<T,
+                            std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<T, alias_holder>,
+                                                                     polyfill::is_specialization_of<T, literal_holder>,
+                                                                     is_column_alias<T>>>> {
             using node_type = T;
-
-            template<class L>
-            void operator()(const node_type& /*node*/, L& /*lambda*/) const {}
-        };
-
-        /**
-         *  Column alias: skipped
-         */
-        template<char... C>
-        struct ast_iterator<column_alias<C...>, void> {
-            using node_type = column_alias<C...>;
 
             template<class L>
             void operator()(const node_type& /*node*/, L& /*lambda*/) const {}
