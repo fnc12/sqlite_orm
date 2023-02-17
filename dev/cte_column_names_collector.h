@@ -49,7 +49,7 @@ namespace sqlite_orm {
         struct cte_column_names_collector {
             using expression_type = T;
 
-            // Compound statements are never passed in by storage_for_expression()
+            // Compound statements are never passed in by db_objects_for_expression()
             static_assert(!is_base_of_template_v<T, compound_operator>);
 
             template<class Ctx>

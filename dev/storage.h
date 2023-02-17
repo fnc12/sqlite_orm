@@ -640,9 +640,9 @@ namespace sqlite_orm {
                     [](const auto& expression) -> decltype(auto) {
                         return (expression);
                     })(std::forward<E>(expression));
-                const auto& exprImpl = storage_for_expression(*this, expression);
-                using context_t = serializer_context<polyfill::remove_cvref_t<decltype(exprImpl)>>;
-                context_t context{exprImpl};
+                const auto& exprDBOs = db_objects_for_expression(this->db_objects, expression);
+                using context_t = serializer_context<polyfill::remove_cvref_t<decltype(exprDBOs)>>;
+                context_t context{exprDBOs};
                 context.replace_bindable_with_question = parametrized;
                 // just like prepare_impl()
                 context.skip_table_name = false;
@@ -991,9 +991,9 @@ namespace sqlite_orm {
 
             template<typename S>
             prepared_statement_t<S> prepare_impl(S statement) {
-                const auto& exprImpl = storage_for_expression(*this, statement);
-                using context_t = serializer_context<polyfill::remove_cvref_t<decltype(exprImpl)>>;
-                context_t context{exprImpl};
+                const auto& exprDBOs = db_objects_for_expression(this->db_objects, statement);
+                using context_t = serializer_context<polyfill::remove_cvref_t<decltype(exprDBOs)>>;
+                context_t context{exprDBOs};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
 
@@ -1427,9 +1427,10 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CTE
             template<class... CTEs, class T, class... Args>
             auto execute(const prepared_statement_t<with_t<select_t<T, Args...>, CTEs...>>& statement) {
-                using DBOs =
-                    decltype(storage_for_expression(*this, std::declval<with_t<select_t<T, Args...>, CTEs...>>()));
-                using R = column_result_of_t<DBOs, T>;
+                using ExprDBOs =
+                    decltype(db_objects_for_expression(this->db_objects,
+                                                       std::declval<with_t<select_t<T, Args...>, CTEs...>>()));
+                using R = column_result_of_t<ExprDBOs, T>;
                 return _execute_select<R>(statement);
             }
 #endif

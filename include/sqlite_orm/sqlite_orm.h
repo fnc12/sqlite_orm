@@ -16114,7 +16114,7 @@ namespace sqlite_orm {
         struct cte_column_names_collector {
             using expression_type = T;
 
-            // Compound statements are never passed in by storage_for_expression()
+            // Compound statements are never passed in by db_objects_for_expression()
             static_assert(!is_base_of_template_v<T, compound_operator>);
 
             template<class Ctx>
@@ -18664,8 +18664,8 @@ namespace sqlite_orm {
          *  forming a new storage implementation object.
          */
         template<typename... Ts, typename... CTETables>
-        db_objects_tuple<CTETables..., Ts...> storage_db_objects_cat(const db_objects_tuple<Ts...>& storage,
-                                                                     CTETables&&... cteTables) {
+        db_objects_tuple<CTETables..., Ts...> db_objects_cat(const db_objects_tuple<Ts...>& storage,
+                                                             CTETables&&... cteTables) {
             return {std::forward<CTETables>(cteTables)..., pick_table<Ts>(storage)...};
         }
 
@@ -18702,7 +18702,7 @@ namespace sqlite_orm {
          *  Return a tuple of member pointers of all columns
          */
         template<class C, size_t... Idx>
-        auto get_fields_of_columns(const C& coldef, std::index_sequence<Idx...>) {
+        auto get_table_columns_fields(const C& coldef, std::index_sequence<Idx...>) {
             return std::make_tuple(get<Idx>(coldef).member_pointer...);
         }
 
@@ -18775,7 +18775,7 @@ namespace sqlite_orm {
             using column_idxs = filter_tuple_sequence_t<elements_t, is_column>;
 
             auto& table = pick_table<O>(dbObjects);
-            return get_fields_of_columns(table.elements, column_idxs{});
+            return get_table_columns_fields(table.elements, column_idxs{});
         }
 
         template<class DBOs, class E, class... Args>
@@ -18853,14 +18853,12 @@ namespace sqlite_orm {
                           "Number of explicit columns of common table expression doesn't match the number of columns "
                           "in the subselect.");
 
-            using context_type = serializer_context<DBOs>;
-
             std::string tableName = alias_extractor<cte_label_type_t<cte_type>>::extract();
             auto subselectColRefs = extract_colref_expressions(dbObjects, subSelect.col);
             const auto& finalColRefs =
                 determine_cte_colrefs(dbObjects, subselectColRefs, cte.explicitColumns, index_sequence{});
 
-            context_type context{dbObjects};
+            serializer_context context{dbObjects};
             std::vector<std::string> columnNames = collect_cte_column_names(subSelect, cte.explicitColumns, context);
 
             using mapper_type = create_cte_mapper_t<cte_label_type_t<cte_type>,
@@ -18876,45 +18874,38 @@ namespace sqlite_orm {
                                                                     index_sequence{});
         }
 
-        template<typename DBOs, typename... CTEs, size_t Ii>
-        decltype(auto) make_recursive_cte_storage_using_table_indices(const DBOs& dbObjects,
-                                                                      const common_table_expressions<CTEs...>& cte,
-                                                                      std::index_sequence<Ii>) {
+        template<typename DBOs, typename... CTEs, size_t Ii, size_t... In>
+        decltype(auto) make_recursive_cte_db_objects(const DBOs& dbObjects,
+                                                     const common_table_expressions<CTEs...>& cte,
+                                                     std::index_sequence<Ii, In...>) {
             auto tbl = make_cte_table(dbObjects, get<Ii>(cte));
 
-            return storage_db_objects_cat(dbObjects, std::move(tbl));
-        }
-
-        template<typename DBOs, typename... CTEs, size_t Ii, size_t Ij, size_t... In>
-        decltype(auto) make_recursive_cte_storage_using_table_indices(const DBOs& dbObjects,
-                                                                      const common_table_expressions<CTEs...>& cte,
-                                                                      std::index_sequence<Ii, Ij, In...>) {
-            auto tbl = make_cte_table(dbObjects, get<Ii>(cte));
-
-            return make_recursive_cte_storage_using_table_indices(
-                // Because CTEs can depend on their predecessor we recursively pass in a new storage object
-                storage_db_objects_cat(dbObjects, std::move(tbl)),
-                cte,
-                std::index_sequence<Ij, In...>{});
+            if constexpr(sizeof...(In) > 0) {
+                return make_recursive_cte_db_objects(
+                    // Because CTEs can depend on their predecessor we recursively pass in a new storage object
+                    db_objects_cat(dbObjects, std::move(tbl)),
+                    cte,
+                    std::index_sequence<In...>{});
+            } else {
+                return db_objects_cat(dbObjects, std::move(tbl));
+            }
         }
 
         /**
          *  Return new DBOs for CTE expressions.
          */
-        template<class S, class E, class... CTEs, satisfies<is_storage, S> = true>
-        decltype(auto) storage_for_expression(S& storage, const with_t<E, CTEs...>& e) {
-            return make_recursive_cte_storage_using_table_indices(obtain_db_objects(storage),
-                                                                  e.cte,
-                                                                  std::index_sequence_for<CTEs...>{});
+        template<class DBOs, class E, class... CTEs, satisfies<is_db_objects, DBOs> = true>
+        decltype(auto) db_objects_for_expression(DBOs& dbObjects, const with_t<E, CTEs...>& e) {
+            return make_recursive_cte_db_objects(dbObjects, e.cte, std::index_sequence_for<CTEs...>{});
         }
 #endif
 
         /**
          *  Return DBOs of storage_t.
          */
-        template<class S, class E, satisfies<is_storage, S> = true>
-        decltype(auto) storage_for_expression(S& storage, const E&) {
-            return obtain_db_objects(storage);
+        template<class DBOs, class E, satisfies<is_db_objects, DBOs> = true>
+        decltype(auto) db_objects_for_expression(DBOs& dbObjects, const E&) {
+            return dbObjects;
         }
     }
 }
@@ -19508,9 +19499,9 @@ namespace sqlite_orm {
                     [](const auto& expression) -> decltype(auto) {
                         return (expression);
                     })(std::forward<E>(expression));
-                const auto& exprImpl = storage_for_expression(*this, expression);
-                using context_t = serializer_context<polyfill::remove_cvref_t<decltype(exprImpl)>>;
-                context_t context{exprImpl};
+                const auto& exprDBOs = db_objects_for_expression(this->db_objects, expression);
+                using context_t = serializer_context<polyfill::remove_cvref_t<decltype(exprDBOs)>>;
+                context_t context{exprDBOs};
                 context.replace_bindable_with_question = parametrized;
                 // just like prepare_impl()
                 context.skip_table_name = false;
@@ -19859,9 +19850,9 @@ namespace sqlite_orm {
 
             template<typename S>
             prepared_statement_t<S> prepare_impl(S statement) {
-                const auto& exprImpl = storage_for_expression(*this, statement);
-                using context_t = serializer_context<polyfill::remove_cvref_t<decltype(exprImpl)>>;
-                context_t context{exprImpl};
+                const auto& exprDBOs = db_objects_for_expression(this->db_objects, statement);
+                using context_t = serializer_context<polyfill::remove_cvref_t<decltype(exprDBOs)>>;
+                context_t context{exprDBOs};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
 
@@ -20295,9 +20286,10 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CTE
             template<class... CTEs, class T, class... Args>
             auto execute(const prepared_statement_t<with_t<select_t<T, Args...>, CTEs...>>& statement) {
-                using DBOs =
-                    decltype(storage_for_expression(*this, std::declval<with_t<select_t<T, Args...>, CTEs...>>()));
-                using R = column_result_of_t<DBOs, T>;
+                using ExprDBOs =
+                    decltype(db_objects_for_expression(this->db_objects,
+                                                       std::declval<with_t<select_t<T, Args...>, CTEs...>>()));
+                using R = column_result_of_t<ExprDBOs, T>;
                 return _execute_select<R>(statement);
             }
 #endif

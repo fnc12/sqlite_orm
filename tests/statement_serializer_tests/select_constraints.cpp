@@ -75,7 +75,7 @@ TEST_CASE("statement_serializer select constraints") {
 #ifdef SQLITE_ORM_WITH_CTE
     SECTION("from CTE") {
         auto dbObjects2 =
-            internal::storage_db_objects_cat(dbObjects, internal::make_cte_table(dbObjects, cte<cte_1>()(select(1))));
+            internal::db_objects_cat(dbObjects, internal::make_cte_table(dbObjects, cte<cte_1>()(select(1))));
         using context_t = internal::serializer_context<decltype(dbObjects2)>;
         context_t context{dbObjects2};
         SECTION("without alias 1") {

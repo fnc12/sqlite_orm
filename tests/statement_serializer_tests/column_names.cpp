@@ -160,8 +160,7 @@ TEST_CASE("statement_serializer column names") {
 #ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
         SECTION("cte") {
             auto dbObjects2 =
-                internal::storage_db_objects_cat(dbObjects,
-                                                 internal::make_cte_table(dbObjects, cte<1_ctealias>()(select(1))));
+                internal::db_objects_cat(dbObjects, internal::make_cte_table(dbObjects, cte<1_ctealias>()(select(1))));
             using context_t = internal::serializer_context<decltype(dbObjects2)>;
             context_t context{dbObjects2};
             context.skip_table_name = false;
