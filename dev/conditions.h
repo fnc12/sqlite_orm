@@ -8,6 +8,7 @@
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
+#include "is_base_of_template.h"
 #include "type_traits.h"
 #include "collate_argument.h"
 #include "constraints.h"
@@ -130,6 +131,12 @@ namespace sqlite_orm {
 
             binary_condition(left_type l_, right_type r_) : l(std::move(l_)), r(std::move(r_)) {}
         };
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_binary_condition_v = is_base_of_template_v<T, binary_condition>;
+
+        template<class T>
+        using is_binary_condition = polyfill::bool_constant<is_binary_condition_v<T>>;
 
         struct and_condition_string {
             operator std::string() const {

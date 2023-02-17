@@ -214,7 +214,7 @@ namespace sqlite_orm {
         struct column_result_t<DBOs, select_t<T, Args...>> : column_result_t<DBOs, T> {};
 
         template<class DBOs, class T>
-        struct column_result_t<DBOs, T, std::enable_if_t<is_base_of_template_v<T, compound_operator>>> {
+        struct column_result_t<DBOs, T, match_if<is_compound_operator, T>> {
             using left_result = column_result_of_t<DBOs, typename T::left_type>;
             using right_result = column_result_of_t<DBOs, typename T::right_type>;
             static_assert(std::is_same<left_result, right_result>::value,
@@ -223,7 +223,7 @@ namespace sqlite_orm {
         };
 
         template<class DBOs, class T>
-        struct column_result_t<DBOs, T, std::enable_if_t<is_base_of_template_v<T, binary_condition>>> {
+        struct column_result_t<DBOs, T, match_if<is_binary_condition, T>> {
             using type = typename T::result_type;
         };
 

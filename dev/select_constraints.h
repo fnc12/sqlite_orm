@@ -124,6 +124,12 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_compound_operator_v = is_base_of_template_v<T, compound_operator>;
+
+        template<class T>
+        using is_compound_operator = polyfill::bool_constant<is_compound_operator_v<T>>;
+
         struct union_base {
             bool all = false;
 

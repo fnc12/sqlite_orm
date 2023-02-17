@@ -2659,6 +2659,45 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
+// #include "is_base_of_template.h"
+
+#include <type_traits>  //  std::true_type, std::false_type, std::declval
+
+namespace sqlite_orm {
+
+    namespace internal {
+
+        /*
+         * This is because of bug in MSVC, for more information, please visit
+         * https://stackoverflow.com/questions/34672441/stdis-base-of-for-template-classes/34672753#34672753
+         */
+#ifdef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+        template<template<typename...> class Base>
+        struct is_base_of_template_impl {
+            template<typename... Ts>
+            static constexpr std::true_type test(const Base<Ts...>&);
+
+            static constexpr std::false_type test(...);
+        };
+
+        template<typename T, template<typename...> class C>
+        using is_base_of_template = decltype(is_base_of_template_impl<C>::test(std::declval<T>()));
+#else
+        template<template<typename...> class C, typename... Ts>
+        std::true_type is_base_of_template_impl(const C<Ts...>&);
+
+        template<template<typename...> class C>
+        std::false_type is_base_of_template_impl(...);
+
+        template<typename T, template<typename...> class C>
+        using is_base_of_template = decltype(is_base_of_template_impl<C>(std::declval<T>()));
+#endif
+
+        template<typename T, template<typename...> class C>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_base_of_template_v = is_base_of_template<T, C>::value;
+    }
+}
+
 // #include "type_traits.h"
 
 // #include "collate_argument.h"
@@ -2719,6 +2758,9 @@ namespace sqlite_orm {
 
             serializer_context(const db_objects_type& dbObjects) : db_objects{dbObjects} {}
         };
+
+        //template<class DBOs>
+        //serializer_context(const DBOs&) -> serializer_context<DBOs>;
 
         template<class S>
         struct serializer_context_builder {
@@ -3044,6 +3086,12 @@ namespace sqlite_orm {
 
             binary_condition(left_type l_, right_type r_) : l(std::move(l_)), r(std::move(r_)) {}
         };
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_binary_condition_v = is_base_of_template_v<T, binary_condition>;
+
+        template<class T>
+        using is_binary_condition = polyfill::bool_constant<is_binary_condition_v<T>>;
 
         struct and_condition_string {
             operator std::string() const {
@@ -4547,43 +4595,6 @@ namespace sqlite_orm {
 
 // #include "is_base_of_template.h"
 
-#include <type_traits>  //  std::true_type, std::false_type, std::declval
-
-namespace sqlite_orm {
-
-    namespace internal {
-
-        /*
-         * This is because of bug in MSVC, for more information, please visit
-         * https://stackoverflow.com/questions/34672441/stdis-base-of-for-template-classes/34672753#34672753
-         */
-#ifdef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
-        template<template<typename...> class Base>
-        struct is_base_of_template_impl {
-            template<typename... Ts>
-            static constexpr std::true_type test(const Base<Ts...>&);
-
-            static constexpr std::false_type test(...);
-        };
-
-        template<typename T, template<typename...> class C>
-        using is_base_of_template = decltype(is_base_of_template_impl<C>::test(std::declval<T>()));
-#else
-        template<template<typename...> class C, typename... Ts>
-        std::true_type is_base_of_template_impl(const C<Ts...>&);
-
-        template<template<typename...> class C>
-        std::false_type is_base_of_template_impl(...);
-
-        template<typename T, template<typename...> class C>
-        using is_base_of_template = decltype(is_base_of_template_impl<C>(std::declval<T>()));
-#endif
-
-        template<typename T, template<typename...> class C>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_base_of_template_v = is_base_of_template<T, C>::value;
-    }
-}
-
 // #include "tuple_helper/tuple_filter.h"
 
 // #include "serialize_result_type.h"
@@ -4640,6 +4651,12 @@ namespace sqlite_orm {
 
             built_in_function_t(args_type&& args_) : args(std::move(args_)) {}
         };
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_built_in_function_v = is_base_of_template_v<T, built_in_function_t>;
+
+        template<class T>
+        using is_built_in_function = polyfill::bool_constant<is_built_in_function_v<T>>;
 
         template<class F, class W>
         struct filtered_aggregate_function {
@@ -5208,44 +5225,32 @@ namespace sqlite_orm {
     /**
      *  Cute operators for core functions
      */
-    template<class F,
-             class R,
-             std::enable_if_t<internal::is_base_of_template_v<F, internal::built_in_function_t>, bool> = true>
+    template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
     internal::lesser_than_t<F, R> operator<(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
-    template<class F,
-             class R,
-             std::enable_if_t<internal::is_base_of_template_v<F, internal::built_in_function_t>, bool> = true>
+    template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
     internal::lesser_or_equal_t<F, R> operator<=(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
-    template<class F,
-             class R,
-             std::enable_if_t<internal::is_base_of_template_v<F, internal::built_in_function_t>, bool> = true>
+    template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
     internal::greater_than_t<F, R> operator>(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
-    template<class F,
-             class R,
-             std::enable_if_t<internal::is_base_of_template_v<F, internal::built_in_function_t>, bool> = true>
+    template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
     internal::greater_or_equal_t<F, R> operator>=(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
-    template<class F,
-             class R,
-             std::enable_if_t<internal::is_base_of_template_v<F, internal::built_in_function_t>, bool> = true>
+    template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
     internal::is_equal_t<F, R> operator==(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
-    template<class F,
-             class R,
-             std::enable_if_t<internal::is_base_of_template_v<F, internal::built_in_function_t>, bool> = true>
+    template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
     internal::is_not_equal_t<F, R> operator!=(F f, R r) {
         return {std::move(f), std::move(r)};
     }
@@ -7032,6 +7037,12 @@ namespace sqlite_orm {
                 this->right.highest_level = true;
             }
         };
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_compound_operator_v = is_base_of_template_v<T, compound_operator>;
+
+        template<class T>
+        using is_compound_operator = polyfill::bool_constant<is_compound_operator_v<T>>;
 
         struct union_base {
             bool all = false;
@@ -10940,7 +10951,7 @@ namespace sqlite_orm {
         struct column_result_t<DBOs, select_t<T, Args...>> : column_result_t<DBOs, T> {};
 
         template<class DBOs, class T>
-        struct column_result_t<DBOs, T, std::enable_if_t<is_base_of_template_v<T, compound_operator>>> {
+        struct column_result_t<DBOs, T, match_if<is_compound_operator, T>> {
             using left_result = column_result_of_t<DBOs, typename T::left_type>;
             using right_result = column_result_of_t<DBOs, typename T::right_type>;
             static_assert(std::is_same<left_result, right_result>::value,
@@ -10949,7 +10960,7 @@ namespace sqlite_orm {
         };
 
         template<class DBOs, class T>
-        struct column_result_t<DBOs, T, std::enable_if_t<is_base_of_template_v<T, binary_condition>>> {
+        struct column_result_t<DBOs, T, match_if<is_binary_condition, T>> {
             using type = typename T::result_type;
         };
 
@@ -12487,7 +12498,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<T, std::enable_if_t<is_base_of_template_v<T, binary_condition>>> {
+        struct ast_iterator<T, match_if<is_binary_condition, T>> {
             using node_type = T;
 
             template<class L>
@@ -12563,7 +12574,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<T, std::enable_if_t<is_base_of_template_v<T, compound_operator>>> {
+        struct ast_iterator<T, match_if<is_compound_operator, T>> {
             using node_type = T;
 
             template<class L>
@@ -15955,7 +15966,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializer<T, std::enable_if_t<is_base_of_template_v<T, compound_operator>>> {
+        struct statement_serializer<T, match_if<is_compound_operator, T>> {
             using statement_type = T;
 
             template<class Ctx>
@@ -16044,7 +16055,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializer<T, std::enable_if_t<is_base_of_template_v<T, binary_condition>>> {
+        struct statement_serializer<T, match_if<is_binary_condition, T>> {
             using statement_type = T;
 
             template<class Ctx>
@@ -16104,14 +16115,13 @@ namespace sqlite_orm {
                     ss << "NOT IN";
                 }
                 ss << " ";
-                constexpr bool isCompoundOperator = is_base_of_template_v<A, compound_operator>;
-                if(isCompoundOperator) {
+                if(is_compound_operator_v<A>) {
                     ss << '(';
                 }
                 auto newContext = context;
                 newContext.use_parentheses = true;
                 ss << serialize(statement.argument, newContext);
-                if(isCompoundOperator) {
+                if(is_compound_operator_v<A>) {
                     ss << ')';
                 }
                 return ss.str();
@@ -16950,8 +16960,7 @@ namespace sqlite_orm {
                 context.skip_table_name = false;
 
                 std::stringstream ss;
-                constexpr bool isCompoundOperator = is_base_of_template_v<T, compound_operator>;
-                if(!isCompoundOperator) {
+                if(!is_compound_operator_v<T>) {
                     if(!sel.highest_level && context.use_parentheses) {
                         ss << "(";
                     }
@@ -16974,12 +16983,12 @@ namespace sqlite_orm {
                             alias_extractor<original_join_type>::as_alias()};
                         tableNames.erase(tableNameWithAlias);
                     });
-                    if(!tableNames.empty() && !isCompoundOperator) {
+                    if(!tableNames.empty() && !is_compound_operator_v<T>) {
                         ss << " FROM " << streaming_identifiers(tableNames);
                     }
                 }
                 ss << streaming_conditions_tuple(sel.conditions, context);
-                if(!is_base_of_template_v<T, compound_operator>) {
+                if(!is_compound_operator_v<T>) {
                     if(!sel.highest_level && context.use_parentheses) {
                         ss << ")";
                     }
@@ -18076,8 +18085,7 @@ namespace sqlite_orm {
              */
             template<class T, class... Args, class R = column_result_of_t<db_objects_type, T>>
             std::vector<R> select(T m, Args... args) {
-                static_assert(!is_base_of_template_v<T, compound_operator> ||
-                                  std::tuple_size<std::tuple<Args...>>::value == 0,
+                static_assert(!is_compound_operator_v<T> || sizeof...(Args) == 0,
                               "Cannot use args with a compound operator");
                 auto statement = this->prepare(sqlite_orm::select(std::move(m), std::forward<Args>(args)...));
                 return this->execute(statement);
@@ -19062,7 +19070,7 @@ namespace sqlite_orm {
         struct node_tuple<order_by_t<E>, void> : node_tuple<E> {};
 
         template<class T>
-        struct node_tuple<T, std::enable_if_t<is_base_of_template_v<T, binary_condition>>> {
+        struct node_tuple<T, match_if<is_binary_condition, T>> {
             using node_type = T;
             using left_type = typename node_type::left_type;
             using right_type = typename node_type::right_type;
@@ -19101,7 +19109,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct node_tuple<T, std::enable_if_t<is_base_of_template_v<T, compound_operator>>> {
+        struct node_tuple<T, match_if<is_compound_operator, T>> {
             using node_type = T;
             using left_type = typename node_type::left_type;
             using right_type = typename node_type::right_type;

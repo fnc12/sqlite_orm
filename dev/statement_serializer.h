@@ -498,7 +498,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializer<T, std::enable_if_t<is_base_of_template_v<T, compound_operator>>> {
+        struct statement_serializer<T, match_if<is_compound_operator, T>> {
             using statement_type = T;
 
             template<class Ctx>
@@ -587,7 +587,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializer<T, std::enable_if_t<is_base_of_template_v<T, binary_condition>>> {
+        struct statement_serializer<T, match_if<is_binary_condition, T>> {
             using statement_type = T;
 
             template<class Ctx>
@@ -647,14 +647,13 @@ namespace sqlite_orm {
                     ss << "NOT IN";
                 }
                 ss << " ";
-                constexpr bool isCompoundOperator = is_base_of_template_v<A, compound_operator>;
-                if(isCompoundOperator) {
+                if(is_compound_operator_v<A>) {
                     ss << '(';
                 }
                 auto newContext = context;
                 newContext.use_parentheses = true;
                 ss << serialize(statement.argument, newContext);
-                if(isCompoundOperator) {
+                if(is_compound_operator_v<A>) {
                     ss << ')';
                 }
                 return ss.str();
@@ -1493,8 +1492,7 @@ namespace sqlite_orm {
                 context.skip_table_name = false;
 
                 std::stringstream ss;
-                constexpr bool isCompoundOperator = is_base_of_template_v<T, compound_operator>;
-                if(!isCompoundOperator) {
+                if(!is_compound_operator_v<T>) {
                     if(!sel.highest_level && context.use_parentheses) {
                         ss << "(";
                     }
@@ -1517,12 +1515,12 @@ namespace sqlite_orm {
                             alias_extractor<original_join_type>::as_alias()};
                         tableNames.erase(tableNameWithAlias);
                     });
-                    if(!tableNames.empty() && !isCompoundOperator) {
+                    if(!tableNames.empty() && !is_compound_operator_v<T>) {
                         ss << " FROM " << streaming_identifiers(tableNames);
                     }
                 }
                 ss << streaming_conditions_tuple(sel.conditions, context);
-                if(!is_base_of_template_v<T, compound_operator>) {
+                if(!is_compound_operator_v<T>) {
                     if(!sel.highest_level && context.use_parentheses) {
                         ss << ")";
                     }

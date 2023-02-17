@@ -19,6 +19,9 @@ namespace sqlite_orm {
             serializer_context(const db_objects_type& dbObjects) : db_objects{dbObjects} {}
         };
 
+        //template<class DBOs>
+        //serializer_context(const DBOs&) -> serializer_context<DBOs>;
+
         template<class S>
         struct serializer_context_builder {
             using storage_type = S;
