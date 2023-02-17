@@ -59,6 +59,10 @@ if (MSVC)
     if (MSVC_VERSION GREATER_EQUAL 1914)
         add_compile_options(/Zc:__cplusplus)
     endif()
+    # VC 2017 issues a deprecation warning for `strncpy`
+    if (MSVC_VERSION GREATER_EQUAL 1910)
+        add_compile_options(_CRT_SECURE_NO_WARNINGS)
+    end()
     add_compile_options(/MP) # multi-processor compilation
     if (CMAKE_CXX_STANDARD GREATER 14)
         add_compile_definitions(_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING)
