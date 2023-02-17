@@ -100,7 +100,7 @@ for:
       if "%platform%"=="x64" (set architecture=-A x64)
       if "%platform%"=="x86" (set architecture=-A Win32)
       if "%appveyor_build_worker_image%"=="Visual Studio 2022" (set generator="Visual Studio 17 2022" %architecture%)
-      if "%appveyor_build_worker_image%"=="Visual Studio 2015" (set generator="Visual Studio 14 2015" %architecture%)
+      if "%appveyor_build_worker_image%"=="Visual Studio 2017" (set generator="Visual Studio 15 2017" %architecture%)
   install:
     - |-
       cd C:\Tools\vcpkg
