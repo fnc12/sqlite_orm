@@ -37,7 +37,7 @@ environment:
 
     # Representative for C++14
     - job_name: Visual Studio 2017, x64, C++14
-      appveyor_build_worker_image: Visual Studio 2022
+      appveyor_build_worker_image: Visual Studio 2017
       platform: x64
       SQLITE_ORM_CXX_STANDARD: ""
 
