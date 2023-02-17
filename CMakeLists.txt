@@ -61,7 +61,7 @@ if (MSVC)
     endif()
     if (MSVC_VERSION GREATER_EQUAL 1910)
         # VC 2017 issues a deprecation warning for `strncpy`
-        add_compile_options(_CRT_SECURE_NO_WARNINGS)
+        add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
     endif()
     add_compile_options(/MP) # multi-processor compilation
     if (CMAKE_CXX_STANDARD GREATER 14)
