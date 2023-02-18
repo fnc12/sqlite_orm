@@ -51,7 +51,6 @@ namespace sqlite_orm {
         template<class A>
         using is_table_alias = polyfill::bool_constant<is_table_alias_v<A>>;
 
-        /**
         /** @short Alias of a CTE, see `orm_cte_alias`.
          */
         template<class A>
