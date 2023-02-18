@@ -4494,6 +4494,9 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CTE
         template<class A>
+        struct alias_holder;
+
+        template<class A>
         struct column_pointer_builder<A, match_if<is_alias, A>> {
             static_assert(is_cte_alias_v<A>, "`A' must be a mapped table alias");
 
@@ -4710,6 +4713,12 @@ namespace sqlite_orm {
             [[nodiscard]] consteval table_alias<T, A, C...> for_() const {
                 return {};
             }
+
+            template<auto t>
+            [[nodiscard]] consteval auto for_() const {
+                using T = std::remove_const_t<decltype(t)>;
+                return table_alias<T, A, C...>{};
+            }
         };
 #endif
 
@@ -4824,6 +4833,14 @@ namespace sqlite_orm {
     internal::as_t<A, E> operator>>=(E expression, const A&) {
         return {std::move(expression)};
     }
+#else
+    /**
+     *  Alias a column expression.
+     */
+    template<class A, class E, internal::satisfies<internal::is_column_alias, A> = true>
+    internal::as_t<A, E> operator>>=(E expression, const A&) {
+        return {std::move(expression)};
+    }
 #endif
 
     template<class T>
@@ -4890,34 +4907,6 @@ namespace sqlite_orm {
     using alias_y = internal::table_alias<T, 'y'>;
     template<class T>
     using alias_z = internal::table_alias<T, 'z'>;
-
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
-    namespace internal {
-        template<char A, char... C>
-        struct table_alias_builder {
-            static_assert(sizeof...(C) == 0 && ((A >= 'A' && 'Z' <= A) || (A >= 'a' && 'z' <= A)),
-                          "Table alias identifiers shall consist of a single alphabetic character, in order "
-                          "to evade clashes with the built-in CTE aliases.");
-
-            template<class T>
-            [[nodiscard]] consteval internal::table_alias<T, A, C...> operator()(T t) const {
-                return {};
-            }
-        };
-    }
-
-    /** @short Create aliased CTEs, e.g. `constexpr auto z_alias = alias_<'z'>("digits"_cte)`.
-     */
-    template<char A>
-    SQLITE_ORM_INLINE_VAR constexpr internal::table_alias_builder<A> alias_{};
-
-    /** @short Create aliased CTEs, e.g. `constexpr auto z_alias = "z"_alias("digits"_cte)`.
-     */
-    template<internal::string_identifier_template t>
-    [[nodiscard]] consteval auto operator"" _alias() {
-        return internal::to_alias<internal::table_alias_builder, t>(std::make_index_sequence<t.size()>{});
-    }
-#endif
 
     using colalias_a = internal::column_alias<'a'>;
     using colalias_b = internal::column_alias<'b'>;
@@ -10523,6 +10512,88 @@ namespace sqlite_orm {
 
 // #include "select_constraints.h"
 
+// #include "cte_types.h"
+
+#ifdef SQLITE_ORM_WITH_CTE
+#include <type_traits>
+#include <tuple>
+
+// #include "functional/cxx_core_features.h"
+
+// #include "functional/cxx_type_traits_polyfill.h"
+
+// #include "tuple_helper/tuple_fy.h"
+
+#include <tuple>
+
+namespace sqlite_orm {
+
+    namespace internal {
+
+        template<typename T>
+        struct tuplify {
+            using type = std::tuple<T>;
+        };
+        template<typename... Ts>
+        struct tuplify<std::tuple<Ts...>> {
+            using type = std::tuple<Ts...>;
+        };
+
+        template<typename T>
+        using tuplify_t = typename tuplify<T>::type;
+    }
+}
+
+namespace sqlite_orm {
+
+    namespace internal {
+
+        /**
+         *  Aliased column expression mapped into a CTE, stored as a field in a table column.
+         */
+        template<class A, class F>
+        struct aliased_field {
+            ~aliased_field() = delete;
+            aliased_field(const aliased_field&) = delete;
+            void operator=(const aliased_field&) = delete;
+
+            F field;
+        };
+
+        /**
+         *  This class captures various properties and aspects of a subselect's column expression,
+         *  and is used as a proxy in table_t<>.
+         */
+        template<typename Label,
+                 typename ExplicitColRefs,
+                 typename Expression,
+                 typename SubselectColRefs,
+                 typename FinalColRefs,
+                 typename... Fs>
+        class subselect_mapper {
+          public:
+            subselect_mapper() = delete;
+
+            // this type name is used to detect the mapping from label to object
+            using cte_label_type = Label;
+            using fields_type = std::tuple<Fs...>;
+            // this type captures the expressions forming the columns in a subselect;
+            // it is currently unused, however proves to be useful in compilation errors,
+            // as it simplifies recognizing errors in column expressions
+            using expressions_tuple = tuplify_t<Expression>;
+            // this type captures column reference expressions specified at CTE construction;
+            // those are: member pointers, alias holders
+            using explicit_colrefs_tuple = ExplicitColRefs;
+            // this type captures column reference expressions from the subselect;
+            // those are: member pointers, alias holders
+            using subselect_colrefs_tuple = SubselectColRefs;
+            // this type captures column reference expressions merged from SubselectColRefs and ExplicitColRefs
+            using final_colrefs_tuple = FinalColRefs;
+        };
+    }
+}
+#endif
+
 // #include "storage_lookup.h"
 
 #include <type_traits>  //  std::true_type, std::false_type, std::remove_const, std::enable_if, std::is_base_of, std::is_void
@@ -11043,26 +11114,6 @@ namespace sqlite_orm {
 
 // #include "tuple_helper/tuple_fy.h"
 
-#include <tuple>
-
-namespace sqlite_orm {
-
-    namespace internal {
-
-        template<typename T>
-        struct tuplify {
-            using type = std::tuple<T>;
-        };
-        template<typename... Ts>
-        struct tuplify<std::tuple<Ts...>> {
-            using type = std::tuple<Ts...>;
-        };
-
-        template<typename T>
-        using tuplify_t = typename tuplify<T>::type;
-    }
-}
-
 // #include "tuple_helper/tuple_filter.h"
 
 // #include "type_traits.h"
@@ -11107,64 +11158,6 @@ namespace sqlite_orm {
 // #include "alias.h"
 
 // #include "cte_types.h"
-
-#include <type_traits>
-#include <tuple>
-
-// #include "functional/cxx_core_features.h"
-
-// #include "functional/cxx_type_traits_polyfill.h"
-
-// #include "tuple_helper/tuple_fy.h"
-
-namespace sqlite_orm {
-
-    namespace internal {
-
-        /**
-         *  Aliased column expression mapped into a CTE, stored as a field in a table column.
-         */
-        template<class A, class F>
-        struct aliased_field {
-            ~aliased_field() = delete;
-            aliased_field(const aliased_field&) = delete;
-            void operator=(const aliased_field&) = delete;
-
-            F field;
-        };
-
-        /**
-         *  This class captures various properties and aspects of a subselect's column expression,
-         *  and is used as a proxy in table_t<>.
-         */
-        template<typename Label,
-                 typename ExplicitColRefs,
-                 typename Expression,
-                 typename SubselectColRefs,
-                 typename FinalColRefs,
-                 typename... Fs>
-        class subselect_mapper {
-          public:
-            subselect_mapper() = delete;
-
-            // this type name is used to detect the mapping from label to object
-            using cte_label_type = Label;
-            using fields_type = std::tuple<Fs...>;
-            // this type captures the expressions forming the columns in a subselect;
-            // it is currently unused, however proves to be useful in compilation errors,
-            // as it simplifies recognizing errors in column expressions
-            using expressions_tuple = tuplify_t<Expression>;
-            // this type captures column reference expressions specified at CTE construction;
-            // those are: member pointers, alias holders
-            using explicit_colrefs_tuple = ExplicitColRefs;
-            // this type captures column reference expressions from the subselect;
-            // those are: member pointers, alias holders
-            using subselect_colrefs_tuple = SubselectColRefs;
-            // this type captures column reference expressions merged from SubselectColRefs and ExplicitColRefs
-            using final_colrefs_tuple = FinalColRefs;
-        };
-    }
-}
 
 // #include "storage_traits.h"
 
@@ -13818,17 +13811,6 @@ namespace sqlite_orm {
                                                                      polyfill::is_specialization_of<T, literal_holder>,
                                                                      is_column_alias<T>>>> {
             using node_type = T;
-
-            template<class L>
-            void operator()(const node_type& /*node*/, L& /*lambda*/) const {}
-        };
-
-        /**
-         *  Column alias: skipped
-         */
-        template<char... C>
-        struct ast_iterator<column_alias<C...>, void> {
-            using node_type = column_alias<C...>;
 
             template<class L>
             void operator()(const node_type& /*node*/, L& /*lambda*/) const {}
@@ -18276,7 +18258,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
                 ss << statement.serialize() << " ";
-                auto whereString = serialize(statement.expression, newContext);
+                auto whereString = serialize(statement.expression, context);
                 ss << '(' << whereString << ')';
                 return ss.str();
             }
@@ -18686,7 +18668,7 @@ namespace sqlite_orm {
         struct column_expression_type<
             DBOs,
             asterisk_t<E>,
-            std::enable_if_t<polyfill::disjunction_v<polyfill::negation<is_any_table_alias<E>>, is_cte_alias<E>>>>
+            std::enable_if_t<polyfill::disjunction_v<polyfill::negation<is_recordset_alias<E>>, is_cte_alias<E>>>>
             : storage_traits::storage_mapped_column_expressions<DBOs, E> {};
 
         template<class A>
