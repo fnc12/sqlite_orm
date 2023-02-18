@@ -408,7 +408,7 @@ namespace sqlite_orm {
         using alias_holder_type_or_none_t = typename alias_holder_type_or_none<T>::type;
 #endif
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         template<auto T>
         using auto_type_t = typename decltype(T)::type;
 #endif
@@ -10516,6 +10516,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CTE
 #include <type_traits>
 #include <tuple>
+#endif
 
 // #include "functional/cxx_core_features.h"
 
@@ -10543,6 +10544,7 @@ namespace sqlite_orm {
     }
 }
 
+#ifdef SQLITE_ORM_WITH_CTE
 namespace sqlite_orm {
 
     namespace internal {
@@ -16165,13 +16167,12 @@ namespace sqlite_orm {
 
 // #include "cte_column_names_collector.h"
 
-// #include "functional/cxx_core_features.h"
-
 #ifdef SQLITE_ORM_WITH_CTE
 #include <string>
 #include <vector>
 #include <functional>  //  std::reference_wrapper
 #include <system_error>
+#endif
 
 // #include "functional/cxx_universal.h"
 
@@ -16191,6 +16192,7 @@ namespace sqlite_orm {
 
 // #include "serializer_context.h"
 
+#ifdef SQLITE_ORM_WITH_CTE
 namespace sqlite_orm {
     namespace internal {
         // collecting column names utilizes the statement serializer
@@ -16375,7 +16377,6 @@ namespace sqlite_orm {
         }
     }
 }
-
 #endif
 
 // #include "order_by_serializer.h"
@@ -18570,13 +18571,12 @@ namespace sqlite_orm {
 
 // #include "cte_storage.h"
 
-// #include "functional/cxx_core_features.h"
-
 #ifdef SQLITE_ORM_WITH_CTE
 #include <type_traits>
 #include <tuple>
 #include <string>
 #include <vector>
+#endif
 
 // #include "functional/cxx_universal.h"
 
@@ -18598,7 +18598,6 @@ namespace sqlite_orm {
 
 // #include "cte_column_names_collector.h"
 
-#endif
 // #include "column_expression.h"
 
 #include <type_traits>  //  std::enable_if, std::is_same, std::decay, std::is_arithmetic
@@ -20473,13 +20472,15 @@ namespace sqlite_orm {
 }
 #pragma once
 
-// #include "functional/cxx_universal.h"
-
 #ifdef SQLITE_ORM_WITH_CTE
 #include <utility>  //  std::make_index_sequence
+#endif
+
+// #include "functional/cxx_universal.h"
 
 // #include "alias.h"
 
+#ifdef SQLITE_ORM_WITH_CTE
 namespace sqlite_orm {
 
     namespace internal {

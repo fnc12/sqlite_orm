@@ -1,11 +1,11 @@
 #pragma once
 
-#include "functional/cxx_core_features.h"
 #ifdef SQLITE_ORM_WITH_CTE
 #include <string>
 #include <vector>
 #include <functional>  //  std::reference_wrapper
 #include <system_error>
+#endif
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
@@ -17,6 +17,7 @@
 #include "select_constraints.h"
 #include "serializer_context.h"
 
+#ifdef SQLITE_ORM_WITH_CTE
 namespace sqlite_orm {
     namespace internal {
         // collecting column names utilizes the statement serializer
@@ -201,5 +202,4 @@ namespace sqlite_orm {
         }
     }
 }
-
 #endif

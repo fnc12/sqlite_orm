@@ -86,7 +86,7 @@ namespace sqlite_orm {
         using alias_holder_type_or_none_t = typename alias_holder_type_or_none<T>::type;
 #endif
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         template<auto T>
         using auto_type_t = typename decltype(T)::type;
 #endif

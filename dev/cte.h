@@ -1,11 +1,13 @@
 #pragma once
 
-#include "functional/cxx_universal.h"
 #ifdef SQLITE_ORM_WITH_CTE
 #include <utility>  //  std::make_index_sequence
+#endif
 
+#include "functional/cxx_universal.h"
 #include "alias.h"
 
+#ifdef SQLITE_ORM_WITH_CTE
 namespace sqlite_orm {
 
     namespace internal {

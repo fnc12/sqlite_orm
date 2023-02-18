@@ -1,11 +1,11 @@
 #pragma once
 
-#include "functional/cxx_core_features.h"
 #ifdef SQLITE_ORM_WITH_CTE
 #include <type_traits>
 #include <tuple>
 #include <string>
 #include <vector>
+#endif
 
 #include "functional/cxx_universal.h"
 #include "tuple_helper/tuple_fy.h"
@@ -17,7 +17,6 @@
 #include "alias.h"
 #include "cte_types.h"
 #include "cte_column_names_collector.h"
-#endif
 #include "column_expression.h"
 #include "storage_lookup.h"
 
