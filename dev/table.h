@@ -54,7 +54,6 @@ namespace sqlite_orm {
          */
         template<class O, bool WithoutRowId, class... Cs>
         struct table_t : basic_table {
-            using super = basic_table;
 #ifdef SQLITE_ORM_WITH_CTE
             // this typename is used in contexts where it is known that the 'table' holds a subselect_mapper
             // instead of a regular object type

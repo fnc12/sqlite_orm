@@ -572,8 +572,7 @@ namespace sqlite_orm {
              */
             template<class T, class... Args, class R = column_result_of_t<db_objects_type, T>>
             std::vector<R> select(T m, Args... args) {
-                static_assert(!is_base_of_template_v<T, compound_operator> ||
-                                  std::tuple_size<std::tuple<Args...>>::value == 0,
+                static_assert(!is_compound_operator_v<T> || sizeof...(Args) == 0,
                               "Cannot use args with a compound operator");
                 auto statement = this->prepare(sqlite_orm::select(std::move(m), std::forward<Args>(args)...));
                 return this->execute(statement);

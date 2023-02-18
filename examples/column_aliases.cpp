@@ -58,7 +58,7 @@ void marvel_hero_ordered_by_o_pos() {
         }
     }
     cout << endl;
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     {
         //  SELECT name, instr(abilities, 'o') i
         //  FROM marvel

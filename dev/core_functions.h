@@ -43,6 +43,12 @@ namespace sqlite_orm {
             built_in_function_t(args_type&& args_) : args(std::move(args_)) {}
         };
 
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_built_in_function_v = is_base_of_template_v<T, built_in_function_t>;
+
+        template<class T>
+        using is_built_in_function = polyfill::bool_constant<is_built_in_function_v<T>>;
+
         template<class F, class W>
         struct filtered_aggregate_function {
             using function_type = F;
@@ -610,44 +616,32 @@ namespace sqlite_orm {
     /**
      *  Cute operators for core functions
      */
-    template<class F,
-             class R,
-             std::enable_if_t<internal::is_base_of_template_v<F, internal::built_in_function_t>, bool> = true>
+    template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
     internal::lesser_than_t<F, R> operator<(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
-    template<class F,
-             class R,
-             std::enable_if_t<internal::is_base_of_template_v<F, internal::built_in_function_t>, bool> = true>
+    template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
     internal::lesser_or_equal_t<F, R> operator<=(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
-    template<class F,
-             class R,
-             std::enable_if_t<internal::is_base_of_template_v<F, internal::built_in_function_t>, bool> = true>
+    template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
     internal::greater_than_t<F, R> operator>(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
-    template<class F,
-             class R,
-             std::enable_if_t<internal::is_base_of_template_v<F, internal::built_in_function_t>, bool> = true>
+    template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
     internal::greater_or_equal_t<F, R> operator>=(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
-    template<class F,
-             class R,
-             std::enable_if_t<internal::is_base_of_template_v<F, internal::built_in_function_t>, bool> = true>
+    template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
     internal::is_equal_t<F, R> operator==(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
-    template<class F,
-             class R,
-             std::enable_if_t<internal::is_base_of_template_v<F, internal::built_in_function_t>, bool> = true>
+    template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
     internal::is_not_equal_t<F, R> operator!=(F f, R r) {
         return {std::move(f), std::move(r)};
     }

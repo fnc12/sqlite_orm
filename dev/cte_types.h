@@ -1,5 +1,6 @@
 #pragma once
 
+#ifdef SQLITE_ORM_WITH_CTE
 #include <type_traits>
 #include <tuple>
 
@@ -55,3 +56,4 @@ namespace sqlite_orm {
         };
     }
 }
+#endif

@@ -127,7 +127,7 @@ TEST_CASE("column_result_of_t") {
     runTest<db_objects2_t, int>(alias_column<alias_a<cte_1>>(1_colalias));
     runTest<db_objects2_t, std::tuple<int>>(asterisk<cte_1>());
     runTest<db_objects2_t, std::tuple<int>>(asterisk<alias_a<cte_1>>());
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     runTest<db_objects_t, int>("1"_cte->*&User::id);
 #endif
 #endif

@@ -1,7 +1,10 @@
 #pragma once
 
-#include <type_traits>  //  std::enable_if, std::is_base_of, std::is_member_pointer
+#include <type_traits>  //  std::enable_if, std::is_base_of, std::is_member_pointer, std::remove_const
+#include <utility>  //  std::index_sequence, std::make_index_sequence
+#include <string>  //  std::string
 #include <sstream>  //  std::stringstream
+#include <algorithm>  //  std::copy_n
 #include <string>  //  std::string
 #ifdef SQLITE_ORM_WITH_CTE
 #include <array>
@@ -17,7 +20,7 @@ namespace sqlite_orm {
 
     namespace internal {
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         /*
          *  Helper class to facilitate user-defined string literal operator template
          */
@@ -43,6 +46,7 @@ namespace sqlite_orm {
         /**
          *  This is a common built-in class used for custom single character table aliases.
          *  For convenience there exist public type aliases `alias_a`, `alias_b`, ...
+         *  The easiest way to create a table alias is using `"z"_alias.for_<Object>()`.
          */
         template<class T, char A, char... X>
         struct table_alias : alias_tag {
@@ -83,7 +87,6 @@ namespace sqlite_orm {
          * 
          * `extract()` always returns the alias identifier.
          * `as_alias()` is used in contexts where a table is aliased.
-         *   In case of a CTE the alias is empty since the CTE identifier is already the alias itself.
          */
         template<class A>
         struct alias_extractor<A, match_if<is_alias, A>> {
@@ -119,6 +122,7 @@ namespace sqlite_orm {
         /**
          *  This is a common built-in class used for custom single-character column aliases.
          *  For convenience there exist type aliases `colalias_a`, `colalias_b`, ...
+         *  The easiest way to create a column alias is using `"xyz"_col`.
          */
         template<char A, char... X>
         struct column_alias : alias_tag {
@@ -126,6 +130,35 @@ namespace sqlite_orm {
                 return {A, X...};
             }
         };
+
+        template<class T>
+        struct alias_holder {
+            using type = T;
+
+            alias_holder() = default;
+            // CTE feature needs it to implicitly convert a column alias to an alias_holder; see `cte()` factory function
+            alias_holder(const T&) noexcept {}
+        };
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        template<char A, char... C>
+        struct table_alias_builder {
+            static_assert(sizeof...(C) == 0 && ((A >= 'A' && 'Z' <= A) || (A >= 'a' && 'z' <= A)),
+                          "Table alias identifiers shall consist of a single alphabetic character, in order to evade "
+                          "clashes with CTE aliases.");
+
+            template<class T>
+            [[nodiscard]] consteval table_alias<T, A, C...> for_() const {
+                return {};
+            }
+
+            template<auto t>
+            [[nodiscard]] consteval auto for_() const {
+                using T = std::remove_const_t<decltype(t)>;
+                return table_alias<T, A, C...>{};
+            }
+        };
+#endif
 
 #ifdef SQLITE_ORM_WITH_CTE
         template<size_t n, char... C>
@@ -147,7 +180,7 @@ namespace sqlite_orm {
 
     /**
      *  @return column with table alias attached. Place it instead of a column statement in case you need to specify a
-     *  column with table alias prefix like 'a.column'. For more information please look through self_join.cpp example
+     *  column with table alias prefix like 'a.column'.
      */
     template<class A,
              class C,
@@ -155,18 +188,31 @@ namespace sqlite_orm {
                                                       polyfill::negation<internal::is_cte_alias<internal::type_t<A>>>>,
                               bool> = true>
     internal::alias_column_t<A, C> alias_column(C c) {
-        using table_type = internal::type_t<A>;
-        static_assert(std::is_same<internal::table_type_of_t<C>, table_type>::value,
+        using aliased_type = internal::type_t<A>;
+        static_assert(std::is_same<polyfill::detected_t<internal::table_type_of_t, C>, aliased_type>::value,
                       "Column must be from aliased table");
         return {c};
     }
 
-#ifdef SQLITE_ORM_WITH_CTE
-    namespace internal {
-        template<class T, class F>
-        struct column_pointer;
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_table_alias auto als, class C>
+        requires(!orm_cte_alias<internal::auto_type_t<als>>)
+    auto alias_column(C c) {
+        using A = std::remove_const_t<decltype(als)>;
+        using aliased_type = internal::type_t<A>;
+        static_assert(std::is_same_v<polyfill::detected_t<internal::table_type_of_t, C>, aliased_type>,
+                      "Column must be from aliased table");
+        return internal::alias_column_t<A, decltype(c)>{c};
     }
 
+    template<orm_table_alias A, class F>
+        requires(!orm_cte_alias<internal::type_t<A>>)
+    constexpr auto operator->*(const A&, F field) {
+        return internal::alias_column_t<A, decltype(field)>{field};
+    }
+#endif
+
+#ifdef SQLITE_ORM_WITH_CTE
     template<class A,
              class C,
              std::enable_if_t<
@@ -183,26 +229,6 @@ namespace sqlite_orm {
             return internal::alias_column_t<A, decltype(cp)>{cp};
         }
     }
-
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
-    template<auto als,
-             class C,
-             std::enable_if_t<polyfill::conjunction_v<internal::is_table_alias<decltype(als)>,
-                                                      internal::is_cte_alias<internal::type_t<decltype(als)>>>,
-                              bool> = true>
-    auto alias_column(C c) {
-        using A = std::remove_const_t<decltype(als)>;
-        using cte_alias_t = internal::type_t<A>;
-        if constexpr(polyfill::is_specialization_of_v<C, internal::column_pointer>) {
-            static_assert(std::is_same<internal::table_type_of_t<C>, cte_alias_t>::value,
-                          "Column pointer must match aliased CTE");
-            return internal::alias_column_t<A, C>{c};
-        } else {
-            auto cp = column<cte_alias_t>(c);
-            return internal::alias_column_t<A, decltype(cp)>{cp};
-        }
-    }
-#endif
 
     template<class A,
              class F,
@@ -212,48 +238,58 @@ namespace sqlite_orm {
     constexpr auto operator->*(const A& /*tableAlias*/, F field) {
         return alias_column<A>(std::move(field));
     }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_table_alias auto als, class C>
+        requires(orm_cte_alias<internal::auto_type_t<als>>)
+    auto alias_column(C c) {
+        using A = std::remove_const_t<decltype(als)>;
+        return alias_column<A>(std::move(c));
+    }
+#endif
 #endif
 
     /** 
      *  Alias a column expression.
      */
-    template<class A, class E>
+    template<class A, class E, internal::satisfies<internal::is_column_alias, A> = true>
     internal::as_t<A, E> as(E expression) {
         return {std::move(expression)};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
-    template<auto als, class E>
-    internal::as_t<decltype(als), E> as(E expression) {
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_column_alias auto als, class E>
+    auto as(E expression) {
+        using A = std::remove_const_t<decltype(als)>;
+        return internal::as_t<A, E>{std::move(expression)};
+    }
+
+    /**
+     *  Alias a column expression.
+     */
+    template<orm_column_alias A, class E>
+    internal::as_t<A, E> operator>>=(E expression, const A&) {
         return {std::move(expression)};
     }
-#endif
-
-    /** 
+#else
+    /**
      *  Alias a column expression.
      */
     template<class A, class E, internal::satisfies<internal::is_column_alias, A> = true>
     internal::as_t<A, E> operator>>=(E expression, const A&) {
         return {std::move(expression)};
     }
+#endif
 
-    /** 
-     *  Alias a column expression.
-     */
-    template<class A, class E, internal::satisfies<internal::is_column_alias, A> = true>
-    internal::as_t<A, E> operator|=(E expression, const A&) {
-        return {std::move(expression)};
-    }
-
-    template<class A, internal::satisfies<internal::is_column_alias, A> = true>
-    internal::alias_holder<A> get() {
+    template<class T>
+    internal::alias_holder<T> get() {
         return {};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
-    template<auto als>
-    internal::alias_holder<decltype(als)> get() {
-        return {};
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_column_alias auto als>
+    auto get() {
+        return internal::alias_holder<std::remove_const_t<decltype(als)>>{};
     }
 #endif
 
@@ -310,36 +346,6 @@ namespace sqlite_orm {
     template<class T>
     using alias_z = internal::table_alias<T, 'z'>;
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
-#ifdef SQLITE_ORM_WITH_CTE
-    namespace internal {
-        template<char A, char... C>
-        struct table_alias_builder {
-            static_assert(sizeof...(C) == 0 && ((A >= 'A' && 'Z' <= A) || (A >= 'a' && 'z' <= A)),
-                          "Table alias identifiers shall consist of a single alphabetic character, in order "
-                          "to evade clashes with the built-in CTE aliases.");
-
-            template<class T>
-            [[nodiscard]] consteval internal::table_alias<T, A, C...> operator()(T t) const {
-                return {};
-            }
-        };
-    }
-
-    /** @short Create aliased CTEs, e.g. `constexpr auto z_alias = alias_<'z'>("digits"_cte)`.
-     */
-    template<char A>
-    SQLITE_ORM_INLINE_VAR constexpr internal::table_alias_builder<A> alias_{};
-
-    /** @short Create aliased CTEs, e.g. `constexpr auto z_alias = "z"_alias("digits"_cte)`.
-     */
-    template<internal::string_identifier_template t>
-    [[nodiscard]] consteval auto operator"" _alias() {
-        return internal::to_alias<internal::table_alias_builder, t>(std::make_index_sequence<t.size()>{});
-    }
-#endif
-#endif
-
     using colalias_a = internal::column_alias<'a'>;
     using colalias_b = internal::column_alias<'b'>;
     using colalias_c = internal::column_alias<'c'>;
@@ -350,8 +356,23 @@ namespace sqlite_orm {
     using colalias_h = internal::column_alias<'h'>;
     using colalias_i = internal::column_alias<'i'>;
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
-    /**
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /** @short Create aliased tables e.g. `constexpr auto z_alias = alias_<'z'>.for_<User>()`.
+     */
+    template<char A>
+    inline constexpr internal::table_alias_builder<A> alias_{};
+
+    /** @short Create a table alias.
+     *
+     *  Examples:
+     *  constexpr auto z_alias = "z"_alias.for_<User>();
+     */
+    template<internal::string_identifier_template t>
+    [[nodiscard]] consteval auto operator"" _alias() {
+        return internal::to_alias<internal::table_alias_builder, t>(std::make_index_sequence<t.size()>{});
+    }
+
+    /** @short Create a column alias.
      *  column_alias<'a'[, ...]> from a string literal.
      *  E.g. "a"_col, "b"_col
      */

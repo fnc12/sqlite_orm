@@ -26,12 +26,12 @@ TEST_CASE("statement_serializer remove_all") {
     SECTION("where") {
         auto statement = remove_all<User>(where(&User::id == c(1)));
         value = serialize(statement, context);
-        expected = R"(DELETE FROM "users" WHERE (("users"."id" = 1)))";
+        expected = R"(DELETE FROM "users" WHERE (("id" = 1)))";
     }
     SECTION("conditions") {
         auto statement = remove_all<User>(where(&User::id == c(1)), limit(1));
         value = serialize(statement, context);
-        expected = R"(DELETE FROM "users" WHERE (("users"."id" = 1)) LIMIT 1)";
+        expected = R"(DELETE FROM "users" WHERE (("id" = 1)) LIMIT 1)";
     }
     REQUIRE(value == expected);
 }

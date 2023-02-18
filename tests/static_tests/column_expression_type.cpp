@@ -69,7 +69,7 @@ TEST_CASE("column_expression_of_t") {
             std::tuple<alias_column_t<alias_a<cte_1>, int64 Org::*>,
                        alias_column_t<alias_a<cte_1>, int internal::aliased_field<column_alias<'2'>, int>::*>>>(
         asterisk<alias_a<cte_1>>());
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     runTest<db_objects_t, column_pointer<cte_1, alias_holder<colalias_c>>>("1"_cte->*"c"_col);
 #endif
 #endif

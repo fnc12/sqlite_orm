@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.14.0)
+cmake_minimum_required (VERSION 3.24.0)
 
 # PACKAGE_VERSION is used by cpack scripts currently
 # Both sqlite_orm_VERSION and PACKAGE_VERSION should be the same for now
@@ -58,6 +58,10 @@ if (MSVC)
     add_compile_options(/EHsc)
     if (MSVC_VERSION GREATER_EQUAL 1914)
         add_compile_options(/Zc:__cplusplus)
+    endif()
+    if (MSVC_VERSION GREATER_EQUAL 1910)
+        # VC 2017 issues a deprecation warning for `strncpy`
+        add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
     endif()
     add_compile_options(/MP) # multi-processor compilation
     if (CMAKE_CXX_STANDARD GREATER 14)

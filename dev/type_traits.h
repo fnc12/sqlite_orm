@@ -1,6 +1,9 @@
 #pragma once
 
 #include <type_traits>  //  std::enable_if, std::is_same
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+#include <concepts>
+#endif
 
 #include "functional/cxx_core_features.h"
 #include "functional/cxx_type_traits_polyfill.h"
@@ -83,10 +86,20 @@ namespace sqlite_orm {
         using alias_holder_type_or_none_t = typename alias_holder_type_or_none<T>::type;
 #endif
 
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+        template<auto T>
+        using auto_type_t = typename decltype(T)::type;
+#endif
+
         template<typename T>
         using expression_type_t = typename T::expression_type;
 
         template<class As>
         using alias_type_t = typename As::alias_type;
     }
+
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    template<class T>
+    concept orm_names_type = requires { typename T::type; };
+#endif
 }

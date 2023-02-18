@@ -48,11 +48,11 @@ TEST_CASE("statement_serializer update") {
                     auto expression = update_all(set(assign(&A::value, 5)), where(is_equal(&A::address, 1)));
                     SECTION("with question marks") {
                         context.replace_bindable_with_question = true;
-                        expected = R"(UPDATE "table" SET "value" = ? WHERE (("table"."address" = ?)))";
+                        expected = R"(UPDATE "table" SET "value" = ? WHERE (("address" = ?)))";
                     }
                     SECTION("without question marks") {
                         context.replace_bindable_with_question = false;
-                        expected = R"(UPDATE "table" SET "value" = 5 WHERE (("table"."address" = 1)))";
+                        expected = R"(UPDATE "table" SET "value" = 5 WHERE (("address" = 1)))";
                     }
                     value = serialize(expression, context);
                 }
@@ -62,7 +62,7 @@ TEST_CASE("statement_serializer update") {
                     dynamicSet.push_back(assign(&A::value, 5));
                     auto expression = update_all(dynamicSet, where(is_equal(&A::address, 1)));
                     context.replace_bindable_with_question = false;
-                    expected = R"(UPDATE "table" SET "value" = 5 WHERE (("table"."address" = 1)))";
+                    expected = R"(UPDATE "table" SET "value" = 5 WHERE (("address" = 1)))";
                     value = serialize(expression, context);
                 }
             }

@@ -9,6 +9,7 @@
 #include "tuple_helper/tuple_iteration.h"
 #include "type_traits.h"
 #include "select_constraints.h"
+#include "cte_types.h"
 #include "storage_lookup.h"
 
 // interface functions

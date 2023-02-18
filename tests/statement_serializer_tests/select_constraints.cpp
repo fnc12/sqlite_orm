@@ -71,6 +71,20 @@ TEST_CASE("statement_serializer select constraints") {
             value = serialize(expression, context);
             expected = R"(FROM "users" "u")";
         }
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        {
+            SECTION("with alias 2") {
+                auto expression = from<alias_<'u'>.for_<User>()>();
+                value = serialize(expression, context);
+                expected = R"(FROM "users" "u")";
+            }
+            SECTION("with alias 3") {
+                auto expression = from<"u"_alias.for_<User>()>();
+                value = serialize(expression, context);
+                expected = R"(FROM "users" "u")";
+            }
+        }
+#endif
     }
 #ifdef SQLITE_ORM_WITH_CTE
     SECTION("from CTE") {
@@ -88,14 +102,14 @@ TEST_CASE("statement_serializer select constraints") {
             value = serialize(expression, context);
             expected = R"(FROM "1" "z")";
         }
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         SECTION("without alias 2") {
             auto expression = from<"1"_cte>();
             value = serialize(expression, context);
             expected = R"(FROM "1")";
         }
         SECTION("with alias 2") {
-            constexpr auto z_alias = "z"_alias("1"_cte);
+            constexpr auto z_alias = "z"_alias.for_<"1"_cte>();
             auto expression = from<z_alias>();
             value = serialize(expression, context);
             expected = R"(FROM "1" "z")";

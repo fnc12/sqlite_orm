@@ -65,17 +65,17 @@ TEST_CASE("table name collector") {
             expected.emplace(alias_extractor<decltype(c)>::extract(), "");
             iterate_ast(expression, collector);
         }
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         SECTION("aliased CTE column") {
             constexpr auto c = "1"_cte;
-            constexpr auto z_alias = "z"_alias(c);
+            constexpr auto z_alias = "z"_alias.for_<c>();
             auto expression = z_alias->*&User::id;
             expected.emplace(alias_extractor<decltype(c)>::extract(), "z");
             iterate_ast(expression, collector);
         }
         SECTION("aliased CTE column alias") {
             constexpr auto c = "1"_cte;
-            constexpr auto z_alias = "z"_alias(c);
+            constexpr auto z_alias = "z"_alias.for_<c>();
             auto expression = z_alias->*1_colalias;
             expected.emplace(alias_extractor<decltype(c)>::extract(), "z");
             iterate_ast(expression, collector);

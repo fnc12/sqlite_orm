@@ -78,6 +78,9 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CTE
         template<class A>
+        struct alias_holder;
+
+        template<class A>
         struct column_pointer_builder<A, match_if<is_alias, A>> {
             static_assert(is_cte_alias_v<A>, "`A' must be a mapped table alias");
 

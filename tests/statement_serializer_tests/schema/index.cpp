@@ -48,7 +48,7 @@ TEST_CASE("statement_serializer index") {
     SECTION("where") {
         auto index = make_index("idx", &User::id, where(is_not_null(&User::id)));
         value = internal::serialize(index, context);
-        expected = R"(CREATE INDEX IF NOT EXISTS "idx" ON "users" ("id") WHERE ("users"."id" IS NOT NULL))";
+        expected = R"(CREATE INDEX IF NOT EXISTS "idx" ON "users" ("id") WHERE ("id" IS NOT NULL))";
     }
 #ifdef SQLITE_ENABLE_JSON1
     SECTION("json") {

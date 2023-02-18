@@ -1,5 +1,6 @@
 #pragma once
 
+#include <type_traits>  //  std::remove_const
 #include <string>  //  std::string
 #include <utility>  //  std::move
 #include <tuple>  //  std::tuple, std::get, std::tuple_size
@@ -14,8 +15,8 @@
 #include "ast/where.h"
 #include "ast/group_by.h"
 #include "core_functions.h"
+#include "alias_traits.h"
 #include "column_pointer.h"
-#include "alias.h"
 
 namespace sqlite_orm {
 
@@ -123,6 +124,12 @@ namespace sqlite_orm {
                 this->right.highest_level = true;
             }
         };
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_compound_operator_v = is_base_of_template_v<T, compound_operator>;
+
+        template<class T>
+        using is_compound_operator = polyfill::bool_constant<is_compound_operator_v<T>>;
 
         struct union_base {
             bool all = false;
@@ -588,10 +595,10 @@ namespace sqlite_orm {
         return {definedOrder};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
-    template<auto A, internal::satisfies<internal::is_any_table_alias, decltype(A)> = true>
-    internal::asterisk_t<decltype(A)> asterisk(bool definedOrder = false) {
-        return {definedOrder};
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_recordset_alias auto als>
+    auto asterisk(bool definedOrder = false) {
+        return internal::asterisk_t<std::remove_const_t<decltype(als)>>{definedOrder};
     }
 #endif
 
