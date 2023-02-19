@@ -11068,6 +11068,7 @@ namespace sqlite_orm {
     }
 #endif
 }
+}
 
 namespace sqlite_orm {
 
@@ -11437,7 +11438,9 @@ namespace sqlite_orm {
         using internal::is_insert_constraint;
         using internal::is_into;
         using internal::is_select;
-        using internal::is_upsert_clause;
+        #if SQLITE_VERSION_NUMBER >= 3024000
+            using internal::is_upsert_clause;
+        #endif
         using internal::is_values;
 
         constexpr int orArgsCount = count_tuple<args_tuple, is_insert_constraint>::value;
@@ -11459,13 +11462,21 @@ namespace sqlite_orm {
         constexpr int selectsArgsCount = count_tuple<args_tuple, is_select>::value;
         static_assert(selectsArgsCount < 2, "Raw insert must have only one select(...) argument");
 
-        constexpr int upsertClausesCount = count_tuple<args_tuple, is_upsert_clause>::value;
-        static_assert(upsertClausesCount <= 2, "Raw insert can contain 2 instances of upsert clause maximum");
+        #if SQLITE_VERSION_NUMBER >= 3024000
+            constexpr int upsertClausesCount = count_tuple<args_tuple, is_upsert_clause>::value;
+            static_assert(upsertClausesCount <= 2, "Raw insert can contain 2 instances of upsert clause maximum");
 
         constexpr int argsCount = int(std::tuple_size<args_tuple>::value);
         static_assert(argsCount == intoArgsCount + columnsArgsCount + valuesArgsCount + defaultValuesCount +
                                        selectsArgsCount + orArgsCount + upsertClausesCount,
                       "Raw insert has invalid arguments");
+        
+        #else
+            constexpr int argsCount = int(std::tuple_size<args_tuple>::value);
+            static_assert(argsCount == intoArgsCount + columnsArgsCount + valuesArgsCount + defaultValuesCount +
+                                        selectsArgsCount + orArgsCount,
+                        "Raw insert has invalid arguments");
+        #endif
 
         return {{std::forward<Args>(args)...}};
     }
@@ -11908,7 +11919,7 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T>
-        struct ast_iterator<as_optional_t<T>, void> {
+        struct ast_iterator<::as_optional_t<T>, void> {
             using node_type = as_optional_t<T>;
 
             template<class L>
@@ -11948,15 +11959,17 @@ namespace sqlite_orm {
             }
         };
 
-        template<class... TargetArgs, class... ActionsArgs>
-        struct ast_iterator<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void> {
-            using node_type = upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>;
+        #if SQLITE_VERSION_NUMBER >= 3024000
+            template<class... TargetArgs, class... ActionsArgs>
+            struct ast_iterator<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void> {
+                using node_type = upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>;
 
-            template<class L>
-            void operator()(const node_type& expression, L& lambda) const {
-                iterate_ast(expression.actions, lambda);
-            }
-        };
+                template<class L>
+                void operator()(const node_type& expression, L& lambda) const {
+                    iterate_ast(expression.actions, lambda);
+                }
+            };
+        #endif
 
         template<class C>
         struct ast_iterator<where_t<C>, void> {
@@ -15211,37 +15224,39 @@ namespace sqlite_orm {
             }
         };
 
-        template<class... TargetArgs, class... ActionsArgs>
-        struct statement_serializer<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void> {
-            using statement_type = upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>;
+        #if SQLITE_VERSION_NUMBER >= 3024000
+            template<class... TargetArgs, class... ActionsArgs>
+            struct statement_serializer<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void> {
+                using statement_type = upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>;
 
-            template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
-                std::stringstream ss;
-                ss << "ON CONFLICT";
-                iterate_tuple(statement.target_args, [&ss, &context](auto& value) {
-                    using value_type = std::decay_t<decltype(value)>;
-                    auto needParenthesis = std::is_member_pointer<value_type>::value;
-                    ss << ' ';
-                    if(needParenthesis) {
-                        ss << '(';
+                template<class Ctx>
+                std::string operator()(const statement_type& statement, const Ctx& context) const {
+                    std::stringstream ss;
+                    ss << "ON CONFLICT";
+                    iterate_tuple(statement.target_args, [&ss, &context](auto& value) {
+                        using value_type = std::decay_t<decltype(value)>;
+                        auto needParenthesis = std::is_member_pointer<value_type>::value;
+                        ss << ' ';
+                        if(needParenthesis) {
+                            ss << '(';
+                        }
+                        ss << serialize(value, context);
+                        if(needParenthesis) {
+                            ss << ')';
+                        }
+                    });
+                    ss << ' ' << "DO";
+                    if(std::tuple_size<typename statement_type::actions_tuple>::value == 0) {
+                        ss << " NOTHING";
+                    } else {
+                        auto updateContext = context;
+                        updateContext.use_parentheses = false;
+                        ss << " UPDATE " << streaming_actions_tuple(statement.actions, updateContext);
                     }
-                    ss << serialize(value, context);
-                    if(needParenthesis) {
-                        ss << ')';
-                    }
-                });
-                ss << ' ' << "DO";
-                if(std::tuple_size<typename statement_type::actions_tuple>::value == 0) {
-                    ss << " NOTHING";
-                } else {
-                    auto updateContext = context;
-                    updateContext.use_parentheses = false;
-                    ss << " UPDATE " << streaming_actions_tuple(statement.actions, updateContext);
+                    return ss.str();
                 }
-                return ss.str();
-            }
-        };
+            };
+        #endif
 
         template<class R, class S, class... Args>
         struct statement_serializer<built_in_function_t<R, S, Args...>, void> {
@@ -18522,10 +18537,12 @@ namespace sqlite_orm {
             using type = tuple_cat_t<args_tuple, expression_tuple>;
         };
 
-        template<class... TargetArgs, class... ActionsArgs>
-        struct node_tuple<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void>
-            : node_tuple<std::tuple<ActionsArgs...>> {};
+        #if SQLITE_VERSION_NUMBER >= 3024000
+            template<class... TargetArgs, class... ActionsArgs>
+            struct node_tuple<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void>
+                : node_tuple<std::tuple<ActionsArgs...>> {};
 
+        #endif
         template<class... Args>
         struct node_tuple<set_t<Args...>, void> {
             using type = tuple_cat_t<node_tuple_t<Args>...>;
