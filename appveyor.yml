@@ -36,8 +36,8 @@ environment:
       cmake_build_parallel: ""
 
     # Representative for C++14
-    - job_name: Visual Studio 2019, x64, C++14
-      appveyor_build_worker_image: Visual Studio 2019
+    - job_name: Visual Studio 2017, x64, C++14
+      appveyor_build_worker_image: Visual Studio 2017
       platform: x64
       SQLITE_ORM_CXX_STANDARD: ""
 
@@ -92,7 +92,7 @@ for:
   # Windows
   matrix:
     only:
-      - appveyor_build_worker_image: Visual Studio 2019
+      - appveyor_build_worker_image: Visual Studio 2017
       - appveyor_build_worker_image: Visual Studio 2022
   init:
     - |-
@@ -100,7 +100,7 @@ for:
       if "%platform%"=="x64" (set architecture=-A x64)
       if "%platform%"=="x86" (set architecture=-A Win32)
       if "%appveyor_build_worker_image%"=="Visual Studio 2022" (set generator="Visual Studio 17 2022" %architecture%)
-      if "%appveyor_build_worker_image%"=="Visual Studio 2019" (set generator="Visual Studio 16 2019" %architecture%)
+      if "%appveyor_build_worker_image%"=="Visual Studio 2017" (set generator="Visual Studio 15 2017" %architecture%)
   install:
     - |-
       cd C:\Tools\vcpkg
@@ -109,7 +109,11 @@ for:
       C:\Tools\vcpkg\bootstrap-vcpkg.bat -disableMetrics
       C:\Tools\vcpkg\vcpkg integrate install
       set VCPKG_DEFAULT_TRIPLET=%platform%-windows
-      vcpkg install sqlite3 catch2
+      vcpkg install sqlite3
+      rem The Visual Studio 2017 build worker image comes with CMake 3.16 only, and sqlite_orm will build the Catch2 dependency from source
+      if not "%appveyor_build_worker_image%"=="Visual Studio 2017" (
+          vcpkg install catch2
+      )
   before_build:
     - |-
       mkdir compile
