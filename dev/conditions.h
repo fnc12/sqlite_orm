@@ -1036,9 +1036,9 @@ namespace sqlite_orm {
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_recordset_alias auto als, class O>
-    auto left_join(O o) {
-        return internal::left_join_t<std::remove_const_t<decltype(als)>, O>{std::move(o)};
+    template<orm_recordset_alias auto alias, class On>
+    auto left_join(On on) {
+        return internal::left_join_t<std::remove_const_t<decltype(alias)>, On>{std::move(on)};
     }
 #endif
 
@@ -1048,9 +1048,9 @@ namespace sqlite_orm {
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_recordset_alias auto als, class O>
-    auto join(O o) {
-        return internal::join_t<std::remove_const_t<decltype(als)>, O>{std::move(o)};
+    template<orm_recordset_alias auto alias, class On>
+    auto join(On on) {
+        return internal::join_t<std::remove_const_t<decltype(alias)>, On>{std::move(on)};
     }
 #endif
 
@@ -1060,9 +1060,9 @@ namespace sqlite_orm {
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_recordset_alias auto als, class O>
-    auto left_outer_join(O o) {
-        return internal::left_outer_join_t<std::remove_const_t<decltype(als)>, O>{std::move(o)};
+    template<orm_recordset_alias auto alias, class On>
+    auto left_outer_join(On on) {
+        return internal::left_outer_join_t<std::remove_const_t<decltype(alias)>, On>{std::move(on)};
     }
 #endif
 
@@ -1072,9 +1072,9 @@ namespace sqlite_orm {
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_recordset_alias auto als, class O>
-    auto inner_join(O o) {
-        return internal::inner_join_t<std::remove_const_t<decltype(als)>, O>{std::move(o)};
+    template<orm_recordset_alias auto alias, class On>
+    auto inner_join(On on) {
+        return internal::inner_join_t<std::remove_const_t<decltype(alias)>, On>{std::move(on)};
     }
 #endif
 

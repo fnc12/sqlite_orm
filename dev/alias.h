@@ -6,7 +6,7 @@
 #include <sstream>  //  std::stringstream
 #include <algorithm>  //  std::copy_n
 
-#include "functional/cxx_universal.h"
+#include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"
 #include "alias_traits.h"
@@ -129,14 +129,10 @@ namespace sqlite_orm {
         };
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        template<char A, char... C>
+        template<char A, char... X>
         struct table_alias_builder {
-            static_assert(sizeof...(C) == 0 && ((A >= 'A' && 'Z' <= A) || (A >= 'a' && 'z' <= A)),
-                          "Table alias identifiers shall consist of a single alphabetic character, in order to evade "
-                          "clashes with CTE aliases.");
-
             template<class T>
-            [[nodiscard]] consteval table_alias<T, A, C...> for_() const {
+            [[nodiscard]] consteval table_alias<T, A, X...> for_() const {
                 return {};
             }
         };
@@ -270,10 +266,13 @@ namespace sqlite_orm {
     using colalias_i = internal::column_alias<'i'>;
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /** @short Create aliased tables e.g. `constexpr auto z_alias = alias_<'z'>.for_<User>()`.
+    /** @short Create a table alias.
+     *
+     *  Examples:
+     *  constexpr auto z_alias = alias<'z'>.for_<User>();
      */
-    template<char A>
-    inline constexpr internal::table_alias_builder<A> alias_{};
+    template<char A, char... X>
+    inline constexpr internal::table_alias_builder<A, X...> alias{};
 
     /** @short Create a table alias.
      *
