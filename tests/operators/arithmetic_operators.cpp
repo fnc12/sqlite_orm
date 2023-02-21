@@ -35,11 +35,11 @@ TEST_CASE("Arithmetic operators") {
         }
     }
     {  //  +
-        auto rows = storage.select(c(&Object::nameLen) + 1000);
+        auto rows = storage.select(columns(c(&Object::nameLen) + 1000));
         for(size_t i = 0; i < rows.size(); ++i) {
             auto& row = rows[i];
             auto& name = names[i];
-            REQUIRE(int(row) == name.length() + 1000);
+            REQUIRE(int(std::get<0>(row)) == name.length() + 1000);
         }
     }
     {  //  ||
@@ -71,11 +71,11 @@ TEST_CASE("Arithmetic operators") {
     }
     {  //  ||
         std::string suffix = "ototo";
-        auto rows = storage.select(conc(&Object::name, suffix));
+        auto rows = storage.select(columns(conc(&Object::name, suffix)));
         for(size_t i = 0; i < rows.size(); ++i) {
             auto& row = rows[i];
             auto& name = names[i];
-            REQUIRE(row == name + suffix);
+            REQUIRE(std::get<0>(row) == name + suffix);
         }
     }
     {  //  different
