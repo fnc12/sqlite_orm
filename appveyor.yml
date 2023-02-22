@@ -111,9 +111,7 @@ for:
       set VCPKG_DEFAULT_TRIPLET=%platform%-windows
       vcpkg install sqlite3
       rem The Visual Studio 2017 build worker image comes with CMake 3.16 only, and sqlite_orm will build the Catch2 dependency from source
-      if not "%appveyor_build_worker_image%"=="Visual Studio 2017" (
-          vcpkg install catch2
-      )
+      if not "%appveyor_build_worker_image%"=="Visual Studio 2017" (vcpkg install catch2)
   before_build:
     - |-
       mkdir compile
