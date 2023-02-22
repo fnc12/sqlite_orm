@@ -2,7 +2,7 @@ include(FetchContent)
 
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
     # FIND_PACKAGE_ARGS is available since 3.24
-    if(${CMAKE_VERSION} VERSION_LESS "3.24.0")
+    if(CMAKE_VERSION VERSION_LESS 3.24)
             FetchContent_Declare(
             Catch2
             GIT_REPOSITORY https://github.com/catchorg/Catch2.git
