@@ -8,7 +8,7 @@ using internal::alias_holder;
 using internal::as_t;
 using internal::column_alias;
 using internal::column_pointer;
-using internal::table_alias;
+using internal::recordset_alias;
 
 template<class ColAlias, class E>
 void do_assert() {
@@ -36,9 +36,9 @@ TEST_CASE("aliases") {
         runTest<column_alias<'a'>>("a"_col);
         runTest<as_t<column_alias<'a'>, int User::*>>(as<"a"_col>(&User::id));
         runTest<as_t<column_alias<'a'>, int User::*>>(&User::id >>= "a"_col);
-        runTest<table_alias<User, 'a', 'l', 's'>>(alias<'a', 'l', 's'>.for_<User>());
+        runTest<recordset_alias<User, 'a', 'l', 's'>>(alias<'a', 'l', 's'>.for_<User>());
         constexpr auto z_alias = "z"_alias.for_<User>();
-        runTest<table_alias<User, 'z'>>(z_alias);
+        runTest<recordset_alias<User, 'z'>>(z_alias);
         runTest<alias_column_t<alias_z<User>, int User::*>>(alias_column<z_alias>(&User::id));
         runTest<alias_column_t<alias_z<User>, int User::*>>(z_alias->*&User::id);
         runTest<alias_column_t<alias_z<User>, column_pointer<User, int User::*>>>(z_alias->*column<User>(&User::id));
