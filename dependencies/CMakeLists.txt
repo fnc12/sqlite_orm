@@ -14,7 +14,7 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
             GIT_REPOSITORY https://github.com/catchorg/Catch2.git
             GIT_TAG v3.2.1
             # prefer find_package() over building from source
-            FIND_PACKAGE_ARGS 3 CONFIG REQUIRED
+            FIND_PACKAGE_ARGS
         )
     endif()
     add_subdirectory(catch2)
