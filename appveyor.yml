@@ -116,11 +116,11 @@ for:
     - |-
       mkdir compile
       cd compile
-      cmake %SQLITE_ORM_CXX_STANDARD% .. -G %generator% -DCMAKE_TOOLCHAIN_FILE=C:/Tools/vcpkg/scripts/buildsystems/vcpkg.cmake
+      cmake --debug-output %SQLITE_ORM_CXX_STANDARD% .. -G %generator% -DCMAKE_TOOLCHAIN_FILE=C:/Tools/vcpkg/scripts/buildsystems/vcpkg.cmake
   # build examples, and run tests (ie make & make test)
   build_script:
     - |-
-      cmake --debug-output --build . --config %configuration% -- /m
+      cmake --build . --config %configuration% -- /m
       ctest --verbose --output-on-failure --build-config %configuration%
 
 -
