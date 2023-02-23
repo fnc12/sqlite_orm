@@ -44,7 +44,7 @@ set(SqliteOrm_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 add_library(sqlite_orm INTERFACE)
 add_library(sqlite_orm::sqlite_orm ALIAS sqlite_orm)
 
-find_package(SQLite3 CONFIG REQUIRED)
+find_package(SQLite3 REQUIRED)
 target_link_libraries(sqlite_orm INTERFACE SQLite::SQLite3)
 
 target_sources(sqlite_orm INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include/sqlite_orm/sqlite_orm.h>)
