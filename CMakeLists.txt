@@ -1,6 +1,6 @@
 # note: the minimum required version needs to go hand in hand with appveyor builds,
 # which is CMake 3.16 for the Visual Studio 2017 build worker image
-cmake_minimum_required (VERSION 3.16.0)
+cmake_minimum_required (VERSION 3.16)
 
 # PACKAGE_VERSION is used by cpack scripts currently
 # Both sqlite_orm_VERSION and PACKAGE_VERSION should be the same for now
@@ -44,7 +44,7 @@ set(SqliteOrm_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 add_library(sqlite_orm INTERFACE)
 add_library(sqlite_orm::sqlite_orm ALIAS sqlite_orm)
 
-find_package(SQLite3 REQUIRED)
+find_package(SQLite3 CONFIG REQUIRED)
 target_link_libraries(sqlite_orm INTERFACE SQLite::SQLite3)
 
 target_sources(sqlite_orm INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include/sqlite_orm/sqlite_orm.h>)

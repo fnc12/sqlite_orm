@@ -1,4 +1,7 @@
-cmake_minimum_required (VERSION 3.2)
+cmake_minimum_required (VERSION 3.16)
+
+# note: find_package(SQLite3 CONFIG REQUIRED) already done in top-level CMakeLists
+FetchContent_MakeAvailable(Catch2)
 
 option(SQLITE_ORM_OMITS_CODECVT "Omits codec testing" OFF)
 

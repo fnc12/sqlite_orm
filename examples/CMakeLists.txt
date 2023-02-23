@@ -1,4 +1,6 @@
-cmake_minimum_required (VERSION 3.2)
+cmake_minimum_required (VERSION 3.16)
+
+# note: find_package(SQLite3 CONFIG REQUIRED) already done in top-level CMakeLists
 
 file(GLOB files "*.cpp")
 foreach(file ${files})
