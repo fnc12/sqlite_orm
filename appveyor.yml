@@ -117,7 +117,7 @@ for:
     - |-
       mkdir compile
       cd compile
-      cmake %SQLITE_ORM_CXX_STANDARD% -G %generator% --toolchain C:\Tools\vcpkg\scripts\buildsystems\vcpkg.cmake ..
+      cmake %SQLITE_ORM_CXX_STANDARD% -G %generator% --toolchain C:/Tools/vcpkg/scripts/buildsystems/vcpkg.cmake ..
   # build examples, and run tests (ie make & make test)
   build_script:
     - |-
