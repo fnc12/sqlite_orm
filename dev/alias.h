@@ -130,7 +130,7 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         template<char A, char... X>
-        struct table_alias_builder {
+        struct recordset_alias_builder {
             template<class T>
             [[nodiscard]] consteval recordset_alias<T, A, X...> for_() const {
                 return {};
@@ -272,7 +272,7 @@ namespace sqlite_orm {
      *  constexpr auto z_alias = alias<'z'>.for_<User>();
      */
     template<char A, char... X>
-    inline constexpr internal::table_alias_builder<A, X...> alias{};
+    inline constexpr internal::recordset_alias_builder<A, X...> alias{};
 
     /** @short Create a table alias.
      *
@@ -281,7 +281,7 @@ namespace sqlite_orm {
      */
     template<internal::string_identifier_template t>
     [[nodiscard]] consteval auto operator"" _alias() {
-        return internal::to_alias<internal::table_alias_builder, t>(std::make_index_sequence<t.size()>{});
+        return internal::to_alias<internal::recordset_alias_builder, t>(std::make_index_sequence<t.size()>{});
     }
 
     /** @short Create a column alias.
