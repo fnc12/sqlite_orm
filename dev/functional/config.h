@@ -28,7 +28,8 @@
 #define SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #endif
 
-#if(defined(SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED) && defined(SQLITE_ORM_INLINE_VARIABLES_SUPPORTED)) &&        \
+#if(defined(SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED) && defined(SQLITE_ORM_INLINE_VARIABLES_SUPPORTED) &&         \
+    defined(SQLITE_ORM_CONSTEVAL_SUPPORTED)) &&                                                                        \
     (defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED))
 #define SQLITE_ORM_WITH_CPP20_ALIASES
 #endif

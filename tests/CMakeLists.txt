@@ -1,6 +1,7 @@
-cmake_minimum_required (VERSION 3.2)
+cmake_minimum_required (VERSION 3.16)
 
-find_package(Catch2 3 CONFIG REQUIRED)
+# note: find_package(SQLite3 REQUIRED) already done in top-level CMakeLists
+FetchContent_MakeAvailable(Catch2)
 
 option(SQLITE_ORM_OMITS_CODECVT "Omits codec testing" OFF)
 
@@ -168,6 +169,7 @@ target_precompile_headers(unit_tests PRIVATE
     <sqlite_orm/sqlite_orm.h>
     <catch2/catch_all.hpp>)
 
+# note: sqlite3 already linked in top-level CMakeLists
 target_link_libraries(unit_tests PRIVATE sqlite_orm Catch2::Catch2WithMain)
 
 add_test(NAME "All_in_one_unit_test"

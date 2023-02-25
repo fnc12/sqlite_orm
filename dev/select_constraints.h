@@ -596,9 +596,15 @@ namespace sqlite_orm {
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_recordset_alias auto als>
+    /**
+     *  Example:
+     *  constexpr auto m = "m"_alias.for_<Employee>();
+     *  auto reportingTo = 
+     *      storage.select(asterisk<m>(), inner_join<m>(on(m->*&Employee::reportsTo == c(&Employee::employeeId))));
+     */
+    template<orm_recordset_alias auto alias>
     auto asterisk(bool definedOrder = false) {
-        return internal::asterisk_t<std::remove_const_t<decltype(als)>>{definedOrder};
+        return internal::asterisk_t<std::remove_const_t<decltype(alias)>>{definedOrder};
     }
 #endif
 

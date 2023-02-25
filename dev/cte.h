@@ -14,11 +14,11 @@ namespace sqlite_orm {
         /** 
          *  A special table alias that is both, a storage lookup type (mapping type) and an alias.
          */
-        template<char C, char... X>
+        template<char A, char... X>
         struct cte_alias
-            : table_alias<cte_alias<C, X...> /* refer to self, since a label is both, an alias and a lookup type */,
-                          C,
-                          X...> {};
+            : recordset_alias<cte_alias<A, X...> /* refer to self, since a label is both, an alias and a lookup type */,
+                              A,
+                              X...> {};
     }
 
     /**

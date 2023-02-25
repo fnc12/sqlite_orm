@@ -10,7 +10,7 @@
 #include <array>
 #endif
 
-#include "functional/cxx_universal.h"
+#include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"
 #include "alias_traits.h"
@@ -44,12 +44,12 @@ namespace sqlite_orm {
 #endif
 
         /**
-         *  This is a common built-in class used for custom single character table aliases.
+         *  This is a common built-in class used for character based table aliases.
          *  For convenience there exist public type aliases `alias_a`, `alias_b`, ...
          *  The easiest way to create a table alias is using `"z"_alias.for_<Object>()`.
          */
         template<class T, char A, char... X>
-        struct table_alias : alias_tag {
+        struct recordset_alias : alias_tag {
             using type = T;
 
             static std::string get() {
@@ -141,21 +141,17 @@ namespace sqlite_orm {
         };
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        template<char A, char... C>
-        struct table_alias_builder {
-            static_assert(sizeof...(C) == 0 && ((A >= 'A' && 'Z' <= A) || (A >= 'a' && 'z' <= A)),
-                          "Table alias identifiers shall consist of a single alphabetic character, in order to evade "
-                          "clashes with CTE aliases.");
-
+        template<char A, char... X>
+        struct recordset_alias_builder {
             template<class T>
-            [[nodiscard]] consteval table_alias<T, A, C...> for_() const {
+            [[nodiscard]] consteval recordset_alias<T, A, X...> for_() const {
                 return {};
             }
 
             template<auto t>
             [[nodiscard]] consteval auto for_() const {
                 using T = std::remove_const_t<decltype(t)>;
-                return table_alias<T, A, C...>{};
+                return recordset_alias<T, A, X...>{};
             }
         };
 #endif
@@ -294,57 +290,57 @@ namespace sqlite_orm {
 #endif
 
     template<class T>
-    using alias_a = internal::table_alias<T, 'a'>;
+    using alias_a = internal::recordset_alias<T, 'a'>;
     template<class T>
-    using alias_b = internal::table_alias<T, 'b'>;
+    using alias_b = internal::recordset_alias<T, 'b'>;
     template<class T>
-    using alias_c = internal::table_alias<T, 'c'>;
+    using alias_c = internal::recordset_alias<T, 'c'>;
     template<class T>
-    using alias_d = internal::table_alias<T, 'd'>;
+    using alias_d = internal::recordset_alias<T, 'd'>;
     template<class T>
-    using alias_e = internal::table_alias<T, 'e'>;
+    using alias_e = internal::recordset_alias<T, 'e'>;
     template<class T>
-    using alias_f = internal::table_alias<T, 'f'>;
+    using alias_f = internal::recordset_alias<T, 'f'>;
     template<class T>
-    using alias_g = internal::table_alias<T, 'g'>;
+    using alias_g = internal::recordset_alias<T, 'g'>;
     template<class T>
-    using alias_h = internal::table_alias<T, 'h'>;
+    using alias_h = internal::recordset_alias<T, 'h'>;
     template<class T>
-    using alias_i = internal::table_alias<T, 'i'>;
+    using alias_i = internal::recordset_alias<T, 'i'>;
     template<class T>
-    using alias_j = internal::table_alias<T, 'j'>;
+    using alias_j = internal::recordset_alias<T, 'j'>;
     template<class T>
-    using alias_k = internal::table_alias<T, 'k'>;
+    using alias_k = internal::recordset_alias<T, 'k'>;
     template<class T>
-    using alias_l = internal::table_alias<T, 'l'>;
+    using alias_l = internal::recordset_alias<T, 'l'>;
     template<class T>
-    using alias_m = internal::table_alias<T, 'm'>;
+    using alias_m = internal::recordset_alias<T, 'm'>;
     template<class T>
-    using alias_n = internal::table_alias<T, 'n'>;
+    using alias_n = internal::recordset_alias<T, 'n'>;
     template<class T>
-    using alias_o = internal::table_alias<T, 'o'>;
+    using alias_o = internal::recordset_alias<T, 'o'>;
     template<class T>
-    using alias_p = internal::table_alias<T, 'p'>;
+    using alias_p = internal::recordset_alias<T, 'p'>;
     template<class T>
-    using alias_q = internal::table_alias<T, 'q'>;
+    using alias_q = internal::recordset_alias<T, 'q'>;
     template<class T>
-    using alias_r = internal::table_alias<T, 'r'>;
+    using alias_r = internal::recordset_alias<T, 'r'>;
     template<class T>
-    using alias_s = internal::table_alias<T, 's'>;
+    using alias_s = internal::recordset_alias<T, 's'>;
     template<class T>
-    using alias_t = internal::table_alias<T, 't'>;
+    using alias_t = internal::recordset_alias<T, 't'>;
     template<class T>
-    using alias_u = internal::table_alias<T, 'u'>;
+    using alias_u = internal::recordset_alias<T, 'u'>;
     template<class T>
-    using alias_v = internal::table_alias<T, 'v'>;
+    using alias_v = internal::recordset_alias<T, 'v'>;
     template<class T>
-    using alias_w = internal::table_alias<T, 'w'>;
+    using alias_w = internal::recordset_alias<T, 'w'>;
     template<class T>
-    using alias_x = internal::table_alias<T, 'x'>;
+    using alias_x = internal::recordset_alias<T, 'x'>;
     template<class T>
-    using alias_y = internal::table_alias<T, 'y'>;
+    using alias_y = internal::recordset_alias<T, 'y'>;
     template<class T>
-    using alias_z = internal::table_alias<T, 'z'>;
+    using alias_z = internal::recordset_alias<T, 'z'>;
 
     using colalias_a = internal::column_alias<'a'>;
     using colalias_b = internal::column_alias<'b'>;
@@ -357,10 +353,13 @@ namespace sqlite_orm {
     using colalias_i = internal::column_alias<'i'>;
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /** @short Create aliased tables e.g. `constexpr auto z_alias = alias_<'z'>.for_<User>()`.
+    /** @short Create a table alias.
+     *
+     *  Examples:
+     *  constexpr auto z_alias = alias<'z'>.for_<User>();
      */
-    template<char A>
-    inline constexpr internal::table_alias_builder<A> alias_{};
+    template<char A, char... X>
+    inline constexpr internal::recordset_alias_builder<A, X...> alias{};
 
     /** @short Create a table alias.
      *
@@ -369,7 +368,7 @@ namespace sqlite_orm {
      */
     template<internal::string_identifier_template t>
     [[nodiscard]] consteval auto operator"" _alias() {
-        return internal::to_alias<internal::table_alias_builder, t>(std::make_index_sequence<t.size()>{});
+        return internal::to_alias<internal::recordset_alias_builder, t>(std::make_index_sequence<t.size()>{});
     }
 
     /** @short Create a column alias.
