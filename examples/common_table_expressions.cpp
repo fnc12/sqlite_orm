@@ -563,8 +563,8 @@ void apfelmaennchen() {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     constexpr auto xaxis = "xaxis"_cte;
     constexpr auto yaxis = "yaxis"_cte;
-    constexpr auto m = "mi"_cte;
-    constexpr auto m2 = "maxi"_cte;
+    constexpr auto m = "m"_cte;
+    constexpr auto m2 = "m2"_cte;
     constexpr auto a = "string"_cte;
     constexpr auto x_col = "x"_col;
     constexpr auto y_col = "y"_col;
@@ -680,7 +680,7 @@ void sudoku() {
     constexpr auto input = "input"_cte;
     constexpr auto digits = "digits"_cte;
     constexpr auto z_alias = "z"_alias.for_<digits>();
-    constexpr auto x = "x_"_cte;
+    constexpr auto x = "x"_cte;
     constexpr auto sud = "sud"_col;
     constexpr auto z = "z"_col;
     constexpr auto lp = "lp"_col;

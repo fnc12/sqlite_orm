@@ -36,9 +36,6 @@ namespace sqlite_orm {
      */
     template<internal::string_identifier_template t>
     [[nodiscard]] consteval auto operator"" _cte() {
-        static_assert(t.size() != 1 || ((t.id[0] < 'A' || 'Z' < t.id[0]) && (t.id[0] < 'a' || 'z' < t.id[0])),
-                      "CTE alias identifiers consisting of a single alphabetic character should be avoided, in order "
-                      "to evade clashes with the built-in table aliases.");
         return internal::to_alias<internal::cte_alias, t>(std::make_index_sequence<t.size()>{});
     }
 #endif
