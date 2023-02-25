@@ -10640,22 +10640,6 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CTE
         /**
-         *  A subselect mapper's CTE moniker, void otherwise.
-         */
-        template<typename O>
-        using moniker_of_or_void_t = polyfill::detected_or_t<void, cte_moniker_type_t, O>;
-
-        /**
-         *  A subselect mapper's CTE moniker, otherwise T itself.
-         *
-         *  Note: This is useful if the cte object type `column_results` gets ever looked up,
-         *  and we want to ensure that the lookup happens by moniker instead.
-         */
-        template<typename T>
-        using cte_moniker_or_nested_t = polyfill::detected_or_t<T, cte_moniker_type_t, T>;
-#endif
-
-        /**
          *  `std::true_type` if given DBO type matches, `std::false_type` otherwise.
          *
          *  A 'DBO' type is one of: table_t<>, index_t<>
@@ -10665,6 +10649,7 @@ namespace sqlite_orm {
                                                        polyfill::disjunction<std::is_base_of<basic_table, T>,
                                                                              std::is_base_of<index_base, T>,
                                                                              std::is_base_of<base_trigger, T>>>;
+#endif
 
         /**
          *  `std::true_type` if given object is mapped, `std::false_type` otherwise.
@@ -10675,28 +10660,14 @@ namespace sqlite_orm {
         struct object_type_matches : polyfill::conjunction<polyfill::negation<std::is_void<object_type_t<DBO>>>,
                                                            std::is_same<Lookup, object_type_t<DBO>>> {};
 
-#ifdef SQLITE_ORM_WITH_CTE
         /**
-         *  `std::true_type` if given moniker is mapped, `std::false_typ`e otherwise
-         *
-         *  Note: unlike table_t<>, index_t<> doesn't have a type named index_t::cte_moniker_type,
-         *  that's why we use moniker_of_or_void_t<> for a fallback to void.
-         */
-        template<typename DBO, typename Moniker>
-        using cte_moniker_type_matches =
-            polyfill::conjunction<polyfill::negation<std::is_void<moniker_of_or_void_t<DBO>>>,
-                                  std::is_same<cte_moniker_or_nested_t<Moniker>, moniker_of_or_void_t<DBO>>>;
-#endif
-
-        /**
-         *  std::true_type if given lookup type (object or moniker) is mapped, std::false_type otherwise.
+         *  `std::true_type` if given lookup type (object or moniker) is mapped, `std::false_type` otherwise.
          */
         template<typename DBO, typename Lookup>
         using lookup_type_matches = typename polyfill::disjunction<object_type_matches<DBO, Lookup>
 #ifdef SQLITE_ORM_WITH_CTE
                                                                    ,
-                                                                   dbo_type_matches<DBO, Lookup>,
-                                                                   cte_moniker_type_matches<DBO, Lookup>
+                                                                   dbo_type_matches<DBO, Lookup>
 #endif
                                                                    >::type;
     }
