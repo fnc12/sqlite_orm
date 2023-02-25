@@ -7,9 +7,8 @@
 #include <vector>
 #endif
 
-#include "functional/cxx_universal.h"
+#include "functional/cxx_universal.h"  //  ::size_t
 #include "tuple_helper/tuple_fy.h"
-#include "is_base_of_template.h"
 #include "table_type_of.h"
 #include "column_result.h"
 #include "select_constraints.h"
@@ -79,13 +78,21 @@ namespace sqlite_orm {
         }
 
         /**
-         *  Concatenate newly created tables with those from an existing storage implementation,
-         *  forming a new storage implementation object.
+         *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
          */
-        template<typename... Ts, typename... CTETables>
-        db_objects_tuple<CTETables..., Ts...> db_objects_cat(const db_objects_tuple<Ts...>& storage,
-                                                             CTETables&&... cteTables) {
-            return {std::forward<CTETables>(cteTables)..., pick_table<Ts>(storage)...};
+        template<typename DBOs, size_t... Idx, typename... CTETables>
+        auto db_objects_cat(const DBOs& dbObjects, std::index_sequence<Idx...>, CTETables&&... cteTables) {
+            return std::tuple{std::forward<CTETables>(cteTables)..., get<Idx>(dbObjects)...};
+        }
+
+        /**
+         *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
+         */
+        template<typename DBOs, typename... CTETables>
+        auto db_objects_cat(const DBOs& dbObjects, CTETables&&... cteTables) {
+            return db_objects_cat(dbObjects,
+                                  std::make_index_sequence<std::tuple_size_v<DBOs>>{},
+                                  std::forward<CTETables>(cteTables)...);
         }
 
         /**
@@ -110,9 +117,7 @@ namespace sqlite_orm {
         /**
          *  Return left expression of compound statement.
          */
-        template<class Compound,
-                 class... Args,
-                 std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
+        template<class Compound, class... Args, std::enable_if_t<is_compound_operator_v<Compound>, bool> = true>
         decltype(auto) get_cte_driving_subselect(const select_t<Compound, Args...>& subSelect) {
             return subSelect.col.left;
         }
@@ -199,9 +204,8 @@ namespace sqlite_orm {
 
         template<class DBOs, class E, class... Args>
         void extract_colref_expressions(const DBOs& /*dbObjects*/, const select_t<E, Args...>& /*subSelect*/) = delete;
-        template<class DBOs,
-                 class Compound,
-                 std::enable_if_t<is_base_of_template_v<Compound, compound_operator>, bool> = true>
+
+        template<class DBOs, class Compound, std::enable_if_t<is_compound_operator_v<Compound>, bool> = true>
         void extract_colref_expressions(const DBOs& /*dbObjects*/, const Compound& /*subSelect*/) = delete;
 
         /*
@@ -301,7 +305,7 @@ namespace sqlite_orm {
 
             if constexpr(sizeof...(In) > 0) {
                 return make_recursive_cte_db_objects(
-                    // Because CTEs can depend on their predecessor we recursively pass in a new storage object
+                    // Because CTEs can depend on their predecessor we recursively pass in a new set of DBOs
                     db_objects_cat(dbObjects, std::move(tbl)),
                     cte,
                     std::index_sequence<In...>{});
@@ -320,7 +324,7 @@ namespace sqlite_orm {
 #endif
 
         /**
-         *  Return DBOs of storage_t.
+         *  Return passed in DBOs.
          */
         template<class DBOs, class E, satisfies<is_db_objects, DBOs> = true>
         decltype(auto) db_objects_for_expression(DBOs& dbObjects, const E&) {

@@ -37,19 +37,6 @@ namespace sqlite_orm {
         template<class... DBO>
         struct is_db_objects<const db_objects_tuple<DBO...>> : std::true_type {};
 
-#ifdef SQLITE_ORM_WITH_CTE
-        /**
-         *  `std::true_type` if given DBO type matches, `std::false_type` otherwise.
-         *
-         *  A 'DBO' type is one of: table_t<>, index_t<>
-         */
-        template<typename DBO, typename T>
-        using dbo_type_matches = polyfill::conjunction<std::is_same<T, DBO>,
-                                                       polyfill::disjunction<std::is_base_of<basic_table, T>,
-                                                                             std::is_base_of<index_base, T>,
-                                                                             std::is_base_of<base_trigger, T>>>;
-#endif
-
         /**
          *  `std::true_type` if given object is mapped, `std::false_type` otherwise.
          * 
@@ -63,12 +50,7 @@ namespace sqlite_orm {
          *  `std::true_type` if given lookup type (object or moniker) is mapped, `std::false_type` otherwise.
          */
         template<typename DBO, typename Lookup>
-        using lookup_type_matches = typename polyfill::disjunction<object_type_matches<DBO, Lookup>
-#ifdef SQLITE_ORM_WITH_CTE
-                                                                   ,
-                                                                   dbo_type_matches<DBO, Lookup>
-#endif
-                                                                   >::type;
+        using lookup_type_matches = object_type_matches<DBO, Lookup>;
     }
 
     // pick/lookup metafunctions
