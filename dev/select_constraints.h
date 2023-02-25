@@ -520,18 +520,14 @@ namespace sqlite_orm {
         return builder_type{{std::move(explicitColumns)...}};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
-    template<auto label,
-             class... ExplicitCols,
-             std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
-                                  internal::is_column_alias<ExplicitCols>,
-                                  std::is_member_pointer<ExplicitCols>,
-                                  internal::is_column<ExplicitCols>,
-                                  std::is_same<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>>,
-                                  std::is_convertible<ExplicitCols, std::string>>...>,
-                              bool> = true>
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_cte_alias auto label, class... ExplicitCols>
+        requires((internal::is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
+                  internal::is_column_v<ExplicitCols> ||
+                  std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
+                  std::convertible_to<ExplicitCols, std::string>) &&
+                 ...)
     auto cte(ExplicitCols... explicitColumns) {
-        static_assert(internal::is_cte_alias_v<decltype(label)>, "Label must be a CTE alias");
         static_assert((!internal::is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
 

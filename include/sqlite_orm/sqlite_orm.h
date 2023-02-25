@@ -7764,10 +7764,8 @@ namespace sqlite_orm {
                               bool> = true>
     auto cte(ExplicitCols... explicitColumns) {
         static_assert(internal::is_cte_alias_v<Label>, "Label must be a CTE alias");
-#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
         static_assert((!internal::is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
-#endif
 
         using builder_type = internal::cte_builder<
             Label,
@@ -7775,18 +7773,14 @@ namespace sqlite_orm {
         return builder_type{{std::move(explicitColumns)...}};
     }
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
-    template<auto label,
-             class... ExplicitCols,
-             std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
-                                  internal::is_column_alias<ExplicitCols>,
-                                  std::is_member_pointer<ExplicitCols>,
-                                  internal::is_column<ExplicitCols>,
-                                  std::is_same<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>>,
-                                  std::is_convertible<ExplicitCols, std::string>>...>,
-                              bool> = true>
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_cte_alias auto label, class... ExplicitCols>
+        requires((internal::is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
+                  internal::is_column_v<ExplicitCols> ||
+                  std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
+                  std::convertible_to<ExplicitCols, std::string>) &&
+                 ...)
     auto cte(ExplicitCols... explicitColumns) {
-        static_assert(internal::is_cte_alias_v<decltype(label)>, "Label must be a CTE alias");
         static_assert((!internal::is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
 
@@ -20491,7 +20485,7 @@ namespace sqlite_orm {
 
     namespace internal {
         /** 
-         *  A special table alias that is both, a storage lookup type (mapping type) and an alias.
+         *  A special record set alias that is both, a storage lookup type (mapping type) and an alias.
          */
         template<char A, char... X>
         struct cte_alias
@@ -20508,21 +20502,18 @@ namespace sqlite_orm {
     [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator"" _ctealias() {
         return internal::cte_alias<Chars...>{};
     }
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
      *  cte_alias<'1'[, ...]> from a string literal.
      *  E.g. "1"_cte, "2"_cte
      */
     template<internal::string_identifier_template t>
     [[nodiscard]] consteval auto operator"" _cte() {
-        static_assert(t.size() != 1 || ((t.id[0] < 'A' || 'Z' < t.id[0]) && (t.id[0] < 'a' || 'z' < t.id[0])),
-                      "CTE alias identifiers consisting of a single alphabetic character should be avoided, in order "
-                      "to evade clashes with the built-in table aliases.");
         return internal::to_alias<internal::cte_alias, t>(std::make_index_sequence<t.size()>{});
     }
 #endif
 
-#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     using cte_1 = decltype("1"_cte);
     using cte_2 = decltype("2"_cte);
     using cte_3 = decltype("3"_cte);
