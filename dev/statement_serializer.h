@@ -510,7 +510,7 @@ namespace sqlite_orm {
                 cteContext.use_parentheses = false;
 
                 std::stringstream ss;
-                ss << streaming_identifier(alias_extractor<cte_label_type_t<CTE>>::extract());
+                ss << streaming_identifier(alias_extractor<cte_moniker_type_t<CTE>>::extract());
                 {
                     std::vector<std::string> columnNames =
                         collect_cte_column_names(get_cte_driving_subselect(cte.subselect),

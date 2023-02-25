@@ -101,11 +101,14 @@ namespace sqlite_orm {
             static std::string as_alias() {
                 return alias_extractor::extract();
             }
-            // for cte aliases -> empty
+
+#ifdef SQLITE_ORM_WITH_CTE
+            // for cte monikers -> empty
             template<class T = A, satisfies<std::is_same, polyfill::detected_t<type_t, T>, A> = true>
             static std::string as_alias() {
                 return {};
             }
+#endif
         };
 
         /**
@@ -178,11 +181,12 @@ namespace sqlite_orm {
      *  @return column with table alias attached. Place it instead of a column statement in case you need to specify a
      *  column with table alias prefix like 'a.column'.
      */
-    template<class A,
-             class C,
-             std::enable_if_t<polyfill::conjunction_v<internal::is_table_alias<A>,
-                                                      polyfill::negation<internal::is_cte_alias<internal::type_t<A>>>>,
-                              bool> = true>
+    template<
+        class A,
+        class C,
+        std::enable_if_t<polyfill::conjunction_v<internal::is_table_alias<A>,
+                                                 polyfill::negation<internal::is_cte_moniker<internal::type_t<A>>>>,
+                         bool> = true>
     internal::alias_column_t<A, C> alias_column(C c) {
         using aliased_type = internal::type_t<A>;
         static_assert(std::is_same<polyfill::detected_t<internal::table_type_of_t, C>, aliased_type>::value,
@@ -192,7 +196,7 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<orm_table_alias auto als, class C>
-        requires(!orm_cte_alias<internal::auto_type_t<als>>)
+        requires(!orm_cte_moniker<internal::auto_type_t<als>>)
     auto alias_column(C c) {
         using A = std::remove_const_t<decltype(als)>;
         using aliased_type = internal::type_t<A>;
@@ -202,7 +206,7 @@ namespace sqlite_orm {
     }
 
     template<orm_table_alias A, class F>
-        requires(!orm_cte_alias<internal::type_t<A>>)
+        requires(!orm_cte_moniker<internal::type_t<A>>)
     constexpr auto operator->*(const A&, F field) {
         return internal::alias_column_t<A, decltype(field)>{field};
     }
@@ -212,16 +216,16 @@ namespace sqlite_orm {
     template<class A,
              class C,
              std::enable_if_t<
-                 polyfill::conjunction_v<internal::is_table_alias<A>, internal::is_cte_alias<internal::type_t<A>>>,
+                 polyfill::conjunction_v<internal::is_table_alias<A>, internal::is_cte_moniker<internal::type_t<A>>>,
                  bool> = true>
     auto alias_column(C c) {
-        using cte_alias_t = internal::type_t<A>;
+        using cte_moniker_t = internal::type_t<A>;
         if constexpr(polyfill::is_specialization_of_v<C, internal::column_pointer>) {
-            static_assert(std::is_same<internal::table_type_of_t<C>, cte_alias_t>::value,
+            static_assert(std::is_same<internal::table_type_of_t<C>, cte_moniker_t>::value,
                           "Column pointer must match aliased CTE");
             return internal::alias_column_t<A, C>{c};
         } else {
-            auto cp = column<cte_alias_t>(c);
+            auto cp = column<cte_moniker_t>(c);
             return internal::alias_column_t<A, decltype(cp)>{cp};
         }
     }
@@ -229,7 +233,7 @@ namespace sqlite_orm {
     template<class A,
              class F,
              std::enable_if_t<
-                 polyfill::conjunction_v<internal::is_table_alias<A>, internal::is_cte_alias<internal::type_t<A>>>,
+                 polyfill::conjunction_v<internal::is_table_alias<A>, internal::is_cte_moniker<internal::type_t<A>>>,
                  bool> = true>
     constexpr auto operator->*(const A& /*tableAlias*/, F field) {
         return alias_column<A>(std::move(field));
@@ -237,7 +241,7 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<orm_table_alias auto als, class C>
-        requires(orm_cte_alias<internal::auto_type_t<als>>)
+        requires(orm_cte_moniker<internal::auto_type_t<als>>)
     auto alias_column(C c) {
         using A = std::remove_const_t<decltype(als)>;
         return alias_column<A>(std::move(c));

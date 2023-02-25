@@ -25,40 +25,40 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CTE
         // F = field_type
-        template<typename Label,
+        template<typename Moniker,
                  typename ExplicitColRefs,
                  typename Expression,
                  typename SubselectColRefs,
                  typename FinalColRefs,
                  typename F>
         struct create_cte_mapper {
-            using type = subselect_mapper<Label, ExplicitColRefs, Expression, SubselectColRefs, FinalColRefs, F>;
+            using type = subselect_mapper<Moniker, ExplicitColRefs, Expression, SubselectColRefs, FinalColRefs, F>;
         };
 
         // std::tuple<Fs...>
-        template<typename Label,
+        template<typename Moniker,
                  typename ExplicitColRefs,
                  typename Expression,
                  typename SubselectColRefs,
                  typename FinalColRefs,
                  typename... Fs>
-        struct create_cte_mapper<Label,
+        struct create_cte_mapper<Moniker,
                                  ExplicitColRefs,
                                  Expression,
                                  SubselectColRefs,
                                  FinalColRefs,
                                  std::tuple<Fs...>> {
-            using type = subselect_mapper<Label, ExplicitColRefs, Expression, SubselectColRefs, FinalColRefs, Fs...>;
+            using type = subselect_mapper<Moniker, ExplicitColRefs, Expression, SubselectColRefs, FinalColRefs, Fs...>;
         };
 
-        template<typename Label,
+        template<typename Moniker,
                  typename ExplicitColRefs,
                  typename Expression,
                  typename SubselectColRefs,
                  typename FinalColRefs,
                  typename Result>
         using create_cte_mapper_t =
-            typename create_cte_mapper<Label, ExplicitColRefs, Expression, SubselectColRefs, FinalColRefs, Result>::
+            typename create_cte_mapper<Moniker, ExplicitColRefs, Expression, SubselectColRefs, FinalColRefs, Result>::
                 type;
 
         // aliased column expressions, explicit or implicitly numbered
@@ -165,9 +165,9 @@ namespace sqlite_orm {
         }
 
         // column_pointer<>
-        template<class DBOs, class Label, class F, size_t Idx = 0>
+        template<class DBOs, class Moniker, class F, size_t Idx = 0>
         auto extract_colref_expressions(const DBOs& dbObjects,
-                                        const column_pointer<Label, F>& col,
+                                        const column_pointer<Moniker, F>& col,
                                         std::index_sequence<Idx> s = {}) {
             return extract_colref_expressions(dbObjects, col.field, s);
         }
@@ -272,7 +272,7 @@ namespace sqlite_orm {
                           "Number of explicit columns of common table expression doesn't match the number of columns "
                           "in the subselect.");
 
-            std::string tableName = alias_extractor<cte_label_type_t<cte_type>>::extract();
+            std::string tableName = alias_extractor<cte_moniker_type_t<cte_type>>::extract();
             auto subselectColRefs = extract_colref_expressions(dbObjects, subSelect.col);
             const auto& finalColRefs =
                 determine_cte_colrefs(dbObjects, subselectColRefs, cte.explicitColumns, index_sequence{});
@@ -280,7 +280,7 @@ namespace sqlite_orm {
             serializer_context context{dbObjects};
             std::vector<std::string> columnNames = collect_cte_column_names(subSelect, cte.explicitColumns, context);
 
-            using mapper_type = create_cte_mapper_t<cte_label_type_t<cte_type>,
+            using mapper_type = create_cte_mapper_t<cte_moniker_type_t<cte_type>,
                                                     typename cte_type::explicit_colrefs_tuple,
                                                     column_expression_of_t<DBOs, subselect_type>,
                                                     decltype(subselectColRefs),

@@ -51,10 +51,10 @@ namespace sqlite_orm {
         template<class A>
         using is_table_alias = polyfill::bool_constant<is_table_alias_v<A>>;
 
-        /** @short Alias of a CTE, see `orm_cte_alias`.
+        /** @short Alias of a CTE, see `orm_cte_moniker`.
          */
         template<class A>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_cte_alias_v =
+        SQLITE_ORM_INLINE_VAR constexpr bool is_cte_moniker_v =
 #ifdef SQLITE_ORM_WITH_CTE
             polyfill::conjunction_v<is_recordset_alias<A>,
                                     std::is_same<polyfill::detected_t<type_t, A>, std::remove_const_t<A>>>;
@@ -63,7 +63,7 @@ namespace sqlite_orm {
 #endif
 
         template<class A>
-        using is_cte_alias = polyfill::bool_constant<is_cte_alias_v<A>>;
+        using is_cte_moniker = polyfill::bool_constant<is_cte_moniker_v<A>>;
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -97,13 +97,13 @@ namespace sqlite_orm {
     template<class A>
     concept orm_table_alias = (orm_recordset_alias<A> && !std::same_as<typename A::type, std::remove_const_t<A>>);
 
-    /** @short Alias of a CTE.
+    /** @short Moniker of a CTE.
      *
-     *  A CTE alias has the following traits:
+     *  A CTE moniker has the following traits:
      *  - is derived from `alias_tag`.
      *  - has a `type` typename, which refers to itself.
      */
     template<class A>
-    concept orm_cte_alias = (orm_recordset_alias<A> && std::same_as<typename A::type, std::remove_const_t<A>>);
+    concept orm_cte_moniker = (orm_recordset_alias<A> && std::same_as<typename A::type, std::remove_const_t<A>>);
 #endif
 }

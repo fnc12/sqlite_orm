@@ -222,11 +222,11 @@ namespace sqlite_orm {
         using decay_explicit_column_t = typename decay_explicit_column<T>::type;
 
         /**
-         *  Labeled (aliased) CTE expression.
+         *  Monikered (aliased) CTE expression.
          */
-        template<class Label, class Select, class ExplicitCols>
+        template<class Moniker, class Select, class ExplicitCols>
         struct common_table_expression {
-            using cte_label_type = Label;
+            using cte_moniker_type = Moniker;
             using expression_type = Select;
             using explicit_colrefs_tuple = ExplicitCols;
             static constexpr size_t explicit_colref_count = std::tuple_size_v<ExplicitCols>;
@@ -242,34 +242,35 @@ namespace sqlite_orm {
         template<class... CTEs>
         using common_table_expressions = std::tuple<CTEs...>;
 
-        template<typename Label, class ExplicitCols>
+        template<typename Moniker, class ExplicitCols>
         struct cte_builder {
             ExplicitCols explicitColumns;
 
             template<class T, class... Args>
-            common_table_expression<Label, select_t<T, Args...>, ExplicitCols> operator()(select_t<T, Args...> sel) && {
+            common_table_expression<Moniker, select_t<T, Args...>, ExplicitCols>
+            operator()(select_t<T, Args...> sel) && {
                 return {std::move(this->explicitColumns), std::move(sel)};
             }
 
             template<class Compound,
                      std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
-            common_table_expression<Label, select_t<Compound>, ExplicitCols> operator()(Compound sel) && {
+            common_table_expression<Moniker, select_t<Compound>, ExplicitCols> operator()(Compound sel) && {
                 return {std::move(this->explicitColumns), {std::move(sel)}};
             }
 
             template<class T, class... Args>
-            common_table_expression<Label, select_t<T, Args...>, ExplicitCols> as(select_t<T, Args...> sel) && {
+            common_table_expression<Moniker, select_t<T, Args...>, ExplicitCols> as(select_t<T, Args...> sel) && {
                 return {std::move(this->explicitColumns), std::move(sel)};
             }
 
             template<class Compound,
                      std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
-            common_table_expression<Label, select_t<Compound>, ExplicitCols> as(Compound sel) && {
+            common_table_expression<Moniker, select_t<Compound>, ExplicitCols> as(Compound sel) && {
                 return {std::move(this->explicitColumns), {std::move(sel)}};
             }
 
             template<class T, class... Args>
-            common_table_expression<Label, select_t<T, Args...>, ExplicitCols>
+            common_table_expression<Moniker, select_t<T, Args...>, ExplicitCols>
             materialized(select_t<T, Args...> sel) && {
                 static_assert(polyfill::always_false_v<T>, "`WITH ... AS MATERIALIZED` is unimplemented");
                 return {std::move(this->explicitColumns), std::move(sel)};
@@ -277,13 +278,13 @@ namespace sqlite_orm {
 
             template<class Compound,
                      std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
-            common_table_expression<Label, select_t<Compound>, ExplicitCols> materialized(Compound sel) && {
+            common_table_expression<Moniker, select_t<Compound>, ExplicitCols> materialized(Compound sel) && {
                 static_assert(polyfill::always_false_v<Compound>, "`WITH ... AS MATERIALIZED` is unimplemented");
                 return {std::move(this->explicitColumns), {std::move(sel)}};
             }
 
             template<class T, class... Args>
-            common_table_expression<Label, select_t<T, Args...>, ExplicitCols>
+            common_table_expression<Moniker, select_t<T, Args...>, ExplicitCols>
             not_materialized(select_t<T, Args...> sel) && {
                 static_assert(polyfill::always_false_v<T>, "`WITH ... AS NOT MATERIALIZED` is unimplemented");
                 return {std::move(this->explicitColumns), std::move(sel)};
@@ -291,7 +292,7 @@ namespace sqlite_orm {
 
             template<class Compound,
                      std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
-            common_table_expression<Label, select_t<Compound>, ExplicitCols> not_materialized(Compound sel) && {
+            common_table_expression<Moniker, select_t<Compound>, ExplicitCols> not_materialized(Compound sel) && {
                 static_assert(polyfill::always_false_v<Compound>, "`WITH ... AS NOT MATERIALIZED` is unimplemented");
                 return {std::move(this->explicitColumns), {std::move(sel)}};
             }
@@ -500,7 +501,7 @@ namespace sqlite_orm {
      *  2. explicit columns
      *  3. fill in empty column names with column index
      */
-    template<class Label,
+    template<class Moniker,
              class... ExplicitCols,
              std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
                                   internal::is_column_alias<ExplicitCols>,
@@ -510,18 +511,18 @@ namespace sqlite_orm {
                                   std::is_convertible<ExplicitCols, std::string>>...>,
                               bool> = true>
     auto cte(ExplicitCols... explicitColumns) {
-        static_assert(internal::is_cte_alias_v<Label>, "Label must be a CTE alias");
+        static_assert(internal::is_cte_moniker_v<Moniker>, "Moniker must be a CTE moniker");
         static_assert((!internal::is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
 
         using builder_type = internal::cte_builder<
-            Label,
+            Moniker,
             internal::transform_tuple_t<std::tuple<ExplicitCols...>, internal::decay_explicit_column_t>>;
         return builder_type{{std::move(explicitColumns)...}};
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_cte_alias auto label, class... ExplicitCols>
+    template<orm_cte_moniker auto moniker, class... ExplicitCols>
         requires((internal::is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
                   internal::is_column_v<ExplicitCols> ||
                   std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
@@ -532,25 +533,25 @@ namespace sqlite_orm {
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
 
         using builder_type = internal::cte_builder<
-            decltype(label),
+            decltype(moniker),
             internal::transform_tuple_t<std::tuple<ExplicitCols...>, internal::decay_explicit_column_t>>;
         return builder_type{{std::move(explicitColumns)...}};
     }
 #endif
 
     // tuple of CTEs
-    template<class E, class... Labels, class... Selects, class... ExplicitCols>
-    internal::with_t<E, internal::common_table_expression<Labels, Selects, ExplicitCols>...>
-    with(std::tuple<internal::common_table_expression<Labels, Selects, ExplicitCols>...> cte, E expression) {
+    template<class E, class... Monikers, class... Selects, class... ExplicitCols>
+    internal::with_t<E, internal::common_table_expression<Monikers, Selects, ExplicitCols>...>
+    with(std::tuple<internal::common_table_expression<Monikers, Selects, ExplicitCols>...> cte, E expression) {
         return {std::move(cte), std::move(expression)};
     }
 
     /** A single CTE.
      *  Example : with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(0_col)));
      */
-    template<class E, class Label, class Select, class ExplicitCols>
-    internal::with_t<E, internal::common_table_expression<Label, Select, ExplicitCols>>
-    with(internal::common_table_expression<Label, Select, ExplicitCols> cte, E expression) {
+    template<class E, class Moniker, class Select, class ExplicitCols>
+    internal::with_t<E, internal::common_table_expression<Moniker, Select, ExplicitCols>>
+    with(internal::common_table_expression<Moniker, Select, ExplicitCols> cte, E expression) {
         return {std::make_tuple(std::move(cte)), std::move(expression)};
     }
 #endif

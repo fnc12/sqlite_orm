@@ -82,7 +82,7 @@ namespace sqlite_orm {
 
         template<class A>
         struct column_pointer_builder<A, match_if<is_alias, A>> {
-            static_assert(is_cte_alias_v<A>, "`A' must be a mapped table alias");
+            static_assert(is_cte_moniker_v<A>, "`A' must be a mapped table alias");
 
             using mapped_type = A;
 
@@ -143,7 +143,7 @@ namespace sqlite_orm {
      *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>->*&Object::id));
      *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>->*1_colalias));
      */
-    template<class A, class F, internal::satisfies<internal::is_cte_alias, A> = true>
+    template<class A, class F, internal::satisfies<internal::is_cte_moniker, A> = true>
     constexpr auto operator->*(const A& /*cteAlias*/, F field) {
         return column<A>(std::move(field));
     }
@@ -156,7 +156,7 @@ namespace sqlite_orm {
      *  storage.with(cte<cte_1>()(select(&Object::id)), select(1_ctealias->*&Object::id));
      *  storage.with(cte<cte_1>()(select(&Object::id)), select(1_ctealias->*1_colalias));
      */
-    template<class A, class F, internal::satisfies<internal::is_cte_alias, A> = true>
+    template<class A, class F, internal::satisfies<internal::is_cte_moniker, A> = true>
     constexpr auto operator->*(const internal::column_pointer_builder<A>&, F field) {
         return column<A>(std::move(field));
     }

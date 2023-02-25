@@ -70,10 +70,7 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CTE
         template<typename T>
-        using cte_label_type_t = typename T::cte_label_type;
-
-        template<typename T>
-        using cte_object_type_t = typename T::cte_object_type;
+        using cte_moniker_type_t = typename T::cte_moniker_type;
 
         template<typename T>
         using cte_mapper_type_t = typename T::cte_mapper_type;

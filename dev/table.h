@@ -28,17 +28,17 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CTE
         /**
-         *  A data type's label type, void otherwise.
+         *  A subselect mapper's CTE moniker, void otherwise.
          */
         template<typename O>
-        using label_of_or_void_t = polyfill::detected_or_t<void, cte_label_type_t, O>;
+        using moniker_of_or_void_t = polyfill::detected_or_t<void, cte_moniker_type_t, O>;
 
         /** 
-         *  If O is a subselect_mapper then returns its nested O::cte_object_type typename,
+         *  If O is a subselect_mapper then returns its nested type name O::cte_moniker_type,
          *  otherwise O itself is a regular object type to be mapped.
          */
         template<typename O>
-        using mapped_object_type_for_t = polyfill::detected_or_t<O, cte_label_type_t, O>;
+        using mapped_object_type_for_t = polyfill::detected_or_t<O, cte_moniker_type_t, O>;
 #endif
 
         struct basic_table {
@@ -58,7 +58,7 @@ namespace sqlite_orm {
             // this typename is used in contexts where it is known that the 'table' holds a subselect_mapper
             // instead of a regular object type
             using cte_mapper_type = O;
-            using cte_label_type = label_of_or_void_t<O>;
+            using cte_moniker_type = moniker_of_or_void_t<O>;
             using object_type = mapped_object_type_for_t<O>;
 #else
             using object_type = O;

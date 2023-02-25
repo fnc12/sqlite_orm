@@ -57,7 +57,7 @@ namespace sqlite_orm {
         /**
          *  Materialize column pointer:
          *  1. by explicit object type and member pointer.
-         *  2. by label type and member pointer.
+         *  2. by moniker and member pointer.
          */
         template<class O, class F, class DBOs, satisfies<is_db_objects, DBOs> = true>
         constexpr decltype(auto) materialize_column_pointer(const DBOs&, const column_pointer<O, F>& cp) {
@@ -67,14 +67,14 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CTE
         /**
          *  Materialize column pointer:
-         *  3. by label type and alias_holder<>.
+         *  3. by moniker and alias_holder<>.
          *  
          *  internal note: there's an overload for `find_column_name()` that avoids going through `table_t<>::find_column_name()`
          */
-        template<class Label, class ColAlias, class DBOs, satisfies<is_db_objects, DBOs> = true>
+        template<class Moniker, class ColAlias, class DBOs, satisfies<is_db_objects, DBOs> = true>
         constexpr decltype(auto) materialize_column_pointer(const DBOs&,
-                                                            const column_pointer<Label, alias_holder<ColAlias>>&) {
-            using table_type = storage_pick_table_t<Label, DBOs>;
+                                                            const column_pointer<Moniker, alias_holder<ColAlias>>&) {
+            using table_type = storage_pick_table_t<Moniker, DBOs>;
             using cte_mapper_type = cte_mapper_type_t<table_type>;
 
             // filter all column references [`alias_holder<>`]
@@ -92,7 +92,7 @@ namespace sqlite_orm {
         /**
          *  Find column name by:
          *  1. by explicit object type and member pointer.
-         *  2. by label type and member pointer.
+         *  2. by moniker and member pointer.
          */
         template<class O, class F, class DBOs, satisfies<is_db_objects, DBOs> = true>
         const std::string* find_column_name(const DBOs& dbObjects, const column_pointer<O, F>& cp) {
@@ -103,12 +103,12 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CTE
         /**
          *  Find column name by:
-         *  3. by label type and alias_holder<>.
+         *  3. by moniker and alias_holder<>.
          */
-        template<class Label, class ColAlias, class DBOs, satisfies<is_db_objects, DBOs> = true>
+        template<class Moniker, class ColAlias, class DBOs, satisfies<is_db_objects, DBOs> = true>
         constexpr decltype(auto) find_column_name(const DBOs& dboObjects,
-                                                  const column_pointer<Label, alias_holder<ColAlias>>&) {
-            using table_type = storage_pick_table_t<Label, DBOs>;
+                                                  const column_pointer<Moniker, alias_holder<ColAlias>>&) {
+            using table_type = storage_pick_table_t<Moniker, DBOs>;
             using cte_mapper_type = cte_mapper_type_t<table_type>;
             using elements_t = typename table_type::elements_type;
             using column_idxs = filter_tuple_sequence_t<elements_t, is_column>;
@@ -126,7 +126,7 @@ namespace sqlite_orm {
             //       however we have the column index already.
             // lookup column in table_t<>'s elements
             constexpr size_t ColIdx = index_sequence_value(I, column_idxs{});
-            auto& table = pick_table<Label>(dboObjects);
+            auto& table = pick_table<Moniker>(dboObjects);
             return &std::get<ColIdx>(table.elements).name;
         }
 #endif

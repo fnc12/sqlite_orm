@@ -4,7 +4,7 @@
 #include <tuple>
 #include <utility>  //  std::index_sequence, std::make_index_sequence
 
-#include "functional/cxx_universal.h"
+#include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"
 
@@ -39,25 +39,25 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CTE
         /**
-         *  A data type's label type, void otherwise.
+         *  A subselect mapper's CTE moniker, void otherwise.
          */
         template<typename O>
-        using label_of_or_void_t = polyfill::detected_or_t<void, cte_label_type_t, O>;
+        using moniker_of_or_void_t = polyfill::detected_or_t<void, cte_moniker_type_t, O>;
 
         /**
-         *  A data type's CTE label, otherwise T itself is used as a CTE label.
+         *  A subselect mapper's CTE moniker, otherwise T itself.
          *
-         *  Note: This is useful if the cte object type `column_reuslts` gets ever looked up,
-         *  and we want to ensure that the lookup happens by label instead.
+         *  Note: This is useful if the cte object type `column_results` gets ever looked up,
+         *  and we want to ensure that the lookup happens by moniker instead.
          */
         template<typename T>
-        using cte_label_or_nested_t = polyfill::detected_or_t<T, cte_label_type_t, T>;
+        using cte_moniker_or_nested_t = polyfill::detected_or_t<T, cte_moniker_type_t, T>;
 #endif
 
         /**
-         *  std::true_type if given 'table' type matches, std::false_type otherwise.
+         *  `std::true_type` if given DBO type matches, `std::false_type` otherwise.
          *
-         *  A 'table' type is one of: table_t<>, index_t<> [, subselect_mapper<>]
+         *  A 'DBO' type is one of: table_t<>, index_t<>
          */
         template<typename DBO, typename T>
         using dbo_type_matches = polyfill::conjunction<std::is_same<T, DBO>,
@@ -66,7 +66,7 @@ namespace sqlite_orm {
                                                                              std::is_base_of<base_trigger, T>>>;
 
         /**
-         *  std::true_type if given object is mapped, std::false_type otherwise.
+         *  `std::true_type` if given object is mapped, `std::false_type` otherwise.
          * 
          *  Note: unlike table_t<>, index_t<>::object_type and trigger_t<>::object_type is always void.
          */
@@ -76,26 +76,26 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CTE
         /**
-         *  std::true_type if given label is mapped, std::false_type otherwise
+         *  `std::true_type` if given moniker is mapped, `std::false_typ`e otherwise
          *
-         *  Note: unlike table_t<>, index_t<> doesn't have a nested index_t::cte_label_type typename,
-         *  that's why we use storage_label_of_t<> for a fallback to void.
+         *  Note: unlike table_t<>, index_t<> doesn't have a type named index_t::cte_moniker_type,
+         *  that's why we use moniker_of_or_void_t<> for a fallback to void.
          */
-        template<typename DBO, typename Label>
-        using cte_label_type_matches =
-            polyfill::conjunction<polyfill::negation<std::is_void<label_of_or_void_t<DBO>>>,
-                                  std::is_same<cte_label_or_nested_t<Label>, label_of_or_void_t<DBO>>>;
+        template<typename DBO, typename Moniker>
+        using cte_moniker_type_matches =
+            polyfill::conjunction<polyfill::negation<std::is_void<moniker_of_or_void_t<DBO>>>,
+                                  std::is_same<cte_moniker_or_nested_t<Moniker>, moniker_of_or_void_t<DBO>>>;
 #endif
 
         /**
-         *  std::true_type if given lookup type (object or label) is mapped, std::false_type otherwise.
+         *  std::true_type if given lookup type (object or moniker) is mapped, std::false_type otherwise.
          */
         template<typename DBO, typename Lookup>
         using lookup_type_matches = typename polyfill::disjunction<object_type_matches<DBO, Lookup>
 #ifdef SQLITE_ORM_WITH_CTE
                                                                    ,
                                                                    dbo_type_matches<DBO, Lookup>,
-                                                                   cte_label_type_matches<DBO, Lookup>
+                                                                   cte_moniker_type_matches<DBO, Lookup>
 #endif
                                                                    >::type;
     }
@@ -142,7 +142,7 @@ namespace sqlite_orm {
          *  Lookup - mapped data type
          */
         template<class Lookup, class DBOs>
-        struct storage_find_table : polyfill::detected_or<polyfill::nonesuch, storage_pick_table_t, Lookup, DBOs> {};
+        struct storage_find_table : polyfill::detected<storage_pick_table_t, Lookup, DBOs> {};
 
         /**
          *  Find a table definition (`table_t`) from a tuple of database objects;

@@ -30,7 +30,7 @@ namespace sqlite_orm {
          *  This class captures various properties and aspects of a subselect's column expression,
          *  and is used as a proxy in table_t<>.
          */
-        template<typename Label,
+        template<typename Moniker,
                  typename ExplicitColRefs,
                  typename Expression,
                  typename SubselectColRefs,
@@ -40,8 +40,8 @@ namespace sqlite_orm {
           public:
             subselect_mapper() = delete;
 
-            // this type name is used to detect the mapping from label to object
-            using cte_label_type = Label;
+            // this type name is used to detect the mapping from moniker to object
+            using cte_moniker_type = Moniker;
             using fields_type = std::tuple<Fs...>;
             // this type captures the expressions forming the columns in a subselect;
             // it is currently unused, however proves to be useful in compilation errors,
