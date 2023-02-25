@@ -511,10 +511,8 @@ namespace sqlite_orm {
                               bool> = true>
     auto cte(ExplicitCols... explicitColumns) {
         static_assert(internal::is_cte_alias_v<Label>, "Label must be a CTE alias");
-#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
         static_assert((!internal::is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
-#endif
 
         using builder_type = internal::cte_builder<
             Label,
