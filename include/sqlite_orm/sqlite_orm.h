@@ -7506,8 +7506,7 @@ namespace sqlite_orm {
                 return {std::move(this->explicitColumns), std::move(sel)};
             }
 
-            template<class Compound,
-                     std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
+            template<class Compound, std::enable_if_t<is_compound_operator_v<Compound>, bool> = true>
             common_table_expression<Moniker, select_t<Compound>, ExplicitCols> operator()(Compound sel) && {
                 return {std::move(this->explicitColumns), {std::move(sel)}};
             }
@@ -7517,8 +7516,7 @@ namespace sqlite_orm {
                 return {std::move(this->explicitColumns), std::move(sel)};
             }
 
-            template<class Compound,
-                     std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
+            template<class Compound, std::enable_if_t<is_compound_operator_v<Compound>, bool> = true>
             common_table_expression<Moniker, select_t<Compound>, ExplicitCols> as(Compound sel) && {
                 return {std::move(this->explicitColumns), {std::move(sel)}};
             }
@@ -7530,8 +7528,7 @@ namespace sqlite_orm {
                 return {std::move(this->explicitColumns), std::move(sel)};
             }
 
-            template<class Compound,
-                     std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
+            template<class Compound, std::enable_if_t<is_compound_operator_v<Compound>, bool> = true>
             common_table_expression<Moniker, select_t<Compound>, ExplicitCols> materialized(Compound sel) && {
                 static_assert(polyfill::always_false_v<Compound>, "`WITH ... AS MATERIALIZED` is unimplemented");
                 return {std::move(this->explicitColumns), {std::move(sel)}};
@@ -7544,8 +7541,7 @@ namespace sqlite_orm {
                 return {std::move(this->explicitColumns), std::move(sel)};
             }
 
-            template<class Compound,
-                     std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
+            template<class Compound, std::enable_if_t<is_compound_operator_v<Compound>, bool> = true>
             common_table_expression<Moniker, select_t<Compound>, ExplicitCols> not_materialized(Compound sel) && {
                 static_assert(polyfill::always_false_v<Compound>, "`WITH ... AS NOT MATERIALIZED` is unimplemented");
                 return {std::move(this->explicitColumns), {std::move(sel)}};
@@ -16133,8 +16129,6 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
-// #include "is_base_of_template.h"
-
 // #include "type_traits.h"
 
 // #include "member_traits/member_traits.h"
@@ -16181,7 +16175,7 @@ namespace sqlite_orm {
             using expression_type = T;
 
             // Compound statements are never passed in by db_objects_for_expression()
-            static_assert(!is_base_of_template_v<T, compound_operator>);
+            static_assert(!is_compound_operator_v<T>);
 
             template<class Ctx>
             std::vector<std::string> operator()(const expression_type& t, const Ctx& context) const {

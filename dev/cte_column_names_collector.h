@@ -9,7 +9,6 @@
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
-#include "is_base_of_template.h"
 #include "type_traits.h"
 #include "member_traits/member_traits.h"
 #include "error_code.h"
@@ -51,7 +50,7 @@ namespace sqlite_orm {
             using expression_type = T;
 
             // Compound statements are never passed in by db_objects_for_expression()
-            static_assert(!is_base_of_template_v<T, compound_operator>);
+            static_assert(!is_compound_operator_v<T>);
 
             template<class Ctx>
             std::vector<std::string> operator()(const expression_type& t, const Ctx& context) const {
