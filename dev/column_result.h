@@ -24,7 +24,7 @@ namespace sqlite_orm {
     namespace internal {
 
         /**
-         *  Obains the result type of expressions that form the columns of a select statement.
+         *  Obtains the result type of expressions that form the columns of a select statement.
          *  
          *  This is a proxy class used to define what type must have result type depending on select
          *  arguments (member pointer, aggregate functions, etc). Below you can see specializations
@@ -34,8 +34,6 @@ namespace sqlite_orm {
          *  DBOs - db_objects_tuple type
          *  T - C++ type
          *  SFINAE - sfinae argument
-         * 
-         *  Note (implementation): could be possibly implemented by utilizing column_expression_of_t
          */
         template<class DBOs, class T, class SFINAE = void>
         struct column_result_t;
