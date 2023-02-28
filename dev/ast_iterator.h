@@ -4,7 +4,9 @@
 #include <functional>  //  std::reference_wrapper
 
 #include "tuple_helper/tuple_iteration.h"
+#include "type_traits.h"
 #include "conditions.h"
+#include "alias.h"
 #include "select_constraints.h"
 #include "operators.h"
 #include "core_functions.h"
@@ -124,7 +126,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<T, std::enable_if_t<is_base_of_template_v<T, binary_condition>>> {
+        struct ast_iterator<T, match_if<is_binary_condition, T>> {
             using node_type = T;
 
             template<class L>
@@ -200,7 +202,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<T, std::enable_if_t<is_base_of_template_v<T, compound_operator>>> {
+        struct ast_iterator<T, match_if<is_compound_operator, T>> {
             using node_type = T;
 
             template<class L>
@@ -673,13 +675,13 @@ namespace sqlite_orm {
         };
 
         /**
-         *  Column alias or literal
+         *  Column alias or literal: skipped
          */
         template<class T>
-        struct ast_iterator<
-            T,
-            std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<T, alias_holder>,
-                                                     polyfill::is_specialization_of<T, literal_holder>>>> {
+        struct ast_iterator<T,
+                            std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<T, alias_holder>,
+                                                                     polyfill::is_specialization_of<T, literal_holder>,
+                                                                     is_column_alias<T>>>> {
             using node_type = T;
 
             template<class L>

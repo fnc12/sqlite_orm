@@ -3,6 +3,9 @@
 #include <type_traits>  //  std::is_same
 
 using namespace sqlite_orm;
+using internal::alias_holder;
+using internal::column_alias;
+using internal::column_pointer;
 
 template<class T>
 struct is_pair : std::false_type {};
@@ -837,7 +840,7 @@ TEST_CASE("Node tuple") {
             auto j = join<User>(using_(&User::id));
             using Join = decltype(j);
             using Tuple = node_tuple_t<Join>;
-            using Expected = tuple<internal::column_pointer<User, decltype(&User::id)>>;
+            using Expected = tuple<column_pointer<User, decltype(&User::id)>>;
             static_assert(is_same<Tuple, Expected>::value, "join using");
         }
         SECTION("join using explicit column") {
@@ -845,7 +848,7 @@ TEST_CASE("Node tuple") {
             auto j = join<User>(using_(column<Derived>(&User::id)));
             using Join = decltype(j);
             using Tuple = node_tuple_t<Join>;
-            using Expected = tuple<internal::column_pointer<Derived, decltype(&User::id)>>;
+            using Expected = tuple<column_pointer<Derived, decltype(&User::id)>>;
             static_assert(is_same<Tuple, Expected>::value, "join using explicit column");
         }
         SECTION("left_outer_join") {

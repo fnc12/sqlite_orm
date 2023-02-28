@@ -1,19 +1,21 @@
 #pragma once
 
 #include <string>  //  std::string
-#include <type_traits>  //  std::enable_if, std::is_same
+#include <type_traits>  //  std::enable_if, std::is_same, std::remove_const
 #include <vector>  //  std::vector
-#include <tuple>  //  std::tuple, std::tuple_size
+#include <tuple>  //  std::tuple
 #include <sstream>  //  std::stringstream
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
+#include "is_base_of_template.h"
 #include "type_traits.h"
 #include "collate_argument.h"
 #include "constraints.h"
 #include "optional_container.h"
 #include "serializer_context.h"
 #include "tags.h"
+#include "alias_traits.h"
 #include "expression.h"
 #include "type_printer.h"
 #include "literal.h"
@@ -129,6 +131,12 @@ namespace sqlite_orm {
 
             binary_condition(left_type l_, right_type r_) : l(std::move(l_)), r(std::move(r_)) {}
         };
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_binary_condition_v = is_base_of_template_v<T, binary_condition>;
+
+        template<class T>
+        using is_binary_condition = polyfill::bool_constant<is_binary_condition_v<T>>;
 
         struct and_condition_string {
             operator std::string() const {
@@ -812,11 +820,23 @@ namespace sqlite_orm {
      *  Explicit FROM function. Usage:
      *  `storage.select(&User::id, from<User>());`
      */
-    template<class... Args>
-    internal::from_t<Args...> from() {
-        static_assert(std::tuple_size<std::tuple<Args...>>::value > 0, "");
+    template<class... Tables>
+    internal::from_t<Tables...> from() {
+        static_assert(sizeof...(Tables) > 0, "");
         return {};
     }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Explicit FROM function. Usage:
+     *  `storage.select(&User::id, from<"a"_alias.for_<User>>());`
+     */
+    template<orm_recordset_alias auto... tables>
+    auto from() {
+        static_assert(sizeof...(tables) > 0);
+        return internal::from_t<std::remove_const_t<decltype(tables)>...>{};
+    }
+#endif
 
     template<class T, internal::satisfies<std::is_base_of, internal::negatable_t, T> = true>
     internal::negated_condition_t<T> operator!(T arg) {
@@ -1015,20 +1035,48 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_recordset_alias auto alias, class On>
+    auto left_join(On on) {
+        return internal::left_join_t<std::remove_const_t<decltype(alias)>, On>{std::move(on)};
+    }
+#endif
+
     template<class T, class O>
     internal::join_t<T, O> join(O o) {
         return {std::move(o)};
     }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_recordset_alias auto alias, class On>
+    auto join(On on) {
+        return internal::join_t<std::remove_const_t<decltype(alias)>, On>{std::move(on)};
+    }
+#endif
 
     template<class T, class O>
     internal::left_outer_join_t<T, O> left_outer_join(O o) {
         return {std::move(o)};
     }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_recordset_alias auto alias, class On>
+    auto left_outer_join(On on) {
+        return internal::left_outer_join_t<std::remove_const_t<decltype(alias)>, On>{std::move(on)};
+    }
+#endif
+
     template<class T, class O>
     internal::inner_join_t<T, O> inner_join(O o) {
         return {std::move(o)};
     }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_recordset_alias auto alias, class On>
+    auto inner_join(On on) {
+        return internal::inner_join_t<std::remove_const_t<decltype(alias)>, On>{std::move(on)};
+    }
+#endif
 
     template<class T>
     internal::offset_t<T> offset(T off) {
