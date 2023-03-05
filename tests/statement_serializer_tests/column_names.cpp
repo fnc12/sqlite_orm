@@ -138,6 +138,25 @@ TEST_CASE("statement_serializer column names") {
             }
         }
     }
+    SECTION("aliased column") {
+        struct Object {
+            int id = 0;
+        };
+        struct Object2 {
+            int id = 0;
+        };
+        auto table = make_table("object", make_column("id", &Object::id));
+        using db_objects_t = internal::db_objects_tuple<decltype(table)>;
+        db_objects_t dbObjects{table};
+        SECTION("regular") {
+            using context_t = internal::serializer_context<db_objects_t>;
+            context_t context{dbObjects};
+            context.skip_table_name = false;
+            using als = alias_a<Object>;
+            auto value = serialize(alias_column<als>(&Object::id), context);
+            REQUIRE(value == R"("a"."id")");
+        }
+    }
     SECTION("escaped identifiers") {
         struct Object1 {
             int id = 0;

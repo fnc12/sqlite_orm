@@ -10,12 +10,12 @@
 #include "tuple_helper/tuple_filter.h"
 #include "type_traits.h"
 #include "member_traits/member_traits.h"
+#include "mapped_type_proxy.h"
 #include "core_functions.h"
 #include "select_constraints.h"
 #include "operators.h"
 #include "rowid.h"
 #include "alias.h"
-#include "column.h"
 #include "storage_traits.h"
 #include "function.h"
 
@@ -24,6 +24,8 @@ namespace sqlite_orm {
     namespace internal {
 
         /**
+         *  Obtains the result type of expressions that form the columns of a select statement.
+         *  
          *  This is a proxy class used to define what type must have result type depending on select
          *  arguments (member pointer, aggregate functions, etc). Below you can see specializations
          *  for different types. E.g. specialization for internal::length_t has `type` int cause
@@ -210,7 +212,7 @@ namespace sqlite_orm {
         struct column_result_t<DBOs, select_t<T, Args...>> : column_result_t<DBOs, T> {};
 
         template<class DBOs, class T>
-        struct column_result_t<DBOs, T, std::enable_if_t<is_base_of_template_v<T, compound_operator>>> {
+        struct column_result_t<DBOs, T, match_if<is_compound_operator, T>> {
             using left_result = column_result_of_t<DBOs, typename T::left_type>;
             using right_result = column_result_of_t<DBOs, typename T::right_type>;
             static_assert(std::is_same<left_result, right_result>::value,
@@ -219,7 +221,7 @@ namespace sqlite_orm {
         };
 
         template<class DBOs, class T>
-        struct column_result_t<DBOs, T, std::enable_if_t<is_base_of_template_v<T, binary_condition>>> {
+        struct column_result_t<DBOs, T, match_if<is_binary_condition, T>> {
             using type = typename T::result_type;
         };
 
@@ -248,12 +250,8 @@ namespace sqlite_orm {
         struct column_result_t<DBOs, as_t<T, E>, void> : column_result_t<DBOs, std::decay_t<E>> {};
 
         template<class DBOs, class T>
-        struct column_result_t<DBOs, asterisk_t<T>, match_if_not<std::is_base_of, alias_tag, T>>
-            : storage_traits::storage_mapped_columns<DBOs, T> {};
-
-        template<class DBOs, class A>
-        struct column_result_t<DBOs, asterisk_t<A>, match_if<std::is_base_of, alias_tag, A>>
-            : storage_traits::storage_mapped_columns<DBOs, type_t<A>> {};
+        struct column_result_t<DBOs, asterisk_t<T>, void>
+            : storage_traits::storage_mapped_columns<DBOs, mapped_type_proxy_t<T>> {};
 
         template<class DBOs, class T>
         struct column_result_t<DBOs, object_t<T>, void> {
