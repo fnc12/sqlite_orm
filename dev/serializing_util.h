@@ -6,7 +6,7 @@
 #include <string>
 #include <ostream>
 #include <utility>  //  std::exchange, std::tuple_size
-#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
+#if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && !defined(SQLITE_ORM_BROKEN_NONTEMPLATE_CONCEPTS)
 #include <string_view>
 #include <algorithm>  //  std::find
 #endif
@@ -29,7 +29,7 @@ namespace sqlite_orm {
         template<class T, class Ctx>
         std::string serialize_order_by(const T& t, const Ctx& context);
 
-#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
+#if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && !defined(SQLITE_ORM_BROKEN_NONTEMPLATE_CONCEPTS)
         // optimized version when string_view's iterator range constructor is available
         template<class SFINAE = void>
         void stream_sql_escaped(std::ostream& os, const std::string& str, char char2Escape)
