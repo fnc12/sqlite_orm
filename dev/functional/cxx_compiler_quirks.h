@@ -39,3 +39,10 @@
     (defined(__clang__) && (__clang_major__ >= 12) && (__cplusplus >= 202002L))
 #define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
 #endif
+
+// clang 10 chokes on concepts that don't depend on template parameters;
+// when it tries to instantiate an expression in a requires expression, which results in an error,
+// the compiler reports an error instead of dismissing the templated function.
+#if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && (defined(__clang__) && (__clang_major__ == 10))
+#define SQLITE_ORM_BROKEN_NONTEMPLATE_CONCEPTS
+#endif

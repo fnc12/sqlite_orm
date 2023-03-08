@@ -140,6 +140,13 @@ using std::nullptr_t;
 #define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
 #endif
 
+// clang 10 chokes on concepts that don't depend on template parameters;
+// when it tries to instantiate an expression in a requires expression, which results in an error,
+// the compiler reports an error instead of dismissing the templated function.
+#if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && (defined(__clang__) && (__clang_major__ == 10))
+#define SQLITE_ORM_BROKEN_NONTEMPLATE_CONCEPTS
+#endif
+
 #if SQLITE_ORM_HAS_INCLUDE(<version>)
 #include <version>
 #endif
@@ -13191,13 +13198,13 @@ namespace sqlite_orm {
 #include <string>
 #include <ostream>
 #include <utility>  //  std::exchange, std::tuple_size
-#if __cplusplus >= 202002L && __cpp_lib_concepts
+#if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && !defined(SQLITE_ORM_BROKEN_NONTEMPLATE_CONCEPTS)
 #include <string_view>
 #include <algorithm>  //  std::find
 #endif
 
 // #include "functional/cxx_universal.h"
-
+//  ::size_t
 // #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "tuple_helper/tuple_iteration.h"
@@ -13219,9 +13226,14 @@ namespace sqlite_orm {
         template<class T, class Ctx>
         std::string serialize_order_by(const T& t, const Ctx& context);
 
-#if __cplusplus >= 202002L &&                                                                                          \
-    __cpp_lib_concepts  //  contiguous iterator ranges depend on contiguous_iterator, sized_sentinel_for in all major implementations
-        inline void stream_sql_escaped(std::ostream& os, const std::string& str, char char2Escape) {
+#if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && !defined(SQLITE_ORM_BROKEN_NONTEMPLATE_CONCEPTS)
+        // optimized version when string_view's iterator range constructor is available
+        template<class SFINAE = void>
+        void stream_sql_escaped(std::ostream& os, const std::string& str, char char2Escape)
+            requires requires {
+                         std::string_view{str.cbegin(), str.cend()};
+                     }
+        {
             for(std::string::const_iterator it = str.cbegin(), next; true; it = next + 1) {
                 next = std::find(it, str.cend(), char2Escape);
                 os << std::string_view{it, next};
@@ -13232,20 +13244,21 @@ namespace sqlite_orm {
                 os << std::string(2, char2Escape);
             }
         }
-#else
-            inline void stream_sql_escaped(std::ostream& os, const std::string& str, char char2Escape) {
-                if(str.find(char2Escape) == str.npos) {
-                    os << str;
-                } else {
-                    for(char c: str) {
-                        if(c == char2Escape) {
-                            os << char2Escape;
-                        }
-                        os << c;
+
+        template<class SFINAE = void>
+#endif
+        inline void stream_sql_escaped(std::ostream& os, const std::string& str, char char2Escape) {
+            if(str.find(char2Escape) == str.npos) {
+                os << str;
+            } else {
+                for(char c: str) {
+                    if(c == char2Escape) {
+                        os << char2Escape;
                     }
+                    os << c;
                 }
             }
-#endif
+        }
 
         inline void stream_identifier(std::ostream& ss,
                                       const std::string& qualifier,
