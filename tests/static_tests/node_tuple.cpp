@@ -925,6 +925,7 @@ TEST_CASE("Node tuple") {
         using ExpectedTuple = tuple<decltype(&User::id)>;
         STATIC_REQUIRE(std::is_same<Tuple, ExpectedTuple>::value);
     }
+#if SQLITE_VERSION_NUMBER >= 3024000
     SECTION("upsert_clause") {
         auto statement = on_conflict(&User::id).do_update(set(c(&User::name) = excluded(&User::name)));
         using Statement = decltype(statement);
@@ -932,6 +933,7 @@ TEST_CASE("Node tuple") {
         using ExpectedTuple = tuple<decltype(&User::name), decltype(&User::name)>;
         STATIC_REQUIRE(std::is_same<Tuple, ExpectedTuple>::value);
     }
+#endif
     SECTION("group_by") {
         auto statement = group_by(&User::id);
         using Statement = decltype(statement);

@@ -11325,9 +11325,10 @@ namespace sqlite_orm {
 
 // #include "ast/upsert_clause.h"
 
-#include <tuple>  //  std::tuple, std::make_tuple
-#include <type_traits>  //  std::false_type, std::true_type
+#if SQLITE_VERSION_NUMBER >= 3024000
+#include <tuple>  //  std::tuple
 #include <utility>  //  std::forward, std::move
+#endif
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
@@ -11349,7 +11350,7 @@ namespace sqlite_orm {
 
             template<class... ActionsArgs>
             upsert_clause<args_tuple, std::tuple<ActionsArgs...>> do_update(ActionsArgs... actions) {
-                return {std::move(this->args), {std::make_tuple(std::forward<ActionsArgs>(actions)...)}};
+                return {std::move(this->args), {std::forward<ActionsArgs>(actions)...}};
             }
         };
 
@@ -11365,8 +11366,13 @@ namespace sqlite_orm {
 
         template<class T>
         using is_upsert_clause = polyfill::is_specialization_of<T, upsert_clause>;
+#else
+        template<class T>
+        struct is_upsert_clause : polyfill::bool_constant<false> {};
+#endif
     }
 
+#if SQLITE_VERSION_NUMBER >= 3024000
     /**
      *  ON CONFLICT upsert clause builder function.
      *  @example
@@ -12485,9 +12491,9 @@ namespace sqlite_orm {
             }
         };
 
-        template<class... TargetArgs, class... ActionsArgs>
-        struct ast_iterator<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void> {
-            using node_type = upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>;
+        template<class T>
+        struct ast_iterator<T, match_if<is_upsert_clause, T>> {
+            using node_type = T;
 
             template<class L>
             void operator()(const node_type& expression, L& lambda) const {
@@ -14313,13 +14319,13 @@ namespace sqlite_orm {
                 (this->extract(values[Idx], std::get<Idx>(tuple)), ...);
             }
 #else
-                template<class Tpl, size_t I, size_t... Idx>
-                void operator()(sqlite3_value** values, Tpl& tuple, std::index_sequence<I, Idx...>) const {
-                    this->extract(values[I], std::get<I>(tuple));
-                    (*this)(values, tuple, std::index_sequence<Idx...>{});
-                }
-                template<class Tpl, size_t... Idx>
-                void operator()(sqlite3_value** /*values*/, Tpl&, std::index_sequence<Idx...>) const {}
+            template<class Tpl, size_t I, size_t... Idx>
+            void operator()(sqlite3_value** values, Tpl& tuple, std::index_sequence<I, Idx...>) const {
+                this->extract(values[I], std::get<I>(tuple));
+                (*this)(values, tuple, std::index_sequence<Idx...>{});
+            }
+            template<class Tpl, size_t... Idx>
+            void operator()(sqlite3_value** /*values*/, Tpl&, std::index_sequence<Idx...>) const {}
 #endif
             template<class T>
             void extract(sqlite3_value* value, T& t) const {
@@ -15695,9 +15701,9 @@ namespace sqlite_orm {
             }
         };
 
-        template<class... TargetArgs, class... ActionsArgs>
-        struct statement_serializer<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void> {
-            using statement_type = upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>;
+        template<class T>
+        struct statement_serializer<T, match_if<is_upsert_clause, T>> {
+            using statement_type = T;
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
@@ -18375,7 +18381,7 @@ namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
                                 res = sync_schema_result::old_columns_removed;
 #else
-                                    gottaCreateTable = true;
+                                gottaCreateTable = true;
 #endif
                             } else {
                                 res = sync_schema_result::old_columns_removed;
@@ -18693,13 +18699,13 @@ namespace sqlite_orm {
                                               std::ref(processObject),
                                               std::ref(expression.transformer));
 #else
-                            auto& transformer = expression.transformer;
-                            std::for_each(expression.range.first,
-                                          expression.range.second,
-                                          [&processObject, &transformer](auto& item) {
-                                              const object_type& object = polyfill::invoke(transformer, item);
-                                              processObject(object);
-                                          });
+                        auto& transformer = expression.transformer;
+                        std::for_each(expression.range.first,
+                                      expression.range.second,
+                                      [&processObject, &transformer](auto& item) {
+                                          const object_type& object = polyfill::invoke(transformer, item);
+                                          processObject(object);
+                                      });
 #endif
                     },
                     [&processObject](auto& expression) {
@@ -18739,13 +18745,13 @@ namespace sqlite_orm {
                                               std::ref(processObject),
                                               std::ref(expression.transformer));
 #else
-                            auto& transformer = expression.transformer;
-                            std::for_each(expression.range.first,
-                                          expression.range.second,
-                                          [&processObject, &transformer](auto& item) {
-                                              const object_type& object = polyfill::invoke(transformer, item);
-                                              processObject(object);
-                                          });
+                        auto& transformer = expression.transformer;
+                        std::for_each(expression.range.first,
+                                      expression.range.second,
+                                      [&processObject, &transformer](auto& item) {
+                                          const object_type& object = polyfill::invoke(transformer, item);
+                                          processObject(object);
+                                      });
 #endif
                     },
                     [&processObject](auto& expression) {
@@ -18837,22 +18843,22 @@ namespace sqlite_orm {
                 }
                 return std::move(res).value();
 #else
-                    auto& table = this->get_table<T>();
-                    auto stepRes = sqlite3_step(stmt);
-                    switch(stepRes) {
-                        case SQLITE_ROW: {
-                            T res;
-                            object_from_column_builder<T> builder{res, stmt};
-                            table.for_each_column(builder);
-                            return res;
-                        } break;
-                        case SQLITE_DONE: {
-                            throw std::system_error{orm_error_code::not_found};
-                        } break;
-                        default: {
-                            throw_translated_sqlite_error(stmt);
-                        }
+                auto& table = this->get_table<T>();
+                auto stepRes = sqlite3_step(stmt);
+                switch(stepRes) {
+                    case SQLITE_ROW: {
+                        T res;
+                        object_from_column_builder<T> builder{res, stmt};
+                        table.for_each_column(builder);
+                        return res;
+                    } break;
+                    case SQLITE_DONE: {
+                        throw std::system_error{orm_error_code::not_found};
+                    } break;
+                    default: {
+                        throw_translated_sqlite_error(stmt);
                     }
+                }
 #endif
             }
 
@@ -19036,9 +19042,8 @@ namespace sqlite_orm {
             using type = tuple_cat_t<args_tuple, expression_tuple>;
         };
 
-        template<class... TargetArgs, class... ActionsArgs>
-        struct node_tuple<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void>
-            : node_tuple<std::tuple<ActionsArgs...>> {};
+        template<class T>
+        struct node_tuple<T, match_if<is_upsert_clause, T>> : node_tuple<typename T::actions_tuple> {};
 
         template<class... Args>
         struct node_tuple<set_t<Args...>, void> {
@@ -19679,9 +19684,9 @@ namespace sqlite_orm {
 #if __cpp_lib_ranges >= 201911L
                 auto it = std::ranges::find(res, columnName, &table_xinfo::name);
 #else
-                    auto it = std::find_if(res.begin(), res.end(), [&columnName](const table_xinfo& ti) {
-                        return ti.name == columnName;
-                    });
+                auto it = std::find_if(res.begin(), res.end(), [&columnName](const table_xinfo& ti) {
+                    return ti.name == columnName;
+                });
 #endif
                 if(it != res.end()) {
                     it->pk = static_cast<int>(i + 1);
@@ -19754,9 +19759,9 @@ namespace sqlite_orm {
                             }
                             res = sync_schema_result::old_columns_removed;
 #else
-                                //  extra table columns than storage columns
-                                this->backup_table(db, table, {});
-                                res = sync_schema_result::old_columns_removed;
+                            //  extra table columns than storage columns
+                            this->backup_table(db, table, {});
+                            res = sync_schema_result::old_columns_removed;
 #endif
                         }
 
@@ -19820,11 +19825,11 @@ namespace sqlite_orm {
 #if __cpp_lib_ranges >= 201911L
                 auto columnToIgnoreIt = std::ranges::find(columnsToIgnore, columnName, &table_xinfo::name);
 #else
-                    auto columnToIgnoreIt = std::find_if(columnsToIgnore.begin(),
-                                                         columnsToIgnore.end(),
-                                                         [&columnName](const table_xinfo* tableInfo) {
-                                                             return columnName == tableInfo->name;
-                                                         });
+                auto columnToIgnoreIt = std::find_if(columnsToIgnore.begin(),
+                                                     columnsToIgnore.end(),
+                                                     [&columnName](const table_xinfo* tableInfo) {
+                                                         return columnName == tableInfo->name;
+                                                     });
 #endif
                 if(columnToIgnoreIt == columnsToIgnore.end()) {
                     columnNames.push_back(cref(columnName));
