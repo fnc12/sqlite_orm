@@ -1506,7 +1506,8 @@ namespace sqlite_orm {
                 constexpr bool hasExplicitFrom = tuple_has<is_from, conditions_tuple>::value;
                 if(!hasExplicitFrom) {
                     auto tableNames = collect_table_names(sel, context);
-                    using joins_index_sequence = filter_tuple_sequence_t<conditions_tuple, is_any_join>;
+                    using joins_index_sequence = filter_tuple_sequence_t<conditions_tuple, is_constrained_join>;
+                    // deduplicate table names of constrained join statements
                     iterate_tuple(sel.conditions, joins_index_sequence{}, [&tableNames, &context](auto& join) {
                         using original_join_type = typename std::decay_t<decltype(join)>::type;
                         using cross_join_type = mapped_type_proxy_t<original_join_type>;
@@ -1851,7 +1852,7 @@ namespace sqlite_orm {
                 ss << static_cast<std::string>(l) << " "
                    << streaming_identifier(lookup_table_name<mapped_type_proxy_t<T>>(context.db_objects),
                                            alias_extractor<T>::as_alias())
-                   << serialize(l.constraint, context);
+                   << " " << serialize(l.constraint, context);
                 return ss.str();
             }
         };
