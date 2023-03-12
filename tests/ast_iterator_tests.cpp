@@ -207,12 +207,14 @@ TEST_CASE("ast_iterator") {
         expected.push_back(typeid(&User::id));
         iterate_ast(node, lambda);
     }
+#if SQLITE_VERSION_NUMBER >= 3024000
     SECTION("upsert_clause") {
         auto node = on_conflict(&User::id).do_update(set(c(&User::name) = excluded(&User::name)));
         expected.push_back(typeid(&User::name));
         expected.push_back(typeid(&User::name));
         iterate_ast(node, lambda);
     }
+#endif
     SECTION("into") {
         auto node = into<User>();
         iterate_ast(node, lambda);
