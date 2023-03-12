@@ -10202,8 +10202,8 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        template<class T, class I>
-        std::string serialize(const T& t, const serializer_context<I>& context);
+        template<class T, class DBOs>
+        std::string serialize(const T&, const serializer_context<DBOs>&);
 
         /**
          *  Serialize default value of a column's default valu
@@ -13220,11 +13220,11 @@ namespace sqlite_orm {
         template<class O>
         struct order_by_t;
 
-        template<class T, class I>
-        std::string serialize(const T& t, const serializer_context<I>& context);
+        template<class T, class DBOs>
+        std::string serialize(const T&, const serializer_context<DBOs>&);
 
         template<class T, class Ctx>
-        std::string serialize_order_by(const T& t, const Ctx& context);
+        std::string serialize_order_by(const T&, const Ctx&);
 
         inline void stream_sql_escaped(std::ostream& os, serialize_arg_type str, char char2Escape) {
             for(size_t offset = 0, next; true; offset = next + 1) {
@@ -15306,8 +15306,8 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        template<class T, class I>
-        std::string serialize(const T& t, const serializer_context<I>& context);
+        template<class T, class DBOs>
+        std::string serialize(const T&, const serializer_context<DBOs>&);
 
         template<class T, class Ctx>
         std::vector<std::string>& collect_table_column_names(std::vector<std::string>& collectedExpressions,
@@ -15502,8 +15502,8 @@ namespace sqlite_orm {
         template<class T, class SFINAE = void>
         struct statement_serializer;
 
-        template<class T, class I>
-        std::string serialize(const T& t, const serializer_context<I>& context) {
+        template<class T, class DBOs>
+        std::string serialize(const T& t, const serializer_context<DBOs>& context) {
             statement_serializer<T> serializer;
             return serializer(t, context);
         }

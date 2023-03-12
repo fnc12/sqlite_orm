@@ -20,11 +20,11 @@ namespace sqlite_orm {
         template<class O>
         struct order_by_t;
 
-        template<class T, class I>
-        std::string serialize(const T& t, const serializer_context<I>& context);
+        template<class T, class DBOs>
+        std::string serialize(const T&, const serializer_context<DBOs>&);
 
         template<class T, class Ctx>
-        std::string serialize_order_by(const T& t, const Ctx& context);
+        std::string serialize_order_by(const T&, const Ctx&);
 
         inline void stream_sql_escaped(std::ostream& os, serialize_arg_type str, char char2Escape) {
             for(size_t offset = 0, next; true; offset = next + 1) {

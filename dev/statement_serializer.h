@@ -51,8 +51,8 @@ namespace sqlite_orm {
         template<class T, class SFINAE = void>
         struct statement_serializer;
 
-        template<class T, class I>
-        std::string serialize(const T& t, const serializer_context<I>& context) {
+        template<class T, class DBOs>
+        std::string serialize(const T& t, const serializer_context<DBOs>& context) {
             statement_serializer<T> serializer;
             return serializer(t, context);
         }
