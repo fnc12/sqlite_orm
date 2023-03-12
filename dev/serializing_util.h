@@ -6,16 +6,13 @@
 #include <string>
 #include <ostream>
 #include <utility>  //  std::exchange, std::tuple_size
-#if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && !defined(SQLITE_ORM_BROKEN_NONTEMPLATE_CONCEPTS)
-#include <string_view>
-#include <algorithm>  //  std::find
-#endif
 
 #include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/cxx_type_traits_polyfill.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "error_code.h"
 #include "serializer_context.h"
+#include "serialize_result_type.h"
 #include "util.h"
 
 namespace sqlite_orm {
@@ -29,44 +26,24 @@ namespace sqlite_orm {
         template<class T, class Ctx>
         std::string serialize_order_by(const T& t, const Ctx& context);
 
-#if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && !defined(SQLITE_ORM_BROKEN_NONTEMPLATE_CONCEPTS)
-        // optimized version when string_view's iterator range constructor is available
-        template<class SFINAE = void>
-        void stream_sql_escaped(std::ostream& os, const std::string& str, char char2Escape)
-            requires requires {
-                         std::string_view{str.cbegin(), str.cend()};
-                     }
-        {
-            for(std::string::const_iterator it = str.cbegin(), next; true; it = next + 1) {
-                next = std::find(it, str.cend(), char2Escape);
-                os << std::string_view{it, next};
+        inline void stream_sql_escaped(std::ostream& os, serialize_arg_type str, char char2Escape) {
+            for(size_t offset = 0, next; true; offset = next + 1) {
+                next = str.find(char2Escape, offset);
 
-                if(next == str.cend()) [[likely]] {
+                if(next == str.npos) {
+                    os.write(str.data() + offset, str.size() - offset);
                     break;
                 }
-                os << std::string(2, char2Escape);
-            }
-        }
 
-        template<class SFINAE = void>
-#endif
-        inline void stream_sql_escaped(std::ostream& os, const std::string& str, char char2Escape) {
-            if(str.find(char2Escape) == str.npos) {
-                os << str;
-            } else {
-                for(char c: str) {
-                    if(c == char2Escape) {
-                        os << char2Escape;
-                    }
-                    os << c;
-                }
+                os.write(str.data() + offset, next - offset + 1);
+                os.write(&char2Escape, 1);
             }
         }
 
         inline void stream_identifier(std::ostream& ss,
-                                      const std::string& qualifier,
-                                      const std::string& identifier,
-                                      const std::string& alias) {
+                                      serialize_arg_type qualifier,
+                                      serialize_arg_type identifier,
+                                      serialize_arg_type alias) {
             constexpr char quoteChar = '"';
             constexpr char qualified[] = {quoteChar, '.', '\0'};
             constexpr char aliased[] = {' ', quoteChar, '\0'};
@@ -92,11 +69,11 @@ namespace sqlite_orm {
         }
 
         inline void stream_identifier(std::ostream& ss, const std::string& identifier, const std::string& alias) {
-            return stream_identifier(ss, std::string{}, identifier, alias);
+            return stream_identifier(ss, "", identifier, alias);
         }
 
         inline void stream_identifier(std::ostream& ss, const std::string& identifier) {
-            return stream_identifier(ss, std::string{}, identifier, std::string{});
+            return stream_identifier(ss, "", identifier, "");
         }
 
         template<typename Tpl, size_t... Is>
