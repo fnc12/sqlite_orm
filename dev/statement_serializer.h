@@ -51,8 +51,8 @@ namespace sqlite_orm {
         template<class T, class SFINAE = void>
         struct statement_serializer;
 
-        template<class T, class I>
-        std::string serialize(const T& t, const serializer_context<I>& context) {
+        template<class T, class DBOs>
+        std::string serialize(const T& t, const serializer_context<DBOs>& context) {
             statement_serializer<T> serializer;
             return serializer(t, context);
         }
@@ -224,9 +224,9 @@ namespace sqlite_orm {
             }
         };
 
-        template<class... TargetArgs, class... ActionsArgs>
-        struct statement_serializer<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void> {
-            using statement_type = upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>;
+        template<class T>
+        struct statement_serializer<T, match_if<is_upsert_clause, T>> {
+            using statement_type = T;
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
