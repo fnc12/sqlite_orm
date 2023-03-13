@@ -1829,30 +1829,33 @@ namespace sqlite_orm {
             }
         };
 
-        template<class O>
-        struct statement_serializer<cross_join_t<O>, void> {
-            using statement_type = cross_join_t<O>;
+        template<class Join>
+        struct statement_serializer<
+            Join,
+            std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<Join, cross_join_t>,
+                                                     polyfill::is_specialization_of<Join, natural_join_t>>>> {
+            using statement_type = Join;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
+            std::string operator()(const statement_type& join, const Ctx& context) const {
                 std::stringstream ss;
-                ss << static_cast<std::string>(c) << " "
-                   << streaming_identifier(lookup_table_name<O>(context.db_objects));
+                ss << static_cast<std::string>(join) << " "
+                   << streaming_identifier(lookup_table_name<type_t<Join>>(context.db_objects));
                 return ss.str();
             }
         };
 
-        template<class T, class O>
-        struct statement_serializer<inner_join_t<T, O>, void> {
-            using statement_type = inner_join_t<T, O>;
+        template<class Join>
+        struct statement_serializer<Join, match_if<is_constrained_join, Join>> {
+            using statement_type = Join;
 
             template<class Ctx>
-            std::string operator()(const statement_type& l, const Ctx& context) const {
+            std::string operator()(const statement_type& join, const Ctx& context) const {
                 std::stringstream ss;
-                ss << static_cast<std::string>(l) << " "
-                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<T>>(context.db_objects),
-                                           alias_extractor<T>::as_alias())
-                   << " " << serialize(l.constraint, context);
+                ss << static_cast<std::string>(join) << " "
+                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<type_t<Join>>>(context.db_objects),
+                                           alias_extractor<type_t<Join>>::as_alias())
+                   << " " << serialize(join.constraint, context);
                 return ss.str();
             }
         };
@@ -1862,69 +1865,11 @@ namespace sqlite_orm {
             using statement_type = on_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& t, const Ctx& context) const {
+            std::string operator()(const statement_type& on, const Ctx& context) const {
                 std::stringstream ss;
                 auto newContext = context;
                 newContext.skip_table_name = false;
-                ss << static_cast<std::string>(t) << " " << serialize(t.arg, newContext) << " ";
-                return ss.str();
-            }
-        };
-
-        template<class T, class O>
-        struct statement_serializer<join_t<T, O>, void> {
-            using statement_type = join_t<T, O>;
-
-            template<class Ctx>
-            std::string operator()(const statement_type& l, const Ctx& context) const {
-                std::stringstream ss;
-                ss << static_cast<std::string>(l) << " "
-                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<T>>(context.db_objects),
-                                           alias_extractor<T>::as_alias())
-                   << " " << serialize(l.constraint, context);
-                return ss.str();
-            }
-        };
-
-        template<class T, class O>
-        struct statement_serializer<left_join_t<T, O>, void> {
-            using statement_type = left_join_t<T, O>;
-
-            template<class Ctx>
-            std::string operator()(const statement_type& l, const Ctx& context) const {
-                std::stringstream ss;
-                ss << static_cast<std::string>(l) << " "
-                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<T>>(context.db_objects),
-                                           alias_extractor<T>::as_alias())
-                   << " " << serialize(l.constraint, context);
-                return ss.str();
-            }
-        };
-
-        template<class T, class O>
-        struct statement_serializer<left_outer_join_t<T, O>, void> {
-            using statement_type = left_outer_join_t<T, O>;
-
-            template<class Ctx>
-            std::string operator()(const statement_type& l, const Ctx& context) const {
-                std::stringstream ss;
-                ss << static_cast<std::string>(l) << " "
-                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<T>>(context.db_objects),
-                                           alias_extractor<T>::as_alias())
-                   << " " << serialize(l.constraint, context);
-                return ss.str();
-            }
-        };
-
-        template<class O>
-        struct statement_serializer<natural_join_t<O>, void> {
-            using statement_type = natural_join_t<O>;
-
-            template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
-                std::stringstream ss;
-                ss << static_cast<std::string>(c) << " "
-                   << streaming_identifier(lookup_table_name<O>(context.db_objects));
+                ss << static_cast<std::string>(on) << " " << serialize(on.arg, newContext) << " ";
                 return ss.str();
             }
         };
