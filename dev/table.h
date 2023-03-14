@@ -133,6 +133,8 @@ namespace sqlite_orm {
                                   constexpr size_t opIndex = first_index_sequence_value(generated_op_index_sequence{});
                                   result = &get<opIndex>(column.constraints).storage;
                               });
+#else
+                (void)name;
 #endif
                 return result;
             }

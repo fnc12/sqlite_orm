@@ -54,9 +54,8 @@ namespace sqlite_orm {
             using type = tuple_cat_t<args_tuple, expression_tuple>;
         };
 
-        template<class... TargetArgs, class... ActionsArgs>
-        struct node_tuple<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void>
-            : node_tuple<std::tuple<ActionsArgs...>> {};
+        template<class T>
+        struct node_tuple<T, match_if<is_upsert_clause, T>> : node_tuple<typename T::actions_tuple> {};
 
         template<class... Args>
         struct node_tuple<set_t<Args...>, void> {

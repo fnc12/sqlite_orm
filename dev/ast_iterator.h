@@ -105,9 +105,9 @@ namespace sqlite_orm {
             }
         };
 
-        template<class... TargetArgs, class... ActionsArgs>
-        struct ast_iterator<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void> {
-            using node_type = upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>;
+        template<class T>
+        struct ast_iterator<T, match_if<is_upsert_clause, T>> {
+            using node_type = T;
 
             template<class L>
             void operator()(const node_type& expression, L& lambda) const {
@@ -520,13 +520,13 @@ namespace sqlite_orm {
             }
         };
 
-        template<class T, class O>
-        struct ast_iterator<left_join_t<T, O>, void> {
-            using node_type = left_join_t<T, O>;
+        template<class Join>
+        struct ast_iterator<Join, match_if<is_constrained_join, Join>> {
+            using node_type = Join;
 
             template<class L>
-            void operator()(const node_type& j, L& lambda) const {
-                iterate_ast(j.constraint, lambda);
+            void operator()(const node_type& join, L& lambda) const {
+                iterate_ast(join.constraint, lambda);
             }
         };
 
@@ -535,8 +535,8 @@ namespace sqlite_orm {
             using node_type = on_t<T>;
 
             template<class L>
-            void operator()(const node_type& o, L& lambda) const {
-                iterate_ast(o.arg, lambda);
+            void operator()(const node_type& on, L& lambda) const {
+                iterate_ast(on.arg, lambda);
             }
         };
 
@@ -549,36 +549,6 @@ namespace sqlite_orm {
             template<class L>
             void operator()(const node_type& o, L& lambda) const {
                 iterate_ast(o.column, lambda);
-            }
-        };
-
-        template<class T, class O>
-        struct ast_iterator<join_t<T, O>, void> {
-            using node_type = join_t<T, O>;
-
-            template<class L>
-            void operator()(const node_type& j, L& lambda) const {
-                iterate_ast(j.constraint, lambda);
-            }
-        };
-
-        template<class T, class O>
-        struct ast_iterator<left_outer_join_t<T, O>, void> {
-            using node_type = left_outer_join_t<T, O>;
-
-            template<class L>
-            void operator()(const node_type& j, L& lambda) const {
-                iterate_ast(j.constraint, lambda);
-            }
-        };
-
-        template<class T, class O>
-        struct ast_iterator<inner_join_t<T, O>, void> {
-            using node_type = inner_join_t<T, O>;
-
-            template<class L>
-            void operator()(const node_type& j, L& lambda) const {
-                iterate_ast(j.constraint, lambda);
             }
         };
 
