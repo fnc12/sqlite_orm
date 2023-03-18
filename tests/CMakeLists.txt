@@ -55,6 +55,7 @@ add_executable(unit_tests
     operators/not_operator.cpp
     operators/bitwise.cpp
     operators/binary_operators.cpp
+    operators/adl.cpp
     prepared_statement_tests/select.cpp
     prepared_statement_tests/get_all.cpp
     prepared_statement_tests/get_all_pointer.cpp
