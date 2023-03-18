@@ -3805,7 +3805,7 @@ namespace sqlite_orm {
         return {std::move(arg)};
     }
 
-    // Delibaretly put operators for `expression_t` into the internal namespace
+    // Deliberately put operators for `expression_t` into the internal namespace
     // to facilitate ADL (Argument Dependent Lookup)
     namespace internal {
         /**
