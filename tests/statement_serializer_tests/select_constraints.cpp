@@ -71,6 +71,20 @@ TEST_CASE("statement_serializer select constraints") {
             value = serialize(expression, context);
             expected = R"(FROM "users" "u")";
         }
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        {
+            SECTION("with alias 2") {
+                auto expression = from<alias<'u'>.for_<User>()>();
+                value = serialize(expression, context);
+                expected = R"(FROM "users" "u")";
+            }
+            SECTION("with alias 3") {
+                auto expression = from<"u"_alias.for_<User>()>();
+                value = serialize(expression, context);
+                expected = R"(FROM "users" "u")";
+            }
+        }
+#endif
     }
     // tests whether the statement serializer for a select with joins
     // properly deduplicates the table names when no explicit from is used

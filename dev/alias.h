@@ -15,6 +15,29 @@ namespace sqlite_orm {
 
     namespace internal {
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        /*
+         *  Helper class to facilitate user-defined string literal operator template
+         */
+        template<size_t N>
+        struct string_identifier_template {
+            static constexpr size_t size() {
+                return N - 1;
+            }
+
+            constexpr string_identifier_template(const char (&id)[N]) {
+                std::copy_n(id, N, this->id);
+            }
+
+            char id[N];
+        };
+
+        template<template<char...> class Alias, string_identifier_template t, size_t... Idx>
+        consteval auto to_alias(std::index_sequence<Idx...>) {
+            return Alias<t.id[Idx]...>{};
+        }
+#endif
+
         /**
          *  This is a common built-in class used for character based table aliases.
          *  For convenience there exist public type aliases `alias_a`, `alias_b`, ...
@@ -104,6 +127,16 @@ namespace sqlite_orm {
 
             alias_holder() = default;
         };
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        template<char A, char... X>
+        struct recordset_alias_builder {
+            template<class T>
+            [[nodiscard]] consteval recordset_alias<T, A, X...> for_() const {
+                return {};
+            }
+        };
+#endif
     }
 
     /**
@@ -118,6 +151,22 @@ namespace sqlite_orm {
         return {c};
     }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_table_alias auto als, class C>
+    auto alias_column(C c) {
+        using A = std::remove_const_t<decltype(als)>;
+        using aliased_type = internal::type_t<A>;
+        static_assert(std::is_same_v<polyfill::detected_t<internal::table_type_of_t, C>, aliased_type>,
+                      "Column must be from aliased table");
+        return internal::alias_column_t<A, decltype(c)>{c};
+    }
+
+    template<orm_table_alias A, class F>
+    constexpr auto operator->*(const A&, F field) {
+        return internal::alias_column_t<A, decltype(field)>{field};
+    }
+#endif
+
     /** 
      *  Alias a column expression.
      */
@@ -126,10 +175,32 @@ namespace sqlite_orm {
         return {std::move(expression)};
     }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_column_alias auto als, class E>
+    auto as(E expression) {
+        return internal::as_t<std::remove_const_t<decltype(als)>, E>{std::move(expression)};
+    }
+
+    /** 
+     *  Alias a column expression.
+     */
+    template<orm_column_alias A, class E>
+    internal::as_t<A, E> operator>>=(E expression, const A&) {
+        return {std::move(expression)};
+    }
+#endif
+
     template<class A, internal::satisfies<internal::is_column_alias, A> = true>
     internal::alias_holder<A> get() {
         return {};
     }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_column_alias auto als>
+    auto get() {
+        return internal::alias_holder<std::remove_const_t<decltype(als)>>{};
+    }
+#endif
 
     template<class T>
     using alias_a = internal::recordset_alias<T, 'a'>;
@@ -193,4 +264,33 @@ namespace sqlite_orm {
     using colalias_g = internal::column_alias<'g'>;
     using colalias_h = internal::column_alias<'h'>;
     using colalias_i = internal::column_alias<'i'>;
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /** @short Create a table alias.
+     *
+     *  Examples:
+     *  constexpr auto z_alias = alias<'z'>.for_<User>();
+     */
+    template<char A, char... X>
+    inline constexpr internal::recordset_alias_builder<A, X...> alias{};
+
+    /** @short Create a table alias.
+     *
+     *  Examples:
+     *  constexpr auto z_alias = "z"_alias.for_<User>();
+     */
+    template<internal::string_identifier_template t>
+    [[nodiscard]] consteval auto operator"" _alias() {
+        return internal::to_alias<internal::recordset_alias_builder, t>(std::make_index_sequence<t.size()>{});
+    }
+
+    /** @short Create a column alias.
+     *  column_alias<'a'[, ...]> from a string literal.
+     *  E.g. "a"_col, "b"_col
+     */
+    template<internal::string_identifier_template t>
+    [[nodiscard]] consteval auto operator"" _col() {
+        return internal::to_alias<internal::column_alias, t>(std::make_index_sequence<t.size()>{});
+    }
+#endif
 }
