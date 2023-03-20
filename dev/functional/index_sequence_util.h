@@ -3,9 +3,6 @@
 #include <utility>  //  std::index_sequence, std::make_index_sequence
 
 #include "../functional/cxx_universal.h"
-#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
-#include <array>
-#endif
 
 namespace sqlite_orm {
     namespace internal {
