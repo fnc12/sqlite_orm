@@ -17,17 +17,21 @@ namespace sqlite_orm {
             return I;
         }
 
-#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
+#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
         /**
          *  Get the value of an index_sequence at a specific position.
          */
         template<size_t... Idx>
         SQLITE_ORM_CONSTEVAL size_t index_sequence_value(size_t pos, std::index_sequence<Idx...>) {
-            constexpr std::array<size_t, sizeof...(Idx)> values{Idx...};
-            static_assert(values.size() > 0, "");
-            return values[pos];
+            static_assert(sizeof...(Idx) > 0);
+            size_t result;
+            size_t i = 0;
+            ((result = Idx, i++ == pos) || ...);
+            return result;
         }
+#endif
 
+#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
         /**
          *  Reorder the values of an index_sequence according to the positions from a second sequence.
          */
