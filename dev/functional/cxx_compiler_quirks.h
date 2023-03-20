@@ -34,12 +34,6 @@
 #define SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
 #endif
 
-// overwrite SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
-#if(__cpp_nontype_template_args < 201911L) &&                                                                          \
-    (defined(__clang__) && (__clang_major__ >= 12) && (__cplusplus >= 202002L))
-#define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
-#endif
-
 // clang 10 chokes on concepts that don't depend on template parameters;
 // when it tries to instantiate an expression in a requires expression, which results in an error,
 // the compiler reports an error instead of dismissing the templated function.

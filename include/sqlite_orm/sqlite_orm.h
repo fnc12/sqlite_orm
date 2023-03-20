@@ -94,10 +94,6 @@ using std::nullptr_t;
 #define SQLITE_ORM_CONCEPTS_SUPPORTED
 #endif
 
-#if __cpp_nontype_template_args >= 201911L
-#define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
-#endif
-
 // #include "cxx_compiler_quirks.h"
 
 /*
@@ -134,12 +130,6 @@ using std::nullptr_t;
 #define SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
 #endif
 
-// overwrite SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
-#if(__cpp_nontype_template_args < 201911L) &&                                                                          \
-    (defined(__clang__) && (__clang_major__ >= 12) && (__cplusplus >= 202002L))
-#define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
-#endif
-
 // clang 10 chokes on concepts that don't depend on template parameters;
 // when it tries to instantiate an expression in a requires expression, which results in an error,
 // the compiler reports an error instead of dismissing the templated function.
@@ -168,22 +158,9 @@ using std::nullptr_t;
 #else
 #define SQLITE_ORM_CONSTEVAL constexpr
 #endif
-
-#if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && __cpp_lib_concepts >= 202002L
-#define SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-#endif
-
-#if(defined(SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED) && defined(SQLITE_ORM_INLINE_VARIABLES_SUPPORTED) &&         \
-    defined(SQLITE_ORM_CONSTEVAL_SUPPORTED)) &&                                                                        \
-    (defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED))
-#define SQLITE_ORM_WITH_CPP20_ALIASES
-#endif
 #pragma once
 
 #include <type_traits>  //  std::enable_if, std::is_same
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-#include <concepts>
-#endif
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
@@ -386,11 +363,6 @@ namespace sqlite_orm {
         template<typename T>
         using on_type_t = typename T::on_type;
     }
-
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-    template<class T>
-    concept orm_names_type = requires { typename T::type; };
-#endif
 }
 #pragma once
 
@@ -2757,9 +2729,6 @@ namespace sqlite_orm {
 // #include "alias_traits.h"
 
 #include <type_traits>  //  std::remove_const, std::is_base_of, std::is_same
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-#include <concepts>
-#endif
 
 // #include "functional/cxx_universal.h"
 
@@ -2809,38 +2778,6 @@ namespace sqlite_orm {
         template<class A>
         using is_table_alias = polyfill::bool_constant<is_table_alias_v<A>>;
     }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<class A>
-    concept orm_alias = std::derived_from<A, alias_tag>;
-
-    /** @short Alias of a column in a record set.
-     *
-     *  A column alias has the following traits:
-     *  - is derived from `alias_tag`
-     *  - must not have a nested `type` typename
-     */
-    template<class A>
-    concept orm_column_alias = (orm_alias<A> && !orm_names_type<A>);
-
-    /** @short Alias of any type of record set.
-     *
-     *  A record set alias has the following traits:
-     *  - is derived from `alias_tag`.
-     *  - has a nested `type` typename, which refers to a mapped object.
-     */
-    template<class A>
-    concept orm_recordset_alias = (orm_alias<A> && orm_names_type<A>);
-
-    /** @short Alias of a concrete table.
-     *
-     *  A concrete table alias has the following traits:
-     *  - is derived from `alias_tag`.
-     *  - has a `type` typename, which refers to another mapped object (i.e. doesn't refer to itself).
-     */
-    template<class A>
-    concept orm_table_alias = (orm_recordset_alias<A> && !std::same_as<typename A::type, std::remove_const_t<A>>);
-#endif
 }
 
 // #include "expression.h"
@@ -3753,18 +3690,6 @@ namespace sqlite_orm {
         return {};
     }
 
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /**
-     *  Explicit FROM function. Usage:
-     *  `storage.select(&User::id, from<"a"_alias.for_<User>>());`
-     */
-    template<orm_recordset_alias auto... tables>
-    auto from() {
-        static_assert(sizeof...(tables) > 0);
-        return internal::from_t<std::remove_const_t<decltype(tables)>...>{};
-    }
-#endif
-
     template<class T, internal::satisfies<std::is_base_of, internal::negatable_t, T> = true>
     internal::negated_condition_t<T> operator!(T arg) {
         return {std::move(arg)};
@@ -3966,48 +3891,20 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_recordset_alias auto alias, class On>
-    auto left_join(On on) {
-        return internal::left_join_t<std::remove_const_t<decltype(alias)>, On>{std::move(on)};
-    }
-#endif
-
     template<class T, class O>
     internal::join_t<T, O> join(O o) {
         return {std::move(o)};
     }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_recordset_alias auto alias, class On>
-    auto join(On on) {
-        return internal::join_t<std::remove_const_t<decltype(alias)>, On>{std::move(on)};
-    }
-#endif
 
     template<class T, class O>
     internal::left_outer_join_t<T, O> left_outer_join(O o) {
         return {std::move(o)};
     }
 
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_recordset_alias auto alias, class On>
-    auto left_outer_join(On on) {
-        return internal::left_outer_join_t<std::remove_const_t<decltype(alias)>, On>{std::move(on)};
-    }
-#endif
-
     template<class T, class O>
     internal::inner_join_t<T, O> inner_join(O o) {
         return {std::move(o)};
     }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_recordset_alias auto alias, class On>
-    auto inner_join(On on) {
-        return internal::inner_join_t<std::remove_const_t<decltype(alias)>, On>{std::move(on)};
-    }
-#endif
 
     template<class T>
     internal::offset_t<T> offset(T off) {
@@ -4277,29 +4174,6 @@ namespace sqlite_orm {
 
     namespace internal {
 
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        /*
-         *  Helper class to facilitate user-defined string literal operator template
-         */
-        template<size_t N>
-        struct string_identifier_template {
-            static constexpr size_t size() {
-                return N - 1;
-            }
-
-            constexpr string_identifier_template(const char (&id)[N]) {
-                std::copy_n(id, N, this->id);
-            }
-
-            char id[N];
-        };
-
-        template<template<char...> class Alias, string_identifier_template t, size_t... Idx>
-        consteval auto to_alias(std::index_sequence<Idx...>) {
-            return Alias<t.id[Idx]...>{};
-        }
-#endif
-
         /**
          *  This is a common built-in class used for character based table aliases.
          *  For convenience there exist public type aliases `alias_a`, `alias_b`, ...
@@ -4389,16 +4263,6 @@ namespace sqlite_orm {
 
             alias_holder() = default;
         };
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        template<char A, char... X>
-        struct recordset_alias_builder {
-            template<class T>
-            [[nodiscard]] consteval recordset_alias<T, A, X...> for_() const {
-                return {};
-            }
-        };
-#endif
     }
 
     /**
@@ -4413,22 +4277,6 @@ namespace sqlite_orm {
         return {c};
     }
 
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_table_alias auto als, class C>
-    auto alias_column(C c) {
-        using A = std::remove_const_t<decltype(als)>;
-        using aliased_type = internal::type_t<A>;
-        static_assert(std::is_same_v<polyfill::detected_t<internal::table_type_of_t, C>, aliased_type>,
-                      "Column must be from aliased table");
-        return internal::alias_column_t<A, decltype(c)>{c};
-    }
-
-    template<orm_table_alias A, class F>
-    constexpr auto operator->*(const A&, F field) {
-        return internal::alias_column_t<A, decltype(field)>{field};
-    }
-#endif
-
     /** 
      *  Alias a column expression.
      */
@@ -4437,32 +4285,10 @@ namespace sqlite_orm {
         return {std::move(expression)};
     }
 
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_column_alias auto als, class E>
-    auto as(E expression) {
-        return internal::as_t<std::remove_const_t<decltype(als)>, E>{std::move(expression)};
-    }
-
-    /** 
-     *  Alias a column expression.
-     */
-    template<orm_column_alias A, class E>
-    internal::as_t<A, E> operator>>=(E expression, const A&) {
-        return {std::move(expression)};
-    }
-#endif
-
     template<class A, internal::satisfies<internal::is_column_alias, A> = true>
     internal::alias_holder<A> get() {
         return {};
     }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_column_alias auto als>
-    auto get() {
-        return internal::alias_holder<std::remove_const_t<decltype(als)>>{};
-    }
-#endif
 
     template<class T>
     using alias_a = internal::recordset_alias<T, 'a'>;
@@ -4526,35 +4352,6 @@ namespace sqlite_orm {
     using colalias_g = internal::column_alias<'g'>;
     using colalias_h = internal::column_alias<'h'>;
     using colalias_i = internal::column_alias<'i'>;
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /** @short Create a table alias.
-     *
-     *  Examples:
-     *  constexpr auto z_alias = alias<'z'>.for_<User>();
-     */
-    template<char A, char... X>
-    inline constexpr internal::recordset_alias_builder<A, X...> alias{};
-
-    /** @short Create a table alias.
-     *
-     *  Examples:
-     *  constexpr auto z_alias = "z"_alias.for_<User>();
-     */
-    template<internal::string_identifier_template t>
-    [[nodiscard]] consteval auto operator"" _alias() {
-        return internal::to_alias<internal::recordset_alias_builder, t>(std::make_index_sequence<t.size()>{});
-    }
-
-    /** @short Create a column alias.
-     *  column_alias<'a'[, ...]> from a string literal.
-     *  E.g. "a"_col, "b"_col
-     */
-    template<internal::string_identifier_template t>
-    [[nodiscard]] consteval auto operator"" _col() {
-        return internal::to_alias<internal::column_alias, t>(std::make_index_sequence<t.size()>{});
-    }
-#endif
 }
 #pragma once
 
@@ -7303,19 +7100,6 @@ namespace sqlite_orm {
     internal::asterisk_t<T> asterisk(bool definedOrder = false) {
         return {definedOrder};
     }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /**
-     *  Example:
-     *  constexpr auto m = "m"_alias.for_<Employee>();
-     *  auto reportingTo = 
-     *      storage.select(asterisk<m>(), inner_join<m>(on(m->*&Employee::reportsTo == c(&Employee::employeeId))));
-     */
-    template<orm_recordset_alias auto alias>
-    auto asterisk(bool definedOrder = false) {
-        return internal::asterisk_t<std::remove_const_t<decltype(alias)>>{definedOrder};
-    }
-#endif
 
     /**
      *   `SELECT * FROM T` expression that fetches results as objects of type T.

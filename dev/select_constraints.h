@@ -415,19 +415,6 @@ namespace sqlite_orm {
         return {definedOrder};
     }
 
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /**
-     *  Example:
-     *  constexpr auto m = "m"_alias.for_<Employee>();
-     *  auto reportingTo = 
-     *      storage.select(asterisk<m>(), inner_join<m>(on(m->*&Employee::reportsTo == c(&Employee::employeeId))));
-     */
-    template<orm_recordset_alias auto alias>
-    auto asterisk(bool definedOrder = false) {
-        return internal::asterisk_t<std::remove_const_t<decltype(alias)>>{definedOrder};
-    }
-#endif
-
     /**
      *   `SELECT * FROM T` expression that fetches results as objects of type T.
      *   T is a type mapped to a storage, or an alias of it.
