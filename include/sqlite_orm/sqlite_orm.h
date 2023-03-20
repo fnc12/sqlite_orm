@@ -1114,10 +1114,6 @@ namespace sqlite_orm {
 
 // #include "../functional/cxx_universal.h"
 
-#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
-#include <array>
-#endif
-
 namespace sqlite_orm {
     namespace internal {
         /**
@@ -1127,37 +1123,6 @@ namespace sqlite_orm {
         SQLITE_ORM_CONSTEVAL size_t first_index_sequence_value(std::index_sequence<I, Idx...>) {
             return I;
         }
-
-#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
-        /**
-         *  Reorder the values of an index_sequence according to the positions from a second sequence.
-         */
-        template<size_t... Value, size_t... IdxOfValue>
-        SQLITE_ORM_CONSTEVAL auto reorder_index_sequence(std::index_sequence<Value...>,
-                                                         std::index_sequence<IdxOfValue...>) {
-            constexpr std::array<size_t, sizeof...(Value)> values{Value...};
-            return std::index_sequence<values[sizeof...(Value) - 1u - IdxOfValue]...>{};
-        }
-
-        template<size_t Value, size_t IdxOfValue>
-        SQLITE_ORM_CONSTEVAL std::index_sequence<Value> reorder_index_sequence(std::index_sequence<Value>,
-                                                                               std::index_sequence<IdxOfValue>) {
-            return {};
-        }
-
-        inline SQLITE_ORM_CONSTEVAL std::index_sequence<> reorder_index_sequence(std::index_sequence<>,
-                                                                                 std::index_sequence<>) {
-            return {};
-        }
-
-        /**
-         *  Reverse the values of an index_sequence.
-         */
-        template<size_t... Idx>
-        SQLITE_ORM_CONSTEVAL auto reverse_index_sequence(std::index_sequence<Idx...>) {
-            return reorder_index_sequence(std::index_sequence<Idx...>{}, std::make_index_sequence<sizeof...(Idx)>{});
-        }
-#endif
 
         template<class... Seq>
         struct flatten_idxseq {
@@ -3805,167 +3770,171 @@ namespace sqlite_orm {
         return {std::move(arg)};
     }
 
-    /**
-     *  Cute operators for columns
-     */
-    template<class T, class R>
-    internal::lesser_than_t<T, R> operator<(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.value), std::move(r)};
-    }
+    // Deliberately put operators for `expression_t` into the internal namespace
+    // to facilitate ADL (Argument Dependent Lookup)
+    namespace internal {
+        /**
+         *  Cute operators for columns
+         */
+        template<class T, class R>
+        lesser_than_t<T, R> operator<(expression_t<T> expr, R r) {
+            return {std::move(expr.value), std::move(r)};
+        }
 
-    template<class L, class T>
-    internal::lesser_than_t<L, T> operator<(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.value)};
-    }
+        template<class L, class T>
+        lesser_than_t<L, T> operator<(L l, expression_t<T> expr) {
+            return {std::move(l), std::move(expr.value)};
+        }
 
-    template<class T, class R>
-    internal::lesser_or_equal_t<T, R> operator<=(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.value), std::move(r)};
-    }
+        template<class T, class R>
+        lesser_or_equal_t<T, R> operator<=(expression_t<T> expr, R r) {
+            return {std::move(expr.value), std::move(r)};
+        }
 
-    template<class L, class T>
-    internal::lesser_or_equal_t<L, T> operator<=(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.value)};
-    }
+        template<class L, class T>
+        lesser_or_equal_t<L, T> operator<=(L l, expression_t<T> expr) {
+            return {std::move(l), std::move(expr.value)};
+        }
 
-    template<class T, class R>
-    internal::greater_than_t<T, R> operator>(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.value), std::move(r)};
-    }
+        template<class T, class R>
+        greater_than_t<T, R> operator>(expression_t<T> expr, R r) {
+            return {std::move(expr.value), std::move(r)};
+        }
 
-    template<class L, class T>
-    internal::greater_than_t<L, T> operator>(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.value)};
-    }
+        template<class L, class T>
+        greater_than_t<L, T> operator>(L l, expression_t<T> expr) {
+            return {std::move(l), std::move(expr.value)};
+        }
 
-    template<class T, class R>
-    internal::greater_or_equal_t<T, R> operator>=(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.value), std::move(r)};
-    }
+        template<class T, class R>
+        greater_or_equal_t<T, R> operator>=(expression_t<T> expr, R r) {
+            return {std::move(expr.value), std::move(r)};
+        }
 
-    template<class L, class T>
-    internal::greater_or_equal_t<L, T> operator>=(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.value)};
-    }
+        template<class L, class T>
+        greater_or_equal_t<L, T> operator>=(L l, expression_t<T> expr) {
+            return {std::move(l), std::move(expr.value)};
+        }
 
-    template<class T, class R>
-    internal::is_equal_t<T, R> operator==(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.value), std::move(r)};
-    }
+        template<class T, class R>
+        is_equal_t<T, R> operator==(expression_t<T> expr, R r) {
+            return {std::move(expr.value), std::move(r)};
+        }
 
-    template<class L, class T>
-    internal::is_equal_t<L, T> operator==(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.value)};
-    }
+        template<class L, class T>
+        is_equal_t<L, T> operator==(L l, expression_t<T> expr) {
+            return {std::move(l), std::move(expr.value)};
+        }
 
-    template<class T, class R>
-    internal::is_not_equal_t<T, R> operator!=(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.value), std::move(r)};
-    }
+        template<class T, class R>
+        is_not_equal_t<T, R> operator!=(expression_t<T> expr, R r) {
+            return {std::move(expr.value), std::move(r)};
+        }
 
-    template<class L, class T>
-    internal::is_not_equal_t<L, T> operator!=(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.value)};
-    }
+        template<class L, class T>
+        is_not_equal_t<L, T> operator!=(L l, expression_t<T> expr) {
+            return {std::move(l), std::move(expr.value)};
+        }
 
-    template<class T, class R>
-    internal::conc_t<T, R> operator||(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.value), std::move(r)};
-    }
+        template<class T, class R>
+        conc_t<T, R> operator||(expression_t<T> expr, R r) {
+            return {std::move(expr.value), std::move(r)};
+        }
 
-    template<class L, class T>
-    internal::conc_t<L, T> operator||(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.value)};
-    }
+        template<class L, class T>
+        conc_t<L, T> operator||(L l, expression_t<T> expr) {
+            return {std::move(l), std::move(expr.value)};
+        }
 
-    template<class L, class R>
-    internal::conc_t<L, R> operator||(internal::expression_t<L> l, internal::expression_t<R> r) {
-        return {std::move(l.value), std::move(r.value)};
-    }
+        template<class L, class R>
+        conc_t<L, R> operator||(expression_t<L> l, expression_t<R> r) {
+            return {std::move(l.value), std::move(r.value)};
+        }
 
-    template<class R, class E, internal::satisfies<std::is_base_of, internal::conc_string, E> = true>
-    internal::conc_t<E, R> operator||(E expr, R r) {
-        return {std::move(expr), std::move(r)};
-    }
+        template<class R, class E, satisfies<std::is_base_of, conc_string, E> = true>
+        conc_t<E, R> operator||(E expr, R r) {
+            return {std::move(expr), std::move(r)};
+        }
 
-    template<class L, class E, internal::satisfies<std::is_base_of, internal::conc_string, E> = true>
-    internal::conc_t<L, E> operator||(L l, E expr) {
-        return {std::move(l), std::move(expr)};
-    }
+        template<class L, class E, satisfies<std::is_base_of, conc_string, E> = true>
+        conc_t<L, E> operator||(L l, E expr) {
+            return {std::move(l), std::move(expr)};
+        }
 
-    template<class T, class R>
-    internal::add_t<T, R> operator+(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.value), std::move(r)};
-    }
+        template<class T, class R>
+        add_t<T, R> operator+(expression_t<T> expr, R r) {
+            return {std::move(expr.value), std::move(r)};
+        }
 
-    template<class L, class T>
-    internal::add_t<L, T> operator+(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.value)};
-    }
+        template<class L, class T>
+        add_t<L, T> operator+(L l, expression_t<T> expr) {
+            return {std::move(l), std::move(expr.value)};
+        }
 
-    template<class L, class R>
-    internal::add_t<L, R> operator+(internal::expression_t<L> l, internal::expression_t<R> r) {
-        return {std::move(l.value), std::move(r.value)};
-    }
+        template<class L, class R>
+        add_t<L, R> operator+(expression_t<L> l, expression_t<R> r) {
+            return {std::move(l.value), std::move(r.value)};
+        }
 
-    template<class T, class R>
-    internal::sub_t<T, R> operator-(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.value), std::move(r)};
-    }
+        template<class T, class R>
+        sub_t<T, R> operator-(expression_t<T> expr, R r) {
+            return {std::move(expr.value), std::move(r)};
+        }
 
-    template<class L, class T>
-    internal::sub_t<L, T> operator-(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.value)};
-    }
+        template<class L, class T>
+        sub_t<L, T> operator-(L l, expression_t<T> expr) {
+            return {std::move(l), std::move(expr.value)};
+        }
 
-    template<class L, class R>
-    internal::sub_t<L, R> operator-(internal::expression_t<L> l, internal::expression_t<R> r) {
-        return {std::move(l.value), std::move(r.value)};
-    }
+        template<class L, class R>
+        sub_t<L, R> operator-(expression_t<L> l, expression_t<R> r) {
+            return {std::move(l.value), std::move(r.value)};
+        }
 
-    template<class T, class R>
-    internal::mul_t<T, R> operator*(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.value), std::move(r)};
-    }
+        template<class T, class R>
+        mul_t<T, R> operator*(expression_t<T> expr, R r) {
+            return {std::move(expr.value), std::move(r)};
+        }
 
-    template<class L, class T>
-    internal::mul_t<L, T> operator*(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.value)};
-    }
+        template<class L, class T>
+        mul_t<L, T> operator*(L l, expression_t<T> expr) {
+            return {std::move(l), std::move(expr.value)};
+        }
 
-    template<class L, class R>
-    internal::mul_t<L, R> operator*(internal::expression_t<L> l, internal::expression_t<R> r) {
-        return {std::move(l.value), std::move(r.value)};
-    }
+        template<class L, class R>
+        mul_t<L, R> operator*(expression_t<L> l, expression_t<R> r) {
+            return {std::move(l.value), std::move(r.value)};
+        }
 
-    template<class T, class R>
-    internal::div_t<T, R> operator/(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.value), std::move(r)};
-    }
+        template<class T, class R>
+        div_t<T, R> operator/(expression_t<T> expr, R r) {
+            return {std::move(expr.value), std::move(r)};
+        }
 
-    template<class L, class T>
-    internal::div_t<L, T> operator/(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.value)};
-    }
+        template<class L, class T>
+        div_t<L, T> operator/(L l, expression_t<T> expr) {
+            return {std::move(l), std::move(expr.value)};
+        }
 
-    template<class L, class R>
-    internal::div_t<L, R> operator/(internal::expression_t<L> l, internal::expression_t<R> r) {
-        return {std::move(l.value), std::move(r.value)};
-    }
+        template<class L, class R>
+        div_t<L, R> operator/(expression_t<L> l, expression_t<R> r) {
+            return {std::move(l.value), std::move(r.value)};
+        }
 
-    template<class T, class R>
-    internal::mod_t<T, R> operator%(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.value), std::move(r)};
-    }
+        template<class T, class R>
+        mod_t<T, R> operator%(expression_t<T> expr, R r) {
+            return {std::move(expr.value), std::move(r)};
+        }
 
-    template<class L, class T>
-    internal::mod_t<L, T> operator%(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.value)};
-    }
+        template<class L, class T>
+        mod_t<L, T> operator%(L l, expression_t<T> expr) {
+            return {std::move(l), std::move(expr.value)};
+        }
 
-    template<class L, class R>
-    internal::mod_t<L, R> operator%(internal::expression_t<L> l, internal::expression_t<R> r) {
-        return {std::move(l.value), std::move(r.value)};
+        template<class L, class R>
+        mod_t<L, R> operator%(expression_t<L> l, expression_t<R> r) {
+            return {std::move(l.value), std::move(r.value)};
+        }
     }
 
     template<class F, class O>
@@ -9574,7 +9543,9 @@ namespace sqlite_orm {
         template<bool reversed = false, class Tpl, size_t... Idx, class L>
         void iterate_tuple(const Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
             if constexpr(reversed) {
-                iterate_tuple(tpl, reverse_index_sequence(std::index_sequence<Idx...>{}), std::forward<L>(lambda));
+                // nifty fold expression trick: make use of guaranteed right-to-left evaluation order when folding over operator=
+                int sink;
+                ((lambda(std::get<Idx>(tpl)), sink) = ... = 0);
             } else {
                 (lambda(std::get<Idx>(tpl)), ...);
             }
