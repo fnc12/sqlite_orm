@@ -33,6 +33,7 @@ namespace sqlite_orm {
         template<bool reversed = false, class Tpl, size_t... Idx, class L>
         void iterate_tuple(const Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
             if constexpr(reversed) {
+                // nifty fold expression trick: make use of guaranteed right-to-left evaluation order when folding over operator=
                 int sink;
                 ((lambda(std::get<Idx>(tpl)), sink) = ... = 0);
             } else {
