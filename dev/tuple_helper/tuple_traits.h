@@ -31,8 +31,9 @@ namespace sqlite_orm {
         /*
          *  Metafunction class that checks whether a tuple contains given type.
          */
-        template<class T>
-        using check_if_tuple_has_type = mpl::bind_front_higherorder_fn<tuple_has, check_if_is_type<T>::template fn>;
+        template<class T, template<class...> class Proj = polyfill::type_identity_t>
+        using check_if_tuple_has_type =
+            mpl::bind_front_higherorder_fn<tuple_has, check_if_is_type<T, Proj>::template fn>;
 
         /*
          *  Metafunction class that checks whether a tuple contains a given template.

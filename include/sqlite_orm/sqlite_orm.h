@@ -1003,10 +1003,10 @@ namespace sqlite_orm {
         using check_if_not = mpl::not_<mpl::quote_fn<TraitFn>>;
 
         /*
-         *  Trait metafunction class that checks if a type is the same as the specified type.
+         *  Trait metafunction class that checks if a type (possibly projected) is the same as the specified type.
          */
-        template<class Type>
-        using check_if_is_type = mpl::bind_front_fn<std::is_same, Type>;
+        template<class Type, template<class...> class Proj = polyfill::type_identity_t>
+        using check_if_is_type = mpl::pass_result_to<Proj, mpl::bind_front_fn<std::is_same, Type>>;
 
         /*
          *  Trait metafunction class that checks if a type's template matches the specified template
@@ -1081,8 +1081,9 @@ namespace sqlite_orm {
         /*
          *  Metafunction class that checks whether a tuple contains given type.
          */
-        template<class T>
-        using check_if_tuple_has_type = mpl::bind_front_higherorder_fn<tuple_has, check_if_is_type<T>::template fn>;
+        template<class T, template<class...> class Proj = polyfill::type_identity_t>
+        using check_if_tuple_has_type =
+            mpl::bind_front_higherorder_fn<tuple_has, check_if_is_type<T, Proj>::template fn>;
 
         /*
          *  Metafunction class that checks whether a tuple contains a given template.
@@ -10573,13 +10574,13 @@ namespace sqlite_orm {
         template<class F>
         using aggregate_fin_function_t = decltype(&F::fin);
 
-        template<class F, class = void>
+        template<class F, class SFINAE = void>
         SQLITE_ORM_INLINE_VAR constexpr bool is_scalar_function_v = false;
         template<class F>
         SQLITE_ORM_INLINE_VAR constexpr bool is_scalar_function_v<F, polyfill::void_t<scalar_call_function_t<F>>> =
             true;
 
-        template<class F, class = void>
+        template<class F, class SFINAE = void>
         SQLITE_ORM_INLINE_VAR constexpr bool is_aggregate_function_v = false;
         template<class F>
         SQLITE_ORM_INLINE_VAR constexpr bool is_aggregate_function_v<
@@ -17567,9 +17568,8 @@ namespace sqlite_orm {
 
             template<class O>
             void assert_mapped_type() const {
-                using mapped_types_tuple = std::tuple<typename DBO::object_type...>;
-                static_assert(mpl::invoke_t<check_if_tuple_has_type<O>, mapped_types_tuple>::value,
-                              "type is not mapped to a storage");
+                static_assert(mpl::invoke_t<check_if_tuple_has_type<O, object_type_t>, db_objects_type>::value,
+                              "type is not mapped to storage");
             }
 
             template<class O,

@@ -3,6 +3,9 @@
 
 using namespace sqlite_orm;
 
+template<class TransparentFunction>
+using transparent_of_t = typename TransparentFunction::is_transparent;
+
 TEST_CASE("mpl") {
     using mpl_is_same = mpl::quote_fn<std::is_same>;
 
@@ -29,7 +32,14 @@ TEST_CASE("mpl") {
     using check_if_same_template =
         mpl::pass_extracted_fn_to<mpl::bind_front_fn<std::is_same, mpl::quote_fn<std::vector>>>;
     STATIC_REQUIRE(mpl::invoke_t<check_if_same_template, std::vector<int>>::value);
-    using check_if_has_type_t = mpl::bind_front_higherorder_fn<polyfill::is_detected, internal::type_t>;
-    STATIC_REQUIRE(!mpl::invoke_t<check_if_has_type_t, int>::value);
-    STATIC_REQUIRE(mpl::invoke_t<check_if_has_type_t, std::true_type>::value);
+    using check_if_names_type = mpl::bind_front_higherorder_fn<polyfill::is_detected, internal::type_t>;
+    STATIC_REQUIRE(!mpl::invoke_t<check_if_names_type, int>::value);
+    STATIC_REQUIRE(mpl::invoke_t<check_if_names_type, std::true_type>::value);
+    using predicate_type = std::less<void>;
+    STATIC_REQUIRE(std::is_same<mpl::invoke_t<mpl::pass_result_to<transparent_of_t, mpl::identity>, predicate_type>,
+                                predicate_type::is_transparent>::value);
+
+    STATIC_REQUIRE(mpl::invoke_t<internal::check_if_is_type<predicate_type>, predicate_type>::value);
+    using check_if_is_projected_type = internal::check_if_is_type<predicate_type::is_transparent, transparent_of_t>;
+    STATIC_REQUIRE(mpl::invoke_t<check_if_is_projected_type, predicate_type>::value);
 }
