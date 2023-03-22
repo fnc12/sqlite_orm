@@ -19578,7 +19578,7 @@ namespace sqlite_orm {
 #include <functional>  //  std::reference_wrapper, std::cref
 #include <algorithm>  //  std::find_if, std::ranges::find
 
-// #include "../dbstat.h"
+// #include "../type_traits.h"
 
 // #include "../util.h"
 
@@ -19593,7 +19593,7 @@ namespace sqlite_orm {
         template<class Table, satisfies<is_table, Table>>
         sync_schema_result storage_t<DBO...>::sync_table(const Table& table, sqlite3* db, bool preserve) {
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
-            if(std::is_same<Table, dbstat>::value) {
+            if(std::is_same<object_type_t<Table>, dbstat>::value) {
                 return sync_schema_result::already_in_sync;
             }
 #endif  //  SQLITE_ENABLE_DBSTAT_VTAB
