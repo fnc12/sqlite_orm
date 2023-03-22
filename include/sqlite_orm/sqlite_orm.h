@@ -17668,11 +17668,12 @@ namespace sqlite_orm {
                 return this->execute(statement);
             }
 
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
             /**
              *  SELECT * routine.
              *  O is an object type to be extracted. Must be specified explicitly.
-             *  R is a container type. std::vector<std::unique_ptr<O>> is default
-             *  @return All objects of type O as std::unique_ptr<O> stored in database at the moment.
+             *  R is a container type. std::vector<std::optional<O>> is default
+             *  @return All objects of type O as std::optional<O> stored in database at the moment.
              *  @example: storage.get_all_optional<User, std::list<std::optional<O>>>(); - SELECT * FROM users
              *  @example: storage.get_all_optional<User, std::list<std::optional<O>>>(where(length(&User::name) > 6)); - SELECT * FROM users WHERE LENGTH(name)  > 6
             */
@@ -17682,6 +17683,7 @@ namespace sqlite_orm {
                 auto statement = this->prepare(sqlite_orm::get_all_optional<O, R>(std::forward<Args>(conditions)...));
                 return this->execute(statement);
             }
+#endif
 
             /**
              *  Select * by id routine.
