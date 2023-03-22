@@ -27,7 +27,8 @@ TEST_CASE("Prepared get all") {
                                            make_column("user_id", &UserAndVisit::userId),
                                            make_column("visit_id", &UserAndVisit::visitId),
                                            make_column("description", &UserAndVisit::description),
-                                           primary_key(&UserAndVisit::userId, &UserAndVisit::visitId)));
+                                           primary_key(&UserAndVisit::userId, &UserAndVisit::visitId)),
+                                make_sqlite_schema_table());
     storage.sync_schema();
 
     storage.replace(User{1, "Team BS"});
@@ -213,4 +214,12 @@ TEST_CASE("Prepared get all") {
             REQUIRE_THAT(rows, UnorderedEquals(expected));
         }
     }
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    SECTION("from alias") {
+        auto statement =
+            storage.prepare(get_all<sqlite_schema>(where(c(sqlite_schema->*&sqlite_master::type) == "table")));
+        auto str = storage.dump(statement);
+        testSerializing(statement);
+    }
+#endif
 }

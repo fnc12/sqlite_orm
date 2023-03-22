@@ -121,6 +121,19 @@ TEST_CASE("Wide string") {
     }
 }
 #endif  //  SQLITE_ORM_OMITS_CODECVT
+
+TEST_CASE("sqlite_schema") {
+    auto storage = make_storage("", make_sqlite_schema_table());
+    storage.sync_schema();
+
+    auto masterRows = storage.get_all<sqlite_master>();
+    std::ignore = masterRows;
+#if(SQLITE_VERSION_NUMBER >= 3033000) && defined(SQLITE_ORM_WITH_CPP20_ALIASES)
+    auto schemaRows = storage.get_all<sqlite_schema>();
+    std::ignore = schemaRows;
+#endif
+}
+
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
 TEST_CASE("dbstat") {
     struct User {

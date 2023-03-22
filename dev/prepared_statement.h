@@ -14,6 +14,7 @@
 #include "connection_holder.h"
 #include "select_constraints.h"
 #include "values.h"
+#include "mapped_type_proxy.h"
 #include "ast/upsert_clause.h"
 #include "ast/set.h"
 
@@ -668,6 +669,23 @@ namespace sqlite_orm {
         internal::validate_conditions<conditions_tuple>();
         return {{std::forward<Args>(conditions)...}};
     }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Create a get all statement.
+     *  `alias` is an explicitly specified table alias of an object to be extracted.
+     *  `R` is the container return type, which must have a `R::push_back(T&&)` method, and defaults to `std::vector<T>`
+     *  Usage: storage.get_all<sqlite_schema>(...);
+     */
+    template<orm_table_alias auto alias,
+             class R = std::vector<internal::mapped_type_proxy_t<decltype(alias)>>,
+             class... Args>
+    auto get_all(Args&&... conditions) {
+        using expression_type = internal::get_all_t<std::remove_const_t<decltype(alias)>, R, std::decay_t<Args>...>;
+        internal::validate_conditions<typename expression_type::conditions_type>();
+        return expression_type{{std::forward<Args>(conditions)...}};
+    }
+#endif
 
     /**
      *  Create an update all statement.

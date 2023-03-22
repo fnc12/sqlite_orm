@@ -1350,13 +1350,20 @@ namespace sqlite_orm {
 
         template<class T, class Ctx>
         std::string serialize_get_all_impl(const T& getAll, const Ctx& context) {
-            using mapped_type = type_t<T>;
+            using table_type = type_t<T>;
+            using mapped_type = mapped_type_proxy_t<table_type>;
 
             auto& table = pick_table<mapped_type>(context.db_objects);
 
             std::stringstream ss;
-            ss << "SELECT " << streaming_table_column_names(table, table.name) << " FROM "
-               << streaming_identifier(table.name) << streaming_conditions_tuple(getAll.conditions, context);
+            ss << "SELECT "
+               << streaming_table_column_names(table,
+                                               is_table_alias_v<table_type> ? alias_extractor<table_type>::as_alias()
+                                                                            : table.name)
+               << " FROM "
+               << streaming_identifier(lookup_table_name<mapped_type>(context.db_objects),
+                                       alias_extractor<table_type>::as_alias())
+               << streaming_conditions_tuple(getAll.conditions, context);
             return ss.str();
         }
 

@@ -11304,6 +11304,8 @@ namespace sqlite_orm {
 
 }
 
+// #include "mapped_type_proxy.h"
+
 // #include "ast/upsert_clause.h"
 
 #if SQLITE_VERSION_NUMBER >= 3024000
@@ -12235,6 +12237,23 @@ namespace sqlite_orm {
         internal::validate_conditions<conditions_tuple>();
         return {{std::forward<Args>(conditions)...}};
     }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Create a get all statement.
+     *  `alias` is an explicitly specified table alias of an object to be extracted.
+     *  `R` is the container return type, which must have a `R::push_back(T&&)` method, and defaults to `std::vector<T>`
+     *  Usage: storage.get_all<sqlite_schema>(...);
+     */
+    template<orm_table_alias auto alias,
+             class R = std::vector<internal::mapped_type_proxy_t<decltype(alias)>>,
+             class... Args>
+    auto get_all(Args&&... conditions) {
+        using expression_type = internal::get_all_t<std::remove_const_t<decltype(alias)>, R, std::decay_t<Args>...>;
+        internal::validate_conditions<typename expression_type::conditions_type>();
+        return expression_type{{std::forward<Args>(conditions)...}};
+    }
+#endif
 
     /**
      *  Create an update all statement.
@@ -16715,13 +16734,20 @@ namespace sqlite_orm {
 
         template<class T, class Ctx>
         std::string serialize_get_all_impl(const T& getAll, const Ctx& context) {
-            using mapped_type = type_t<T>;
+            using table_type = type_t<T>;
+            using mapped_type = mapped_type_proxy_t<table_type>;
 
             auto& table = pick_table<mapped_type>(context.db_objects);
 
             std::stringstream ss;
-            ss << "SELECT " << streaming_table_column_names(table, table.name) << " FROM "
-               << streaming_identifier(table.name) << streaming_conditions_tuple(getAll.conditions, context);
+            ss << "SELECT "
+               << streaming_table_column_names(table,
+                                               is_table_alias_v<table_type> ? alias_extractor<table_type>::as_alias()
+                                                                            : table.name)
+               << " FROM "
+               << streaming_identifier(lookup_table_name<mapped_type>(context.db_objects),
+                                       alias_extractor<table_type>::as_alias())
+               << streaming_conditions_tuple(getAll.conditions, context);
             return ss.str();
         }
 
@@ -17652,6 +17678,25 @@ namespace sqlite_orm {
                 auto statement = this->prepare(sqlite_orm::get_all<O, R>(std::forward<Args>(args)...));
                 return this->execute(statement);
             }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            /**
+             *  SELECT * routine.
+             *  `alias` is an explicitly specified table alias of an object to be extracted.
+             *  `R` is the container return type, which must have a `R::push_back(O&&)` method, and defaults to `std::vector<O>`
+             *  @return All objects stored in database.
+             *  @example: storage.get_all<sqlite_schema, std::list<sqlite_master>>(); - SELECT sqlite_schema.* FROM sqlite_master AS sqlite_schema
+            */
+            template<orm_table_alias auto alias,
+                     class R = std::vector<mapped_type_proxy_t<decltype(alias)>>,
+                     class... Args>
+            R get_all(Args&&... args) {
+                using A = decltype(alias);
+                this->assert_mapped_type<mapped_type_proxy_t<A>>();
+                auto statement = this->prepare(sqlite_orm::get_all<alias, R>(std::forward<Args>(args)...));
+                return this->execute(statement);
+            }
+#endif
 
             /**
              *  SELECT * routine.
@@ -18708,16 +18753,16 @@ namespace sqlite_orm {
                 return res;
             }
 
-            template<class T, class R, class... Args>
+            template<class T, class R, class... Args, class O = mapped_type_proxy_t<T>>
             R execute(const prepared_statement_t<get_all_t<T, R, Args...>>& statement) {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
                 iterate_ast(statement.expression, conditional_binder{stmt});
 
                 R res;
-                perform_steps(stmt, [&table = this->get_table<T>(), &res](sqlite3_stmt* stmt) {
-                    T obj;
-                    object_from_column_builder<T> builder{obj, stmt};
+                perform_steps(stmt, [&table = this->get_table<O>(), &res](sqlite3_stmt* stmt) {
+                    O obj;
+                    object_from_column_builder<O> builder{obj, stmt};
                     table.for_each_column(builder);
                     res.push_back(std::move(obj));
                 });
@@ -19386,6 +19431,47 @@ namespace sqlite_orm {
 
 #include <string>  //  std::string
 
+// #include "column.h"
+
+// #include "table.h"
+
+// #include "alias.h"
+
+namespace sqlite_orm {
+    /** 
+     *  SQLite's "schema table" that stores the schema for a database.
+     *  
+     *  @note Despite the fact that the schema table was renamed from "sqlite_master" to "sqlite_schema" in SQLite 3.33.0
+     *  the renaming process was more like keeping the previous name "sqlite_master" and attaching an internal alias "sqlite_schema".
+     *  One can infer this fact from the following SQL statement:
+     *  It qualifies the set of columns, but bails out with error "no such table: sqlite_schema": `SELECT sqlite_schema.* from sqlite_schema`.
+     *  Hence we keep its previous table name `sqlite_master`, and provide `sqlite_schema` as a table alias in sqlite_orm.
+     */
+    struct sqlite_master {
+        std::string type;
+        std::string name;
+        std::string tbl_name;
+        int rootpage = 0;
+        std::string sql;
+    };
+
+    inline auto make_sqlite_schema_table() {
+        return make_table("sqlite_master",
+                          make_column("type", &sqlite_master::type),
+                          make_column("name", &sqlite_master::name),
+                          make_column("tbl_name", &sqlite_master::tbl_name),
+                          make_column("rootpage", &sqlite_master::rootpage),
+                          make_column("sql", &sqlite_master::sql));
+    }
+
+#if(SQLITE_VERSION_NUMBER >= 3033000) && defined(SQLITE_ORM_WITH_CPP20_ALIASES)
+    inline constexpr auto sqlite_schema = "sqlite_schema"_alias.for_<sqlite_master>();
+#endif
+}
+#pragma once
+
+#include <string>  //  std::string
+
 // #include "../column.h"
 
 // #include "../table.h"
@@ -19539,6 +19625,8 @@ namespace sqlite_orm {
 #include <functional>  //  std::reference_wrapper, std::cref
 #include <algorithm>  //  std::find_if, std::ranges::find
 
+// #include "../sqlite_schema_table.h"
+
 // #include "../eponymous_vtabs/dbstat.h"
 
 // #include "../type_traits.h"
@@ -19555,6 +19643,9 @@ namespace sqlite_orm {
         template<class... DBO>
         template<class Table, satisfies<is_table, Table>>
         sync_schema_result storage_t<DBO...>::sync_table(const Table& table, sqlite3* db, bool preserve) {
+            if(std::is_same<object_type_t<Table>, sqlite_master>::value) {
+                return sync_schema_result::already_in_sync;
+            }
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
             if(std::is_same<object_type_t<Table>, dbstat>::value) {
                 return sync_schema_result::already_in_sync;
