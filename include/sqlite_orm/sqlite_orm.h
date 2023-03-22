@@ -19363,9 +19363,9 @@ namespace sqlite_orm {
 
 #include <string>  //  std::string
 
-// #include "column.h"
+// #include "../column.h"
 
-// #include "table.h"
+// #include "../table.h"
 
 namespace sqlite_orm {
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
@@ -19515,6 +19515,8 @@ namespace sqlite_orm {
 #include <sstream>
 #include <functional>  //  std::reference_wrapper, std::cref
 #include <algorithm>  //  std::find_if, std::ranges::find
+
+// #include "../eponymous_vtabs/dbstat.h"
 
 // #include "../type_traits.h"
 

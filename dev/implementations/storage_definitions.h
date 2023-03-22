@@ -8,6 +8,7 @@
 #include <functional>  //  std::reference_wrapper, std::cref
 #include <algorithm>  //  std::find_if, std::ranges::find
 
+#include "../eponymous_vtabs/dbstat.h"
 #include "../type_traits.h"
 #include "../util.h"
 #include "../serializing_util.h"
