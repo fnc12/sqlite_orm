@@ -201,6 +201,7 @@ namespace sqlite_orm {
                         return 0;
                     },
                     &tableNames);
+                tableNames.shrink_to_fit();
                 return tableNames;
             }
 
