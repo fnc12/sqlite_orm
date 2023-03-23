@@ -137,10 +137,6 @@ using std::nullptr_t;
 #define SQLITE_ORM_BROKEN_NONTEMPLATE_CONCEPTS
 #endif
 
-#if SQLITE_ORM_HAS_INCLUDE(<version>)
-#include <version>
-#endif
-
 #ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 #define SQLITE_ORM_INLINE_VAR inline
 #else
@@ -19364,6 +19360,8 @@ namespace sqlite_orm {
 
 // #include "../dbstat.h"
 
+// #include "../type_traits.h"
+
 // #include "../util.h"
 
 // #include "../serializing_util.h"
@@ -19377,7 +19375,7 @@ namespace sqlite_orm {
         template<class Table, satisfies<is_table, Table>>
         sync_schema_result storage_t<DBO...>::sync_table(const Table& table, sqlite3* db, bool preserve) {
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
-            if(std::is_same<Table, dbstat>::value) {
+            if(std::is_same<object_type_t<Table>, dbstat>::value) {
                 return sync_schema_result::already_in_sync;
             }
 #endif  //  SQLITE_ENABLE_DBSTAT_VTAB
