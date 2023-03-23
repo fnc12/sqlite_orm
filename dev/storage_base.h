@@ -9,11 +9,10 @@
 #include <vector>  //  std::vector
 #include <memory>  //  std::make_unique, std::unique_ptr
 #include <map>  //  std::map
-#include <type_traits>  //  std::decay, std::is_same
+#include <type_traits>  //  std::is_same
 #include <algorithm>  //  std::find_if
 
-#include "functional/cxx_universal.h"
-#include "functional/static_magic.h"
+#include "functional/cxx_universal.h"  //  ::size_t
 #include "tuple_helper/tuple_iteration.h"
 #include "pragma.h"
 #include "limit_accessor.h"
