@@ -826,18 +826,6 @@ namespace sqlite_orm {
         return {};
     }
 
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /**
-     *  Explicit FROM function. Usage:
-     *  `storage.select(&User::id, from<"a"_alias.for_<User>>());`
-     */
-    template<orm_recordset_alias auto... tables>
-    auto from() {
-        static_assert(sizeof...(tables) > 0);
-        return internal::from_t<std::remove_const_t<decltype(tables)>...>{};
-    }
-#endif
-
     template<class T, internal::satisfies<std::is_base_of, internal::negatable_t, T> = true>
     internal::negated_condition_t<T> operator!(T arg) {
         return {std::move(arg)};
@@ -1039,48 +1027,20 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_recordset_alias auto alias, class On>
-    auto left_join(On on) {
-        return internal::left_join_t<std::remove_const_t<decltype(alias)>, On>{std::move(on)};
-    }
-#endif
-
     template<class T, class O>
     internal::join_t<T, O> join(O o) {
         return {std::move(o)};
     }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_recordset_alias auto alias, class On>
-    auto join(On on) {
-        return internal::join_t<std::remove_const_t<decltype(alias)>, On>{std::move(on)};
-    }
-#endif
 
     template<class T, class O>
     internal::left_outer_join_t<T, O> left_outer_join(O o) {
         return {std::move(o)};
     }
 
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_recordset_alias auto alias, class On>
-    auto left_outer_join(On on) {
-        return internal::left_outer_join_t<std::remove_const_t<decltype(alias)>, On>{std::move(on)};
-    }
-#endif
-
     template<class T, class O>
     internal::inner_join_t<T, O> inner_join(O o) {
         return {std::move(o)};
     }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_recordset_alias auto alias, class On>
-    auto inner_join(On on) {
-        return internal::inner_join_t<std::remove_const_t<decltype(alias)>, On>{std::move(on)};
-    }
-#endif
 
     template<class T>
     internal::offset_t<T> offset(T off) {

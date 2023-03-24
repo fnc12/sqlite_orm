@@ -475,25 +475,6 @@ int main(int, char**) {
         //      )
         //  ORDER BY 'c'."PAYMENT_AMT"
 
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        constexpr auto c_als = "c"_alias.for_<Customer>();
-        constexpr auto d = "d"_alias.for_<Customer>();
-
-        double amount = 2000;
-        auto where_clause = select(d->*&Customer::agentCode,
-                                   from<d>(),
-                                   where(is_equal(c_als->*&Customer::paymentAmt, std::ref(amount)) and
-                                         (d->*&Customer::agentCode == c(c_als->*&Customer::agentCode))));
-
-        amount = 7000;
-
-        auto statement = storage.prepare(select(
-            columns(&Order::agentCode, &Order::num, &Order::amount, &Order::custCode, c_als->*&Customer::paymentAmt),
-            from<Order>(),
-            inner_join<c_als>(using_(&Customer::agentCode)),
-            where(not exists(where_clause)),
-            order_by(c_als->*&Customer::paymentAmt)));
-#else
         using als = alias_c<Customer>;
         using als_2 = alias_d<Customer>;
 
@@ -516,7 +497,6 @@ int main(int, char**) {
                                    inner_join<als>(on(alias_column<als>(&Customer::agentCode) == c(&Order::agentCode))),
                                    where(not exists(where_clause)),
                                    order_by(alias_column<als>(&Customer::paymentAmt))));
-#endif
 
         auto sql = statement.expanded_sql();
         auto rows = storage.execute(statement);

@@ -283,15 +283,6 @@ TEST_CASE("ast_iterator") {
             expected.push_back(typeid(int));
             iterate_ast(expression, lambda);
         }
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        {
-            SECTION("direct") {
-                auto expression = "a"_col > c(0);
-                expected.push_back(typeid(int));
-                iterate_ast(expression, lambda);
-            }
-        }
-#endif
     }
     SECTION("aliased regular column") {
         using als = alias_z<User>;
@@ -305,19 +296,5 @@ TEST_CASE("ast_iterator") {
         expected.push_back(typeid(alias_column_t<alias_z<User>, column_pointer<User, decltype(&User::id)>>));
         iterate_ast(expression, lambda);
     }
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    SECTION("aliased regular column 2") {
-        constexpr auto z_alias = "z"_alias.for_<User>();
-        auto expression = z_alias->*&User::id;
-        expected.push_back(typeid(alias_column_t<alias_z<User>, decltype(&User::id)>));
-        iterate_ast(expression, lambda);
-    }
-    SECTION("aliased regular column pointer 2") {
-        constexpr auto z_alias = "z"_alias.for_<User>();
-        auto expression = z_alias->*column<User>(&User::id);
-        expected.push_back(typeid(alias_column_t<alias_z<User>, column_pointer<User, decltype(&User::id)>>));
-        iterate_ast(expression, lambda);
-    }
-#endif
     REQUIRE(typeIndexes == expected);
 }
