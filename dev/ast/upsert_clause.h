@@ -1,8 +1,9 @@
 #pragma once
 
-#include <tuple>  //  std::tuple, std::make_tuple
-#include <type_traits>  //  std::false_type, std::true_type
+#if SQLITE_VERSION_NUMBER >= 3024000
+#include <tuple>  //  std::tuple
 #include <utility>  //  std::forward, std::move
+#endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
 
@@ -19,12 +20,12 @@ namespace sqlite_orm {
             args_tuple args;
 
             upsert_clause<args_tuple, std::tuple<>> do_nothing() {
-                return {move(this->args), {}};
+                return {std::move(this->args), {}};
             }
 
             template<class... ActionsArgs>
             upsert_clause<args_tuple, std::tuple<ActionsArgs...>> do_update(ActionsArgs... actions) {
-                return {move(this->args), {std::make_tuple(std::forward<ActionsArgs>(actions)...)}};
+                return {std::move(this->args), {std::forward<ActionsArgs>(actions)...}};
             }
         };
 
@@ -40,8 +41,13 @@ namespace sqlite_orm {
 
         template<class T>
         using is_upsert_clause = polyfill::is_specialization_of<T, upsert_clause>;
+#else
+        template<class T>
+        struct is_upsert_clause : polyfill::bool_constant<false> {};
+#endif
     }
 
+#if SQLITE_VERSION_NUMBER >= 3024000
     /**
      *  ON CONFLICT upsert clause builder function.
      *  @example

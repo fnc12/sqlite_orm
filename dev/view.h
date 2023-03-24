@@ -39,11 +39,11 @@ namespace sqlite_orm {
             view_t(storage_type& stor, decltype(connection) conn, Args&&... args_) :
                 storage(stor), connection(std::move(conn)), args{std::make_tuple(std::forward<Args>(args_)...)} {}
 
-            size_t size() {
+            size_t size() const {
                 return this->storage.template count<T>();
             }
 
-            bool empty() {
+            bool empty() const {
                 return !this->size();
             }
 
@@ -55,7 +55,7 @@ namespace sqlite_orm {
 
                 statement_finalizer stmt{prepare_stmt(this->connection.get(), serialize(this->args, context))};
                 iterate_ast(this->args.conditions, conditional_binder{stmt.get()});
-                return {move(stmt), *this};
+                return {std::move(stmt), *this};
             }
 
             iterator_t<self> end() {

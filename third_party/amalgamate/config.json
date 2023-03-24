@@ -1,8 +1,9 @@
 {
-	"project": "SQLite ORM",
-	"target": "include/sqlite_orm/sqlite_orm.h",
+  "project": "SQLite ORM",
+  "target": "include/sqlite_orm/sqlite_orm.h",
   "sources": [
     "dev/functional/start_macros.h",
+    "dev/functional/config.h",
     "dev/type_traits.h",
     "dev/error_code.h",
     "dev/type_printer.h",
@@ -14,7 +15,6 @@
     "dev/field_printer.h",
     "dev/conditions.h",
     "dev/alias.h",
-    "dev/join_iterator.h",
     "dev/core_functions.h",
     "dev/typed_comparator.h",
     "dev/select_constraints.h",
@@ -28,19 +28,16 @@
     "dev/util.h",
     "dev/sync_schema_result.h",
     "dev/index.h",
-    "dev/mapped_type_proxy.h",
     "dev/rowid.h",
-    "dev/column_result.h",
     "dev/table.h",
     "dev/storage_impl.h",
     "dev/default_value_extractor.h",
     "dev/storage.h",
-    "dev/node_tuple.h",
     "dev/get_prepared_statement.h",
     "dev/carray.h",
     "dev/dbstat.h",
     "dev/interface_definitions.h",
     "dev/functional/finish_macros.h"
   ],
-	"include_paths": ["dev"]
+  "include_paths": [ "dev" ]
 }

@@ -7,6 +7,9 @@ namespace sqlite_orm {
         template<class T, class F>
         struct column_pointer;
 
+        template<class C>
+        struct indexed_column_t;
+
         /**
          *  Trait class used to define table mapped type by setter/getter/member
          *  T - member pointer
@@ -27,6 +30,11 @@ namespace sqlite_orm {
         template<class T, class F>
         struct table_type_of<column_pointer<T, F>> {
             using type = T;
+        };
+
+        template<class C>
+        struct table_type_of<indexed_column_t<C>> {
+            using type = typename table_type_of<C>::type;
         };
 
         template<class T>

@@ -15,7 +15,7 @@ TEST_CASE("Prepared insert") {
 
         Artist() = default;
 
-        Artist(decltype(id) id_, decltype(name) name_) : id(id_), name(move(name_)) {}
+        Artist(decltype(id) id_, decltype(name) name_) : id(id_), name(std::move(name_)) {}
 
         Artist(const Artist& other) :
             id(other.id), name(other.name ? std::make_unique<std::string>(*other.name) : nullptr) {}

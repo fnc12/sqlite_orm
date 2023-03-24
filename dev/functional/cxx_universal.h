@@ -4,7 +4,7 @@
  *  This header makes central C++ functionality on which sqlite_orm depends universally available:
  *  - alternative operator representations
  *  - ::size_t, ::ptrdiff_t, ::nullptr_t
- *  - C++ core feature macros
+ *  - C++ core language feature macros
  *  - macros for dealing with compiler quirks
  */
 

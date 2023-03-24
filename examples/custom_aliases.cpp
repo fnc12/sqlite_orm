@@ -21,7 +21,7 @@ struct Employee {
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
     Employee() {}
     Employee(int id, std::string name, int age, std::string address, float salary) :
-        id{id}, name{move(name)}, age{age}, address{move(address)}, salary{salary} {}
+        id{id}, name{std::move(name)}, age{age}, address{std::move(address)}, salary{salary} {}
 #endif
 };
 
@@ -32,7 +32,7 @@ struct Department {
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
     Department() {}
-    Department(int id, std::string dept, int empId) : id{id}, dept{move(dept)}, empId{empId} {}
+    Department(int id, std::string dept, int empId) : id{id}, dept{std::move(dept)}, empId{empId} {}
 #endif
 };
 

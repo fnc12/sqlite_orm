@@ -37,8 +37,8 @@ namespace sqlite_orm {
                                        decltype(argumentsCount) argumentsCount_,
                                        decltype(create) create_,
                                        decltype(destroy) destroy_) :
-                name(move(name_)),
-                argumentsCount(argumentsCount_), create(move(create_)), destroy(destroy_) {}
+                name(std::move(name_)),
+                argumentsCount(argumentsCount_), create(std::move(create_)), destroy(destroy_) {}
 #endif
         };
 
@@ -50,8 +50,8 @@ namespace sqlite_orm {
                                            decltype(create) create_,
                                            decltype(run) run_,
                                            decltype(destroy) destroy_) :
-                user_defined_function_base{move(name_), argumentsCount_, move(create_), destroy_},
-                run(move(run_)) {}
+                user_defined_function_base{std::move(name_), argumentsCount_, std::move(create_), destroy_},
+                run(std::move(run_)) {}
         };
 
         struct user_defined_aggregate_function_t : user_defined_function_base {
@@ -64,8 +64,8 @@ namespace sqlite_orm {
                                               decltype(step) step_,
                                               decltype(finalCall) finalCall_,
                                               decltype(destroy) destroy_) :
-                user_defined_function_base{move(name_), argumentsCount_, move(create_), destroy_},
-                step(move(step_)), finalCall(move(finalCall_)) {}
+                user_defined_function_base{std::move(name_), argumentsCount_, std::move(create_), destroy_},
+                step(std::move(step_)), finalCall(std::move(finalCall_)) {}
         };
 
         template<class F>
@@ -161,7 +161,7 @@ namespace sqlite_orm {
         template<size_t I, class PointerArg>
         constexpr bool is_same_pvt_v<I, PointerArg, nullptr_t, polyfill::void_t<typename PointerArg::tag>> = true;
 
-#if __cplusplus >= 201703L  // using C++17 or higher
+#if __cplusplus >= 201703L  // C++17 or later
         template<size_t I, const char* PointerArg, const char* Binding>
         SQLITE_ORM_CONSTEVAL bool assert_same_pointer_type() {
             constexpr bool valid = Binding == PointerArg;

@@ -1,6 +1,8 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
 #include <type_traits>  //  std::false_type, std::true_type, std::integral_constant
+#endif
 #include <utility>  //  std::forward
 
 namespace sqlite_orm {

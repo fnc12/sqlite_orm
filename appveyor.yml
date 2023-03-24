@@ -25,16 +25,19 @@ environment:
       CC: clang
       CXX: clang++
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_14=ON"
+      cmake_build_parallel: --parallel
 
     - job_name: gcc, C++14
       appveyor_build_worker_image: Ubuntu
       CC: gcc
       CXX: g++
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_14=ON"
+      # gcc was stuck with a parallel build
+      cmake_build_parallel: ""
 
     # Representative for C++14
-    - job_name: Visual Studio 2022, x64, C++14
-      appveyor_build_worker_image: Visual Studio 2022
+    - job_name: Visual Studio 2017, x64, C++14
+      appveyor_build_worker_image: Visual Studio 2017
       platform: x64
       SQLITE_ORM_CXX_STANDARD: ""
 
@@ -43,24 +46,30 @@ environment:
       CC: clang
       CXX: clang++
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
-
-    - job_name: clang, C++20
-      appveyor_build_worker_image: Ubuntu
-      CC: clang
-      CXX: clang++
-      SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
+      cmake_build_parallel: --parallel
 
     - job_name: gcc, C++17
       appveyor_build_worker_image: Ubuntu
       CC: gcc
       CXX: g++
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
+      cmake_build_parallel: ""
+
+    - job_name: clang, C++20 (with examples)
+      appveyor_build_worker_image: Ubuntu
+      CC: clang
+      CXX: clang++
+      SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
+      # clang was stuck with a parallel build of examples
+      cmake_build_parallel: ""
+      cmake_build_examples: "-DBUILD_EXAMPLES=ON"
 
     - job_name: gcc, C++20
       appveyor_build_worker_image: Ubuntu
       CC: gcc
       CXX: g++
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
+      cmake_build_parallel: ""
 
     - job_name: Visual Studio 2022, x64, C++17
       appveyor_build_worker_image: Visual Studio 2022
@@ -85,15 +94,16 @@ for:
   # Windows
   matrix:
     only:
-      - appveyor_build_worker_image: Visual Studio 2015
+      - appveyor_build_worker_image: Visual Studio 2017
       - appveyor_build_worker_image: Visual Studio 2022
   init:
     - |-
       echo %appveyor_build_worker_image% - %platform% - %configuration%
+      cmake --version
       if "%platform%"=="x64" (set architecture=-A x64)
       if "%platform%"=="x86" (set architecture=-A Win32)
       if "%appveyor_build_worker_image%"=="Visual Studio 2022" (set generator="Visual Studio 17 2022" %architecture%)
-      if "%appveyor_build_worker_image%"=="Visual Studio 2015" (set generator="Visual Studio 14 2015" %architecture%)
+      if "%appveyor_build_worker_image%"=="Visual Studio 2017" (set generator="Visual Studio 15 2017" %architecture%)
   install:
     - |-
       cd C:\Tools\vcpkg
@@ -102,16 +112,18 @@ for:
       C:\Tools\vcpkg\bootstrap-vcpkg.bat -disableMetrics
       C:\Tools\vcpkg\vcpkg integrate install
       set VCPKG_DEFAULT_TRIPLET=%platform%-windows
-      vcpkg install sqlite3 catch2
+      vcpkg install sqlite3
+      rem The Visual Studio 2017 build worker image comes with CMake 3.16 only, and sqlite_orm will build the Catch2 dependency from source
+      if not "%appveyor_build_worker_image%"=="Visual Studio 2017" (vcpkg install catch2)
   before_build:
     - |-
       mkdir compile
       cd compile
-      cmake %SQLITE_ORM_CXX_STANDARD% .. -G %generator% -DCMAKE_TOOLCHAIN_FILE=C:/Tools/vcpkg/scripts/buildsystems/vcpkg.cmake
+      cmake %SQLITE_ORM_CXX_STANDARD% -G %generator% -DCMAKE_TOOLCHAIN_FILE=C:/Tools/vcpkg/scripts/buildsystems/vcpkg.cmake ..
   # build examples, and run tests (ie make & make test)
   build_script:
     - |-
-      cmake --build . --config %configuration%
+      cmake --build . --config %configuration% -- /m
       ctest --verbose --output-on-failure --build-config %configuration%
 
 -
@@ -123,6 +135,7 @@ for:
     - |-
       echo $appveyor_build_worker_image
       $CXX --version
+      cmake --version
   # using custom vcpkg triplets for building and linking dynamic dependent libraries
   install:
     - |-
@@ -136,11 +149,11 @@ for:
     - |-
       mkdir compile
       cd compile
-      cmake $SQLITE_ORM_CXX_STANDARD .. -DCMAKE_TOOLCHAIN_FILE=$HOME/vcpkg/scripts/buildsystems/vcpkg.cmake
+      cmake $SQLITE_ORM_CXX_STANDARD $cmake_build_examples --toolchain $HOME/vcpkg/scripts/buildsystems/vcpkg.cmake ..
   # build examples, and run tests (ie make & make test)
   build_script:
     - |-
-      cmake --build .
+      cmake --build . $cmake_build_parallel
       ctest --verbose --output-on-failure
 -
   # macOS
@@ -151,6 +164,7 @@ for:
     - |-
       echo $appveyor_build_worker_image
       $CXX --version
+      cmake --version
   # using custom vcpkg triplets for building and linking dynamic dependent libraries
   install:
     - |-
@@ -162,9 +176,9 @@ for:
     - |-
       mkdir compile
       cd compile
-      cmake $SQLITE_ORM_CXX_STANDARD .. -DCMAKE_TOOLCHAIN_FILE=$HOME/vcpkg/scripts/buildsystems/vcpkg.cmake
+      cmake $SQLITE_ORM_CXX_STANDARD --toolchain $HOME/vcpkg/scripts/buildsystems/vcpkg.cmake ..
   # build examples, and run tests (ie make & make test)
   build_script:
     - |-
-      cmake --build .
+      cmake --build . --parallel
       ctest --verbose --output-on-failure

@@ -10,7 +10,7 @@ TEST_CASE("explicit from") {
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         User() = default;
-        User(int id, std::string name) : id{id}, name{move(name)} {}
+        User(int id, std::string name) : id{id}, name{std::move(name)} {}
 #endif
     };
     auto storage = make_storage(
@@ -58,6 +58,20 @@ TEST_CASE("explicit from") {
     REQUIRE(expected == rows);
 }
 
+TEST_CASE("update_all") {
+    struct Record {
+        int id = 0;
+        std::string name;
+    };
+    auto storage = make_storage(
+        {},
+        make_table("records", make_column("id", &Record::id, primary_key()), make_column("name", &Record::name)));
+    storage.sync_schema();
+    auto vars = dynamic_set(storage);
+    vars.push_back(assign(&Record::name, "Bob"));
+    storage.update_all(vars, where(is_equal(&Record::id, 10)));
+}
+
 TEST_CASE("update set null") {
 
     struct User {
@@ -66,7 +80,7 @@ TEST_CASE("update set null") {
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         User() = default;
-        User(int id, decltype(name) name) : id{id}, name{move(name)} {}
+        User(int id, decltype(name) name) : id{id}, name{std::move(name)} {}
 #endif
     };
 
@@ -113,7 +127,7 @@ TEST_CASE("InsertRange") {
 
 #ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
         Object() = default;
-        Object(int id, std::string name) : id{id}, name{move(name)} {}
+        Object(int id, std::string name) : id{id}, name{std::move(name)} {}
 #endif
     };
 
@@ -123,7 +137,7 @@ TEST_CASE("InsertRange") {
 
 #ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
         ObjectWithoutRowid() = default;
-        ObjectWithoutRowid(int id, std::string name) : id{id}, name{move(name)} {}
+        ObjectWithoutRowid(int id, std::string name) : id{id}, name{std::move(name)} {}
 #endif
     };
 
@@ -377,13 +391,13 @@ TEST_CASE("Replace query") {
 
 #ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
         Object() = default;
-        Object(int id, std::string name) : id{id}, name{move(name)} {}
+        Object(int id, std::string name) : id{id}, name{std::move(name)} {}
 #endif
     };
 
     struct User {
 
-        User(int id_, std::string name_) : id(id_), name(move(name_)) {}
+        User(int id_, std::string name_) : id(id_), name(std::move(name_)) {}
 
         int getId() const {
             return this->id;
@@ -398,7 +412,7 @@ TEST_CASE("Replace query") {
         }
 
         void setName(std::string name_) {
-            this->name = move(name_);
+            this->name = std::move(name_);
         }
 
       private:

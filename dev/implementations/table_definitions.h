@@ -22,7 +22,7 @@ namespace sqlite_orm {
                 using field_type = field_type_t<std::decay_t<decltype(column)>>;
                 std::string dft;
                 if(auto d = column.default_value()) {
-                    dft = move(*d);
+                    dft = std::move(*d);
                 }
                 res.emplace_back(-1,
                                  column.name,

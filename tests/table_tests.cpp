@@ -57,7 +57,7 @@ TEST_CASE("table::find_column_name") {
             }
 
             void setFirstName(std::string value) {
-                this->_firstName = move(value);
+                this->_firstName = std::move(value);
             }
 
             const std::string& lastName() const {
@@ -65,7 +65,7 @@ TEST_CASE("table::find_column_name") {
             }
 
             void setLastName(std::string value) {
-                this->_lastName = move(value);
+                this->_lastName = std::move(value);
             }
 
             int countryCode() const {
@@ -81,7 +81,7 @@ TEST_CASE("table::find_column_name") {
             }
 
             void setPhoneNumber(std::string value) {
-                this->_phoneNumber = move(value);
+                this->_phoneNumber = std::move(value);
             }
 
             int visitsCount() const {

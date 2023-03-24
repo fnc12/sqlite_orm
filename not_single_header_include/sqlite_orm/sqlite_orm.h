@@ -1,6 +1,9 @@
 #pragma once
 
 #include "../../dev/functional/start_macros.h"
+// though each header is required to include everything it needs
+// we include the configuration and all underlying c++ core features in order to make it universally available
+#include "../../dev/functional/config.h"
 #include "../../dev/type_traits.h"
 #include "../../dev/error_code.h"
 #include "../../dev/type_printer.h"
@@ -12,7 +15,6 @@
 #include "../../dev/field_printer.h"
 #include "../../dev/conditions.h"
 #include "../../dev/alias.h"
-#include "../../dev/join_iterator.h"
 #include "../../dev/core_functions.h"
 #include "../../dev/select_constraints.h"
 #include "../../dev/table_info.h"
@@ -24,14 +26,11 @@
 #include "../../dev/row_extractor.h"
 #include "../../dev/sync_schema_result.h"
 #include "../../dev/index.h"
-#include "../../dev/mapped_type_proxy.h"
 #include "../../dev/rowid.h"
-#include "../../dev/column_result.h"
 #include "../../dev/table.h"
 #include "../../dev/storage_impl.h"
 #include "../../dev/default_value_extractor.h"
 #include "../../dev/storage.h"
-#include "../../dev/node_tuple.h"
 #include "../../dev/get_prepared_statement.h"
 #include "../../dev/carray.h"
 #include "../../dev/dbstat.h"

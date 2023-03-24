@@ -12,7 +12,7 @@ TEST_CASE("triggers_basics") {
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         TestInsert() = default;
-        TestInsert(int id, std::string text, int x, int y) : id{id}, text{move(text)}, x{x}, y{y} {}
+        TestInsert(int id, std::string text, int x, int y) : id{id}, text{std::move(text)}, x{x}, y{y} {}
 #endif
     };
     struct TestUpdate {
@@ -23,7 +23,7 @@ TEST_CASE("triggers_basics") {
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         TestUpdate() = default;
-        TestUpdate(int id, std::string text, int x, int y) : id{id}, text{move(text)}, x{x}, y{y} {}
+        TestUpdate(int id, std::string text, int x, int y) : id{id}, text{std::move(text)}, x{x}, y{y} {}
 #endif
     };
     struct TestDelete {
@@ -34,7 +34,7 @@ TEST_CASE("triggers_basics") {
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         TestDelete() = default;
-        TestDelete(int id, std::string text, int x, int y) : id{id}, text{move(text)}, x{x}, y{y} {}
+        TestDelete(int id, std::string text, int x, int y) : id{id}, text{std::move(text)}, x{x}, y{y} {}
 #endif
     };
 

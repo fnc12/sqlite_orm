@@ -10,7 +10,7 @@ TEST_CASE("Prepare with case") {
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         UserProfile() = default;
-        UserProfile(int id, std::string firstName) : id{id}, firstName{move(firstName)} {}
+        UserProfile(int id, std::string firstName) : id{id}, firstName{std::move(firstName)} {}
 #endif
     };
 

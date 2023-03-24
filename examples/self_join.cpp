@@ -29,8 +29,8 @@ struct Employee {
 
 /**
  *  This is how custom alias is made:
- *  1) it must have `type` alias which is equal to your mapped class
- *  2) is must have static function with `get()` signature and return type with `operator<<`
+ *  1) it must have a `type` alias which is equal to your mapped class
+ *  2) it must have a static function with `get()` signature and return type with `operator<<`
  */
 template<class T>
 struct custom_alias : sqlite_orm::alias_tag {
@@ -201,8 +201,8 @@ int main() {
         //  ON m.ReportsTo = employees.EmployeeId
         using als = alias_m<Employee>;
         auto firstNames = storage.select(
-            columns(c(alias_column<als>(&Employee::firstName)) || " " || c(alias_column<als>(&Employee::lastName)),
-                    c(&Employee::firstName) || " " || c(&Employee::lastName)),
+            columns(alias_column<als>(&Employee::firstName) || c(" ") || alias_column<als>(&Employee::lastName),
+                    &Employee::firstName || c(" ") || &Employee::lastName),
             inner_join<als>(on(alias_column<als>(&Employee::reportsTo) == c(&Employee::employeeId))));
         cout << "firstNames count = " << firstNames.size() << endl;
         for(auto& row: firstNames) {
@@ -221,8 +221,8 @@ int main() {
         //  ON emp.ReportsTo = employees.EmployeeId
         using als = custom_alias<Employee>;
         auto firstNames = storage.select(
-            columns(c(alias_column<als>(&Employee::firstName)) || " " || c(alias_column<als>(&Employee::lastName)),
-                    c(&Employee::firstName) || " " || c(&Employee::lastName)),
+            columns(alias_column<als>(&Employee::firstName) || c(" ") || alias_column<als>(&Employee::lastName),
+                    &Employee::firstName || c(" ") || &Employee::lastName),
             inner_join<als>(on(alias_column<als>(&Employee::reportsTo) == c(&Employee::employeeId))));
         cout << "firstNames count = " << firstNames.size() << endl;
         for(auto& row: firstNames) {

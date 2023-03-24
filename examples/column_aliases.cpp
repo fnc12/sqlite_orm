@@ -17,7 +17,7 @@ void marvel_hero_ordered_by_o_pos() {
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         MarvelHero() {}
         MarvelHero(int id, std::string name, std::string abilities, short points) :
-            id{id}, name{move(name)}, abilities{move(abilities)}, points{points} {}
+            id{id}, name{std::move(name)}, abilities{std::move(abilities)}, points{points} {}
 #endif
     };
 
@@ -62,8 +62,7 @@ void marvel_hero_ordered_by_o_pos() {
         //  SELECT name, instr(abilities, 'o')
         //  FROM marvel
         //  ORDER BY 2
-        auto rows =
-            storage.select(columns(&MarvelHero::name, as<colalias_i>(instr(&MarvelHero::abilities, "o"))), order_by(2));
+        auto rows = storage.select(columns(&MarvelHero::name, instr(&MarvelHero::abilities, "o")), order_by(2));
         for(auto& row: rows) {
             cout << get<0>(row) << '\t' << get<1>(row) << '\n';
         }

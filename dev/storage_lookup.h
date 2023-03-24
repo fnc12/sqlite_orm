@@ -1,8 +1,8 @@
 #pragma once
 
-#include <type_traits>  //  std::true_type, std::false_type, std::remove_const, std::enable_if
+#include <type_traits>  //  std::true_type, std::false_type, std::remove_const, std::enable_if, std::is_base_of, std::is_void
 #include <tuple>
-#include <utility>  //  std::index_sequence
+#include <utility>  //  std::index_sequence, std::make_index_sequence
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
@@ -128,10 +128,17 @@ namespace sqlite_orm {
          * 
          *  Note: This function requires Lookup to be mapped, otherwise it is removed from the overload resolution set.
          */
-        template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs> = true>
+        template<class Lookup, class DBOs, satisfies<is_mapped, DBOs, Lookup> = true>
         auto& pick_table(DBOs& dbObjects) {
             using table_type = storage_pick_table_t<Lookup, DBOs>;
             return std::get<table_type>(dbObjects);
         }
+
+        template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs> = true>
+        auto lookup_table(const DBOs& dbObjects);
+
+        template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs> = true>
+        decltype(auto) lookup_table_name(const DBOs& dbObjects);
+
     }
 }

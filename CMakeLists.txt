@@ -1,4 +1,6 @@
-cmake_minimum_required (VERSION 3.14.0)
+# note: the minimum required version needs to go hand in hand with appveyor builds,
+# which is CMake 3.16 for the Visual Studio 2017 build worker image
+cmake_minimum_required (VERSION 3.16)
 
 # PACKAGE_VERSION is used by cpack scripts currently
 # Both sqlite_orm_VERSION and PACKAGE_VERSION should be the same for now
@@ -59,6 +61,10 @@ if (MSVC)
     if (MSVC_VERSION GREATER_EQUAL 1914)
         add_compile_options(/Zc:__cplusplus)
     endif()
+    if (MSVC_VERSION GREATER_EQUAL 1910)
+        # VC 2017 issues a deprecation warning for `strncpy`
+        add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+    endif()
     add_compile_options(/MP) # multi-processor compilation
     if (CMAKE_CXX_STANDARD GREATER 14)
         add_compile_definitions(_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING)
@@ -78,7 +84,7 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
     add_subdirectory(tests)
 endif()
 
-option(BUILD_EXAMPLES ON)
+option(BUILD_EXAMPLES "Build code examples" OFF)
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()

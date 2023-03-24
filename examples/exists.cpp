@@ -435,12 +435,11 @@ int main(int, char**) {
         //      WHERE grade=2
         //      GROUP BY grade
         //      HAVING COUNT(*)>2);
-        auto rows =
-            storage.select(columns(&Customer::code, &Customer::name, &Customer::city, &Customer::grade),
-                           where(is_equal(&Customer::grade, 2) and exists(select(count<Customer>(),
-                                                                                 where(is_equal(&Customer::grade, 2)),
-                                                                                 group_by(&Customer::grade),
-                                                                                 having(greater_than(count(), 2))))));
+        auto rows = storage.select(columns(&Customer::code, &Customer::name, &Customer::city, &Customer::grade),
+                                   where(is_equal(&Customer::grade, 2) and
+                                         exists(select(count<Customer>(),
+                                                       where(is_equal(&Customer::grade, 2)),
+                                                       group_by(&Customer::grade).having(greater_than(count(), 2))))));
         cout << "CUST_CODE   CUST_NAME   CUST_CITY                            GRADE" << endl;
         cout << "----------  ----------  -----------------------------------  ----------" << endl;
         for(auto& row: rows) {

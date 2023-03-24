@@ -1351,9 +1351,11 @@ int main(int, char**) {
             columns(alias_column<als>(&Employee::lastName),
                     alias_column<als>(&Employee::salary),
                     alias_column<als>(&Employee::departmentId)),
+            from<als>(),
             where(greater_than(
                 alias_column<als>(&Employee::salary),
                 select(avg(&Employee::salary),
+                       from<Employee>(),
                        where(is_equal(&Employee::departmentId, alias_column<als>(&Employee::departmentId)))))));
         cout << "last_name   salary      department_id" << endl;
         cout << "----------  ----------  -------------" << endl;
