@@ -147,6 +147,10 @@ using std::nullptr_t;
 #define SQLITE_ORM_BROKEN_NONTEMPLATE_CONCEPTS
 #endif
 
+#if SQLITE_ORM_HAS_INCLUDE(<version>)
+#include <version>
+#endif
+
 #ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 #define SQLITE_ORM_INLINE_VAR inline
 #else
