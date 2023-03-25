@@ -1003,10 +1003,10 @@ namespace sqlite_orm {
         using check_if_not = mpl::not_<mpl::quote_fn<TraitFn>>;
 
         /*
-         *  Trait metafunction class that checks if a type is the same as the specified type.
+         *  Trait metafunction class that checks if a type (possibly projected) is the same as the specified type.
          */
-        template<class Type>
-        using check_if_is_type = mpl::bind_front_fn<std::is_same, Type>;
+        template<class Type, template<class...> class Proj = polyfill::type_identity_t>
+        using check_if_is_type = mpl::pass_result_to<Proj, mpl::bind_front_fn<std::is_same, Type>>;
 
         /*
          *  Trait metafunction class that checks if a type's template matches the specified template
@@ -1081,8 +1081,9 @@ namespace sqlite_orm {
         /*
          *  Metafunction class that checks whether a tuple contains given type.
          */
-        template<class T>
-        using check_if_tuple_has_type = mpl::bind_front_higherorder_fn<tuple_has, check_if_is_type<T>::template fn>;
+        template<class T, template<class...> class Proj = polyfill::type_identity_t>
+        using check_if_tuple_has_type =
+            mpl::bind_front_higherorder_fn<tuple_has, check_if_is_type<T, Proj>::template fn>;
 
         /*
          *  Metafunction class that checks whether a tuple contains a given template.
@@ -9416,7 +9417,7 @@ namespace sqlite_orm {
 #include <utility>  //  std::forward, std::move
 
 // #include "functional/cxx_universal.h"
-
+//  ::size_t
 // #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "functional/cxx_functional_polyfill.h"
@@ -9508,35 +9509,40 @@ namespace sqlite_orm {
 // #include "tuple_helper/tuple_iteration.h"
 
 #include <tuple>  //  std::tuple, std::get, std::tuple_element, std::tuple_size
-#include <type_traits>  //  std::index_sequence, std::make_index_sequence
+#include <type_traits>  //  std::remove_reference, std::index_sequence, std::make_index_sequence
 #include <utility>  //  std::forward, std::move
 
 // #include "../functional/cxx_universal.h"
-
+//  ::size_t
 // #include "../functional/cxx_type_traits_polyfill.h"
 
 // #include "../functional/cxx_functional_polyfill.h"
-
-// #include "../functional/index_sequence_util.h"
 
 namespace sqlite_orm {
     namespace internal {
 
         //  got it form here https://stackoverflow.com/questions/7858817/unpacking-a-tuple-to-call-a-matching-function-pointer
-        template<class Function, class FunctionPointer, class Tuple, size_t... I>
-        auto call_impl(Function& f, FunctionPointer functionPointer, Tuple t, std::index_sequence<I...>) {
-            return (f.*functionPointer)(std::get<I>(std::move(t))...);
+        template<class Function, class FunctionPointer, class Tpl, size_t... Idx>
+        auto call(Function& f, FunctionPointer functionPointer, Tpl&& tpl, std::index_sequence<Idx...>) {
+            return (f.*functionPointer)(std::get<Idx>(std::forward<Tpl>(tpl))...);
         }
 
-        template<class Function, class FunctionPointer, class Tuple>
-        auto call(Function& f, FunctionPointer functionPointer, Tuple t) {
-            constexpr size_t size = std::tuple_size<Tuple>::value;
-            return call_impl(f, functionPointer, std::move(t), std::make_index_sequence<size>{});
+        template<class Function, class Tpl, size_t... Idx>
+        auto call(Function& f, Tpl&& tpl, std::index_sequence<Idx...>) {
+            return f(std::get<Idx>(std::forward<Tpl>(tpl))...);
         }
 
-        template<class Function, class Tuple>
-        auto call(Function& f, Tuple t) {
-            return call(f, &Function::operator(), std::move(t));
+        template<class Function, class FunctionPointer, class Tpl>
+        auto call(Function& f, FunctionPointer functionPointer, Tpl&& tpl) {
+            constexpr size_t size = std::tuple_size<std::remove_reference_t<Tpl>>::value;
+            return call(f, functionPointer, std::forward<Tpl>(tpl), std::make_index_sequence<size>{});
+        }
+
+        // custom std::apply
+        template<class Function, class Tpl>
+        auto call(Function& f, Tpl&& tpl) {
+            constexpr size_t size = std::tuple_size<std::remove_reference_t<Tpl>>::value;
+            return call(f, std::forward<Tpl>(tpl), std::make_index_sequence<size>{});
         }
 
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
@@ -10573,13 +10579,13 @@ namespace sqlite_orm {
         template<class F>
         using aggregate_fin_function_t = decltype(&F::fin);
 
-        template<class F, class = void>
+        template<class F, class SFINAE = void>
         SQLITE_ORM_INLINE_VAR constexpr bool is_scalar_function_v = false;
         template<class F>
         SQLITE_ORM_INLINE_VAR constexpr bool is_scalar_function_v<F, polyfill::void_t<scalar_call_function_t<F>>> =
             true;
 
-        template<class F, class = void>
+        template<class F, class SFINAE = void>
         SQLITE_ORM_INLINE_VAR constexpr bool is_aggregate_function_v = false;
         template<class F>
         SQLITE_ORM_INLINE_VAR constexpr bool is_aggregate_function_v<
@@ -12220,28 +12226,14 @@ namespace sqlite_orm {
     /**
      *  Create a get all statement.
      *  T is an object type mapped to a storage.
-     *  Usage: storage.get_all<User>(...);
-     */
-    template<class T, class... Args>
-    internal::get_all_t<T, std::vector<T>, Args...> get_all(Args... args) {
-        using args_tuple = std::tuple<Args...>;
-        internal::validate_conditions<args_tuple>();
-        args_tuple conditions{std::forward<Args>(args)...};
-        return {std::move(conditions)};
-    }
-
-    /**
-     *  Create a get all statement.
-     *  T is an object type mapped to a storage.
      *  R is a container type. std::vector<T> is default
-     *  Usage: storage.get_all<User>(...);
-    */
-    template<class T, class R, class... Args>
-    internal::get_all_t<T, R, Args...> get_all(Args... args) {
-        using args_tuple = std::tuple<Args...>;
-        internal::validate_conditions<args_tuple>();
-        args_tuple conditions{std::forward<Args>(args)...};
-        return {std::move(conditions)};
+     *  Usage: storage.prepare(get_all<User>(...));
+     */
+    template<class T, class R = std::vector<T>, class... Args>
+    internal::get_all_t<T, R, Args...> get_all(Args... conditions) {
+        using conditions_tuple = std::tuple<Args...>;
+        internal::validate_conditions<conditions_tuple>();
+        return {{std::forward<Args>(conditions)...}};
     }
 
     /**
@@ -12260,55 +12252,28 @@ namespace sqlite_orm {
     /**
      *  Create a get all pointer statement.
      *  T is an object type mapped to a storage.
-     *  Usage: storage.get_all_pointer<User>(...);
-     */
-    template<class T, class... Args>
-    internal::get_all_pointer_t<T, std::vector<std::unique_ptr<T>>, Args...> get_all_pointer(Args... args) {
-        using args_tuple = std::tuple<Args...>;
-        internal::validate_conditions<args_tuple>();
-        args_tuple conditions{std::forward<Args>(args)...};
-        return {std::move(conditions)};
-    }
-    /**
-     *  Create a get all pointer statement.
-     *  T is an object type mapped to a storage.
      *  R is a container return type. std::vector<std::unique_ptr<T>> is default
-     *  Usage: storage.get_all_pointer<User>(...);
+     *  Usage: storage.prepare(get_all_pointer<User>(...));
     */
-    template<class T, class R, class... Args>
-    internal::get_all_pointer_t<T, R, Args...> get_all_pointer(Args... args) {
-        using args_tuple = std::tuple<Args...>;
-        internal::validate_conditions<args_tuple>();
-        args_tuple conditions{std::forward<Args>(args)...};
-        return {std::move(conditions)};
+    template<class T, class R = std::vector<std::unique_ptr<T>>, class... Args>
+    internal::get_all_pointer_t<T, R, Args...> get_all_pointer(Args... conditions) {
+        using conditions_tuple = std::tuple<Args...>;
+        internal::validate_conditions<conditions_tuple>();
+        return {{std::forward<Args>(conditions)...}};
     }
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     /**
      *  Create a get all optional statement.
      *  T is an object type mapped to a storage.
-     *  Usage: storage.get_all_optional<User>(...);
-     */
-    template<class T, class... Args>
-    internal::get_all_optional_t<T, std::vector<std::optional<T>>, Args...> get_all_optional(Args... args) {
-        using args_tuple = std::tuple<Args...>;
-        internal::validate_conditions<args_tuple>();
-        args_tuple conditions{std::forward<Args>(args)...};
-        return {std::move(conditions)};
-    }
-
-    /**
-     *  Create a get all optional statement.
-     *  T is an object type mapped to a storage.
      *  R is a container return type. std::vector<std::optional<T>> is default
      *  Usage: storage.get_all_optional<User>(...);
      */
-    template<class T, class R, class... Args>
-    internal::get_all_optional_t<T, R, Args...> get_all_optional(Args... args) {
-        using args_tuple = std::tuple<Args...>;
-        internal::validate_conditions<args_tuple>();
-        args_tuple conditions{std::forward<Args>(args)...};
-        return {std::move(conditions)};
+    template<class T, class R = std::vector<std::optional<T>>, class... Args>
+    internal::get_all_optional_t<T, R, Args...> get_all_optional(Args... conditions) {
+        using conditions_tuple = std::tuple<Args...>;
+        internal::validate_conditions<conditions_tuple>();
+        return {{std::forward<Args>(conditions)...}};
     }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 }
@@ -13113,13 +13078,11 @@ namespace sqlite_orm {
 #include <vector>  //  std::vector
 #include <memory>  //  std::make_unique, std::unique_ptr
 #include <map>  //  std::map
-#include <type_traits>  //  std::decay, std::is_same
+#include <type_traits>  //  std::is_same
 #include <algorithm>  //  std::find_if
 
 // #include "functional/cxx_universal.h"
-
-// #include "functional/static_magic.h"
-
+//  ::size_t
 // #include "tuple_helper/tuple_iteration.h"
 
 // #include "pragma.h"
@@ -13427,16 +13390,16 @@ namespace sqlite_orm {
         // stream a table's column identifiers, possibly qualified;
         // comma-separated
         template<class Table>
-        std::ostream& operator<<(std::ostream& ss,
-                                 std::tuple<const streaming<stream_as::table_columns>&, Table, const bool&> tpl) {
+        std::ostream&
+        operator<<(std::ostream& ss,
+                   std::tuple<const streaming<stream_as::table_columns>&, Table, const std::string&> tpl) {
             const auto& table = get<1>(tpl);
-            const bool& qualified = get<2>(tpl);
+            const std::string& qualifier = get<2>(tpl);
 
-            table.for_each_column([&ss, &tableName = qualified ? table.name : std::string{}, first = true](
-                                      const column_identifier& column) mutable {
+            table.for_each_column([&ss, &qualifier, first = true](const column_identifier& column) mutable {
                 constexpr std::array<const char*, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)];
-                stream_identifier(ss, tableName, column.name, std::string{});
+                stream_identifier(ss, qualifier, column.name, std::string{});
             });
             return ss;
         }
@@ -14438,6 +14401,7 @@ namespace sqlite_orm {
                         return 0;
                     },
                     &tableNames);
+                tableNames.shrink_to_fit();
                 return tableNames;
             }
 
@@ -16526,11 +16490,6 @@ namespace sqlite_orm {
             return std::move(collector.table_names);
         }
 
-        template<class Ctx, class T, satisfies<is_table, T> = true>
-        std::set<std::pair<std::string, std::string>> collect_table_names(const T& table, const Ctx&) {
-            return {{table.name, ""}};
-        }
-
         template<class S, class... Wargs>
         struct statement_serializer<update_all_t<S, Wargs...>, void> {
             using statement_type = update_all_t<S, Wargs...>;
@@ -16754,15 +16713,14 @@ namespace sqlite_orm {
         };
 
         template<class T, class Ctx>
-        std::string serialize_get_all_impl(const T& get, const Ctx& context) {
-            using primary_type = type_t<T>;
+        std::string serialize_get_all_impl(const T& getAll, const Ctx& context) {
+            using mapped_type = type_t<T>;
 
-            auto& table = pick_table<primary_type>(context.db_objects);
-            auto tableNames = collect_table_names(table, context);
+            auto& table = pick_table<mapped_type>(context.db_objects);
 
             std::stringstream ss;
-            ss << "SELECT " << streaming_table_column_names(table, true) << " FROM "
-               << streaming_identifiers(tableNames) << streaming_conditions_tuple(get.conditions, context);
+            ss << "SELECT " << streaming_table_column_names(table, table.name) << " FROM "
+               << streaming_identifier(table.name) << streaming_conditions_tuple(getAll.conditions, context);
             return ss.str();
         }
 
@@ -16803,7 +16761,7 @@ namespace sqlite_orm {
             using primary_type = type_t<T>;
             auto& table = pick_table<primary_type>(context.db_objects);
             std::stringstream ss;
-            ss << "SELECT " << streaming_table_column_names(table, false) << " FROM "
+            ss << "SELECT " << streaming_table_column_names(table, std::string{}) << " FROM "
                << streaming_identifier(table.name) << " WHERE ";
 
             auto primaryKeyColumnNames = table.primary_key_column_names();
@@ -17567,9 +17525,8 @@ namespace sqlite_orm {
 
             template<class O>
             void assert_mapped_type() const {
-                using mapped_types_tuple = std::tuple<typename DBO::object_type...>;
-                static_assert(mpl::invoke_t<check_if_tuple_has_type<O>, mapped_types_tuple>::value,
-                              "type is not mapped to a storage");
+                static_assert(mpl::invoke_t<check_if_tuple_has_type<O, object_type_t>, db_objects_type>::value,
+                              "type is not mapped to storage");
             }
 
             template<class O,
@@ -17683,28 +17640,13 @@ namespace sqlite_orm {
             /**
              *  SELECT * routine.
              *  O is an object type to be extracted. Must be specified explicitly.
-             *  @return All objects of type O stored in database at the moment in `std::vector`.
-             *  @note If you need to return the result in a different container type then use a different `get_all` function overload `get_all<User, std::list<User>>`
-             *  @example: storage.get_all<User>() - SELECT * FROM users
-             *  @example: storage.get_all<User>(where(like(&User::name, "N%")), order_by(&User::id)); - SELECT * FROM users WHERE name LIKE 'N%' ORDER BY id
-             */
-            template<class O, class... Args>
-            auto get_all(Args&&... args) {
-                this->assert_mapped_type<O>();
-                auto statement = this->prepare(sqlite_orm::get_all<O>(std::forward<Args>(args)...));
-                return this->execute(statement);
-            }
-
-            /**
-             *  SELECT * routine.
-             *  O is an object type to be extracted. Must be specified explicitly.
-             *  R is an explicit return type. This type must have `push_back(O &&)` function.
+             *  R is an explicit return type. This type must have `push_back(O &&)` function. Defaults to `std::vector<O>`
              *  @return All objects of type O stored in database at the moment in `R`.
              *  @example: storage.get_all<User, std::list<User>>(); - SELECT * FROM users
              *  @example: storage.get_all<User, std::list<User>>(where(like(&User::name, "N%")), order_by(&User::id)); - SELECT * FROM users WHERE name LIKE 'N%' ORDER BY id
             */
-            template<class O, class R, class... Args>
-            auto get_all(Args&&... args) {
+            template<class O, class R = std::vector<O>, class... Args>
+            R get_all(Args&&... args) {
                 this->assert_mapped_type<O>();
                 auto statement = this->prepare(sqlite_orm::get_all<O, R>(std::forward<Args>(args)...));
                 return this->execute(statement);
@@ -17713,32 +17655,34 @@ namespace sqlite_orm {
             /**
              *  SELECT * routine.
              *  O is an object type to be extracted. Must be specified explicitly.
-             *  @return All objects of type O as `std::unique_ptr<O>` inside a `std::vector` stored in database at the moment.
-             *  @note If you need to return the result in a different container type then use a different `get_all_pointer` function overload `get_all_pointer<User, std::list<User>>`
-             *  @example: storage.get_all_pointer<User>(); - SELECT * FROM users
-             *  @example: storage.get_all_pointer<User>(where(length(&User::name) > 6)); - SELECT * FROM users WHERE LENGTH(name)  > 6
-             */
-            template<class O, class... Args>
-            auto get_all_pointer(Args&&... args) {
-                this->assert_mapped_type<O>();
-                auto statement = this->prepare(sqlite_orm::get_all_pointer<O>(std::forward<Args>(args)...));
-                return this->execute(statement);
-            }
-
-            /**
-             *  SELECT * routine.
-             *  O is an object type to be extracted. Must be specified explicitly.
              *  R is a container type. std::vector<std::unique_ptr<O>> is default
              *  @return All objects of type O as std::unique_ptr<O> stored in database at the moment.
-             *  @example: storage.get_all_pointer<User, std::list<User>>(); - SELECT * FROM users
-             *  @example: storage.get_all_pointer<User, std::list<User>>(where(length(&User::name) > 6)); - SELECT * FROM users WHERE LENGTH(name)  > 6
+             *  @example: storage.get_all_pointer<User, std::list<std::unique_ptr<User>>>(); - SELECT * FROM users
+             *  @example: storage.get_all_pointer<User, std::list<std::unique_ptr<User>>>(where(length(&User::name) > 6)); - SELECT * FROM users WHERE LENGTH(name)  > 6
             */
-            template<class O, class R, class... Args>
+            template<class O, class R = std::vector<std::unique_ptr<O>>, class... Args>
             auto get_all_pointer(Args&&... args) {
                 this->assert_mapped_type<O>();
                 auto statement = this->prepare(sqlite_orm::get_all_pointer<O, R>(std::forward<Args>(args)...));
                 return this->execute(statement);
             }
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+            /**
+             *  SELECT * routine.
+             *  O is an object type to be extracted. Must be specified explicitly.
+             *  R is a container type. std::vector<std::optional<O>> is default
+             *  @return All objects of type O as std::optional<O> stored in database at the moment.
+             *  @example: storage.get_all_optional<User, std::list<std::optional<O>>>(); - SELECT * FROM users
+             *  @example: storage.get_all_optional<User, std::list<std::optional<O>>>(where(length(&User::name) > 6)); - SELECT * FROM users WHERE LENGTH(name)  > 6
+            */
+            template<class O, class R = std::vector<std::optional<O>>, class... Args>
+            auto get_all_optional(Args&&... conditions) {
+                this->assert_mapped_type<O>();
+                auto statement = this->prepare(sqlite_orm::get_all_optional<O, R>(std::forward<Args>(conditions)...));
+                return this->execute(statement);
+            }
+#endif
 
             /**
              *  Select * by id routine.
@@ -18759,6 +18703,7 @@ namespace sqlite_orm {
                                &res](sqlite3_stmt* stmt) {
                                   res.push_back(rowExtractor.extract(stmt, 0));
                               });
+                res.shrink_to_fit();
                 return res;
             }
 
@@ -18775,6 +18720,11 @@ namespace sqlite_orm {
                     table.for_each_column(builder);
                     res.push_back(std::move(obj));
                 });
+#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
+                if constexpr(polyfill::is_specialization_of_v<R, std::vector>) {
+                    res.shrink_to_fit();
+                }
+#endif
                 return res;
             }
 
@@ -18791,6 +18741,11 @@ namespace sqlite_orm {
                     table.for_each_column(builder);
                     res.push_back(std::move(obj));
                 });
+#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
+                if constexpr(polyfill::is_specialization_of_v<R, std::vector>) {
+                    res.shrink_to_fit();
+                }
+#endif
                 return res;
             }
 
@@ -18808,6 +18763,11 @@ namespace sqlite_orm {
                     table.for_each_column(builder);
                     res.push_back(std::move(obj));
                 });
+#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
+                if constexpr(polyfill::is_specialization_of_v<R, std::vector>) {
+                    res.shrink_to_fit();
+                }
+#endif
                 return res;
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -19425,9 +19385,9 @@ namespace sqlite_orm {
 
 #include <string>  //  std::string
 
-// #include "column.h"
+// #include "../column.h"
 
-// #include "table.h"
+// #include "../table.h"
 
 namespace sqlite_orm {
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
@@ -19578,7 +19538,7 @@ namespace sqlite_orm {
 #include <functional>  //  std::reference_wrapper, std::cref
 #include <algorithm>  //  std::find_if, std::ranges::find
 
-// #include "../dbstat.h"
+// #include "../eponymous_vtabs/dbstat.h"
 
 // #include "../type_traits.h"
 

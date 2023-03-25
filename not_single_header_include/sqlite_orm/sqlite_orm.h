@@ -33,6 +33,6 @@
 #include "../../dev/storage.h"
 #include "../../dev/get_prepared_statement.h"
 #include "../../dev/carray.h"
-#include "../../dev/dbstat.h"
+#include "../../dev/eponymous_vtabs/dbstat.h"
 #include "../../dev/interface_definitions.h"
 #include "../../dev/functional/finish_macros.h"

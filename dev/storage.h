@@ -173,9 +173,8 @@ namespace sqlite_orm {
 
             template<class O>
             void assert_mapped_type() const {
-                using mapped_types_tuple = std::tuple<typename DBO::object_type...>;
-                static_assert(mpl::invoke_t<check_if_tuple_has_type<O>, mapped_types_tuple>::value,
-                              "type is not mapped to a storage");
+                static_assert(mpl::invoke_t<check_if_tuple_has_type<O, object_type_t>, db_objects_type>::value,
+                              "type is not mapped to storage");
             }
 
             template<class O,
@@ -289,28 +288,13 @@ namespace sqlite_orm {
             /**
              *  SELECT * routine.
              *  O is an object type to be extracted. Must be specified explicitly.
-             *  @return All objects of type O stored in database at the moment in `std::vector`.
-             *  @note If you need to return the result in a different container type then use a different `get_all` function overload `get_all<User, std::list<User>>`
-             *  @example: storage.get_all<User>() - SELECT * FROM users
-             *  @example: storage.get_all<User>(where(like(&User::name, "N%")), order_by(&User::id)); - SELECT * FROM users WHERE name LIKE 'N%' ORDER BY id
-             */
-            template<class O, class... Args>
-            auto get_all(Args&&... args) {
-                this->assert_mapped_type<O>();
-                auto statement = this->prepare(sqlite_orm::get_all<O>(std::forward<Args>(args)...));
-                return this->execute(statement);
-            }
-
-            /**
-             *  SELECT * routine.
-             *  O is an object type to be extracted. Must be specified explicitly.
-             *  R is an explicit return type. This type must have `push_back(O &&)` function.
+             *  R is an explicit return type. This type must have `push_back(O &&)` function. Defaults to `std::vector<O>`
              *  @return All objects of type O stored in database at the moment in `R`.
              *  @example: storage.get_all<User, std::list<User>>(); - SELECT * FROM users
              *  @example: storage.get_all<User, std::list<User>>(where(like(&User::name, "N%")), order_by(&User::id)); - SELECT * FROM users WHERE name LIKE 'N%' ORDER BY id
             */
-            template<class O, class R, class... Args>
-            auto get_all(Args&&... args) {
+            template<class O, class R = std::vector<O>, class... Args>
+            R get_all(Args&&... args) {
                 this->assert_mapped_type<O>();
                 auto statement = this->prepare(sqlite_orm::get_all<O, R>(std::forward<Args>(args)...));
                 return this->execute(statement);
@@ -319,32 +303,34 @@ namespace sqlite_orm {
             /**
              *  SELECT * routine.
              *  O is an object type to be extracted. Must be specified explicitly.
-             *  @return All objects of type O as `std::unique_ptr<O>` inside a `std::vector` stored in database at the moment.
-             *  @note If you need to return the result in a different container type then use a different `get_all_pointer` function overload `get_all_pointer<User, std::list<User>>`
-             *  @example: storage.get_all_pointer<User>(); - SELECT * FROM users
-             *  @example: storage.get_all_pointer<User>(where(length(&User::name) > 6)); - SELECT * FROM users WHERE LENGTH(name)  > 6
-             */
-            template<class O, class... Args>
-            auto get_all_pointer(Args&&... args) {
-                this->assert_mapped_type<O>();
-                auto statement = this->prepare(sqlite_orm::get_all_pointer<O>(std::forward<Args>(args)...));
-                return this->execute(statement);
-            }
-
-            /**
-             *  SELECT * routine.
-             *  O is an object type to be extracted. Must be specified explicitly.
              *  R is a container type. std::vector<std::unique_ptr<O>> is default
              *  @return All objects of type O as std::unique_ptr<O> stored in database at the moment.
-             *  @example: storage.get_all_pointer<User, std::list<User>>(); - SELECT * FROM users
-             *  @example: storage.get_all_pointer<User, std::list<User>>(where(length(&User::name) > 6)); - SELECT * FROM users WHERE LENGTH(name)  > 6
+             *  @example: storage.get_all_pointer<User, std::list<std::unique_ptr<User>>>(); - SELECT * FROM users
+             *  @example: storage.get_all_pointer<User, std::list<std::unique_ptr<User>>>(where(length(&User::name) > 6)); - SELECT * FROM users WHERE LENGTH(name)  > 6
             */
-            template<class O, class R, class... Args>
+            template<class O, class R = std::vector<std::unique_ptr<O>>, class... Args>
             auto get_all_pointer(Args&&... args) {
                 this->assert_mapped_type<O>();
                 auto statement = this->prepare(sqlite_orm::get_all_pointer<O, R>(std::forward<Args>(args)...));
                 return this->execute(statement);
             }
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+            /**
+             *  SELECT * routine.
+             *  O is an object type to be extracted. Must be specified explicitly.
+             *  R is a container type. std::vector<std::optional<O>> is default
+             *  @return All objects of type O as std::optional<O> stored in database at the moment.
+             *  @example: storage.get_all_optional<User, std::list<std::optional<O>>>(); - SELECT * FROM users
+             *  @example: storage.get_all_optional<User, std::list<std::optional<O>>>(where(length(&User::name) > 6)); - SELECT * FROM users WHERE LENGTH(name)  > 6
+            */
+            template<class O, class R = std::vector<std::optional<O>>, class... Args>
+            auto get_all_optional(Args&&... conditions) {
+                this->assert_mapped_type<O>();
+                auto statement = this->prepare(sqlite_orm::get_all_optional<O, R>(std::forward<Args>(conditions)...));
+                return this->execute(statement);
+            }
+#endif
 
             /**
              *  Select * by id routine.
@@ -1365,6 +1351,7 @@ namespace sqlite_orm {
                                &res](sqlite3_stmt* stmt) {
                                   res.push_back(rowExtractor.extract(stmt, 0));
                               });
+                res.shrink_to_fit();
                 return res;
             }
 
@@ -1381,6 +1368,11 @@ namespace sqlite_orm {
                     table.for_each_column(builder);
                     res.push_back(std::move(obj));
                 });
+#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
+                if constexpr(polyfill::is_specialization_of_v<R, std::vector>) {
+                    res.shrink_to_fit();
+                }
+#endif
                 return res;
             }
 
@@ -1397,6 +1389,11 @@ namespace sqlite_orm {
                     table.for_each_column(builder);
                     res.push_back(std::move(obj));
                 });
+#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
+                if constexpr(polyfill::is_specialization_of_v<R, std::vector>) {
+                    res.shrink_to_fit();
+                }
+#endif
                 return res;
             }
 
@@ -1414,6 +1411,11 @@ namespace sqlite_orm {
                     table.for_each_column(builder);
                     res.push_back(std::move(obj));
                 });
+#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
+                if constexpr(polyfill::is_specialization_of_v<R, std::vector>) {
+                    res.shrink_to_fit();
+                }
+#endif
                 return res;
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
