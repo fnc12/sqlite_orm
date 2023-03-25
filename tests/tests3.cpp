@@ -128,7 +128,7 @@ TEST_CASE("sqlite_schema") {
 
     auto masterRows = storage.get_all<sqlite_master>();
     std::ignore = masterRows;
-#if(SQLITE_VERSION_NUMBER >= 3033000) && defined(SQLITE_ORM_WITH_CPP20_ALIASES)
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     auto schemaRows = storage.get_all<sqlite_schema>();
     std::ignore = schemaRows;
 #endif

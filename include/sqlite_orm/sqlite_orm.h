@@ -19463,7 +19463,7 @@ namespace sqlite_orm {
                           make_column("sql", &sqlite_master::sql));
     }
 
-#if(SQLITE_VERSION_NUMBER >= 3033000) && defined(SQLITE_ORM_WITH_CPP20_ALIASES)
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     inline constexpr auto sqlite_schema = "sqlite_schema"_alias.for_<sqlite_master>();
 #endif
 }
