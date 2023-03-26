@@ -36,7 +36,7 @@ TEST_CASE("function static") {
                 };
 
                 STATIC_REQUIRE(is_scalar_function_v<Function>);
-                STATIC_REQUIRE(!is_aggregate_function_v<Function>);
+                STATIC_REQUIRE_FALSE(is_aggregate_function_v<Function>);
 
                 using RunMemberFunctionPointer = internal::scalar_call_function_t<Function>;
                 using ExpectedType = double (Function::*)(double) const;
@@ -58,7 +58,7 @@ TEST_CASE("function static") {
                 };
 
                 STATIC_REQUIRE(is_scalar_function_v<Function>);
-                STATIC_REQUIRE(!is_aggregate_function_v<Function>);
+                STATIC_REQUIRE_FALSE(is_aggregate_function_v<Function>);
 
                 using RunMemberFunctionPointer = internal::scalar_call_function_t<Function>;
                 using ExpectedType = double (Function::*)(double);
@@ -80,7 +80,7 @@ TEST_CASE("function static") {
                 };
 
                 STATIC_REQUIRE(is_scalar_function_v<Function>);
-                STATIC_REQUIRE(!is_aggregate_function_v<Function>);
+                STATIC_REQUIRE_FALSE(is_aggregate_function_v<Function>);
 
                 using RunMemberFunctionPointer = internal::scalar_call_function_t<Function>;
                 using ExpectedType = int (Function::*)(std::string) const;
@@ -102,7 +102,7 @@ TEST_CASE("function static") {
                 };
 
                 STATIC_REQUIRE(is_scalar_function_v<Function>);
-                STATIC_REQUIRE(!is_aggregate_function_v<Function>);
+                STATIC_REQUIRE_FALSE(is_aggregate_function_v<Function>);
 
                 using RunMemberFunctionPointer = internal::scalar_call_function_t<Function>;
                 using ExpectedType = int (Function::*)(std::string);
@@ -124,7 +124,7 @@ TEST_CASE("function static") {
                 };
 
                 STATIC_REQUIRE(is_scalar_function_v<Function>);
-                STATIC_REQUIRE(!is_aggregate_function_v<Function>);
+                STATIC_REQUIRE_FALSE(is_aggregate_function_v<Function>);
 
                 using RunMemberFunctionPointer = internal::scalar_call_function_t<Function>;
                 using ExpectedType = std::string (Function::*)(const std::string&, const std::string&) const;
@@ -146,7 +146,7 @@ TEST_CASE("function static") {
                 };
 
                 STATIC_REQUIRE(is_scalar_function_v<Function>);
-                STATIC_REQUIRE(!is_aggregate_function_v<Function>);
+                STATIC_REQUIRE_FALSE(is_aggregate_function_v<Function>);
 
                 using RunMemberFunctionPointer = internal::scalar_call_function_t<Function>;
                 using ExpectedType = std::string (Function::*)(const std::string&, const std::string&);
@@ -179,7 +179,7 @@ TEST_CASE("function static") {
             };
 
             STATIC_REQUIRE(is_aggregate_function_v<Function>);
-            STATIC_REQUIRE(!is_scalar_function_v<Function>);
+            STATIC_REQUIRE_FALSE(is_scalar_function_v<Function>);
 
             using StepMemberFunctionPointer = internal::aggregate_step_function_t<Function>;
             using ExpectedStepType = void (Function::*)(int);
@@ -206,7 +206,7 @@ TEST_CASE("function static") {
             };
 
             STATIC_REQUIRE(is_aggregate_function_v<Function>);
-            STATIC_REQUIRE(!is_scalar_function_v<Function>);
+            STATIC_REQUIRE_FALSE(is_scalar_function_v<Function>);
 
             using StepMemberFunctionPointer = internal::aggregate_step_function_t<Function>;
             using ExpectedStepType = void (Function::*)(std::string) const;

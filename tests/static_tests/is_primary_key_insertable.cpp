@@ -27,6 +27,6 @@ TEST_CASE("is_primary_key_insertable") {
     });
 
     iterate_tuple(noninsertable, [](auto& v) {
-        STATIC_REQUIRE(!internal::is_primary_key_insertable<std::decay_t<decltype(v)>>::value);
+        STATIC_REQUIRE_FALSE(internal::is_primary_key_insertable<std::decay_t<decltype(v)>>::value);
     });
 }

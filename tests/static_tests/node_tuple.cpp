@@ -874,9 +874,9 @@ TEST_CASE("Node tuple") {
 
         STATIC_REQUIRE(is_tuple<tuple<>>::value);
         STATIC_REQUIRE(is_tuple<tuple<int, std::string>>::value);
-        STATIC_REQUIRE(!is_tuple<int>::value);
+        STATIC_REQUIRE_FALSE(is_tuple<int>::value);
         STATIC_REQUIRE(is_pair<std::pair<int, std::string>>::value);
-        STATIC_REQUIRE(!is_pair<int>::value);
+        STATIC_REQUIRE_FALSE(is_pair<int>::value);
 
         using ArgsType = Case::args_type;
         STATIC_REQUIRE(is_tuple<ArgsType>::value);

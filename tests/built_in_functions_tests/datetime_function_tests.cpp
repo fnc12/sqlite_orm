@@ -8,12 +8,12 @@ TEST_CASE("time") {
     {
         auto rows = storage.select(time("12:00", "localtime"));
         REQUIRE(rows.size() == 1);
-        REQUIRE(!rows.front().empty());
+        REQUIRE_FALSE(rows.front().empty());
     }
     {
         auto rows = storage.select(time("12:00", "utc"));
         REQUIRE(rows.size() == 1);
-        REQUIRE(!rows.front().empty());
+        REQUIRE_FALSE(rows.front().empty());
     }
 }
 
@@ -47,19 +47,19 @@ TEST_CASE("datetime") {
     auto storage = make_storage({});
     auto rows = storage.select(datetime("now"));
     REQUIRE(rows.size() == 1);
-    REQUIRE(!rows.front().empty());
+    REQUIRE_FALSE(rows.front().empty());
 }
 
 TEST_CASE("date") {
     auto storage = make_storage({});
     auto rows = storage.select(date("now", "start of month", "+1 month", "-1 day"));
     REQUIRE(rows.size() == 1);
-    REQUIRE(!rows.front().empty());
+    REQUIRE_FALSE(rows.front().empty());
 }
 
 TEST_CASE("strftime") {
     auto storage = make_storage({});
     auto rows = storage.select(strftime("%Y %m %d", "now"));
     REQUIRE(rows.size() == 1);
-    REQUIRE(!rows.front().empty());
+    REQUIRE_FALSE(rows.front().empty());
 }

@@ -31,13 +31,13 @@ TEST_CASE("Select return types") {
 
         //  test is_mapped
         STATIC_REQUIRE(internal::is_mapped_v<decltype(storage)::db_objects_type, User>);
-        STATIC_REQUIRE(!internal::is_mapped_v<decltype(storage)::db_objects_type, Visit>);
+        STATIC_REQUIRE_FALSE(internal::is_mapped_v<decltype(storage)::db_objects_type, Visit>);
 
         //  test is_storage
         STATIC_REQUIRE(internal::is_storage<decltype(storage)>::value);
-        STATIC_REQUIRE(!internal::is_storage<User>::value);
-        STATIC_REQUIRE(!internal::is_storage<int>::value);
-        STATIC_REQUIRE(!internal::is_storage<void>::value);
+        STATIC_REQUIRE_FALSE(internal::is_storage<User>::value);
+        STATIC_REQUIRE_FALSE(internal::is_storage<int>::value);
+        STATIC_REQUIRE_FALSE(internal::is_storage<void>::value);
 
         auto storage2 = make_storage(
             "",
