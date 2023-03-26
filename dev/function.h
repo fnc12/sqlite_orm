@@ -77,13 +77,13 @@ namespace sqlite_orm {
         template<class F>
         using aggregate_fin_function_t = decltype(&F::fin);
 
-        template<class F, class = void>
+        template<class F, class SFINAE = void>
         SQLITE_ORM_INLINE_VAR constexpr bool is_scalar_function_v = false;
         template<class F>
         SQLITE_ORM_INLINE_VAR constexpr bool is_scalar_function_v<F, polyfill::void_t<scalar_call_function_t<F>>> =
             true;
 
-        template<class F, class = void>
+        template<class F, class SFINAE = void>
         SQLITE_ORM_INLINE_VAR constexpr bool is_aggregate_function_v = false;
         template<class F>
         SQLITE_ORM_INLINE_VAR constexpr bool is_aggregate_function_v<

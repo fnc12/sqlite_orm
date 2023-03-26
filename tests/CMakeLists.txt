@@ -165,6 +165,7 @@ if (MSVC)
 endif()
 
 target_precompile_headers(unit_tests PRIVATE
+    <sqlite3.h>
     <sqlite_orm/sqlite_orm.h>
     <catch2/catch_all.hpp>)
 

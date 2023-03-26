@@ -63,8 +63,14 @@ namespace sqlite_orm {
             column_type column;
         };
 
+        struct basic_table;
+
         /*
          * Encapsulates extracting the alias identifier of a non-alias.
+         * 
+         * `extract()` always returns the empty string.
+         * `as_alias()` is used in contexts where a table might be aliased, and the empty string is returned.
+         * `as_qualifier()` is used in contexts where a table might be aliased, and the given table's name is returned.
          */
         template<class T, class SFINAE = void>
         struct alias_extractor {
@@ -75,13 +81,19 @@ namespace sqlite_orm {
             static std::string as_alias() {
                 return {};
             }
+
+            template<class X = basic_table>
+            static const std::string& as_qualifier(const X& table) {
+                return table.name;
+            }
         };
 
         /*
          * Encapsulates extracting the alias identifier of an alias.
          * 
          * `extract()` always returns the alias identifier.
-         * `as_alias()` is used in contexts where a table is aliased.
+         * `as_alias()` is used in contexts where a table is aliased, and the alias identifier is returned.
+         * `as_qualifier()` is used in contexts where a table is aliased, and the alias identifier is returned.
          */
         template<class A>
         struct alias_extractor<A, match_if<is_alias, A>> {
@@ -94,6 +106,12 @@ namespace sqlite_orm {
             // for column and regular table aliases -> alias identifier
             template<class T = A, satisfies_not<std::is_same, polyfill::detected_t<type_t, T>, A> = true>
             static std::string as_alias() {
+                return alias_extractor::extract();
+            }
+
+            // for regular table aliases -> alias identifier
+            template<class T = A, satisfies<is_table_alias, T> = true>
+            static std::string as_qualifier(const basic_table&) {
                 return alias_extractor::extract();
             }
         };
