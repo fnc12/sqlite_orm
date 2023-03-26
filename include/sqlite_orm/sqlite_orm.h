@@ -4536,6 +4536,7 @@ namespace sqlite_orm {
     template<class Lookup>
     SQLITE_ORM_INLINE_VAR constexpr internal::column_pointer_builder<Lookup> column{};
 
+#ifdef SQLITE_ORM_WITH_CTE
     /**
      *  Explicitly refer to a column mapped into a CTE or subquery.
      *
@@ -4561,6 +4562,7 @@ namespace sqlite_orm {
     constexpr auto operator->*(const internal::column_pointer_builder<A>&, F field) {
         return column<A>(std::move(field));
     }
+#endif
 }
 
 namespace sqlite_orm {
