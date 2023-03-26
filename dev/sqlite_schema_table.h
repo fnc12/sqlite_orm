@@ -22,6 +22,10 @@ namespace sqlite_orm {
         std::string tbl_name;
         int rootpage = 0;
         std::string sql;
+
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+        friend bool operator==(const sqlite_master&, const sqlite_master&) = default;
+#endif
     };
 
     inline auto make_sqlite_schema_table() {

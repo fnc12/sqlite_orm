@@ -15,6 +15,7 @@ TEST_CASE("builtin tables") {
         auto schemaRows = storage.get_all<sqlite_schema>();
 
         STATIC_REQUIRE(std::is_same_v<decltype(masterRows), decltype(schemaRows)>);
+        REQUIRE_THAT(schemaRows, Equals(masterRows));
 #endif
     }
 

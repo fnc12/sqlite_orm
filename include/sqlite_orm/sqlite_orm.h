@@ -98,6 +98,14 @@ using std::nullptr_t;
 #define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
 #endif
 
+#if __cpp_nontype_template_args >= 201911L
+#define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#endif
+
+#if(__cplusplus >= 202002L)
+#define SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#endif
+
 // #include "cxx_compiler_quirks.h"
 
 /*
@@ -19463,6 +19471,10 @@ namespace sqlite_orm {
         std::string tbl_name;
         int rootpage = 0;
         std::string sql;
+
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+        friend bool operator==(const sqlite_master&, const sqlite_master&) = default;
+#endif
     };
 
     inline auto make_sqlite_schema_table() {
