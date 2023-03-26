@@ -1350,13 +1350,15 @@ namespace sqlite_orm {
 
         template<class T, class Ctx>
         std::string serialize_get_all_impl(const T& getAll, const Ctx& context) {
-            using mapped_type = type_t<T>;
+            using table_type = type_t<T>;
+            using mapped_type = mapped_type_proxy_t<table_type>;
 
             auto& table = pick_table<mapped_type>(context.db_objects);
 
             std::stringstream ss;
-            ss << "SELECT " << streaming_table_column_names(table, table.name) << " FROM "
-               << streaming_identifier(table.name) << streaming_conditions_tuple(getAll.conditions, context);
+            ss << "SELECT " << streaming_table_column_names(table, alias_extractor<table_type>::as_qualifier(table))
+               << " FROM " << streaming_identifier(table.name, alias_extractor<table_type>::as_alias())
+               << streaming_conditions_tuple(getAll.conditions, context);
             return ss.str();
         }
 
@@ -1587,23 +1589,21 @@ namespace sqlite_orm {
             }
         };
 
-        template<class... Args>
-        struct statement_serializer<from_t<Args...>, void> {
-            using statement_type = from_t<Args...>;
+        template<class From>
+        struct statement_serializer<From, match_if<is_from, From>> {
+            using statement_type = From;
 
             template<class Ctx>
             std::string operator()(const statement_type&, const Ctx& context) const {
-                using tuple = std::tuple<Args...>;
-
                 std::stringstream ss;
                 ss << "FROM ";
-                iterate_tuple<tuple>([&context, &ss, first = true](auto* item) mutable {
-                    using from_type = std::remove_pointer_t<decltype(item)>;
+                iterate_tuple<typename From::tuple_type>([&context, &ss, first = true](auto* dummyItem) mutable {
+                    using table_type = std::remove_pointer_t<decltype(dummyItem)>;
 
                     constexpr std::array<const char*, 2> sep = {", ", ""};
                     ss << sep[std::exchange(first, false)]
-                       << streaming_identifier(lookup_table_name<mapped_type_proxy_t<from_type>>(context.db_objects),
-                                               alias_extractor<from_type>::as_alias());
+                       << streaming_identifier(lookup_table_name<mapped_type_proxy_t<table_type>>(context.db_objects),
+                                               alias_extractor<table_type>::as_alias());
                 });
                 return ss.str();
             }

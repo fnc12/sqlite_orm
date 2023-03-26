@@ -300,6 +300,25 @@ namespace sqlite_orm {
                 return this->execute(statement);
             }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            /**
+             *  SELECT * routine.
+             *  `alias` is an explicitly specified table alias of an object to be extracted.
+             *  `R` is the container return type, which must have a `R::push_back(O&&)` method, and defaults to `std::vector<O>`
+             *  @return All objects stored in database.
+             *  @example: storage.get_all<sqlite_schema, std::list<sqlite_master>>(); - SELECT sqlite_schema.* FROM sqlite_master AS sqlite_schema
+            */
+            template<orm_table_alias auto alias,
+                     class R = std::vector<mapped_type_proxy_t<decltype(alias)>>,
+                     class... Args>
+            R get_all(Args&&... args) {
+                using A = decltype(alias);
+                this->assert_mapped_type<mapped_type_proxy_t<A>>();
+                auto statement = this->prepare(sqlite_orm::get_all<alias, R>(std::forward<Args>(args)...));
+                return this->execute(statement);
+            }
+#endif
+
             /**
              *  SELECT * routine.
              *  O is an object type to be extracted. Must be specified explicitly.
@@ -1355,16 +1374,16 @@ namespace sqlite_orm {
                 return res;
             }
 
-            template<class T, class R, class... Args>
+            template<class T, class R, class... Args, class O = mapped_type_proxy_t<T>>
             R execute(const prepared_statement_t<get_all_t<T, R, Args...>>& statement) {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
                 iterate_ast(statement.expression, conditional_binder{stmt});
 
                 R res;
-                perform_steps(stmt, [&table = this->get_table<T>(), &res](sqlite3_stmt* stmt) {
-                    T obj;
-                    object_from_column_builder<T> builder{obj, stmt};
+                perform_steps(stmt, [&table = this->get_table<O>(), &res](sqlite3_stmt* stmt) {
+                    O obj;
+                    object_from_column_builder<O> builder{obj, stmt};
                     table.for_each_column(builder);
                     res.push_back(std::move(obj));
                 });

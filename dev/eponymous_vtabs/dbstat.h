@@ -1,6 +1,8 @@
 #pragma once
 
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
 #include <string>  //  std::string
+#endif
 
 #include "../column.h"
 #include "../table.h"

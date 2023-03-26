@@ -16,6 +16,6 @@ TEST_CASE("tuple traits") {
     STATIC_REQUIRE(mpl::invoke_t<check_if_tuple_has<is_primary_key>, tuple_type>::value);
     STATIC_REQUIRE(mpl::invoke_t<check_if_tuple_has_type<int>, tuple_type>::value);
     STATIC_REQUIRE(mpl::invoke_t<check_if_tuple_has_template<default_t>, tuple_type>::value);
-    STATIC_REQUIRE(!mpl::invoke_t<check_if_tuple_has_template<std::shared_ptr>, tuple_type>::value);
-    STATIC_REQUIRE(!mpl::invoke_t<check_if_tuple_has_template<default_t>, empty_tuple_type>::value);
+    STATIC_REQUIRE_FALSE(mpl::invoke_t<check_if_tuple_has_template<std::shared_ptr>, tuple_type>::value);
+    STATIC_REQUIRE_FALSE(mpl::invoke_t<check_if_tuple_has_template<default_t>, empty_tuple_type>::value);
 }

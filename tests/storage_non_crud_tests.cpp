@@ -101,7 +101,7 @@ TEST_CASE("update set null") {
     {
         auto rows = storage.get_all<User>();
         REQUIRE(rows.size() == 1);
-        REQUIRE(!rows.front().name);
+        REQUIRE_FALSE(rows.front().name);
     }
 
     storage.update_all(set(assign(&User::name, "ototo")));
@@ -116,7 +116,7 @@ TEST_CASE("update set null") {
     {
         auto rows = storage.get_all<User>();
         REQUIRE(rows.size() == 1);
-        REQUIRE(!rows.front().name);
+        REQUIRE_FALSE(rows.front().name);
     }
 }
 

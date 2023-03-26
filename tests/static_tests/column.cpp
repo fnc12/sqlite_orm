@@ -71,6 +71,6 @@ TEST_CASE("Column") {
         STATIC_REQUIRE(std::is_same<internal::table_type_of<field_type>::type, Object>::value);
         STATIC_REQUIRE(std::is_same<internal::column_result_t<internal::storage_t<>, field_type>::type, int>::value);
         STATIC_REQUIRE(std::is_member_pointer<field_type>::value);
-        STATIC_REQUIRE(!std::is_member_function_pointer<field_type>::value);
+        STATIC_REQUIRE_FALSE(std::is_member_function_pointer<field_type>::value);
     }
 }

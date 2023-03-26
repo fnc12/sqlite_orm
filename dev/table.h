@@ -1,9 +1,9 @@
 #pragma once
 
 #include <string>  //  std::string
-#include <type_traits>  //  std::remove_reference, std::is_same, std::decay
+#include <type_traits>  //  std::remove_const, std::is_member_pointer, std::true_type, std::false_type
 #include <vector>  //  std::vector
-#include <tuple>  //  std::tuple_size, std::tuple_element
+#include <tuple>  //  std::tuple_element
 #include <utility>  //  std::forward, std::move
 
 #include "functional/cxx_universal.h"  //  ::size_t

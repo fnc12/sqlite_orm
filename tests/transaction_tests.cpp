@@ -25,14 +25,14 @@ TEST_CASE("transaction") {
     auto storage = make_storage(
         "test_transaction_guard.sqlite",
         make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name)));
-    REQUIRE(!storage.is_opened());
+    REQUIRE_FALSE(storage.is_opened());
     storage.sync_schema();
-    REQUIRE(!storage.is_opened());
+    REQUIRE_FALSE(storage.is_opened());
     storage.transaction([&] {
         storage.insert(Object{0, "Jack"});
         return true;
     });
-    REQUIRE(!storage.is_opened());
+    REQUIRE_FALSE(storage.is_opened());
 }
 
 TEST_CASE("transaction_rollback") {

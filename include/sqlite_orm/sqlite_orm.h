@@ -98,6 +98,14 @@ using std::nullptr_t;
 #define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
 #endif
 
+#if __cpp_nontype_template_args >= 201911L
+#define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#endif
+
+#if(__cplusplus >= 202002L)
+#define SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#endif
+
 // #include "cxx_compiler_quirks.h"
 
 /*
@@ -4326,8 +4334,14 @@ namespace sqlite_orm {
             column_type column;
         };
 
+        struct basic_table;
+
         /*
          * Encapsulates extracting the alias identifier of a non-alias.
+         * 
+         * `extract()` always returns the empty string.
+         * `as_alias()` is used in contexts where a table might be aliased, and the empty string is returned.
+         * `as_qualifier()` is used in contexts where a table might be aliased, and the given table's name is returned.
          */
         template<class T, class SFINAE = void>
         struct alias_extractor {
@@ -4338,13 +4352,19 @@ namespace sqlite_orm {
             static std::string as_alias() {
                 return {};
             }
+
+            template<class X = basic_table>
+            static const std::string& as_qualifier(const X& table) {
+                return table.name;
+            }
         };
 
         /*
          * Encapsulates extracting the alias identifier of an alias.
          * 
          * `extract()` always returns the alias identifier.
-         * `as_alias()` is used in contexts where a table is aliased.
+         * `as_alias()` is used in contexts where a table is aliased, and the alias identifier is returned.
+         * `as_qualifier()` is used in contexts where a table is aliased, and the alias identifier is returned.
          */
         template<class A>
         struct alias_extractor<A, match_if<is_alias, A>> {
@@ -4357,6 +4377,12 @@ namespace sqlite_orm {
             // for column and regular table aliases -> alias identifier
             template<class T = A, satisfies_not<std::is_same, polyfill::detected_t<type_t, T>, A> = true>
             static std::string as_alias() {
+                return alias_extractor::extract();
+            }
+
+            // for regular table aliases -> alias identifier
+            template<class T = A, satisfies<is_table_alias, T> = true>
+            static std::string as_qualifier(const basic_table&) {
                 return alias_extractor::extract();
             }
         };
@@ -9411,9 +9437,9 @@ namespace sqlite_orm {
 #pragma once
 
 #include <string>  //  std::string
-#include <type_traits>  //  std::remove_reference, std::is_same, std::decay
+#include <type_traits>  //  std::remove_const, std::is_member_pointer, std::true_type, std::false_type
 #include <vector>  //  std::vector
-#include <tuple>  //  std::tuple_size, std::tuple_element
+#include <tuple>  //  std::tuple_element
 #include <utility>  //  std::forward, std::move
 
 // #include "functional/cxx_universal.h"
@@ -11304,6 +11330,8 @@ namespace sqlite_orm {
 
 }
 
+// #include "mapped_type_proxy.h"
+
 // #include "ast/upsert_clause.h"
 
 #if SQLITE_VERSION_NUMBER >= 3024000
@@ -12235,6 +12263,23 @@ namespace sqlite_orm {
         internal::validate_conditions<conditions_tuple>();
         return {{std::forward<Args>(conditions)...}};
     }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Create a get all statement.
+     *  `alias` is an explicitly specified table alias of an object to be extracted.
+     *  `R` is the container return type, which must have a `R::push_back(T&&)` method, and defaults to `std::vector<T>`
+     *  Usage: storage.get_all<sqlite_schema>(...);
+     */
+    template<orm_table_alias auto alias,
+             class R = std::vector<internal::mapped_type_proxy_t<decltype(alias)>>,
+             class... Args>
+    auto get_all(Args&&... conditions) {
+        using expression_type = internal::get_all_t<std::remove_const_t<decltype(alias)>, R, std::decay_t<Args>...>;
+        internal::validate_conditions<typename expression_type::conditions_type>();
+        return expression_type{{std::forward<Args>(conditions)...}};
+    }
+#endif
 
     /**
      *  Create an update all statement.
@@ -16714,13 +16759,15 @@ namespace sqlite_orm {
 
         template<class T, class Ctx>
         std::string serialize_get_all_impl(const T& getAll, const Ctx& context) {
-            using mapped_type = type_t<T>;
+            using table_type = type_t<T>;
+            using mapped_type = mapped_type_proxy_t<table_type>;
 
             auto& table = pick_table<mapped_type>(context.db_objects);
 
             std::stringstream ss;
-            ss << "SELECT " << streaming_table_column_names(table, table.name) << " FROM "
-               << streaming_identifier(table.name) << streaming_conditions_tuple(getAll.conditions, context);
+            ss << "SELECT " << streaming_table_column_names(table, alias_extractor<table_type>::as_qualifier(table))
+               << " FROM " << streaming_identifier(table.name, alias_extractor<table_type>::as_alias())
+               << streaming_conditions_tuple(getAll.conditions, context);
             return ss.str();
         }
 
@@ -16951,23 +16998,21 @@ namespace sqlite_orm {
             }
         };
 
-        template<class... Args>
-        struct statement_serializer<from_t<Args...>, void> {
-            using statement_type = from_t<Args...>;
+        template<class From>
+        struct statement_serializer<From, match_if<is_from, From>> {
+            using statement_type = From;
 
             template<class Ctx>
             std::string operator()(const statement_type&, const Ctx& context) const {
-                using tuple = std::tuple<Args...>;
-
                 std::stringstream ss;
                 ss << "FROM ";
-                iterate_tuple<tuple>([&context, &ss, first = true](auto* item) mutable {
-                    using from_type = std::remove_pointer_t<decltype(item)>;
+                iterate_tuple<typename From::tuple_type>([&context, &ss, first = true](auto* dummyItem) mutable {
+                    using table_type = std::remove_pointer_t<decltype(dummyItem)>;
 
                     constexpr std::array<const char*, 2> sep = {", ", ""};
                     ss << sep[std::exchange(first, false)]
-                       << streaming_identifier(lookup_table_name<mapped_type_proxy_t<from_type>>(context.db_objects),
-                                               alias_extractor<from_type>::as_alias());
+                       << streaming_identifier(lookup_table_name<mapped_type_proxy_t<table_type>>(context.db_objects),
+                                               alias_extractor<table_type>::as_alias());
                 });
                 return ss.str();
             }
@@ -17651,6 +17696,25 @@ namespace sqlite_orm {
                 auto statement = this->prepare(sqlite_orm::get_all<O, R>(std::forward<Args>(args)...));
                 return this->execute(statement);
             }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            /**
+             *  SELECT * routine.
+             *  `alias` is an explicitly specified table alias of an object to be extracted.
+             *  `R` is the container return type, which must have a `R::push_back(O&&)` method, and defaults to `std::vector<O>`
+             *  @return All objects stored in database.
+             *  @example: storage.get_all<sqlite_schema, std::list<sqlite_master>>(); - SELECT sqlite_schema.* FROM sqlite_master AS sqlite_schema
+            */
+            template<orm_table_alias auto alias,
+                     class R = std::vector<mapped_type_proxy_t<decltype(alias)>>,
+                     class... Args>
+            R get_all(Args&&... args) {
+                using A = decltype(alias);
+                this->assert_mapped_type<mapped_type_proxy_t<A>>();
+                auto statement = this->prepare(sqlite_orm::get_all<alias, R>(std::forward<Args>(args)...));
+                return this->execute(statement);
+            }
+#endif
 
             /**
              *  SELECT * routine.
@@ -18707,16 +18771,16 @@ namespace sqlite_orm {
                 return res;
             }
 
-            template<class T, class R, class... Args>
+            template<class T, class R, class... Args, class O = mapped_type_proxy_t<T>>
             R execute(const prepared_statement_t<get_all_t<T, R, Args...>>& statement) {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
                 iterate_ast(statement.expression, conditional_binder{stmt});
 
                 R res;
-                perform_steps(stmt, [&table = this->get_table<T>(), &res](sqlite3_stmt* stmt) {
-                    T obj;
-                    object_from_column_builder<T> builder{obj, stmt};
+                perform_steps(stmt, [&table = this->get_table<O>(), &res](sqlite3_stmt* stmt) {
+                    O obj;
+                    object_from_column_builder<O> builder{obj, stmt};
                     table.for_each_column(builder);
                     res.push_back(std::move(obj));
                 });
@@ -19385,6 +19449,53 @@ namespace sqlite_orm {
 
 #include <string>  //  std::string
 
+// #include "column.h"
+
+// #include "table.h"
+
+// #include "alias.h"
+
+namespace sqlite_orm {
+    /** 
+     *  SQLite's "schema table" that stores the schema for a database.
+     *  
+     *  @note Despite the fact that the schema table was renamed from "sqlite_master" to "sqlite_schema" in SQLite 3.33.0
+     *  the renaming process was more like keeping the previous name "sqlite_master" and attaching an internal alias "sqlite_schema".
+     *  One can infer this fact from the following SQL statement:
+     *  It qualifies the set of columns, but bails out with error "no such table: sqlite_schema": `SELECT sqlite_schema.* from sqlite_schema`.
+     *  Hence we keep its previous table name `sqlite_master`, and provide `sqlite_schema` as a table alias in sqlite_orm.
+     */
+    struct sqlite_master {
+        std::string type;
+        std::string name;
+        std::string tbl_name;
+        int rootpage = 0;
+        std::string sql;
+
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+        friend bool operator==(const sqlite_master&, const sqlite_master&) = default;
+#endif
+    };
+
+    inline auto make_sqlite_schema_table() {
+        return make_table("sqlite_master",
+                          make_column("type", &sqlite_master::type),
+                          make_column("name", &sqlite_master::name),
+                          make_column("tbl_name", &sqlite_master::tbl_name),
+                          make_column("rootpage", &sqlite_master::rootpage),
+                          make_column("sql", &sqlite_master::sql));
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    inline constexpr auto sqlite_schema = "sqlite_schema"_alias.for_<sqlite_master>();
+#endif
+}
+#pragma once
+
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+#include <string>  //  std::string
+#endif
+
 // #include "../column.h"
 
 // #include "../table.h"
@@ -19480,6 +19591,8 @@ namespace sqlite_orm {
 #include <utility>  //  std::move
 #include <algorithm>  //  std::find_if, std::ranges::find
 
+// #include "../functional/cxx_universal.h"
+//  ::size_t
 // #include "../type_printer.h"
 
 // #include "../column.h"
@@ -19492,7 +19605,7 @@ namespace sqlite_orm {
         template<class T, bool WithoutRowId, class... Cs>
         std::vector<table_xinfo> table_t<T, WithoutRowId, Cs...>::get_table_info() const {
             std::vector<table_xinfo> res;
-            res.reserve(size_t(filter_tuple_sequence_t<elements_type, is_column>::size()));
+            res.reserve(filter_tuple_sequence_t<elements_type, is_column>::size());
             this->for_each_column([&res](auto& column) {
                 using field_type = field_type_t<std::decay_t<decltype(column)>>;
                 std::string dft;
@@ -19503,13 +19616,13 @@ namespace sqlite_orm {
                                  column.name,
                                  type_printer<field_type>().print(),
                                  column.is_not_null(),
-                                 dft,
+                                 std::move(dft),
                                  column.template is<is_primary_key>(),
                                  column.is_generated());
             });
             auto compositeKeyColumnNames = this->composite_key_columns_names();
             for(size_t i = 0; i < compositeKeyColumnNames.size(); ++i) {
-                auto& columnName = compositeKeyColumnNames[i];
+                const std::string& columnName = compositeKeyColumnNames[i];
 #if __cpp_lib_ranges >= 201911L
                 auto it = std::ranges::find(res, columnName, &table_xinfo::name);
 #else
@@ -19538,6 +19651,8 @@ namespace sqlite_orm {
 #include <functional>  //  std::reference_wrapper, std::cref
 #include <algorithm>  //  std::find_if, std::ranges::find
 
+// #include "../sqlite_schema_table.h"
+
 // #include "../eponymous_vtabs/dbstat.h"
 
 // #include "../type_traits.h"
@@ -19554,6 +19669,9 @@ namespace sqlite_orm {
         template<class... DBO>
         template<class Table, satisfies<is_table, Table>>
         sync_schema_result storage_t<DBO...>::sync_table(const Table& table, sqlite3* db, bool preserve) {
+            if(std::is_same<object_type_t<Table>, sqlite_master>::value) {
+                return sync_schema_result::already_in_sync;
+            }
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
             if(std::is_same<object_type_t<Table>, dbstat>::value) {
                 return sync_schema_result::already_in_sync;
