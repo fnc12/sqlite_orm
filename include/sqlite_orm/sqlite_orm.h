@@ -1180,7 +1180,7 @@ namespace sqlite_orm {
 
 // #include "../functional/index_sequence_util.h"
 
-#include <utility>  //  std::index_sequence, std::make_index_sequence
+#include <utility>  //  std::index_sequence
 
 // #include "../functional/cxx_universal.h"
 
