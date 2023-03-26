@@ -4326,8 +4326,14 @@ namespace sqlite_orm {
             column_type column;
         };
 
+        struct basic_table;
+
         /*
          * Encapsulates extracting the alias identifier of a non-alias.
+         * 
+         * `extract()` always returns the empty string.
+         * `as_alias()` is used in contexts where a table might be aliased, and the empty string is returned.
+         * `as_qualifier()` is used in contexts where a table might be aliased, and the given table's name is returned.
          */
         template<class T, class SFINAE = void>
         struct alias_extractor {
@@ -4338,13 +4344,19 @@ namespace sqlite_orm {
             static std::string as_alias() {
                 return {};
             }
+
+            template<class X = basic_table>
+            static const std::string& as_qualifier(const X& table) {
+                return table.name;
+            }
         };
 
         /*
          * Encapsulates extracting the alias identifier of an alias.
          * 
          * `extract()` always returns the alias identifier.
-         * `as_alias()` is used in contexts where a table is aliased.
+         * `as_alias()` is used in contexts where a table is aliased, and the alias identifier is returned.
+         * `as_qualifier()` is used in contexts where a table is aliased, and the alias identifier is returned.
          */
         template<class A>
         struct alias_extractor<A, match_if<is_alias, A>> {
@@ -4357,6 +4369,12 @@ namespace sqlite_orm {
             // for column and regular table aliases -> alias identifier
             template<class T = A, satisfies_not<std::is_same, polyfill::detected_t<type_t, T>, A> = true>
             static std::string as_alias() {
+                return alias_extractor::extract();
+            }
+
+            // for regular table aliases -> alias identifier
+            template<class T = A, satisfies<is_table_alias, T> = true>
+            static std::string as_qualifier(const basic_table&) {
                 return alias_extractor::extract();
             }
         };
@@ -16739,13 +16757,8 @@ namespace sqlite_orm {
             auto& table = pick_table<mapped_type>(context.db_objects);
 
             std::stringstream ss;
-            ss << "SELECT "
-               << streaming_table_column_names(table,
-                                               is_table_alias_v<table_type> ? alias_extractor<table_type>::as_alias()
-                                                                            : table.name)
-               << " FROM "
-               << streaming_identifier(lookup_table_name<mapped_type>(context.db_objects),
-                                       alias_extractor<table_type>::as_alias())
+            ss << "SELECT " << streaming_table_column_names(table, alias_extractor<table_type>::as_qualifier(table))
+               << " FROM " << streaming_identifier(table.name, alias_extractor<table_type>::as_alias())
                << streaming_conditions_tuple(getAll.conditions, context);
             return ss.str();
         }
@@ -16977,23 +16990,21 @@ namespace sqlite_orm {
             }
         };
 
-        template<class... Args>
-        struct statement_serializer<from_t<Args...>, void> {
-            using statement_type = from_t<Args...>;
+        template<class From>
+        struct statement_serializer<From, match_if<is_from, From>> {
+            using statement_type = From;
 
             template<class Ctx>
             std::string operator()(const statement_type&, const Ctx& context) const {
-                using tuple = std::tuple<Args...>;
-
                 std::stringstream ss;
                 ss << "FROM ";
-                iterate_tuple<tuple>([&context, &ss, first = true](auto* item) mutable {
-                    using from_type = std::remove_pointer_t<decltype(item)>;
+                iterate_tuple<typename From::tuple_type>([&context, &ss, first = true](auto* dummyItem) mutable {
+                    using table_type = std::remove_pointer_t<decltype(dummyItem)>;
 
                     constexpr std::array<const char*, 2> sep = {", ", ""};
                     ss << sep[std::exchange(first, false)]
-                       << streaming_identifier(lookup_table_name<mapped_type_proxy_t<from_type>>(context.db_objects),
-                                               alias_extractor<from_type>::as_alias());
+                       << streaming_identifier(lookup_table_name<mapped_type_proxy_t<table_type>>(context.db_objects),
+                                               alias_extractor<table_type>::as_alias());
                 });
                 return ss.str();
             }

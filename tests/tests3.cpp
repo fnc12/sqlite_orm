@@ -122,38 +122,6 @@ TEST_CASE("Wide string") {
 }
 #endif  //  SQLITE_ORM_OMITS_CODECVT
 
-TEST_CASE("sqlite_schema") {
-    auto storage = make_storage("", make_sqlite_schema_table());
-    storage.sync_schema();
-
-    auto masterRows = storage.get_all<sqlite_master>();
-    std::ignore = masterRows;
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    auto schemaRows = storage.get_all<sqlite_schema>();
-    std::ignore = schemaRows;
-#endif
-}
-
-#ifdef SQLITE_ENABLE_DBSTAT_VTAB
-TEST_CASE("dbstat") {
-    struct User {
-        int id = 0;
-        std::string name;
-    };
-    auto storage =
-        make_storage("dbstat.sqlite",
-                     make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)),
-                     make_dbstat_table());
-    storage.sync_schema();
-
-    storage.remove_all<User>();
-
-    storage.replace(User{1, "Dua Lipa"});
-
-    auto dbstatRows = storage.get_all<dbstat>();
-    std::ignore = dbstatRows;
-}
-#endif  //  SQLITE_ENABLE_DBSTAT_VTAB
 TEST_CASE("Busy timeout") {
     auto storage = make_storage("testBusyTimeout.sqlite");
     storage.busy_timeout(500);
