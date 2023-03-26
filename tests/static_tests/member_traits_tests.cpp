@@ -105,7 +105,7 @@ TEST_CASE("member_traits_tests") {
         }
     };
 
-    STATIC_REQUIRE(!is_getter<decltype(&User::id)>::value);
+    STATIC_REQUIRE_FALSE(is_getter<decltype(&User::id)>::value);
     STATIC_REQUIRE(is_getter<decltype(&User::getIdByValConst)>::value);
     STATIC_REQUIRE(is_getter<decltype(&User::getIdByRefConst)>::value);
     STATIC_REQUIRE(is_getter<decltype(&User::getIdByRef)>::value);
@@ -119,25 +119,25 @@ TEST_CASE("member_traits_tests") {
     STATIC_REQUIRE(is_getter<decltype(&User::getIdByConstRefConstNoexcept)>::value);
     STATIC_REQUIRE(is_getter<decltype(&User::getIdByConstRefNoExcept)>::value);
 #endif
-    STATIC_REQUIRE(!is_getter<decltype(&User::setIdByVal)>::value);
-    STATIC_REQUIRE(!is_getter<decltype(&User::setIdByRef)>::value);
-    STATIC_REQUIRE(!is_getter<decltype(&User::setIdByConstRef)>::value);
-    STATIC_REQUIRE(!is_getter<decltype(&User::setIdByValueNoexcept)>::value);
-    STATIC_REQUIRE(!is_getter<decltype(&User::setIdByRefNoExcept)>::value);
-    STATIC_REQUIRE(!is_getter<decltype(&User::setIdByConstRefNoexcept)>::value);
+    STATIC_REQUIRE_FALSE(is_getter<decltype(&User::setIdByVal)>::value);
+    STATIC_REQUIRE_FALSE(is_getter<decltype(&User::setIdByRef)>::value);
+    STATIC_REQUIRE_FALSE(is_getter<decltype(&User::setIdByConstRef)>::value);
+    STATIC_REQUIRE_FALSE(is_getter<decltype(&User::setIdByValueNoexcept)>::value);
+    STATIC_REQUIRE_FALSE(is_getter<decltype(&User::setIdByRefNoExcept)>::value);
+    STATIC_REQUIRE_FALSE(is_getter<decltype(&User::setIdByConstRefNoexcept)>::value);
 
-    STATIC_REQUIRE(!is_setter<decltype(&User::id)>::value);
-    STATIC_REQUIRE(!is_setter<decltype(&User::getIdByValConst)>::value);
-    STATIC_REQUIRE(!is_setter<decltype(&User::getIdByRefConst)>::value);
-    STATIC_REQUIRE(!is_setter<decltype(&User::getIdByRef)>::value);
-    STATIC_REQUIRE(!is_setter<decltype(&User::getIdByConstRefConst)>::value);
-    STATIC_REQUIRE(!is_setter<decltype(&User::getIdByConstRef)>::value);
-    STATIC_REQUIRE(!is_setter<decltype(&User::getIdByValConstNoexcept)>::value);
-    STATIC_REQUIRE(!is_setter<decltype(&User::getIdByValNoexcept)>::value);
-    STATIC_REQUIRE(!is_setter<decltype(&User::getIdByRefConstNoexcept)>::value);
-    STATIC_REQUIRE(!is_setter<decltype(&User::getIdByRefNoexcept)>::value);
-    STATIC_REQUIRE(!is_setter<decltype(&User::getIdByConstRefConstNoexcept)>::value);
-    STATIC_REQUIRE(!is_setter<decltype(&User::getIdByConstRefNoExcept)>::value);
+    STATIC_REQUIRE_FALSE(is_setter<decltype(&User::id)>::value);
+    STATIC_REQUIRE_FALSE(is_setter<decltype(&User::getIdByValConst)>::value);
+    STATIC_REQUIRE_FALSE(is_setter<decltype(&User::getIdByRefConst)>::value);
+    STATIC_REQUIRE_FALSE(is_setter<decltype(&User::getIdByRef)>::value);
+    STATIC_REQUIRE_FALSE(is_setter<decltype(&User::getIdByConstRefConst)>::value);
+    STATIC_REQUIRE_FALSE(is_setter<decltype(&User::getIdByConstRef)>::value);
+    STATIC_REQUIRE_FALSE(is_setter<decltype(&User::getIdByValConstNoexcept)>::value);
+    STATIC_REQUIRE_FALSE(is_setter<decltype(&User::getIdByValNoexcept)>::value);
+    STATIC_REQUIRE_FALSE(is_setter<decltype(&User::getIdByRefConstNoexcept)>::value);
+    STATIC_REQUIRE_FALSE(is_setter<decltype(&User::getIdByRefNoexcept)>::value);
+    STATIC_REQUIRE_FALSE(is_setter<decltype(&User::getIdByConstRefConstNoexcept)>::value);
+    STATIC_REQUIRE_FALSE(is_setter<decltype(&User::getIdByConstRefNoExcept)>::value);
     STATIC_REQUIRE(is_setter<decltype(&User::setIdByVal)>::value);
     STATIC_REQUIRE(is_setter<decltype(&User::setIdByRef)>::value);
     STATIC_REQUIRE(is_setter<decltype(&User::setIdByConstRef)>::value);

@@ -10,7 +10,7 @@ TEST_CASE("column tests is_generated") {
     };
     SECTION("no constraints") {
         auto column = make_column("id", &User::id);
-        REQUIRE(!column.is_generated());
+        REQUIRE_FALSE(column.is_generated());
     }
 #if SQLITE_VERSION_NUMBER >= 3031000
     SECTION("1 constraint: generated") {
@@ -27,6 +27,6 @@ TEST_CASE("column tests is_generated") {
 #endif
     SECTION("1 constraint: primary key") {
         auto column = make_column("id", &User::id, primary_key());
-        REQUIRE(!column.is_generated());
+        REQUIRE_FALSE(column.is_generated());
     }
 }

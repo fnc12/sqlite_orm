@@ -36,7 +36,8 @@
     "dev/cte.h",
     "dev/get_prepared_statement.h",
     "dev/carray.h",
-    "dev/dbstat.h",
+    "dev/sqlite_schema_table.h",
+    "dev/eponymous_vtabs/dbstat.h",
     "dev/interface_definitions.h",
     "dev/functional/finish_macros.h"
   ],

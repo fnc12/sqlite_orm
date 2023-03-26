@@ -32,6 +32,7 @@ add_executable(unit_tests
     static_tests/cte.cpp
     static_tests/is_primary_key_insertable.cpp
     static_tests/is_column_with_insertable_primary_key.cpp
+    static_tests/operators_adl.cpp
     tuple_iteration.cpp
     sync_schema_tests.cpp
     tests.cpp
@@ -90,7 +91,7 @@ add_executable(unit_tests
     statement_serializer_tests/bindables.cpp
     statement_serializer_tests/ast/upsert_clause.cpp
     statement_serializer_tests/ast/excluded.cpp
-	statement_serializer_tests/ast/set.cpp
+    statement_serializer_tests/ast/set.cpp
     statement_serializer_tests/arithmetic_operators.cpp
     statement_serializer_tests/base_types.cpp
     statement_serializer_tests/collate.cpp
@@ -166,6 +167,7 @@ if (MSVC)
 endif()
 
 target_precompile_headers(unit_tests PRIVATE
+    <sqlite3.h>
     <sqlite_orm/sqlite_orm.h>
     <catch2/catch_all.hpp>)
 

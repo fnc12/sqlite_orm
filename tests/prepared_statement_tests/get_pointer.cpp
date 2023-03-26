@@ -93,7 +93,7 @@ TEST_CASE("Prepared get pointer") {
         }
         SECTION("execute") {
             auto user = storage.execute(statement);
-            REQUIRE(!user);
+            REQUIRE_FALSE(user);
         }
     }
     {
