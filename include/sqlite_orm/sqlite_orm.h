@@ -9411,9 +9411,9 @@ namespace sqlite_orm {
 #pragma once
 
 #include <string>  //  std::string
-#include <type_traits>  //  std::remove_reference, std::is_same, std::decay
+#include <type_traits>  //  std::remove_const, std::is_member_pointer, std::true_type, std::false_type
 #include <vector>  //  std::vector
-#include <tuple>  //  std::tuple_size, std::tuple_element
+#include <tuple>  //  std::tuple_element
 #include <utility>  //  std::forward, std::move
 
 // #include "functional/cxx_universal.h"
@@ -19469,7 +19469,9 @@ namespace sqlite_orm {
 }
 #pragma once
 
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
 #include <string>  //  std::string
+#endif
 
 // #include "../column.h"
 
@@ -19566,6 +19568,8 @@ namespace sqlite_orm {
 #include <utility>  //  std::move
 #include <algorithm>  //  std::find_if, std::ranges::find
 
+// #include "../functional/cxx_universal.h"
+//  ::size_t
 // #include "../type_printer.h"
 
 // #include "../column.h"
@@ -19578,7 +19582,7 @@ namespace sqlite_orm {
         template<class T, bool WithoutRowId, class... Cs>
         std::vector<table_xinfo> table_t<T, WithoutRowId, Cs...>::get_table_info() const {
             std::vector<table_xinfo> res;
-            res.reserve(size_t(filter_tuple_sequence_t<elements_type, is_column>::size()));
+            res.reserve(filter_tuple_sequence_t<elements_type, is_column>::size());
             this->for_each_column([&res](auto& column) {
                 using field_type = field_type_t<std::decay_t<decltype(column)>>;
                 std::string dft;
@@ -19589,13 +19593,13 @@ namespace sqlite_orm {
                                  column.name,
                                  type_printer<field_type>().print(),
                                  column.is_not_null(),
-                                 dft,
+                                 std::move(dft),
                                  column.template is<is_primary_key>(),
                                  column.is_generated());
             });
             auto compositeKeyColumnNames = this->composite_key_columns_names();
             for(size_t i = 0; i < compositeKeyColumnNames.size(); ++i) {
-                auto& columnName = compositeKeyColumnNames[i];
+                const std::string& columnName = compositeKeyColumnNames[i];
 #if __cpp_lib_ranges >= 201911L
                 auto it = std::ranges::find(res, columnName, &table_xinfo::name);
 #else
