@@ -225,8 +225,8 @@ namespace sqlite_orm {
 
     template<orm_table_alias A, class F>
         requires(!orm_cte_moniker<internal::type_t<A>>)
-    constexpr auto operator->*(const A&, F field) {
-        return internal::alias_column_t<A, decltype(field)>{field};
+    constexpr auto operator->*(const A& /*tableAlias*/, F field) {
+        return internal::alias_column_t<A, F>{field};
     }
 #endif
 
@@ -299,8 +299,12 @@ namespace sqlite_orm {
     }
 #endif
 
+    /**
+     *  Wrap a column alias in an alias holder.
+     */
     template<class T>
     internal::alias_holder<T> get() {
+        static_assert(internal::is_column_alias_v<T>, "");
         return {};
     }
 

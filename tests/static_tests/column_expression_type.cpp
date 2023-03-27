@@ -55,7 +55,6 @@ TEST_CASE("column_expression_of_t") {
                                  internal::make_cte_table(dbObjects, cte<cte_1>()(select(columns(&Org::id, 1)))));
     using db_objects2_t = decltype(dbObjects2);
     runTest<db_objects_t, column_pointer<cte_1, int64 Org::*>>(column<cte_1>(&Org::id));
-    runTest<db_objects_t, column_pointer<cte_1, int64 Org::*>>(column<cte_1>->*&Org::id);
     runTest<db_objects_t, column_pointer<cte_1, int64 Org::*>>(cte_1{}->*&Org::id);
     runTest<db_objects_t, column_pointer<cte_1, alias_holder<column_alias<'1'>>>>(column<cte_1>(1_colalias));
     runTest<db_objects_t, column_pointer<cte_1, alias_holder<colalias_c>>>(1_ctealias->*colalias_c{});
@@ -70,6 +69,9 @@ TEST_CASE("column_expression_of_t") {
                        alias_column_t<alias_a<cte_1>, int internal::aliased_field<column_alias<'2'>, int>::*>>>(
         asterisk<alias_a<cte_1>>());
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    runTest<db_objects_t, column_pointer<cte_1, int64 Org::*>>(column<"1"_cte>(&Org::id));
+    runTest<db_objects_t, column_pointer<cte_1, alias_holder<colalias_c>>>(column<"1"_cte>("c"_col));
+    runTest<db_objects_t, column_pointer<cte_1, alias_holder<colalias_c>>>(column<"1"_cte>(get<"c"_col>()));
     runTest<db_objects_t, column_pointer<cte_1, alias_holder<colalias_c>>>("1"_cte->*"c"_col);
 #endif
 #endif

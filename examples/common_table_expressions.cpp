@@ -80,8 +80,8 @@ void all_integers_between(int from, int end) {
                         select("cnt"_cte->*"y"_col));
 #else
         auto ast = with(cte<cte_1>()(union_all(select(as<colalias_f>(from)),
-                                               select(column<cte_1>->*colalias_f{} + c(1), limit(end)))),
-                        select(column<cte_1>->*colalias_f{}));
+                                               select(column<cte_1>(colalias_f{}) + c(1), limit(end)))),
+                        select(column<cte_1>(colalias_f{})));
 #endif
 
         string sql = storage.dump(ast);
@@ -102,8 +102,8 @@ void all_integers_between(int from, int end) {
              << "]"
                 "\n";
         for(int n: storage.with(cte<cte_1>().as(union_all(select(as<colalias_f>(from)),
-                                                          select(column<cte_1>->*colalias_f{} + c(1), limit(end)))),
-                                select(column<cte_1>->*colalias_f{}))) {
+                                                          select(column<cte_1>(colalias_f{}) + c(1), limit(end)))),
+                                select(column<cte_1>(colalias_f{})))) {
             cout << n << ", ";
         }
         cout << endl;
@@ -165,8 +165,8 @@ void supervisor_chain() {
         auto ast = with(cte<cte_1>()(union_all(
                             select(asterisk<Org>(), where(&Org::name == c("Fred"))),
                             select(asterisk<alias_a<Org>>(),
-                                   where(c(alias_column<alias_a<Org>>(&Org::name)) == column<cte_1>->*&Org::boss)))),
-                        select(column<cte_1>->*&Org::name));
+                                   where(c(alias_column<alias_a<Org>>(&Org::name)) == column<cte_1>(&Org::boss))))),
+                        select(column<cte_1>(&Org::name)));
 #endif
         string sql = storage.dump(ast);
 
@@ -230,8 +230,8 @@ void works_for_alice() {
 #else
         auto ast =
             with(cte<cte_1>()(
-                     union_(select("Alice"), select(&Org::name, where(c(&Org::boss) == column<cte_1>->*1_colalias)))),
-                 select(avg(&Org::height), from<Org>(), where(in(&Org::name, select(column<cte_1>->*1_colalias)))));
+                     union_(select("Alice"), select(&Org::name, where(c(&Org::boss) == column<cte_1>(1_colalias))))),
+                 select(avg(&Org::height), from<Org>(), where(in(&Org::name, select(column<cte_1>(1_colalias))))));
 #endif
 
         //WITH cte_1("n")
@@ -325,10 +325,10 @@ void family_tree() {
         make_tuple(cte<cte_1>("name", "parent")(union_(select(columns(&Family::name, &Family::mom >>= colalias_h{})),
                                                        select(columns(&Family::name, &Family::dad)))),
                    cte<cte_2>("name")(union_all(
-                       select(column<cte_1>->*colalias_h{}, where(column<cte_1>->*&Family::name == "Alice")),
-                       select(column<cte_1>->*colalias_h{}, join<cte_2>(using_(column<cte_1>->*&Family::name)))))),
+                       select(column<cte_1>(colalias_h{}), where(column<cte_1>(&Family::name) == "Alice")),
+                       select(column<cte_1>(colalias_h{}), join<cte_2>(using_(column<cte_1>(&Family::name))))))),
         select(&Family::name,
-               where(is_equal(column<cte_2>->*colalias_h{}, &Family::name) && is_null(&Family::died)),
+               where(is_equal(column<cte_2>(colalias_h{}), &Family::name) && is_null(&Family::died)),
                order_by(&Family::born)));
 #endif
 
@@ -436,10 +436,10 @@ void depth_or_breadth_first() {
 #else
         auto ast =
             with(cte<cte_1>("name", "level")(union_all(select(columns("Alice", 0)),
-                                                       select(columns(&Org::name, column<cte_1>->*2_colalias + c(1)),
-                                                              join<cte_1>(on(column<cte_1>->*1_colalias == &Org::boss)),
+                                                       select(columns(&Org::name, column<cte_1>(2_colalias) + c(1)),
+                                                              join<cte_1>(on(column<cte_1>(1_colalias) == &Org::boss)),
                                                               order_by(2)))),
-                 select(substr("..........", 1, column<cte_1>->*2_colalias * c(3)) || c(column<cte_1>->*1_colalias)));
+                 select(substr("..........", 1, column<cte_1>(2_colalias) * c(3)) || c(column<cte_1>(1_colalias))));
 #endif
 
         string sql = storage.dump(ast);
@@ -477,10 +477,10 @@ void depth_or_breadth_first() {
 #else
         auto ast =
             with(cte<cte_1>("name", "level")(union_all(select(columns("Alice", 0)),
-                                                       select(columns(&Org::name, column<cte_1>->*2_colalias + c(1)),
-                                                              join<cte_1>(on(column<cte_1>->*1_colalias == &Org::boss)),
+                                                       select(columns(&Org::name, column<cte_1>(2_colalias) + c(1)),
+                                                              join<cte_1>(on(column<cte_1>(1_colalias) == &Org::boss)),
                                                               order_by(2).desc()))),
-                 select(substr("..........", 1, column<cte_1>->*2_colalias * c(3)) || c(column<cte_1>->*1_colalias)));
+                 select(substr("..........", 1, column<cte_1>(2_colalias) * c(3)) || c(column<cte_1>(1_colalias))));
 #endif
 
         string sql = storage.dump(ast);
@@ -732,7 +732,7 @@ void show_mapping_and_backreferencing() {
 
     // back-reference via `column_pointer<cte_1, F O::*>`
     {
-        auto ast = with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>->*&Object::id));
+        auto ast = with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(&Object::id)));
 
         string sql = storage.dump(ast);
         auto stmt = storage.prepare(ast);
@@ -751,8 +751,8 @@ void show_mapping_and_backreferencing() {
     // map column via alias_holder into cte,
     // back-reference via `column_pointer<cte_1, alias_holder>`
     {
-        auto ast = with(cte<cte_1>("x")(union_all(select(as<cnt>(1)), select(column<cte_1>->*cnt{} + c(1), limit(10)))),
-                        select(column<cte_1>->*cnt{}));
+        auto ast = with(cte<cte_1>("x")(union_all(select(as<cnt>(1)), select(column<cte_1>(cnt{}) + c(1), limit(10)))),
+                        select(column<cte_1>(cnt{})));
 
         string sql = storage.dump(ast);
         auto stmt = storage.prepare(ast);
