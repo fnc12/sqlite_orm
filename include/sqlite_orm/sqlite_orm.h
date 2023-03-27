@@ -1201,7 +1201,11 @@ namespace sqlite_orm {
         template<size_t... Idx>
         SQLITE_ORM_CONSTEVAL size_t index_sequence_value(size_t pos, std::index_sequence<Idx...>) {
             static_assert(sizeof...(Idx) > 0);
+#ifdef SQLITE_ORM_CONSTEVAL_SUPPORTED
             size_t result;
+#else
+            size_t result = 0;
+#endif
             size_t i = 0;
             ((result = Idx, i++ == pos) || ...);
             return result;
