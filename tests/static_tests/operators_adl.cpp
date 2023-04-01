@@ -10,8 +10,8 @@ using sqlite_orm::internal::greater_or_equal_t;
 using sqlite_orm::internal::greater_than_t;
 using sqlite_orm::internal::is_equal_t;
 using sqlite_orm::internal::is_not_equal_t;
-using sqlite_orm::internal::lesser_or_equal_t;
-using sqlite_orm::internal::lesser_than_t;
+using sqlite_orm::internal::less_or_equal_t;
+using sqlite_orm::internal::less_than_t;
 using sqlite_orm::internal::or_condition_t;
 using sqlite_orm::polyfill::is_specialization_of_v;
 
@@ -20,13 +20,13 @@ TEST_CASE("ADL and expression operators") {
         int id;
     };
 
-    STATIC_REQUIRE(is_specialization_of_v<decltype(c(&User::id) < 42), lesser_than_t>);
-    STATIC_REQUIRE(is_specialization_of_v<decltype(42 < c(&User::id)), lesser_than_t>);
-    STATIC_REQUIRE(is_specialization_of_v<decltype(c(&User::id) < c(&User::id)), lesser_than_t>);
+    STATIC_REQUIRE(is_specialization_of_v<decltype(c(&User::id) < 42), less_than_t>);
+    STATIC_REQUIRE(is_specialization_of_v<decltype(42 < c(&User::id)), less_than_t>);
+    STATIC_REQUIRE(is_specialization_of_v<decltype(c(&User::id) < c(&User::id)), less_than_t>);
 
-    STATIC_REQUIRE(is_specialization_of_v<decltype(c(&User::id) <= 42), lesser_or_equal_t>);
-    STATIC_REQUIRE(is_specialization_of_v<decltype(42 <= c(&User::id)), lesser_or_equal_t>);
-    STATIC_REQUIRE(is_specialization_of_v<decltype(c(&User::id) <= c(&User::id)), lesser_or_equal_t>);
+    STATIC_REQUIRE(is_specialization_of_v<decltype(c(&User::id) <= 42), less_or_equal_t>);
+    STATIC_REQUIRE(is_specialization_of_v<decltype(42 <= c(&User::id)), less_or_equal_t>);
+    STATIC_REQUIRE(is_specialization_of_v<decltype(c(&User::id) <= c(&User::id)), less_or_equal_t>);
 
     STATIC_REQUIRE(is_specialization_of_v<decltype(c(&User::id) > 42), greater_than_t>);
     STATIC_REQUIRE(is_specialization_of_v<decltype(42 > c(&User::id)), greater_than_t>);

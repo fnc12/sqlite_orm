@@ -38,12 +38,12 @@ TEST_CASE("Not operator") {
         rows = storage.select(&Object::id, where(not greater_or_equal(&Object::id, 3)));
         expected.push_back(2);
     }
-    SECTION("lesser_than") {
-        rows = storage.select(&Object::id, where(not lesser_than(&Object::id, 3)));
+    SECTION("less_than") {
+        rows = storage.select(&Object::id, where(not less_than(&Object::id, 3)));
         expected.push_back(3);
     }
-    SECTION("lesser_or_equal") {
-        rows = storage.select(&Object::id, where(not lesser_or_equal(&Object::id, 2)));
+    SECTION("less_or_equal") {
+        rows = storage.select(&Object::id, where(not less_or_equal(&Object::id, 2)));
         expected.push_back(3);
     }
     SECTION("in") {

@@ -618,12 +618,12 @@ namespace sqlite_orm {
      *  Cute operators for core functions
      */
     template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
-    internal::lesser_than_t<F, R> operator<(F f, R r) {
+    internal::less_than_t<F, R> operator<(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
     template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
-    internal::lesser_or_equal_t<F, R> operator<=(F f, R r) {
+    internal::less_or_equal_t<F, R> operator<=(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 

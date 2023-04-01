@@ -294,7 +294,7 @@ namespace sqlite_orm {
             }
         };
 
-        struct lesser_than_string {
+        struct less_than_string {
             operator std::string() const {
                 return "<";
             }
@@ -304,10 +304,10 @@ namespace sqlite_orm {
          *  < operator object.
          */
         template<class L, class R>
-        struct lesser_than_t : binary_condition<L, R, lesser_than_string, bool>, negatable_t {
-            using self = lesser_than_t<L, R>;
+        struct less_than_t : binary_condition<L, R, less_than_string, bool>, negatable_t {
+            using self = less_than_t<L, R>;
 
-            using binary_condition<L, R, lesser_than_string, bool>::binary_condition;
+            using binary_condition<L, R, less_than_string, bool>::binary_condition;
 
             collate_t<self> collate_binary() const {
                 return {*this, collate_argument::binary};
@@ -322,7 +322,7 @@ namespace sqlite_orm {
             }
         };
 
-        struct lesser_or_equal_string {
+        struct less_or_equal_string {
             operator std::string() const {
                 return "<=";
             }
@@ -332,10 +332,10 @@ namespace sqlite_orm {
          *  <= operator object.
          */
         template<class L, class R>
-        struct lesser_or_equal_t : binary_condition<L, R, lesser_or_equal_string, bool>, negatable_t {
-            using self = lesser_or_equal_t<L, R>;
+        struct less_or_equal_t : binary_condition<L, R, less_or_equal_string, bool>, negatable_t {
+            using self = less_or_equal_t<L, R>;
 
-            using binary_condition<L, R, lesser_or_equal_string, bool>::binary_condition;
+            using binary_condition<L, R, less_or_equal_string, bool>::binary_condition;
 
             collate_t<self> collate_binary() const {
                 return {*this, collate_argument::binary};
@@ -845,7 +845,7 @@ namespace sqlite_orm {
                  std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<L, expression_t>,
                                                           polyfill::is_specialization_of<R, expression_t>>,
                                   bool> = true>
-        lesser_than_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator<(L l, R r) {
+        less_than_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator<(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
         }
 
@@ -854,7 +854,7 @@ namespace sqlite_orm {
                  std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<L, expression_t>,
                                                           polyfill::is_specialization_of<R, expression_t>>,
                                   bool> = true>
-        lesser_or_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator<=(L l, R r) {
+        less_or_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator<=(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
         }
 
@@ -1116,22 +1116,40 @@ namespace sqlite_orm {
     }
 
     template<class L, class R>
-    internal::lesser_than_t<L, R> lesser_than(L l, R r) {
+    internal::less_than_t<L, R> less_than(L l, R r) {
+        return {std::move(l), std::move(r)};
+    }
+
+    /**
+     *  [Deprecation notice] This function is deprecated and will be removed in v1.9. Use the accurately named function `less_than(...)` instead.
+     */
+    template<class L, class R>
+    [[deprecated("Use the accurately named function `less_than(...)` instead")]] internal::less_than_t<L, R>
+    lesser_than(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    internal::lesser_than_t<L, R> lt(L l, R r) {
+    internal::less_than_t<L, R> lt(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    internal::lesser_or_equal_t<L, R> lesser_or_equal(L l, R r) {
+    internal::less_or_equal_t<L, R> less_or_equal(L l, R r) {
+        return {std::move(l), std::move(r)};
+    }
+
+    /**
+     *  [Deprecation notice] This function is deprecated and will be removed in v1.9. Use the accurately named function `less_or_equal(...)` instead.
+     */
+    template<class L, class R>
+    [[deprecated("Use the accurately named function `less_or_equal(...)` instead")]] internal::less_or_equal_t<L, R>
+    lesser_or_equal(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    internal::lesser_or_equal_t<L, R> le(L l, R r) {
+    internal::less_or_equal_t<L, R> le(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 

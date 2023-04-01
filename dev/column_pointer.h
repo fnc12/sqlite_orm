@@ -32,12 +32,12 @@ namespace sqlite_orm {
             }
 
             template<class R>
-            lesser_than_t<self, R> operator<(R rhs) const {
+            less_than_t<self, R> operator<(R rhs) const {
                 return {*this, std::move(rhs)};
             }
 
             template<class R>
-            lesser_or_equal_t<self, R> operator<=(R rhs) const {
+            less_or_equal_t<self, R> operator<=(R rhs) const {
                 return {*this, std::move(rhs)};
             }
 

@@ -102,7 +102,7 @@ TEST_CASE("Prepared remove all") {
         SECTION("2") {
             SECTION("by val") {
                 auto statement = storage.prepare(
-                    remove_all<User>(where(is_equal(&User::name, "Shy'm") and lesser_than(&User::id, 10))));
+                    remove_all<User>(where(is_equal(&User::name, "Shy'm") and less_than(&User::id, 10))));
                 REQUIRE(strcmp(get<0>(statement), "Shy'm") == 0);
                 REQUIRE(get<1>(statement) == 10);
                 testSerializing(statement);
@@ -141,7 +141,7 @@ TEST_CASE("Prepared remove all") {
                 std::string name = "Shy'm";
                 auto id = 10;
                 auto statement = storage.prepare(remove_all<User>(
-                    where(is_equal(&User::name, std::ref(name)) and lesser_than(&User::id, std::ref(id)))));
+                    where(is_equal(&User::name, std::ref(name)) and less_than(&User::id, std::ref(id)))));
                 REQUIRE(get<0>(statement) == "Shy'm");
                 REQUIRE(&get<0>(statement) == &name);
                 REQUIRE(get<1>(statement) == 10);
