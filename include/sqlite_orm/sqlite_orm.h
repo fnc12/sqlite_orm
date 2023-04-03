@@ -4059,7 +4059,7 @@ namespace sqlite_orm {
     }
 
     /**
-     *  [Deprecation notice] This function is deprecated and will be removed in v1.9. Use the accurately named function `less_than(...)` instead.
+     *  [Deprecation notice] This function is deprecated and will be removed in v1.10. Use the accurately named function `less_than(...)` instead.
      */
     template<class L, class R>
     [[deprecated("Use the accurately named function `less_than(...)` instead")]] internal::less_than_t<L, R>
@@ -4078,7 +4078,7 @@ namespace sqlite_orm {
     }
 
     /**
-     *  [Deprecation notice] This function is deprecated and will be removed in v1.9. Use the accurately named function `less_or_equal(...)` instead.
+     *  [Deprecation notice] This function is deprecated and will be removed in v1.10. Use the accurately named function `less_or_equal(...)` instead.
      */
     template<class L, class R>
     [[deprecated("Use the accurately named function `less_or_equal(...)` instead")]] internal::less_or_equal_t<L, R>
