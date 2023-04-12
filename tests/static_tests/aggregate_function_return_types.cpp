@@ -61,18 +61,18 @@ TEST_CASE("Aggregate function return types") {
     STATIC_REQUIRE(std::is_same<decltype(storage2.max(&User::setIdByRef))::element_type, int>::value);
 
     STATIC_REQUIRE(
-        std::is_same<decltype(storage0.max(&User::id, where(lesser_than(&User::id, 10))))::element_type, int>::value);
+        std::is_same<decltype(storage0.max(&User::id, where(less_than(&User::id, 10))))::element_type, int>::value);
     STATIC_REQUIRE(
-        std::is_same<decltype(storage1.max(&User::getIdByValConst, where(lesser_than(&User::id, 10))))::element_type,
+        std::is_same<decltype(storage1.max(&User::getIdByValConst, where(less_than(&User::id, 10))))::element_type,
                      int>::value);
     STATIC_REQUIRE(
-        std::is_same<decltype(storage1.max(&User::setIdByVal, where(lesser_than(&User::id, 10))))::element_type,
+        std::is_same<decltype(storage1.max(&User::setIdByVal, where(less_than(&User::id, 10))))::element_type,
                      int>::value);
-    STATIC_REQUIRE(std::is_same<decltype(storage2.max(&User::getConstIdByRefConst,
-                                                      where(lesser_than(&User::id, 10))))::element_type,
-                                int>::value);
     STATIC_REQUIRE(
-        std::is_same<decltype(storage2.max(&User::setIdByRef, where(lesser_than(&User::id, 10))))::element_type,
+        std::is_same<decltype(storage2.max(&User::getConstIdByRefConst, where(less_than(&User::id, 10))))::element_type,
+                     int>::value);
+    STATIC_REQUIRE(
+        std::is_same<decltype(storage2.max(&User::setIdByRef, where(less_than(&User::id, 10))))::element_type,
                      int>::value);
 
     STATIC_REQUIRE(std::is_same<decltype(storage0.min(&User::id))::element_type, int>::value);
@@ -82,18 +82,18 @@ TEST_CASE("Aggregate function return types") {
     STATIC_REQUIRE(std::is_same<decltype(storage2.min(&User::setIdByRef))::element_type, int>::value);
 
     STATIC_REQUIRE(
-        std::is_same<decltype(storage0.min(&User::id, where(lesser_than(&User::id, 10))))::element_type, int>::value);
+        std::is_same<decltype(storage0.min(&User::id, where(less_than(&User::id, 10))))::element_type, int>::value);
     STATIC_REQUIRE(
-        std::is_same<decltype(storage1.min(&User::getIdByValConst, where(lesser_than(&User::id, 10))))::element_type,
+        std::is_same<decltype(storage1.min(&User::getIdByValConst, where(less_than(&User::id, 10))))::element_type,
                      int>::value);
     STATIC_REQUIRE(
-        std::is_same<decltype(storage1.min(&User::setIdByVal, where(lesser_than(&User::id, 10))))::element_type,
+        std::is_same<decltype(storage1.min(&User::setIdByVal, where(less_than(&User::id, 10))))::element_type,
                      int>::value);
-    STATIC_REQUIRE(std::is_same<decltype(storage2.min(&User::getConstIdByRefConst,
-                                                      where(lesser_than(&User::id, 10))))::element_type,
-                                int>::value);
     STATIC_REQUIRE(
-        std::is_same<decltype(storage2.min(&User::setIdByRef, where(lesser_than(&User::id, 10))))::element_type,
+        std::is_same<decltype(storage2.min(&User::getConstIdByRefConst, where(less_than(&User::id, 10))))::element_type,
+                     int>::value);
+    STATIC_REQUIRE(
+        std::is_same<decltype(storage2.min(&User::setIdByRef, where(less_than(&User::id, 10))))::element_type,
                      int>::value);
 
     STATIC_REQUIRE(std::is_same<decltype(storage0.sum(&User::id))::element_type, int>::value);
@@ -103,17 +103,17 @@ TEST_CASE("Aggregate function return types") {
     STATIC_REQUIRE(std::is_same<decltype(storage2.sum(&User::setIdByRef))::element_type, int>::value);
 
     STATIC_REQUIRE(
-        std::is_same<decltype(storage0.sum(&User::id, where(lesser_than(&User::id, 10))))::element_type, int>::value);
+        std::is_same<decltype(storage0.sum(&User::id, where(less_than(&User::id, 10))))::element_type, int>::value);
     STATIC_REQUIRE(
-        std::is_same<decltype(storage1.sum(&User::getIdByValConst, where(lesser_than(&User::id, 10))))::element_type,
+        std::is_same<decltype(storage1.sum(&User::getIdByValConst, where(less_than(&User::id, 10))))::element_type,
                      int>::value);
     STATIC_REQUIRE(
-        std::is_same<decltype(storage1.sum(&User::setIdByVal, where(lesser_than(&User::id, 10))))::element_type,
+        std::is_same<decltype(storage1.sum(&User::setIdByVal, where(less_than(&User::id, 10))))::element_type,
                      int>::value);
-    STATIC_REQUIRE(std::is_same<decltype(storage2.sum(&User::getConstIdByRefConst,
-                                                      where(lesser_than(&User::id, 10))))::element_type,
-                                int>::value);
     STATIC_REQUIRE(
-        std::is_same<decltype(storage2.sum(&User::setIdByRef, where(lesser_than(&User::id, 10))))::element_type,
+        std::is_same<decltype(storage2.sum(&User::getConstIdByRefConst, where(less_than(&User::id, 10))))::element_type,
+                     int>::value);
+    STATIC_REQUIRE(
+        std::is_same<decltype(storage2.sum(&User::setIdByRef, where(less_than(&User::id, 10))))::element_type,
                      int>::value);
 }

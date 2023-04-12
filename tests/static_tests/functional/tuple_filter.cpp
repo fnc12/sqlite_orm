@@ -43,8 +43,7 @@ TEST_CASE("count_tuple") {
         STATIC_REQUIRE(count_tuple<T, internal::is_limit>::value == 1);
     }
     {
-        auto t =
-            make_tuple(where(lesser_than(&User::id, 10)), where(greater_than(&User::id, 5)), group_by(&User::name));
+        auto t = make_tuple(where(less_than(&User::id, 10)), where(greater_than(&User::id, 5)), group_by(&User::name));
         using T = decltype(t);
         STATIC_REQUIRE(count_tuple<T, internal::is_where>::value == 2);
         STATIC_REQUIRE(count_tuple<T, internal::is_group_by>::value == 1);

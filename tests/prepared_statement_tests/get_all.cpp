@@ -55,7 +55,7 @@ TEST_CASE("Prepared get all") {
         }
     }
     SECTION("by val") {
-        auto statement = storage.prepare(get_all<User>(where(lesser_than(&User::id, 3))));
+        auto statement = storage.prepare(get_all<User>(where(less_than(&User::id, 3))));
         auto str = storage.dump(statement);
         {
             using Statement = decltype(statement);
@@ -86,7 +86,7 @@ TEST_CASE("Prepared get all") {
     }
     SECTION("by ref") {
         auto id = 3;
-        auto statement = storage.prepare(get_all<User>(where(lesser_than(&User::id, std::ref(id)))));
+        auto statement = storage.prepare(get_all<User>(where(less_than(&User::id, std::ref(id)))));
         auto str = storage.dump(statement);
         {
             using Statement = decltype(statement);
@@ -129,7 +129,7 @@ TEST_CASE("Prepared get all") {
     }
     SECTION("by val 2") {
         auto statement = storage.prepare(
-            get_all<User>(where(lesser_or_equal(&User::id, 1) and is_equal(&User::name, "Team BS")), limit(10)));
+            get_all<User>(where(less_or_equal(&User::id, 1) and is_equal(&User::name, "Team BS")), limit(10)));
         auto str = storage.dump(statement);
         REQUIRE(get<0>(statement) == 1);
         REQUIRE(strcmp(get<1>(statement), "Team BS") == 0);
@@ -139,7 +139,7 @@ TEST_CASE("Prepared get all") {
         auto id = 1;
         std::string name = "Team BS";
         auto statement = storage.prepare(
-            get_all<User>(where(lesser_or_equal(&User::id, std::ref(id)) and is_equal(&User::name, std::ref(name)))));
+            get_all<User>(where(less_or_equal(&User::id, std::ref(id)) and is_equal(&User::name, std::ref(name)))));
         auto str = storage.dump(statement);
         REQUIRE(get<0>(statement) == 1);
         REQUIRE(&get<0>(statement) == &id);
@@ -148,7 +148,7 @@ TEST_CASE("Prepared get all") {
     }
     SECTION("like or glob") {
         auto statement = storage.prepare(
-            get_all<User>(where(lesser_or_equal(&User::id, 2) and (like(&User::name, "T%") or glob(&User::name, "*S"))),
+            get_all<User>(where(less_or_equal(&User::id, 2) and (like(&User::name, "T%") or glob(&User::name, "*S"))),
                           limit(20.0f)));
         auto str = storage.dump(statement);
         REQUIRE(get<0>(statement) == 2);
@@ -157,7 +157,7 @@ TEST_CASE("Prepared get all") {
         REQUIRE(get<3>(statement) == 20.0f);
     }
     SECTION("by val, multiple") {
-        auto statement = storage.prepare(get_all<User>(where(lesser_than(&User::id, 2))));
+        auto statement = storage.prepare(get_all<User>(where(less_than(&User::id, 2))));
         auto str = storage.dump(statement);
         std::vector<User> expected;
         REQUIRE(get<0>(statement) == 2);
@@ -185,7 +185,7 @@ TEST_CASE("Prepared get all") {
     }
     SECTION("by ref, multiple") {
         auto id = 2;
-        auto statement = storage.prepare(get_all<User>(where(lesser_than(&User::id, std::ref(id)))));
+        auto statement = storage.prepare(get_all<User>(where(less_than(&User::id, std::ref(id)))));
         auto str = storage.dump(statement);
         std::vector<User> expected;
         REQUIRE(get<0>(statement) == 2);
