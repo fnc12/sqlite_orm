@@ -248,7 +248,7 @@ TEST_CASE("Dump") {
 
     auto rows = storage.select(&User::carYear, where(is_equal(&User::id, userId_1)));
     REQUIRE(rows.size() == 1);
-    REQUIRE(!rows.front().has_value());
+    REQUIRE_FALSE(rows.front().has_value());
 
     auto allUsers = storage.get_all<User>();
     REQUIRE(allUsers.size() == 2);

@@ -77,13 +77,13 @@ namespace sqlite_orm {
         template<class F>
         using aggregate_fin_function_t = decltype(&F::fin);
 
-        template<class F, class = void>
+        template<class F, class SFINAE = void>
         SQLITE_ORM_INLINE_VAR constexpr bool is_scalar_function_v = false;
         template<class F>
         SQLITE_ORM_INLINE_VAR constexpr bool is_scalar_function_v<F, polyfill::void_t<scalar_call_function_t<F>>> =
             true;
 
-        template<class F, class = void>
+        template<class F, class SFINAE = void>
         SQLITE_ORM_INLINE_VAR constexpr bool is_aggregate_function_v = false;
         template<class F>
         SQLITE_ORM_INLINE_VAR constexpr bool is_aggregate_function_v<
@@ -161,7 +161,7 @@ namespace sqlite_orm {
         template<size_t I, class PointerArg>
         constexpr bool is_same_pvt_v<I, PointerArg, nullptr_t, polyfill::void_t<typename PointerArg::tag>> = true;
 
-#if __cplusplus >= 201703L  // using C++17 or higher
+#if __cplusplus >= 201703L  // C++17 or later
         template<size_t I, const char* PointerArg, const char* Binding>
         SQLITE_ORM_CONSTEVAL bool assert_same_pointer_type() {
             constexpr bool valid = Binding == PointerArg;

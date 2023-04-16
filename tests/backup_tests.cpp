@@ -54,7 +54,7 @@ TEST_CASE("backup") {
         storage.replace(User{1, "Sharon"});
         storage.replace(User{2, "Maitre"});
         storage.replace(User{3, "Rita"});
-        REQUIRE(!storage2.table_exists(usersTableName));
+        REQUIRE_FALSE(storage2.table_exists(usersTableName));
         SECTION("filename") {
             storage.backup_to(backupFilename);
         }

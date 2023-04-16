@@ -14,6 +14,7 @@
 #include "connection_holder.h"
 #include "select_constraints.h"
 #include "values.h"
+#include "mapped_type_proxy.h"
 #include "ast/upsert_clause.h"
 #include "ast/set.h"
 
@@ -659,29 +660,32 @@ namespace sqlite_orm {
     /**
      *  Create a get all statement.
      *  T is an object type mapped to a storage.
-     *  Usage: storage.get_all<User>(...);
+     *  R is a container type. std::vector<T> is default
+     *  Usage: storage.prepare(get_all<User>(...));
      */
-    template<class T, class... Args>
-    internal::get_all_t<T, std::vector<T>, Args...> get_all(Args... args) {
-        using args_tuple = std::tuple<Args...>;
-        internal::validate_conditions<args_tuple>();
-        args_tuple conditions{std::forward<Args>(args)...};
-        return {std::move(conditions)};
+    template<class T, class R = std::vector<T>, class... Args>
+    internal::get_all_t<T, R, Args...> get_all(Args... conditions) {
+        using conditions_tuple = std::tuple<Args...>;
+        internal::validate_conditions<conditions_tuple>();
+        return {{std::forward<Args>(conditions)...}};
     }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
      *  Create a get all statement.
-     *  T is an object type mapped to a storage.
-     *  R is a container type. std::vector<T> is default
-     *  Usage: storage.get_all<User>(...);
-    */
-    template<class T, class R, class... Args>
-    internal::get_all_t<T, R, Args...> get_all(Args... args) {
-        using args_tuple = std::tuple<Args...>;
-        internal::validate_conditions<args_tuple>();
-        args_tuple conditions{std::forward<Args>(args)...};
-        return {std::move(conditions)};
+     *  `alias` is an explicitly specified table alias of an object to be extracted.
+     *  `R` is the container return type, which must have a `R::push_back(T&&)` method, and defaults to `std::vector<T>`
+     *  Usage: storage.get_all<sqlite_schema>(...);
+     */
+    template<orm_table_alias auto alias,
+             class R = std::vector<internal::mapped_type_proxy_t<decltype(alias)>>,
+             class... Args>
+    auto get_all(Args&&... conditions) {
+        using expression_type = internal::get_all_t<std::remove_const_t<decltype(alias)>, R, std::decay_t<Args>...>;
+        internal::validate_conditions<typename expression_type::conditions_type>();
+        return expression_type{{std::forward<Args>(conditions)...}};
     }
+#endif
 
     /**
      *  Create an update all statement.
@@ -699,55 +703,28 @@ namespace sqlite_orm {
     /**
      *  Create a get all pointer statement.
      *  T is an object type mapped to a storage.
-     *  Usage: storage.get_all_pointer<User>(...);
-     */
-    template<class T, class... Args>
-    internal::get_all_pointer_t<T, std::vector<std::unique_ptr<T>>, Args...> get_all_pointer(Args... args) {
-        using args_tuple = std::tuple<Args...>;
-        internal::validate_conditions<args_tuple>();
-        args_tuple conditions{std::forward<Args>(args)...};
-        return {std::move(conditions)};
-    }
-    /**
-     *  Create a get all pointer statement.
-     *  T is an object type mapped to a storage.
      *  R is a container return type. std::vector<std::unique_ptr<T>> is default
-     *  Usage: storage.get_all_pointer<User>(...);
+     *  Usage: storage.prepare(get_all_pointer<User>(...));
     */
-    template<class T, class R, class... Args>
-    internal::get_all_pointer_t<T, R, Args...> get_all_pointer(Args... args) {
-        using args_tuple = std::tuple<Args...>;
-        internal::validate_conditions<args_tuple>();
-        args_tuple conditions{std::forward<Args>(args)...};
-        return {std::move(conditions)};
+    template<class T, class R = std::vector<std::unique_ptr<T>>, class... Args>
+    internal::get_all_pointer_t<T, R, Args...> get_all_pointer(Args... conditions) {
+        using conditions_tuple = std::tuple<Args...>;
+        internal::validate_conditions<conditions_tuple>();
+        return {{std::forward<Args>(conditions)...}};
     }
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     /**
      *  Create a get all optional statement.
      *  T is an object type mapped to a storage.
-     *  Usage: storage.get_all_optional<User>(...);
-     */
-    template<class T, class... Args>
-    internal::get_all_optional_t<T, std::vector<std::optional<T>>, Args...> get_all_optional(Args... args) {
-        using args_tuple = std::tuple<Args...>;
-        internal::validate_conditions<args_tuple>();
-        args_tuple conditions{std::forward<Args>(args)...};
-        return {std::move(conditions)};
-    }
-
-    /**
-     *  Create a get all optional statement.
-     *  T is an object type mapped to a storage.
      *  R is a container return type. std::vector<std::optional<T>> is default
      *  Usage: storage.get_all_optional<User>(...);
      */
-    template<class T, class R, class... Args>
-    internal::get_all_optional_t<T, R, Args...> get_all_optional(Args... args) {
-        using args_tuple = std::tuple<Args...>;
-        internal::validate_conditions<args_tuple>();
-        args_tuple conditions{std::forward<Args>(args)...};
-        return {std::move(conditions)};
+    template<class T, class R = std::vector<std::optional<T>>, class... Args>
+    internal::get_all_optional_t<T, R, Args...> get_all_optional(Args... conditions) {
+        using conditions_tuple = std::tuple<Args...>;
+        internal::validate_conditions<conditions_tuple>();
+        return {{std::forward<Args>(conditions)...}};
     }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 }

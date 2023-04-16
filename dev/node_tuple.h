@@ -1,10 +1,12 @@
 #pragma once
 
+#include <type_traits>  //  std::enable_if
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::pair
 #include <functional>  //  std::reference_wrapper
 #include "functional/cxx_optional.h"
 
+#include "functional/cxx_type_traits_polyfill.h"
 #include "tuple_helper/tuple_filter.h"
 #include "conditions.h"
 #include "operators.h"
@@ -52,9 +54,8 @@ namespace sqlite_orm {
             using type = tuple_cat_t<args_tuple, expression_tuple>;
         };
 
-        template<class... TargetArgs, class... ActionsArgs>
-        struct node_tuple<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void>
-            : node_tuple<std::tuple<ActionsArgs...>> {};
+        template<class T>
+        struct node_tuple<T, match_if<is_upsert_clause, T>> : node_tuple<typename T::actions_tuple> {};
 
         template<class... Args>
         struct node_tuple<set_t<Args...>, void> {
@@ -74,6 +75,12 @@ namespace sqlite_orm {
         struct node_tuple<alias_holder<A>, void> : node_tuple<void> {};
 
         /**
+         *  Column alias
+         */
+        template<char... C>
+        struct node_tuple<column_alias<C...>, void> : node_tuple<void> {};
+
+        /**
          *  Literal
          */
         template<class T>
@@ -83,7 +90,7 @@ namespace sqlite_orm {
         struct node_tuple<order_by_t<E>, void> : node_tuple<E> {};
 
         template<class T>
-        struct node_tuple<T, std::enable_if_t<is_base_of_template_v<T, binary_condition>>> {
+        struct node_tuple<T, match_if<is_binary_condition, T>> {
             using node_type = T;
             using left_type = typename node_type::left_type;
             using right_type = typename node_type::right_type;
@@ -122,7 +129,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct node_tuple<T, std::enable_if_t<is_base_of_template_v<T, compound_operator>>> {
+        struct node_tuple<T, match_if<is_compound_operator, T>> {
             using node_type = T;
             using left_type = typename node_type::left_type;
             using right_type = typename node_type::right_type;

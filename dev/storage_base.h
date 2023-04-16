@@ -9,11 +9,10 @@
 #include <vector>  //  std::vector
 #include <memory>  //  std::make_unique, std::unique_ptr
 #include <map>  //  std::map
-#include <type_traits>  //  std::decay, std::is_same
+#include <type_traits>  //  std::is_same
 #include <algorithm>  //  std::find_if
 
-#include "functional/cxx_universal.h"
-#include "functional/static_magic.h"
+#include "functional/cxx_universal.h"  //  ::size_t
 #include "tuple_helper/tuple_iteration.h"
 #include "pragma.h"
 #include "limit_accessor.h"
@@ -96,7 +95,7 @@ namespace sqlite_orm {
             bool table_exists(sqlite3* db, const std::string& tableName) const {
                 bool result = false;
                 std::stringstream ss;
-                ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << streaming_identifier("table")
+                ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal("table")
                    << " AND name = " << quote_string_literal(tableName) << std::flush;
                 perform_exec(
                     db,
@@ -201,6 +200,7 @@ namespace sqlite_orm {
                         return 0;
                     },
                     &tableNames);
+                tableNames.shrink_to_fit();
                 return tableNames;
             }
 

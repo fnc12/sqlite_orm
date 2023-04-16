@@ -2,7 +2,6 @@
 
 #include <type_traits>  //  std::false_type, std::true_type
 #include <utility>  //  std::move
-#include "functional/cxx_optional.h"
 
 #include "tags.h"
 #include "serialize_result_type.h"

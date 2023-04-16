@@ -106,19 +106,19 @@ TEST_CASE("statement_serializer select_t") {
                 auto expression = select(asterisk<User>());
                 expression.highest_level = true;
                 stringValue = serialize(expression, context);
-                expected = R"(SELECT * FROM "users")";
+                expected = R"(SELECT "users".* FROM "users")";
             }
             SECTION("mapped, implicit select order") {
                 auto expression = select(asterisk<User>(false));
                 expression.highest_level = true;
                 stringValue = serialize(expression, context);
-                expected = R"(SELECT * FROM "users")";
+                expected = R"(SELECT "users".* FROM "users")";
             }
             SECTION("mapped, defined select order") {
                 auto expression = select(asterisk<User>(true));
                 expression.highest_level = true;
                 stringValue = serialize(expression, context);
-                expected = R"(SELECT "id", "name" FROM "users")";
+                expected = R"(SELECT "users"."id", "users"."name" FROM "users")";
             }
             SECTION("alias, implicit select order") {
                 using als_u = alias_u<User>;
@@ -140,19 +140,27 @@ TEST_CASE("statement_serializer select_t") {
                 auto expression = select(object<User>());
                 expression.highest_level = true;
                 stringValue = serialize(expression, context);
-                expected = R"(SELECT * FROM "users")";
+                expected = R"(SELECT "users".* FROM "users")";
             }
             SECTION("object, implicit select order") {
                 auto expression = select(object<User>(false));
                 expression.highest_level = true;
                 stringValue = serialize(expression, context);
-                expected = R"(SELECT * FROM "users")";
+                expected = R"(SELECT "users".* FROM "users")";
             }
             SECTION("object, defined select order") {
                 auto expression = select(object<User>(true));
                 expression.highest_level = true;
                 stringValue = serialize(expression, context);
-                expected = R"(SELECT "id", "name" FROM "users")";
+                expected = R"(SELECT "users"."id", "users"."name" FROM "users")";
+            }
+            // issue #1106
+            SECTION("multi") {
+                auto expression = columns(asterisk<User>(), asterisk<User>(true));
+                context.skip_table_name = false;
+                context.use_parentheses = false;
+                stringValue = serialize(expression, context);
+                expected = R"("users".*, "users"."id", "users"."name")";
             }
             SECTION("issue #945") {
                 struct Employee {

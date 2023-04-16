@@ -290,10 +290,10 @@ namespace sqlite_orm {
         using check_if_not = mpl::not_<mpl::quote_fn<TraitFn>>;
 
         /*
-         *  Trait metafunction class that checks if a type is the same as the specified type.
+         *  Trait metafunction class that checks if a type (possibly projected) is the same as the specified type.
          */
-        template<class Type>
-        using check_if_is_type = mpl::bind_front_fn<std::is_same, Type>;
+        template<class Type, template<class...> class Proj = polyfill::type_identity_t>
+        using check_if_is_type = mpl::pass_result_to<Proj, mpl::bind_front_fn<std::is_same, Type>>;
 
         /*
          *  Trait metafunction class that checks if a type's template matches the specified template

@@ -1,19 +1,22 @@
 #pragma once
 
 #include <string>  //  std::string
-#include <type_traits>  //  std::enable_if, std::is_same
+#include <type_traits>  //  std::enable_if, std::is_same, std::remove_const
 #include <vector>  //  std::vector
-#include <tuple>  //  std::tuple, std::tuple_size
+#include <tuple>  //  std::tuple
+#include <utility>  //  std::move, std::forward
 #include <sstream>  //  std::stringstream
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
+#include "is_base_of_template.h"
 #include "type_traits.h"
 #include "collate_argument.h"
 #include "constraints.h"
 #include "optional_container.h"
 #include "serializer_context.h"
 #include "tags.h"
+#include "alias_traits.h"
 #include "expression.h"
 #include "type_printer.h"
 #include "literal.h"
@@ -130,6 +133,12 @@ namespace sqlite_orm {
             binary_condition(left_type l_, right_type r_) : l(std::move(l_)), r(std::move(r_)) {}
         };
 
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_binary_condition_v = is_base_of_template_v<T, binary_condition>;
+
+        template<class T>
+        using is_binary_condition = polyfill::bool_constant<is_binary_condition_v<T>>;
+
         struct and_condition_string {
             operator std::string() const {
                 return "AND";
@@ -146,11 +155,6 @@ namespace sqlite_orm {
             using super::super;
         };
 
-        template<class L, class R>
-        and_condition_t<L, R> make_and_condition(L left, R right) {
-            return {std::move(left), std::move(right)};
-        }
-
         struct or_condition_string {
             operator std::string() const {
                 return "OR";
@@ -166,11 +170,6 @@ namespace sqlite_orm {
 
             using super::super;
         };
-
-        template<class L, class R>
-        or_condition_t<L, R> make_or_condition(L left, R right) {
-            return {std::move(left), std::move(right)};
-        }
 
         struct is_equal_string {
             operator std::string() const {
@@ -295,7 +294,7 @@ namespace sqlite_orm {
             }
         };
 
-        struct lesser_than_string {
+        struct less_than_string {
             operator std::string() const {
                 return "<";
             }
@@ -305,10 +304,10 @@ namespace sqlite_orm {
          *  < operator object.
          */
         template<class L, class R>
-        struct lesser_than_t : binary_condition<L, R, lesser_than_string, bool>, negatable_t {
-            using self = lesser_than_t<L, R>;
+        struct less_than_t : binary_condition<L, R, less_than_string, bool>, negatable_t {
+            using self = less_than_t<L, R>;
 
-            using binary_condition<L, R, lesser_than_string, bool>::binary_condition;
+            using binary_condition<L, R, less_than_string, bool>::binary_condition;
 
             collate_t<self> collate_binary() const {
                 return {*this, collate_argument::binary};
@@ -323,7 +322,7 @@ namespace sqlite_orm {
             }
         };
 
-        struct lesser_or_equal_string {
+        struct less_or_equal_string {
             operator std::string() const {
                 return "<=";
             }
@@ -333,10 +332,10 @@ namespace sqlite_orm {
          *  <= operator object.
          */
         template<class L, class R>
-        struct lesser_or_equal_t : binary_condition<L, R, lesser_or_equal_string, bool>, negatable_t {
-            using self = lesser_or_equal_t<L, R>;
+        struct less_or_equal_t : binary_condition<L, R, less_or_equal_string, bool>, negatable_t {
+            using self = less_or_equal_t<L, R>;
 
-            using binary_condition<L, R, lesser_or_equal_string, bool>::binary_condition;
+            using binary_condition<L, R, less_or_equal_string, bool>::binary_condition;
 
             collate_t<self> collate_binary() const {
                 return {*this, collate_argument::binary};
@@ -803,184 +802,131 @@ namespace sqlite_orm {
 
         template<class T>
         using is_from = polyfill::is_specialization_of<T, from_t>;
+
+        template<class T>
+        using is_constrained_join = polyfill::is_detected<on_type_t, T>;
     }
 
     /**
      *  Explicit FROM function. Usage:
      *  `storage.select(&User::id, from<User>());`
      */
-    template<class... Args>
-    internal::from_t<Args...> from() {
-        static_assert(std::tuple_size<std::tuple<Args...>>::value > 0, "");
+    template<class... Tables>
+    internal::from_t<Tables...> from() {
+        static_assert(sizeof...(Tables) > 0, "");
         return {};
     }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Explicit FROM function. Usage:
+     *  `storage.select(&User::id, from<"a"_alias.for_<User>>());`
+     */
+    template<orm_recordset_alias auto... tables>
+    auto from() {
+        static_assert(sizeof...(tables) > 0);
+        return internal::from_t<std::remove_const_t<decltype(tables)>...>{};
+    }
+#endif
 
     template<class T, internal::satisfies<std::is_base_of, internal::negatable_t, T> = true>
     internal::negated_condition_t<T> operator!(T arg) {
         return {std::move(arg)};
     }
 
-    /**
-     *  Cute operators for columns
-     */
-    template<class T, class R>
-    internal::lesser_than_t<T, R> operator<(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.value), std::move(r)};
-    }
+    // Deliberately put operators for `expression_t` into the internal namespace
+    // to facilitate ADL (Argument Dependent Lookup)
+    namespace internal {
+        /**
+         *  Cute operators for columns
+         */
+        template<class L,
+                 class R,
+                 std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<L, expression_t>,
+                                                          polyfill::is_specialization_of<R, expression_t>>,
+                                  bool> = true>
+        less_than_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator<(L l, R r) {
+            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+        }
 
-    template<class L, class T>
-    internal::lesser_than_t<L, T> operator<(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.value)};
-    }
+        template<class L,
+                 class R,
+                 std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<L, expression_t>,
+                                                          polyfill::is_specialization_of<R, expression_t>>,
+                                  bool> = true>
+        less_or_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator<=(L l, R r) {
+            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+        }
 
-    template<class T, class R>
-    internal::lesser_or_equal_t<T, R> operator<=(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.value), std::move(r)};
-    }
+        template<class L,
+                 class R,
+                 std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<L, expression_t>,
+                                                          polyfill::is_specialization_of<R, expression_t>>,
+                                  bool> = true>
+        greater_than_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator>(L l, R r) {
+            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+        }
 
-    template<class L, class T>
-    internal::lesser_or_equal_t<L, T> operator<=(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.value)};
-    }
+        template<class L,
+                 class R,
+                 std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<L, expression_t>,
+                                                          polyfill::is_specialization_of<R, expression_t>>,
+                                  bool> = true>
+        greater_or_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator>=(L l, R r) {
+            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+        }
 
-    template<class T, class R>
-    internal::greater_than_t<T, R> operator>(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.value), std::move(r)};
-    }
+        template<class L,
+                 class R,
+                 std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<L, expression_t>,
+                                                          polyfill::is_specialization_of<R, expression_t>>,
+                                  bool> = true>
+        is_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator==(L l, R r) {
+            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+        }
 
-    template<class L, class T>
-    internal::greater_than_t<L, T> operator>(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.value)};
-    }
+        template<class L,
+                 class R,
+                 std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<L, expression_t>,
+                                                          polyfill::is_specialization_of<R, expression_t>>,
+                                  bool> = true>
+        is_not_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator!=(L l, R r) {
+            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+        }
 
-    template<class T, class R>
-    internal::greater_or_equal_t<T, R> operator>=(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.value), std::move(r)};
-    }
+        template<class L,
+                 class R,
+                 std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<L, expression_t>,
+                                                          polyfill::is_specialization_of<R, expression_t>,
+                                                          std::is_base_of<conc_string, L>,
+                                                          std::is_base_of<conc_string, R>>,
+                                  bool> = true>
+        conc_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator||(L l, R r) {
+            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+        }
 
-    template<class L, class T>
-    internal::greater_or_equal_t<L, T> operator>=(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.value)};
-    }
+        template<
+            class L,
+            class R,
+            std::enable_if_t<polyfill::disjunction_v<std::is_base_of<condition_t, L>, std::is_base_of<condition_t, R>>,
+                             bool> = true>
+        and_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator&&(L l, R r) {
+            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+        }
 
-    template<class T, class R>
-    internal::is_equal_t<T, R> operator==(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.value), std::move(r)};
-    }
+        template<class L,
+                 class R,
+                 std::enable_if_t<
+                     polyfill::conjunction_v<
+                         polyfill::disjunction<std::is_base_of<condition_t, L>, std::is_base_of<condition_t, R>>,
+                         // exclude concatenated expressions
+                         polyfill::negation<polyfill::disjunction<polyfill::is_specialization_of<L, expression_t>,
+                                                                  polyfill::is_specialization_of<R, expression_t>>>>,
+                     bool> = true>
+        or_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator||(L l, R r) {
+            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+        }
 
-    template<class L, class T>
-    internal::is_equal_t<L, T> operator==(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.value)};
-    }
-
-    template<class T, class R>
-    internal::is_not_equal_t<T, R> operator!=(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.value), std::move(r)};
-    }
-
-    template<class L, class T>
-    internal::is_not_equal_t<L, T> operator!=(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.value)};
-    }
-
-    template<class T, class R>
-    internal::conc_t<T, R> operator||(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.value), std::move(r)};
-    }
-
-    template<class L, class T>
-    internal::conc_t<L, T> operator||(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.value)};
-    }
-
-    template<class L, class R>
-    internal::conc_t<L, R> operator||(internal::expression_t<L> l, internal::expression_t<R> r) {
-        return {std::move(l.value), std::move(r.value)};
-    }
-
-    template<class R, class E, internal::satisfies<std::is_base_of, internal::conc_string, E> = true>
-    internal::conc_t<E, R> operator||(E expr, R r) {
-        return {std::move(expr), std::move(r)};
-    }
-
-    template<class L, class E, internal::satisfies<std::is_base_of, internal::conc_string, E> = true>
-    internal::conc_t<L, E> operator||(L l, E expr) {
-        return {std::move(l), std::move(expr)};
-    }
-
-    template<class T, class R>
-    internal::add_t<T, R> operator+(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.value), std::move(r)};
-    }
-
-    template<class L, class T>
-    internal::add_t<L, T> operator+(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.value)};
-    }
-
-    template<class L, class R>
-    internal::add_t<L, R> operator+(internal::expression_t<L> l, internal::expression_t<R> r) {
-        return {std::move(l.value), std::move(r.value)};
-    }
-
-    template<class T, class R>
-    internal::sub_t<T, R> operator-(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.value), std::move(r)};
-    }
-
-    template<class L, class T>
-    internal::sub_t<L, T> operator-(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.value)};
-    }
-
-    template<class L, class R>
-    internal::sub_t<L, R> operator-(internal::expression_t<L> l, internal::expression_t<R> r) {
-        return {std::move(l.value), std::move(r.value)};
-    }
-
-    template<class T, class R>
-    internal::mul_t<T, R> operator*(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.value), std::move(r)};
-    }
-
-    template<class L, class T>
-    internal::mul_t<L, T> operator*(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.value)};
-    }
-
-    template<class L, class R>
-    internal::mul_t<L, R> operator*(internal::expression_t<L> l, internal::expression_t<R> r) {
-        return {std::move(l.value), std::move(r.value)};
-    }
-
-    template<class T, class R>
-    internal::div_t<T, R> operator/(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.value), std::move(r)};
-    }
-
-    template<class L, class T>
-    internal::div_t<L, T> operator/(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.value)};
-    }
-
-    template<class L, class R>
-    internal::div_t<L, R> operator/(internal::expression_t<L> l, internal::expression_t<R> r) {
-        return {std::move(l.value), std::move(r.value)};
-    }
-
-    template<class T, class R>
-    internal::mod_t<T, R> operator%(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.value), std::move(r)};
-    }
-
-    template<class L, class T>
-    internal::mod_t<L, T> operator%(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.value)};
-    }
-
-    template<class L, class R>
-    internal::mod_t<L, R> operator%(internal::expression_t<L> l, internal::expression_t<R> r) {
-        return {std::move(l.value), std::move(r.value)};
     }
 
     template<class F, class O>
@@ -1012,20 +958,48 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_recordset_alias auto alias, class On>
+    auto left_join(On on) {
+        return internal::left_join_t<std::remove_const_t<decltype(alias)>, On>{std::move(on)};
+    }
+#endif
+
     template<class T, class O>
     internal::join_t<T, O> join(O o) {
         return {std::move(o)};
     }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_recordset_alias auto alias, class On>
+    auto join(On on) {
+        return internal::join_t<std::remove_const_t<decltype(alias)>, On>{std::move(on)};
+    }
+#endif
 
     template<class T, class O>
     internal::left_outer_join_t<T, O> left_outer_join(O o) {
         return {std::move(o)};
     }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_recordset_alias auto alias, class On>
+    auto left_outer_join(On on) {
+        return internal::left_outer_join_t<std::remove_const_t<decltype(alias)>, On>{std::move(on)};
+    }
+#endif
+
     template<class T, class O>
     internal::inner_join_t<T, O> inner_join(O o) {
         return {std::move(o)};
     }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_recordset_alias auto alias, class On>
+    auto inner_join(On on) {
+        return internal::inner_join_t<std::remove_const_t<decltype(alias)>, On>{std::move(on)};
+    }
+#endif
 
     template<class T>
     internal::offset_t<T> offset(T off) {
@@ -1047,36 +1021,18 @@ namespace sqlite_orm {
         return {std::move(lim), {std::move(offt.off)}};
     }
 
-    template<class L,
-             class R,
-             std::enable_if_t<polyfill::disjunction_v<std::is_base_of<internal::condition_t, L>,
-                                                      std::is_base_of<internal::condition_t, R>>,
-                              bool> = true>
-    auto operator&&(L l, R r) {
-        using internal::get_from_expression;
-        return internal::make_and_condition(std::move(get_from_expression(l)), std::move(get_from_expression(r)));
-    }
-
     template<class L, class R>
     auto and_(L l, R r) {
-        using internal::get_from_expression;
-        return internal::make_and_condition(std::move(get_from_expression(l)), std::move(get_from_expression(r)));
-    }
-
-    template<class L,
-             class R,
-             std::enable_if_t<polyfill::disjunction_v<std::is_base_of<internal::condition_t, L>,
-                                                      std::is_base_of<internal::condition_t, R>>,
-                              bool> = true>
-    auto operator||(L l, R r) {
-        using internal::get_from_expression;
-        return internal::make_or_condition(std::move(get_from_expression(l)), std::move(get_from_expression(r)));
+        using namespace ::sqlite_orm::internal;
+        return and_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>>{get_from_expression(std::forward<L>(l)),
+                                                                               get_from_expression(std::forward<R>(r))};
     }
 
     template<class L, class R>
     auto or_(L l, R r) {
-        using internal::get_from_expression;
-        return internal::make_or_condition(std::move(get_from_expression(l)), std::move(get_from_expression(r)));
+        using namespace ::sqlite_orm::internal;
+        return or_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>>{get_from_expression(std::forward<L>(l)),
+                                                                              get_from_expression(std::forward<R>(r))};
     }
 
     template<class T>
@@ -1160,22 +1116,40 @@ namespace sqlite_orm {
     }
 
     template<class L, class R>
-    internal::lesser_than_t<L, R> lesser_than(L l, R r) {
+    internal::less_than_t<L, R> less_than(L l, R r) {
+        return {std::move(l), std::move(r)};
+    }
+
+    /**
+     *  [Deprecation notice] This function is deprecated and will be removed in v1.10. Use the accurately named function `less_than(...)` instead.
+     */
+    template<class L, class R>
+    [[deprecated("Use the accurately named function `less_than(...)` instead")]] internal::less_than_t<L, R>
+    lesser_than(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    internal::lesser_than_t<L, R> lt(L l, R r) {
+    internal::less_than_t<L, R> lt(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    internal::lesser_or_equal_t<L, R> lesser_or_equal(L l, R r) {
+    internal::less_or_equal_t<L, R> less_or_equal(L l, R r) {
+        return {std::move(l), std::move(r)};
+    }
+
+    /**
+     *  [Deprecation notice] This function is deprecated and will be removed in v1.10. Use the accurately named function `less_or_equal(...)` instead.
+     */
+    template<class L, class R>
+    [[deprecated("Use the accurately named function `less_or_equal(...)` instead")]] internal::less_or_equal_t<L, R>
+    lesser_or_equal(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    internal::lesser_or_equal_t<L, R> le(L l, R r) {
+    internal::less_or_equal_t<L, R> le(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 

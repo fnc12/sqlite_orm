@@ -1,10 +1,13 @@
 #pragma once
 
 #include <type_traits>  //  std::is_same, std::decay, std::remove_reference
+#include <tuple>  //  std::get
 
+#include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/static_magic.h"
 #include "prepared_statement.h"
 #include "ast_iterator.h"
+#include "node_tuple.h"
 #include "expression_object_type.h"
 
 namespace sqlite_orm {

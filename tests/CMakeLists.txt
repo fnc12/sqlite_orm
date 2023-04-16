@@ -1,6 +1,7 @@
-cmake_minimum_required (VERSION 3.2)
+cmake_minimum_required (VERSION 3.16)
 
-find_package(Catch2 3 CONFIG REQUIRED)
+# note: find_package(SQLite3 REQUIRED) already done in top-level CMakeLists
+FetchContent_MakeAvailable(Catch2)
 
 option(SQLITE_ORM_OMITS_CODECVT "Omits codec testing" OFF)
 
@@ -26,8 +27,10 @@ add_executable(unit_tests
     static_tests/aggregate_function_return_types.cpp
     static_tests/core_function_return_types.cpp
     static_tests/column_result_t.cpp
+    static_tests/alias.cpp
     static_tests/is_primary_key_insertable.cpp
     static_tests/is_column_with_insertable_primary_key.cpp
+    static_tests/operators_adl.cpp
     tuple_iteration.cpp
     sync_schema_tests.cpp
     tests.cpp
@@ -86,7 +89,7 @@ add_executable(unit_tests
     statement_serializer_tests/bindables.cpp
     statement_serializer_tests/ast/upsert_clause.cpp
     statement_serializer_tests/ast/excluded.cpp
-	statement_serializer_tests/ast/set.cpp
+    statement_serializer_tests/ast/set.cpp
     statement_serializer_tests/arithmetic_operators.cpp
     statement_serializer_tests/base_types.cpp
     statement_serializer_tests/collate.cpp
@@ -162,9 +165,11 @@ if (MSVC)
 endif()
 
 target_precompile_headers(unit_tests PRIVATE
+    <sqlite3.h>
     <sqlite_orm/sqlite_orm.h>
     <catch2/catch_all.hpp>)
 
+# note: sqlite3 already linked in top-level CMakeLists
 target_link_libraries(unit_tests PRIVATE sqlite_orm Catch2::Catch2WithMain)
 
 add_test(NAME "All_in_one_unit_test"

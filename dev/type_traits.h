@@ -1,6 +1,9 @@
 #pragma once
 
 #include <type_traits>  //  std::enable_if, std::is_same
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+#include <concepts>
+#endif
 
 #include "functional/cxx_type_traits_polyfill.h"
 
@@ -54,5 +57,13 @@ namespace sqlite_orm {
 
         template<typename T>
         using target_type_t = typename T::target_type;
+
+        template<typename T>
+        using on_type_t = typename T::on_type;
     }
+
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    template<class T>
+    concept orm_names_type = requires { typename T::type; };
+#endif
 }

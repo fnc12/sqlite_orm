@@ -138,6 +138,25 @@ TEST_CASE("statement_serializer column names") {
             }
         }
     }
+    SECTION("aliased column") {
+        struct Object {
+            int id = 0;
+        };
+        struct Object2 {
+            int id = 0;
+        };
+        auto table = make_table("object", make_column("id", &Object::id));
+        using db_objects_t = internal::db_objects_tuple<decltype(table)>;
+        db_objects_t dbObjects{table};
+        SECTION("regular") {
+            using context_t = internal::serializer_context<db_objects_t>;
+            context_t context{dbObjects};
+            context.skip_table_name = false;
+            using als = alias_a<Object>;
+            auto value = serialize(alias_column<als>(&Object::id), context);
+            REQUIRE(value == R"("a"."id")");
+        }
+    }
     SECTION("escaped identifiers") {
         struct Object1 {
             int id = 0;
@@ -150,7 +169,7 @@ TEST_CASE("statement_serializer column names") {
                 return R"(a"s)";
             }
         };
-        auto table1 = make_table(R"(ob"ject1)", make_column(R"(i"d)", &Object1::id));
+        auto table1 = make_table(R"(object1"")", make_column(R"(i"d)", &Object1::id));
         auto table2 = make_table(R"(ob"ject2)", make_column(R"(i"d)", &Object2::id));
         using db_objects_t = internal::db_objects_tuple<decltype(table1), decltype(table2)>;
         db_objects_t dbObjects{table1, table2};
@@ -165,8 +184,9 @@ TEST_CASE("statement_serializer column names") {
                        multi_order_by(order_by(get<colalias>()), order_by(alias_column<als_d>(&Object2::id))));
             expression.highest_level = true;
             auto value = serialize(expression, context);
-            REQUIRE(value == R"(SELECT "ob""ject1"."i""d", "ob""ject1"."i""d" AS "a""s", "d"."i""d" FROM "ob""ject1" )"
-                             R"(JOIN "ob""ject2" "d" USING ("i""d") ORDER BY "a""s", "d"."i""d")");
+            REQUIRE(value ==
+                    R"(SELECT "object1"""""."i""d", "object1"""""."i""d" AS "a""s", "d"."i""d" FROM "object1""""" )"
+                    R"(JOIN "ob""ject2" "d" USING ("i""d") ORDER BY "a""s", "d"."i""d")");
         }
     }
 }

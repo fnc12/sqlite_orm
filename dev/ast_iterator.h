@@ -4,7 +4,9 @@
 #include <functional>  //  std::reference_wrapper
 
 #include "tuple_helper/tuple_iteration.h"
+#include "type_traits.h"
 #include "conditions.h"
+#include "alias.h"
 #include "select_constraints.h"
 #include "operators.h"
 #include "core_functions.h"
@@ -105,9 +107,9 @@ namespace sqlite_orm {
             }
         };
 
-        template<class... TargetArgs, class... ActionsArgs>
-        struct ast_iterator<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void> {
-            using node_type = upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>;
+        template<class T>
+        struct ast_iterator<T, match_if<is_upsert_clause, T>> {
+            using node_type = T;
 
             template<class L>
             void operator()(const node_type& expression, L& lambda) const {
@@ -126,7 +128,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<T, std::enable_if_t<is_base_of_template_v<T, binary_condition>>> {
+        struct ast_iterator<T, match_if<is_binary_condition, T>> {
             using node_type = T;
 
             template<class L>
@@ -202,7 +204,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<T, std::enable_if_t<is_base_of_template_v<T, compound_operator>>> {
+        struct ast_iterator<T, match_if<is_compound_operator, T>> {
             using node_type = T;
 
             template<class L>
@@ -503,13 +505,13 @@ namespace sqlite_orm {
             }
         };
 
-        template<class T, class O>
-        struct ast_iterator<left_join_t<T, O>, void> {
-            using node_type = left_join_t<T, O>;
+        template<class Join>
+        struct ast_iterator<Join, match_if<is_constrained_join, Join>> {
+            using node_type = Join;
 
             template<class L>
-            void operator()(const node_type& j, L& lambda) const {
-                iterate_ast(j.constraint, lambda);
+            void operator()(const node_type& join, L& lambda) const {
+                iterate_ast(join.constraint, lambda);
             }
         };
 
@@ -518,8 +520,8 @@ namespace sqlite_orm {
             using node_type = on_t<T>;
 
             template<class L>
-            void operator()(const node_type& o, L& lambda) const {
-                iterate_ast(o.arg, lambda);
+            void operator()(const node_type& on, L& lambda) const {
+                iterate_ast(on.arg, lambda);
             }
         };
 
@@ -532,36 +534,6 @@ namespace sqlite_orm {
             template<class L>
             void operator()(const node_type& o, L& lambda) const {
                 iterate_ast(o.column, lambda);
-            }
-        };
-
-        template<class T, class O>
-        struct ast_iterator<join_t<T, O>, void> {
-            using node_type = join_t<T, O>;
-
-            template<class L>
-            void operator()(const node_type& j, L& lambda) const {
-                iterate_ast(j.constraint, lambda);
-            }
-        };
-
-        template<class T, class O>
-        struct ast_iterator<left_outer_join_t<T, O>, void> {
-            using node_type = left_outer_join_t<T, O>;
-
-            template<class L>
-            void operator()(const node_type& j, L& lambda) const {
-                iterate_ast(j.constraint, lambda);
-            }
-        };
-
-        template<class T, class O>
-        struct ast_iterator<inner_join_t<T, O>, void> {
-            using node_type = inner_join_t<T, O>;
-
-            template<class L>
-            void operator()(const node_type& j, L& lambda) const {
-                iterate_ast(j.constraint, lambda);
             }
         };
 
@@ -681,13 +653,13 @@ namespace sqlite_orm {
         };
 
         /**
-         *  Column alias or literal
+         *  Column alias or literal: skipped
          */
         template<class T>
-        struct ast_iterator<
-            T,
-            std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<T, alias_holder>,
-                                                     polyfill::is_specialization_of<T, literal_holder>>>> {
+        struct ast_iterator<T,
+                            std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<T, alias_holder>,
+                                                                     polyfill::is_specialization_of<T, literal_holder>,
+                                                                     is_column_alias<T>>>> {
             using node_type = T;
 
             template<class L>

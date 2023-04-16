@@ -1346,20 +1346,38 @@ int main(int, char**) {
         //  WHERE salary >(SELECT AVG(salary)
         //      FROM employees
         //      WHERE department_id = e.department_id);
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        constexpr auto e = "e"_alias.for_<Employee>();
+        auto rows = storage.select(
+            columns(e->*&Employee::lastName, e->*&Employee::salary, e->*&Employee::departmentId),
+            from<e>(),
+            where(greater_than(e->*&Employee::salary,
+                               select(avg(&Employee::salary),
+                                      from<Employee>(),
+                                      where(is_equal(&Employee::departmentId, e->*&Employee::departmentId))))));
+        cout << "last_name   salary      department_id" << endl;
+        cout << "----------  ----------  -------------" << endl;
+        for(auto& row: rows) {
+            cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << endl;
+        }
+#else
         using als = alias_e<Employee>;
         auto rows = storage.select(
             columns(alias_column<als>(&Employee::lastName),
                     alias_column<als>(&Employee::salary),
                     alias_column<als>(&Employee::departmentId)),
+            from<als>(),
             where(greater_than(
                 alias_column<als>(&Employee::salary),
                 select(avg(&Employee::salary),
+                       from<Employee>(),
                        where(is_equal(&Employee::departmentId, alias_column<als>(&Employee::departmentId)))))));
         cout << "last_name   salary      department_id" << endl;
         cout << "----------  ----------  -------------" << endl;
         for(auto& row: rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << endl;
         }
+#endif
     }
     {
         //  SELECT first_name, last_name, employee_id, job_id
@@ -1370,10 +1388,10 @@ int main(int, char**) {
         auto rows =
             storage.select(columns(&Employee::firstName, &Employee::lastName, &Employee::id, &Employee::jobId),
                            from<Employee>(),
-                           where(lesser_or_equal(1,
-                                                 select(count<JobHistory>(),
-                                                        from<JobHistory>(),
-                                                        where(is_equal(&Employee::id, &JobHistory::employeeId))))));
+                           where(less_or_equal(1,
+                                               select(count<JobHistory>(),
+                                                      from<JobHistory>(),
+                                                      where(is_equal(&Employee::id, &JobHistory::employeeId))))));
         cout << "first_name  last_name   employee_id  job_id" << endl;
         cout << "----------  ----------  -----------  ----------" << endl;
         for(auto& row: rows) {
