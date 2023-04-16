@@ -37,14 +37,14 @@ TEST_CASE("statement_serializer check") {
         }
         REQUIRE(value == expected);
     }
-    SECTION("lesser than") {
+    SECTION("less than") {
         struct Book {
             int id = 0;
             std::string name;
             std::string pubName;
             int price = 0;
         };
-        auto ch = check(lesser_than(0, &Book::price));
+        auto ch = check(less_than(0, &Book::price));
         auto table = make_table("BOOK",
                                 make_column("Book_id", &Book::id, primary_key()),
                                 make_column("Book_name", &Book::name),

@@ -42,11 +42,11 @@ TEST_CASE("is_printable") {
     STATIC_REQUIRE(is_printable_v<long long>);
     STATIC_REQUIRE(is_printable_v<unsigned long long>);
     STATIC_REQUIRE(is_printable_v<double>);
-    STATIC_REQUIRE(!is_printable_v<const char*>);
+    STATIC_REQUIRE_FALSE(is_printable_v<const char*>);
     STATIC_REQUIRE(is_printable_v<std::string>);
     STATIC_REQUIRE(is_printable_v<StringVeneer<char>>);
 #ifndef SQLITE_ORM_OMITS_CODECVT
-    STATIC_REQUIRE(!is_printable_v<const wchar_t*>);
+    STATIC_REQUIRE_FALSE(is_printable_v<const wchar_t*>);
     STATIC_REQUIRE(is_printable_v<std::wstring>);
     STATIC_REQUIRE(is_printable_v<StringVeneer<wchar_t>>);
 #endif
@@ -54,23 +54,23 @@ TEST_CASE("is_printable") {
     STATIC_REQUIRE(is_printable_v<std::unique_ptr<int>>);
     STATIC_REQUIRE(is_printable_v<std::shared_ptr<int>>);
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-    STATIC_REQUIRE(!is_printable_v<std::string_view>);
-    STATIC_REQUIRE(!is_printable_v<std::wstring_view>);
+    STATIC_REQUIRE_FALSE(is_printable_v<std::string_view>);
+    STATIC_REQUIRE_FALSE(is_printable_v<std::wstring_view>);
 #endif
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     STATIC_REQUIRE(is_printable_v<std::nullopt_t>);
     STATIC_REQUIRE(is_printable_v<std::optional<int>>);
     STATIC_REQUIRE(is_printable_v<std::optional<Custom>>);
-    STATIC_REQUIRE(!is_printable_v<std::optional<User>>);
+    STATIC_REQUIRE_FALSE(is_printable_v<std::optional<User>>);
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 #ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
-    STATIC_REQUIRE(!is_printable_v<static_pointer_binding<std::nullptr_t, carray_pvt>>);
+    STATIC_REQUIRE_FALSE(is_printable_v<static_pointer_binding<std::nullptr_t, carray_pvt>>);
 #endif
 
     STATIC_REQUIRE(is_printable_v<Custom>);
     STATIC_REQUIRE(is_printable_v<std::unique_ptr<Custom>>);
 
-    STATIC_REQUIRE(!is_printable_v<void>);
-    STATIC_REQUIRE(!is_printable_v<User>);
-    STATIC_REQUIRE(!is_printable_v<std::unique_ptr<User>>);
+    STATIC_REQUIRE_FALSE(is_printable_v<void>);
+    STATIC_REQUIRE_FALSE(is_printable_v<User>);
+    STATIC_REQUIRE_FALSE(is_printable_v<std::unique_ptr<User>>);
 }

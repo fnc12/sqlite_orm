@@ -69,6 +69,9 @@ namespace sqlite_orm {
         T get_from_expression(expression_t<T> expression) {
             return std::move(expression.value);
         }
+
+        template<class T>
+        using unwrap_expression_t = decltype(get_from_expression(std::declval<T>()));
     }
 
     /**

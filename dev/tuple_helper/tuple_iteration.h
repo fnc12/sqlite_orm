@@ -1,39 +1,47 @@
 #pragma once
 
 #include <tuple>  //  std::tuple, std::get, std::tuple_element, std::tuple_size
-#include <type_traits>  //  std::index_sequence, std::make_index_sequence
+#include <type_traits>  //  std::remove_reference, std::index_sequence, std::make_index_sequence
 #include <utility>  //  std::forward, std::move
 
-#include "../functional/cxx_universal.h"
+#include "../functional/cxx_universal.h"  //  ::size_t
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/cxx_functional_polyfill.h"
-#include "../functional/index_sequence_util.h"
 
 namespace sqlite_orm {
     namespace internal {
 
         //  got it form here https://stackoverflow.com/questions/7858817/unpacking-a-tuple-to-call-a-matching-function-pointer
-        template<class Function, class FunctionPointer, class Tuple, size_t... I>
-        auto call_impl(Function& f, FunctionPointer functionPointer, Tuple t, std::index_sequence<I...>) {
-            return (f.*functionPointer)(std::get<I>(std::move(t))...);
+        template<class Function, class FunctionPointer, class Tpl, size_t... Idx>
+        auto call(Function& f, FunctionPointer functionPointer, Tpl&& tpl, std::index_sequence<Idx...>) {
+            return (f.*functionPointer)(std::get<Idx>(std::forward<Tpl>(tpl))...);
         }
 
-        template<class Function, class FunctionPointer, class Tuple>
-        auto call(Function& f, FunctionPointer functionPointer, Tuple t) {
-            constexpr size_t size = std::tuple_size<Tuple>::value;
-            return call_impl(f, functionPointer, std::move(t), std::make_index_sequence<size>{});
+        template<class Function, class Tpl, size_t... Idx>
+        auto call(Function& f, Tpl&& tpl, std::index_sequence<Idx...>) {
+            return f(std::get<Idx>(std::forward<Tpl>(tpl))...);
         }
 
-        template<class Function, class Tuple>
-        auto call(Function& f, Tuple t) {
-            return call(f, &Function::operator(), std::move(t));
+        template<class Function, class FunctionPointer, class Tpl>
+        auto call(Function& f, FunctionPointer functionPointer, Tpl&& tpl) {
+            constexpr size_t size = std::tuple_size<std::remove_reference_t<Tpl>>::value;
+            return call(f, functionPointer, std::forward<Tpl>(tpl), std::make_index_sequence<size>{});
+        }
+
+        // custom std::apply
+        template<class Function, class Tpl>
+        auto call(Function& f, Tpl&& tpl) {
+            constexpr size_t size = std::tuple_size<std::remove_reference_t<Tpl>>::value;
+            return call(f, std::forward<Tpl>(tpl), std::make_index_sequence<size>{});
         }
 
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
         template<bool reversed = false, class Tpl, size_t... Idx, class L>
         void iterate_tuple(const Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
             if constexpr(reversed) {
-                iterate_tuple(tpl, reverse_index_sequence(std::index_sequence<Idx...>{}), std::forward<L>(lambda));
+                // nifty fold expression trick: make use of guaranteed right-to-left evaluation order when folding over operator=
+                int sink;
+                ((lambda(std::get<Idx>(tpl)), sink) = ... = 0);
             } else {
                 (lambda(std::get<Idx>(tpl)), ...);
             }

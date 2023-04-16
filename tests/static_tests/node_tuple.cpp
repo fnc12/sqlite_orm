@@ -3,6 +3,9 @@
 #include <type_traits>  //  std::is_same
 
 using namespace sqlite_orm;
+using internal::alias_holder;
+using internal::column_alias;
+using internal::column_pointer;
 
 template<class T>
 struct is_pair : std::false_type {};
@@ -52,35 +55,35 @@ TEST_CASE("Node tuple") {
     SECTION("binary_condition") {
         using namespace internal;
         SECTION("5 < 6.0f") {
-            auto c = lesser_than(5, 6.0f);
+            auto c = less_than(5, 6.0f);
             using C = decltype(c);
             using Tuple = node_tuple_t<C>;
             using Expected = tuple<int, float>;
-            static_assert(is_same<Tuple, Expected>::value, "lesser_than_t");
+            static_assert(is_same<Tuple, Expected>::value, "less_than_t");
             STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<int, float>>::value);
         }
         SECTION("id < 10") {
-            auto c = lesser_than(&User::id, 10);
+            auto c = less_than(&User::id, 10);
             using C = decltype(c);
             using Tuple = node_tuple_t<C>;
             using Expected = tuple<decltype(&User::id), int>;
-            static_assert(is_same<Tuple, Expected>::value, "lesser_than_t");
+            static_assert(is_same<Tuple, Expected>::value, "less_than_t");
             STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<int>>::value);
         }
         SECTION("5 <= 6.0f") {
-            auto c = lesser_or_equal(5, 6.0f);
+            auto c = less_or_equal(5, 6.0f);
             using C = decltype(c);
             using Tuple = node_tuple_t<C>;
             using Expected = tuple<int, float>;
-            static_assert(is_same<Tuple, Expected>::value, "lesser_or_equal_t");
+            static_assert(is_same<Tuple, Expected>::value, "less_or_equal_t");
             STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<int, float>>::value);
         }
         SECTION("id <= 10.0") {
-            auto c = lesser_or_equal(&User::id, 10.0);
+            auto c = less_or_equal(&User::id, 10.0);
             using C = decltype(c);
             using Tuple = node_tuple_t<C>;
             using Expected = tuple<decltype(&User::id), double>;
-            static_assert(is_same<Tuple, Expected>::value, "lesser_or_equal_t");
+            static_assert(is_same<Tuple, Expected>::value, "less_or_equal_t");
             STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<double>>::value);
         }
         SECTION("5 > 6.0f") {
@@ -450,24 +453,24 @@ TEST_CASE("Node tuple") {
             static_assert(is_same<Tuple, tuple<decltype(&User::id), decltype(&User::id), int>>::value,
                           "select(&User::id, where(is_equal(&User::id, 5)))");
         }
-        SECTION("select(&User::name, where(lesser_than(&User::id, 10)))") {
-            auto sel = select(&User::name, where(lesser_than(&User::id, 10)));
+        SECTION("select(&User::name, where(less_than(&User::id, 10)))") {
+            auto sel = select(&User::name, where(less_than(&User::id, 10)));
             using Sel = decltype(sel);
             using Tuple = node_tuple_t<Sel>;
             static_assert(is_same<Tuple, tuple<decltype(&User::name), decltype(&User::id), int>>::value,
-                          "select(&User::name, where(lesser_than(&User::id, 10)))");
+                          "select(&User::name, where(less_than(&User::id, 10)))");
         }
         SECTION("select(columns(&User::id, &User::name), where(greater_or_equal(&User::id, 10) and "
-                "lesser_or_equal(&User::id, 20)))") {
+                "less_or_equal(&User::id, 20)))") {
             auto sel = select(columns(&User::id, &User::name),
-                              where(greater_or_equal(&User::id, 10) and lesser_or_equal(&User::id, 20)));
+                              where(greater_or_equal(&User::id, 10) and less_or_equal(&User::id, 20)));
             using Sel = decltype(sel);
             using Tuple = node_tuple_t<Sel>;
             using Expected = std::
                 tuple<decltype(&User::id), decltype(&User::name), decltype(&User::id), int, decltype(&User::id), int>;
             static_assert(is_same<Tuple, Expected>::value,
                           "select(columns(&User::id, &User::name), where(greater_or_equal(&User::id, 10) and "
-                          "lesser_or_equal(&User::id, 20)))");
+                          "less_or_equal(&User::id, 20)))");
         }
         SECTION("select(columns('ototo', 25))") {
             auto statement = select(columns("ototo", 25));
@@ -627,19 +630,19 @@ TEST_CASE("Node tuple") {
             using Expected = tuple<decltype(&User::id), int>;
             static_assert(is_same<Tuple, Expected>::value, "not greater_or_equal(&User::id, 5)");
         }
-        SECTION("not lesser_than(&User::id, std::string('6'))") {
-            auto c = not lesser_than(&User::id, std::string("6"));
+        SECTION("not less_than(&User::id, std::string('6'))") {
+            auto c = not less_than(&User::id, std::string("6"));
             using Con = decltype(c);
             using Tuple = node_tuple_t<Con>;
             using Expected = tuple<decltype(&User::id), std::string>;
-            static_assert(is_same<Tuple, Expected>::value, "not lesser_than(&User::id, std::string(\"6\"))");
+            static_assert(is_same<Tuple, Expected>::value, "not less_than(&User::id, std::string(\"6\"))");
         }
-        SECTION("not lesser_or_equal(&User::id, 10)") {
-            auto c = not lesser_or_equal(&User::id, 10);
+        SECTION("not less_or_equal(&User::id, 10)") {
+            auto c = not less_or_equal(&User::id, 10);
             using Con = decltype(c);
             using Tuple = node_tuple_t<Con>;
             using Expected = tuple<decltype(&User::id), int>;
-            static_assert(is_same<Tuple, Expected>::value, "not lesser_or_equal(&User::id, 10)");
+            static_assert(is_same<Tuple, Expected>::value, "not less_or_equal(&User::id, 10)");
         }
         SECTION("not in(&User::id, {1, 2, 3})") {
             auto c = not in(&User::id, {1, 2, 3});
@@ -837,7 +840,7 @@ TEST_CASE("Node tuple") {
             auto j = join<User>(using_(&User::id));
             using Join = decltype(j);
             using Tuple = node_tuple_t<Join>;
-            using Expected = tuple<internal::column_pointer<User, decltype(&User::id)>>;
+            using Expected = tuple<column_pointer<User, decltype(&User::id)>>;
             static_assert(is_same<Tuple, Expected>::value, "join using");
         }
         SECTION("join using explicit column") {
@@ -845,7 +848,7 @@ TEST_CASE("Node tuple") {
             auto j = join<User>(using_(column<Derived>(&User::id)));
             using Join = decltype(j);
             using Tuple = node_tuple_t<Join>;
-            using Expected = tuple<internal::column_pointer<Derived, decltype(&User::id)>>;
+            using Expected = tuple<column_pointer<Derived, decltype(&User::id)>>;
             static_assert(is_same<Tuple, Expected>::value, "join using explicit column");
         }
         SECTION("left_outer_join") {
@@ -871,9 +874,9 @@ TEST_CASE("Node tuple") {
 
         STATIC_REQUIRE(is_tuple<tuple<>>::value);
         STATIC_REQUIRE(is_tuple<tuple<int, std::string>>::value);
-        STATIC_REQUIRE(!is_tuple<int>::value);
+        STATIC_REQUIRE_FALSE(is_tuple<int>::value);
         STATIC_REQUIRE(is_pair<std::pair<int, std::string>>::value);
-        STATIC_REQUIRE(!is_pair<int>::value);
+        STATIC_REQUIRE_FALSE(is_pair<int>::value);
 
         using ArgsType = Case::args_type;
         STATIC_REQUIRE(is_tuple<ArgsType>::value);
@@ -922,6 +925,7 @@ TEST_CASE("Node tuple") {
         using ExpectedTuple = tuple<decltype(&User::id)>;
         STATIC_REQUIRE(std::is_same<Tuple, ExpectedTuple>::value);
     }
+#if SQLITE_VERSION_NUMBER >= 3024000
     SECTION("upsert_clause") {
         auto statement = on_conflict(&User::id).do_update(set(c(&User::name) = excluded(&User::name)));
         using Statement = decltype(statement);
@@ -929,6 +933,7 @@ TEST_CASE("Node tuple") {
         using ExpectedTuple = tuple<decltype(&User::name), decltype(&User::name)>;
         STATIC_REQUIRE(std::is_same<Tuple, ExpectedTuple>::value);
     }
+#endif
     SECTION("group_by") {
         auto statement = group_by(&User::id);
         using Statement = decltype(statement);

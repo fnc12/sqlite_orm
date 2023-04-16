@@ -146,7 +146,7 @@ TEST_CASE("json_extract") {
     SECTION("7") {
         auto rows = storage.select(json_extract<std::unique_ptr<std::string>>(R"({"a":2,"c":[4,5,{"f":7}]})", "$.x"));
         REQUIRE(rows.size() == 1);
-        REQUIRE(!rows[0]);
+        REQUIRE_FALSE(rows[0]);
     }
     SECTION("8") {
         auto rows = storage.select(json_extract<std::string>(R"({"a":2,"c":[4,5,{"f":7}]})", "$.x", "$.a"));
@@ -337,7 +337,7 @@ TEST_CASE("json_remove") {
     SECTION("8") {
         auto rows = storage.select(json_remove<std::unique_ptr<std::string>>(R"({"x":25,"y":42})", "$"));
         REQUIRE(rows.size() == 1);
-        REQUIRE(!bool(rows[0]));
+        REQUIRE_FALSE(bool(rows[0]));
     }
 }
 
@@ -390,7 +390,7 @@ TEST_CASE("json_type") {
                     REQUIRE(rows[0]);
                     REQUIRE(*rows[0] == testCase.result);
                 } else {
-                    REQUIRE(!rows[0]);
+                    REQUIRE_FALSE(rows[0]);
                 }
             }
         }
@@ -419,7 +419,7 @@ TEST_CASE("json_quote") {
     {
         auto rows = storage.select(json_quote<float>(3.14159));
         decltype(rows) expected;
-        expected.push_back(3.14159);
+        expected.push_back(3.14159f);
         REQUIRE(rows == expected);
     }
     {
