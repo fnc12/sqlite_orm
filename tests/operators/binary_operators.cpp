@@ -113,9 +113,9 @@ TEST_CASE("binary operators") {
         expected.push_back(true);
         expected.push_back(false);
     }
-    SECTION("lesser_than") {
-        SECTION("lesser_than") {
-            rows = storage.select(lesser_than(&User::id, 2));
+    SECTION("less_than") {
+        SECTION("less_than") {
+            rows = storage.select(less_than(&User::id, 2));
         }
         SECTION("lt") {
             rows = storage.select(lt(&User::id, 2));
@@ -135,9 +135,9 @@ TEST_CASE("binary operators") {
         expected.push_back(false);
         expected.push_back(false);
     }
-    SECTION("lesser_or_equal") {
-        SECTION("lesser_or_equal") {
-            rows = storage.select(lesser_or_equal(&User::id, 2));
+    SECTION("less_or_equal") {
+        SECTION("less_or_equal") {
+            rows = storage.select(less_or_equal(&User::id, 2));
         }
         SECTION("le") {
             rows = storage.select(le(&User::id, 2));
@@ -158,13 +158,13 @@ TEST_CASE("binary operators") {
         expected.push_back(false);
     }
     SECTION("and") {
-        rows = storage.select(greater_than(&User::id, 1) and lesser_than(&User::id, 3));
+        rows = storage.select(greater_than(&User::id, 1) and less_than(&User::id, 3));
         expected.push_back(false);
         expected.push_back(true);
         expected.push_back(false);
     }
     SECTION("or") {
-        rows = storage.select(lesser_than(&User::id, 2) or greater_than(&User::id, 2));
+        rows = storage.select(less_than(&User::id, 2) or greater_than(&User::id, 2));
         expected.push_back(true);
         expected.push_back(false);
         expected.push_back(true);

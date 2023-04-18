@@ -419,7 +419,7 @@ TEST_CASE("json_quote") {
     {
         auto rows = storage.select(json_quote<float>(3.14159));
         decltype(rows) expected;
-        expected.push_back(3.14159);
+        expected.push_back(3.14159f);
         REQUIRE(rows == expected);
     }
     {

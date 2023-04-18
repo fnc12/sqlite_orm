@@ -87,12 +87,12 @@ TEST_CASE("is_bindable") {
         STATIC_REQUIRE_FALSE(is_bindable_v<decltype(notEqual)>);
     }
     {
-        auto lesserThan = lesser_than(&User::id, 10);
-        STATIC_REQUIRE_FALSE(is_bindable_v<decltype(lesserThan)>);
+        auto lessThan = less_than(&User::id, 10);
+        STATIC_REQUIRE_FALSE(is_bindable_v<decltype(lessThan)>);
     }
     {
-        auto lesserOrEqual = lesser_or_equal(&User::id, 5);
-        STATIC_REQUIRE_FALSE(is_bindable_v<decltype(lesserOrEqual)>);
+        auto lessOrEqual = less_or_equal(&User::id, 5);
+        STATIC_REQUIRE_FALSE(is_bindable_v<decltype(lessOrEqual)>);
     }
     {
         auto greaterThan = greater_than(&User::id, 5);

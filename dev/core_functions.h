@@ -7,11 +7,12 @@
 #include <vector>  //  std::vector
 
 #include "functional/cxx_type_traits_polyfill.h"
-#include "conditions.h"
 #include "is_base_of_template.h"
 #include "tuple_helper/tuple_filter.h"
+#include "conditions.h"
 #include "serialize_result_type.h"
 #include "operators.h"
+#include "expression.h"
 #include "ast/into.h"
 
 namespace sqlite_orm {
@@ -617,12 +618,12 @@ namespace sqlite_orm {
      *  Cute operators for core functions
      */
     template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
-    internal::lesser_than_t<F, R> operator<(F f, R r) {
+    internal::less_than_t<F, R> operator<(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
     template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
-    internal::lesser_or_equal_t<F, R> operator<=(F f, R r) {
+    internal::less_or_equal_t<F, R> operator<=(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
@@ -2041,50 +2042,64 @@ namespace sqlite_orm {
     internal::built_in_function_t<std::string, internal::json_group_object_string, X, Y> json_group_object(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
-
 #endif  //  SQLITE_ENABLE_JSON1
-    template<class L,
-             class R,
-             std::enable_if_t<polyfill::disjunction_v<std::is_base_of<internal::arithmetic_t, L>,
-                                                      std::is_base_of<internal::arithmetic_t, R>>,
-                              bool> = true>
-    internal::add_t<L, R> operator+(L l, R r) {
-        return {std::move(l), std::move(r)};
-    }
 
-    template<class L,
-             class R,
-             std::enable_if_t<polyfill::disjunction_v<std::is_base_of<internal::arithmetic_t, L>,
-                                                      std::is_base_of<internal::arithmetic_t, R>>,
-                              bool> = true>
-    internal::sub_t<L, R> operator-(L l, R r) {
-        return {std::move(l), std::move(r)};
-    }
+    // Deliberately put operators for `arithmetic_t` or `expression_t` into the internal namespace
+    // to facilitate ADL (Argument Dependent Lookup)
+    namespace internal {
+        template<class L,
+                 class R,
+                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
+                                                          std::is_base_of<arithmetic_t, R>,
+                                                          polyfill::is_specialization_of<L, expression_t>,
+                                                          polyfill::is_specialization_of<R, expression_t>>,
+                                  bool> = true>
+        add_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator+(L l, R r) {
+            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+        }
 
-    template<class L,
-             class R,
-             std::enable_if_t<polyfill::disjunction_v<std::is_base_of<internal::arithmetic_t, L>,
-                                                      std::is_base_of<internal::arithmetic_t, R>>,
-                              bool> = true>
-    internal::mul_t<L, R> operator*(L l, R r) {
-        return {std::move(l), std::move(r)};
-    }
+        template<class L,
+                 class R,
+                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
+                                                          std::is_base_of<arithmetic_t, R>,
+                                                          polyfill::is_specialization_of<L, expression_t>,
+                                                          polyfill::is_specialization_of<R, expression_t>>,
+                                  bool> = true>
+        sub_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator-(L l, R r) {
+            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+        }
 
-    template<class L,
-             class R,
-             std::enable_if_t<polyfill::disjunction_v<std::is_base_of<internal::arithmetic_t, L>,
-                                                      std::is_base_of<internal::arithmetic_t, R>>,
-                              bool> = true>
-    internal::div_t<L, R> operator/(L l, R r) {
-        return {std::move(l), std::move(r)};
-    }
+        template<class L,
+                 class R,
+                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
+                                                          std::is_base_of<arithmetic_t, R>,
+                                                          polyfill::is_specialization_of<L, expression_t>,
+                                                          polyfill::is_specialization_of<R, expression_t>>,
+                                  bool> = true>
+        mul_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator*(L l, R r) {
+            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+        }
 
-    template<class L,
-             class R,
-             std::enable_if_t<polyfill::disjunction_v<std::is_base_of<internal::arithmetic_t, L>,
-                                                      std::is_base_of<internal::arithmetic_t, R>>,
-                              bool> = true>
-    internal::mod_t<L, R> operator%(L l, R r) {
-        return {std::move(l), std::move(r)};
+        template<class L,
+                 class R,
+                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
+                                                          std::is_base_of<arithmetic_t, R>,
+                                                          polyfill::is_specialization_of<L, expression_t>,
+                                                          polyfill::is_specialization_of<R, expression_t>>,
+                                  bool> = true>
+        div_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator/(L l, R r) {
+            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+        }
+
+        template<class L,
+                 class R,
+                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
+                                                          std::is_base_of<arithmetic_t, R>,
+                                                          polyfill::is_specialization_of<L, expression_t>,
+                                                          polyfill::is_specialization_of<R, expression_t>>,
+                                  bool> = true>
+        mod_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator%(L l, R r) {
+            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+        }
     }
 }
