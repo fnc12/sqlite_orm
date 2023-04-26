@@ -13403,19 +13403,9 @@ namespace sqlite_orm {
             const bool& isNotNull = get<2>(tpl);
             auto& context = get<3>(tpl);
 
-            using constraints_type = constraints_type_t<column_constraints<Op...>>;
-            constexpr size_t constraintsCount = std::tuple_size<constraints_type>::value;
-            if(constraintsCount) {
-                std::vector<std::string> constraintsStrings;
-                constraintsStrings.reserve(constraintsCount);
-                iterate_tuple(column.constraints, [&constraintsStrings, &context](auto& constraint) {
-                    using constraint_type = std::decay_t<decltype(constraint)>;
-                    constraintsStrings.push_back(serialize(constraint, context));
-                });
-                for(auto& str: constraintsStrings) {
-                    ss << str << ' ';
-                }
-            }
+            iterate_tuple(column.constraints, [&ss, &context](auto& constraint) {
+                ss << serialize(constraint, context) << ' ';
+            });
             if(isNotNull) {
                 ss << "NOT NULL ";
             }
