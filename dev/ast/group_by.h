@@ -36,20 +36,6 @@ namespace sqlite_orm {
         template<class T>
         using is_group_by = polyfill::disjunction<polyfill::is_specialization_of<T, group_by_t>,
                                                   polyfill::is_specialization_of<T, group_by_with_having>>;
-
-        /**
-         *  HAVING holder.
-         *  T is having argument type.
-         */
-        template<class T>
-        struct having_t {
-            using expression_type = T;
-
-            expression_type expression;
-        };
-
-        template<class T>
-        using is_having = polyfill::is_specialization_of<T, having_t>;
     }
 
     /**

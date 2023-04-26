@@ -370,25 +370,10 @@ namespace sqlite_orm {
             if(constraintsCount) {
                 std::vector<std::string> constraintsStrings;
                 constraintsStrings.reserve(constraintsCount);
-                int primaryKeyIndex = -1;
-                int autoincrementIndex = -1;
-                int tupleIndex = 0;
-                iterate_tuple(column.constraints,
-                              [&constraintsStrings, &primaryKeyIndex, &autoincrementIndex, &tupleIndex, &context](
-                                  auto& constraint) {
-                                  using constraint_type = std::decay_t<decltype(constraint)>;
-                                  constraintsStrings.push_back(serialize(constraint, context));
-                                  if(is_primary_key_v<constraint_type>) {
-                                      primaryKeyIndex = tupleIndex;
-                                  } else if(is_autoincrement_v<constraint_type>) {
-                                      autoincrementIndex = tupleIndex;
-                                  }
-                                  ++tupleIndex;
-                              });
-                if(primaryKeyIndex != -1 && autoincrementIndex != -1 && autoincrementIndex < primaryKeyIndex) {
-                    iter_swap(constraintsStrings.begin() + primaryKeyIndex,
-                              constraintsStrings.begin() + autoincrementIndex);
-                }
+                iterate_tuple(column.constraints, [&constraintsStrings, &context](auto& constraint) {
+                    using constraint_type = std::decay_t<decltype(constraint)>;
+                    constraintsStrings.push_back(serialize(constraint, context));
+                });
                 for(auto& str: constraintsStrings) {
                     ss << str << ' ';
                 }

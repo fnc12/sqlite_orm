@@ -22,11 +22,6 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        /**
-         *  AUTOINCREMENT constraint class.
-         */
-        struct autoincrement_t {};
-
         enum class conflict_clause_t {
             rollback,
             abort,
@@ -445,20 +440,13 @@ namespace sqlite_orm {
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_generated_always_v = is_generated_always<T>::value;
 
-        template<class T>
-        using is_autoincrement = std::is_same<T, autoincrement_t>;
-
-        template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_autoincrement_v = is_autoincrement<T>::value;
-
         /**
          * PRIMARY KEY INSERTABLE traits.
          */
         template<typename T>
         struct is_primary_key_insertable
             : polyfill::disjunction<
-                  mpl::instantiate<mpl::disjunction<check_if_tuple_has<is_autoincrement>,
-                                                    check_if_tuple_has_template<default_t>,
+                  mpl::instantiate<mpl::disjunction<check_if_tuple_has_template<default_t>,
                                                     check_if_tuple_has_template<primary_key_with_autoincrement>>,
                                    constraints_type_t<T>>,
                   std::is_base_of<integer_printer, type_printer<field_type_t<T>>>> {
@@ -468,8 +456,7 @@ namespace sqlite_orm {
 
         template<class T>
         using is_constraint =
-            mpl::instantiate<mpl::disjunction<check_if<is_autoincrement>,
-                                              check_if<is_primary_key>,
+            mpl::instantiate<mpl::disjunction<check_if<is_primary_key>,
                                               check_if<is_foreign_key>,
                                               check_if_is_template<unique_t>,
                                               check_if_is_template<default_t>,
