@@ -519,14 +519,6 @@ namespace sqlite_orm {
         return {{}};
     }
 
-    /**
-     *  AUTOINCREMENT keyword. [Deprecation notice] Use `primary_key().autoincrement()` instead of using this function.
-     *  This function will be removed in 1.9
-     */
-    [[deprecated("Use primary_key().autoincrement()` instead")]] inline internal::autoincrement_t autoincrement() {
-        return {};
-    }
-
     template<class... Cs>
     internal::primary_key_t<Cs...> primary_key(Cs... cs) {
         return {std::make_tuple(std::forward<Cs>(cs)...)};

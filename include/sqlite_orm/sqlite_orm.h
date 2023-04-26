@@ -1788,14 +1788,6 @@ namespace sqlite_orm {
         return {{}};
     }
 
-    /**
-     *  AUTOINCREMENT keyword. [Deprecation notice] Use `primary_key().autoincrement()` instead of using this function.
-     *  This function will be removed in 1.9
-     */
-    [[deprecated("Use primary_key().autoincrement()` instead")]] inline internal::autoincrement_t autoincrement() {
-        return {};
-    }
-
     template<class... Cs>
     internal::primary_key_t<Cs...> primary_key(Cs... cs) {
         return {std::make_tuple(std::forward<Cs>(cs)...)};
@@ -6787,17 +6779,6 @@ namespace sqlite_orm {
     template<class... Args>
     internal::group_by_t<Args...> group_by(Args&&... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
-    }
-
-    /**
-     *  [Deprecation notice]: this function is deprecated and will be removed in v1.9. Please use `group_by(...).having(...)` instead.
-     *
-     *  HAVING(expression).
-     *  Example: storage.get_all<Employee>(group_by(&Employee::name), having(greater_than(count(&Employee::name), 2)));
-     */
-    template<class T>
-    [[deprecated("Use group_by(...).having(...) instead")]] internal::having_t<T> having(T expression) {
-        return {std::move(expression)};
     }
 }
 
