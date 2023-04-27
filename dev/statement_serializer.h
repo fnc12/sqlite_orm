@@ -770,16 +770,6 @@ namespace sqlite_orm {
         };
 
         template<>
-        struct statement_serializer<autoincrement_t, void> {
-            using statement_type = autoincrement_t;
-
-            template<class Ctx>
-            std::string operator()(const statement_type&, const Ctx&) const {
-                return "AUTOINCREMENT";
-            }
-        };
-
-        template<>
         struct statement_serializer<conflict_clause_t, void> {
             using statement_type = conflict_clause_t;
 
@@ -1893,20 +1883,6 @@ namespace sqlite_orm {
                 auto newContext = context;
                 newContext.skip_table_name = false;
                 ss << "GROUP BY " << streaming_expressions_tuple(statement.args, newContext);
-                return ss.str();
-            }
-        };
-
-        template<class T>
-        struct statement_serializer<having_t<T>, void> {
-            using statement_type = having_t<T>;
-
-            template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
-                std::stringstream ss;
-                auto newContext = context;
-                newContext.skip_table_name = false;
-                ss << "HAVING " << serialize(statement.expression, newContext);
                 return ss.str();
             }
         };

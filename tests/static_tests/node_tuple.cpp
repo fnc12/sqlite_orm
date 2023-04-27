@@ -502,14 +502,6 @@ TEST_CASE("Node tuple") {
                           "get_all<User>(where(is_equal(5.0, &User::id)))");
         }
     }
-    SECTION("having_t") {
-        using namespace internal;
-        auto hav = having(greater_or_equal(&User::id, 10));
-        using Having = decltype(hav);
-        using Tuple = node_tuple_t<Having>;
-        static_assert(is_same<Tuple, tuple<decltype(&User::id), int>>::value,
-                      "having(greater_or_equal(&User::id, 10))");
-    }
     SECTION("cast_t") {
         auto sel = select(columns(cast<int>(&User::id), cast<int>(&User::name)));
         using Select = decltype(sel);

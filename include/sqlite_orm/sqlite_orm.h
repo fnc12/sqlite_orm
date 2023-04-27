@@ -1291,11 +1291,6 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        /**
-         *  AUTOINCREMENT constraint class.
-         */
-        struct autoincrement_t {};
-
         enum class conflict_clause_t {
             rollback,
             abort,
@@ -1714,20 +1709,13 @@ namespace sqlite_orm {
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_generated_always_v = is_generated_always<T>::value;
 
-        template<class T>
-        using is_autoincrement = std::is_same<T, autoincrement_t>;
-
-        template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_autoincrement_v = is_autoincrement<T>::value;
-
         /**
          * PRIMARY KEY INSERTABLE traits.
          */
         template<typename T>
         struct is_primary_key_insertable
             : polyfill::disjunction<
-                  mpl::instantiate<mpl::disjunction<check_if_tuple_has<is_autoincrement>,
-                                                    check_if_tuple_has_template<default_t>,
+                  mpl::instantiate<mpl::disjunction<check_if_tuple_has_template<default_t>,
                                                     check_if_tuple_has_template<primary_key_with_autoincrement>>,
                                    constraints_type_t<T>>,
                   std::is_base_of<integer_printer, type_printer<field_type_t<T>>>> {
@@ -1737,8 +1725,7 @@ namespace sqlite_orm {
 
         template<class T>
         using is_constraint =
-            mpl::instantiate<mpl::disjunction<check_if<is_autoincrement>,
-                                              check_if<is_primary_key>,
+            mpl::instantiate<mpl::disjunction<check_if<is_primary_key>,
                                               check_if<is_foreign_key>,
                                               check_if_is_template<unique_t>,
                                               check_if_is_template<default_t>,
@@ -1786,14 +1773,6 @@ namespace sqlite_orm {
 
     inline internal::unique_t<> unique() {
         return {{}};
-    }
-
-    /**
-     *  AUTOINCREMENT keyword. [Deprecation notice] Use `primary_key().autoincrement()` instead of using this function.
-     *  This function will be removed in 1.9
-     */
-    [[deprecated("Use primary_key().autoincrement()` instead")]] inline internal::autoincrement_t autoincrement() {
-        return {};
     }
 
     template<class... Cs>
@@ -6764,20 +6743,6 @@ namespace sqlite_orm {
         template<class T>
         using is_group_by = polyfill::disjunction<polyfill::is_specialization_of<T, group_by_t>,
                                                   polyfill::is_specialization_of<T, group_by_with_having>>;
-
-        /**
-         *  HAVING holder.
-         *  T is having argument type.
-         */
-        template<class T>
-        struct having_t {
-            using expression_type = T;
-
-            expression_type expression;
-        };
-
-        template<class T>
-        using is_having = polyfill::is_specialization_of<T, having_t>;
     }
 
     /**
@@ -6787,17 +6752,6 @@ namespace sqlite_orm {
     template<class... Args>
     internal::group_by_t<Args...> group_by(Args&&... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
-    }
-
-    /**
-     *  [Deprecation notice]: this function is deprecated and will be removed in v1.9. Please use `group_by(...).having(...)` instead.
-     *
-     *  HAVING(expression).
-     *  Example: storage.get_all<Employee>(group_by(&Employee::name), having(greater_than(count(&Employee::name), 2)));
-     */
-    template<class T>
-    [[deprecated("Use group_by(...).having(...) instead")]] internal::having_t<T> having(T expression) {
-        return {std::move(expression)};
     }
 }
 
@@ -12657,16 +12611,6 @@ namespace sqlite_orm {
             }
         };
 
-        template<class T>
-        struct ast_iterator<having_t<T>, void> {
-            using node_type = having_t<T>;
-
-            template<class L>
-            void operator()(const node_type& node, L& lambda) const {
-                iterate_ast(node.expression, lambda);
-            }
-        };
-
         template<class T, class E>
         struct ast_iterator<cast_t<T, E>, void> {
             using node_type = cast_t<T, E>;
@@ -13459,34 +13403,9 @@ namespace sqlite_orm {
             const bool& isNotNull = get<2>(tpl);
             auto& context = get<3>(tpl);
 
-            using constraints_type = constraints_type_t<column_constraints<Op...>>;
-            constexpr size_t constraintsCount = std::tuple_size<constraints_type>::value;
-            if(constraintsCount) {
-                std::vector<std::string> constraintsStrings;
-                constraintsStrings.reserve(constraintsCount);
-                int primaryKeyIndex = -1;
-                int autoincrementIndex = -1;
-                int tupleIndex = 0;
-                iterate_tuple(column.constraints,
-                              [&constraintsStrings, &primaryKeyIndex, &autoincrementIndex, &tupleIndex, &context](
-                                  auto& constraint) {
-                                  using constraint_type = std::decay_t<decltype(constraint)>;
-                                  constraintsStrings.push_back(serialize(constraint, context));
-                                  if(is_primary_key_v<constraint_type>) {
-                                      primaryKeyIndex = tupleIndex;
-                                  } else if(is_autoincrement_v<constraint_type>) {
-                                      autoincrementIndex = tupleIndex;
-                                  }
-                                  ++tupleIndex;
-                              });
-                if(primaryKeyIndex != -1 && autoincrementIndex != -1 && autoincrementIndex < primaryKeyIndex) {
-                    iter_swap(constraintsStrings.begin() + primaryKeyIndex,
-                              constraintsStrings.begin() + autoincrementIndex);
-                }
-                for(auto& str: constraintsStrings) {
-                    ss << str << ' ';
-                }
-            }
+            iterate_tuple(column.constraints, [&ss, &context](auto& constraint) {
+                ss << serialize(constraint, context) << ' ';
+            });
             if(isNotNull) {
                 ss << "NOT NULL ";
             }
@@ -16116,16 +16035,6 @@ namespace sqlite_orm {
         };
 
         template<>
-        struct statement_serializer<autoincrement_t, void> {
-            using statement_type = autoincrement_t;
-
-            template<class Ctx>
-            std::string operator()(const statement_type&, const Ctx&) const {
-                return "AUTOINCREMENT";
-            }
-        };
-
-        template<>
         struct statement_serializer<conflict_clause_t, void> {
             using statement_type = conflict_clause_t;
 
@@ -17239,20 +17148,6 @@ namespace sqlite_orm {
                 auto newContext = context;
                 newContext.skip_table_name = false;
                 ss << "GROUP BY " << streaming_expressions_tuple(statement.args, newContext);
-                return ss.str();
-            }
-        };
-
-        template<class T>
-        struct statement_serializer<having_t<T>, void> {
-            using statement_type = having_t<T>;
-
-            template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
-                std::stringstream ss;
-                auto newContext = context;
-                newContext.skip_table_name = false;
-                ss << "HAVING " << serialize(statement.expression, newContext);
                 return ss.str();
             }
         };
@@ -19014,9 +18909,6 @@ namespace sqlite_orm {
         struct node_tuple<remove_all_t<T, Args...>, void> {
             using type = tuple_cat_t<node_tuple_t<Args>...>;
         };
-
-        template<class T>
-        struct node_tuple<having_t<T>, void> : node_tuple<T> {};
 
         template<class T, class E>
         struct node_tuple<cast_t<T, E>, void> : node_tuple<E> {};
