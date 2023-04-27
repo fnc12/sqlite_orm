@@ -8,9 +8,9 @@ TEST_CASE("statement_serializer comparison operators") {
     internal::serializer_context<internal::db_objects_tuple<>> context{storage};
     std::string value;
     std::string expected;
-    SECTION("lesser_than") {
+    SECTION("less_than") {
         SECTION("func") {
-            value = serialize(lesser_than(4, 5), context);
+            value = serialize(less_than(4, 5), context);
         }
         SECTION("short func") {
             value = serialize(lt(4, 5), context);
@@ -20,9 +20,9 @@ TEST_CASE("statement_serializer comparison operators") {
         }
         expected = "(4 < 5)";
     }
-    SECTION("lesser_or_equal") {
+    SECTION("less_or_equal") {
         SECTION("func") {
-            value = serialize(lesser_or_equal(10, 15), context);
+            value = serialize(less_or_equal(10, 15), context);
         }
         SECTION("short func") {
             value = serialize(le(10, 15), context);

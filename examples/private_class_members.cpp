@@ -78,7 +78,7 @@ int main(int, char**) {
     auto idsOnly = storage.select(&Player::getId);  //  or storage.select(&Player::setId);
     cout << "idsOnly count = " << idsOnly.size() << endl;
 
-    auto somePlayers = storage.get_all<Player>(where(lesser_than(length(&Player::getName), 5)));
+    auto somePlayers = storage.get_all<Player>(where(less_than(length(&Player::getName), 5)));
     cout << "players with length(name) < 5 = " << somePlayers.size() << endl;
     assert(somePlayers.size() == 1);
     for(auto& player: somePlayers) {

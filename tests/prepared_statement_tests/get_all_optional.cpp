@@ -54,7 +54,7 @@ TEST_CASE("Prepared get all optional") {
         }
     }
     {  //  by val
-        auto statement = storage.prepare(get_all_optional<User>(where(lesser_than(&User::id, 3))));
+        auto statement = storage.prepare(get_all_optional<User>(where(less_than(&User::id, 3))));
         using Statement = decltype(statement);
         using Expression = Statement::expression_type;
         using NodeTuple = internal::node_tuple<Expression>::type;
@@ -94,7 +94,7 @@ TEST_CASE("Prepared get all optional") {
     }
     {  //  by ref
         auto id = 3;
-        auto statement = storage.prepare(get_all_optional<User>(where(lesser_than(&User::id, std::ref(id)))));
+        auto statement = storage.prepare(get_all_optional<User>(where(less_than(&User::id, std::ref(id)))));
         using Statement = decltype(statement);
         using Expression = Statement::expression_type;
         using NodeTuple = internal::node_tuple<Expression>::type;

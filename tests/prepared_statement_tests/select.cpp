@@ -123,7 +123,7 @@ TEST_CASE("Prepared select") {
     SECTION("three columns, aggregate func and where") {
         SECTION("by val") {
             auto statement =
-                storage.prepare(select(columns(5.0, &User::id, count(&User::name)), where(lesser_than(&User::id, 10))));
+                storage.prepare(select(columns(5.0, &User::id, count(&User::name)), where(less_than(&User::id, 10))));
             auto str = storage.dump(statement);
             REQUIRE(get<0>(statement) == 5.0);
             REQUIRE(get<1>(statement) == 10);
@@ -139,7 +139,7 @@ TEST_CASE("Prepared select") {
             auto first = 5.0;
             auto id = 10;
             auto statement = storage.prepare(select(columns(std::ref(first), &User::id, count(&User::name)),
-                                                    where(lesser_than(&User::id, std::ref(id)))));
+                                                    where(less_than(&User::id, std::ref(id)))));
             auto str = storage.dump(statement);
             REQUIRE(get<0>(statement) == 5.0);
             REQUIRE(&get<0>(statement) == &first);

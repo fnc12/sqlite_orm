@@ -213,9 +213,6 @@ namespace sqlite_orm {
             using type = tuple_cat_t<node_tuple_t<Args>...>;
         };
 
-        template<class T>
-        struct node_tuple<having_t<T>, void> : node_tuple<T> {};
-
         template<class T, class E>
         struct node_tuple<cast_t<T, E>, void> : node_tuple<E> {};
 

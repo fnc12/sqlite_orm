@@ -85,7 +85,6 @@ add_executable(unit_tests
     statement_serializer_tests/column_constraints/generated.cpp
     statement_serializer_tests/column_constraints/default.cpp
     statement_serializer_tests/column_constraints/primary_key.cpp
-    statement_serializer_tests/column_constraints/autoincrement.cpp
     statement_serializer_tests/column_constraints/unique.cpp
     statement_serializer_tests/column_constraints/check.cpp
     statement_serializer_tests/bindables.cpp

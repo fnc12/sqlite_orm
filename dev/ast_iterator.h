@@ -372,16 +372,6 @@ namespace sqlite_orm {
             }
         };
 
-        template<class T>
-        struct ast_iterator<having_t<T>, void> {
-            using node_type = having_t<T>;
-
-            template<class L>
-            void operator()(const node_type& node, L& lambda) const {
-                iterate_ast(node.expression, lambda);
-            }
-        };
-
         template<class T, class E>
         struct ast_iterator<cast_t<T, E>, void> {
             using node_type = cast_t<T, E>;

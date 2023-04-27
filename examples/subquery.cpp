@@ -1388,10 +1388,10 @@ int main(int, char**) {
         auto rows =
             storage.select(columns(&Employee::firstName, &Employee::lastName, &Employee::id, &Employee::jobId),
                            from<Employee>(),
-                           where(lesser_or_equal(1,
-                                                 select(count<JobHistory>(),
-                                                        from<JobHistory>(),
-                                                        where(is_equal(&Employee::id, &JobHistory::employeeId))))));
+                           where(less_or_equal(1,
+                                               select(count<JobHistory>(),
+                                                      from<JobHistory>(),
+                                                      where(is_equal(&Employee::id, &JobHistory::employeeId))))));
         cout << "first_name  last_name   employee_id  job_id" << endl;
         cout << "----------  ----------  -----------  ----------" << endl;
         for(auto& row: rows) {
