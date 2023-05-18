@@ -7956,7 +7956,7 @@ namespace sqlite_orm {
             //
             // Another way of detection would be the constrained algorithms feature macro __cpp_lib_ranges
 #if(__cplusplus >= 202002L) &&                                                                                         \
-    ((!_LIBCPP_VERSION || _LIBCPP_VERSION >= 13) && (!_GLIBCXX_RELEASE || _GLIBCXX_RELEASE >= 10))
+    ((!_LIBCPP_VERSION || _LIBCPP_VERSION >= 13000) && (!_GLIBCXX_RELEASE || _GLIBCXX_RELEASE >= 10))
             using std::identity;
 #else
             struct identity {
