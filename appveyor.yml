@@ -107,12 +107,12 @@ for:
   install:
     - |-
       cd C:\Tools\vcpkg
-      git fetch --tags && git checkout 2023.02.24
+      git fetch --tags && git checkout 2023.04.15
       cd %APPVEYOR_BUILD_FOLDER%
       C:\Tools\vcpkg\bootstrap-vcpkg.bat -disableMetrics
       C:\Tools\vcpkg\vcpkg integrate install
       set VCPKG_DEFAULT_TRIPLET=%platform%-windows
-      vcpkg install sqlite3[core,math,json1]
+      vcpkg install sqlite3[core,dbstat,math,json1]
       rem The Visual Studio 2017 build worker image comes with CMake 3.16 only, and sqlite_orm will build the Catch2 dependency from source
       if not "%appveyor_build_worker_image%"=="Visual Studio 2017" (vcpkg install catch2)
   before_build:
@@ -140,11 +140,11 @@ for:
   install:
     - |-
       pushd $HOME/vcpkg
-      git fetch --tags && git checkout 2023.02.24
+      git fetch --tags && git checkout 2023.04.15
       popd
       $HOME/vcpkg/bootstrap-vcpkg.sh -disableMetrics
       $HOME/vcpkg/vcpkg integrate install --overlay-triplets=vcpkg/triplets
-      vcpkg install sqlite3[core,math,json1] catch2 --overlay-triplets=vcpkg/triplets
+      vcpkg install sqlite3[core,dbstat,math,json1] catch2 --overlay-triplets=vcpkg/triplets
   before_build:
     - |-
       mkdir compile
@@ -168,10 +168,10 @@ for:
   # using custom vcpkg triplets for building and linking dynamic dependent libraries
   install:
     - |-
-      git clone --depth 1 --branch 2023.02.24 https://github.com/microsoft/vcpkg.git $HOME/vcpkg
+      git clone --depth 1 --branch 2023.04.15 https://github.com/microsoft/vcpkg.git $HOME/vcpkg
       $HOME/vcpkg/bootstrap-vcpkg.sh -disableMetrics
       $HOME/vcpkg/vcpkg integrate install --overlay-triplets=vcpkg/triplets
-      vcpkg install sqlite3[core,math,json1] catch2 --overlay-triplets=vcpkg/triplets
+      vcpkg install sqlite3[core,dbstat,math,json1] catch2 --overlay-triplets=vcpkg/triplets
   before_build:
     - |-
       mkdir compile
