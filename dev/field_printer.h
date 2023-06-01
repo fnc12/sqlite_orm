@@ -30,8 +30,14 @@ namespace sqlite_orm {
         SQLITE_ORM_INLINE_VAR constexpr bool is_printable_v<T, polyfill::void_t<decltype(field_printer<T>{})>> = true
             // Also see implementation note for `is_bindable_v`
             ;
+
+#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
         template<class T>
         using is_printable = polyfill::bool_constant<is_printable_v<T>>;
+#else
+        template<class T>
+        struct is_printable : polyfill::bool_constant<is_printable_v<T>> {};
+#endif
     }
 
     template<class T>
