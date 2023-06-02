@@ -39,9 +39,13 @@ namespace sqlite_orm {
             // The strangest thing is that this is mutually exclusive with `is_printable_v`.
             ;
 
+#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
         template<class T>
         using is_bindable = polyfill::bool_constant<is_bindable_v<T>>;
-
+#else
+        template<class T>
+        struct is_bindable : polyfill::bool_constant<is_bindable_v<T>> {};
+#endif
     }
 
     /**

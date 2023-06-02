@@ -37,7 +37,7 @@ namespace sqlite_orm {
              *  Determines whether a class template has a nested metafunction `fn`.
              * 
              *  Implementation note: the technique of specialiazing on the inline variable must come first because
-             *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION].
+             *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
              */
             template<class T, class SFINAE = void>
             SQLITE_ORM_INLINE_VAR constexpr bool is_metafunction_class_v = false;
@@ -46,8 +46,13 @@ namespace sqlite_orm {
                 is_metafunction_class_v<FnCls, polyfill::void_t<indirectly_test_metafunction<FnCls::template fn>>> =
                     true;
 
+#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
+            template<class T>
+            using is_metafunction_class = polyfill::bool_constant<is_metafunction_class_v<T>>;
+#else
             template<class T>
             struct is_metafunction_class : polyfill::bool_constant<is_metafunction_class_v<T>> {};
+#endif
 
             /*
              *  Invoke metafunction.
@@ -55,7 +60,13 @@ namespace sqlite_orm {
             template<template<class...> class Fn, class... Args>
             using invoke_fn_t = typename Fn<Args...>::type;
 
-#ifdef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
+            /*
+             *  Invoke metafunction operation.
+             */
+            template<template<class...> class Op, class... Args>
+            using invoke_op_t = Op<Args...>;
+#else
             template<template<class...> class Op, class... Args>
             struct wrap_op {
                 using type = Op<Args...>;
@@ -69,12 +80,6 @@ namespace sqlite_orm {
              */
             template<template<class...> class Op, class... Args>
             using invoke_op_t = typename wrap_op<Op, Args...>::type;
-#else
-            /*
-             *  Invoke metafunction operation.
-             */
-            template<template<class...> class Op, class... Args>
-            using invoke_op_t = Op<Args...>;
 #endif
 
             /*
@@ -229,7 +234,7 @@ namespace sqlite_orm {
                 struct fn : polyfill::disjunction<typename TraitFnCls::template fn<Args...>...> {};
             };
 
-#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
             /*
              *  Metafunction equivalent to std::conjunction.
              */
