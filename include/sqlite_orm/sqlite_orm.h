@@ -142,6 +142,18 @@ using std::nullptr_t;
 #define SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
 #endif
 
+// These compilers are known to have problems with alias templates in SFINAE contexts:
+// clang 3.5
+// gcc 8.3
+// msvc 15.9
+// Type replacement may fail if an alias template has dependent expression or decltype in it.
+// In these cases we have to use helper structures to break down the type alias.
+// Note that the detection of specific compilers is so complicated because some compilers emulate other compilers,
+// so we simply exclude all compilers that do not support C++20, even though this test is actually inaccurate.
+#if(defined(_MSC_VER) && (_MSC_VER < 1920)) || (!defined(_MSC_VER) && (__cplusplus < 202002L))
+#define SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
+#endif
+
 // overwrite SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
 #if(__cpp_nontype_template_args < 201911L) &&                                                                          \
     (defined(__clang__) && (__clang_major__ >= 12) && (__cplusplus >= 202002L))
@@ -758,7 +770,7 @@ namespace sqlite_orm {
              *  Determines whether a class template has a nested metafunction `fn`.
              * 
              *  Implementation note: the technique of specialiazing on the inline variable must come first because
-             *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION].
+             *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
              */
             template<class T, class SFINAE = void>
             SQLITE_ORM_INLINE_VAR constexpr bool is_metafunction_class_v = false;
@@ -767,8 +779,13 @@ namespace sqlite_orm {
                 is_metafunction_class_v<FnCls, polyfill::void_t<indirectly_test_metafunction<FnCls::template fn>>> =
                     true;
 
+#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
+            template<class T>
+            using is_metafunction_class = polyfill::bool_constant<is_metafunction_class_v<T>>;
+#else
             template<class T>
             struct is_metafunction_class : polyfill::bool_constant<is_metafunction_class_v<T>> {};
+#endif
 
             /*
              *  Invoke metafunction.
@@ -776,7 +793,13 @@ namespace sqlite_orm {
             template<template<class...> class Fn, class... Args>
             using invoke_fn_t = typename Fn<Args...>::type;
 
-#ifdef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
+            /*
+             *  Invoke metafunction operation.
+             */
+            template<template<class...> class Op, class... Args>
+            using invoke_op_t = Op<Args...>;
+#else
             template<template<class...> class Op, class... Args>
             struct wrap_op {
                 using type = Op<Args...>;
@@ -790,12 +813,6 @@ namespace sqlite_orm {
              */
             template<template<class...> class Op, class... Args>
             using invoke_op_t = typename wrap_op<Op, Args...>::type;
-#else
-            /*
-             *  Invoke metafunction operation.
-             */
-            template<template<class...> class Op, class... Args>
-            using invoke_op_t = Op<Args...>;
 #endif
 
             /*
@@ -950,7 +967,7 @@ namespace sqlite_orm {
                 struct fn : polyfill::disjunction<typename TraitFnCls::template fn<Args...>...> {};
             };
 
-#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
             /*
              *  Metafunction equivalent to std::conjunction.
              */
@@ -2482,8 +2499,14 @@ namespace sqlite_orm {
         SQLITE_ORM_INLINE_VAR constexpr bool is_printable_v<T, polyfill::void_t<decltype(field_printer<T>{})>> = true
             // Also see implementation note for `is_bindable_v`
             ;
+
+#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
         template<class T>
         using is_printable = polyfill::bool_constant<is_printable_v<T>>;
+#else
+        template<class T>
+        struct is_printable : polyfill::bool_constant<is_printable_v<T>> {};
+#endif
     }
 
     template<class T>
@@ -8184,9 +8207,13 @@ namespace sqlite_orm {
             // The strangest thing is that this is mutually exclusive with `is_printable_v`.
             ;
 
+#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
         template<class T>
         using is_bindable = polyfill::bool_constant<is_bindable_v<T>>;
-
+#else
+        template<class T>
+        struct is_bindable : polyfill::bool_constant<is_bindable_v<T>> {};
+#endif
     }
 
     /**
