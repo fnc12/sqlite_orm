@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+
+    <!-- Adapter Specific sections -->
+    <Catch2Adapter>
+        <CombinedTimeout>60000</CombinedTimeout><!-- Milliseconds; Introduced in v1.6.0 -->
+        <DebugBreak>on</DebugBreak>
+        <DiscoverCommandLine>--verbosity high --list-tests --reporter xml *</DiscoverCommandLine>
+        <DiscoverTimeout>500</DiscoverTimeout><!-- Milliseconds -->
+        <Environment><!-- Introduced in v1.7.0 -->
+          <MyCustomEnvSetting>Welcome</MyCustomEnvSetting>
+          <MyOtherCustomEnvSetting value="debug&lt;0&gt;"/>
+        </Environment>
+        <ExecutionMode>Combine</ExecutionMode><!-- Introduced in v1.6.0 -->
+        <ExecutionModeForceSingleTagRgx>Slow</ExecutionModeForceSingleTagRgx><!-- Introduced in v1.6.0 -->
+        <IncludeHidden>true</IncludeHidden>
+        <Logging>normal</Logging>
+        <MessageFormat>StatsOnly</MessageFormat>
+        <StackTraceFormat>ShortInfo</StackTraceFormat>
+        <StackTraceMaxLength>60</StackTraceMaxLength><!-- Introduced in v1.6.0 -->
+        <StackTracePointReplacement>,</StackTracePointReplacement>
+        <TestCaseTimeout>20000</TestCaseTimeout><!-- Milliseconds -->
+        <WorkingDirectory>..\TestData</WorkingDirectory>
+        <WorkingDirectoryRoot>Executable</WorkingDirectoryRoot>
+        <FilenameFilter>.*</FilenameFilter><!-- Regex filter -->
+    </Catch2Adapter>
+
+</RunSettings>
