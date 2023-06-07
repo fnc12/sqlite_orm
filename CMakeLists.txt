@@ -75,7 +75,7 @@ if (MSVC)
         add_compile_options(/bigobj)
     endif()
     # For Visual Studio users
-    file(COPY_FILE .runsettings ${PROJECT_BINARY_DIR}/.runsettings )
+    file(COPY_FILE ${PROJECT_SOURCE_DIR}/CMake/.runsettings ${PROJECT_BINARY_DIR}/.runsettings )
 endif()
 
 ucm_print_flags()
