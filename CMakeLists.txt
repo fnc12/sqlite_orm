@@ -74,6 +74,8 @@ if (MSVC)
         message(STATUS "Add /bigobj flag to compiler")
         add_compile_options(/bigobj)
     endif()
+    # For Visual Studio users
+    file(COPY_FILE .runsettings ${PROJECT_BINARY_DIR}/.runsettings )
 endif()
 
 ucm_print_flags()
