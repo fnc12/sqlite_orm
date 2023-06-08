@@ -1,6 +1,6 @@
 # note: the minimum required version needs to go hand in hand with appveyor builds,
 # which is CMake 3.16 for the Visual Studio 2017 build worker image
-cmake_minimum_required (VERSION 3.25.2)
+cmake_minimum_required (VERSION 3.16)
 
 # PACKAGE_VERSION is used by cpack scripts currently
 # Both sqlite_orm_VERSION and PACKAGE_VERSION should be the same for now
@@ -75,7 +75,9 @@ if (MSVC)
         add_compile_options(/bigobj)
     endif()
     # For Visual Studio users
-    file(COPY_FILE ${PROJECT_SOURCE_DIR}/CMake/.runsettings ${PROJECT_BINARY_DIR}/.runsettings )
+    if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.26)
+        file(COPY_FILE ${PROJECT_SOURCE_DIR}/CMake/.runsettings ${PROJECT_BINARY_DIR}/.runsettings )
+    endif()
 endif()
 
 ucm_print_flags()
