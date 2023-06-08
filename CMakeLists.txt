@@ -1,6 +1,6 @@
 # note: the minimum required version needs to go hand in hand with appveyor builds,
 # which is CMake 3.16 for the Visual Studio 2017 build worker image
-cmake_minimum_required (VERSION 3.26.3)
+cmake_minimum_required (VERSION 3.25.2)
 
 # PACKAGE_VERSION is used by cpack scripts currently
 # Both sqlite_orm_VERSION and PACKAGE_VERSION should be the same for now
