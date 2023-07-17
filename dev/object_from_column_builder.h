@@ -20,7 +20,7 @@ namespace sqlite_orm {
         };
 
         /**
-         * This is a cute lambda replacement which is used in several places.
+         *  Function object for building an object from a result row.
          */
         template<class O>
         struct object_from_column_builder : object_from_column_builder_base {
@@ -33,7 +33,11 @@ namespace sqlite_orm {
 
             template<class G, class S>
             void operator()(const column_field<G, S>& column) {
-                auto value = row_extractor<member_field_type_t<G>>().extract(this->stmt, this->index++);
+#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
+                static_assert(orm_row_value_extractable<member_field_type_t<G>>);
+#endif
+                const row_extractor<member_field_type_t<G>> rowExtractor{};
+                auto value = rowExtractor.extract(this->stmt, this->index++);
                 static_if<std::is_member_object_pointer<G>::value>(
                     [&value, &object = this->object](const auto& column) {
                         object.*column.member_pointer = std::move(value);
