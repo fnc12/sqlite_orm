@@ -1,4 +1,9 @@
 #include <sqlite_orm/sqlite_orm.h>
+#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
+#define ENABLE_THIS_UT
+#endif
+
+#ifdef ENABLE_THIS_UT
 #include <catch2/catch_all.hpp>
 #include <memory>  //  std::unique_ptr, std::shared_ptr
 #include <string>  //  std::string
@@ -100,3 +105,4 @@ TEST_CASE("is_extractable") {
     check_not_extractable<User>();
     check_not_extractable<std::unique_ptr<User>>();
 }
+#endif
