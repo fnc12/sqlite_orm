@@ -83,6 +83,13 @@ TEST_CASE("is_extractable") {
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 #ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
     check_not_extractable<static_pointer_binding<std::nullptr_t, carray_pvt>>();
+    // pointer arguments are special: they can only be passed to and from functions, but casting is prohibited
+    {
+        using int64_pointer_arg = carray_pointer_arg<int64>;
+        STATIC_CHECK_FALSE(orm_column_text_extractable<int64_pointer_arg>);
+        STATIC_CHECK_FALSE(orm_row_value_extractable<int64_pointer_arg>);
+        STATIC_CHECK(orm_boxed_value_extractable<int64_pointer_arg>);
+    }
 #endif
 
     check_extractable<custom_enum>();

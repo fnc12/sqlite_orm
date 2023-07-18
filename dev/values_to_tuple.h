@@ -39,10 +39,7 @@ namespace sqlite_orm {
 #endif
             template<class T>
             void extract(sqlite3_value* value, T& t) const {
-#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
-                static_assert(orm_boxed_value_extractable<T>);
-#endif
-                const row_extractor<T> rowExtractor{};
+                const auto rowExtractor = boxed_value_extractor<T>();
                 t = rowExtractor.extract(value);
             }
         };

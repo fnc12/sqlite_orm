@@ -33,10 +33,7 @@ namespace sqlite_orm {
 
             template<class G, class S>
             void operator()(const column_field<G, S>& column) {
-#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
-                static_assert(orm_row_value_extractable<member_field_type_t<G>>);
-#endif
-                const row_extractor<member_field_type_t<G>> rowExtractor{};
+                const auto rowExtractor = row_value_extractor<member_field_type_t<G>>();
                 auto value = rowExtractor.extract(this->stmt, this->index++);
                 static_if<std::is_member_object_pointer<G>::value>(
                     [&value, &object = this->object](const auto& column) {

@@ -1359,6 +1359,25 @@ namespace sqlite_orm {
 
             template<class T,
                      class... Args,
+                     class R = column_result_of_t<db_objects_type, T>,
+                     satisfies_not<is_mapped, db_objects_type, R> = true>
+            std::vector<R> execute(const prepared_statement_t<select_t<T, Args...>>& statement) {
+                sqlite3_stmt* stmt = reset_stmt(statement.stmt);
+
+                iterate_ast(statement.expression, conditional_binder{stmt});
+
+                std::vector<R> res;
+                perform_steps(stmt, [rowExtractor = row_value_extractor<R>(), &res](sqlite3_stmt* stmt) {
+                    // note: we always pass in the first index, even though a row extractor
+                    // for a tuple ignores it and does its custom iteration of the result row
+                    res.push_back(rowExtractor.extract(stmt, 0));
+                });
+                res.shrink_to_fit();
+                return res;
+            }
+
+            template<class T,
+                     class... Args,
                      class O = column_result_of_t<db_objects_type, T>,
                      satisfies<is_mapped, db_objects_type, O> = true>
             std::vector<O> execute(const prepared_statement_t<select_t<T, Args...>>& statement) {
@@ -1372,28 +1391,6 @@ namespace sqlite_orm {
                     object_from_column_builder<O> builder{obj, stmt};
                     table.for_each_column(builder);
                     res.push_back(std::move(obj));
-                });
-                res.shrink_to_fit();
-                return res;
-            }
-
-            template<class T,
-                     class... Args,
-                     class R = column_result_of_t<db_objects_type, T>,
-                     satisfies_not<is_mapped, db_objects_type, R> = true>
-            std::vector<R> execute(const prepared_statement_t<select_t<T, Args...>>& statement) {
-                sqlite3_stmt* stmt = reset_stmt(statement.stmt);
-
-                iterate_ast(statement.expression, conditional_binder{stmt});
-
-                std::vector<R> res;
-                perform_steps(stmt, [rowExtractor = row_extractor<R>{}, &res](sqlite3_stmt* stmt) {
-#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
-                    static_assert(orm_row_value_extractable<R>);
-#endif
-                    // note: we always pass in the first index, even though a row extractor
-                    // for a tuple ignores it and does its custom iteration of the result row
-                    res.push_back(rowExtractor.extract(stmt, 0));
                 });
                 res.shrink_to_fit();
                 return res;

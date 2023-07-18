@@ -28,7 +28,7 @@ namespace sqlite_orm {
         inline int getPragmaCallback<std::vector<std::string>>(void* data, int argc, char** argv, char**) {
             auto& res = *(std::vector<std::string>*)data;
             res.reserve(argc);
-            const row_extractor<std::string> rowExtractor{};
+            const auto rowExtractor = column_text_extractor<std::string>();
             for(int i = 0; i < argc; ++i) {
                 auto rowString = rowExtractor.extract(argv[i]);
                 res.push_back(std::move(rowString));

@@ -29,6 +29,13 @@ namespace sqlite_orm {
      *  
      *  sqlite_orm provides specializations for known C++ types, users may define their custom specialization
      *  of this helper.
+     *  
+     *  @note (internal): Since row extractors are used in certain contexts with only one purpose at a time
+     *                    (e.g., converting a row result set but not function values or column text),
+     *                    there are factory functions that perform conceptual checking that should be used
+     *                    instead of directly creating row extractors.
+     *  
+     *  
      */
     template<class V, typename Enable = void>
     struct row_extractor {
@@ -43,8 +50,8 @@ namespace sqlite_orm {
         V extract(sqlite3_stmt* stmt, int columnIndex) const = delete;
 
         /*
-         *  Called before invocation of a user-defined scalar or aggregate functions,
-         *  in order to unpack a boxed "dynamic" function value into a tuple of function arguments.
+         *  Called before invocation of user-defined scalar or aggregate functions,
+         *  in order to unbox dynamically typed SQL function values into a tuple of C++ function arguments.
          */
         V extract(sqlite3_value* value) const = delete;
     };
@@ -67,14 +74,46 @@ namespace sqlite_orm {
                                           };
 #endif
 
+    namespace internal {
+        /*  
+         *  Make a row extractor to be used for casting SQL column text to a C++ typed value.
+         */
+        template<class R>
+#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
+            requires(orm_column_text_extractable<R>)
+#endif
+        row_extractor<R> column_text_extractor() {
+            return {};
+        }
+
+        /*  
+         *  Make a row extractor to be used for converting a value from a SQL result row set to a C++ typed value.
+         */
+        template<class R>
+#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
+            requires(orm_row_value_extractable<R>)
+#endif
+        row_extractor<R> row_value_extractor() {
+            return {};
+        }
+
+        /*  
+         *  Make a row extractor to be used for unboxing a dynamically typed SQL value to a C++ typed value.
+         */
+        template<class R>
+#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
+            requires(orm_boxed_value_extractable<R>)
+#endif
+        row_extractor<R> boxed_value_extractor() {
+            return {};
+        }
+    }
+
     template<class R>
     int extract_single_value(void* data, int argc, char** argv, char**) {
         auto& res = *(R*)data;
         if(argc) {
-#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
-            static_assert(orm_column_text_extractable<R>);
-#endif
-            const row_extractor<R> rowExtractor{};
+            const auto rowExtractor = internal::column_text_extractor<R>();
             res = rowExtractor.extract(argv[0]);
         }
         return 0;
@@ -89,6 +128,10 @@ namespace sqlite_orm {
     template<class P, class T>
     struct row_extractor<pointer_arg<P, T>, void> {
         using V = pointer_arg<P, T>;
+
+        V extract(const char* columnText) const = delete;
+
+        V extract(sqlite3_stmt* stmt, int columnIndex) const = delete;
 
         V extract(sqlite3_value* value) const {
             return {(P*)sqlite3_value_pointer(value, T::value)};

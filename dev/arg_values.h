@@ -16,10 +16,7 @@ namespace sqlite_orm {
 
         template<class T>
         T get() const {
-#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
-            static_assert(orm_boxed_value_extractable<T>);
-#endif
-            const row_extractor<T> rowExtractor{};
+            const auto rowExtractor = internal::boxed_value_extractor<T>();
             return rowExtractor.extract(this->value);
         }
 
