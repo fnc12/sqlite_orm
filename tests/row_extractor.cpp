@@ -39,7 +39,7 @@ template<>
 struct sqlite_orm::type_printer<Gender> : public text_printer {};
 
 template<>
-struct statement_binder<Gender> {
+struct sqlite_orm::statement_binder<Gender> {
 
     int bind(sqlite3_stmt* stmt, int index, const Gender& value) {
         return statement_binder<std::string>().bind(stmt, index, GenderToString(value));
