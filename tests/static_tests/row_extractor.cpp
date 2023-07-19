@@ -1,5 +1,5 @@
 #include <sqlite_orm/sqlite_orm.h>
-#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #define ENABLE_THIS_UT
 #endif
 
