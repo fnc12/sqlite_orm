@@ -31,7 +31,7 @@ static void check_not_extractable() {
 }
 
 namespace {
-    enum class custom_enum {};
+    enum class custom_enum { custom };
 
     template<class Elem>
     class StringVeneer : public std::basic_string<Elem> {};
@@ -43,9 +43,15 @@ namespace {
 
 template<>
 struct sqlite_orm::row_extractor<custom_enum> {
-    custom_enum extract(const char* /*columnText*/) const {}
-    custom_enum extract(sqlite3_stmt*, int /*columnIndex*/) const {}
-    custom_enum extract(sqlite3_value*) const {}
+    custom_enum extract(const char* /*columnText*/) const {
+        return custom_enum::custom;
+    }
+    custom_enum extract(sqlite3_stmt*, int /*columnIndex*/) const {
+        return custom_enum::custom;
+    }
+    custom_enum extract(sqlite3_value*) const {
+        return custom_enum::custom;
+    }
 };
 
 TEST_CASE("is_extractable") {

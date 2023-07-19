@@ -14,6 +14,9 @@
 #include <algorithm>  //  std::copy
 #include <iterator>  //  std::back_inserter
 #include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#include <concepts>
+#endif
 
 #include "functional/cxx_universal.h"
 #include "arithmetic_tag.h"
@@ -56,7 +59,7 @@ namespace sqlite_orm {
         V extract(sqlite3_value* value) const = delete;
     };
 
-#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     template<typename T>
     concept orm_column_text_extractable = requires(const row_extractor<T>& extractor, const char* columnText) {
                                               { extractor.extract(columnText) } -> std::same_as<T>;
@@ -79,7 +82,7 @@ namespace sqlite_orm {
          *  Make a row extractor to be used for casting SQL column text to a C++ typed value.
          */
         template<class R>
-#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
             requires(orm_column_text_extractable<R>)
 #endif
         row_extractor<R> column_text_extractor() {
@@ -90,7 +93,7 @@ namespace sqlite_orm {
          *  Make a row extractor to be used for converting a value from a SQL result row set to a C++ typed value.
          */
         template<class R>
-#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
             requires(orm_row_value_extractable<R>)
 #endif
         row_extractor<R> row_value_extractor() {
@@ -101,7 +104,7 @@ namespace sqlite_orm {
          *  Make a row extractor to be used for unboxing a dynamically typed SQL value to a C++ typed value.
          */
         template<class R>
-#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
             requires(orm_boxed_value_extractable<R>)
 #endif
         row_extractor<R> boxed_value_extractor() {
@@ -270,7 +273,7 @@ namespace sqlite_orm {
         using unqualified_type = std::remove_cv_t<typename V::element_type>;
 
         V extract(const char* columnText) const
-#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
             requires(orm_column_text_extractable<unqualified_type>)
 #endif
         {
@@ -283,7 +286,7 @@ namespace sqlite_orm {
         }
 
         V extract(sqlite3_stmt* stmt, int columnIndex) const
-#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
             requires(orm_row_value_extractable<unqualified_type>)
 #endif
         {
@@ -297,7 +300,7 @@ namespace sqlite_orm {
         }
 
         V extract(sqlite3_value* value) const
-#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
             requires(orm_boxed_value_extractable<unqualified_type>)
 #endif
         {
@@ -317,7 +320,7 @@ namespace sqlite_orm {
         using unqualified_type = std::remove_cv_t<typename V::value_type>;
 
         V extract(const char* columnText) const
-#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
             requires(orm_column_text_extractable<unqualified_type>)
 #endif
         {
@@ -330,7 +333,7 @@ namespace sqlite_orm {
         }
 
         V extract(sqlite3_stmt* stmt, int columnIndex) const
-#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
             requires(orm_row_value_extractable<unqualified_type>)
 #endif
         {
@@ -344,7 +347,7 @@ namespace sqlite_orm {
         }
 
         V extract(sqlite3_value* value) const
-#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
             requires(orm_boxed_value_extractable<unqualified_type>)
 #endif
         {
