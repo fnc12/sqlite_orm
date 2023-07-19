@@ -1,7 +1,7 @@
 #pragma once
 
 #include <type_traits>  // std::integral_constant
-#if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && SQLITE_ORM_HAS_INCLUDE(<concepts>)
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #include <concepts>
 #endif
 
@@ -45,7 +45,7 @@ namespace sqlite_orm {
                             };
 #endif
 
-#if __cpp_lib_concepts >= 201907L
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
         /**
          *  Yield a deleter's function pointer.
          */
@@ -95,7 +95,7 @@ namespace sqlite_orm {
         template<typename D>
         using yielded_fn_t = typename yield_fp_of<D>::type;
 
-#if __cpp_lib_concepts >= 201907L
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
         template<typename D>
         concept is_unusable_for_xdestroy = (!stateless_deleter<D> &&
                                             (yields_fp<D> && !std::convertible_to<yielded_fn_t<D>, xdestroy_fn_t>));
@@ -175,7 +175,7 @@ namespace sqlite_orm {
 
 namespace sqlite_orm {
 
-#if __cpp_lib_concepts >= 201907L
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     /**
      *  Prohibits using a yielded function pointer, which is not of type xdestroy_fn_t.
      *  
