@@ -139,7 +139,7 @@ namespace sqlite_orm {
     }
 
     /**
-     *  Column builder function. You should use it to create columns instead of constructor
+     *  Factory function for a column definition from a member object pointer of the object to be mapped.
      */
     template<class M, class... Op, internal::satisfies<std::is_member_object_pointer, M> = true>
     internal::column_t<M, internal::empty_setter, Op...>
@@ -148,11 +148,12 @@ namespace sqlite_orm {
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
         // as this will lead to UB with Clang on MinGW!
-        return {{std::move(name)}, {memberPointer, {}}, {{std::move(constraints)...}}};
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
+            return {std::move(name), memberPointer, {}, std::tuple<Op...>{std::move(constraints)...}});
     }
 
     /**
-     *  Column builder function with setter and getter. You should use it to create columns instead of constructor
+     *  Factory function for a column definition from "setter" and "getter" member function pointers of the object to be mapped.
      */
     template<class G,
              class S,
@@ -166,12 +167,12 @@ namespace sqlite_orm {
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
         // as this will lead to UB with Clang on MinGW!
-        return {{std::move(name)}, {getter, setter}, {{std::move(constraints)...}}};
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
+            return {std::move(name), getter, setter, std::tuple<Op...>{std::move(constraints)...}});
     }
 
     /**
-     *  Column builder function with getter and setter (reverse order). You should use it to create columns instead of
-     * constructor
+     *  Factory function for a column definition from "getter" and "setter" member function pointers of the object to be mapped.
      */
     template<class G,
              class S,
@@ -185,6 +186,7 @@ namespace sqlite_orm {
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
         // as this will lead to UB with Clang on MinGW!
-        return {{std::move(name)}, {getter, setter}, {{std::move(constraints)...}}};
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
+            return {std::move(name), getter, setter, std::tuple<Op...>{std::move(constraints)...}});
     }
 }
