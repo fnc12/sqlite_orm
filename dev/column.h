@@ -142,10 +142,13 @@ namespace sqlite_orm {
      *  Column builder function. You should use it to create columns instead of constructor
      */
     template<class M, class... Op, internal::satisfies<std::is_member_object_pointer, M> = true>
-    internal::column_t<M, internal::empty_setter, Op...> make_column(std::string name, M m, Op... constraints) {
+    internal::column_t<M, internal::empty_setter, Op...>
+    make_column(std::string name, M memberPointer, Op... constraints) {
         static_assert(polyfill::conjunction_v<internal::is_constraint<Op>...>, "Incorrect constraints pack");
 
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name), m, {}, {constraints...}});
+        // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
+        // as this will lead to UB with Clang on MinGW!
+        return {{std::move(name)}, {memberPointer, {}}, {{std::move(constraints)...}}};
     }
 
     /**
@@ -161,7 +164,9 @@ namespace sqlite_orm {
                       "Getter and setter must get and set same data type");
         static_assert(polyfill::conjunction_v<internal::is_constraint<Op>...>, "Incorrect constraints pack");
 
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name), getter, setter, {constraints...}});
+        // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
+        // as this will lead to UB with Clang on MinGW!
+        return {{std::move(name)}, {getter, setter}, {{std::move(constraints)...}}};
     }
 
     /**
@@ -178,6 +183,8 @@ namespace sqlite_orm {
                       "Getter and setter must get and set same data type");
         static_assert(polyfill::conjunction_v<internal::is_constraint<Op>...>, "Incorrect constraints pack");
 
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name), getter, setter, {constraints...}});
+        // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
+        // as this will lead to UB with Clang on MinGW!
+        return {{std::move(name)}, {getter, setter}, {{std::move(constraints)...}}};
     }
 }
