@@ -139,9 +139,6 @@ namespace sqlite_orm {
         }
 
         template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs> = true>
-        auto lookup_table(const DBOs& dbObjects);
-
-        template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs> = true>
         decltype(auto) lookup_table_name(const DBOs& dbObjects);
 
     }

@@ -15,6 +15,7 @@ add_executable(unit_tests
     static_tests/functional/tuple_transform.cpp
     static_tests/is_printable.cpp
     static_tests/is_bindable.cpp
+    static_tests/row_extractor.cpp
     static_tests/iterator_t.cpp
     static_tests/arithmetic_operators_result_type.cpp
     static_tests/node_tuple.cpp
@@ -135,6 +136,7 @@ add_executable(unit_tests
     ast_iterator_tests.cpp
     table_name_collector.cpp
     pointer_passing_interface.cpp
+    row_extractor.cpp
 )
 
 if(SQLITE_ORM_OMITS_CODECVT)

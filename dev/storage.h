@@ -23,7 +23,6 @@
 #include "tuple_helper/tuple_iteration.h"
 #include "type_traits.h"
 #include "alias.h"
-#include "row_extractor_builder.h"
 #include "error_code.h"
 #include "type_printer.h"
 #include "constraints.h"
@@ -1413,18 +1412,35 @@ namespace sqlite_orm {
                 perform_step(stmt);
             }
 
-            template<class R, class S>
+            template<class R, class S, satisfies_not<is_mapped, db_objects_type, R> = true>
             std::vector<R> _execute_select(const S& statement) {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
                 iterate_ast(statement.expression, conditional_binder{stmt});
 
                 std::vector<R> res;
-                perform_steps(stmt,
-                              [rowExtractor = make_row_extractor<R>(lookup_table<R>(this->db_objects)),
-                               &res](sqlite3_stmt* stmt) {
-                                  res.push_back(rowExtractor.extract(stmt, 0));
-                              });
+                perform_steps(stmt, [rowExtractor = row_value_extractor<R>(), &res](sqlite3_stmt* stmt) {
+                    // note: we always pass in the first index, even though a row extractor
+                    // for a tuple ignores it and does its custom iteration of the result row
+                    res.push_back(rowExtractor.extract(stmt, 0));
+                });
+                res.shrink_to_fit();
+                return res;
+            }
+
+            template<class O, class S, satisfies<is_mapped, db_objects_type, O> = true>
+            std::vector<O> _execute_select(const S& statement) {
+                sqlite3_stmt* stmt = reset_stmt(statement.stmt);
+
+                iterate_ast(statement.expression, conditional_binder{stmt});
+
+                std::vector<O> res;
+                perform_steps(stmt, [&table = this->get_table<O>(), &res](sqlite3_stmt* stmt) {
+                    O obj;
+                    object_from_column_builder<O> builder{obj, stmt};
+                    table.for_each_column(builder);
+                    res.push_back(std::move(obj));
+                });
                 res.shrink_to_fit();
                 return res;
             }
