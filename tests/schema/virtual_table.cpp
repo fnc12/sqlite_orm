@@ -63,5 +63,5 @@ TEST_CASE("virtual table") {
     ///    FROM posts
     ///    WHERE posts MATCH 'text'
     ///    ORDER BY rank;
-    auto orderedPosts = storage.get_all<Post>(where(match<Post>("fts5"), order_by(rank())));
+    auto orderedPosts = storage.get_all<Post>(where(match<Post>("fts5")), order_by(rank()));
 }

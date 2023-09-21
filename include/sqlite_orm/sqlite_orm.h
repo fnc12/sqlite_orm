@@ -15459,6 +15459,19 @@ namespace sqlite_orm {
 
 // #include "ast/match.h"
 
+// #include "ast/rank.h"
+
+
+namespace sqlite_orm {
+    namespace internal {
+    	struct rank_t {};
+	}
+
+	inline internal::rank_t rank() {
+		return {};
+	}
+}
+
 // #include "core_functions.h"
 
 // #include "constraints.h"
@@ -16006,12 +16019,22 @@ namespace sqlite_orm {
         };
 
         template<>
+        struct statement_serializer<rank_t, void> {
+            using statement_type = rank_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& /*statement*/, const Ctx&) const {
+                return "rank";
+            }
+        };
+
+        template<>
         struct statement_serializer<rowid_t, void> {
             using statement_type = rowid_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& s, const Ctx&) const {
-                return static_cast<std::string>(s);
+            std::string operator()(const statement_type& statement, const Ctx&) const {
+                return static_cast<std::string>(statement);
             }
         };
 
