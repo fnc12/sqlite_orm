@@ -45,11 +45,11 @@
 #include "prepared_statement.h"
 #include "expression_object_type.h"
 #include "statement_serializer.h"
-#include "triggers.h"
+#include "schema/triggers.h"
 #include "object_from_column_builder.h"
-#include "table.h"
+#include "schema/table.h"
 #include "column.h"
-#include "index.h"
+#include "schema/index.h"
 #include "util.h"
 #include "serializing_util.h"
 
@@ -913,6 +913,16 @@ namespace sqlite_orm {
                 return res;
             }
 
+            template<class M>
+            sync_schema_result sync_table(const virtual_table_t<M>& virtualTable, sqlite3* db, bool) {
+                auto res = sync_schema_result::already_in_sync;
+                using context_t = serializer_context<db_objects_type>;
+                context_t context{this->db_objects};
+                auto query = serialize(virtualTable, context);
+                perform_void_exec(db, query);
+                return res;
+            }
+
             template<class... Cols>
             sync_schema_result sync_table(const index_t<Cols...>& index, sqlite3* db, bool) {
                 auto res = sync_schema_result::already_in_sync;
@@ -928,7 +938,8 @@ namespace sqlite_orm {
                 auto res = sync_schema_result::already_in_sync;  // TODO Change accordingly
                 using context_t = serializer_context<db_objects_type>;
                 context_t context{this->db_objects};
-                perform_void_exec(db, serialize(trigger, context));
+                auto query = serialize(trigger, context);
+                perform_void_exec(db, query);
                 return res;
             }
 
@@ -1210,7 +1221,7 @@ namespace sqlite_orm {
                         mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                          mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
                         call_as_template_base<column_field>([&table, &bindValue, &object](auto& column) {
-                            if(!table.exists_in_composite_primary_key(column)) {
+                            if(!exists_in_composite_primary_key(table, column)) {
                                 bindValue(polyfill::invoke(column.member_pointer, object));
                             }
                         }));
@@ -1262,12 +1273,12 @@ namespace sqlite_orm {
                 auto& object = get_object(statement.expression);
                 table.template for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
                     call_as_template_base<column_field>([&table, &bindValue, &object](auto& column) {
-                        if(!table.exists_in_composite_primary_key(column)) {
+                        if(!exists_in_composite_primary_key(table, column)) {
                             bindValue(polyfill::invoke(column.member_pointer, object));
                         }
                     }));
                 table.for_each_column([&table, &bindValue, &object](auto& column) {
-                    if(column.template is<is_primary_key>() || table.exists_in_composite_primary_key(column)) {
+                    if(column.template is<is_primary_key>() || exists_in_composite_primary_key(table, column)) {
                         bindValue(polyfill::invoke(column.member_pointer, object));
                     }
                 });

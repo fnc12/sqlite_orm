@@ -5,7 +5,7 @@
 #endif
 
 #include "../column.h"
-#include "../table.h"
+#include "../schema/table.h"
 
 namespace sqlite_orm {
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB

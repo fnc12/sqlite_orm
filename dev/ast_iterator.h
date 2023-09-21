@@ -20,6 +20,7 @@
 #include "ast/group_by.h"
 #include "ast/exists.h"
 #include "ast/set.h"
+#include "ast/match.h"
 
 namespace sqlite_orm {
 
@@ -141,9 +142,19 @@ namespace sqlite_orm {
             using node_type = binary_operator<L, R, Ds...>;
 
             template<class C>
-            void operator()(const node_type& binaryOperator, C& lambda) const {
-                iterate_ast(binaryOperator.lhs, lambda);
-                iterate_ast(binaryOperator.rhs, lambda);
+            void operator()(const node_type& node, C& lambda) const {
+                iterate_ast(node.lhs, lambda);
+                iterate_ast(node.rhs, lambda);
+            }
+        };
+
+        template<class L, class R>
+        struct ast_iterator<is_equal_with_table_t<L, R>, void> {
+            using node_type = is_equal_with_table_t<L, R>;
+
+            template<class C>
+            void operator()(const node_type& node, C& lambda) const {
+                iterate_ast(node.rhs, lambda);
             }
         };
 
@@ -209,6 +220,16 @@ namespace sqlite_orm {
             void operator()(const node_type& c, L& lambda) const {
                 iterate_ast(c.left, lambda);
                 iterate_ast(c.right, lambda);
+            }
+        };
+
+        template<class T, class X>
+        struct ast_iterator<match_t<T, X>, void> {
+            using node_type = match_t<T, X>;
+
+            template<class L>
+            void operator()(const node_type& node, L& lambda) const {
+                iterate_ast(node.argument, lambda);
             }
         };
 

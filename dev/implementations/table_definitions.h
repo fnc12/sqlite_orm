@@ -10,7 +10,7 @@
 #include "../functional/cxx_universal.h"  //  ::size_t
 #include "../type_printer.h"
 #include "../column.h"
-#include "../table.h"
+#include "../schema/table.h"
 
 namespace sqlite_orm {
     namespace internal {

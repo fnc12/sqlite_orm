@@ -20,9 +20,9 @@
 #include "ast/where.h"
 #include "ast/into.h"
 #include "ast/group_by.h"
+#include "ast/match.h"
 
 namespace sqlite_orm {
-
     namespace internal {
 
         template<class T, class SFINAE = void>
@@ -88,6 +88,9 @@ namespace sqlite_orm {
 
         template<class E>
         struct node_tuple<order_by_t<E>, void> : node_tuple<E> {};
+
+        template<class L, class R>
+        struct node_tuple<is_equal_with_table_t<L, R>, void> : node_tuple<R> {};
 
         template<class T>
         struct node_tuple<T, match_if<is_binary_condition, T>> {
@@ -157,6 +160,9 @@ namespace sqlite_orm {
 
         template<class T>
         struct node_tuple<into_t<T>, void> : node_tuple<void> {};
+
+        template<class T, class X>
+        struct node_tuple<match_t<T, X>, void> : node_tuple<X> {};
 
         template<class... Args>
         struct node_tuple<values_t<Args...>, void> {
