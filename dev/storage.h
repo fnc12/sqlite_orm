@@ -965,7 +965,8 @@ namespace sqlite_orm {
                 context.replace_bindable_with_question = true;
 
                 auto con = this->get_connection();
-                sqlite3_stmt* stmt = prepare_stmt(con.get(), serialize(statement, context));
+                const auto sql = serialize(statement, context);
+                sqlite3_stmt* stmt = prepare_stmt(con.get(), sql);
                 return prepared_statement_t<S>{std::forward<S>(statement), stmt, con};
             }
 

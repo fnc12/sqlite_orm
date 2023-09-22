@@ -20,14 +20,15 @@ namespace sqlite_orm {
         };
 
         template<class DBOs>
-        struct serializer_context_with_no_types_and_constraints: serializer_context<DBOs> {
+        struct serializer_context_with_no_types_and_constraints : serializer_context<DBOs> {
             using super = serializer_context<DBOs>;
 
-            serializer_context_with_no_types_and_constraints(const super &parentContext): super(parentContext) {}
+            serializer_context_with_no_types_and_constraints(const super& parentContext) : super(parentContext) {}
         };
 
         template<class DBOs>
-        serializer_context_with_no_types_and_constraints<DBOs> make_serializer_context_with_no_types_and_constraints(const serializer_context<DBOs> &parentContext) {
+        serializer_context_with_no_types_and_constraints<DBOs>
+        make_serializer_context_with_no_types_and_constraints(const serializer_context<DBOs>& parentContext) {
             return {parentContext};
         }
 
@@ -46,10 +47,11 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct no_need_types_and_constraints: std::false_type {};
+        struct no_need_types_and_constraints : std::false_type {};
 
         template<class DBOs>
-        struct no_need_types_and_constraints<serializer_context_with_no_types_and_constraints<DBOs>>: std::true_type {};
+        struct no_need_types_and_constraints<serializer_context_with_no_types_and_constraints<DBOs>> : std::true_type {
+        };
     }
 
 }

@@ -267,7 +267,7 @@ namespace sqlite_orm {
         struct is_table<table_t<O, W, Cs...>> : std::true_type {};
 
         template<class M>
-        struct virtual_table_t: basic_table {
+        struct virtual_table_t : basic_table {
             using module_details_type = M;
             using object_type = typename module_details_type::object_type;
             using elements_type = typename module_details_type::columns_type;
@@ -277,7 +277,7 @@ namespace sqlite_orm {
 
             module_details_type module_details;
 
-            virtual_table_t(std::string name, module_details_type module_details):
+            virtual_table_t(std::string name, module_details_type module_details) :
                 basic_table{std::move(name)}, module_details{std::move(module_details)} {}
 
             /**
@@ -321,7 +321,7 @@ namespace sqlite_orm {
 
             columns_type columns;
 
-            using_fts5_t(columns_type columns): columns(std::move(columns)) {}
+            using_fts5_t(columns_type columns) : columns(std::move(columns)) {}
 
             /**
              *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
@@ -353,7 +353,8 @@ namespace sqlite_orm {
         };
 
         template<class O, bool WithoutRowId, class... Cs, class G, class S>
-        bool exists_in_composite_primary_key(const table_t<O, WithoutRowId, Cs...> &table, const column_field<G, S>& column) {
+        bool exists_in_composite_primary_key(const table_t<O, WithoutRowId, Cs...>& table,
+                                             const column_field<G, S>& column) {
             bool res = false;
             table.for_each_primary_key([&column, &res](auto& primaryKey) {
                 using colrefs_tuple = decltype(primaryKey.columns);
@@ -362,8 +363,7 @@ namespace sqlite_orm {
                                             check_if_is_type<member_field_type_t<G>>::template fn,
                                             member_field_type_t>;
                 iterate_tuple(primaryKey.columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
-                    if(compare_any(memberPointer, column.member_pointer) ||
-                       compare_any(memberPointer, column.setter)) {
+                    if(compare_any(memberPointer, column.member_pointer) || compare_any(memberPointer, column.setter)) {
                         res = true;
                     }
                 });
@@ -372,21 +372,19 @@ namespace sqlite_orm {
         }
 
         template<class M, class G, class S>
-        bool exists_in_composite_primary_key(const virtual_table_t<M> &virtualTable, const column_field<G, S>& column) {
+        bool exists_in_composite_primary_key(const virtual_table_t<M>& virtualTable, const column_field<G, S>& column) {
             return false;
         }
     }
 
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::using_fts5_t<T, Cs...> using_fts5(Cs... columns) {
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {std::make_tuple(std::forward<Cs>(columns)...)});
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(columns)...)});
     }
 
     template<class T, class... Cs>
     internal::using_fts5_t<T, Cs...> using_fts5(Cs... columns) {
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {std::make_tuple(std::forward<Cs>(columns)...)});
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(columns)...)});
     }
 
     /**

@@ -62,6 +62,14 @@ namespace sqlite_orm {
             using type = tuple_cat_t<node_tuple_t<Args>...>;
         };
 
+        template<class T, class X, class Y, class Z>
+        struct node_tuple<highlight_t<T, X, Y, Z>, void> {
+            using x_node_tuple = node_tuple_t<X>;
+            using y_node_tuple = node_tuple_t<Y>;
+            using z_node_tuple = node_tuple_t<Z>;
+            using type = tuple_cat_t<x_node_tuple, y_node_tuple, z_node_tuple>;
+        };
+
         template<class T>
         struct node_tuple<excluded_t<T>, void> : node_tuple<T> {};
 

@@ -134,6 +134,22 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T, class X, class Y, class Z>
+        struct statement_serializer<highlight_t<T, X, Y, Z>, void> {
+            using statement_type = highlight_t<T, X, Y, Z>;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) {
+                std::stringstream ss;
+                auto& tableName = lookup_table_name<T>(context.db_objects);
+                ss << "HIGHLIGHT (" << streaming_identifier(tableName);
+                ss << ", " << serialize(statement.argument0, context);
+                ss << ", " << serialize(statement.argument1, context);
+                ss << ", " << serialize(statement.argument2, context) << ")";
+                return ss.str();
+            }
+        };
+
         /**
          *  Serializer for literal values.
          */
@@ -142,7 +158,7 @@ namespace sqlite_orm {
             using statement_type = T;
 
             template<class Ctx>
-            std::string operator()(const T& literal, const Ctx& context) const {
+            std::string operator()(const statement_type& literal, const Ctx& context) const {
                 static_assert(is_bindable_v<type_t<T>>, "A literal value must be also bindable");
 
                 Ctx literalCtx = context;
@@ -970,13 +986,13 @@ namespace sqlite_orm {
 
                 std::stringstream ss;
                 ss << streaming_identifier(column.name);
-                if (!no_need_types_and_constraints<Ctx>::value) {
+                if(!no_need_types_and_constraints<Ctx>::value) {
                     ss << " " << type_printer<field_type_t<column_type>>().print();
                     auto constraintsTuple = streaming_column_constraints(
-                              call_as_template_base<column_constraints>(polyfill::identity{})(column),
-                              column.is_not_null(),
-                              context);
-                    if (std::tuple_size<decltype(constraintsTuple)>::value > 0) {
+                        call_as_template_base<column_constraints>(polyfill::identity{})(column),
+                        column.is_not_null(),
+                        context);
+                    if(std::tuple_size<decltype(constraintsTuple)>::value > 0) {
                         ss << " " << constraintsTuple;
                     }
                 }
@@ -1220,7 +1236,7 @@ namespace sqlite_orm {
             using statement_type = match_t<T, X>;
 
             template<class Ctx>
-            std::string operator()(const statement_type &statement, const Ctx& context) const {
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
                 auto& table = pick_table<T>(context.db_objects);
                 std::stringstream ss;
                 ss << streaming_identifier(table.name) << " MATCH " << serialize(statement.argument, context);

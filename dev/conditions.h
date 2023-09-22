@@ -211,13 +211,13 @@ namespace sqlite_orm {
         };
 
         template<class L, class R>
-        struct is_equal_with_table_t: negatable_t {
+        struct is_equal_with_table_t : negatable_t {
             using left_type = L;
             using right_type = R;
 
             right_type rhs;
 
-            is_equal_with_table_t(right_type rhs): rhs(std::move(rhs)) {}
+            is_equal_with_table_t(right_type rhs) : rhs(std::move(rhs)) {}
         };
 
         struct is_not_equal_string {
