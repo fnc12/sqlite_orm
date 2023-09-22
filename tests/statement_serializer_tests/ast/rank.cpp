@@ -11,14 +11,14 @@ TEST_CASE("statement_serializer rank") {
     std::string value;
     std::string expected;
     SECTION("rank") {
-    	auto node = rank();
-	    value = serialize(node, context);
-	    expected = "rank";
+        auto node = rank();
+        value = serialize(node, context);
+        expected = "rank";
     }
     SECTION("order by rank") {
-    	auto node = order_by(rank());
-    	value = serialize(node, context);
-    	expected = "ORDER BY rank";
+        auto node = order_by(rank());
+        value = serialize(node, context);
+        expected = "ORDER BY rank";
     }
     REQUIRE(value == expected);
 }
