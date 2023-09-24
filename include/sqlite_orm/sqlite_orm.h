@@ -13741,6 +13741,10 @@ namespace sqlite_orm {
 
             pragma_t(get_connection_t get_connection_) : get_connection(std::move(get_connection_)) {}
 
+            std::vector<std::string> module_list() {
+                return this->get_pragma<std::vector<std::string>>("module_list");
+            }
+
             void busy_timeout(int value) {
                 this->set_pragma("busy_timeout", value);
             }
