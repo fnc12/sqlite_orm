@@ -144,7 +144,7 @@ for:
       popd
       $HOME/vcpkg/bootstrap-vcpkg.sh -disableMetrics
       $HOME/vcpkg/vcpkg integrate install --overlay-triplets=vcpkg/triplets
-      vcpkg install sqlite3[core,dbstat,math,json1] catch2 --overlay-triplets=vcpkg/triplets
+      vcpkg install sqlite3[core,dbstat,math,json1,fts5] catch2 --overlay-triplets=vcpkg/triplets
   before_build:
     - |-
       mkdir compile
@@ -171,7 +171,7 @@ for:
       git clone --depth 1 --branch 2023.06.20 https://github.com/microsoft/vcpkg.git $HOME/vcpkg
       $HOME/vcpkg/bootstrap-vcpkg.sh -disableMetrics
       $HOME/vcpkg/vcpkg integrate install --overlay-triplets=vcpkg/triplets
-      vcpkg install sqlite3[core,dbstat,math,json1] catch2 --overlay-triplets=vcpkg/triplets
+      vcpkg install sqlite3[core,dbstat,math,json1,fts5] catch2 --overlay-triplets=vcpkg/triplets
   before_build:
     - |-
       mkdir compile
