@@ -50,11 +50,11 @@ TEST_CASE("Sync schema") {
     auto syncSchemaSimulationRes = storage.sync_schema_simulate();
     auto syncSchemaRes = storage.sync_schema();
 
-//    REQUIRE(syncSchemaRes == syncSchemaSimulationRes);
-    
+    //    REQUIRE(syncSchemaRes == syncSchemaSimulationRes);
+
     auto schemas = storage.get_all<sqlite_master>();
     cout << "[!] schemas size = " << schemas.size() << endl;
-    for (auto &schema : schemas) {
+    for(auto& schema: schemas) {
         cout << "\t[!] name = " << schema.name << ", sql = " << schema.sql << endl;
     }
 
