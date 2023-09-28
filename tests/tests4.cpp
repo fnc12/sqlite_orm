@@ -5,7 +5,12 @@
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
+#include <iostream>
+
 using namespace sqlite_orm;
+
+using std::cout;
+using std::endl;
 
 TEST_CASE("Unique ptr in update") {
 
@@ -14,10 +19,17 @@ TEST_CASE("Unique ptr in update") {
         std::unique_ptr<std::string> name;
     };
 
-    auto storage = make_storage(
-        {},
-        make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)));
+    auto nameColumn = make_column("name", &User::name);
+
+    auto storage = make_storage({}, make_table("users", make_column("id", &User::id, primary_key()), nameColumn));
     storage.sync_schema();
+
+    cout << "[!] nameColumn.is_not_null() = " << nameColumn.is_not_null() << endl;
+    using NameColumnType = decltype(nameColumn);
+    using FieldType = NameColumnType::field_type;
+    STATIC_REQUIRE(std::is_same<FieldType, std::unique_ptr<std::string>>::value);
+    STATIC_REQUIRE(type_is_nullable<FieldType>::value);
+    cout << "[!] type_is_nullable = " << type_is_nullable<FieldType>::value << endl;
 
     storage.insert(User{});
     storage.insert(User{});
