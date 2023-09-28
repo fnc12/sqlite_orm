@@ -48,7 +48,7 @@
 #include "schema/triggers.h"
 #include "object_from_column_builder.h"
 #include "schema/table.h"
-#include "column.h"
+#include "schema/column.h"
 #include "schema/index.h"
 #include "util.h"
 #include "serializing_util.h"

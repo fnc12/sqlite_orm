@@ -4,7 +4,7 @@
 #include <string>  //  std::string
 #endif
 
-#include "../column.h"
+#include "../schema/column.h"
 #include "../schema/table.h"
 
 namespace sqlite_orm {

@@ -15391,7 +15391,7 @@ namespace sqlite_orm {
 
 // #include "conditions.h"
 
-// #include "column.h"
+// #include "schema/column.h"
 
 // #include "indexed_column.h"
 
@@ -17684,7 +17684,7 @@ namespace sqlite_orm {
 
 // #include "schema/table.h"
 
-// #include "column.h"
+// #include "schema/column.h"
 
 // #include "schema/index.h"
 
@@ -19737,7 +19737,7 @@ namespace sqlite_orm {
 
 #include <string>  //  std::string
 
-// #include "column.h"
+// #include "schema/column.h"
 
 // #include "schema/table.h"
 
@@ -19784,7 +19784,7 @@ namespace sqlite_orm {
 #include <string>  //  std::string
 #endif
 
-// #include "../column.h"
+// #include "../schema/column.h"
 
 // #include "../schema/table.h"
 
@@ -19844,7 +19844,7 @@ namespace sqlite_orm {
 
 // #include "../default_value_extractor.h"
 
-// #include "../column.h"
+// #include "../schema/column.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -19883,7 +19883,7 @@ namespace sqlite_orm {
 //  ::size_t
 // #include "../type_printer.h"
 
-// #include "../column.h"
+// #include "../schema/column.h"
 
 // #include "../schema/table.h"
 

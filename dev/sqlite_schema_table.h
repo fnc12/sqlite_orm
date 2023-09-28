@@ -2,7 +2,7 @@
 
 #include <string>  //  std::string
 
-#include "column.h"
+#include "schema/column.h"
 #include "schema/table.h"
 #include "alias.h"
 
