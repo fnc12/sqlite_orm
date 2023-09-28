@@ -1,11 +1,7 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
-#include <iostream>
 
 using namespace sqlite_orm;
-
-using std::cout;
-using std::endl;
 
 TEST_CASE("virtual table") {
     using Catch::Matchers::UnorderedEquals;
@@ -24,12 +20,6 @@ TEST_CASE("virtual table") {
     auto storage = make_storage(
         "",
         make_virtual_table("posts", using_fts5(make_column("title", &Post::title), make_column("body", &Post::body))));
-
-    auto modules = storage.pragma.module_list();
-    cout << "[!] modules size = " << modules.size() << endl;
-    for(auto& moduleName: modules) {
-        cout << "\t[!] " << moduleName << endl;
-    }
 
     storage.sync_schema();
     REQUIRE(storage.table_exists("posts"));
