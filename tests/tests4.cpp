@@ -20,16 +20,30 @@ TEST_CASE("Unique ptr in update") {
     };
 
     auto nameColumn = make_column("name", &User::name);
-
-    auto storage = make_storage({}, make_table("users", make_column("id", &User::id, primary_key()), nameColumn));
+    auto nameTable = make_table("users", make_column("id", &User::id, primary_key()), nameColumn);
+    auto storage = make_storage({}, nameTable);
     storage.sync_schema();
 
-    cout << "[!] nameColumn.is_not_null() = " << nameColumn.is_not_null() << endl;
+    using NameTable = decltype(nameTable);
+    using Storage = decltype(storage);
     using NameColumnType = decltype(nameColumn);
     using FieldType = NameColumnType::field_type;
+
+    cout << "[!] nameColumn.is_not_null() = " << nameColumn.is_not_null() << endl;
+    cout << "[!] type_is_nullable = " << type_is_nullable<FieldType>::value << endl;
+
     STATIC_REQUIRE(std::is_same<FieldType, std::unique_ptr<std::string>>::value);
     STATIC_REQUIRE(type_is_nullable<FieldType>::value);
-    cout << "[!] type_is_nullable = " << type_is_nullable<FieldType>::value << endl;
+
+    {
+        using db_objects_type = typename Storage::db_objects_type;
+
+        internal::statement_serializer<NameTable, void> serializer;
+        using context_t = internal::serializer_context<db_objects_type>;
+        context_t context{storage.db_objects};
+        const auto sql = serializer.serialize(nameTable, context, nameTable.name);
+        cout << "[!] nameTable = " << sql << endl;
+    }
 
     storage.insert(User{});
     storage.insert(User{});

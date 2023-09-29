@@ -80,9 +80,11 @@ namespace sqlite_orm {
             storage_t(std::string filename, db_objects_type dbObjects) :
                 storage_base{std::move(filename), foreign_keys_count(dbObjects)}, db_objects{std::move(dbObjects)} {}
 
-          private:
+            // private:
+          public:
             db_objects_type db_objects;
 
+          private:
             /**
              *  Obtain a storage_t's const db_objects_tuple.
              *
@@ -104,15 +106,10 @@ namespace sqlite_orm {
                 using table_type = std::decay_t<decltype(table)>;
                 using context_t = serializer_context<db_objects_type>;
 
-                std::stringstream ss;
                 context_t context{this->db_objects};
-                ss << "CREATE TABLE " << streaming_identifier(tableName) << " ( "
-                   << streaming_expressions_tuple(table.elements, context) << ")";
-                if(table_type::is_without_rowid_v) {
-                    ss << " WITHOUT ROWID";
-                }
-                ss.flush();
-                perform_void_exec(db, ss.str());
+                statement_serializer<Table, void> serializer;
+                const auto sql = serializer.serialize(table, context, tableName);
+                perform_void_exec(db, sql);
             }
 
             /**
