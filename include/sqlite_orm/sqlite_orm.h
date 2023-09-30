@@ -1862,7 +1862,6 @@ namespace sqlite_orm {
             return static_cast<bool>(t);
         }
     };
-
 }
 #pragma once
 
@@ -15176,6 +15175,18 @@ namespace sqlite_orm {
 
 // #include "ast/match.h"
 
+// #include "ast/rank.h"
+
+namespace sqlite_orm {
+    namespace internal {
+        struct rank_t {};
+    }
+
+    inline internal::rank_t rank() {
+        return {};
+    }
+}
+
 // #include "core_functions.h"
 
 // #include "constraints.h"
@@ -15728,6 +15739,16 @@ namespace sqlite_orm {
                     throw std::system_error{orm_error_code::column_not_found};
                 }
                 return ss.str();
+            }
+        };
+
+        template<>
+        struct statement_serializer<rank_t, void> {
+            using statement_type = rank_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& /*statement*/, const Ctx&) const {
+                return "rank";
             }
         };
 

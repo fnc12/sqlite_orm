@@ -37,5 +37,4 @@ namespace sqlite_orm {
             return static_cast<bool>(t);
         }
     };
-
 }
