@@ -219,6 +219,11 @@ TEST_CASE("ast_iterator") {
         auto node = into<User>();
         iterate_ast(node, lambda);
     }
+    SECTION("match") {
+        auto node = match<User>(std::string("Plazma"));
+        expected.push_back(typeid(std::string));
+        iterate_ast(node, lambda);
+    }
     SECTION("replace") {
         auto node =
             replace(into<User>(), columns(&User::id, &User::name), values(std::make_tuple(1, std::string("Ellie"))));

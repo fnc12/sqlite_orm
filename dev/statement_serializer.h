@@ -21,6 +21,7 @@
 #include "ast/excluded.h"
 #include "ast/group_by.h"
 #include "ast/into.h"
+#include "ast/match.h"
 #include "core_functions.h"
 #include "constraints.h"
 #include "conditions.h"
@@ -208,6 +209,19 @@ namespace sqlite_orm {
             std::string operator()(const statement_type&, const Ctx&) {
                 std::stringstream ss;
                 ss << streaming_identifier(T::get());
+                return ss.str();
+            }
+        };
+
+        template<class T, class X>
+        struct statement_serializer<match_t<T, X>, void> {
+            using statement_type = match_t<T, X>;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                auto& table = pick_table<T>(context.db_objects);
+                std::stringstream ss;
+                ss << streaming_identifier(table.name) << " MATCH " << serialize(statement.argument, context);
                 return ss.str();
             }
         };

@@ -433,6 +433,12 @@ TEST_CASE("Node tuple") {
         using Tuple = node_tuple_t<Expression>;
         STATIC_REQUIRE(is_same<Tuple, tuple<>>::value);
     }
+    SECTION("match") {
+        auto expression = match<User>(std::string("Plazma"));
+        using Expression = decltype(expression);
+        using Tuple = node_tuple_t<Expression>;
+        STATIC_REQUIRE(is_same<Tuple, tuple<std::string>>::value);
+    }
     SECTION("select") {
         SECTION("select(&User::id)") {
             auto sel = select(&User::id);
