@@ -20,6 +20,7 @@
 #include "ast/group_by.h"
 #include "ast/exists.h"
 #include "ast/set.h"
+#include "ast/match.h"
 
 namespace sqlite_orm {
 
@@ -82,6 +83,16 @@ namespace sqlite_orm {
             template<class L>
             void operator()(const node_type& expression, L& lambda) const {
                 iterate_ast(expression.get(), lambda);
+            }
+        };
+
+        template<class T, class X>
+        struct ast_iterator<match_t<T, X>, void> {
+            using node_type = match_t<T, X>;
+
+            template<class L>
+            void operator()(const node_type& node, L& lambda) const {
+                iterate_ast(node.argument, lambda);
             }
         };
 

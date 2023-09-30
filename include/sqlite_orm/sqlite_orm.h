@@ -12357,6 +12357,28 @@ namespace sqlite_orm {
 
 // #include "ast/set.h"
 
+// #include "ast/match.h"
+
+namespace sqlite_orm {
+    namespace internal {
+
+        template<class T, class X>
+        struct match_t {
+            using mapped_type = T;
+            using argument_type = X;
+
+            argument_type argument;
+
+            match_t(argument_type argument) : argument(std::move(argument)) {}
+        };
+    }
+
+    template<class T, class X>
+    internal::match_t<T, X> match(X argument) {
+        return {std::move(argument)};
+    }
+}
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -12418,6 +12440,16 @@ namespace sqlite_orm {
             template<class L>
             void operator()(const node_type& expression, L& lambda) const {
                 iterate_ast(expression.get(), lambda);
+            }
+        };
+
+        template<class T, class X>
+        struct ast_iterator<match_t<T, X>, void> {
+            using node_type = match_t<T, X>;
+
+            template<class L>
+            void operator()(const node_type& node, L& lambda) const {
+                iterate_ast(node.argument, lambda);
             }
         };
 
@@ -15142,6 +15174,8 @@ namespace sqlite_orm {
 
 // #include "ast/into.h"
 
+// #include "ast/match.h"
+
 // #include "core_functions.h"
 
 // #include "constraints.h"
@@ -15552,6 +15586,19 @@ namespace sqlite_orm {
             std::string operator()(const statement_type&, const Ctx&) {
                 std::stringstream ss;
                 ss << streaming_identifier(T::get());
+                return ss.str();
+            }
+        };
+
+        template<class T, class X>
+        struct statement_serializer<match_t<T, X>, void> {
+            using statement_type = match_t<T, X>;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                auto& table = pick_table<T>(context.db_objects);
+                std::stringstream ss;
+                ss << streaming_identifier(table.name) << " MATCH " << serialize(statement.argument, context);
                 return ss.str();
             }
         };
@@ -18836,6 +18883,8 @@ namespace sqlite_orm {
 
 // #include "ast/group_by.h"
 
+// #include "ast/match.h"
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -18882,6 +18931,9 @@ namespace sqlite_orm {
 
         template<class C>
         struct node_tuple<where_t<C>, void> : node_tuple<C> {};
+
+        template<class T, class X>
+        struct node_tuple<match_t<T, X>, void> : node_tuple<X> {};
 
         /**
          *  Column alias
