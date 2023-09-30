@@ -22,6 +22,7 @@
 #include "ast/group_by.h"
 #include "ast/into.h"
 #include "ast/match.h"
+#include "ast/rank.h"
 #include "core_functions.h"
 #include "constraints.h"
 #include "conditions.h"
@@ -351,6 +352,16 @@ namespace sqlite_orm {
                     throw std::system_error{orm_error_code::column_not_found};
                 }
                 return ss.str();
+            }
+        };
+
+        template<>
+        struct statement_serializer<rank_t, void> {
+            using statement_type = rank_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& /*statement*/, const Ctx&) const {
+                return "rank";
             }
         };
 
