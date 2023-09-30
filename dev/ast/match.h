@@ -18,5 +18,4 @@ namespace sqlite_orm {
     internal::match_t<T, X> match(X argument) {
         return {std::move(argument)};
     }
-
 }

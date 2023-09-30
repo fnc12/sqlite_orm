@@ -12546,7 +12546,6 @@ namespace sqlite_orm {
     internal::match_t<T, X> match(X argument) {
         return {std::move(argument)};
     }
-
 }
 
 namespace sqlite_orm {
@@ -12610,6 +12609,16 @@ namespace sqlite_orm {
             template<class L>
             void operator()(const node_type& expression, L& lambda) const {
                 iterate_ast(expression.get(), lambda);
+            }
+        };
+
+        template<class T, class X>
+        struct ast_iterator<match_t<T, X>, void> {
+            using node_type = match_t<T, X>;
+
+            template<class L>
+            void operator()(const node_type& node, L& lambda) const {
+                iterate_ast(node.argument, lambda);
             }
         };
 
@@ -12759,16 +12768,6 @@ namespace sqlite_orm {
             void operator()(const node_type& c, L& lambda) const {
                 iterate_ast(c.left, lambda);
                 iterate_ast(c.right, lambda);
-            }
-        };
-
-        template<class T, class X>
-        struct ast_iterator<match_t<T, X>, void> {
-            using node_type = match_t<T, X>;
-
-            template<class L>
-            void operator()(const node_type& node, L& lambda) const {
-                iterate_ast(node.argument, lambda);
             }
         };
 
@@ -19253,6 +19252,9 @@ namespace sqlite_orm {
         template<class C>
         struct node_tuple<where_t<C>, void> : node_tuple<C> {};
 
+        template<class T, class X>
+        struct node_tuple<match_t<T, X>, void> : node_tuple<X> {};
+
         /**
          *  Column alias
          */
@@ -19345,9 +19347,6 @@ namespace sqlite_orm {
 
         template<class T>
         struct node_tuple<into_t<T>, void> : node_tuple<void> {};
-
-        template<class T, class X>
-        struct node_tuple<match_t<T, X>, void> : node_tuple<X> {};
 
         template<class... Args>
         struct node_tuple<values_t<Args...>, void> {

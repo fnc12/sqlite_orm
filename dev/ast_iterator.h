@@ -86,6 +86,16 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T, class X>
+        struct ast_iterator<match_t<T, X>, void> {
+            using node_type = match_t<T, X>;
+
+            template<class L>
+            void operator()(const node_type& node, L& lambda) const {
+                iterate_ast(node.argument, lambda);
+            }
+        };
+
         template<class... Args>
         struct ast_iterator<group_by_t<Args...>, void> {
             using node_type = group_by_t<Args...>;
@@ -232,16 +242,6 @@ namespace sqlite_orm {
             void operator()(const node_type& c, L& lambda) const {
                 iterate_ast(c.left, lambda);
                 iterate_ast(c.right, lambda);
-            }
-        };
-
-        template<class T, class X>
-        struct ast_iterator<match_t<T, X>, void> {
-            using node_type = match_t<T, X>;
-
-            template<class L>
-            void operator()(const node_type& node, L& lambda) const {
-                iterate_ast(node.argument, lambda);
             }
         };
 
