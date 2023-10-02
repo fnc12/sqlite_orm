@@ -9810,25 +9810,6 @@ namespace sqlite_orm {
                 return result;
             }
 
-            template<class G, class S>
-            bool exists_in_composite_primary_key(const column_field<G, S>& column) const {
-                bool res = false;
-                this->for_each_primary_key([&column, &res](auto& primaryKey) {
-                    using colrefs_tuple = decltype(primaryKey.columns);
-                    using same_type_index_sequence =
-                        filter_tuple_sequence_t<colrefs_tuple,
-                                                check_if_is_type<member_field_type_t<G>>::template fn,
-                                                member_field_type_t>;
-                    iterate_tuple(primaryKey.columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
-                        if(compare_any(memberPointer, column.member_pointer) ||
-                           compare_any(memberPointer, column.setter)) {
-                            res = true;
-                        }
-                    });
-                });
-                return res;
-            }
-
             /**
              *  Call passed lambda with all defined primary keys.
              */
@@ -9978,6 +9959,25 @@ namespace sqlite_orm {
 
         template<class O, bool W, class... Cs>
         struct is_table<table_t<O, W, Cs...>> : std::true_type {};
+
+        template<class O, bool WithoutRowId, class... Cs, class G, class S>
+        bool exists_in_composite_primary_key(const table_t<O, WithoutRowId, Cs...>& table,
+                                             const column_field<G, S>& column) {
+            bool res = false;
+            table.for_each_primary_key([&column, &res](auto& primaryKey) {
+                using colrefs_tuple = decltype(primaryKey.columns);
+                using same_type_index_sequence =
+                    filter_tuple_sequence_t<colrefs_tuple,
+                                            check_if_is_type<member_field_type_t<G>>::template fn,
+                                            member_field_type_t>;
+                iterate_tuple(primaryKey.columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
+                    if(compare_any(memberPointer, column.member_pointer) || compare_any(memberPointer, column.setter)) {
+                        res = true;
+                    }
+                });
+            });
+            return res;
+        }
     }
 
     /**
@@ -16449,7 +16449,7 @@ namespace sqlite_orm {
                 ss << "UPDATE " << streaming_identifier(table.name) << " SET ";
                 table.template for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
                     [&table, &ss, &context, &object = get_ref(statement.object), first = true](auto& column) mutable {
-                        if(table.exists_in_composite_primary_key(column)) {
+                        if(exists_in_composite_primary_key(table, column)) {
                             return;
                         }
 
@@ -16460,7 +16460,7 @@ namespace sqlite_orm {
                 ss << " WHERE ";
                 table.for_each_column(
                     [&table, &context, &ss, &object = get_ref(statement.object), first = true](auto& column) mutable {
-                        if(!column.template is<is_primary_key>() && !table.exists_in_composite_primary_key(column)) {
+                        if(!column.template is<is_primary_key>() && !exists_in_composite_primary_key(table, column)) {
                             return;
                         }
 
@@ -16566,7 +16566,7 @@ namespace sqlite_orm {
                     mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                      mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
                     [&table, &columnNames](auto& column) {
-                        if(table.exists_in_composite_primary_key(column)) {
+                        if(exists_in_composite_primary_key(table, column)) {
                             return;
                         }
 
@@ -16588,7 +16588,7 @@ namespace sqlite_orm {
                               mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                                mpl::disjunction_fn<is_primary_key, is_generated_always>>{},
                               [&table](auto& column) {
-                                  return table.exists_in_composite_primary_key(column);
+                                  return exists_in_composite_primary_key(table, column);
                               },
                               context,
                               get_ref(statement.object))
@@ -16728,7 +16728,7 @@ namespace sqlite_orm {
                     mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                      mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
                     [&table, &columnNames](auto& column) {
-                        if(table.exists_in_composite_primary_key(column)) {
+                        if(exists_in_composite_primary_key(table, column)) {
                             return;
                         }
 
@@ -18591,7 +18591,7 @@ namespace sqlite_orm {
                         mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                          mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
                         call_as_template_base<column_field>([&table, &bindValue, &object](auto& column) {
-                            if(!table.exists_in_composite_primary_key(column)) {
+                            if(!exists_in_composite_primary_key(table, column)) {
                                 bindValue(polyfill::invoke(column.member_pointer, object));
                             }
                         }));
@@ -18643,12 +18643,12 @@ namespace sqlite_orm {
                 auto& object = get_object(statement.expression);
                 table.template for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
                     call_as_template_base<column_field>([&table, &bindValue, &object](auto& column) {
-                        if(!table.exists_in_composite_primary_key(column)) {
+                        if(!exists_in_composite_primary_key(table, column)) {
                             bindValue(polyfill::invoke(column.member_pointer, object));
                         }
                     }));
                 table.for_each_column([&table, &bindValue, &object](auto& column) {
-                    if(column.template is<is_primary_key>() || table.exists_in_composite_primary_key(column)) {
+                    if(column.template is<is_primary_key>() || exists_in_composite_primary_key(table, column)) {
                         bindValue(polyfill::invoke(column.member_pointer, object));
                     }
                 });
