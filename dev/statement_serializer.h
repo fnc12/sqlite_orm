@@ -181,11 +181,11 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& literal, const Ctx& context) const {
-                static_assert(is_bindable_v<type_t<T>>, "A literal value must be also bindable");
+                static_assert(is_bindable_v<type_t<statement_type>>, "A literal value must be also bindable");
 
                 Ctx literalCtx = context;
                 literalCtx.replace_bindable_with_question = false;
-                statement_serializer<type_t<T>> serializer{};
+                statement_serializer<type_t<statement_type>> serializer{};
                 return serializer(literal.value, literalCtx);
             }
         };
@@ -418,8 +418,8 @@ namespace sqlite_orm {
             using statement_type = oid_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& s, const Ctx&) const {
-                return static_cast<std::string>(s);
+            std::string operator()(const statement_type& statement, const Ctx&) const {
+                return static_cast<std::string>(statement);
             }
         };
 
@@ -428,8 +428,8 @@ namespace sqlite_orm {
             using statement_type = _rowid_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& s, const Ctx&) const {
-                return static_cast<std::string>(s);
+            std::string operator()(const statement_type& statement, const Ctx&) const {
+                return static_cast<std::string>(statement);
             }
         };
 
@@ -438,12 +438,12 @@ namespace sqlite_orm {
             using statement_type = table_rowid_t<O>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& s, const Ctx& context) const {
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
                 if(!context.skip_table_name) {
                     ss << streaming_identifier(lookup_table_name<O>(context.db_objects)) << ".";
                 }
-                ss << static_cast<std::string>(s);
+                ss << static_cast<std::string>(statement);
                 return ss.str();
             }
         };
@@ -453,12 +453,12 @@ namespace sqlite_orm {
             using statement_type = table_oid_t<O>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& s, const Ctx& context) const {
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
                 if(!context.skip_table_name) {
                     ss << streaming_identifier(lookup_table_name<O>(context.db_objects)) << ".";
                 }
-                ss << static_cast<std::string>(s);
+                ss << static_cast<std::string>(statement);
                 return ss.str();
             }
         };
