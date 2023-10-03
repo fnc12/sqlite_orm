@@ -15197,7 +15197,7 @@ namespace sqlite_orm {
 
 // #include "conditions.h"
 
-// #include "column.h"
+// #include "schema/column.h"
 
 // #include "indexed_column.h"
 
@@ -15429,11 +15429,11 @@ namespace sqlite_orm {
 
 // #include "values.h"
 
-// #include "triggers.h"
+// #include "schema/triggers.h"
 
 // #include "table_type_of.h"
 
-// #include "index.h"
+// #include "schema/index.h"
 
 // #include "util.h"
 
@@ -17420,15 +17420,15 @@ namespace sqlite_orm {
     }
 }
 
-// #include "triggers.h"
+// #include "schema/triggers.h"
 
 // #include "object_from_column_builder.h"
 
-// #include "table.h"
+// #include "schema/table.h"
 
-// #include "column.h"
+// #include "schema/column.h"
 
-// #include "index.h"
+// #include "schema/index.h"
 
 // #include "util.h"
 
@@ -19457,9 +19457,9 @@ namespace sqlite_orm {
 
 #include <string>  //  std::string
 
-// #include "column.h"
+// #include "schema/column.h"
 
-// #include "table.h"
+// #include "schema/table.h"
 
 // #include "alias.h"
 
@@ -19504,9 +19504,9 @@ namespace sqlite_orm {
 #include <string>  //  std::string
 #endif
 
-// #include "../column.h"
+// #include "../schema/column.h"
 
-// #include "../table.h"
+// #include "../schema/table.h"
 
 namespace sqlite_orm {
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
@@ -19564,7 +19564,7 @@ namespace sqlite_orm {
 
 // #include "../default_value_extractor.h"
 
-// #include "../column.h"
+// #include "../schema/column.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -19603,9 +19603,9 @@ namespace sqlite_orm {
 //  ::size_t
 // #include "../type_printer.h"
 
-// #include "../column.h"
+// #include "../schema/column.h"
 
-// #include "../table.h"
+// #include "../schema/table.h"
 
 namespace sqlite_orm {
     namespace internal {
