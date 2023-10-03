@@ -298,6 +298,11 @@ TEST_CASE("ast_iterator") {
         }
 #endif
     }
+    SECTION("is_equal_with_table_t") {
+        auto expression = is_equal<User>(std::string("Claude"));
+        expected.push_back(typeid(std::string));
+        iterate_ast(expression, lambda);
+    }
     SECTION("aliased regular column") {
         using als = alias_z<User>;
         auto expression = alias_column<als>(&User::id);
