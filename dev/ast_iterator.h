@@ -152,9 +152,19 @@ namespace sqlite_orm {
             using node_type = binary_operator<L, R, Ds...>;
 
             template<class C>
-            void operator()(const node_type& binaryOperator, C& lambda) const {
-                iterate_ast(binaryOperator.lhs, lambda);
-                iterate_ast(binaryOperator.rhs, lambda);
+            void operator()(const node_type& node, C& lambda) const {
+                iterate_ast(node.lhs, lambda);
+                iterate_ast(node.rhs, lambda);
+            }
+        };
+
+        template<class L, class R>
+        struct ast_iterator<is_equal_with_table_t<L, R>, void> {
+            using node_type = is_equal_with_table_t<L, R>;
+
+            template<class C>
+            void operator()(const node_type& node, C& lambda) const {
+                iterate_ast(node.rhs, lambda);
             }
         };
 

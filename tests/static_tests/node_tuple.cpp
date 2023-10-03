@@ -52,6 +52,14 @@ TEST_CASE("Node tuple") {
         static_assert(is_same<Tuple, Expected>::value, "literal int");
         STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<>>::value);
     }
+    SECTION("is_equal_with_table_t") {
+        auto node = is_equal<User>(std::string("Claude"));
+        using Node = decltype(node);
+        using Tuple = node_tuple_t<Node>;
+        using Expected = tuple<std::string>;
+        static_assert(is_same<Tuple, Expected>::value, "is_equal_with_table_t");
+        STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<std::string>>::value);
+    }
     SECTION("binary_condition") {
         using namespace internal;
         SECTION("5 < 6.0f") {

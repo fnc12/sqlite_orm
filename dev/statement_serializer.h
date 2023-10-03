@@ -440,6 +440,21 @@ namespace sqlite_orm {
             }
         };
 
+        template<class L, class R>
+        struct statement_serializer<is_equal_with_table_t<L, R>, void> {
+            using statement_type = is_equal_with_table_t<L, R>;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                std::stringstream ss;
+                const auto tableName = lookup_table_name<L>(context.db_objects);
+                ss << streaming_identifier(tableName);
+                ss << " = ";
+                ss << serialize(statement.rhs, context);
+                return ss.str();
+            }
+        };
+
         template<class L, class R, class... Ds>
         struct statement_serializer<binary_operator<L, R, Ds...>, void> {
             using statement_type = binary_operator<L, R, Ds...>;

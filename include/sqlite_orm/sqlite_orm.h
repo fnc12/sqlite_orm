@@ -3157,6 +3157,16 @@ namespace sqlite_orm {
             }
         };
 
+        template<class L, class R>
+        struct is_equal_with_table_t : negatable_t {
+            using left_type = L;
+            using right_type = R;
+
+            right_type rhs;
+
+            is_equal_with_table_t(right_type rhs) : rhs(std::move(rhs)) {}
+        };
+
         struct is_not_equal_string {
             operator std::string() const {
                 return "!=";
@@ -4030,6 +4040,11 @@ namespace sqlite_orm {
     template<class L, class R>
     internal::is_equal_t<L, R> eq(L l, R r) {
         return {std::move(l), std::move(r)};
+    }
+
+    template<class L, class R>
+    internal::is_equal_with_table_t<L, R> is_equal(R rhs) {
+        return {std::move(rhs)};
     }
 
     template<class L, class R>
@@ -7340,9 +7355,9 @@ namespace sqlite_orm {
 #include <string>
 #include <tuple>
 
-// #include "functional/cxx_universal.h"
+// #include "../functional/cxx_universal.h"
 
-// #include "optional_container.h"
+// #include "../optional_container.h"
 
 // NOTE Idea : Maybe also implement a custom trigger system to call a c++ callback when a trigger triggers ?
 // (Could be implemented with a normal trigger that insert or update an internal table and then retreive
@@ -12508,9 +12523,19 @@ namespace sqlite_orm {
             using node_type = binary_operator<L, R, Ds...>;
 
             template<class C>
-            void operator()(const node_type& binaryOperator, C& lambda) const {
-                iterate_ast(binaryOperator.lhs, lambda);
-                iterate_ast(binaryOperator.rhs, lambda);
+            void operator()(const node_type& node, C& lambda) const {
+                iterate_ast(node.lhs, lambda);
+                iterate_ast(node.rhs, lambda);
+            }
+        };
+
+        template<class L, class R>
+        struct ast_iterator<is_equal_with_table_t<L, R>, void> {
+            using node_type = is_equal_with_table_t<L, R>;
+
+            template<class C>
+            void operator()(const node_type& node, C& lambda) const {
+                iterate_ast(node.rhs, lambda);
             }
         };
 
@@ -15831,6 +15856,21 @@ namespace sqlite_orm {
             }
         };
 
+        template<class L, class R>
+        struct statement_serializer<is_equal_with_table_t<L, R>, void> {
+            using statement_type = is_equal_with_table_t<L, R>;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                std::stringstream ss;
+                const auto tableName = lookup_table_name<L>(context.db_objects);
+                ss << streaming_identifier(tableName);
+                ss << " = ";
+                ss << serialize(statement.rhs, context);
+                return ss.str();
+            }
+        };
+
         template<class L, class R, class... Ds>
         struct statement_serializer<binary_operator<L, R, Ds...>, void> {
             using statement_type = binary_operator<L, R, Ds...>;
@@ -18980,6 +19020,9 @@ namespace sqlite_orm {
 
         template<class E>
         struct node_tuple<order_by_t<E>, void> : node_tuple<E> {};
+
+        template<class L, class R>
+        struct node_tuple<is_equal_with_table_t<L, R>, void> : node_tuple<R> {};
 
         template<class T>
         struct node_tuple<T, match_if<is_binary_condition, T>> {
