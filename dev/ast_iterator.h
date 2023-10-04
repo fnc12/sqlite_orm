@@ -106,6 +106,18 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T, class X, class Y, class Z>
+        struct ast_iterator<highlight_t<T, X, Y, Z>, void> {
+            using node_type = highlight_t<T, X, Y, Z>;
+
+            template<class L>
+            void operator()(const node_type& expression, L& lambda) const {
+                iterate_ast(expression.argument0, lambda);
+                iterate_ast(expression.argument1, lambda);
+                iterate_ast(expression.argument2, lambda);
+            }
+        };
+
         template<class T>
         struct ast_iterator<excluded_t<T>, void> {
             using node_type = excluded_t<T>;

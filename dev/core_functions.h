@@ -612,6 +612,21 @@ namespace sqlite_orm {
 
         template<class T>
         using field_type_or_type_t = polyfill::detected_or_t<T, type_t, member_field_type<T>>;
+
+        template<class T, class X, class Y, class Z>
+        struct highlight_t {
+            using table_type = T;
+            using argument0_type = X;
+            using argument1_type = Y;
+            using argument2_type = Z;
+
+            argument0_type argument0;
+            argument1_type argument1;
+            argument2_type argument2;
+
+            highlight_t(argument0_type argument0, argument1_type argument1, argument2_type argument2) :
+                argument0(std::move(argument0)), argument1(std::move(argument1)), argument2(std::move(argument2)) {}
+        };
     }
 
     /**
@@ -2101,5 +2116,10 @@ namespace sqlite_orm {
         mod_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator%(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
         }
+    }
+
+    template<class T, class X, class Y, class Z>
+    internal::highlight_t<T, X, Y, Z> highlight(X x, Y y, Z z) {
+        return {std::move(x), std::move(y), std::move(z)};
     }
 }

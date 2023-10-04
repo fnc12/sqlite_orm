@@ -5169,6 +5169,21 @@ namespace sqlite_orm {
 
         template<class T>
         using field_type_or_type_t = polyfill::detected_or_t<T, type_t, member_field_type<T>>;
+
+        template<class T, class X, class Y, class Z>
+        struct highlight_t {
+            using table_type = T;
+            using argument0_type = X;
+            using argument1_type = Y;
+            using argument2_type = Z;
+
+            argument0_type argument0;
+            argument1_type argument1;
+            argument2_type argument2;
+
+            highlight_t(argument0_type argument0, argument1_type argument1, argument2_type argument2) :
+                argument0(std::move(argument0)), argument1(std::move(argument1)), argument2(std::move(argument2)) {}
+        };
     }
 
     /**
@@ -6658,6 +6673,11 @@ namespace sqlite_orm {
         mod_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator%(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
         }
+    }
+
+    template<class T, class X, class Y, class Z>
+    internal::highlight_t<T, X, Y, Z> highlight(X x, Y y, Z z) {
+        return {std::move(x), std::move(y), std::move(z)};
     }
 }
 #pragma once
@@ -10910,6 +10930,11 @@ namespace sqlite_orm {
             using type = typename T::result_type;
         };
 
+        template<class DBOs, class T, class X, class Y, class Z>
+        struct column_result_t<DBOs, highlight_t<T, X, Y, Z>, void> {
+            using type = std::string;
+        };
+
         /**
          *  Result for the most simple queries like `SELECT 1`
          */
@@ -11479,6 +11504,11 @@ namespace sqlite_orm {
 
             template<class T>
             void operator()(const table__rowid_t<T>&) {
+                this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
+            }
+
+            template<class T, class X, class Y, class Z>
+            void operator()(const highlight_t<T, X, Y, Z>&) {
                 this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
             }
         };
@@ -12474,6 +12504,18 @@ namespace sqlite_orm {
             template<class L>
             void operator()(const node_type& expression, L& lambda) const {
                 iterate_ast(expression.args, lambda);
+            }
+        };
+
+        template<class T, class X, class Y, class Z>
+        struct ast_iterator<highlight_t<T, X, Y, Z>, void> {
+            using node_type = highlight_t<T, X, Y, Z>;
+
+            template<class L>
+            void operator()(const node_type& expression, L& lambda) const {
+                iterate_ast(expression.argument0, lambda);
+                iterate_ast(expression.argument1, lambda);
+                iterate_ast(expression.argument2, lambda);
             }
         };
 
@@ -15547,6 +15589,22 @@ namespace sqlite_orm {
             std::string do_serialize(const pointer_binding<P, PT, D>&) const {
                 // always serialize null (security reasons)
                 return field_printer<nullptr_t>{}(nullptr);
+            }
+        };
+
+        template<class T, class X, class Y, class Z>
+        struct statement_serializer<highlight_t<T, X, Y, Z>, void> {
+            using statement_type = highlight_t<T, X, Y, Z>;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) {
+                std::stringstream ss;
+                auto& tableName = lookup_table_name<T>(context.db_objects);
+                ss << "HIGHLIGHT (" << streaming_identifier(tableName);
+                ss << ", " << serialize(statement.argument0, context);
+                ss << ", " << serialize(statement.argument1, context);
+                ss << ", " << serialize(statement.argument2, context) << ")";
+                return ss.str();
             }
         };
 
@@ -18989,6 +19047,14 @@ namespace sqlite_orm {
         template<class... Args>
         struct node_tuple<set_t<Args...>, void> {
             using type = tuple_cat_t<node_tuple_t<Args>...>;
+        };
+
+        template<class T, class X, class Y, class Z>
+        struct node_tuple<highlight_t<T, X, Y, Z>, void> {
+            using x_node_tuple = node_tuple_t<X>;
+            using y_node_tuple = node_tuple_t<Y>;
+            using z_node_tuple = node_tuple_t<Z>;
+            using type = tuple_cat_t<x_node_tuple, y_node_tuple, z_node_tuple>;
         };
 
         template<class T>
