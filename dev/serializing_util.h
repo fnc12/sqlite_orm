@@ -369,7 +369,7 @@ namespace sqlite_orm {
                 ss << serialize(constraint, context) << ' ';
             });
             if(isNotNull) {
-                ss << "NOT NULL ";
+                ss << "NOT NULL";
             }
 
             return ss;

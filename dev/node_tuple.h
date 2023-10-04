@@ -23,7 +23,6 @@
 #include "ast/match.h"
 
 namespace sqlite_orm {
-
     namespace internal {
 
         template<class T, class SFINAE = void>
