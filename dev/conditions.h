@@ -25,6 +25,9 @@ namespace sqlite_orm {
 
     namespace internal {
 
+        template<class T, class F>
+        struct column_pointer;
+
         struct limit_string {
             operator std::string() const {
                 return "LIMIT";
@@ -617,7 +620,7 @@ namespace sqlite_orm {
         };
 
         template<class A, class T>
-        struct glob_t : condition_t, glob_string, internal::negatable_t {
+        struct glob_t : condition_t, glob_string, negatable_t {
             using self = glob_t<A, T>;
             using arg_t = A;
             using pattern_t = T;
@@ -834,7 +837,7 @@ namespace sqlite_orm {
         return {std::move(arg)};
     }
 
-    // Deliberately put operators for `expression_t` into the internal namespace
+    // Deliberately put operators for `expression_t`, `column_pointer` into the internal namespace
     // to facilitate ADL (Argument Dependent Lookup)
     namespace internal {
         /**
@@ -842,8 +845,12 @@ namespace sqlite_orm {
          */
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>>,
+                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
+                                                          std::is_base_of<arithmetic_t, R>,
+                                                          polyfill::is_specialization_of<L, expression_t>,
+                                                          polyfill::is_specialization_of<R, expression_t>,
+                                                          polyfill::is_specialization_of<L, column_pointer>,
+                                                          polyfill::is_specialization_of<R, column_pointer>>,
                                   bool> = true>
         less_than_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator<(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -851,8 +858,12 @@ namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>>,
+                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
+                                                          std::is_base_of<arithmetic_t, R>,
+                                                          polyfill::is_specialization_of<L, expression_t>,
+                                                          polyfill::is_specialization_of<R, expression_t>,
+                                                          polyfill::is_specialization_of<L, column_pointer>,
+                                                          polyfill::is_specialization_of<R, column_pointer>>,
                                   bool> = true>
         less_or_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator<=(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -860,8 +871,12 @@ namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>>,
+                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
+                                                          std::is_base_of<arithmetic_t, R>,
+                                                          polyfill::is_specialization_of<L, expression_t>,
+                                                          polyfill::is_specialization_of<R, expression_t>,
+                                                          polyfill::is_specialization_of<L, column_pointer>,
+                                                          polyfill::is_specialization_of<R, column_pointer>>,
                                   bool> = true>
         greater_than_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator>(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -869,8 +884,12 @@ namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>>,
+                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
+                                                          std::is_base_of<arithmetic_t, R>,
+                                                          polyfill::is_specialization_of<L, expression_t>,
+                                                          polyfill::is_specialization_of<R, expression_t>,
+                                                          polyfill::is_specialization_of<L, column_pointer>,
+                                                          polyfill::is_specialization_of<R, column_pointer>>,
                                   bool> = true>
         greater_or_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator>=(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -879,7 +898,9 @@ namespace sqlite_orm {
         template<class L,
                  class R,
                  std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>>,
+                                                          polyfill::is_specialization_of<R, expression_t>,
+                                                          polyfill::is_specialization_of<L, column_pointer>,
+                                                          polyfill::is_specialization_of<R, column_pointer>>,
                                   bool> = true>
         is_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator==(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -887,8 +908,12 @@ namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>>,
+                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
+                                                          std::is_base_of<arithmetic_t, R>,
+                                                          polyfill::is_specialization_of<L, expression_t>,
+                                                          polyfill::is_specialization_of<R, expression_t>,
+                                                          polyfill::is_specialization_of<L, column_pointer>,
+                                                          polyfill::is_specialization_of<R, column_pointer>>,
                                   bool> = true>
         is_not_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator!=(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -898,6 +923,8 @@ namespace sqlite_orm {
                  class R,
                  std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<L, expression_t>,
                                                           polyfill::is_specialization_of<R, expression_t>,
+                                                          polyfill::is_specialization_of<L, column_pointer>,
+                                                          polyfill::is_specialization_of<R, column_pointer>,
                                                           std::is_base_of<conc_string, L>,
                                                           std::is_base_of<conc_string, R>>,
                                   bool> = true>

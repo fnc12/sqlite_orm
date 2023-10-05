@@ -62,8 +62,8 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     template<typename T>
     concept orm_column_text_extractable = requires(const row_extractor<T>& extractor, const char* columnText) {
-                                              { extractor.extract(columnText) } -> std::same_as<T>;
-                                          };
+        { extractor.extract(columnText) } -> std::same_as<T>;
+    };
 
     template<typename T>
     concept orm_row_value_extractable =
@@ -73,8 +73,8 @@ namespace sqlite_orm {
 
     template<typename T>
     concept orm_boxed_value_extractable = requires(const row_extractor<T>& extractor, sqlite3_value* value) {
-                                              { extractor.extract(value) } -> std::same_as<T>;
-                                          };
+        { extractor.extract(value) } -> std::same_as<T>;
+    };
 #endif
 
     namespace internal {

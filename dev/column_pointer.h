@@ -6,6 +6,7 @@
 #include "functional/cxx_core_features.h"
 #include "conditions.h"
 #include "alias_traits.h"
+#include "tags.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -14,42 +15,14 @@ namespace sqlite_orm {
          *  Is useful when mapped type is derived from other type and base class has members mapped to a storage.
          */
         template<class T, class F>
-        struct column_pointer {
+        struct column_pointer : condition_t {
             using self = column_pointer<T, F>;
             using type = T;
             using field_type = F;
 
             field_type field;
 
-            template<class R>
-            is_equal_t<self, R> operator==(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
-
-            template<class R>
-            is_not_equal_t<self, R> operator!=(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
-
-            template<class R>
-            less_than_t<self, R> operator<(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
-
-            template<class R>
-            less_or_equal_t<self, R> operator<=(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
-
-            template<class R>
-            greater_than_t<self, R> operator>(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
-
-            template<class R>
-            greater_or_equal_t<self, R> operator>=(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
+            column_pointer(field_type field) : field{field} {}
         };
 
         template<class T>

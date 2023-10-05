@@ -5,6 +5,7 @@
 #include "functional/cxx_optional.h"
 
 #include "functional/cxx_universal.h"
+#include "tags.h"
 #include "operators.h"
 
 namespace sqlite_orm {
