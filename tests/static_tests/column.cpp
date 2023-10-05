@@ -7,6 +7,17 @@ using namespace sqlite_orm;
 
 TEST_CASE("Column") {
     {
+        using column_type = decltype(make_column("name", &User::name));
+        STATIC_REQUIRE(std::tuple_size<column_type::constraints_type>::value == 0);
+        STATIC_REQUIRE(std::is_same<column_type::object_type, User>::value);
+        STATIC_REQUIRE(std::is_same<column_type::field_type, std::unique_ptr<std::string>>::value);
+        STATIC_REQUIRE(std::is_same<column_type::member_pointer_t, std::unique_ptr<std::string> User::*>::value);
+        STATIC_REQUIRE(std::is_same<column_type::setter_type, internal::empty_setter>::value);
+
+        using field_type = column_type::field_type;
+        STATIC_REQUIRE(type_is_nullable<field_type>::value);
+    }
+    {
         using column_type = decltype(make_column("id", &User::id));
         STATIC_REQUIRE(std::tuple_size<column_type::constraints_type>::value == 0);
         STATIC_REQUIRE(std::is_same<column_type::object_type, User>::value);

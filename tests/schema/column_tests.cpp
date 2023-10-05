@@ -30,3 +30,18 @@ TEST_CASE("column tests is_generated") {
         REQUIRE_FALSE(column.is_generated());
     }
 }
+
+TEST_CASE("column is_not_null") {
+    struct User {
+        int id = 0;
+        std::unique_ptr<std::string> name;
+    };
+    SECTION("not null") {
+        auto column = make_column("id", &User::id);
+        REQUIRE(column.is_not_null());
+    }
+    SECTION("null") {
+        auto column = make_column("name", &User::name);
+        REQUIRE(!column.is_not_null());
+    }
+}
