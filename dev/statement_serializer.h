@@ -1021,11 +1021,12 @@ namespace sqlite_orm {
 
                 std::stringstream ss;
                 ss << streaming_identifier(column.name);
-                if(!no_need_types_and_constraints<Ctx>::value) {
+                if(!context.skip_types_and_constraints) {
                     ss << " " << type_printer<field_type_t<column_type>>().print();
+                    const bool columnIsNotNull = column.is_not_null();
                     auto constraintsTuple = streaming_column_constraints(
                         call_as_template_base<column_constraints>(polyfill::identity{})(column),
-                        column.is_not_null(),
+                        columnIsNotNull,
                         context);
                     if(std::tuple_size<decltype(constraintsTuple)>::value > 0) {
                         ss << " " << constraintsTuple;
@@ -1634,7 +1635,8 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
                 ss << "USING FTS5(";
-                auto subContext = make_serializer_context_with_no_types_and_constraints(context);
+                auto subContext = context;
+                subContext.skip_types_and_constraints = true;
                 ss << streaming_expressions_tuple(statement.columns, subContext) << ")";
                 return ss.str();
             }

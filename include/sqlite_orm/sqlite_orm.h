@@ -2741,6 +2741,7 @@ namespace sqlite_orm {
             bool replace_bindable_with_question = false;
             bool skip_table_name = true;
             bool use_parentheses = true;
+            bool skip_types_and_constraints = false;
         };
 
         template<class DBOs>
@@ -2751,19 +2752,6 @@ namespace sqlite_orm {
 
             serializer_context(const db_objects_type& dbObjects) : db_objects{dbObjects} {}
         };
-
-        template<class DBOs>
-        struct serializer_context_with_no_types_and_constraints : serializer_context<DBOs> {
-            using super = serializer_context<DBOs>;
-
-            serializer_context_with_no_types_and_constraints(const super& parentContext) : super(parentContext) {}
-        };
-
-        template<class DBOs>
-        serializer_context_with_no_types_and_constraints<DBOs>
-        make_serializer_context_with_no_types_and_constraints(const serializer_context<DBOs>& parentContext) {
-            return {parentContext};
-        }
 
         template<class S>
         struct serializer_context_builder {
@@ -2777,13 +2765,6 @@ namespace sqlite_orm {
             }
 
             const storage_type& storage;
-        };
-
-        template<class T>
-        struct no_need_types_and_constraints : std::false_type {};
-
-        template<class DBOs>
-        struct no_need_types_and_constraints<serializer_context_with_no_types_and_constraints<DBOs>> : std::true_type {
         };
     }
 
@@ -16605,11 +16586,12 @@ namespace sqlite_orm {
 
                 std::stringstream ss;
                 ss << streaming_identifier(column.name);
-                if(!no_need_types_and_constraints<Ctx>::value) {
+                if(!context.skip_types_and_constraints) {
                     ss << " " << type_printer<field_type_t<column_type>>().print();
+                    const bool columnIsNotNull = column.is_not_null();
                     auto constraintsTuple = streaming_column_constraints(
                         call_as_template_base<column_constraints>(polyfill::identity{})(column),
-                        column.is_not_null(),
+                        columnIsNotNull,
                         context);
                     if(std::tuple_size<decltype(constraintsTuple)>::value > 0) {
                         ss << " " << constraintsTuple;
@@ -17218,7 +17200,8 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
                 ss << "USING FTS5(";
-                auto subContext = make_serializer_context_with_no_types_and_constraints(context);
+                auto subContext = context;
+                subContext.skip_types_and_constraints = true;
                 ss << streaming_expressions_tuple(statement.columns, subContext) << ")";
                 return ss.str();
             }
@@ -17740,11 +17723,9 @@ namespace sqlite_orm {
             storage_t(std::string filename, db_objects_type dbObjects) :
                 storage_base{std::move(filename), foreign_keys_count(dbObjects)}, db_objects{std::move(dbObjects)} {}
 
-            // private:
-          public:
+          private:
             db_objects_type db_objects;
 
-          private:
             /**
              *  Obtain a storage_t's const db_objects_tuple.
              *

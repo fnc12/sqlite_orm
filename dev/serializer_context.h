@@ -8,6 +8,7 @@ namespace sqlite_orm {
             bool replace_bindable_with_question = false;
             bool skip_table_name = true;
             bool use_parentheses = true;
+            bool skip_types_and_constraints = false;
         };
 
         template<class DBOs>
@@ -18,19 +19,6 @@ namespace sqlite_orm {
 
             serializer_context(const db_objects_type& dbObjects) : db_objects{dbObjects} {}
         };
-
-        template<class DBOs>
-        struct serializer_context_with_no_types_and_constraints : serializer_context<DBOs> {
-            using super = serializer_context<DBOs>;
-
-            serializer_context_with_no_types_and_constraints(const super& parentContext) : super(parentContext) {}
-        };
-
-        template<class DBOs>
-        serializer_context_with_no_types_and_constraints<DBOs>
-        make_serializer_context_with_no_types_and_constraints(const serializer_context<DBOs>& parentContext) {
-            return {parentContext};
-        }
 
         template<class S>
         struct serializer_context_builder {
@@ -44,13 +32,6 @@ namespace sqlite_orm {
             }
 
             const storage_type& storage;
-        };
-
-        template<class T>
-        struct no_need_types_and_constraints : std::false_type {};
-
-        template<class DBOs>
-        struct no_need_types_and_constraints<serializer_context_with_no_types_and_constraints<DBOs>> : std::true_type {
         };
     }
 

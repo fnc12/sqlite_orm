@@ -80,11 +80,9 @@ namespace sqlite_orm {
             storage_t(std::string filename, db_objects_type dbObjects) :
                 storage_base{std::move(filename), foreign_keys_count(dbObjects)}, db_objects{std::move(dbObjects)} {}
 
-            // private:
-          public:
+          private:
             db_objects_type db_objects;
 
-          private:
             /**
              *  Obtain a storage_t's const db_objects_tuple.
              *
