@@ -16460,9 +16460,10 @@ namespace sqlite_orm {
                 ss << streaming_identifier(column.name);
                 if(!context.skip_types_and_constraints) {
                     ss << " " << type_printer<field_type_t<column_type>>().print();
+                    const bool columnIsNotNull = column.is_not_null();
                     auto constraintsTuple = streaming_column_constraints(
                         call_as_template_base<column_constraints>(polyfill::identity{})(column),
-                        column.is_not_null(),
+                        columnIsNotNull,
                         context);
                     if(std::tuple_size<decltype(constraintsTuple)>::value > 0) {
                         ss << " " << constraintsTuple;
