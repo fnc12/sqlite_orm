@@ -44,6 +44,7 @@
 #include "schema/triggers.h"
 #include "table_type_of.h"
 #include "schema/index.h"
+#include "schema/table.h"
 #include "util.h"
 
 namespace sqlite_orm {
@@ -131,6 +132,27 @@ namespace sqlite_orm {
             std::string do_serialize(const pointer_binding<P, PT, D>&) const {
                 // always serialize null (security reasons)
                 return field_printer<nullptr_t>{}(nullptr);
+            }
+        };
+
+        template<class O, bool WithoutRowId, class... Cs>
+        struct statement_serializer<table_t<O, WithoutRowId, Cs...>, void> {
+            using statement_type = table_t<O, WithoutRowId, Cs...>;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) {
+                return this->serialize(statement, context, statement.name);
+            }
+
+            template<class Ctx>
+            std::string serialize(const statement_type& statement, const Ctx& context, const std::string& tableName) {
+                std::stringstream ss;
+                ss << "CREATE TABLE " << streaming_identifier(tableName) << " ( "
+                   << streaming_expressions_tuple(statement.elements, context) << ")";
+                if(statement_type::is_without_rowid_v) {
+                    ss << " WITHOUT ROWID";
+                }
+                return ss.str();
             }
         };
 
@@ -1601,6 +1623,35 @@ namespace sqlite_orm {
                             throw std::system_error{orm_error_code::incorrect_order};
                     }
                 }
+                return ss.str();
+            }
+        };
+
+        template<class... Cs>
+        struct statement_serializer<using_fts5_t<Cs...>, void> {
+            using statement_type = using_fts5_t<Cs...>;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                std::stringstream ss;
+                ss << "USING FTS5(";
+                auto subContext = context;
+                subContext.skip_types_and_constraints = true;
+                ss << streaming_expressions_tuple(statement.columns, subContext) << ")";
+                return ss.str();
+            }
+        };
+
+        template<class M>
+        struct statement_serializer<virtual_table_t<M>, void> {
+            using statement_type = virtual_table_t<M>;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                std::stringstream ss;
+                ss << "CREATE VIRTUAL TABLE IF NOT EXISTS ";
+                ss << streaming_identifier(statement.name) << ' ';
+                ss << serialize(statement.module_details, context);
                 return ss.str();
             }
         };

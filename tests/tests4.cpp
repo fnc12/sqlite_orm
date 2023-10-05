@@ -14,9 +14,9 @@ TEST_CASE("Unique ptr in update") {
         std::unique_ptr<std::string> name;
     };
 
-    auto storage = make_storage(
-        {},
-        make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)));
+    auto nameColumn = make_column("name", &User::name);
+    auto nameTable = make_table("users", make_column("id", &User::id, primary_key()), nameColumn);
+    auto storage = make_storage({}, nameTable);
     storage.sync_schema();
 
     storage.insert(User{});

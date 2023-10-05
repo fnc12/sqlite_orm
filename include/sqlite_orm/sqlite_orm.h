@@ -2766,7 +2766,6 @@ namespace sqlite_orm {
 
             const storage_type& storage;
         };
-
     }
 
 }
@@ -9996,6 +9995,92 @@ namespace sqlite_orm {
         template<class O, bool W, class... Cs>
         struct is_table<table_t<O, W, Cs...>> : std::true_type {};
 
+        template<class M>
+        struct virtual_table_t : basic_table {
+            using module_details_type = M;
+            using object_type = typename module_details_type::object_type;
+            using elements_type = typename module_details_type::columns_type;
+
+            static constexpr bool is_without_rowid_v = false;
+            using is_without_rowid = polyfill::bool_constant<is_without_rowid_v>;
+
+            module_details_type module_details;
+
+            virtual_table_t(std::string name, module_details_type module_details) :
+                basic_table{std::move(name)}, module_details{std::move(module_details)} {}
+
+            /**
+             *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
+             *  @param lambda Lambda called for each column.
+             */
+            template<template<class...> class OpTraitFn, class L>
+            void for_each_column_excluding(L&& lambda) const {
+                this->module_details.template for_each_column_excluding<OpTraitFn>(lambda);
+            }
+
+            /**
+             *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
+             *  @param lambda Lambda called for each column.
+             */
+            template<class OpTraitFnCls, class L, satisfies<mpl::is_metafunction_class, OpTraitFnCls> = true>
+            void for_each_column_excluding(L&& lambda) const {
+                this->module_details.template for_each_column_excluding<OpTraitFnCls>(lambda);
+            }
+
+            /**
+             *  Call passed lambda with all defined columns.
+             *  @param lambda Lambda called for each column. Function signature: `void(auto& column)`
+             */
+            template<class L>
+            void for_each_column(L&& lambda) const {
+                this->module_details.for_each_column(lambda);
+            }
+        };
+
+        template<class T>
+        struct is_virtual_table : std::false_type {};
+
+        template<class M>
+        struct is_virtual_table<virtual_table_t<M>> : std::true_type {};
+
+        template<class T, class... Cs>
+        struct using_fts5_t {
+            using object_type = T;
+            using columns_type = std::tuple<Cs...>;
+
+            columns_type columns;
+
+            using_fts5_t(columns_type columns) : columns(std::move(columns)) {}
+
+            /**
+             *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
+             *  @param lambda Lambda called for each column.
+             */
+            template<template<class...> class OpTraitFn, class L>
+            void for_each_column_excluding(L&& lambda) const {
+                iterate_tuple(this->columns, col_index_sequence_excluding<columns_type, OpTraitFn>{}, lambda);
+            }
+
+            /**
+             *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
+             *  @param lambda Lambda called for each column.
+             */
+            template<class OpTraitFnCls, class L, satisfies<mpl::is_metafunction_class, OpTraitFnCls> = true>
+            void for_each_column_excluding(L&& lambda) const {
+                this->for_each_column_excluding<OpTraitFnCls::template fn>(lambda);
+            }
+
+            /**
+             *  Call passed lambda with all defined columns.
+             *  @param lambda Lambda called for each column. Function signature: `void(auto& column)`
+             */
+            template<class L>
+            void for_each_column(L&& lambda) const {
+                using col_index_sequence = filter_tuple_sequence_t<columns_type, is_column>;
+                iterate_tuple(this->columns, col_index_sequence{}, lambda);
+            }
+        };
+
         template<class O, bool WithoutRowId, class... Cs, class G, class S>
         bool exists_in_composite_primary_key(const table_t<O, WithoutRowId, Cs...>& table,
                                              const column_field<G, S>& column) {
@@ -10014,6 +10099,21 @@ namespace sqlite_orm {
             });
             return res;
         }
+
+        template<class M, class G, class S>
+        bool exists_in_composite_primary_key(const virtual_table_t<M>& virtualTable, const column_field<G, S>& column) {
+            return false;
+        }
+    }
+
+    template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
+    internal::using_fts5_t<T, Cs...> using_fts5(Cs... columns) {
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(columns)...)});
+    }
+
+    template<class T, class... Cs>
+    internal::using_fts5_t<T, Cs...> using_fts5(Cs... columns) {
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(columns)...)});
     }
 
     /**
@@ -10036,6 +10136,11 @@ namespace sqlite_orm {
     internal::table_t<T, false, Cs...> make_table(std::string name, Cs... args) {
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
             return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
+    }
+
+    template<class M>
+    internal::virtual_table_t<M> make_virtual_table(std::string name, M module_details) {
+        return internal::virtual_table_t<M>(std::move(name), std::move(module_details));
     }
 }
 #pragma once
@@ -15503,6 +15608,8 @@ namespace sqlite_orm {
 
 // #include "schema/index.h"
 
+// #include "schema/table.h"
+
 // #include "util.h"
 
 namespace sqlite_orm {
@@ -15590,6 +15697,27 @@ namespace sqlite_orm {
             std::string do_serialize(const pointer_binding<P, PT, D>&) const {
                 // always serialize null (security reasons)
                 return field_printer<nullptr_t>{}(nullptr);
+            }
+        };
+
+        template<class O, bool WithoutRowId, class... Cs>
+        struct statement_serializer<table_t<O, WithoutRowId, Cs...>, void> {
+            using statement_type = table_t<O, WithoutRowId, Cs...>;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) {
+                return this->serialize(statement, context, statement.name);
+            }
+
+            template<class Ctx>
+            std::string serialize(const statement_type& statement, const Ctx& context, const std::string& tableName) {
+                std::stringstream ss;
+                ss << "CREATE TABLE " << streaming_identifier(tableName) << " ( "
+                   << streaming_expressions_tuple(statement.elements, context) << ")";
+                if(statement_type::is_without_rowid_v) {
+                    ss << " WITHOUT ROWID";
+                }
+                return ss.str();
             }
         };
 
@@ -17064,6 +17192,35 @@ namespace sqlite_orm {
             }
         };
 
+        template<class... Cs>
+        struct statement_serializer<using_fts5_t<Cs...>, void> {
+            using statement_type = using_fts5_t<Cs...>;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                std::stringstream ss;
+                ss << "USING FTS5(";
+                auto subContext = context;
+                subContext.skip_types_and_constraints = true;
+                ss << streaming_expressions_tuple(statement.columns, subContext) << ")";
+                return ss.str();
+            }
+        };
+
+        template<class M>
+        struct statement_serializer<virtual_table_t<M>, void> {
+            using statement_type = virtual_table_t<M>;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                std::stringstream ss;
+                ss << "CREATE VIRTUAL TABLE IF NOT EXISTS ";
+                ss << streaming_identifier(statement.name) << ' ';
+                ss << serialize(statement.module_details, context);
+                return ss.str();
+            }
+        };
+
         template<class T, class... Cols>
         struct statement_serializer<index_t<T, Cols...>, void> {
             using statement_type = index_t<T, Cols...>;
@@ -17590,15 +17747,10 @@ namespace sqlite_orm {
                 using table_type = std::decay_t<decltype(table)>;
                 using context_t = serializer_context<db_objects_type>;
 
-                std::stringstream ss;
                 context_t context{this->db_objects};
-                ss << "CREATE TABLE " << streaming_identifier(tableName) << " ( "
-                   << streaming_expressions_tuple(table.elements, context) << ")";
-                if(table_type::is_without_rowid_v) {
-                    ss << " WITHOUT ROWID";
-                }
-                ss.flush();
-                perform_void_exec(db, ss.str());
+                statement_serializer<Table, void> serializer;
+                const auto sql = serializer.serialize(table, context, tableName);
+                perform_void_exec(db, sql);
             }
 
             /**
@@ -18399,6 +18551,16 @@ namespace sqlite_orm {
                 return res;
             }
 
+            template<class M>
+            sync_schema_result sync_table(const virtual_table_t<M>& virtualTable, sqlite3* db, bool) {
+                auto res = sync_schema_result::already_in_sync;
+                using context_t = serializer_context<db_objects_type>;
+                context_t context{this->db_objects};
+                auto query = serialize(virtualTable, context);
+                perform_void_exec(db, query);
+                return res;
+            }
+
             template<class... Cols>
             sync_schema_result sync_table(const index_t<Cols...>& index, sqlite3* db, bool) {
                 auto res = sync_schema_result::already_in_sync;
@@ -18414,7 +18576,8 @@ namespace sqlite_orm {
                 auto res = sync_schema_result::already_in_sync;  // TODO Change accordingly
                 using context_t = serializer_context<db_objects_type>;
                 context_t context{this->db_objects};
-                perform_void_exec(db, serialize(trigger, context));
+                auto query = serialize(trigger, context);
+                perform_void_exec(db, query);
                 return res;
             }
 
@@ -18440,7 +18603,8 @@ namespace sqlite_orm {
                 context.replace_bindable_with_question = true;
 
                 auto con = this->get_connection();
-                sqlite3_stmt* stmt = prepare_stmt(con.get(), serialize(statement, context));
+                const auto sql = serialize(statement, context);
+                sqlite3_stmt* stmt = prepare_stmt(con.get(), sql);
                 return prepared_statement_t<S>{std::forward<S>(statement), stmt, con};
             }
 

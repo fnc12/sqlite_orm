@@ -33,7 +33,6 @@ namespace sqlite_orm {
 
             const storage_type& storage;
         };
-
     }
 
 }

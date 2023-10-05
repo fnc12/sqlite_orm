@@ -43,6 +43,7 @@ add_executable(unit_tests
     schema/index_tests.cpp
     schema/table_tests.cpp
     schema/explicit_columns.cpp
+    schema/virtual_table.cpp
     private_getters_tests.cpp
     pragma_tests.cpp
     built_in_functions_tests/core_functions_tests.cpp
@@ -90,6 +91,7 @@ add_executable(unit_tests
     statement_serializer_tests/ast/upsert_clause.cpp
     statement_serializer_tests/ast/excluded.cpp
     statement_serializer_tests/ast/set.cpp
+    statement_serializer_tests/ast/match.cpp
     statement_serializer_tests/ast/rank.cpp
     statement_serializer_tests/arithmetic_operators.cpp
     statement_serializer_tests/base_types.cpp
@@ -103,6 +105,8 @@ add_executable(unit_tests
     statement_serializer_tests/schema/trigger.cpp
     statement_serializer_tests/schema/new_old.cpp
     statement_serializer_tests/schema/raise.cpp
+    statement_serializer_tests/schema/using_fts5.cpp
+    statement_serializer_tests/schema/virtual_table.cpp
     statement_serializer_tests/schema/column.cpp
     statement_serializer_tests/indexed_column.cpp
     statement_serializer_tests/logical_operators.cpp

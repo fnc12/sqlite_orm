@@ -104,15 +104,10 @@ namespace sqlite_orm {
                 using table_type = std::decay_t<decltype(table)>;
                 using context_t = serializer_context<db_objects_type>;
 
-                std::stringstream ss;
                 context_t context{this->db_objects};
-                ss << "CREATE TABLE " << streaming_identifier(tableName) << " ( "
-                   << streaming_expressions_tuple(table.elements, context) << ")";
-                if(table_type::is_without_rowid_v) {
-                    ss << " WITHOUT ROWID";
-                }
-                ss.flush();
-                perform_void_exec(db, ss.str());
+                statement_serializer<Table, void> serializer;
+                const auto sql = serializer.serialize(table, context, tableName);
+                perform_void_exec(db, sql);
             }
 
             /**
@@ -913,6 +908,16 @@ namespace sqlite_orm {
                 return res;
             }
 
+            template<class M>
+            sync_schema_result sync_table(const virtual_table_t<M>& virtualTable, sqlite3* db, bool) {
+                auto res = sync_schema_result::already_in_sync;
+                using context_t = serializer_context<db_objects_type>;
+                context_t context{this->db_objects};
+                auto query = serialize(virtualTable, context);
+                perform_void_exec(db, query);
+                return res;
+            }
+
             template<class... Cols>
             sync_schema_result sync_table(const index_t<Cols...>& index, sqlite3* db, bool) {
                 auto res = sync_schema_result::already_in_sync;
@@ -928,7 +933,8 @@ namespace sqlite_orm {
                 auto res = sync_schema_result::already_in_sync;  // TODO Change accordingly
                 using context_t = serializer_context<db_objects_type>;
                 context_t context{this->db_objects};
-                perform_void_exec(db, serialize(trigger, context));
+                auto query = serialize(trigger, context);
+                perform_void_exec(db, query);
                 return res;
             }
 
@@ -954,7 +960,8 @@ namespace sqlite_orm {
                 context.replace_bindable_with_question = true;
 
                 auto con = this->get_connection();
-                sqlite3_stmt* stmt = prepare_stmt(con.get(), serialize(statement, context));
+                const auto sql = serialize(statement, context);
+                sqlite3_stmt* stmt = prepare_stmt(con.get(), sql);
                 return prepared_statement_t<S>{std::forward<S>(statement), stmt, con};
             }
 
