@@ -34,21 +34,20 @@ void all_integers_between(int from, int end) {
         //    SELECT x FROM cnt;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         constexpr auto cnt_cte = "cnt"_cte;
-        auto ast =
-            with(cte<cnt_cte>()(
-                     union_all(select(from), select(cnt_cte->*1_colalias + c(1), where(cnt_cte->*1_colalias < end)))),
-                 select(cnt_cte->*1_colalias));
+        auto ast = with(cte<cnt_cte>()(union_all(select(from),
+                                                 select(cnt_cte->*1_colalias + 1, where(cnt_cte->*1_colalias < end)))),
+                        select(cnt_cte->*1_colalias));
 #else
         auto ast =
             with(cte<cte_1>()(union_all(select(from),
-                                        select(1_ctealias->*1_colalias + c(1), where(1_ctealias->*1_colalias < end)))),
+                                        select(1_ctealias->*1_colalias + 1, where(1_ctealias->*1_colalias < end)))),
                  select(1_ctealias->*1_colalias));
 #endif
 // alternative
 #if 0
         auto ast = with(
             cte<cte_1>()(union_all(select(from >>= colalias_f{}),
-                                   select(1_ctealias->*colalias_f{} + c(1), where(1_ctealias->*colalias_f{} < end)))),
+                                   select(1_ctealias->*colalias_f{} + 1, where(1_ctealias->*colalias_f{} < end)))),
             select(1_ctealias->*colalias_f{}));
 #endif
 
@@ -75,13 +74,13 @@ void all_integers_between(int from, int end) {
         //    )
         //    SELECT x FROM cnt;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        auto ast = with(cte<"cnt"_cte>("y"_col)(
-                            union_all(select(from >>= "x"_col), select("cnt"_cte->*"y"_col + c(1), limit(end)))),
-                        select("cnt"_cte->*"y"_col));
+        auto ast = with(
+            cte<"cnt"_cte>("y"_col)(union_all(select(from >>= "x"_col), select("cnt"_cte->*"y"_col + 1, limit(end)))),
+            select("cnt"_cte->*"y"_col));
 #else
-        auto ast = with(cte<cte_1>()(union_all(select(as<colalias_f>(from)),
-                                               select(column<cte_1>(colalias_f{}) + c(1), limit(end)))),
-                        select(column<cte_1>(colalias_f{})));
+        auto ast = with(
+            cte<cte_1>()(union_all(select(as<colalias_f>(from)), select(column<cte_1>(colalias_f{}) + 1, limit(end)))),
+            select(column<cte_1>(colalias_f{})));
 #endif
 
         string sql = storage.dump(ast);
@@ -102,7 +101,7 @@ void all_integers_between(int from, int end) {
              << "]"
                 "\n";
         for(int n: storage.with(cte<cte_1>().as(union_all(select(as<colalias_f>(from)),
-                                                          select(column<cte_1>(colalias_f{}) + c(1), limit(end)))),
+                                                          select(column<cte_1>(colalias_f{}) + 1, limit(end)))),
                                 select(column<cte_1>(colalias_f{})))) {
             cout << n << ", ";
         }
@@ -159,14 +158,14 @@ void supervisor_chain() {
         auto ast = with(cte<"chain"_cte>()(union_all(
                             select(asterisk<Org>(), where(&Org::name == c("Fred"))),
                             select(asterisk<alias_a<Org>>(),
-                                   where(c(alias_column<alias_a<Org>>(&Org::name)) == "chain"_cte->*&Org::boss)))),
+                                   where(alias_column<alias_a<Org>>(&Org::name) == "chain"_cte->*&Org::boss)))),
                         select("chain"_cte->*&Org::name));
 #else
-        auto ast = with(cte<cte_1>()(union_all(
-                            select(asterisk<Org>(), where(&Org::name == c("Fred"))),
-                            select(asterisk<alias_a<Org>>(),
-                                   where(c(alias_column<alias_a<Org>>(&Org::name)) == column<cte_1>(&Org::boss))))),
-                        select(column<cte_1>(&Org::name)));
+        auto ast = with(
+            cte<cte_1>()(union_all(select(asterisk<Org>(), where(&Org::name == c("Fred"))),
+                                   select(asterisk<alias_a<Org>>(),
+                                          where(alias_column<alias_a<Org>>(&Org::name) == column<cte_1>(&Org::boss))))),
+            select(column<cte_1>(&Org::name)));
 #endif
         string sql = storage.dump(ast);
 
@@ -225,13 +224,12 @@ void works_for_alice() {
         constexpr auto works_for_alice = "works_for_alice"_cte;
         auto ast =
             with(cte<works_for_alice>("n"_col)(
-                     union_(select("Alice"), select(&Org::name, where(c(&Org::boss) == works_for_alice->*"n"_col)))),
+                     union_(select("Alice"), select(&Org::name, where(&Org::boss == works_for_alice->*"n"_col)))),
                  select(avg(&Org::height), from<Org>(), where(in(&Org::name, select(works_for_alice->*"n"_col)))));
 #else
-        auto ast =
-            with(cte<cte_1>()(
-                     union_(select("Alice"), select(&Org::name, where(c(&Org::boss) == column<cte_1>(1_colalias))))),
-                 select(avg(&Org::height), from<Org>(), where(in(&Org::name, select(column<cte_1>(1_colalias))))));
+        auto ast = with(
+            cte<cte_1>()(union_(select("Alice"), select(&Org::name, where(&Org::boss == column<cte_1>(1_colalias))))),
+            select(avg(&Org::height), from<Org>(), where(in(&Org::name, select(column<cte_1>(1_colalias))))));
 #endif
 
         //WITH cte_1("n")
@@ -429,17 +427,17 @@ void depth_or_breadth_first() {
         constexpr auto level = "level"_col;
         auto ast = with(cte<under_alice>(&Org::name, level)(
                             union_all(select(columns("Alice", 0)),
-                                      select(columns(&Org::name, under_alice->*level + c(1)),
+                                      select(columns(&Org::name, under_alice->*level + 1),
                                              join<under_alice>(on(under_alice->*&Org::name == &Org::boss)),
                                              order_by(2)))),
-                        select(substr("..........", 1, under_alice->*level * c(3)) || c(under_alice->*&Org::name)));
+                        select(substr("..........", 1, under_alice->*level * 3) || c(under_alice->*&Org::name)));
 #else
         auto ast =
             with(cte<cte_1>("name", "level")(union_all(select(columns("Alice", 0)),
-                                                       select(columns(&Org::name, column<cte_1>(2_colalias) + c(1)),
+                                                       select(columns(&Org::name, column<cte_1>(2_colalias) + 1),
                                                               join<cte_1>(on(column<cte_1>(1_colalias) == &Org::boss)),
                                                               order_by(2)))),
-                 select(substr("..........", 1, column<cte_1>(2_colalias) * c(3)) || c(column<cte_1>(1_colalias))));
+                 select(substr("..........", 1, column<cte_1>(2_colalias) * 3) || c(column<cte_1>(1_colalias))));
 #endif
 
         string sql = storage.dump(ast);
@@ -470,17 +468,17 @@ void depth_or_breadth_first() {
         constexpr auto level = "level"_col;
         auto ast = with(cte<under_alice>(&Org::name, level)(
                             union_all(select(columns("Alice", 0)),
-                                      select(columns(&Org::name, under_alice->*level + c(1)),
+                                      select(columns(&Org::name, under_alice->*level + 1),
                                              join<under_alice>(on(under_alice->*&Org::name == &Org::boss)),
                                              order_by(2).desc()))),
-                        select(substr("..........", 1, under_alice->*level * c(3)) || c(under_alice->*&Org::name)));
+                        select(substr("..........", 1, under_alice->*level * 3) || c(under_alice->*&Org::name)));
 #else
         auto ast =
             with(cte<cte_1>("name", "level")(union_all(select(columns("Alice", 0)),
-                                                       select(columns(&Org::name, column<cte_1>(2_colalias) + c(1)),
+                                                       select(columns(&Org::name, column<cte_1>(2_colalias) + 1),
                                                               join<cte_1>(on(column<cte_1>(1_colalias) == &Org::boss)),
                                                               order_by(2).desc()))),
-                 select(substr("..........", 1, column<cte_1>(2_colalias) * c(3)) || c(column<cte_1>(1_colalias))));
+                 select(substr("..........", 1, column<cte_1>(2_colalias) * 3) || c(column<cte_1>(1_colalias))));
 #endif
 
         string sql = storage.dump(ast);
@@ -522,10 +520,10 @@ void select_from_subselect() {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     constexpr auto sub = "sub"_cte;
     auto expression = with(cte<sub>()(select(columns(&Employee::m_salary, &Employee::m_commission))),
-                           select(asterisk<sub>(), where(c(sub->*&Employee::m_salary) < 5000)));
+                           select(asterisk<sub>(), where(sub->*&Employee::m_salary < 5000)));
 #else
     auto expression = with(cte<cte_1>()(select(columns(&Employee::m_salary, &Employee::m_commission))),
-                           select(asterisk<cte_1>(), where(c(1_ctealias->*&Employee::m_salary) < 5000)));
+                           select(asterisk<cte_1>(), where(1_ctealias->*&Employee::m_salary < 5000)));
 #endif
 
     string sql = storage.dump(expression);
@@ -573,18 +571,18 @@ void apfelmaennchen() {
     constexpr auto cy = "cy"_col;
     constexpr auto t = "t"_col;
     auto ast = with(
-        make_tuple(cte<xaxis>(x)(union_all(select(-2.0), select(xaxis->*x + c(0.05), where(xaxis->*x < 1.2)))),
-                   cte<yaxis>(y)(union_all(select(-1.0), select(yaxis->*y + c(0.10), where(yaxis->*y < 1.0)))),
+        make_tuple(cte<xaxis>(x)(union_all(select(-2.0), select(xaxis->*x + 0.05, where(xaxis->*x < 1.2)))),
+                   cte<yaxis>(y)(union_all(select(-1.0), select(yaxis->*y + 0.10, where(yaxis->*y < 1.0)))),
                    cte<m>(iter, cx, cy, x, y)(
                        union_all(select(columns(0, xaxis->*x, yaxis->*y, 0.0, 0.0)),
-                                 select(columns(m->*iter + c(1),
+                                 select(columns(m->*iter + 1,
                                                 m->*cx,
                                                 m->*cy,
-                                                m->*x * c(m->*x) - m->*y * c(m->*y) + m->*cx,
-                                                c(2.0) * m->*x * m->*y + m->*cy),
-                                        where((m->*x * c(m->*x) + m->*y * c(m->*y)) < c(4.0) && m->*iter < 28)))),
+                                                m->*x * m->*x - m->*y * m->*y + m->*cx,
+                                                2.0 * m->*x * m->*y + m->*cy),
+                                        where((m->*x * m->*x + m->*y * m->*y) < 4.0 && m->*iter < 28)))),
                    cte<m2>(iter, cx, cy)(select(columns(max<>(m->*iter), m->*cx, m->*cy), group_by(m->*cx, m->*cy))),
-                   cte<a>(t)(select(group_concat(substr(" .+*#", 1 + min<>(m2->*iter / c(7.0), 4.0), 1), ""),
+                   cte<a>(t)(select(group_concat(substr(" .+*#", 1 + min<>(m2->*iter / 7.0, 4.0), 1), ""),
                                     group_by(m2->*cy)))),
         select(group_concat(rtrim(a->*t), "\n")));
 #else
@@ -605,21 +603,20 @@ void apfelmaennchen() {
     constexpr internal::column_alias<'c', 'y'> cy;
     constexpr internal::column_alias<'t'> t;
     auto ast = with(
-        make_tuple(
-            cte<cte_xaxis>("x")(union_all(select(-2.0 >>= x), select(xaxis->*x + c(0.05), where(xaxis->*x < 1.2)))),
-            cte<cte_yaxis>("y")(union_all(select(-1.0 >>= y), select(yaxis->*y + c(0.10), where(yaxis->*y < 1.0)))),
-            cte<cte_m>("iter", "cx", "cy", "x", "y")(
-                union_all(select(columns(0 >>= iter, xaxis->*x >>= cx, yaxis->*y >>= cy, 0.0 >>= x, 0.0 >>= y)),
-                          select(columns(m->*iter + c(1),
-                                         m->*cx,
-                                         m->*cy,
-                                         m->*x * c(m->*x) - m->*y * c(m->*y) + m->*cx,
-                                         c(2.0) * m->*x * m->*y + m->*cy),
-                                 where((m->*x * c(m->*x) + m->*y * c(m->*y)) < c(4.0) && m->*iter < 28)))),
-            cte<cte_m2>("iter", "cx", "cy")(
-                select(columns(max<>(m->*iter) >>= iter, m->*cx, m->*cy), group_by(m->*cx, m->*cy))),
-            cte<cte_a>("t")(select(group_concat(substr(" .+*#", 1 + min<>(m2->*iter / c(7.0), 4.0), 1), "") >>= t,
-                                   group_by(m2->*cy)))),
+        make_tuple(cte<cte_xaxis>("x")(union_all(select(-2.0 >>= x), select(xaxis->*x + 0.05, where(xaxis->*x < 1.2)))),
+                   cte<cte_yaxis>("y")(union_all(select(-1.0 >>= y), select(yaxis->*y + 0.10, where(yaxis->*y < 1.0)))),
+                   cte<cte_m>("iter", "cx", "cy", "x", "y")(
+                       union_all(select(columns(0 >>= iter, xaxis->*x >>= cx, yaxis->*y >>= cy, 0.0 >>= x, 0.0 >>= y)),
+                                 select(columns(m->*iter + 1,
+                                                m->*cx,
+                                                m->*cy,
+                                                m->*x * m->*x - m->*y * m->*y + m->*cx,
+                                                2.0 * m->*x * m->*y + m->*cy),
+                                        where((m->*x * m->*x + m->*y * m->*y) < 4.0 && m->*iter < 28)))),
+                   cte<cte_m2>("iter", "cx", "cy")(
+                       select(columns(max<>(m->*iter) >>= iter, m->*cx, m->*cy), group_by(m->*cx, m->*cy))),
+                   cte<cte_a>("t")(select(group_concat(substr(" .+*#", 1 + min<>(m2->*iter / 7.0, 4.0), 1), "") >>= t,
+                                          group_by(m2->*cy)))),
         select(group_concat(rtrim(a->*t), "\n")));
 #endif
 
@@ -677,30 +674,30 @@ void sudoku() {
     constexpr auto lp = "lp"_col;
     constexpr auto s = "s"_col;
     constexpr auto ind = "ind"_col;
-    auto ast = with(
-        make_tuple(
-            cte<input>(sud)(
-                select("53..7....6..195....98....6.8...6...34..8.3..17...2...6.6....28....419..5....8..79")),
-            cte<digits>(z, lp)(union_all(
-                select(columns("1", 1)),
-                select(columns(cast<string>(digits->*lp + c(1)), digits->*lp + c(1)), where(digits->*lp < 9)))),
-            cte<x>(s, ind)(union_all(
-                select(columns(input->*sud, instr(input->*sud, "."))),
-                select(columns(substr(x->*s, 1, x->*ind - c(1)) || c(z) || substr(x->*s, x->*ind + c(1)),
-                               instr(substr(x->*s, 1, x->*ind - c(1)) || c(z) || substr(x->*s, x->*ind + c(1)), ".")),
-                       where(x->*ind > 0 and
-                             not exists(select(
-                                 1 >>= lp,
-                                 from<digits>(),
-                                 where(is_equal(z_alias->*z, substr(x->*s, ((x->*ind - c(1)) / 9) * 9 + lp, 1)) or
-                                       is_equal(z_alias->*z,
-                                                substr(x->*s, ((x->*ind - c(1)) % 9) + (lp - c(1)) * 9 + 1, 1)) or
-                                       is_equal(z_alias->*z,
-                                                substr(x->*s,
-                                                       (((x->*ind - c(1)) / 3) % 3) * 3 + ((x->*ind - c(1)) / 27) * 27 +
-                                                           lp + ((lp - c(1)) / 3) * 6,
-                                                       1)))))))))),
-        select(x->*s, where(x->*ind == 0)));
+    auto ast =
+        with(make_tuple(
+                 cte<input>(sud)(
+                     select("53..7....6..195....98....6.8...6...34..8.3..17...2...6.6....28....419..5....8..79")),
+                 cte<digits>(z, lp)(union_all(
+                     select(columns("1", 1)),
+                     select(columns(cast<string>(digits->*lp + 1), digits->*lp + 1), where(digits->*lp < 9)))),
+                 cte<x>(s, ind)(union_all(
+                     select(columns(input->*sud, instr(input->*sud, "."))),
+                     select(columns(substr(x->*s, 1, x->*ind - 1) || c(z) || substr(x->*s, x->*ind + 1),
+                                    instr(substr(x->*s, 1, x->*ind - 1) || c(z) || substr(x->*s, x->*ind + 1), ".")),
+                            where(x->*ind > 0 and
+                                  not exists(select(
+                                      1 >>= lp,
+                                      from<digits>(),
+                                      where(is_equal(z_alias->*z, substr(x->*s, ((x->*ind - 1) / 9) * 9 + lp, 1)) or
+                                            is_equal(z_alias->*z,
+                                                     substr(x->*s, ((x->*ind - 1) % 9) + (lp - c(1)) * 9 + 1, 1)) or
+                                            is_equal(z_alias->*z,
+                                                     substr(x->*s,
+                                                            (((x->*ind - 1) / 3) % 3) * 3 + ((x->*ind - 1) / 27) * 27 +
+                                                                lp + ((lp - c(1)) / 3) * 6,
+                                                            1)))))))))),
+             select(x->*s, where(x->*ind == 0)));
 
     string sql = storage.dump(ast);
 
@@ -742,7 +739,7 @@ void show_mapping_and_backreferencing() {
     // back-reference via `column_pointer<cte_1, alias_holder>`
     {
         auto ast =
-            with(cte<cte_1>("x")(union_all(select(as<cnt>(1)), select(column<cte_1>(get<cnt>()) + c(1), limit(10)))),
+            with(cte<cte_1>("x")(union_all(select(as<cnt>(1)), select(column<cte_1>(get<cnt>()) + 1, limit(10)))),
                  select(column<cte_1>(get<cnt>())));
 
         string sql = storage.dump(ast);
@@ -751,7 +748,7 @@ void show_mapping_and_backreferencing() {
     // map column via alias_holder into cte,
     // back-reference via `column_pointer<cte_1, alias_holder>`
     {
-        auto ast = with(cte<cte_1>("x")(union_all(select(as<cnt>(1)), select(column<cte_1>(cnt{}) + c(1), limit(10)))),
+        auto ast = with(cte<cte_1>("x")(union_all(select(as<cnt>(1)), select(column<cte_1>(cnt{}) + 1, limit(10)))),
                         select(column<cte_1>(cnt{})));
 
         string sql = storage.dump(ast);
@@ -760,7 +757,7 @@ void show_mapping_and_backreferencing() {
     // map column via alias_holder into cte,
     // back-reference via `column_pointer<cte_1, alias_holder>`
     {
-        auto ast = with(cte<cte_1>("x")(union_all(select(as<cnt>(1)), select(cte_1{}->*cnt{} + c(1), limit(10)))),
+        auto ast = with(cte<cte_1>("x")(union_all(select(as<cnt>(1)), select(cte_1{}->*cnt{} + 1, limit(10)))),
                         select(cte_1{}->*cnt{}));
 
         string sql = storage.dump(ast);
@@ -961,8 +958,8 @@ void greatest_n_per_group() {
         with(cte<wnd>(&some_result::item_id, max_date)(
                  select(columns(&some_result::item_id, max(&some_result::timestamp)), group_by(&some_result::item_id))),
              select(object<some_result>(),
-                    inner_join<wnd>(on(c(&some_result::item_id) == wnd->*&some_result::item_id and
-                                       c(&some_result::timestamp) == wnd->*max_date)),
+                    inner_join<wnd>(on(&some_result::item_id == wnd->*&some_result::item_id and
+                                       &some_result::timestamp == wnd->*max_date)),
                     // additional conditions
                     where(c(&some_result::flag) == true)));
     string sql = storage.dump(expression);

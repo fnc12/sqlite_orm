@@ -636,7 +636,7 @@ namespace sqlite_orm {
                 static_assert(is_preparable_v<self, Ex>, "Expression must be a high-level statement");
 
                 decltype(auto) e2 = static_if<is_select_v<Ex>>(
-                    [](auto expression) -> auto{
+                    [](auto expression) -> auto {
                         expression.highest_level = true;
                         return expression;
                     },
