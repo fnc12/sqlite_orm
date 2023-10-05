@@ -225,6 +225,11 @@ namespace sqlite_orm {
             using type = typename T::result_type;
         };
 
+        template<class DBOs, class T, class X, class Y, class Z>
+        struct column_result_t<DBOs, highlight_t<T, X, Y, Z>, void> {
+            using type = std::string;
+        };
+
         /**
          *  Result for the most simple queries like `SELECT 1`
          */

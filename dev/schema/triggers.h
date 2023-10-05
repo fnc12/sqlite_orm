@@ -5,8 +5,8 @@
 #include <string>
 #include <tuple>
 
-#include "functional/cxx_universal.h"
-#include "optional_container.h"
+#include "../functional/cxx_universal.h"
+#include "../optional_container.h"
 
 // NOTE Idea : Maybe also implement a custom trigger system to call a c++ callback when a trigger triggers ?
 // (Could be implemented with a normal trigger that insert or update an internal table and then retreive

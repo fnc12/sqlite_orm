@@ -20,6 +20,7 @@
 #include "ast/group_by.h"
 #include "ast/exists.h"
 #include "ast/set.h"
+#include "ast/match.h"
 
 namespace sqlite_orm {
 
@@ -85,6 +86,16 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T, class X>
+        struct ast_iterator<match_t<T, X>, void> {
+            using node_type = match_t<T, X>;
+
+            template<class L>
+            void operator()(const node_type& node, L& lambda) const {
+                iterate_ast(node.argument, lambda);
+            }
+        };
+
         template<class... Args>
         struct ast_iterator<group_by_t<Args...>, void> {
             using node_type = group_by_t<Args...>;
@@ -92,6 +103,18 @@ namespace sqlite_orm {
             template<class L>
             void operator()(const node_type& expression, L& lambda) const {
                 iterate_ast(expression.args, lambda);
+            }
+        };
+
+        template<class T, class X, class Y, class Z>
+        struct ast_iterator<highlight_t<T, X, Y, Z>, void> {
+            using node_type = highlight_t<T, X, Y, Z>;
+
+            template<class L>
+            void operator()(const node_type& expression, L& lambda) const {
+                iterate_ast(expression.argument0, lambda);
+                iterate_ast(expression.argument1, lambda);
+                iterate_ast(expression.argument2, lambda);
             }
         };
 
@@ -141,9 +164,19 @@ namespace sqlite_orm {
             using node_type = binary_operator<L, R, Ds...>;
 
             template<class C>
-            void operator()(const node_type& binaryOperator, C& lambda) const {
-                iterate_ast(binaryOperator.lhs, lambda);
-                iterate_ast(binaryOperator.rhs, lambda);
+            void operator()(const node_type& node, C& lambda) const {
+                iterate_ast(node.lhs, lambda);
+                iterate_ast(node.rhs, lambda);
+            }
+        };
+
+        template<class L, class R>
+        struct ast_iterator<is_equal_with_table_t<L, R>, void> {
+            using node_type = is_equal_with_table_t<L, R>;
+
+            template<class C>
+            void operator()(const node_type& node, C& lambda) const {
+                iterate_ast(node.rhs, lambda);
             }
         };
 
