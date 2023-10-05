@@ -2741,6 +2741,7 @@ namespace sqlite_orm {
             bool replace_bindable_with_question = false;
             bool skip_table_name = true;
             bool use_parentheses = true;
+            bool skip_types_and_constraints = false;
         };
 
         template<class DBOs>
@@ -16456,12 +16457,18 @@ namespace sqlite_orm {
                 using column_type = statement_type;
 
                 std::stringstream ss;
-                ss << streaming_identifier(column.name) << " " << type_printer<field_type_t<column_type>>().print()
-                   << " "
-                   << streaming_column_constraints(
-                          call_as_template_base<column_constraints>(polyfill::identity{})(column),
-                          column.is_not_null(),
-                          context);
+                ss << streaming_identifier(column.name);
+                if(!context.skip_types_and_constraints) {
+                    ss << " " << type_printer<field_type_t<column_type>>().print();
+                    const bool columnIsNotNull = column.is_not_null();
+                    auto constraintsTuple = streaming_column_constraints(
+                        call_as_template_base<column_constraints>(polyfill::identity{})(column),
+                        columnIsNotNull,
+                        context);
+                    if(std::tuple_size<decltype(constraintsTuple)>::value > 0) {
+                        ss << " " << constraintsTuple;
+                    }
+                }
                 return ss.str();
             }
         };

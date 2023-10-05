@@ -103,6 +103,7 @@ add_executable(unit_tests
     statement_serializer_tests/schema/trigger.cpp
     statement_serializer_tests/schema/new_old.cpp
     statement_serializer_tests/schema/raise.cpp
+    statement_serializer_tests/schema/column.cpp
     statement_serializer_tests/indexed_column.cpp
     statement_serializer_tests/logical_operators.cpp
     statement_serializer_tests/statements/select.cpp
