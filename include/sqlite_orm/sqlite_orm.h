@@ -4029,15 +4029,15 @@ namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<
-                     polyfill::conjunction_v<polyfill::disjunction<std::is_base_of<conc_string, L>,
-                                                                   std::is_base_of<conc_string, R>,
-                                                                   is_operator_argument<L>,
-                                                                   is_operator_argument<R>>,
-                                             // exclude conditions
-                                             polyfill::negation<std::disjunction<std::is_base_of<condition_t, L>,
-                                                                                 std::is_base_of<condition_t, R>>>>,
-                     bool> = true>
+                 std::enable_if_t<polyfill::conjunction_v<
+                                      polyfill::disjunction<std::is_base_of<conc_string, L>,
+                                                            std::is_base_of<conc_string, R>,
+                                                            is_operator_argument<L>,
+                                                            is_operator_argument<R>>,
+                                      // exclude conditions
+                                      polyfill::negation<polyfill::disjunction<std::is_base_of<condition_t, L>,
+                                                                               std::is_base_of<condition_t, R>>>>,
+                                  bool> = true>
         conc_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator||(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
         }
