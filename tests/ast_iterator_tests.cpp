@@ -327,5 +327,13 @@ TEST_CASE("ast_iterator") {
         iterate_ast(expression, lambda);
     }
 #endif
+    SECTION("highlight") {
+        auto expression = highlight<User>(0, std::string("<b>"), std::string("</b>"));
+        expected.push_back(typeid(expression));
+        expected.push_back(typeid(int));
+        expected.push_back(typeid(std::string));
+        expected.push_back(typeid(std::string));
+        iterate_ast(expression, lambda);
+    }
     REQUIRE(typeIndexes == expected);
 }
