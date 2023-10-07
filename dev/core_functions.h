@@ -12,7 +12,7 @@
 #include "conditions.h"
 #include "serialize_result_type.h"
 #include "operators.h"
-#include "expression.h"
+#include "tags.h"
 #include "ast/into.h"
 
 namespace sqlite_orm {
@@ -2027,17 +2027,15 @@ namespace sqlite_orm {
     }
 #endif  //  SQLITE_ENABLE_JSON1
 
-    // Deliberately put operators for `arithmetic_t`, `expression_t`, `column_pointer` into the internal namespace
+    // Intentionally place operators for types classified as arithmetic or general operator arguments in the internal namespace
     // to facilitate ADL (Argument Dependent Lookup)
     namespace internal {
         template<class L,
                  class R,
                  std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
                                                           std::is_base_of<arithmetic_t, R>,
-                                                          polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>,
-                                                          polyfill::is_specialization_of<L, column_pointer>,
-                                                          polyfill::is_specialization_of<R, column_pointer>>,
+                                                          is_operator_argument<L>,
+                                                          is_operator_argument<R>>,
                                   bool> = true>
         add_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator+(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -2047,10 +2045,8 @@ namespace sqlite_orm {
                  class R,
                  std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
                                                           std::is_base_of<arithmetic_t, R>,
-                                                          polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>,
-                                                          polyfill::is_specialization_of<L, column_pointer>,
-                                                          polyfill::is_specialization_of<R, column_pointer>>,
+                                                          is_operator_argument<L>,
+                                                          is_operator_argument<R>>,
                                   bool> = true>
         sub_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator-(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -2060,10 +2056,8 @@ namespace sqlite_orm {
                  class R,
                  std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
                                                           std::is_base_of<arithmetic_t, R>,
-                                                          polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>,
-                                                          polyfill::is_specialization_of<L, column_pointer>,
-                                                          polyfill::is_specialization_of<R, column_pointer>>,
+                                                          is_operator_argument<L>,
+                                                          is_operator_argument<R>>,
                                   bool> = true>
         mul_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator*(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -2073,10 +2067,8 @@ namespace sqlite_orm {
                  class R,
                  std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
                                                           std::is_base_of<arithmetic_t, R>,
-                                                          polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>,
-                                                          polyfill::is_specialization_of<L, column_pointer>,
-                                                          polyfill::is_specialization_of<R, column_pointer>>,
+                                                          is_operator_argument<L>,
+                                                          is_operator_argument<R>>,
                                   bool> = true>
         div_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator/(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -2086,10 +2078,8 @@ namespace sqlite_orm {
                  class R,
                  std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
                                                           std::is_base_of<arithmetic_t, R>,
-                                                          polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>,
-                                                          polyfill::is_specialization_of<L, column_pointer>,
-                                                          polyfill::is_specialization_of<R, column_pointer>>,
+                                                          is_operator_argument<L>,
+                                                          is_operator_argument<R>>,
                                   bool> = true>
         mod_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator%(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
