@@ -188,7 +188,7 @@ namespace sqlite_orm {
             return ss;
         }
 
-        // serialize and stream a vector of expressions;
+        // serialize and stream a vector or any other STL container of expressions;
         // comma-separated
         template<class C, class Ctx>
         std::ostream& operator<<(std::ostream& ss,
@@ -197,8 +197,9 @@ namespace sqlite_orm {
             auto& context = get<2>(tpl);
 
             constexpr std::array<const char*, 2> sep = {", ", ""};
-            for(size_t i = 0, first = true; i < args.size(); ++i) {
-                ss << sep[std::exchange(first, false)] << serialize(args[i], context);
+            bool first = true;
+            for(auto it = args.begin(); it != args.end(); ++it) {
+                ss << sep[std::exchange(first, false)] << serialize(*it, context);
             }
             return ss;
         }

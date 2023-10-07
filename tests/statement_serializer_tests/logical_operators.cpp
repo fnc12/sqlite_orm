@@ -75,8 +75,26 @@ TEST_CASE("statement_serializer logical operators") {
             expected = R"("id" NOT IN (1, 2, 3))";
         }
         SECTION("dynamic in") {
-            auto inValue = in(&User::id, {1, 2, 3});
-            stringValue = internal::serialize(inValue, context);
+            SECTION("initializer list") {
+                auto inValue = in(&User::id, {1, 2, 3});
+                stringValue = internal::serialize(inValue, context);
+            }
+            SECTION("vector") {
+                std::vector<int> vector;
+                vector.push_back(1);
+                vector.push_back(2);
+                vector.push_back(3);
+                auto inValue = in(&User::id, vector);
+                stringValue = internal::serialize(inValue, context);
+            }
+            SECTION("list") {
+                std::list<int> list;
+                list.push_back(1);
+                list.push_back(2);
+                list.push_back(3);
+                auto inValue = in(&User::id, list);
+                stringValue = internal::serialize(inValue, context);
+            }
             expected = R"("id" IN (1, 2, 3))";
         }
         SECTION("dynamic not in") {
