@@ -16,7 +16,6 @@
 #include "ast/group_by.h"
 #include "core_functions.h"
 #include "alias_traits.h"
-#include "column_pointer.h"
 
 namespace sqlite_orm {
 

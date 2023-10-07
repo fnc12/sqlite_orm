@@ -430,14 +430,14 @@ void depth_or_breadth_first() {
                                       select(columns(&Org::name, under_alice->*level + 1),
                                              join<under_alice>(on(under_alice->*&Org::name == &Org::boss)),
                                              order_by(2)))),
-                        select(substr("..........", 1, under_alice->*level * 3) || c(under_alice->*&Org::name)));
+                        select(substr("..........", 1, under_alice->*level * 3) || under_alice->*&Org::name));
 #else
         auto ast =
             with(cte<cte_1>("name", "level")(union_all(select(columns("Alice", 0)),
                                                        select(columns(&Org::name, column<cte_1>(2_colalias) + 1),
                                                               join<cte_1>(on(column<cte_1>(1_colalias) == &Org::boss)),
                                                               order_by(2)))),
-                 select(substr("..........", 1, column<cte_1>(2_colalias) * 3) || c(column<cte_1>(1_colalias))));
+                 select(substr("..........", 1, column<cte_1>(2_colalias) * 3) || column<cte_1>(1_colalias)));
 #endif
 
         string sql = storage.dump(ast);
@@ -471,14 +471,14 @@ void depth_or_breadth_first() {
                                       select(columns(&Org::name, under_alice->*level + 1),
                                              join<under_alice>(on(under_alice->*&Org::name == &Org::boss)),
                                              order_by(2).desc()))),
-                        select(substr("..........", 1, under_alice->*level * 3) || c(under_alice->*&Org::name)));
+                        select(substr("..........", 1, under_alice->*level * 3) || under_alice->*&Org::name));
 #else
         auto ast =
             with(cte<cte_1>("name", "level")(union_all(select(columns("Alice", 0)),
                                                        select(columns(&Org::name, column<cte_1>(2_colalias) + 1),
                                                               join<cte_1>(on(column<cte_1>(1_colalias) == &Org::boss)),
                                                               order_by(2).desc()))),
-                 select(substr("..........", 1, column<cte_1>(2_colalias) * 3) || c(column<cte_1>(1_colalias))));
+                 select(substr("..........", 1, column<cte_1>(2_colalias) * 3) || column<cte_1>(1_colalias)));
 #endif
 
         string sql = storage.dump(ast);
@@ -674,30 +674,30 @@ void sudoku() {
     constexpr auto lp = "lp"_col;
     constexpr auto s = "s"_col;
     constexpr auto ind = "ind"_col;
-    auto ast =
-        with(make_tuple(
-                 cte<input>(sud)(
-                     select("53..7....6..195....98....6.8...6...34..8.3..17...2...6.6....28....419..5....8..79")),
-                 cte<digits>(z, lp)(union_all(
-                     select(columns("1", 1)),
-                     select(columns(cast<string>(digits->*lp + 1), digits->*lp + 1), where(digits->*lp < 9)))),
-                 cte<x>(s, ind)(union_all(
-                     select(columns(input->*sud, instr(input->*sud, "."))),
-                     select(columns(substr(x->*s, 1, x->*ind - 1) || c(z) || substr(x->*s, x->*ind + 1),
-                                    instr(substr(x->*s, 1, x->*ind - 1) || c(z) || substr(x->*s, x->*ind + 1), ".")),
-                            where(x->*ind > 0 and
-                                  not exists(select(
-                                      1 >>= lp,
-                                      from<digits>(),
-                                      where(is_equal(z_alias->*z, substr(x->*s, ((x->*ind - 1) / 9) * 9 + lp, 1)) or
-                                            is_equal(z_alias->*z,
-                                                     substr(x->*s, ((x->*ind - 1) % 9) + (lp - c(1)) * 9 + 1, 1)) or
-                                            is_equal(z_alias->*z,
-                                                     substr(x->*s,
-                                                            (((x->*ind - 1) / 3) % 3) * 3 + ((x->*ind - 1) / 27) * 27 +
-                                                                lp + ((lp - c(1)) / 3) * 6,
-                                                            1)))))))))),
-             select(x->*s, where(x->*ind == 0)));
+    auto ast = with(
+        make_tuple(
+            cte<input>(sud)(
+                select("53..7....6..195....98....6.8...6...34..8.3..17...2...6.6....28....419..5....8..79")),
+            cte<digits>(z, lp)(
+                union_all(select(columns("1", 1)),
+                          select(columns(cast<string>(digits->*lp + 1), digits->*lp + 1), where(digits->*lp < 9)))),
+            cte<x>(s, ind)(union_all(
+                select(columns(input->*sud, instr(input->*sud, "."))),
+                select(
+                    columns(substr(x->*s, 1, x->*ind - 1) || z || substr(x->*s, x->*ind + 1),
+                            instr(substr(x->*s, 1, x->*ind - 1) || z || substr(x->*s, x->*ind + 1), ".")),
+                    where(x->*ind > 0 and
+                          not exists(select(
+                              1 >>= lp,
+                              from<digits>(),
+                              where(is_equal(z_alias->*z, substr(x->*s, ((x->*ind - 1) / 9) * 9 + lp, 1)) or
+                                    is_equal(z_alias->*z, substr(x->*s, ((x->*ind - 1) % 9) + (lp - 1) * 9 + 1, 1)) or
+                                    is_equal(z_alias->*z,
+                                             substr(x->*s,
+                                                    (((x->*ind - 1) / 3) % 3) * 3 + ((x->*ind - 1) / 27) * 27 + lp +
+                                                        ((lp - 1) / 3) * 6,
+                                                    1)))))))))),
+        select(x->*s, where(x->*ind == 0)));
 
     string sql = storage.dump(ast);
 

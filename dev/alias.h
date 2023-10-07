@@ -14,6 +14,7 @@
 #include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"
 #include "alias_traits.h"
+#include "tags.h"
 #include "column_pointer.h"
 
 namespace sqlite_orm {
@@ -41,6 +42,9 @@ namespace sqlite_orm {
         consteval auto to_alias(std::index_sequence<Idx...>) {
             return Alias<t.id[Idx]...>{};
         }
+
+        template<class T>
+        inline constexpr bool is_operator_argument_v<T, std::enable_if_t<orm_column_alias<T>>> = true;
 #endif
 
         /**
@@ -141,7 +145,7 @@ namespace sqlite_orm {
         };
 
         /**
-         *  This is a common built-in class used for custom single-character column aliases.
+         *  Built-in column alias.
          *  For convenience there exist type aliases `colalias_a`, `colalias_b`, ...
          *  The easiest way to create a column alias is using `"xyz"_col`.
          */
@@ -160,6 +164,10 @@ namespace sqlite_orm {
             // CTE feature needs it to implicitly convert a column alias to an alias_holder; see `cte()` factory function
             alias_holder(const T&) noexcept {}
         };
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool
+            is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of_v<T, alias_holder>>> = true;
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         template<char A, char... X>
@@ -276,6 +284,9 @@ namespace sqlite_orm {
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /** 
+     *  Alias a column expression.
+     */
     template<orm_column_alias auto als, class E>
     auto as(E expression) {
         using A = std::remove_const_t<decltype(als)>;

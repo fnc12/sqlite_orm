@@ -1,12 +1,11 @@
 #pragma once
 
-#include <type_traits>  //  std::remove_const
-#include <utility>  //  std::move
+#include <type_traits>  //  std::enable_if, std::remove_const
+#include <utility>  // std::move
 
 #include "functional/cxx_core_features.h"
 #include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"
-#include "conditions.h"
 #include "alias_traits.h"
 #include "tags.h"
 
@@ -17,14 +16,12 @@ namespace sqlite_orm {
          *  Is useful when mapped type is derived from other type and base class has members mapped to a storage.
          */
         template<class T, class F>
-        struct column_pointer : condition_t {
+        struct column_pointer {
             using self = column_pointer<T, F>;
             using type = T;
             using field_type = F;
 
             field_type field;
-
-            column_pointer(field_type field) : field{field} {}
         };
 
         template<class T>
@@ -32,6 +29,9 @@ namespace sqlite_orm {
 
         template<class T>
         using is_column_pointer = polyfill::bool_constant<is_column_pointer_v<T>>;
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_operator_argument_v<T, std::enable_if_t<is_column_pointer_v<T>>> = true;
 
 #ifdef SQLITE_ORM_WITH_CTE
         template<class A>
