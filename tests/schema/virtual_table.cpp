@@ -71,11 +71,8 @@ TEST_CASE("virtual table") {
     ///    WHERE posts MATCH 'SQLite'
     ///    ORDER BY rank;
     ///
-
-    //  TODO: improve `table_name_collector` and `ast_iterator` to be able to collect table name from `highlight` node. Until please use explicit `from`
     auto highlightedPosts =
         storage.select(columns(highlight<Post>(0, "<b>", "</b>"), highlight<Post>(1, "<b>", "</b>")),
-                       from<Post>(),
                        where(match<Post>("SQLite")),
                        order_by(rank()));
 }
