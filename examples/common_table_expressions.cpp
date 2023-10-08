@@ -33,10 +33,10 @@ void all_integers_between(int from, int end) {
         //    cnt(x) AS(VALUES(1) UNION ALL SELECT x + 1 FROM cnt WHERE x < 1000000)
         //    SELECT x FROM cnt;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        constexpr auto cnt_cte = "cnt"_cte;
-        auto ast = with(cte<cnt_cte>()(union_all(select(from),
-                                                 select(cnt_cte->*1_colalias + 1, where(cnt_cte->*1_colalias < end)))),
-                        select(cnt_cte->*1_colalias));
+        constexpr auto cnt = "cnt"_cte;
+        auto ast =
+            with(cte<cnt>()(union_all(select(from), select(cnt->*1_colalias + 1, where(cnt->*1_colalias < end)))),
+                 select(cnt->*1_colalias));
 #else
         auto ast =
             with(cte<cte_1>()(union_all(select(from),
@@ -46,9 +46,9 @@ void all_integers_between(int from, int end) {
 // alternative
 #if 0
         auto ast = with(
-            cte<cte_1>()(union_all(select(from >>= colalias_f{}),
-                                   select(1_ctealias->*colalias_f{} + 1, where(1_ctealias->*colalias_f{} < end)))),
-            select(1_ctealias->*colalias_f{}));
+            cte<cte_1>()(union_all(select(from >>= colalias_i{}),
+                                   select(1_ctealias->*colalias_i{} + 1, where(1_ctealias->*colalias_i{} < end)))),
+            select(1_ctealias->*colalias_i{}));
 #endif
 
         string sql = storage.dump(ast);
@@ -74,13 +74,13 @@ void all_integers_between(int from, int end) {
         //    )
         //    SELECT x FROM cnt;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        auto ast = with(
-            cte<"cnt"_cte>("y"_col)(union_all(select(from >>= "x"_col), select("cnt"_cte->*"y"_col + 1, limit(end)))),
-            select("cnt"_cte->*"y"_col));
+        constexpr auto cnt = "cnt"_cte;
+        auto ast = with(cte<cnt>("y"_col)(union_all(select(from >>= "x"_col), select(cnt->*"y"_col + 1, limit(end)))),
+                        select(cnt->*"y"_col));
 #else
         auto ast = with(
-            cte<cte_1>()(union_all(select(as<colalias_f>(from)), select(column<cte_1>(colalias_f{}) + 1, limit(end)))),
-            select(column<cte_1>(colalias_f{})));
+            cte<cte_1>()(union_all(select(as<colalias_i>(from)), select(column<cte_1>(colalias_i{}) + 1, limit(end)))),
+            select(column<cte_1>(colalias_i{})));
 #endif
 
         string sql = storage.dump(ast);
@@ -97,12 +97,24 @@ void all_integers_between(int from, int end) {
 
     // variant 3, limit-clause, explicit as() call
     {
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        constexpr auto cnt = "cnt"_cte;
+        auto ast =
+            with(cte<cnt>().as(union_all(select(as<"i"_col>(from)), select(column<cnt>("i"_col) + 1, limit(end)))),
+                 select(column<cnt>("i"_col)));
+#else
+        auto ast = with(cte<cte_1>().as(union_all(select(as<colalias_i>(from)),
+                                                  select(column<cte_1>(colalias_i{}) + 1, limit(end)))),
+                        select(column<cte_1>(colalias_i{})));
+#endif
+
+        string sql = storage.dump(ast);
+
+        auto stmt = storage.prepare(ast);
         cout << "Integer range (limit-clause) [" << from << ", " << end
              << "]"
                 "\n";
-        for(int n: storage.with(cte<cte_1>().as(union_all(select(as<colalias_f>(from)),
-                                                          select(column<cte_1>(colalias_f{}) + 1, limit(end)))),
-                                select(column<cte_1>(colalias_f{})))) {
+        for(int n: storage.execute(stmt)) {
             cout << n << ", ";
         }
         cout << endl;
@@ -155,11 +167,12 @@ void supervisor_chain() {
         //    )
         //    SELECT name FROM chain;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        auto ast = with(cte<"chain"_cte>()(union_all(
-                            select(asterisk<Org>(), where(&Org::name == c("Fred"))),
-                            select(asterisk<alias_a<Org>>(),
-                                   where(alias_column<alias_a<Org>>(&Org::name) == "chain"_cte->*&Org::boss)))),
-                        select("chain"_cte->*&Org::name));
+        constexpr auto chain = "chain"_cte;
+        auto ast =
+            with(cte<chain>()(union_all(select(asterisk<Org>(), where(&Org::name == c("Fred"))),
+                                        select(asterisk<alias_a<Org>>(),
+                                               where(alias_column<alias_a<Org>>(&Org::name) == chain->*&Org::boss)))),
+                 select(chain->*&Org::name));
 #else
         auto ast = with(
             cte<cte_1>()(union_all(select(asterisk<Org>(), where(&Org::name == c("Fred"))),
@@ -683,20 +696,18 @@ void sudoku() {
                           select(columns(cast<string>(digits->*lp + 1), digits->*lp + 1), where(digits->*lp < 9)))),
             cte<x>(s, ind)(union_all(
                 select(columns(input->*sud, instr(input->*sud, "."))),
-                select(
-                    columns(substr(x->*s, 1, x->*ind - 1) || z || substr(x->*s, x->*ind + 1),
-                            instr(substr(x->*s, 1, x->*ind - 1) || z || substr(x->*s, x->*ind + 1), ".")),
-                    where(x->*ind > 0 and
-                          not exists(select(
-                              1 >>= lp,
-                              from<digits>(),
-                              where(is_equal(z_alias->*z, substr(x->*s, ((x->*ind - 1) / 9) * 9 + lp, 1)) or
-                                    is_equal(z_alias->*z, substr(x->*s, ((x->*ind - 1) % 9) + (lp - 1) * 9 + 1, 1)) or
-                                    is_equal(z_alias->*z,
-                                             substr(x->*s,
-                                                    (((x->*ind - 1) / 3) % 3) * 3 + ((x->*ind - 1) / 27) * 27 + lp +
-                                                        ((lp - 1) / 3) * 6,
-                                                    1)))))))))),
+                select(columns(substr(x->*s, 1, x->*ind - 1) || z || substr(x->*s, x->*ind + 1),
+                               instr(substr(x->*s, 1, x->*ind - 1) || z || substr(x->*s, x->*ind + 1), ".")),
+                       where(x->*ind > 0 and
+                             not exists(select(
+                                 1 >>= lp,
+                                 from<digits>(),
+                                 where(z_alias->*z == substr(x->*s, ((x->*ind - 1) / 9) * 9 + lp, 1) or
+                                       z_alias->*z == substr(x->*s, ((x->*ind - 1) % 9) + (lp - 1) * 9 + 1, 1) or
+                                       z_alias->*z == substr(x->*s,
+                                                             (((x->*ind - 1) / 3) % 3) * 3 + ((x->*ind - 1) / 27) * 27 +
+                                                                 lp + ((lp - 1) / 3) * 6,
+                                                             1))))))))),
         select(x->*s, where(x->*ind == 0)));
 
     string sql = storage.dump(ast);

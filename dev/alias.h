@@ -246,7 +246,7 @@ namespace sqlite_orm {
                  bool> = true>
     auto alias_column(C c) {
         using cte_moniker_t = internal::type_t<A>;
-        if constexpr(polyfill::is_specialization_of_v<C, internal::column_pointer>) {
+        if constexpr(internal::is_column_pointer_v<C>) {
             static_assert(std::is_same<internal::table_type_of_t<C>, cte_moniker_t>::value,
                           "Column pointer must match aliased CTE");
             return internal::alias_column_t<A, C>{c};
