@@ -15,7 +15,6 @@
 #include "ast/group_by.h"
 #include "core_functions.h"
 #include "alias_traits.h"
-#include "column_pointer.h"
 
 namespace sqlite_orm {
 
@@ -334,16 +333,6 @@ namespace sqlite_orm {
     template<class... Args>
     internal::columns_t<Args...> columns(Args... args) {
         return {std::make_tuple<Args...>(std::forward<Args>(args)...)};
-    }
-
-    /**
-     *  Use it like this:
-     *  struct MyType : BaseType { ... };
-     *  storage.select(column<MyType>(&BaseType::id));
-     */
-    template<class T, class F>
-    internal::column_pointer<T, F> column(F f) {
-        return {std::move(f)};
     }
 
     /**

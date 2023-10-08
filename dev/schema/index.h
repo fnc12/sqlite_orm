@@ -4,10 +4,10 @@
 #include <string>  //  std::string
 #include <utility>  //  std::forward
 
-#include "functional/cxx_universal.h"
-#include "tuple_helper/tuple_filter.h"
-#include "indexed_column.h"
-#include "table_type_of.h"
+#include "../functional/cxx_universal.h"
+#include "../tuple_helper/tuple_filter.h"
+#include "../indexed_column.h"
+#include "../table_type_of.h"
 
 namespace sqlite_orm {
 

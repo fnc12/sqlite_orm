@@ -6,20 +6,20 @@
 #include <tuple>  //  std::tuple_element
 #include <utility>  //  std::forward, std::move
 
-#include "functional/cxx_universal.h"  //  ::size_t
-#include "functional/cxx_type_traits_polyfill.h"
-#include "functional/cxx_functional_polyfill.h"
-#include "functional/static_magic.h"
-#include "functional/mpl.h"
-#include "functional/index_sequence_util.h"
-#include "tuple_helper/tuple_filter.h"
-#include "tuple_helper/tuple_traits.h"
-#include "tuple_helper/tuple_iteration.h"
-#include "member_traits/member_traits.h"
-#include "typed_comparator.h"
-#include "type_traits.h"
-#include "constraints.h"
-#include "table_info.h"
+#include "../functional/cxx_universal.h"  //  ::size_t
+#include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/cxx_functional_polyfill.h"
+#include "../functional/static_magic.h"
+#include "../functional/mpl.h"
+#include "../functional/index_sequence_util.h"
+#include "../tuple_helper/tuple_filter.h"
+#include "../tuple_helper/tuple_traits.h"
+#include "../tuple_helper/tuple_iteration.h"
+#include "../member_traits/member_traits.h"
+#include "../typed_comparator.h"
+#include "../type_traits.h"
+#include "../constraints.h"
+#include "../table_info.h"
 #include "column.h"
 
 namespace sqlite_orm {
@@ -372,7 +372,8 @@ namespace sqlite_orm {
         }
 
         template<class M, class G, class S>
-        bool exists_in_composite_primary_key(const virtual_table_t<M>& virtualTable, const column_field<G, S>& column) {
+        bool exists_in_composite_primary_key(const virtual_table_t<M>& /*virtualTable*/,
+                                             const column_field<G, S>& /*column*/) {
             return false;
         }
     }

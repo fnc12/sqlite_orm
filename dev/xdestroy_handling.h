@@ -29,20 +29,20 @@ namespace sqlite_orm {
          */
         template<typename D>
         concept integral_fp_c = requires {
-                                    typename D::value_type;
-                                    D::value;
-                                    requires std::is_function_v<std::remove_pointer_t<typename D::value_type>>;
-                                };
+            typename D::value_type;
+            D::value;
+            requires std::is_function_v<std::remove_pointer_t<typename D::value_type>>;
+        };
 
         /**
          *  Constrains a deleter to be or to yield a function pointer.
          */
         template<typename D>
         concept yields_fp = requires(D d) {
-                                // yielding function pointer by using the plus trick
-                                { +d };
-                                requires std::is_function_v<std::remove_pointer_t<decltype(+d)>>;
-                            };
+            // yielding function pointer by using the plus trick
+            { +d };
+            requires std::is_function_v<std::remove_pointer_t<decltype(+d)>>;
+        };
 #endif
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
@@ -97,8 +97,8 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
         template<typename D>
-        concept is_unusable_for_xdestroy = (!stateless_deleter<D> &&
-                                            (yields_fp<D> && !std::convertible_to<yielded_fn_t<D>, xdestroy_fn_t>));
+        concept is_unusable_for_xdestroy =
+            (!stateless_deleter<D> && (yields_fp<D> && !std::convertible_to<yielded_fn_t<D>, xdestroy_fn_t>));
 
         /**
          *  This concept tests whether a deleter yields a function pointer, which is convertible to an xdestroy function pointer.
@@ -108,8 +108,8 @@ namespace sqlite_orm {
         concept yields_xdestroy = yields_fp<D> && std::convertible_to<yielded_fn_t<D>, xdestroy_fn_t>;
 
         template<typename D, typename P>
-        concept needs_xdestroy_proxy = (stateless_deleter<D> &&
-                                        (!yields_fp<D> || !std::convertible_to<yielded_fn_t<D>, xdestroy_fn_t>));
+        concept needs_xdestroy_proxy =
+            (stateless_deleter<D> && (!yields_fp<D> || !std::convertible_to<yielded_fn_t<D>, xdestroy_fn_t>));
 
         /**
          *  xDestroy function that constructs and invokes the stateless deleter.
