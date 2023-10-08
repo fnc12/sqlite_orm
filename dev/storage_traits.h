@@ -7,7 +7,7 @@
 #include "tuple_helper/tuple_transformer.h"
 #include "type_traits.h"
 #include "storage_lookup.h"
-#include "column.h"
+#include "schema/column.h"
 
 namespace sqlite_orm {
     namespace internal {

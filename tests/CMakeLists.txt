@@ -41,14 +41,15 @@ add_executable(unit_tests
     tests3.cpp
     tests4.cpp
     tests5.cpp
-    column_tests.cpp
+    schema/column_tests.cpp
+    schema/index_tests.cpp
+    schema/table_tests.cpp
+    schema/explicit_columns.cpp
     private_getters_tests.cpp
     pragma_tests.cpp
-    explicit_columns.cpp
     built_in_functions_tests/core_functions_tests.cpp
     built_in_functions_tests/datetime_function_tests.cpp
     built_in_functions_tests/math_functions.cpp
-    index_tests.cpp
     constraints/composite_key.cpp
     operators/arithmetic_operators.cpp
     operators/like.cpp
@@ -82,7 +83,6 @@ add_executable(unit_tests
     constraints/unique.cpp
     constraints/foreign_key.cpp
     constraints/check.cpp
-    table_tests.cpp
     statement_serializer_tests/column_constraints/generated.cpp
     statement_serializer_tests/column_constraints/default.cpp
     statement_serializer_tests/column_constraints/primary_key.cpp

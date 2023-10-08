@@ -12,7 +12,7 @@
 #include "table_type_of.h"
 #include "column_result.h"
 #include "select_constraints.h"
-#include "table.h"
+#include "schema/table.h"
 #include "alias.h"
 #include "cte_types.h"
 #include "cte_column_names_collector.h"

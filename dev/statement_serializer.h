@@ -24,7 +24,7 @@
 #include "core_functions.h"
 #include "constraints.h"
 #include "conditions.h"
-#include "column.h"
+#include "schema/column.h"
 #include "indexed_column.h"
 #include "function.h"
 #include "prepared_statement.h"
@@ -40,9 +40,9 @@
 #include "serializing_util.h"
 #include "statement_binder.h"
 #include "values.h"
-#include "triggers.h"
+#include "schema/triggers.h"
 #include "table_type_of.h"
-#include "index.h"
+#include "schema/index.h"
 #include "util.h"
 
 namespace sqlite_orm {
