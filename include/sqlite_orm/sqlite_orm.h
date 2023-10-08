@@ -13515,8 +13515,8 @@ namespace sqlite_orm {
 
             constexpr std::array<const char*, 2> sep = {", ", ""};
             bool first = true;
-            for(auto it = args.begin(); it != args.end(); ++it) {
-                ss << sep[std::exchange(first, false)] << serialize(*it, context);
+            for(auto& argument: args) {
+                ss << sep[std::exchange(first, false)] << serialize(argument, context);
             }
             return ss;
         }

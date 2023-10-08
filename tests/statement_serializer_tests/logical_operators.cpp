@@ -80,18 +80,12 @@ TEST_CASE("statement_serializer logical operators") {
                 stringValue = internal::serialize(inValue, context);
             }
             SECTION("vector") {
-                std::vector<int> vector;
-                vector.push_back(1);
-                vector.push_back(2);
-                vector.push_back(3);
+                std::vector<int> vector{1, 2, 3};
                 auto inValue = in(&User::id, vector);
                 stringValue = internal::serialize(inValue, context);
             }
             SECTION("list") {
-                std::list<int> list;
-                list.push_back(1);
-                list.push_back(2);
-                list.push_back(3);
+                std::list<int> list{1, 2, 3};
                 auto inValue = in(&User::id, list);
                 stringValue = internal::serialize(inValue, context);
             }
