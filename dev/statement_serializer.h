@@ -10,6 +10,7 @@
 #endif  //  SQLITE_ORM_OMITS_CODECVT
 #include <memory>
 #include <array>
+#include <list>  //  std::list
 #include "functional/cxx_string_view.h"
 #include "functional/cxx_optional.h"
 
@@ -710,9 +711,12 @@ namespace sqlite_orm {
             }
         };
 
-        template<class L, class A>
-        struct statement_serializer<dynamic_in_t<L, A>, void> {
-            using statement_type = dynamic_in_t<L, A>;
+        template<class L, class C>
+        struct statement_serializer<
+            dynamic_in_t<L, C>,
+            std::enable_if_t<!polyfill::disjunction_v<polyfill::is_specialization_of<C, std::vector>,
+                                                      polyfill::is_specialization_of<C, std::list>>>> {
+            using statement_type = dynamic_in_t<L, C>;
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
@@ -725,22 +729,25 @@ namespace sqlite_orm {
                     ss << "NOT IN";
                 }
                 ss << " ";
-                if(is_compound_operator_v<A>) {
+                if(is_compound_operator_v<C>) {
                     ss << '(';
                 }
                 auto newContext = context;
                 newContext.use_parentheses = true;
                 ss << serialize(statement.argument, newContext);
-                if(is_compound_operator_v<A>) {
+                if(is_compound_operator_v<C>) {
                     ss << ')';
                 }
                 return ss.str();
             }
         };
 
-        template<class L, class E>
-        struct statement_serializer<dynamic_in_t<L, std::vector<E>>, void> {
-            using statement_type = dynamic_in_t<L, std::vector<E>>;
+        template<class L, class C>
+        struct statement_serializer<
+            dynamic_in_t<L, C>,
+            std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<C, std::vector>,
+                                                     polyfill::is_specialization_of<C, std::list>>>> {
+            using statement_type = dynamic_in_t<L, C>;
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {

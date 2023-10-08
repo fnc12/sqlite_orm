@@ -13485,7 +13485,7 @@ namespace sqlite_orm {
             return ss;
         }
 
-        // serialize and stream a vector of expressions;
+        // serialize and stream a vector or any other STL container of expressions;
         // comma-separated
         template<class C, class Ctx>
         std::ostream& operator<<(std::ostream& ss,
@@ -13494,8 +13494,9 @@ namespace sqlite_orm {
             auto& context = get<2>(tpl);
 
             constexpr std::array<const char*, 2> sep = {", ", ""};
-            for(size_t i = 0, first = true; i < args.size(); ++i) {
-                ss << sep[std::exchange(first, false)] << serialize(args[i], context);
+            bool first = true;
+            for(auto& argument: args) {
+                ss << sep[std::exchange(first, false)] << serialize(argument, context);
             }
             return ss;
         }
@@ -15311,6 +15312,7 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ORM_OMITS_CODECVT
 #include <memory>
 #include <array>
+#include <list>  //  std::list
 // #include "functional/cxx_string_view.h"
 
 // #include "functional/cxx_optional.h"
@@ -16256,9 +16258,12 @@ namespace sqlite_orm {
             }
         };
 
-        template<class L, class A>
-        struct statement_serializer<dynamic_in_t<L, A>, void> {
-            using statement_type = dynamic_in_t<L, A>;
+        template<class L, class C>
+        struct statement_serializer<
+            dynamic_in_t<L, C>,
+            std::enable_if_t<!polyfill::disjunction_v<polyfill::is_specialization_of<C, std::vector>,
+                                                      polyfill::is_specialization_of<C, std::list>>>> {
+            using statement_type = dynamic_in_t<L, C>;
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
@@ -16271,22 +16276,25 @@ namespace sqlite_orm {
                     ss << "NOT IN";
                 }
                 ss << " ";
-                if(is_compound_operator_v<A>) {
+                if(is_compound_operator_v<C>) {
                     ss << '(';
                 }
                 auto newContext = context;
                 newContext.use_parentheses = true;
                 ss << serialize(statement.argument, newContext);
-                if(is_compound_operator_v<A>) {
+                if(is_compound_operator_v<C>) {
                     ss << ')';
                 }
                 return ss.str();
             }
         };
 
-        template<class L, class E>
-        struct statement_serializer<dynamic_in_t<L, std::vector<E>>, void> {
-            using statement_type = dynamic_in_t<L, std::vector<E>>;
+        template<class L, class C>
+        struct statement_serializer<
+            dynamic_in_t<L, C>,
+            std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<C, std::vector>,
+                                                     polyfill::is_specialization_of<C, std::list>>>> {
+            using statement_type = dynamic_in_t<L, C>;
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
