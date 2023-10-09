@@ -43,6 +43,18 @@ TEST_CASE("CTE type traits") {
     }
 }
 
+TEST_CASE("CTE building") {
+    SECTION("builder") {
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        auto builder1 = cte<1_ctealias>();
+#else
+        auto builder1 = cte<decltype(1_ctealias)>();
+#endif
+        auto builder2 = 1_ctealias();
+        static_assert(std::is_same<decltype(builder2), decltype(builder1)>::value);
+    }
+}
+
 TEST_CASE("CTE storage") {
     SECTION("db_objects_cat") {
         struct Org {
@@ -53,8 +65,7 @@ TEST_CASE("CTE storage") {
         auto idx1 = make_unique_index("idx1_org", &Org::id);
         auto idx2 = make_index("idx2_org", &Org::id);
         auto dbObjects = tuple{idx1, idx2, table};
-        using cte_1 = decltype(1_ctealias);
-        auto cteTable = internal::make_cte_table(dbObjects, cte<cte_1>()(select(1)));
+        auto cteTable = internal::make_cte_table(dbObjects, 1_ctealias()(select(1)));
         auto dbObjects2 = internal::db_objects_cat(dbObjects, cteTable);
 
         // note: deliberately make indexes resulting in the same index_t<> type, such that we know `db_objects_cat()` is working properly

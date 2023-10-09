@@ -1,5 +1,8 @@
 #pragma once
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+#include <concepts>
+#endif
 #include <type_traits>  //  std::remove_const
 #include <string>  //  std::string
 #include <utility>  //  std::move
@@ -16,6 +19,7 @@
 #include "ast/group_by.h"
 #include "core_functions.h"
 #include "alias_traits.h"
+#include "cte.h"
 
 namespace sqlite_orm {
 
@@ -488,6 +492,8 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CTE
     /**
+     *  Introduce the construction of a common table expression.
+     *  
      *  The list of explicit columns is optional;
      *  if provided the number of columns must match the number of columns of the subselect.
      *  The column names will be merged with the subselect:
@@ -498,6 +504,7 @@ namespace sqlite_orm {
      *  Example:
      *  using cte_1 = decltype(1_ctealias);
      *  cte<cte_1>()(select(&Object::id));
+     *  cte<cte_1>(&Object::name)(select("object"));
      */
     template<class Moniker,
              class... ExplicitCols,
@@ -536,6 +543,32 @@ namespace sqlite_orm {
         return builder_type{{std::move(explicitColumns)...}};
     }
 #endif
+
+    namespace internal {
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        template<char A, char... X>
+        template<class... ExplicitCols>
+            requires((is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
+                      std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
+                      std::convertible_to<ExplicitCols, std::string>) &&
+                     ...)
+        auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) const {
+            return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
+        }
+#else
+        template<char A, char... X>
+        template<class... ExplicitCols,
+                 std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
+                                      is_column_alias<ExplicitCols>,
+                                      std::is_member_pointer<ExplicitCols>,
+                                      std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
+                                      std::is_convertible<ExplicitCols, std::string>>...>,
+                                  bool>>
+        auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) const {
+            return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
+        }
+#endif
+    }
 
     /** 
      *  With-clause for a tuple of CTEs.
