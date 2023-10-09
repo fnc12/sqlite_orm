@@ -219,6 +219,11 @@ TEST_CASE("ast_iterator") {
         auto node = into<User>();
         iterate_ast(node, lambda);
     }
+    SECTION("match") {
+        auto node = match<User>(std::string("Plazma"));
+        expected.push_back(typeid(std::string));
+        iterate_ast(node, lambda);
+    }
     SECTION("replace") {
         auto node =
             replace(into<User>(), columns(&User::id, &User::name), values(std::make_tuple(1, std::string("Ellie"))));
@@ -293,6 +298,11 @@ TEST_CASE("ast_iterator") {
         }
 #endif
     }
+    SECTION("is_equal_with_table_t") {
+        auto expression = is_equal<User>(std::string("Claude"));
+        expected.push_back(typeid(std::string));
+        iterate_ast(expression, lambda);
+    }
     SECTION("aliased regular column") {
         using als = alias_z<User>;
         auto expression = alias_column<als>(&User::id);
@@ -352,5 +362,13 @@ TEST_CASE("ast_iterator") {
     }
 #endif
 #endif
+    SECTION("highlight") {
+        auto expression = highlight<User>(0, std::string("<b>"), std::string("</b>"));
+        expected.push_back(typeid(expression));
+        expected.push_back(typeid(int));
+        expected.push_back(typeid(std::string));
+        expected.push_back(typeid(std::string));
+        iterate_ast(expression, lambda);
+    }
     REQUIRE(typeIndexes == expected);
 }

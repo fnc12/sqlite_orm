@@ -20,8 +20,8 @@
 namespace sqlite_orm {
     namespace internal {
         // collecting column names utilizes the statement serializer
-        template<class T, class I>
-        std::string serialize(const T& t, const serializer_context<I>& context);
+        template<class T, class C>
+        std::string serialize(const T& t, const C& context);
 
         inline void unquote_identifier(std::string& identifier) {
             if(!identifier.empty()) {

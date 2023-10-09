@@ -15,10 +15,10 @@ TEST_CASE("table name collector") {
     auto dbObjects = db_objects_t{table};
     internal::table_name_collector_base::table_name_set expected;
 
-    SECTION("from table") {
-        internal::serializer_context<db_objects_t> context{dbObjects};
-        auto collector = internal::make_table_name_collector(context.db_objects);
+    internal::serializer_context<db_objects_t> context{dbObjects};
+    auto collector = internal::make_table_name_collector(context.db_objects);
 
+    SECTION("from table") {
         SECTION("regular column") {
             using als = alias_z<User>;
             auto expression = &User::id;
@@ -84,4 +84,16 @@ TEST_CASE("table name collector") {
         REQUIRE(collector.table_names == expected);
     }
 #endif
+    SECTION("highlight") {
+        SECTION("simple") {
+            auto expression = highlight<User>(0, "<b>", "</b>");
+            expected.emplace(table.name, "");
+            iterate_ast(expression, collector);
+        }
+        SECTION("in columns") {
+            auto expression = columns(highlight<User>(0, "<b>", "</b>"));
+            expected.emplace(table.name, "");
+            iterate_ast(expression, collector);
+        }
+    }
 }

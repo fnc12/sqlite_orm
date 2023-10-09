@@ -20,9 +20,9 @@
 #include "ast/where.h"
 #include "ast/into.h"
 #include "ast/group_by.h"
+#include "ast/match.h"
 
 namespace sqlite_orm {
-
     namespace internal {
 
         template<class T, class SFINAE = void>
@@ -62,11 +62,22 @@ namespace sqlite_orm {
             using type = tuple_cat_t<node_tuple_t<Args>...>;
         };
 
+        template<class T, class X, class Y, class Z>
+        struct node_tuple<highlight_t<T, X, Y, Z>, void> {
+            using x_node_tuple = node_tuple_t<X>;
+            using y_node_tuple = node_tuple_t<Y>;
+            using z_node_tuple = node_tuple_t<Z>;
+            using type = tuple_cat_t<x_node_tuple, y_node_tuple, z_node_tuple>;
+        };
+
         template<class T>
         struct node_tuple<excluded_t<T>, void> : node_tuple<T> {};
 
         template<class C>
         struct node_tuple<where_t<C>, void> : node_tuple<C> {};
+
+        template<class T, class X>
+        struct node_tuple<match_t<T, X>, void> : node_tuple<X> {};
 
         /**
          *  Column alias
@@ -88,6 +99,9 @@ namespace sqlite_orm {
 
         template<class E>
         struct node_tuple<order_by_t<E>, void> : node_tuple<E> {};
+
+        template<class L, class R>
+        struct node_tuple<is_equal_with_table_t<L, R>, void> : node_tuple<R> {};
 
         template<class T>
         struct node_tuple<T, match_if<is_binary_condition, T>> {
