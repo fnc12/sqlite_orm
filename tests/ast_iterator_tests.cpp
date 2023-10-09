@@ -8,6 +8,7 @@ using internal::alias_column_t;
 using internal::alias_holder;
 using internal::column_alias;
 using internal::column_pointer;
+using internal::cte_moniker;
 using internal::iterate_ast;
 
 TEST_CASE("ast_iterator") {
@@ -331,9 +332,10 @@ TEST_CASE("ast_iterator") {
 #endif
 #ifdef SQLITE_ORM_WITH_CTE
     SECTION("with") {
+        using cte_1 = decltype(1_ctealias);
         auto expression =
             with(cte<cte_1>()(
-                     union_all(select(1), select(1_ctealias->*1_colalias + c(1), where(1_ctealias->*1_colalias < 10)))),
+                     union_all(select(1), select(1_ctealias->*1_colalias + 1, where(1_ctealias->*1_colalias < 10)))),
                  select(1_ctealias->*1_colalias));
         expected.insert(expected.cend(),
                         {typeid(int),
@@ -349,15 +351,16 @@ TEST_CASE("ast_iterator") {
         constexpr auto c = "1"_cte;
         constexpr auto z_alias = "z"_alias.for_<c>();
         auto expression = z_alias->*&User::id;
-        expected.push_back(typeid(alias_column_t<alias_z<cte_1>, column_pointer<cte_1, decltype(&User::id)>>));
+        expected.push_back(
+            typeid(alias_column_t<alias_z<cte_moniker<'1'>>, column_pointer<cte_moniker<'1'>, decltype(&User::id)>>));
         iterate_ast(expression, lambda);
     }
     SECTION("aliased CTE column alias") {
         constexpr auto c = "1"_cte;
         constexpr auto z_alias = "z"_alias.for_<c>();
         auto expression = z_alias->*1_colalias;
-        expected.push_back(
-            typeid(alias_column_t<alias_z<cte_1>, column_pointer<cte_1, alias_holder<column_alias<'1'>>>>));
+        expected.push_back(typeid(alias_column_t<alias_z<cte_moniker<'1'>>,
+                                                 column_pointer<cte_moniker<'1'>, alias_holder<column_alias<'1'>>>>));
         iterate_ast(expression, lambda);
     }
 #endif

@@ -488,13 +488,16 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CTE
     /**
-     *  Example : cte<cte_1>()(select(&Object::id));
      *  The list of explicit columns is optional;
      *  if provided the number of columns must match the number of columns of the subselect.
      *  The column names will be merged with the subselect:
      *  1. column names of subselect
      *  2. explicit columns
      *  3. fill in empty column names with column index
+     *  
+     *  Example:
+     *  using cte_1 = decltype(1_ctealias);
+     *  cte<cte_1>()(select(&Object::id));
      */
     template<class Moniker,
              class... ExplicitCols,
@@ -534,15 +537,21 @@ namespace sqlite_orm {
     }
 #endif
 
-    // tuple of CTEs
+    /** 
+     *  With-clause for a tuple of CTEs.
+     */
     template<class E, class... Monikers, class... Selects, class... ExplicitCols>
     internal::with_t<E, internal::common_table_expression<Monikers, Selects, ExplicitCols>...>
     with(std::tuple<internal::common_table_expression<Monikers, Selects, ExplicitCols>...> cte, E expression) {
         return {std::move(cte), std::move(expression)};
     }
 
-    /** A single CTE.
-     *  Example : with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(0_col)));
+    /** 
+     *  With-clause for a single CTE.
+     *  
+     *  Example:
+     *  using cte_1 = decltype(1_ctealias);
+     *  with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(0_col)));
      */
     template<class E, class Moniker, class Select, class ExplicitCols>
     internal::with_t<E, internal::common_table_expression<Moniker, Select, ExplicitCols>>

@@ -21,6 +21,7 @@ TEST_CASE("alias extractor") {
     }
 #ifdef SQLITE_ORM_WITH_CTE
     SECTION("cte table") {
+        using cte_1 = decltype(1_ctealias);
         REQUIRE(alias_extractor<cte_1>::extract() == "1");
         REQUIRE(alias_extractor<cte_1>::as_alias() == "");
     }

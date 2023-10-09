@@ -949,6 +949,7 @@ TEST_CASE("Node tuple") {
     }
 #ifdef SQLITE_ORM_WITH_CTE
     SECTION("with") {
+        using cte_1 = decltype(1_ctealias);
         auto expression =
             with(cte<cte_1>()(
                      union_all(select(1), select(1_ctealias->*1_colalias + c(1), where(1_ctealias->*1_colalias < 10)))),

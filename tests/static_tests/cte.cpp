@@ -53,6 +53,7 @@ TEST_CASE("CTE storage") {
         auto idx1 = make_unique_index("idx1_org", &Org::id);
         auto idx2 = make_index("idx2_org", &Org::id);
         auto dbObjects = tuple{idx1, idx2, table};
+        using cte_1 = decltype(1_ctealias);
         auto cteTable = internal::make_cte_table(dbObjects, cte<cte_1>()(select(1)));
         auto dbObjects2 = internal::db_objects_cat(dbObjects, cteTable);
 

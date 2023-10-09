@@ -3226,6 +3226,7 @@ namespace sqlite_orm {
      *
      *  Example:
      *  struct Object { ... };
+     *  using cte_1 = decltype(1_ctealias);
      *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(&Object::id)));
      *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(1_colalias)));
      *  storage.with(cte<cte_1>()(select(as<colalias_a>(&Object::id))), select(column<cte_1>(colalias_a{})));
@@ -3255,8 +3256,8 @@ namespace sqlite_orm {
      *
      *  Example:
      *  struct Object { ... };
-     *  storage.with(cte<cte_1>()(select(&Object::id)), select("z"_cte->*&Object::id));
-     *  storage.with(cte<cte_1>()(select(&Object::id)), select("z"_cte->*"a"_col));
+     *  storage.with(cte<"z"_cte>()(select(&Object::id)), select(column<"z"_cte>(&Object::id)));
+     *  storage.with(cte<"z"_cte>()(select(&Object::id)), select(column<"z"_cte>(1_colalias)));
      */
     template<orm_cte_moniker auto moniker, class F>
     constexpr auto column([[maybe_unused]] F field) {
@@ -3279,6 +3280,7 @@ namespace sqlite_orm {
      *
      *  Example:
      *  struct Object { ... };
+     *  using cte_1 = decltype(1_ctealias);
      *  storage.with(cte<cte_1>()(select(&Object::id)), select(1_ctealias->*&Object::id));
      *  storage.with(cte<cte_1>()(select(&Object::id)), select(1_ctealias->*1_colalias));
      */
@@ -7776,13 +7778,16 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CTE
     /**
-     *  Example : cte<cte_1>()(select(&Object::id));
      *  The list of explicit columns is optional;
      *  if provided the number of columns must match the number of columns of the subselect.
      *  The column names will be merged with the subselect:
      *  1. column names of subselect
      *  2. explicit columns
      *  3. fill in empty column names with column index
+     *  
+     *  Example:
+     *  using cte_1 = decltype(1_ctealias);
+     *  cte<cte_1>()(select(&Object::id));
      */
     template<class Moniker,
              class... ExplicitCols,
@@ -7822,15 +7827,21 @@ namespace sqlite_orm {
     }
 #endif
 
-    // tuple of CTEs
+    /** 
+     *  With-clause for a tuple of CTEs.
+     */
     template<class E, class... Monikers, class... Selects, class... ExplicitCols>
     internal::with_t<E, internal::common_table_expression<Monikers, Selects, ExplicitCols>...>
     with(std::tuple<internal::common_table_expression<Monikers, Selects, ExplicitCols>...> cte, E expression) {
         return {std::move(cte), std::move(expression)};
     }
 
-    /** A single CTE.
-     *  Example : with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(0_col)));
+    /** 
+     *  With-clause for a single CTE.
+     *  
+     *  Example:
+     *  using cte_1 = decltype(1_ctealias);
+     *  with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(0_col)));
      */
     template<class E, class Moniker, class Select, class ExplicitCols>
     internal::with_t<E, internal::common_table_expression<Moniker, Select, ExplicitCols>>
@@ -20644,28 +20655,6 @@ namespace sqlite_orm {
     [[nodiscard]] consteval auto operator"" _cte() {
         return internal::to_alias<internal::cte_moniker, t>(std::make_index_sequence<t.size()>{});
     }
-#endif
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    using cte_1 = decltype("1"_cte);
-    using cte_2 = decltype("2"_cte);
-    using cte_3 = decltype("3"_cte);
-    using cte_4 = decltype("4"_cte);
-    using cte_5 = decltype("5"_cte);
-    using cte_6 = decltype("6"_cte);
-    using cte_7 = decltype("7"_cte);
-    using cte_8 = decltype("8"_cte);
-    using cte_9 = decltype("9"_cte);
-#else
-    using cte_1 = decltype(1_ctealias);
-    using cte_2 = decltype(2_ctealias);
-    using cte_3 = decltype(3_ctealias);
-    using cte_4 = decltype(4_ctealias);
-    using cte_5 = decltype(5_ctealias);
-    using cte_6 = decltype(6_ctealias);
-    using cte_7 = decltype(7_ctealias);
-    using cte_8 = decltype(8_ctealias);
-    using cte_9 = decltype(9_ctealias);
 #endif
 }
 #endif

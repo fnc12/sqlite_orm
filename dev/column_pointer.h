@@ -59,6 +59,7 @@ namespace sqlite_orm {
      *
      *  Example:
      *  struct Object { ... };
+     *  using cte_1 = decltype(1_ctealias);
      *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(&Object::id)));
      *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(1_colalias)));
      *  storage.with(cte<cte_1>()(select(as<colalias_a>(&Object::id))), select(column<cte_1>(colalias_a{})));
@@ -88,8 +89,8 @@ namespace sqlite_orm {
      *
      *  Example:
      *  struct Object { ... };
-     *  storage.with(cte<cte_1>()(select(&Object::id)), select("z"_cte->*&Object::id));
-     *  storage.with(cte<cte_1>()(select(&Object::id)), select("z"_cte->*"a"_col));
+     *  storage.with(cte<"z"_cte>()(select(&Object::id)), select(column<"z"_cte>(&Object::id)));
+     *  storage.with(cte<"z"_cte>()(select(&Object::id)), select(column<"z"_cte>(1_colalias)));
      */
     template<orm_cte_moniker auto moniker, class F>
     constexpr auto column([[maybe_unused]] F field) {
@@ -112,6 +113,7 @@ namespace sqlite_orm {
      *
      *  Example:
      *  struct Object { ... };
+     *  using cte_1 = decltype(1_ctealias);
      *  storage.with(cte<cte_1>()(select(&Object::id)), select(1_ctealias->*&Object::id));
      *  storage.with(cte<cte_1>()(select(&Object::id)), select(1_ctealias->*1_colalias));
      */

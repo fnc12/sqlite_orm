@@ -47,6 +47,7 @@ TEST_CASE("table name collector") {
 
 #ifdef SQLITE_ORM_WITH_CTE
     SECTION("from CTE") {
+        using cte_1 = decltype(1_ctealias);
         auto dbObjects2 =
             internal::db_objects_cat(dbObjects, internal::make_cte_table(dbObjects, cte<cte_1>()(select(1))));
         using context_t = internal::serializer_context<decltype(dbObjects2)>;

@@ -50,6 +50,7 @@ TEST_CASE("column_expression_of_t") {
 
     runTest<db_objects_t, column_pointer<Derived, int64 Org::*>>(column<Derived>(&Org::id));
 #ifdef SQLITE_ORM_WITH_CTE
+    using cte_1 = decltype(1_ctealias);
     auto dbObjects2 =
         internal::db_objects_cat(dbObjects,
                                  internal::make_cte_table(dbObjects, cte<cte_1>()(select(columns(&Org::id, 1)))));
