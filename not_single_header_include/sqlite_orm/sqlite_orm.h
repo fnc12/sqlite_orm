@@ -31,7 +31,6 @@
 #include "../../dev/storage_impl.h"
 #include "../../dev/default_value_extractor.h"
 #include "../../dev/storage.h"
-#include "../../dev/cte.h"
 #include "../../dev/get_prepared_statement.h"
 #include "../../dev/carray.h"
 #include "../../dev/sqlite_schema_table.h"

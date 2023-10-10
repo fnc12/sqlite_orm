@@ -19,7 +19,7 @@
 #include "ast/group_by.h"
 #include "core_functions.h"
 #include "alias_traits.h"
-#include "cte.h"
+#include "cte_moniker.h"
 
 namespace sqlite_orm {
 
@@ -492,7 +492,7 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CTE
     /**
-     *  Introduce the construction of a common table expression.
+     *  Introduce the construction of a common table expression using the specified moniker.
      *  
      *  The list of explicit columns is optional;
      *  if provided the number of columns must match the number of columns of the subselect.

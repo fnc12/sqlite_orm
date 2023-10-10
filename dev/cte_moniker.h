@@ -27,7 +27,7 @@ namespace sqlite_orm {
                   A,
                   X...> {
             /** 
-             *  Introduce the construction of a common table expression.
+             *  Introduce the construction of a common table expression using this moniker.
              *  
              *  The list of explicit columns is optional;
              *  if provided the number of columns must match the number of columns of the subselect.
@@ -41,7 +41,8 @@ namespace sqlite_orm {
              *  1_ctealias(&Object::name)(select("object"));
              *  
              *  @return A `cte_builder` instance.
-             *  @note (internal): Defined in select_constraints.h in order to keep this member function in the same place as the named factory function `cte()`.
+             *  @note (internal): Defined in select_constraints.h in order to keep this member function in the same place as the named factory function `cte()`,
+             *  and to keep the actual creation of the builder in one place.
              */
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
             template<class... ExplicitCols>

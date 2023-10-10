@@ -33,7 +33,6 @@
     "dev/storage_impl.h",
     "dev/default_value_extractor.h",
     "dev/storage.h",
-    "dev/cte.h",
     "dev/get_prepared_statement.h",
     "dev/carray.h",
     "dev/sqlite_schema_table.h",
