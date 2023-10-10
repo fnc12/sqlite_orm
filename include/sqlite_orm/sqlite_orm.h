@@ -551,7 +551,7 @@ namespace sqlite_orm {
     std::string get_error_message(sqlite3* db, T&&... args) {
         std::ostringstream stream;
         using unpack = int[];
-        static_cast<void>(unpack{0, (static_cast<void>(static_cast<void>(stream << args)), 0)...});
+        (void)unpack{0, (stream << args, 0)...};
         stream << sqlite3_errmsg(db);
         return stream.str();
     }
@@ -1870,14 +1870,206 @@ namespace sqlite_orm {
 
 // #include "tags.h"
 
+// #include "functional/cxx_functional_polyfill.h"
+
+#include <functional>
+#if __cpp_lib_invoke < 201411L
+#include <type_traits>  //  std::enable_if, std::is_member_object_pointer, std::is_member_function_pointer
+#endif
+#include <utility>  //  std::forward
+
+#if __cpp_lib_invoke < 201411L
+// #include "cxx_type_traits_polyfill.h"
+
+#endif
+// #include "../member_traits/member_traits.h"
+
+#include <type_traits>  //  std::enable_if, std::is_function, std::true_type, std::false_type
+
+// #include "../functional/cxx_universal.h"
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+namespace sqlite_orm {
+    namespace internal {
+        // SFINAE friendly trait to get a member object pointer's field type
+        template<class T>
+        struct object_field_type {};
+
+        template<class T>
+        using object_field_type_t = typename object_field_type<T>::type;
+
+        template<class F, class O>
+        struct object_field_type<F O::*> : std::enable_if<!std::is_function<F>::value, F> {};
+
+        // SFINAE friendly trait to get a member function pointer's field type (i.e. unqualified return type)
+        template<class T>
+        struct getter_field_type {};
+
+        template<class T>
+        using getter_field_type_t = typename getter_field_type<T>::type;
+
+        template<class T, class O>
+        struct getter_field_type<T O::*> : getter_field_type<T> {};
+
+        template<class F>
+        struct getter_field_type<F(void) const> : polyfill::remove_cvref<F> {};
+
+        template<class F>
+        struct getter_field_type<F(void)> : polyfill::remove_cvref<F> {};
+
+#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
+        template<class F>
+        struct getter_field_type<F(void) const noexcept> : polyfill::remove_cvref<F> {};
+
+        template<class F>
+        struct getter_field_type<F(void) noexcept> : polyfill::remove_cvref<F> {};
+#endif
+
+        // SFINAE friendly trait to get a member function pointer's field type (i.e. unqualified parameter type)
+        template<class T>
+        struct setter_field_type {};
+
+        template<class T>
+        using setter_field_type_t = typename setter_field_type<T>::type;
+
+        template<class T, class O>
+        struct setter_field_type<T O::*> : setter_field_type<T> {};
+
+        template<class F>
+        struct setter_field_type<void(F)> : polyfill::remove_cvref<F> {};
+
+#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
+        template<class F>
+        struct setter_field_type<void(F) noexcept> : polyfill::remove_cvref<F> {};
+#endif
+
+        template<class T, class SFINAE = void>
+        struct is_getter : std::false_type {};
+        template<class T>
+        struct is_getter<T, polyfill::void_t<getter_field_type_t<T>>> : std::true_type {};
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_getter_v = is_getter<T>::value;
+
+        template<class T, class SFINAE = void>
+        struct is_setter : std::false_type {};
+        template<class T>
+        struct is_setter<T, polyfill::void_t<setter_field_type_t<T>>> : std::true_type {};
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_setter_v = is_setter<T>::value;
+
+        template<class T>
+        struct member_field_type : object_field_type<T>, getter_field_type<T>, setter_field_type<T> {};
+
+        template<class T>
+        using member_field_type_t = typename member_field_type<T>::type;
+
+        template<class T>
+        struct member_object_type {};
+
+        template<class F, class O>
+        struct member_object_type<F O::*> : polyfill::type_identity<O> {};
+
+        template<class T>
+        using member_object_type_t = typename member_object_type<T>::type;
+    }
+}
+
+namespace sqlite_orm {
+    namespace internal {
+        namespace polyfill {
+            // C++20 or later (unfortunately there's no feature test macro).
+            // Stupidly, clang says C++20, but `std::identity` was only implemented in libc++ 13 and libstd++-v3 10
+            // (the latter is used on Linux).
+            // gcc got it right and reports C++20 only starting with v10.
+            // The check here doesn't care and checks the library versions in use.
+            //
+            // Another way of detection would be the constrained algorithms feature macro __cpp_lib_ranges
+#if(__cplusplus >= 202002L) &&                                                                                         \
+    ((!_LIBCPP_VERSION || _LIBCPP_VERSION >= 13000) && (!_GLIBCXX_RELEASE || _GLIBCXX_RELEASE >= 10))
+            using std::identity;
+#else
+            struct identity {
+                template<class T>
+                constexpr T&& operator()(T&& v) const noexcept {
+                    return std::forward<T>(v);
+                }
+
+                using is_transparent = int;
+            };
+#endif
+
+#if __cpp_lib_invoke >= 201411L
+            using std::invoke;
+#else
+            // pointer-to-data-member+object
+            template<class Callable,
+                     class Object,
+                     class... Args,
+                     class Unqualified = remove_cvref_t<Callable>,
+                     std::enable_if_t<std::is_member_object_pointer<Unqualified>::value, bool> = true>
+            decltype(auto) invoke(Callable&& callable, Object&& object, Args&&... args) {
+                return std::forward<Object>(object).*callable;
+            }
+
+            // pointer-to-member-function+object
+            template<class Callable,
+                     class Object,
+                     class... Args,
+                     class Unqualified = remove_cvref_t<Callable>,
+                     std::enable_if_t<std::is_member_function_pointer<Unqualified>::value, bool> = true>
+            decltype(auto) invoke(Callable&& callable, Object&& object, Args&&... args) {
+                return (std::forward<Object>(object).*callable)(std::forward<Args>(args)...);
+            }
+
+            // pointer-to-member+reference-wrapped object (expect `reference_wrapper::*`)
+            template<class Callable,
+                     class Object,
+                     class... Args,
+                     std::enable_if_t<polyfill::negation_v<polyfill::is_specialization_of<
+                                          member_object_type_t<std::remove_reference_t<Callable>>,
+                                          std::reference_wrapper>>,
+                                      bool> = true>
+            decltype(auto) invoke(Callable&& callable, std::reference_wrapper<Object> wrapper, Args&&... args) {
+                return invoke(std::forward<Callable>(callable), wrapper.get(), std::forward<Args>(args)...);
+            }
+
+            // functor
+            template<class Callable, class... Args>
+            decltype(auto) invoke(Callable&& callable, Args&&... args) {
+                return std::forward<Callable>(callable)(std::forward<Args>(args)...);
+            }
+#endif
+        }
+    }
+
+    namespace polyfill = internal::polyfill;
+}
+
 namespace sqlite_orm {
     namespace internal {
         struct negatable_t {};
 
         /**
+         *  Inherit from this class to support arithmetic types overloading
+         */
+        struct arithmetic_t {};
+
+        /**
          *  Inherit from this class if target class can be chained with other conditions with '&&' and '||' operators
          */
         struct condition_t {};
+
+        /**
+         *  Specialize if a type participates as an argument to overloaded operators (arithmetic, conditional, negation, chaining)
+         */
+        template<class T, class SFINAE = void>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_operator_argument_v = false;
+
+        template<class T>
+        using is_operator_argument = polyfill::bool_constant<is_operator_argument_v<T>>;
     }
 }
 
@@ -1914,11 +2106,6 @@ namespace sqlite_orm {
 namespace sqlite_orm {
 
     namespace internal {
-
-        /**
-         *  Inherit this class to support arithmetic types overloading
-         */
-        struct arithmetic_t {};
 
         template<class L, class R, class... Ds>
         struct binary_operator : Ds... {
@@ -2092,10 +2279,6 @@ namespace sqlite_orm {
          */
         template<class L, class R>
         struct is_assign_t<assign_t<L, R>> : public std::true_type {};
-
-        template<class L, class... Args>
-        struct in_t;
-
     }
 
     /**
@@ -2188,114 +2371,21 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::is_same, std::is_member_object_pointer
 #include <utility>  //  std::move
 
-// #include "functional/cxx_universal.h"
-
-// #include "functional/cxx_type_traits_polyfill.h"
-
-// #include "tuple_helper/tuple_traits.h"
-
-// #include "tuple_helper/tuple_filter.h"
-
-// #include "type_traits.h"
-
-// #include "member_traits/member_traits.h"
-
-#include <type_traits>  //  std::enable_if, std::is_function, std::true_type, std::false_type
-
 // #include "../functional/cxx_universal.h"
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
-namespace sqlite_orm {
-    namespace internal {
-        // SFINAE friendly trait to get a member object pointer's field type
-        template<class T>
-        struct object_field_type {};
+// #include "../tuple_helper/tuple_traits.h"
 
-        template<class T>
-        using object_field_type_t = typename object_field_type<T>::type;
+// #include "../tuple_helper/tuple_filter.h"
 
-        template<class F, class O>
-        struct object_field_type<F O::*> : std::enable_if<!std::is_function<F>::value, F> {};
+// #include "../type_traits.h"
 
-        // SFINAE friendly trait to get a member function pointer's field type (i.e. unqualified return type)
-        template<class T>
-        struct getter_field_type {};
+// #include "../member_traits/member_traits.h"
 
-        template<class T>
-        using getter_field_type_t = typename getter_field_type<T>::type;
+// #include "../type_is_nullable.h"
 
-        template<class T, class O>
-        struct getter_field_type<T O::*> : getter_field_type<T> {};
-
-        template<class F>
-        struct getter_field_type<F(void) const> : polyfill::remove_cvref<F> {};
-
-        template<class F>
-        struct getter_field_type<F(void)> : polyfill::remove_cvref<F> {};
-
-#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
-        template<class F>
-        struct getter_field_type<F(void) const noexcept> : polyfill::remove_cvref<F> {};
-
-        template<class F>
-        struct getter_field_type<F(void) noexcept> : polyfill::remove_cvref<F> {};
-#endif
-
-        // SFINAE friendly trait to get a member function pointer's field type (i.e. unqualified parameter type)
-        template<class T>
-        struct setter_field_type {};
-
-        template<class T>
-        using setter_field_type_t = typename setter_field_type<T>::type;
-
-        template<class T, class O>
-        struct setter_field_type<T O::*> : setter_field_type<T> {};
-
-        template<class F>
-        struct setter_field_type<void(F)> : polyfill::remove_cvref<F> {};
-
-#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
-        template<class F>
-        struct setter_field_type<void(F) noexcept> : polyfill::remove_cvref<F> {};
-#endif
-
-        template<class T, class SFINAE = void>
-        struct is_getter : std::false_type {};
-        template<class T>
-        struct is_getter<T, polyfill::void_t<getter_field_type_t<T>>> : std::true_type {};
-
-        template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_getter_v = is_getter<T>::value;
-
-        template<class T, class SFINAE = void>
-        struct is_setter : std::false_type {};
-        template<class T>
-        struct is_setter<T, polyfill::void_t<setter_field_type_t<T>>> : std::true_type {};
-
-        template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_setter_v = is_setter<T>::value;
-
-        template<class T>
-        struct member_field_type : object_field_type<T>, getter_field_type<T>, setter_field_type<T> {};
-
-        template<class T>
-        using member_field_type_t = typename member_field_type<T>::type;
-
-        template<class T>
-        struct member_object_type {};
-
-        template<class F, class O>
-        struct member_object_type<F O::*> : polyfill::type_identity<O> {};
-
-        template<class T>
-        using member_object_type_t = typename member_object_type<T>::type;
-    }
-}
-
-// #include "type_is_nullable.h"
-
-// #include "constraints.h"
+// #include "../constraints.h"
 
 namespace sqlite_orm {
 
@@ -2864,16 +2954,22 @@ namespace sqlite_orm {
 // #include "expression.h"
 
 #include <tuple>
-#include <utility>  //  std::move, std::forward
+#include <type_traits>  //  std::enable_if
+#include <utility>  //  std::move, std::forward, std::declval
 // #include "functional/cxx_optional.h"
 
 // #include "functional/cxx_universal.h"
 
-// #include "operators.h"
+// #include "functional/cxx_type_traits_polyfill.h"
+
+// #include "tags.h"
 
 namespace sqlite_orm {
 
     namespace internal {
+
+        template<class L, class... Args>
+        struct in_t;
 
         template<class L, class R>
         struct and_condition_t;
@@ -2882,13 +2978,11 @@ namespace sqlite_orm {
         struct or_condition_t;
 
         /**
-         *  Is not an operator but a result of c(...) function. Has operator= overloaded which returns assign_t
+         *  Result of c(...) function. Has operator= overloaded which returns assign_t
          */
         template<class T>
-        struct expression_t : condition_t {
+        struct expression_t {
             T value;
-
-            expression_t(T value_) : value(std::move(value_)) {}
 
             template<class R>
             assign_t<T, R> operator=(R r) const {
@@ -2905,12 +2999,12 @@ namespace sqlite_orm {
 #endif
             template<class... Args>
             in_t<T, Args...> in(Args... args) const {
-                return {this->value, std::make_tuple(std::forward<Args>(args)...), false};
+                return {this->value, {std::forward<Args>(args)...}, false};
             }
 
             template<class... Args>
             in_t<T, Args...> not_in(Args... args) const {
-                return {this->value, std::make_tuple(std::forward<Args>(args)...), true};
+                return {this->value, {std::forward<Args>(args)...}, true};
             }
 
             template<class R>
@@ -2923,6 +3017,10 @@ namespace sqlite_orm {
                 return {this->value, std::move(right)};
             }
         };
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool
+            is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of_v<T, expression_t>>> = true;
 
         template<class T>
         T get_from_expression(T value) {
@@ -2947,6 +3045,53 @@ namespace sqlite_orm {
         return {std::move(value)};
     }
 }
+
+// #include "column_pointer.h"
+
+#include <type_traits>  //  std::enable_if
+#include <utility>  // std::move
+
+// #include "functional/cxx_type_traits_polyfill.h"
+
+// #include "tags.h"
+
+namespace sqlite_orm {
+    namespace internal {
+        /**
+         *  This class is used to store explicit mapped type T and its column descriptor (member pointer/getter/setter).
+         *  Is useful when mapped type is derived from other type and base class has members mapped to a storage.
+         */
+        template<class T, class F>
+        struct column_pointer {
+            using self = column_pointer<T, F>;
+            using type = T;
+            using field_type = F;
+
+            field_type field;
+        };
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_column_pointer_v = polyfill::is_specialization_of_v<T, column_pointer>;
+
+        template<class T>
+        using is_column_pointer = polyfill::bool_constant<is_column_pointer_v<T>>;
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_operator_argument_v<T, std::enable_if_t<is_column_pointer_v<T>>> = true;
+    }
+
+    /**
+     *  Use it like this:
+     *  struct MyType : BaseType { ... };
+     *  storage.select(column<MyType>(&BaseType::id));
+     */
+    template<class T, class F>
+    internal::column_pointer<T, F> column(F f) {
+        return {std::move(f)};
+    }
+}
+
+// #include "tags.h"
 
 // #include "type_printer.h"
 
@@ -3574,7 +3719,7 @@ namespace sqlite_orm {
         };
 
         template<class A, class T>
-        struct glob_t : condition_t, glob_string, internal::negatable_t {
+        struct glob_t : condition_t, glob_string, negatable_t {
             using self = glob_t<A, T>;
             using arg_t = A;
             using pattern_t = T;
@@ -3786,21 +3931,22 @@ namespace sqlite_orm {
     }
 #endif
 
-    template<class T, internal::satisfies<std::is_base_of, internal::negatable_t, T> = true>
-    internal::negated_condition_t<T> operator!(T arg) {
-        return {std::move(arg)};
-    }
-
-    // Deliberately put operators for `expression_t` into the internal namespace
+    // Intentionally place operators for types classified as arithmetic or general operator arguments in the internal namespace
     // to facilitate ADL (Argument Dependent Lookup)
     namespace internal {
-        /**
-         *  Cute operators for columns
-         */
+        template<class T,
+                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<negatable_t, T>, is_operator_argument<T>>,
+                                  bool> = true>
+        negated_condition_t<T> operator!(T arg) {
+            return {std::move(arg)};
+        }
+
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>>,
+                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
+                                                          std::is_base_of<arithmetic_t, R>,
+                                                          is_operator_argument<L>,
+                                                          is_operator_argument<R>>,
                                   bool> = true>
         less_than_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator<(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -3808,8 +3954,10 @@ namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>>,
+                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
+                                                          std::is_base_of<arithmetic_t, R>,
+                                                          is_operator_argument<L>,
+                                                          is_operator_argument<R>>,
                                   bool> = true>
         less_or_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator<=(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -3817,8 +3965,10 @@ namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>>,
+                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
+                                                          std::is_base_of<arithmetic_t, R>,
+                                                          is_operator_argument<L>,
+                                                          is_operator_argument<R>>,
                                   bool> = true>
         greater_than_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator>(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -3826,8 +3976,10 @@ namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>>,
+                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
+                                                          std::is_base_of<arithmetic_t, R>,
+                                                          is_operator_argument<L>,
+                                                          is_operator_argument<R>>,
                                   bool> = true>
         greater_or_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator>=(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -3835,8 +3987,10 @@ namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>>,
+                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
+                                                          std::is_base_of<arithmetic_t, R>,
+                                                          is_operator_argument<L>,
+                                                          is_operator_argument<R>>,
                                   bool> = true>
         is_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator==(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -3844,8 +3998,10 @@ namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>>,
+                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
+                                                          std::is_base_of<arithmetic_t, R>,
+                                                          is_operator_argument<L>,
+                                                          is_operator_argument<R>>,
                                   bool> = true>
         is_not_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator!=(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -3853,12 +4009,12 @@ namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>,
-                                                          std::is_base_of<conc_string, L>,
-                                                          std::is_base_of<conc_string, R>>,
+                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<condition_t, L>,
+                                                          std::is_base_of<condition_t, R>,
+                                                          is_operator_argument<L>,
+                                                          is_operator_argument<R>>,
                                   bool> = true>
-        conc_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator||(L l, R r) {
+        and_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator&&(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
         }
 
@@ -3867,23 +4023,24 @@ namespace sqlite_orm {
             class R,
             std::enable_if_t<polyfill::disjunction_v<std::is_base_of<condition_t, L>, std::is_base_of<condition_t, R>>,
                              bool> = true>
-        and_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator&&(L l, R r) {
+        or_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator||(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
         }
 
         template<class L,
                  class R,
-                 std::enable_if_t<
-                     polyfill::conjunction_v<
-                         polyfill::disjunction<std::is_base_of<condition_t, L>, std::is_base_of<condition_t, R>>,
-                         // exclude concatenated expressions
-                         polyfill::negation<polyfill::disjunction<polyfill::is_specialization_of<L, expression_t>,
-                                                                  polyfill::is_specialization_of<R, expression_t>>>>,
-                     bool> = true>
-        or_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator||(L l, R r) {
+                 std::enable_if_t<polyfill::conjunction_v<
+                                      polyfill::disjunction<std::is_base_of<conc_string, L>,
+                                                            std::is_base_of<conc_string, R>,
+                                                            is_operator_argument<L>,
+                                                            is_operator_argument<R>>,
+                                      // exclude conditions
+                                      polyfill::negation<polyfill::disjunction<std::is_base_of<condition_t, L>,
+                                                                               std::is_base_of<condition_t, R>>>>,
+                                  bool> = true>
+        conc_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator||(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
         }
-
     }
 
     template<class F, class O>
@@ -4227,6 +4384,8 @@ namespace sqlite_orm {
 
 // #include "alias_traits.h"
 
+// #include "tags.h"
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -4252,6 +4411,9 @@ namespace sqlite_orm {
         consteval auto to_alias(std::index_sequence<Idx...>) {
             return Alias<t.id[Idx]...>{};
         }
+
+        template<class T>
+        inline constexpr bool is_operator_argument_v<T, std::enable_if_t<orm_column_alias<T>>> = true;
 #endif
 
         /**
@@ -4344,7 +4506,7 @@ namespace sqlite_orm {
         };
 
         /**
-         *  This is a common built-in class used for custom single-character column aliases.
+         *  Built-in column alias.
          *  For convenience there exist type aliases `colalias_a`, `colalias_b`, ...
          *  The easiest way to create a column alias is using `"xyz"_col`.
          */
@@ -4361,6 +4523,10 @@ namespace sqlite_orm {
 
             alias_holder() = default;
         };
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool
+            is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of_v<T, alias_holder>>> = true;
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         template<char A, char... X>
@@ -4410,6 +4576,9 @@ namespace sqlite_orm {
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /** 
+     *  Alias a column expression.
+     */
     template<orm_column_alias auto als, class E>
     auto as(E expression) {
         return internal::as_t<std::remove_const_t<decltype(als)>, E>{std::move(expression)};
@@ -4548,7 +4717,7 @@ namespace sqlite_orm {
 
 // #include "operators.h"
 
-// #include "expression.h"
+// #include "tags.h"
 
 // #include "ast/into.h"
 
@@ -5186,38 +5355,6 @@ namespace sqlite_orm {
         };
     }
 
-    /**
-     *  Cute operators for core functions
-     */
-    template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
-    internal::less_than_t<F, R> operator<(F f, R r) {
-        return {std::move(f), std::move(r)};
-    }
-
-    template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
-    internal::less_or_equal_t<F, R> operator<=(F f, R r) {
-        return {std::move(f), std::move(r)};
-    }
-
-    template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
-    internal::greater_than_t<F, R> operator>(F f, R r) {
-        return {std::move(f), std::move(r)};
-    }
-
-    template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
-    internal::greater_or_equal_t<F, R> operator>=(F f, R r) {
-        return {std::move(f), std::move(r)};
-    }
-
-    template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
-    internal::is_equal_t<F, R> operator==(F f, R r) {
-        return {std::move(f), std::move(r)};
-    }
-
-    template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
-    internal::is_not_equal_t<F, R> operator!=(F f, R r) {
-        return {std::move(f), std::move(r)};
-    }
 #ifdef SQLITE_ENABLE_MATH_FUNCTIONS
 
     /**
@@ -6616,15 +6753,15 @@ namespace sqlite_orm {
     }
 #endif  //  SQLITE_ENABLE_JSON1
 
-    // Deliberately put operators for `arithmetic_t` or `expression_t` into the internal namespace
+    // Intentionally place operators for types classified as arithmetic or general operator arguments in the internal namespace
     // to facilitate ADL (Argument Dependent Lookup)
     namespace internal {
         template<class L,
                  class R,
                  std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
                                                           std::is_base_of<arithmetic_t, R>,
-                                                          polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>>,
+                                                          is_operator_argument<L>,
+                                                          is_operator_argument<R>>,
                                   bool> = true>
         add_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator+(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -6634,8 +6771,8 @@ namespace sqlite_orm {
                  class R,
                  std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
                                                           std::is_base_of<arithmetic_t, R>,
-                                                          polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>>,
+                                                          is_operator_argument<L>,
+                                                          is_operator_argument<R>>,
                                   bool> = true>
         sub_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator-(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -6645,8 +6782,8 @@ namespace sqlite_orm {
                  class R,
                  std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
                                                           std::is_base_of<arithmetic_t, R>,
-                                                          polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>>,
+                                                          is_operator_argument<L>,
+                                                          is_operator_argument<R>>,
                                   bool> = true>
         mul_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator*(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -6656,8 +6793,8 @@ namespace sqlite_orm {
                  class R,
                  std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
                                                           std::is_base_of<arithmetic_t, R>,
-                                                          polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>>,
+                                                          is_operator_argument<L>,
+                                                          is_operator_argument<R>>,
                                   bool> = true>
         div_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator/(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -6667,8 +6804,8 @@ namespace sqlite_orm {
                  class R,
                  std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
                                                           std::is_base_of<arithmetic_t, R>,
-                                                          polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>>,
+                                                          is_operator_argument<L>,
+                                                          is_operator_argument<R>>,
                                   bool> = true>
         mod_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator%(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -6823,71 +6960,6 @@ namespace sqlite_orm {
 // #include "core_functions.h"
 
 // #include "alias_traits.h"
-
-// #include "column_pointer.h"
-
-#include <string>  //  std::string
-#include <utility>  //  std::move
-
-// #include "functional/cxx_core_features.h"
-
-// #include "conditions.h"
-
-// #include "alias_traits.h"
-
-namespace sqlite_orm {
-    namespace internal {
-        /**
-         *  This class is used to store explicit mapped type T and its column descriptor (member pointer/getter/setter).
-         *  Is useful when mapped type is derived from other type and base class has members mapped to a storage.
-         */
-        template<class T, class F>
-        struct column_pointer {
-            using self = column_pointer<T, F>;
-            using type = T;
-            using field_type = F;
-
-            field_type field;
-
-            template<class R>
-            is_equal_t<self, R> operator==(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
-
-            template<class R>
-            is_not_equal_t<self, R> operator!=(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
-
-            template<class R>
-            less_than_t<self, R> operator<(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
-
-            template<class R>
-            less_or_equal_t<self, R> operator<=(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
-
-            template<class R>
-            greater_than_t<self, R> operator>(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
-
-            template<class R>
-            greater_or_equal_t<self, R> operator>=(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
-        };
-
-        template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_column_pointer_v = polyfill::is_specialization_of_v<T, column_pointer>;
-
-        template<class T>
-        using is_column_pointer = polyfill::bool_constant<is_column_pointer_v<T>>;
-
-    }
-}
 
 namespace sqlite_orm {
 
@@ -7206,16 +7278,6 @@ namespace sqlite_orm {
     template<class... Args>
     internal::columns_t<Args...> columns(Args... args) {
         return {std::make_tuple<Args...>(std::forward<Args>(args)...)};
-    }
-
-    /**
-     *  Use it like this:
-     *  struct MyType : BaseType { ... };
-     *  storage.select(column<MyType>(&BaseType::id));
-     */
-    template<class T, class F>
-    internal::column_pointer<T, F> column(F f) {
-        return {std::move(f)};
     }
 
     /**
@@ -7732,20 +7794,20 @@ namespace sqlite_orm {
          */
         template<typename D>
         concept integral_fp_c = requires {
-                                    typename D::value_type;
-                                    D::value;
-                                    requires std::is_function_v<std::remove_pointer_t<typename D::value_type>>;
-                                };
+            typename D::value_type;
+            D::value;
+            requires std::is_function_v<std::remove_pointer_t<typename D::value_type>>;
+        };
 
         /**
          *  Constrains a deleter to be or to yield a function pointer.
          */
         template<typename D>
         concept yields_fp = requires(D d) {
-                                // yielding function pointer by using the plus trick
-                                { +d };
-                                requires std::is_function_v<std::remove_pointer_t<decltype(+d)>>;
-                            };
+            // yielding function pointer by using the plus trick
+            { +d };
+            requires std::is_function_v<std::remove_pointer_t<decltype(+d)>>;
+        };
 #endif
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
@@ -7800,8 +7862,8 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
         template<typename D>
-        concept is_unusable_for_xdestroy = (!stateless_deleter<D> &&
-                                            (yields_fp<D> && !std::convertible_to<yielded_fn_t<D>, xdestroy_fn_t>));
+        concept is_unusable_for_xdestroy =
+            (!stateless_deleter<D> && (yields_fp<D> && !std::convertible_to<yielded_fn_t<D>, xdestroy_fn_t>));
 
         /**
          *  This concept tests whether a deleter yields a function pointer, which is convertible to an xdestroy function pointer.
@@ -7811,8 +7873,8 @@ namespace sqlite_orm {
         concept yields_xdestroy = yields_fp<D> && std::convertible_to<yielded_fn_t<D>, xdestroy_fn_t>;
 
         template<typename D, typename P>
-        concept needs_xdestroy_proxy = (stateless_deleter<D> &&
-                                        (!yields_fp<D> || !std::convertible_to<yielded_fn_t<D>, xdestroy_fn_t>));
+        concept needs_xdestroy_proxy =
+            (stateless_deleter<D> && (!yields_fp<D> || !std::convertible_to<yielded_fn_t<D>, xdestroy_fn_t>));
 
         /**
          *  xDestroy function that constructs and invokes the stateless deleter.
@@ -8135,89 +8197,6 @@ namespace sqlite_orm {
 // #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "functional/cxx_functional_polyfill.h"
-
-#include <functional>
-#if __cpp_lib_invoke < 201411L
-#include <type_traits>  //  std::enable_if, std::is_member_object_pointer, std::is_member_function_pointer
-#endif
-#include <utility>  //  std::forward
-
-#if __cpp_lib_invoke < 201411L
-// #include "cxx_type_traits_polyfill.h"
-
-#endif
-// #include "../member_traits/member_traits.h"
-
-namespace sqlite_orm {
-    namespace internal {
-        namespace polyfill {
-            // C++20 or later (unfortunately there's no feature test macro).
-            // Stupidly, clang says C++20, but `std::identity` was only implemented in libc++ 13 and libstd++-v3 10
-            // (the latter is used on Linux).
-            // gcc got it right and reports C++20 only starting with v10.
-            // The check here doesn't care and checks the library versions in use.
-            //
-            // Another way of detection would be the constrained algorithms feature macro __cpp_lib_ranges
-#if(__cplusplus >= 202002L) &&                                                                                         \
-    ((!_LIBCPP_VERSION || _LIBCPP_VERSION >= 13000) && (!_GLIBCXX_RELEASE || _GLIBCXX_RELEASE >= 10))
-            using std::identity;
-#else
-            struct identity {
-                template<class T>
-                constexpr T&& operator()(T&& v) const noexcept {
-                    return std::forward<T>(v);
-                }
-
-                using is_transparent = int;
-            };
-#endif
-
-#if __cpp_lib_invoke >= 201411L
-            using std::invoke;
-#else
-            // pointer-to-data-member+object
-            template<class Callable,
-                     class Object,
-                     class... Args,
-                     class Unqualified = remove_cvref_t<Callable>,
-                     std::enable_if_t<std::is_member_object_pointer<Unqualified>::value, bool> = true>
-            decltype(auto) invoke(Callable&& callable, Object&& object, Args&&... args) {
-                return std::forward<Object>(object).*callable;
-            }
-
-            // pointer-to-member-function+object
-            template<class Callable,
-                     class Object,
-                     class... Args,
-                     class Unqualified = remove_cvref_t<Callable>,
-                     std::enable_if_t<std::is_member_function_pointer<Unqualified>::value, bool> = true>
-            decltype(auto) invoke(Callable&& callable, Object&& object, Args&&... args) {
-                return (std::forward<Object>(object).*callable)(std::forward<Args>(args)...);
-            }
-
-            // pointer-to-member+reference-wrapped object (expect `reference_wrapper::*`)
-            template<class Callable,
-                     class Object,
-                     class... Args,
-                     std::enable_if_t<polyfill::negation_v<polyfill::is_specialization_of<
-                                          member_object_type_t<std::remove_reference_t<Callable>>,
-                                          std::reference_wrapper>>,
-                                      bool> = true>
-            decltype(auto) invoke(Callable&& callable, std::reference_wrapper<Object> wrapper, Args&&... args) {
-                return invoke(std::forward<Callable>(callable), wrapper.get(), std::forward<Args>(args)...);
-            }
-
-            // functor
-            template<class Callable, class... Args>
-            decltype(auto) invoke(Callable&& callable, Args&&... args) {
-                return std::forward<Callable>(callable)(std::forward<Args>(args)...);
-            }
-#endif
-        }
-    }
-
-    namespace polyfill = internal::polyfill;
-}
 
 // #include "is_std_ptr.h"
 
@@ -8714,8 +8693,8 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     template<typename T>
     concept orm_column_text_extractable = requires(const row_extractor<T>& extractor, const char* columnText) {
-                                              { extractor.extract(columnText) } -> std::same_as<T>;
-                                          };
+        { extractor.extract(columnText) } -> std::same_as<T>;
+    };
 
     template<typename T>
     concept orm_row_value_extractable =
@@ -8725,8 +8704,8 @@ namespace sqlite_orm {
 
     template<typename T>
     concept orm_boxed_value_extractable = requires(const row_extractor<T>& extractor, sqlite3_value* value) {
-                                              { extractor.extract(value) } -> std::same_as<T>;
-                                          };
+        { extractor.extract(value) } -> std::same_as<T>;
+    };
 #endif
 
     namespace internal {
@@ -9296,11 +9275,11 @@ namespace sqlite_orm {
 #include <string>  //  std::string
 #include <utility>  //  std::forward
 
-// #include "functional/cxx_universal.h"
+// #include "../functional/cxx_universal.h"
 
-// #include "tuple_helper/tuple_filter.h"
+// #include "../tuple_helper/tuple_filter.h"
 
-// #include "indexed_column.h"
+// #include "../indexed_column.h"
 
 #include <string>  //  std::string
 #include <utility>  //  std::move
@@ -9372,7 +9351,7 @@ namespace sqlite_orm {
 
 }
 
-// #include "table_type_of.h"
+// #include "../table_type_of.h"
 
 namespace sqlite_orm {
 
@@ -9511,13 +9490,13 @@ namespace sqlite_orm {
 #include <tuple>  //  std::tuple_element
 #include <utility>  //  std::forward, std::move
 
-// #include "functional/cxx_universal.h"
+// #include "../functional/cxx_universal.h"
 //  ::size_t
-// #include "functional/cxx_type_traits_polyfill.h"
+// #include "../functional/cxx_type_traits_polyfill.h"
 
-// #include "functional/cxx_functional_polyfill.h"
+// #include "../functional/cxx_functional_polyfill.h"
 
-// #include "functional/static_magic.h"
+// #include "../functional/static_magic.h"
 
 #ifndef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
 #include <type_traits>  //  std::false_type, std::true_type, std::integral_constant
@@ -9593,15 +9572,15 @@ namespace sqlite_orm {
 
 }
 
-// #include "functional/mpl.h"
+// #include "../functional/mpl.h"
 
-// #include "functional/index_sequence_util.h"
+// #include "../functional/index_sequence_util.h"
 
-// #include "tuple_helper/tuple_filter.h"
+// #include "../tuple_helper/tuple_filter.h"
 
-// #include "tuple_helper/tuple_traits.h"
+// #include "../tuple_helper/tuple_traits.h"
 
-// #include "tuple_helper/tuple_iteration.h"
+// #include "../tuple_helper/tuple_iteration.h"
 
 #include <tuple>  //  std::tuple, std::get, std::tuple_element, std::tuple_size
 #include <type_traits>  //  std::remove_reference, std::index_sequence, std::make_index_sequence
@@ -9739,15 +9718,15 @@ namespace sqlite_orm {
     }
 }
 
-// #include "member_traits/member_traits.h"
+// #include "../member_traits/member_traits.h"
 
-// #include "typed_comparator.h"
+// #include "../typed_comparator.h"
 
-// #include "type_traits.h"
+// #include "../type_traits.h"
 
-// #include "constraints.h"
+// #include "../constraints.h"
 
-// #include "table_info.h"
+// #include "../table_info.h"
 
 // #include "column.h"
 
@@ -10101,7 +10080,8 @@ namespace sqlite_orm {
         }
 
         template<class M, class G, class S>
-        bool exists_in_composite_primary_key(const virtual_table_t<M>& virtualTable, const column_field<G, S>& column) {
+        bool exists_in_composite_primary_key(const virtual_table_t<M>& /*virtualTable*/,
+                                             const column_field<G, S>& /*column*/) {
             return false;
         }
     }
@@ -13505,7 +13485,7 @@ namespace sqlite_orm {
             return ss;
         }
 
-        // serialize and stream a vector of expressions;
+        // serialize and stream a vector or any other STL container of expressions;
         // comma-separated
         template<class C, class Ctx>
         std::ostream& operator<<(std::ostream& ss,
@@ -13514,8 +13494,9 @@ namespace sqlite_orm {
             auto& context = get<2>(tpl);
 
             constexpr std::array<const char*, 2> sep = {", ", ""};
-            for(size_t i = 0, first = true; i < args.size(); ++i) {
-                ss << sep[std::exchange(first, false)] << serialize(args[i], context);
+            bool first = true;
+            for(auto& argument: args) {
+                ss << sep[std::exchange(first, false)] << serialize(argument, context);
             }
             return ss;
         }
@@ -15331,6 +15312,7 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ORM_OMITS_CODECVT
 #include <memory>
 #include <array>
+#include <list>  //  std::list
 // #include "functional/cxx_string_view.h"
 
 // #include "functional/cxx_optional.h"
@@ -16276,9 +16258,12 @@ namespace sqlite_orm {
             }
         };
 
-        template<class L, class A>
-        struct statement_serializer<dynamic_in_t<L, A>, void> {
-            using statement_type = dynamic_in_t<L, A>;
+        template<class L, class C>
+        struct statement_serializer<
+            dynamic_in_t<L, C>,
+            std::enable_if_t<!polyfill::disjunction_v<polyfill::is_specialization_of<C, std::vector>,
+                                                      polyfill::is_specialization_of<C, std::list>>>> {
+            using statement_type = dynamic_in_t<L, C>;
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
@@ -16291,22 +16276,25 @@ namespace sqlite_orm {
                     ss << "NOT IN";
                 }
                 ss << " ";
-                if(is_compound_operator_v<A>) {
+                if(is_compound_operator_v<C>) {
                     ss << '(';
                 }
                 auto newContext = context;
                 newContext.use_parentheses = true;
                 ss << serialize(statement.argument, newContext);
-                if(is_compound_operator_v<A>) {
+                if(is_compound_operator_v<C>) {
                     ss << ')';
                 }
                 return ss.str();
             }
         };
 
-        template<class L, class E>
-        struct statement_serializer<dynamic_in_t<L, std::vector<E>>, void> {
-            using statement_type = dynamic_in_t<L, std::vector<E>>;
+        template<class L, class C>
+        struct statement_serializer<
+            dynamic_in_t<L, C>,
+            std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<C, std::vector>,
+                                                     polyfill::is_specialization_of<C, std::list>>>> {
+            using statement_type = dynamic_in_t<L, C>;
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
@@ -18230,7 +18218,7 @@ namespace sqlite_orm {
                 static_assert(is_preparable_v<self, Ex>, "Expression must be a high-level statement");
 
                 decltype(auto) e2 = static_if<is_select_v<Ex>>(
-                    [](auto expression) -> auto{
+                    [](auto expression) -> auto {
                         expression.highest_level = true;
                         return expression;
                     },

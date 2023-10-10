@@ -3,8 +3,6 @@
 #include <type_traits>  //  std::is_same
 
 using namespace sqlite_orm;
-using internal::alias_holder;
-using internal::column_alias;
 using internal::column_pointer;
 
 template<class T>

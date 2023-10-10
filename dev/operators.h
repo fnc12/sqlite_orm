@@ -10,11 +10,6 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        /**
-         *  Inherit this class to support arithmetic types overloading
-         */
-        struct arithmetic_t {};
-
         template<class L, class R, class... Ds>
         struct binary_operator : Ds... {
             using left_type = L;
@@ -187,10 +182,6 @@ namespace sqlite_orm {
          */
         template<class L, class R>
         struct is_assign_t<assign_t<L, R>> : public std::true_type {};
-
-        template<class L, class... Args>
-        struct in_t;
-
     }
 
     /**

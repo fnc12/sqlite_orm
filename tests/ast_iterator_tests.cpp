@@ -5,8 +5,6 @@
 
 using namespace sqlite_orm;
 using internal::alias_column_t;
-using internal::alias_holder;
-using internal::column_alias;
 using internal::column_pointer;
 using internal::iterate_ast;
 

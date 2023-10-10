@@ -1,11 +1,10 @@
 #pragma once
 
-#include <string>  //  std::string
-#include <utility>  //  std::move
+#include <type_traits>  //  std::enable_if
+#include <utility>  // std::move
 
-#include "functional/cxx_core_features.h"
-#include "conditions.h"
-#include "alias_traits.h"
+#include "functional/cxx_type_traits_polyfill.h"
+#include "tags.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -20,36 +19,6 @@ namespace sqlite_orm {
             using field_type = F;
 
             field_type field;
-
-            template<class R>
-            is_equal_t<self, R> operator==(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
-
-            template<class R>
-            is_not_equal_t<self, R> operator!=(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
-
-            template<class R>
-            less_than_t<self, R> operator<(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
-
-            template<class R>
-            less_or_equal_t<self, R> operator<=(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
-
-            template<class R>
-            greater_than_t<self, R> operator>(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
-
-            template<class R>
-            greater_or_equal_t<self, R> operator>=(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
         };
 
         template<class T>
@@ -58,5 +27,17 @@ namespace sqlite_orm {
         template<class T>
         using is_column_pointer = polyfill::bool_constant<is_column_pointer_v<T>>;
 
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_operator_argument_v<T, std::enable_if_t<is_column_pointer_v<T>>> = true;
+    }
+
+    /**
+     *  Use it like this:
+     *  struct MyType : BaseType { ... };
+     *  storage.select(column<MyType>(&BaseType::id));
+     */
+    template<class T, class F>
+    internal::column_pointer<T, F> column(F f) {
+        return {std::move(f)};
     }
 }
