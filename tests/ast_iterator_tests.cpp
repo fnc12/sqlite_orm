@@ -348,7 +348,7 @@ TEST_CASE("ast_iterator") {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     SECTION("aliased CTE column pointer") {
         constexpr auto c = "1"_cte;
-        using cte_1 = decltype(c);
+        using cte_1 = decltype("1"_cte);
         constexpr auto z_alias = "z"_alias.for_<c>();
         auto expression = z_alias->*&User::id;
         expected.push_back(typeid(alias_column_t<alias_z<cte_1>, column_pointer<cte_1, decltype(&User::id)>>));
@@ -356,7 +356,7 @@ TEST_CASE("ast_iterator") {
     }
     SECTION("aliased CTE column alias") {
         constexpr auto c = "1"_cte;
-        using cte_1 = decltype(c);
+        using cte_1 = decltype("1"_cte);
         constexpr auto z_alias = "z"_alias.for_<c>();
         auto expression = z_alias->*1_colalias;
         expected.push_back(
