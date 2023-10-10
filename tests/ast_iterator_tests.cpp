@@ -356,6 +356,7 @@ TEST_CASE("ast_iterator") {
     }
     SECTION("aliased CTE column alias") {
         constexpr auto c = "1"_cte;
+        using cte_1 = decltype(c);
         constexpr auto z_alias = "z"_alias.for_<c>();
         auto expression = z_alias->*1_colalias;
         expected.push_back(
