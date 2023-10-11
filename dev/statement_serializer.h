@@ -886,6 +886,26 @@ namespace sqlite_orm {
             }
         };
 
+        template<>
+        struct statement_serializer<null_t, void> {
+            using statement_type = null_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                return "NULL";
+            }
+        };
+
+        template<>
+        struct statement_serializer<not_null_t, void> {
+            using statement_type = not_null_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                return "NOT NULL";
+            }
+        };
+
         template<class... Cs>
         struct statement_serializer<primary_key_t<Cs...>, void> {
             using statement_type = primary_key_t<Cs...>;
@@ -1031,13 +1051,11 @@ namespace sqlite_orm {
                 if(!context.skip_types_and_constraints) {
                     ss << " " << type_printer<field_type_t<column_type>>().print();
                     const bool columnIsNotNull = column.is_not_null();
-                    auto constraintsTuple = streaming_column_constraints(
-                        call_as_template_base<column_constraints>(polyfill::identity{})(column),
-                        columnIsNotNull,
-                        context);
-                    if(std::tuple_size<decltype(constraintsTuple)>::value > 0) {
-                        ss << " " << constraintsTuple;
-                    }
+                    ss << " "
+                       << streaming_column_constraints(
+                              call_as_template_base<column_constraints>(polyfill::identity{})(column),
+                              columnIsNotNull,
+                              context);
                 }
                 return ss.str();
             }

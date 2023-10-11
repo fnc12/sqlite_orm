@@ -1698,6 +1698,9 @@ namespace sqlite_orm {
             }
         };
 
+        struct null_t {};
+
+        struct not_null_t {};
     }
 
     namespace internal {
@@ -1726,6 +1729,12 @@ namespace sqlite_orm {
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_generated_always_v = is_generated_always<T>::value;
 
+        template<class T>
+        using is_null = std::is_same<null_t, T>;
+
+        template<class T>
+        using is_not_null = std::is_same<not_null_t, T>;
+
         /**
          * PRIMARY KEY INSERTABLE traits.
          */
@@ -1744,6 +1753,8 @@ namespace sqlite_orm {
         using is_constraint =
             mpl::instantiate<mpl::disjunction<check_if<is_primary_key>,
                                               check_if<is_foreign_key>,
+                                              check_if<is_null>,
+                                              check_if<is_not_null>,
                                               check_if_is_template<unique_t>,
                                               check_if_is_template<default_t>,
                                               check_if_is_template<check_t>,
@@ -1821,6 +1832,14 @@ namespace sqlite_orm {
     template<class T>
     internal::check_t<T> check(T t) {
         return {std::move(t)};
+    }
+
+    inline internal::null_t null() {
+        return {};
+    }
+
+    inline internal::not_null_t not_null() {
+        return {};
     }
 }
 #pragma once
@@ -13663,11 +13682,24 @@ namespace sqlite_orm {
             const bool& isNotNull = get<2>(tpl);
             auto& context = get<3>(tpl);
 
-            iterate_tuple(column.constraints, [&ss, &context](auto& constraint) {
-                ss << serialize(constraint, context) << ' ';
+            auto first = true;
+            constexpr std::array<const char*, 2> sep = {" ", ""};
+            iterate_tuple(column.constraints, [&ss, &context, &first, &sep](auto& constraint) {
+                ss << sep[std::exchange(first, false)];
+                ss << serialize(constraint, context);
             });
-            if(isNotNull) {
-                ss << "NOT NULL";
+            using ConstraintsTuple = decltype(column.constraints);
+            constexpr bool constraintsHaveNullConstraint =
+                mpl::invoke_t<check_if_tuple_has_type<null_t>, ConstraintsTuple>::value;
+            constexpr bool constraintsHaveNotNullConstraint =
+                mpl::invoke_t<check_if_tuple_has_type<not_null_t>, ConstraintsTuple>::value;
+            if(!constraintsHaveNullConstraint && !constraintsHaveNotNullConstraint) {
+                ss << sep[std::exchange(first, false)];
+                if(isNotNull) {
+                    ss << "NOT NULL";
+                } else {
+                    ss << "NULL";
+                }
             }
 
             return ss;
@@ -16433,6 +16465,26 @@ namespace sqlite_orm {
             }
         };
 
+        template<>
+        struct statement_serializer<null_t, void> {
+            using statement_type = null_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                return "NULL";
+            }
+        };
+
+        template<>
+        struct statement_serializer<not_null_t, void> {
+            using statement_type = not_null_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                return "NOT NULL";
+            }
+        };
+
         template<class... Cs>
         struct statement_serializer<primary_key_t<Cs...>, void> {
             using statement_type = primary_key_t<Cs...>;
@@ -16578,13 +16630,11 @@ namespace sqlite_orm {
                 if(!context.skip_types_and_constraints) {
                     ss << " " << type_printer<field_type_t<column_type>>().print();
                     const bool columnIsNotNull = column.is_not_null();
-                    auto constraintsTuple = streaming_column_constraints(
-                        call_as_template_base<column_constraints>(polyfill::identity{})(column),
-                        columnIsNotNull,
-                        context);
-                    if(std::tuple_size<decltype(constraintsTuple)>::value > 0) {
-                        ss << " " << constraintsTuple;
-                    }
+                    ss << " "
+                       << streaming_column_constraints(
+                              call_as_template_base<column_constraints>(polyfill::identity{})(column),
+                              columnIsNotNull,
+                              context);
                 }
                 return ss.str();
             }
