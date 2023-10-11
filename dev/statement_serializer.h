@@ -891,7 +891,7 @@ namespace sqlite_orm {
             using statement_type = null_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) const {
                 return "NULL";
             }
         };
@@ -901,7 +901,7 @@ namespace sqlite_orm {
             using statement_type = not_null_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) const {
                 return "NOT NULL";
             }
         };
