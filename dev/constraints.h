@@ -443,12 +443,6 @@ namespace sqlite_orm {
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_generated_always_v = is_generated_always<T>::value;
 
-        template<class T>
-        using is_null = std::is_same<null_t, T>;
-
-        template<class T>
-        using is_not_null = std::is_same<not_null_t, T>;
-
         /**
          * PRIMARY KEY INSERTABLE traits.
          */
@@ -467,8 +461,8 @@ namespace sqlite_orm {
         using is_constraint =
             mpl::instantiate<mpl::disjunction<check_if<is_primary_key>,
                                               check_if<is_foreign_key>,
-                                              check_if<is_null>,
-                                              check_if<is_not_null>,
+                                              check_if_is_type<null_t>,
+                                              check_if_is_type<not_null_t>,
                                               check_if_is_template<unique_t>,
                                               check_if_is_template<default_t>,
                                               check_if_is_template<check_t>,

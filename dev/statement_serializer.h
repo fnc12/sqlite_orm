@@ -1050,11 +1050,10 @@ namespace sqlite_orm {
                 ss << streaming_identifier(column.name);
                 if(!context.skip_types_and_constraints) {
                     ss << " " << type_printer<field_type_t<column_type>>().print();
-                    const bool columnIsNotNull = column.is_not_null();
                     ss << " "
                        << streaming_column_constraints(
                               call_as_template_base<column_constraints>(polyfill::identity{})(column),
-                              columnIsNotNull,
+                              column.is_not_null(),
                               context);
                 }
                 return ss.str();
