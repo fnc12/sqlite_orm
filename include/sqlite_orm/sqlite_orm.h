@@ -11229,14 +11229,14 @@ namespace sqlite_orm {
                 next();
             }
 
-            const value_type& operator*() const {
+            value_type& operator*() const {
                 if(!this->stmt || !this->current) {
                     throw std::system_error{orm_error_code::trying_to_dereference_null_iterator};
                 }
                 return *this->current;
             }
 
-            const value_type* operator->() const {
+            value_type* operator->() const {
                 return &(this->operator*());
             }
 
