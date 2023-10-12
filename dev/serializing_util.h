@@ -372,12 +372,11 @@ namespace sqlite_orm {
                 ss << sep[std::exchange(first, false)];
                 ss << serialize(constraint, context);
             });
-            using ConstraintsTuple = decltype(column.constraints);
-            constexpr bool constraintsHaveNullConstraint =
-                mpl::invoke_t<check_if_tuple_has_type<null_t>, ConstraintsTuple>::value;
-            constexpr bool constraintsHaveNotNullConstraint =
-                mpl::invoke_t<check_if_tuple_has_type<not_null_t>, ConstraintsTuple>::value;
-            if(!constraintsHaveNullConstraint && !constraintsHaveNotNullConstraint) {
+            using constraints_tuple = decltype(column.constraints);
+            constexpr bool hasExplicitNullableConstraint =
+                mpl::invoke_t<mpl::disjunction<check_if_tuple_has_type<null_t>, check_if_tuple_has_type<not_null_t>>,
+                              constraints_tuple>::value;
+            if(!hasExplicitNullableConstraint) {
                 ss << sep[std::exchange(first, false)];
                 if(isNotNull) {
                     ss << "NOT NULL";
