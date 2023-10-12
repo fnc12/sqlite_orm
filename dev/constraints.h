@@ -412,6 +412,9 @@ namespace sqlite_orm {
             }
         };
 
+        struct null_t {};
+
+        struct not_null_t {};
     }
 
     namespace internal {
@@ -458,6 +461,8 @@ namespace sqlite_orm {
         using is_constraint =
             mpl::instantiate<mpl::disjunction<check_if<is_primary_key>,
                                               check_if<is_foreign_key>,
+                                              check_if_is_type<null_t>,
+                                              check_if_is_type<not_null_t>,
                                               check_if_is_template<unique_t>,
                                               check_if_is_template<default_t>,
                                               check_if_is_template<check_t>,
@@ -535,5 +540,13 @@ namespace sqlite_orm {
     template<class T>
     internal::check_t<T> check(T t) {
         return {std::move(t)};
+    }
+
+    inline internal::null_t null() {
+        return {};
+    }
+
+    inline internal::not_null_t not_null() {
+        return {};
     }
 }
