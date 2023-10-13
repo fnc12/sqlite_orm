@@ -25,7 +25,8 @@ TEST_CASE("iterator_t") {
     using check = decltype(std::declval<iter>()++);
 
     // indirectly_readable
-    STATIC_REQUIRE(std::is_same<decltype(*std::declval<const iter>()), const User&>::value);
+    STATIC_REQUIRE(std::is_same<decltype(*std::declval<const iter>()), User&>::value);
+    STATIC_REQUIRE(std::is_same<decltype(std::declval<const iter>().operator->()), User*>::value);
 
     // input_iterator
     STATIC_REQUIRE(std::is_same<iter::iterator_category, std::input_iterator_tag>::value);

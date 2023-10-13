@@ -36,12 +36,32 @@ TEST_CASE("column is_not_null") {
         int id = 0;
         std::unique_ptr<std::string> name;
     };
-    SECTION("not null") {
-        auto column = make_column("id", &User::id);
-        REQUIRE(column.is_not_null());
+    SECTION("non-nullable") {
+        SECTION("implicit") {
+            auto column = make_column("id", &User::id);
+            REQUIRE(column.is_not_null());
+        }
+        SECTION("explicit not null") {
+            auto column = make_column("id", &User::id, not_null());
+            REQUIRE(column.is_not_null());
+        }
+        SECTION("explicit null") {
+            auto column = make_column("id", &User::id, null());
+            REQUIRE(column.is_not_null());
+        }
     }
-    SECTION("null") {
-        auto column = make_column("name", &User::name);
-        REQUIRE(!column.is_not_null());
+    SECTION("nullable") {
+        SECTION("implicit") {
+            auto column = make_column("name", &User::name);
+            REQUIRE(!column.is_not_null());
+        }
+        SECTION("explicit not null") {
+            auto column = make_column("name", &User::name, not_null());
+            REQUIRE(!column.is_not_null());
+        }
+        SECTION("explicit null") {
+            auto column = make_column("name", &User::name, null());
+            REQUIRE(!column.is_not_null());
+        }
     }
 }
