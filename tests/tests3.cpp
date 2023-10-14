@@ -386,6 +386,7 @@ TEST_CASE("Escape chars") {
     storage.remove<Employee>(10);
 }
 
+#ifdef SQLITE_ORM_WITH_CTE
 TEST_CASE("With select") {
     using Catch::Matchers::Equals;
 
@@ -422,3 +423,4 @@ TEST_CASE("With select") {
         REQUIRE_THAT(rows, Equals(std::vector<int>{1, 2}));
     }
 }
+#endif
