@@ -3,6 +3,58 @@
 
 using namespace sqlite_orm;
 
+TEST_CASE("Current time/date/timestamp") {
+    auto storage = make_storage("");
+    SECTION("time") {
+        SECTION("strict") {
+            REQUIRE(storage.current_time().size());
+        }
+        SECTION("select") {
+            auto rows = storage.select(current_time());
+            REQUIRE(rows.size() == 1);
+            REQUIRE(rows.at(0).size());
+        }
+        SECTION("prepared statement") {
+            auto preparedStatement = storage.prepare(select(current_time()));
+            auto rows = storage.execute(preparedStatement);
+            REQUIRE(rows.size() == 1);
+            REQUIRE(rows.at(0).size());
+        }
+    }
+    SECTION("date") {
+        SECTION("strict") {
+            REQUIRE(storage.current_date().size());
+        }
+        SECTION("select") {
+            auto rows = storage.select(current_date());
+            REQUIRE(rows.size() == 1);
+            REQUIRE(rows.at(0).size());
+        }
+        SECTION("prepared statement") {
+            auto preparedStatement = storage.prepare(select(current_date()));
+            auto rows = storage.execute(preparedStatement);
+            REQUIRE(rows.size() == 1);
+            REQUIRE(rows.at(0).size());
+        }
+    }
+    SECTION("timestamp") {
+        SECTION("strict") {
+            REQUIRE(storage.current_timestamp().size());
+        }
+        SECTION("select") {
+            auto rows = storage.select(current_timestamp());
+            REQUIRE(rows.size() == 1);
+            REQUIRE(rows.at(0).size());
+        }
+        SECTION("prepared statement") {
+            auto preparedStatement = storage.prepare(select(current_timestamp()));
+            auto rows = storage.execute(preparedStatement);
+            REQUIRE(rows.size() == 1);
+            REQUIRE(rows.at(0).size());
+        }
+    }
+}
+
 TEST_CASE("busy handler") {
     auto storage = make_storage({});
     storage.busy_handler([](int /*timesCount*/) {

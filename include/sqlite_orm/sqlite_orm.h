@@ -11645,6 +11645,28 @@ namespace sqlite_orm {
 
 }
 
+// #include "ast/special_keywords.h"
+
+namespace sqlite_orm {
+    namespace internal {
+        struct current_time_t {};
+        struct current_date_t {};
+        struct current_timestamp_t {};
+    }
+
+    inline internal::current_time_t current_time() {
+        return {};
+    }
+
+    inline internal::current_date_t current_date() {
+        return {};
+    }
+
+    inline internal::current_timestamp_t current_timestamp() {
+        return {};
+    }
+}
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -11687,6 +11709,21 @@ namespace sqlite_orm {
         template<class DBOs, class L, class... Args>
         struct column_result_t<DBOs, in_t<L, Args...>, void> {
             using type = bool;
+        };
+
+        template<class DBOs>
+        struct column_result_t<DBOs, current_time_t, void> {
+            using type = std::string;
+        };
+
+        template<class DBOs>
+        struct column_result_t<DBOs, current_date_t, void> {
+            using type = std::string;
+        };
+
+        template<class DBOs>
+        struct column_result_t<DBOs, current_timestamp_t, void> {
+            using type = std::string;
         };
 
         template<class DBOs, class T>
@@ -15420,6 +15457,16 @@ namespace sqlite_orm {
                 return guard.commit_on_destroy = f();
             }
 
+            std::string current_time() {
+                auto con = this->get_connection();
+                return this->current_time(con.get());
+            }
+
+            std::string current_date() {
+                auto con = this->get_connection();
+                return this->current_date(con.get());
+            }
+
             std::string current_timestamp() {
                 auto con = this->get_connection();
                 return this->current_timestamp(con.get());
@@ -15971,6 +16018,18 @@ namespace sqlite_orm {
                 delete fPointer;
             }
 
+            std::string current_time(sqlite3* db) {
+                std::string result;
+                perform_exec(db, "SELECT CURRENT_TIME", extract_single_value<std::string>, &result);
+                return result;
+            }
+
+            std::string current_date(sqlite3* db) {
+                std::string result;
+                perform_exec(db, "SELECT CURRENT_DATE", extract_single_value<std::string>, &result);
+                return result;
+            }
+
             std::string current_timestamp(sqlite3* db) {
                 std::string result;
                 perform_exec(db, "SELECT CURRENT_TIMESTAMP", extract_single_value<std::string>, &result);
@@ -16235,6 +16294,8 @@ namespace sqlite_orm {
         return {};
     }
 }
+
+// #include "ast/special_keywords.h"
 
 // #include "core_functions.h"
 
@@ -16802,6 +16863,36 @@ namespace sqlite_orm {
                     ss << " WITHOUT ROWID";
                 }
                 return ss.str();
+            }
+        };
+
+        template<>
+        struct statement_serializer<current_time_t, void> {
+            using statement_type = current_time_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) {
+                return "CURRENT_TIME";
+            }
+        };
+
+        template<>
+        struct statement_serializer<current_date_t, void> {
+            using statement_type = current_date_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) {
+                return "CURRENT_DATE";
+            }
+        };
+
+        template<>
+        struct statement_serializer<current_timestamp_t, void> {
+            using statement_type = current_timestamp_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) {
+                return "CURRENT_TIMESTAMP";
             }
         };
 

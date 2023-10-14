@@ -246,15 +246,6 @@ TEST_CASE("Aggregate functions") {
     }
 }
 
-TEST_CASE("Current timestamp") {
-    auto storage = make_storage("");
-    REQUIRE(storage.current_timestamp().size());
-
-    storage.begin_transaction();
-    REQUIRE(storage.current_timestamp().size());
-    storage.commit();
-}
-
 TEST_CASE("Open forever") {
     struct User {
         int id;
