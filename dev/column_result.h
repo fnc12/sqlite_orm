@@ -18,6 +18,7 @@
 #include "alias.h"
 #include "storage_traits.h"
 #include "function.h"
+#include "ast/special_keywords.h"
 
 namespace sqlite_orm {
 
@@ -61,6 +62,21 @@ namespace sqlite_orm {
         template<class DBOs, class L, class... Args>
         struct column_result_t<DBOs, in_t<L, Args...>, void> {
             using type = bool;
+        };
+
+        template<class DBOs>
+        struct column_result_t<DBOs, current_time_t, void> {
+            using type = std::string;
+        };
+
+        template<class DBOs>
+        struct column_result_t<DBOs, current_date_t, void> {
+            using type = std::string;
+        };
+
+        template<class DBOs>
+        struct column_result_t<DBOs, current_timestamp_t, void> {
+            using type = std::string;
         };
 
         template<class DBOs, class T>

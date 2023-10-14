@@ -60,6 +60,26 @@ TEST_CASE("statement_serializer column") {
             value = serialize(column, context);
             expected = "\"nullable_text\" TEXT NULL";
         }
+        //  default
+        SECTION("default") {
+            SECTION("current") {
+                SECTION("time") {
+                    auto column = make_column("name", &User::name, default_value(current_time()));
+                    value = serialize(column, context);
+                    expected = "\"name\" TEXT DEFAULT (CURRENT_TIME) NOT NULL";
+                }
+                SECTION("date") {
+                    auto column = make_column("name", &User::name, default_value(current_date()));
+                    value = serialize(column, context);
+                    expected = "\"name\" TEXT DEFAULT (CURRENT_DATE) NOT NULL";
+                }
+                SECTION("timestamp") {
+                    auto column = make_column("name", &User::name, default_value(current_timestamp()));
+                    value = serialize(column, context);
+                    expected = "\"name\" TEXT DEFAULT (CURRENT_TIMESTAMP) NOT NULL";
+                }
+            }
+        }
     }
     SECTION("without types and constraints") {
         context.skip_types_and_constraints = true;

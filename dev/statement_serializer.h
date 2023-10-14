@@ -24,6 +24,7 @@
 #include "ast/into.h"
 #include "ast/match.h"
 #include "ast/rank.h"
+#include "ast/special_keywords.h"
 #include "core_functions.h"
 #include "constraints.h"
 #include "conditions.h"
@@ -154,6 +155,36 @@ namespace sqlite_orm {
                     ss << " WITHOUT ROWID";
                 }
                 return ss.str();
+            }
+        };
+
+        template<>
+        struct statement_serializer<current_time_t, void> {
+            using statement_type = current_time_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) {
+                return "CURRENT_TIME";
+            }
+        };
+
+        template<>
+        struct statement_serializer<current_date_t, void> {
+            using statement_type = current_date_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) {
+                return "CURRENT_DATE";
+            }
+        };
+
+        template<>
+        struct statement_serializer<current_timestamp_t, void> {
+            using statement_type = current_timestamp_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) {
+                return "CURRENT_TIMESTAMP";
             }
         };
 

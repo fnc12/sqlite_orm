@@ -160,6 +160,16 @@ namespace sqlite_orm {
                 return guard.commit_on_destroy = f();
             }
 
+            std::string current_time() {
+                auto con = this->get_connection();
+                return this->current_time(con.get());
+            }
+
+            std::string current_date() {
+                auto con = this->get_connection();
+                return this->current_date(con.get());
+            }
+
             std::string current_timestamp() {
                 auto con = this->get_connection();
                 return this->current_timestamp(con.get());
@@ -709,6 +719,18 @@ namespace sqlite_orm {
                 auto voidPointer = static_cast<void*>(pointer);
                 auto fPointer = static_cast<F*>(voidPointer);
                 delete fPointer;
+            }
+
+            std::string current_time(sqlite3* db) {
+                std::string result;
+                perform_exec(db, "SELECT CURRENT_TIME", extract_single_value<std::string>, &result);
+                return result;
+            }
+
+            std::string current_date(sqlite3* db) {
+                std::string result;
+                perform_exec(db, "SELECT CURRENT_DATE", extract_single_value<std::string>, &result);
+                return result;
             }
 
             std::string current_timestamp(sqlite3* db) {
