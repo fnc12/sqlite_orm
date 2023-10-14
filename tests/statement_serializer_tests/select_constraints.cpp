@@ -116,14 +116,33 @@ TEST_CASE("statement_serializer select constraints") {
             expected = R"(FROM "1" "z")";
         }
 #endif
-        SECTION("complete select") {
+        SECTION("with ordinary") {
+            auto expression = with(cte<cte_1>().as(select(1)), select(column<cte_1>(1_colalias)));
+            value = serialize(expression, context);
+            expected = R"(WITH "1"("1") AS (SELECT 1) SELECT "1"."1" FROM "1")";
+        }
+        SECTION("with not enforced recursive") {
+            auto expression = with_recursive(cte<cte_1>().as(select(1)), select(column<cte_1>(1_colalias)));
+            value = serialize(expression, context);
+            expected = R"(WITH RECURSIVE "1"("1") AS (SELECT 1) SELECT "1"."1" FROM "1")";
+        }
+        SECTION("with optional recursive") {
             auto expression = with(
                 cte<cte_1>().as(
-                    union_all(select(1), select(1_ctealias->*1_colalias + c(1), where(1_ctealias->*1_colalias < 10)))),
-                select(1_ctealias->*1_colalias));
+                    union_all(select(1), select(column<cte_1>(1_colalias) + 1, where(column<cte_1>(1_colalias) < 10)))),
+                select(column<cte_1>(1_colalias)));
             value = serialize(expression, context);
             expected =
                 R"(WITH "1"("1") AS (SELECT 1 UNION ALL SELECT "1"."1" + 1 FROM "1" WHERE ("1"."1" < 10)) SELECT "1"."1" FROM "1")";
+        }
+        SECTION("with recursive") {
+            auto expression = with_recursive(
+                cte<cte_1>().as(
+                    union_all(select(1), select(column<cte_1>(1_colalias) + 1, where(column<cte_1>(1_colalias) < 10)))),
+                select(column<cte_1>(1_colalias)));
+            value = serialize(expression, context);
+            expected =
+                R"(WITH RECURSIVE "1"("1") AS (SELECT 1 UNION ALL SELECT "1"."1" + 1 FROM "1" WHERE ("1"."1" < 10)) SELECT "1"."1" FROM "1")";
         }
     }
 #endif

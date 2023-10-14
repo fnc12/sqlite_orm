@@ -330,12 +330,39 @@ TEST_CASE("ast_iterator") {
     }
 #endif
 #ifdef SQLITE_ORM_WITH_CTE
-    SECTION("with") {
+    SECTION("with ordinary") {
         using cte_1 = decltype(1_ctealias);
-        auto expression =
-            with(cte<cte_1>().as(
-                     union_all(select(1), select(1_ctealias->*1_colalias + 1, where(1_ctealias->*1_colalias < 10)))),
-                 select(1_ctealias->*1_colalias));
+        auto expression = with(cte<cte_1>().as(select(1)), select(column<cte_1>(1_colalias)));
+        expected.insert(expected.cend(), {typeid(int), typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>)});
+        iterate_ast(expression, lambda);
+    }
+    SECTION("with not enforced recursive") {
+        using cte_1 = decltype(1_ctealias);
+        auto expression = with_recursive(cte<cte_1>().as(select(1)), select(column<cte_1>(1_colalias)));
+        expected.insert(expected.cend(), {typeid(int), typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>)});
+        iterate_ast(expression, lambda);
+    }
+    SECTION("with optional recursive") {
+        using cte_1 = decltype(1_ctealias);
+        auto expression = with(
+            cte<cte_1>().as(
+                union_all(select(1), select(column<cte_1>(1_colalias) + 1, where(column<cte_1>(1_colalias) < 10)))),
+            select(column<cte_1>(1_colalias)));
+        expected.insert(expected.cend(),
+                        {typeid(int),
+                         typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>),
+                         typeid(int),
+                         typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>),
+                         typeid(int),
+                         typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>)});
+        iterate_ast(expression, lambda);
+    }
+    SECTION("with recursive") {
+        using cte_1 = decltype(1_ctealias);
+        auto expression = with_recursive(
+            cte<cte_1>().as(
+                union_all(select(1), select(column<cte_1>(1_colalias) + 1, where(column<cte_1>(1_colalias) < 10)))),
+            select(column<cte_1>(1_colalias)));
         expected.insert(expected.cend(),
                         {typeid(int),
                          typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>),

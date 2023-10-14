@@ -613,9 +613,11 @@ namespace sqlite_orm {
 
                 std::stringstream ss;
                 ss << "WITH";
-                ss << " ";
-                ss << serialize(c.cte, tupleContext) << " ";
-                ss << serialize(c.expression, context);
+                if(c.recursiveIndicated) {
+                    ss << " RECURSIVE";
+                }
+                ss << " " << serialize(c.cte, tupleContext);
+                ss << " " << serialize(c.expression, context);
                 return ss.str();
             }
         };

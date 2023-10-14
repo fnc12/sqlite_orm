@@ -288,10 +288,12 @@ namespace sqlite_orm {
             using cte_type = common_table_expressions<CTEs...>;
             using expression_type = E;
 
+            bool recursiveIndicated;
             cte_type cte;
             expression_type expression;
 
-            with_t(cte_type cte, expression_type expression) : cte{std::move(cte)}, expression{std::move(expression)} {
+            with_t(bool recursiveIndicated, cte_type cte, expression_type expression) :
+                recursiveIndicated{recursiveIndicated}, cte{std::move(cte)}, expression{std::move(expression)} {
                 this->expression.highest_level = true;
             }
         };
@@ -554,25 +556,56 @@ namespace sqlite_orm {
     }
 
     /** 
-     *  With-clause for a tuple of CTEs.
+     *  With-clause for a tuple of ordinary CTEs.
+     *  
+     *  Despite the missing RECURSIVE keyword, the CTEs can be recursive.
      */
     template<class E, class... Monikers, class... Selects, class... ExplicitCols>
     internal::with_t<E, internal::common_table_expression<Monikers, Selects, ExplicitCols>...>
     with(std::tuple<internal::common_table_expression<Monikers, Selects, ExplicitCols>...> cte, E expression) {
-        return {std::move(cte), std::move(expression)};
+        return {false, std::move(cte), std::move(expression)};
     }
 
     /** 
-     *  With-clause for a single CTE.
+     *  With-clause for a single ordinary CTE.
+     *  
+     *  Despite the missing `RECURSIVE` keyword, the CTE can be recursive.
      *  
      *  Example:
-     *  using cte_1 = decltype(1_ctealias);
-     *  with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(0_col)));
+     *  constexpr auto cte_1 = 1_ctealias;
+     *  with(cte_1().as(select(&Object::id)), select(cte_1->*1_colalias));
      */
     template<class E, class Moniker, class Select, class ExplicitCols>
     internal::with_t<E, internal::common_table_expression<Moniker, Select, ExplicitCols>>
     with(internal::common_table_expression<Moniker, Select, ExplicitCols> cte, E expression) {
-        return {std::make_tuple(std::move(cte)), std::move(expression)};
+        return {false, std::make_tuple(std::move(cte)), std::move(expression)};
+    }
+
+    /** 
+     *  With-clause for a tuple of potentially recursive CTEs.
+     *  
+     *  @note The use of RECURSIVE does not force common table expressions to be recursive.
+     */
+    template<class E, class... Monikers, class... Selects, class... ExplicitCols>
+    internal::with_t<E, internal::common_table_expression<Monikers, Selects, ExplicitCols>...>
+    with_recursive(std::tuple<internal::common_table_expression<Monikers, Selects, ExplicitCols>...> cte,
+                   E expression) {
+        return {true, std::move(cte), std::move(expression)};
+    }
+
+    /** 
+     *  With-clause for a single potentially recursive CTE.
+     *  
+     *  @note The use of RECURSIVE does not force common table expressions to be recursive.
+     *  
+     *  Example:
+     *  constexpr auto cte_1 = 1_ctealias;
+     *  with_recursive(cte_1().as(select(&Object::id)), select(cte_1->*1_colalias));
+     */
+    template<class E, class Moniker, class Select, class ExplicitCols>
+    internal::with_t<E, internal::common_table_expression<Moniker, Select, ExplicitCols>>
+    with_recursive(internal::common_table_expression<Moniker, Select, ExplicitCols> cte, E expression) {
+        return {true, std::make_tuple(std::move(cte)), std::move(expression)};
     }
 #endif
 

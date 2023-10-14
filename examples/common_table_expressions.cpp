@@ -34,14 +34,15 @@ void all_integers_between(int from, int end) {
         //    SELECT x FROM cnt;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         constexpr auto cnt = "cnt"_cte;
-        auto ast = with(cnt().as(union_all(select(from), select(cnt->*1_colalias + 1, where(cnt->*1_colalias < end)))),
-                        select(cnt->*1_colalias));
+        auto ast = with_recursive(
+            cnt().as(union_all(select(from), select(cnt->*1_colalias + 1, where(cnt->*1_colalias < end)))),
+            select(cnt->*1_colalias));
 #else
         using cnt = decltype(1_ctealias);
-        auto ast =
-            with(cte<cnt>().as(union_all(select(from),
-                                         select(1_ctealias->*1_colalias + 1, where(1_ctealias->*1_colalias < end)))),
-                 select(1_ctealias->*1_colalias));
+        auto ast = with_recursive(
+            cte<cnt>().as(
+                union_all(select(from), select(1_ctealias->*1_colalias + 1, where(1_ctealias->*1_colalias < end)))),
+            select(1_ctealias->*1_colalias));
 #endif
 
         string sql = storage.dump(ast);
@@ -69,12 +70,13 @@ void all_integers_between(int from, int end) {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         constexpr auto cnt = "cnt"_cte;
         constexpr auto x = "x"_col;
-        auto ast = with(cnt().as(union_all(select(from >>= x), select(cnt->*x + 1, limit(end)))), select(cnt->*x));
+        auto ast =
+            with_recursive(cnt().as(union_all(select(from >>= x), select(cnt->*x + 1, limit(end)))), select(cnt->*x));
 #else
         using cnt = decltype(1_ctealias);
         constexpr auto x = colalias_i{};
-        auto ast = with(cte<cnt>().as(union_all(select(from >>= x), select(column<cnt>(x) + 1, limit(end)))),
-                        select(column<cnt>(x)));
+        auto ast = with_recursive(cte<cnt>().as(union_all(select(from >>= x), select(column<cnt>(x) + 1, limit(end)))),
+                                  select(column<cnt>(x)));
 #endif
 
         string sql = storage.dump(ast);
@@ -162,18 +164,18 @@ void supervisor_chain() {
         //    SELECT name FROM chain;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         constexpr auto chain = "chain"_cte;
-        auto ast =
-            with(chain().as(union_all(select(asterisk<Org>(), where(&Org::name == c("Fred"))),
-                                      select(asterisk<alias_a<Org>>(),
-                                             where(alias_column<alias_a<Org>>(&Org::name) == chain->*&Org::boss)))),
-                 select(chain->*&Org::name));
+        auto ast = with_recursive(
+            chain().as(union_all(
+                select(asterisk<Org>(), where(&Org::name == c("Fred"))),
+                select(asterisk<alias_a<Org>>(), where(alias_column<alias_a<Org>>(&Org::name) == chain->*&Org::boss)))),
+            select(chain->*&Org::name));
 #else
         using chain = decltype(1_ctealias);
-        auto ast = with(cte<chain>().as(union_all(
-                            select(asterisk<Org>(), where(&Org::name == c("Fred"))),
-                            select(asterisk<alias_a<Org>>(),
-                                   where(alias_column<alias_a<Org>>(&Org::name) == column<chain>(&Org::boss))))),
-                        select(column<chain>(&Org::name)));
+        auto ast = with_recursive(cte<chain>().as(union_all(select(asterisk<Org>(), where(&Org::name == c("Fred"))),
+                                                            select(asterisk<alias_a<Org>>(),
+                                                                   where(alias_column<alias_a<Org>>(&Org::name) ==
+                                                                         column<chain>(&Org::boss))))),
+                                  select(column<chain>(&Org::name)));
 #endif
         string sql = storage.dump(ast);
 
@@ -230,13 +232,13 @@ void works_for_alice() {
         //    WHERE org.name IN works_for_alice;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         constexpr auto works_for_alice = "works_for_alice"_cte;
-        auto ast = with(
+        auto ast = with_recursive(
             works_for_alice(&Org::name)
                 .as(union_(select("Alice"), select(&Org::name, where(&Org::boss == works_for_alice->*&Org::name)))),
             select(avg(&Org::height), from<Org>(), where(in(&Org::name, select(works_for_alice->*&Org::name)))));
 #else
         using works_for_alice = decltype(1_ctealias);
-        auto ast = with(
+        auto ast = with_recursive(
             cte<works_for_alice>(&Org::name)
                 .as(union_(select("Alice"),
                            select(&Org::name, where(&Org::boss == column<works_for_alice>(&Org::name))))),
@@ -320,7 +322,7 @@ void family_tree() {
     constexpr auto ancestor_of_alice = "ancestor_of_alice"_cte;
     constexpr auto parent = "parent"_col;
     constexpr auto name = "name"_col;
-    auto ast = with(
+    auto ast = with_recursive(
         make_tuple(
             parent_of(&Family::name, parent)
                 .as(union_(select(columns(&Family::name, &Family::mom)), select(columns(&Family::name, &Family::dad)))),
@@ -335,7 +337,7 @@ void family_tree() {
     using ancestor_of_alice = decltype(2_ctealias);
     constexpr auto parent = colalias_h{};
     constexpr auto name = colalias_f{};
-    auto ast = with(
+    auto ast = with_recursive(
         make_tuple(
             cte<parent_of>("name", "parent")
                 .as(union_(select(columns(&Family::name, &Family::mom >>= parent)),
@@ -443,15 +445,16 @@ void depth_or_breadth_first() {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         constexpr auto under_alice = "under_alice"_cte;
         constexpr auto level = "level"_col;
-        auto ast = with(under_alice(&Org::name, level)
-                            .as(union_all(select(columns("Alice", 0)),
-                                          select(columns(&Org::name, under_alice->*level + 1),
-                                                 join<under_alice>(on(under_alice->*&Org::name == &Org::boss)),
-                                                 order_by(2)))),
-                        select(substr("..........", 1, under_alice->*level * 3) || under_alice->*&Org::name));
+        auto ast =
+            with_recursive(under_alice(&Org::name, level)
+                               .as(union_all(select(columns("Alice", 0)),
+                                             select(columns(&Org::name, under_alice->*level + 1),
+                                                    join<under_alice>(on(under_alice->*&Org::name == &Org::boss)),
+                                                    order_by(2)))),
+                           select(substr("..........", 1, under_alice->*level * 3) || under_alice->*&Org::name));
 #else
         using under_alice = decltype(1_ctealias);
-        auto ast = with(
+        auto ast = with_recursive(
             cte<under_alice>("name", "level")
                 .as(union_all(select(columns("Alice", 0)),
                               select(columns(&Org::name, column<under_alice>(2_colalias) + 1),
@@ -486,15 +489,16 @@ void depth_or_breadth_first() {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         constexpr auto under_alice = "under_alice"_cte;
         constexpr auto level = "level"_col;
-        auto ast = with(under_alice(&Org::name, level)
-                            .as(union_all(select(columns("Alice", 0)),
-                                          select(columns(&Org::name, under_alice->*level + 1),
-                                                 join<under_alice>(on(under_alice->*&Org::name == &Org::boss)),
-                                                 order_by(2).desc()))),
-                        select(substr("..........", 1, under_alice->*level * 3) || under_alice->*&Org::name));
+        auto ast =
+            with_recursive(under_alice(&Org::name, level)
+                               .as(union_all(select(columns("Alice", 0)),
+                                             select(columns(&Org::name, under_alice->*level + 1),
+                                                    join<under_alice>(on(under_alice->*&Org::name == &Org::boss)),
+                                                    order_by(2).desc()))),
+                           select(substr("..........", 1, under_alice->*level * 3) || under_alice->*&Org::name));
 #else
         using under_alice = decltype(1_ctealias);
-        auto ast = with(
+        auto ast = with_recursive(
             cte<under_alice>("name", "level")
                 .as(union_all(select(columns("Alice", 0)),
                               select(columns(&Org::name, column<under_alice>(2_colalias) + 1),
@@ -593,21 +597,21 @@ void apfelmaennchen() {
     constexpr auto cx = "cx"_col;
     constexpr auto cy = "cy"_col;
     constexpr auto t = "t"_col;
-    auto ast =
-        with(make_tuple(xaxis(x).as(union_all(select(-2.0), select(xaxis->*x + 0.05, where(xaxis->*x < 1.2)))),
-                        yaxis(y).as(union_all(select(-1.0), select(yaxis->*y + 0.10, where(yaxis->*y < 1.0)))),
-                        m(iter, cx, cy, x, y)
-                            .as(union_all(select(columns(0, xaxis->*x, yaxis->*y, 0.0, 0.0)),
-                                          select(columns(m->*iter + 1,
-                                                         m->*cx,
-                                                         m->*cy,
-                                                         m->*x * m->*x - m->*y * m->*y + m->*cx,
-                                                         2.0 * m->*x * m->*y + m->*cy),
-                                                 where((m->*x * m->*x + m->*y * m->*y) < 4.0 && m->*iter < 28)))),
-                        m2(iter, cx, cy).as(select(columns(max<>(m->*iter), m->*cx, m->*cy), group_by(m->*cx, m->*cy))),
-                        a(t).as(select(group_concat(substr(" .+*#", 1 + min<>(m2->*iter / 7.0, 4.0), 1), ""),
-                                       group_by(m2->*cy)))),
-             select(group_concat(rtrim(a->*t), "\n")));
+    auto ast = with_recursive(
+        make_tuple(
+            xaxis(x).as(union_all(select(-2.0), select(xaxis->*x + 0.05, where(xaxis->*x < 1.2)))),
+            yaxis(y).as(union_all(select(-1.0), select(yaxis->*y + 0.10, where(yaxis->*y < 1.0)))),
+            m(iter, cx, cy, x, y)
+                .as(union_all(select(columns(0, xaxis->*x, yaxis->*y, 0.0, 0.0)),
+                              select(columns(m->*iter + 1,
+                                             m->*cx,
+                                             m->*cy,
+                                             m->*x * m->*x - m->*y * m->*y + m->*cx,
+                                             2.0 * m->*x * m->*y + m->*cy),
+                                     where((m->*x * m->*x + m->*y * m->*y) < 4.0 && m->*iter < 28)))),
+            m2(iter, cx, cy).as(select(columns(max<>(m->*iter), m->*cx, m->*cy), group_by(m->*cx, m->*cy))),
+            a(t).as(select(group_concat(substr(" .+*#", 1 + min<>(m2->*iter / 7.0, 4.0), 1), ""), group_by(m2->*cy)))),
+        select(group_concat(rtrim(a->*t), "\n")));
 #else
     using cte_xaxis = decltype(1_ctealias);
     using cte_yaxis = decltype(2_ctealias);
@@ -625,7 +629,7 @@ void apfelmaennchen() {
     constexpr auto cx = colalias_d{};
     constexpr auto cy = colalias_e{};
     constexpr auto t = colalias_f{};
-    auto ast = with(
+    auto ast = with_recursive(
         make_tuple(
             cte<cte_xaxis>("x").as(union_all(select(-2.0 >>= x), select(xaxis->*x + 0.05, where(xaxis->*x < 1.2)))),
             cte<cte_yaxis>("y").as(union_all(select(-1.0 >>= y), select(yaxis->*y + 0.10, where(yaxis->*y < 1.0)))),
@@ -698,7 +702,7 @@ void sudoku() {
     constexpr auto lp = "lp"_col;
     constexpr auto s = "s"_col;
     constexpr auto ind = "ind"_col;
-    auto ast = with(
+    auto ast = with_recursive(
         make_tuple(
             cte<input>(sud).as(
                 select("53..7....6..195....98....6.8...6...34..8.3..17...2...6.6....28....419..5....8..79")),
