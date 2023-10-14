@@ -951,7 +951,7 @@ TEST_CASE("Node tuple") {
     SECTION("with") {
         using cte_1 = decltype(1_ctealias);
         auto expression =
-            with(1_ctealias()(
+            with(1_ctealias().as(
                      union_all(select(1), select(1_ctealias->*1_colalias + c(1), where(1_ctealias->*1_colalias < 10)))),
                  select(1_ctealias->*1_colalias));
         using Tuple = node_tuple_t<decltype(expression)>;

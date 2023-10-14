@@ -90,7 +90,7 @@ TEST_CASE("statement_serializer select constraints") {
     SECTION("from CTE") {
         using cte_1 = decltype(1_ctealias);
         auto dbObjects2 =
-            internal::db_objects_cat(dbObjects, internal::make_cte_table(dbObjects, cte<cte_1>()(select(1))));
+            internal::db_objects_cat(dbObjects, internal::make_cte_table(dbObjects, cte<cte_1>().as(select(1))));
         using context_t = internal::serializer_context<decltype(dbObjects2)>;
         context_t context{dbObjects2};
         SECTION("without alias 1") {
@@ -105,12 +105,12 @@ TEST_CASE("statement_serializer select constraints") {
         }
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         SECTION("without alias 2") {
-            auto expression = from<"1"_cte>();
+            auto expression = from<1_ctealias>();
             value = serialize(expression, context);
             expected = R"(FROM "1")";
         }
         SECTION("with alias 2") {
-            constexpr auto z_alias = "z"_alias.for_<"1"_cte>();
+            constexpr auto z_alias = "z"_alias.for_<1_ctealias>();
             auto expression = from<z_alias>();
             value = serialize(expression, context);
             expected = R"(FROM "1" "z")";
@@ -118,7 +118,7 @@ TEST_CASE("statement_serializer select constraints") {
 #endif
         SECTION("complete select") {
             auto expression = with(
-                cte<cte_1>()(
+                cte<cte_1>().as(
                     union_all(select(1), select(1_ctealias->*1_colalias + c(1), where(1_ctealias->*1_colalias < 10)))),
                 select(1_ctealias->*1_colalias));
             value = serialize(expression, context);

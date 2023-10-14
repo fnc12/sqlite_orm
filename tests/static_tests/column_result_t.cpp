@@ -119,7 +119,8 @@ TEST_CASE("column_result_of_t") {
     using cte_1 = decltype(1_ctealias);
     // note: even though used with the CTE, &User::id doesn't need to be mapped into the CTE to make column results work;
     //       this is because the result type is taken from the member pointer just because we can't look it up in the storage definition
-    auto dbObjects2 = internal::db_objects_cat(dbObjects, internal::make_cte_table(dbObjects, cte<cte_1>()(select(1))));
+    auto dbObjects2 =
+        internal::db_objects_cat(dbObjects, internal::make_cte_table(dbObjects, cte<cte_1>().as(select(1))));
     using db_objects2_t = decltype(dbObjects2);
     runTest<db_objects_t, int>(column<cte_1>(&User::id));
     runTest<db_objects2_t, int>(column<cte_1>(1_colalias));

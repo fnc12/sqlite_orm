@@ -250,17 +250,6 @@ namespace sqlite_orm {
             ExplicitCols explicitColumns;
 
             template<class T, class... Args>
-            common_table_expression<Moniker, select_t<T, Args...>, ExplicitCols>
-            operator()(select_t<T, Args...> sel) && {
-                return {std::move(this->explicitColumns), std::move(sel)};
-            }
-
-            template<class Compound, std::enable_if_t<is_compound_operator_v<Compound>, bool> = true>
-            common_table_expression<Moniker, select_t<Compound>, ExplicitCols> operator()(Compound sel) && {
-                return {std::move(this->explicitColumns), {std::move(sel)}};
-            }
-
-            template<class T, class... Args>
             common_table_expression<Moniker, select_t<T, Args...>, ExplicitCols> as(select_t<T, Args...> sel) && {
                 return {std::move(this->explicitColumns), std::move(sel)};
             }
