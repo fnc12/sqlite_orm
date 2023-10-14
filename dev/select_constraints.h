@@ -200,12 +200,6 @@ namespace sqlite_orm {
         };
 
 #ifdef SQLITE_ORM_WITH_CTE
-        struct with_string {
-            explicit operator std::string() const {
-                return "WITH";
-            }
-        };
-
         /*
          *  Turn explicit columns for a CTE into types that the CTE backend understands
          */
@@ -290,7 +284,7 @@ namespace sqlite_orm {
          *  WITH object type - expression with prepended CTEs.
          */
         template<class E, class... CTEs>
-        struct with_t : with_string {
+        struct with_t {
             using cte_type = common_table_expressions<CTEs...>;
             using expression_type = E;
 

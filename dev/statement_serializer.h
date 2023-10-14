@@ -612,7 +612,8 @@ namespace sqlite_orm {
                 tupleContext.use_parentheses = false;
 
                 std::stringstream ss;
-                ss << static_cast<std::string>(c) << " ";
+                ss << "WITH";
+                ss << " ";
                 ss << serialize(c.cte, tupleContext) << " ";
                 ss << serialize(c.expression, context);
                 return ss.str();
