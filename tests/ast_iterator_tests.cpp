@@ -192,7 +192,7 @@ TEST_CASE("ast_iterator") {
             iterate_ast(node, lambda);
         }
         SECTION("column alias in expression") {
-            auto node = order_by(get<colalias_a>() > c(1));
+            auto node = order_by(get<colalias_a>() > 1);
             expected.push_back(typeid(int));
             iterate_ast(node, lambda);
         }
@@ -284,14 +284,14 @@ TEST_CASE("ast_iterator") {
     }
     SECTION("aliases") {
         SECTION("holder") {
-            auto expression = get<colalias_a>() > c(0);
+            auto expression = get<colalias_a>() > 0;
             expected.push_back(typeid(int));
             iterate_ast(expression, lambda);
         }
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         {
             SECTION("direct") {
-                auto expression = "a"_col > c(0);
+                auto expression = "a"_col > 0;
                 expected.push_back(typeid(int));
                 iterate_ast(expression, lambda);
             }
