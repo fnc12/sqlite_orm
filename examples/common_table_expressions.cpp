@@ -41,8 +41,8 @@ void all_integers_between(int from, int end) {
         using cnt = decltype(1_ctealias);
         auto ast = with_recursive(
             cte<cnt>().as(
-                union_all(select(from), select(1_ctealias->*1_colalias + 1, where(1_ctealias->*1_colalias < end)))),
-            select(1_ctealias->*1_colalias));
+                union_all(select(from), select(column<cnt>(1_colalias) + 1, where(column<cnt>(1_colalias) < end)))),
+            select(column<cnt>(1_colalias)));
 #endif
 
         string sql = storage.dump(ast);

@@ -126,6 +126,18 @@ TEST_CASE("statement_serializer select constraints") {
             value = serialize(expression, context);
             expected = R"(WITH RECURSIVE "1"("1") AS (SELECT 1) SELECT "1"."1" FROM "1")";
         }
+        SECTION("with ordinary, multiple") {
+            auto expression = with(std::make_tuple(cte<cte_1>().as(select(1)), cte<cte_1>().as(select(1))),
+                                   select(column<cte_1>(1_colalias)));
+            value = serialize(expression, context);
+            expected = R"(WITH "1"("1") AS (SELECT 1), "1"("1") AS (SELECT 1) SELECT "1"."1" FROM "1")";
+        }
+        SECTION("with not enforced recursive, multiple") {
+            auto expression = with_recursive(std::make_tuple(cte<cte_1>().as(select(1)), cte<cte_1>().as(select(1))),
+                                             select(column<cte_1>(1_colalias)));
+            value = serialize(expression, context);
+            expected = R"(WITH RECURSIVE "1"("1") AS (SELECT 1), "1"("1") AS (SELECT 1) SELECT "1"."1" FROM "1")";
+        }
         SECTION("with optional recursive") {
             auto expression = with(
                 cte<cte_1>().as(
