@@ -115,6 +115,21 @@ TEST_CASE("statement_serializer select constraints") {
             value = serialize(expression, context);
             expected = R"(FROM "1" "z")";
         }
+        SECTION("as") {
+            auto expression = cte<cte_1>().as(select(1));
+            value = serialize(expression, context);
+            expected = R"("1"("1") AS (SELECT 1))";
+        }
+        SECTION("as materialized") {
+            auto expression = cte<cte_1>().as<materialized()>(select(1));
+            value = serialize(expression, context);
+            expected = R"("1"("1") AS MATERIALIZED (SELECT 1))";
+        }
+        SECTION("as not materialized") {
+            auto expression = cte<cte_1>().as<not_materialized()>(select(1));
+            value = serialize(expression, context);
+            expected = R"("1"("1") AS NOT MATERIALIZED (SELECT 1))";
+        }
 #endif
         SECTION("with ordinary") {
             auto expression = with(cte<cte_1>().as(select(1)), select(column<cte_1>(1_colalias)));

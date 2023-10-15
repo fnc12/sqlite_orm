@@ -609,6 +609,27 @@ namespace sqlite_orm {
         };
 
 #ifdef SQLITE_ORM_WITH_CTE
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        template<>
+        struct statement_serializer<materialized_t, void> {
+            using statement_type = materialized_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) {
+                return "MATERIALIZED";
+            }
+        };
+        template<>
+        struct statement_serializer<not_materialized_t, void> {
+            using statement_type = not_materialized_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) {
+                return "NOT MATERIALIZED";
+            }
+        };
+#endif
+
         template<class CTE>
         struct statement_serializer<CTE, match_specialization_of<CTE, common_table_expression>> {
             using statement_type = CTE;
@@ -628,7 +649,8 @@ namespace sqlite_orm {
                                                  context);
                     ss << '(' << streaming_identifiers(columnNames) << ')';
                 }
-                ss << " AS " << '(' << serialize(cte.subselect, cteContext) << ')';
+                ss << " AS" << streaming_constraints_tuple(cte.hints, context) << " ("
+                   << serialize(cte.subselect, cteContext) << ')';
                 return ss.str();
             }
         };
@@ -1128,11 +1150,10 @@ namespace sqlite_orm {
                 ss << streaming_identifier(column.name);
                 if(!context.skip_types_and_constraints) {
                     ss << " " << type_printer<field_type_t<column_type>>().print();
-                    ss << " "
-                       << streaming_column_constraints(
-                              call_as_template_base<column_constraints>(polyfill::identity{})(column),
-                              column.is_not_null(),
-                              context);
+                    ss << streaming_column_constraints(
+                        call_as_template_base<column_constraints>(polyfill::identity{})(column),
+                        column.is_not_null(),
+                        context);
                 }
                 return ss.str();
             }

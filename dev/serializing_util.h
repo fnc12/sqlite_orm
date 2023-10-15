@@ -101,6 +101,7 @@ namespace sqlite_orm {
             field_values_excluding,
             mapped_columns_expressions,
             column_constraints,
+            constraints_tuple,
         };
 
         template<stream_as mode>
@@ -127,6 +128,7 @@ namespace sqlite_orm {
         constexpr streaming<stream_as::non_generated_columns> streaming_non_generated_column_names{};
         constexpr streaming<stream_as::field_values_excluding> streaming_field_values_excluding{};
         constexpr streaming<stream_as::mapped_columns_expressions> streaming_mapped_columns_expressions{};
+        constexpr streaming<stream_as::constraints_tuple> streaming_constraints_tuple{};
         constexpr streaming<stream_as::column_constraints> streaming_column_constraints{};
 
         // serialize and stream a tuple of condition expressions;
@@ -356,6 +358,22 @@ namespace sqlite_orm {
             return ss;
         }
 
+        // serialize and stream a tuple of conditions or hints;
+        // space + space-separated
+        template<class T, class Ctx>
+        std::ostream& operator<<(std::ostream& ss,
+                                 std::tuple<const streaming<stream_as::constraints_tuple>&, T, Ctx> tpl) {
+            const auto& constraints = get<1>(tpl);
+            auto& context = get<2>(tpl);
+
+            iterate_tuple(constraints, [&ss, &context](auto& constraint) mutable {
+                ss << ' ' << serialize(constraint, context);
+            });
+            return ss;
+        }
+
+        // serialize and stream a tuple of column constraints;
+        // space + space-separated
         template<class... Op, class Ctx>
         std::ostream& operator<<(std::ostream& ss,
                                  std::tuple<const streaming<stream_as::column_constraints>&,
@@ -366,22 +384,18 @@ namespace sqlite_orm {
             const bool& isNotNull = get<2>(tpl);
             auto& context = get<3>(tpl);
 
-            auto first = true;
-            constexpr std::array<const char*, 2> sep = {" ", ""};
-            iterate_tuple(column.constraints, [&ss, &context, &first, &sep](auto& constraint) {
-                ss << sep[std::exchange(first, false)];
-                ss << serialize(constraint, context);
+            iterate_tuple(column.constraints, [&ss, &context](auto& constraint) {
+                ss << ' ' << serialize(constraint, context);
             });
             using constraints_tuple = decltype(column.constraints);
             constexpr bool hasExplicitNullableConstraint =
                 mpl::invoke_t<mpl::disjunction<check_if_tuple_has_type<null_t>, check_if_tuple_has_type<not_null_t>>,
                               constraints_tuple>::value;
             if(!hasExplicitNullableConstraint) {
-                ss << sep[std::exchange(first, false)];
                 if(isNotNull) {
-                    ss << "NOT NULL";
+                    ss << " NOT NULL";
                 } else {
-                    ss << "NULL";
+                    ss << " NULL";
                 }
             }
 

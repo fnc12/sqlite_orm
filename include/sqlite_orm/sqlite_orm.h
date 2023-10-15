@@ -7608,16 +7608,30 @@ namespace sqlite_orm {
         template<class T>
         using decay_explicit_column_t = typename decay_explicit_column<T>::type;
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        /*
+         *  Materialization hint to instruct SQLite to materialize the select statement of a CTE into an ephemeral table as an "optimization fence".
+         */
+        struct materialized_t {};
+
+        /*
+         *  Materialization hint to instruct SQLite to substitute a CTE's select statement as a subquery subject to optimization.
+         */
+        struct not_materialized_t {};
+#endif
+
         /**
          *  Monikered (aliased) CTE expression.
          */
-        template<class Moniker, class Select, class ExplicitCols>
+        template<class Moniker, class ExplicitCols, class Hints, class Select>
         struct common_table_expression {
             using cte_moniker_type = Moniker;
             using expression_type = Select;
             using explicit_colrefs_tuple = ExplicitCols;
+            using hints_tuple = Hints;
             static constexpr size_t explicit_colref_count = std::tuple_size_v<ExplicitCols>;
 
+            SQLITE_ORM_NOUNIQUEADDRESS hints_tuple hints;
             explicit_colrefs_tuple explicitColumns;
             expression_type subselect;
 
@@ -7633,41 +7647,28 @@ namespace sqlite_orm {
         struct cte_builder {
             ExplicitCols explicitColumns;
 
-            template<class T, class... Args>
-            common_table_expression<Moniker, select_t<T, Args...>, ExplicitCols> as(select_t<T, Args...> sel) && {
+#if SQLITE_VERSION_NUMBER >= 3035000 && defined(SQLITE_ORM_WITH_CPP20_ALIASES)
+            template<auto... hints, class Select, satisfies<is_select, Select> = true>
+            common_table_expression<Moniker, ExplicitCols, std::tuple<decltype(hints)...>, Select> as(Select sel) && {
                 return {std::move(this->explicitColumns), std::move(sel)};
             }
 
-            template<class Compound, std::enable_if_t<is_compound_operator_v<Compound>, bool> = true>
-            common_table_expression<Moniker, select_t<Compound>, ExplicitCols> as(Compound sel) && {
+            template<auto... hints, class Compound, satisfies<is_compound_operator, Compound> = true>
+            common_table_expression<Moniker, ExplicitCols, std::tuple<decltype(hints)...>, select_t<Compound>>
+            as(Compound sel) && {
                 return {std::move(this->explicitColumns), {std::move(sel)}};
             }
-
-            template<class T, class... Args>
-            common_table_expression<Moniker, select_t<T, Args...>, ExplicitCols>
-            materialized(select_t<T, Args...> sel) && {
-                static_assert(polyfill::always_false_v<T>, "`WITH ... AS MATERIALIZED` is unimplemented");
+#else
+            template<class Select, satisfies<is_select, Select> = true>
+            common_table_expression<Moniker, ExplicitCols, std::tuple<>, Select> as(Select sel) && {
                 return {std::move(this->explicitColumns), std::move(sel)};
             }
 
-            template<class Compound, std::enable_if_t<is_compound_operator_v<Compound>, bool> = true>
-            common_table_expression<Moniker, select_t<Compound>, ExplicitCols> materialized(Compound sel) && {
-                static_assert(polyfill::always_false_v<Compound>, "`WITH ... AS MATERIALIZED` is unimplemented");
+            template<class Compound, satisfies<is_compound_operator, Compound> = true>
+            common_table_expression<Moniker, ExplicitCols, std::tuple<>, select_t<Compound>> as(Compound sel) && {
                 return {std::move(this->explicitColumns), {std::move(sel)}};
             }
-
-            template<class T, class... Args>
-            common_table_expression<Moniker, select_t<T, Args...>, ExplicitCols>
-            not_materialized(select_t<T, Args...> sel) && {
-                static_assert(polyfill::always_false_v<T>, "`WITH ... AS NOT MATERIALIZED` is unimplemented");
-                return {std::move(this->explicitColumns), std::move(sel)};
-            }
-
-            template<class Compound, std::enable_if_t<is_compound_operator_v<Compound>, bool> = true>
-            common_table_expression<Moniker, select_t<Compound>, ExplicitCols> not_materialized(Compound sel) && {
-                static_assert(polyfill::always_false_v<Compound>, "`WITH ... AS NOT MATERIALIZED` is unimplemented");
-                return {std::move(this->explicitColumns), {std::move(sel)}};
-            }
+#endif
         };
 
         /**
@@ -7866,6 +7867,28 @@ namespace sqlite_orm {
     }
 
 #ifdef SQLITE_ORM_WITH_CTE
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /*
+     *  Materialization hint to instruct SQLite to materialize the select statement of a CTE into an ephemeral table as an "optimization fence".
+     *  
+     *  Example:
+     *  1_ctealias().as<materialized()>(select(1));
+     */
+    inline consteval internal::materialized_t materialized() {
+        return {};
+    }
+
+    /*
+     *  Materialization hint to instruct SQLite to substitute a CTE's select statement as a subquery subject to optimization.
+     *  
+     *  Example:
+     *  1_ctealias().as<not_materialized()>(select(1));
+     */
+    inline consteval internal::not_materialized_t not_materialized() {
+        return {};
+    }
+#endif
+
     /**
      *  Introduce the construction of a common table expression using the specified moniker.
      *  
@@ -7950,10 +7973,9 @@ namespace sqlite_orm {
      *  
      *  Despite the missing RECURSIVE keyword, the CTEs can be recursive.
      */
-    template<class E, class... Monikers, class... Selects, class... ExplicitCols>
-    internal::with_t<E, internal::common_table_expression<Monikers, Selects, ExplicitCols>...>
-    with(std::tuple<internal::common_table_expression<Monikers, Selects, ExplicitCols>...> cte, E expression) {
-        return {false, std::move(cte), std::move(expression)};
+    template<class E, class... CTEs>
+    internal::with_t<E, CTEs...> with(internal::common_table_expressions<CTEs...> ctes, E expression) {
+        return {false, std::move(ctes), std::move(expression)};
     }
 
     /** 
@@ -7965,10 +7987,11 @@ namespace sqlite_orm {
      *  constexpr auto cte_1 = 1_ctealias;
      *  with(cte_1().as(select(&Object::id)), select(cte_1->*1_colalias));
      */
-    template<class E, class Moniker, class Select, class ExplicitCols>
-    internal::with_t<E, internal::common_table_expression<Moniker, Select, ExplicitCols>>
-    with(internal::common_table_expression<Moniker, Select, ExplicitCols> cte, E expression) {
-        return {false, std::make_tuple(std::move(cte)), std::move(expression)};
+    template<class E,
+             class CTE,
+             internal::satisfies_is_specialization_of<CTE, internal::common_table_expression> = true>
+    internal::with_t<E, CTE> with(CTE cte, E expression) {
+        return {false, {std::move(cte)}, std::move(expression)};
     }
 
     /** 
@@ -7976,11 +7999,9 @@ namespace sqlite_orm {
      *  
      *  @note The use of RECURSIVE does not force common table expressions to be recursive.
      */
-    template<class E, class... Monikers, class... Selects, class... ExplicitCols>
-    internal::with_t<E, internal::common_table_expression<Monikers, Selects, ExplicitCols>...>
-    with_recursive(std::tuple<internal::common_table_expression<Monikers, Selects, ExplicitCols>...> cte,
-                   E expression) {
-        return {true, std::move(cte), std::move(expression)};
+    template<class E, class... CTEs>
+    internal::with_t<E, CTEs...> with_recursive(internal::common_table_expressions<CTEs...> ctes, E expression) {
+        return {true, std::move(ctes), std::move(expression)};
     }
 
     /** 
@@ -7992,10 +8013,11 @@ namespace sqlite_orm {
      *  constexpr auto cte_1 = 1_ctealias;
      *  with_recursive(cte_1().as(select(&Object::id)), select(cte_1->*1_colalias));
      */
-    template<class E, class Moniker, class Select, class ExplicitCols>
-    internal::with_t<E, internal::common_table_expression<Moniker, Select, ExplicitCols>>
-    with_recursive(internal::common_table_expression<Moniker, Select, ExplicitCols> cte, E expression) {
-        return {true, std::make_tuple(std::move(cte)), std::move(expression)};
+    template<class E,
+             class CTE,
+             internal::satisfies_is_specialization_of<CTE, internal::common_table_expression> = true>
+    internal::with_t<E, CTE> with_recursive(CTE cte, E expression) {
+        return {true, {std::move(cte)}, std::move(expression)};
     }
 #endif
 
@@ -14312,6 +14334,7 @@ namespace sqlite_orm {
             field_values_excluding,
             mapped_columns_expressions,
             column_constraints,
+            constraints_tuple,
         };
 
         template<stream_as mode>
@@ -14338,6 +14361,7 @@ namespace sqlite_orm {
         constexpr streaming<stream_as::non_generated_columns> streaming_non_generated_column_names{};
         constexpr streaming<stream_as::field_values_excluding> streaming_field_values_excluding{};
         constexpr streaming<stream_as::mapped_columns_expressions> streaming_mapped_columns_expressions{};
+        constexpr streaming<stream_as::constraints_tuple> streaming_constraints_tuple{};
         constexpr streaming<stream_as::column_constraints> streaming_column_constraints{};
 
         // serialize and stream a tuple of condition expressions;
@@ -14567,6 +14591,22 @@ namespace sqlite_orm {
             return ss;
         }
 
+        // serialize and stream a tuple of conditions or hints;
+        // space + space-separated
+        template<class T, class Ctx>
+        std::ostream& operator<<(std::ostream& ss,
+                                 std::tuple<const streaming<stream_as::constraints_tuple>&, T, Ctx> tpl) {
+            const auto& constraints = get<1>(tpl);
+            auto& context = get<2>(tpl);
+
+            iterate_tuple(constraints, [&ss, &context](auto& constraint) mutable {
+                ss << ' ' << serialize(constraint, context);
+            });
+            return ss;
+        }
+
+        // serialize and stream a tuple of column constraints;
+        // space + space-separated
         template<class... Op, class Ctx>
         std::ostream& operator<<(std::ostream& ss,
                                  std::tuple<const streaming<stream_as::column_constraints>&,
@@ -14577,22 +14617,18 @@ namespace sqlite_orm {
             const bool& isNotNull = get<2>(tpl);
             auto& context = get<3>(tpl);
 
-            auto first = true;
-            constexpr std::array<const char*, 2> sep = {" ", ""};
-            iterate_tuple(column.constraints, [&ss, &context, &first, &sep](auto& constraint) {
-                ss << sep[std::exchange(first, false)];
-                ss << serialize(constraint, context);
+            iterate_tuple(column.constraints, [&ss, &context](auto& constraint) {
+                ss << ' ' << serialize(constraint, context);
             });
             using constraints_tuple = decltype(column.constraints);
             constexpr bool hasExplicitNullableConstraint =
                 mpl::invoke_t<mpl::disjunction<check_if_tuple_has_type<null_t>, check_if_tuple_has_type<not_null_t>>,
                               constraints_tuple>::value;
             if(!hasExplicitNullableConstraint) {
-                ss << sep[std::exchange(first, false)];
                 if(isNotNull) {
-                    ss << "NOT NULL";
+                    ss << " NOT NULL";
                 } else {
-                    ss << "NULL";
+                    ss << " NULL";
                 }
             }
 
@@ -17316,6 +17352,27 @@ namespace sqlite_orm {
         };
 
 #ifdef SQLITE_ORM_WITH_CTE
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        template<>
+        struct statement_serializer<materialized_t, void> {
+            using statement_type = materialized_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) {
+                return "MATERIALIZED";
+            }
+        };
+        template<>
+        struct statement_serializer<not_materialized_t, void> {
+            using statement_type = not_materialized_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) {
+                return "NOT MATERIALIZED";
+            }
+        };
+#endif
+
         template<class CTE>
         struct statement_serializer<CTE, match_specialization_of<CTE, common_table_expression>> {
             using statement_type = CTE;
@@ -17335,7 +17392,8 @@ namespace sqlite_orm {
                                                  context);
                     ss << '(' << streaming_identifiers(columnNames) << ')';
                 }
-                ss << " AS " << '(' << serialize(cte.subselect, cteContext) << ')';
+                ss << " AS" << streaming_constraints_tuple(cte.hints, context) << " ("
+                   << serialize(cte.subselect, cteContext) << ')';
                 return ss.str();
             }
         };
@@ -17835,11 +17893,10 @@ namespace sqlite_orm {
                 ss << streaming_identifier(column.name);
                 if(!context.skip_types_and_constraints) {
                     ss << " " << type_printer<field_type_t<column_type>>().print();
-                    ss << " "
-                       << streaming_column_constraints(
-                              call_as_template_base<column_constraints>(polyfill::identity{})(column),
-                              column.is_not_null(),
-                              context);
+                    ss << streaming_column_constraints(
+                        call_as_template_base<column_constraints>(polyfill::identity{})(column),
+                        column.is_not_null(),
+                        context);
                 }
                 return ss.str();
             }

@@ -738,6 +738,36 @@ void sudoku() {
 #endif
 }
 
+void show_optimization_fence() {
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    auto storage = make_storage("");
+
+    {
+        //WITH
+        //    cnt(x) AS MATERIALIZED(VALUES(1))
+        //    SELECT x FROM cnt;
+        constexpr auto cnt = "cnt"_cte;
+        auto ast = with(cnt().as<materialized()>(select(1)), select(cnt->*1_colalias));
+
+        [[maybe_unused]] string sql = storage.dump(ast);
+
+        [[maybe_unused]] auto stmt = storage.prepare(ast);
+    }
+
+    {
+        //WITH
+        //    cnt(x) AS NOT MATERIALIZED(VALUES(1))
+        //    SELECT x FROM cnt;
+        constexpr auto cnt = "cnt"_cte;
+        auto ast = with(cnt().as<not_materialized()>(select(1)), select(cnt->*1_colalias));
+
+        [[maybe_unused]] string sql = storage.dump(ast);
+
+        [[maybe_unused]] auto stmt = storage.prepare(ast);
+    }
+#endif
+}
+
 void show_mapping_and_backreferencing() {
     struct Object {
         int64 id;
@@ -1021,6 +1051,7 @@ int main() {
         neevek_issue_222();
         select_from_subselect();
         greatest_n_per_group();
+        show_optimization_fence();
         show_mapping_and_backreferencing();
     } catch(const system_error& e) {
         cout << "[" << e.code() << "] " << e.what();
