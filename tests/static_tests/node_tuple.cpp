@@ -236,6 +236,24 @@ TEST_CASE("Node tuple") {
             using Expected = tuple<decltype(node)>;
             static_assert(is_same<Tuple, Expected>::value, "count(*)");
         }
+#ifdef SQLITE_ORM_WITH_CTE
+        SECTION("count(*) cte") {
+            auto node = count<decltype(1_ctealias)>();
+            using Node = decltype(node);
+            using Tuple = node_tuple_t<Node>;
+            using Expected = tuple<Node>;
+            static_assert(is_same<Tuple, Expected>::value, "count(*) cte");
+        }
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        SECTION("count(*) cte 2") {
+            auto node = count<1_ctealias>();
+            using Node = decltype(node);
+            using Tuple = node_tuple_t<Node>;
+            using Expected = tuple<Node>;
+            static_assert(is_same<Tuple, Expected>::value, "count(*) cte 2");
+        }
+#endif
+#endif
         SECTION("count(*) filter") {
             auto node = count<User>().filter(where(length(&User::name) > 5));
             using Node = decltype(node);

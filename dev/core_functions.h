@@ -1837,13 +1837,26 @@ namespace sqlite_orm {
     }
 
     /**
-     *  COUNT(*) with FROM function. Specified type T will be serializeed as
+     *  COUNT(*) with FROM function. Specified type T will be serialized as
      *  a from argument.
      */
     template<class T>
     internal::count_asterisk_t<T> count() {
         return {};
     }
+
+#ifdef SQLITE_ORM_WITH_CTE
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  COUNT(*) with FROM function. Specified cte moniker will be serialized as
+     *  a from argument.
+     */
+    template<orm_cte_moniker auto moniker>
+    internal::count_asterisk_t<std::remove_const_t<decltype(moniker)>> count() {
+        return {};
+    }
+#endif
+#endif
 
     /**
      *  AVG(X) aggregate function.

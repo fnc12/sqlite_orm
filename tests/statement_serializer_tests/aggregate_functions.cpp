@@ -76,15 +76,24 @@ TEST_CASE("statement_serializer aggregate functions") {
     }
     SECTION("count(*)") {
         SECTION("simple") {
-            SECTION("with filter") {
+            SECTION("without filter") {
                 auto expression = count<User>();
                 value = serialize(expression, context);
                 expected = R"(COUNT(*))";
             }
-            SECTION("without filter") {
+            SECTION("with filter") {
                 auto expression = count<User>().filter(where(less_than(&User::id, 10)));
                 value = serialize(expression, context);
                 expected = R"(COUNT(*) FILTER (WHERE ("id" < 10)))";
+            }
+#ifdef SQLITE_ORM_WITH_CTE
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            SECTION("with CTE") {
+                auto expression = count<1_ctealias>();
+                value = serialize(expression, context);
+                expected = R"(COUNT(*))";
+#endif
+#endif
             }
         }
     }

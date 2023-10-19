@@ -20,7 +20,6 @@ TEST_CASE("table name collector") {
 
     SECTION("from table") {
         SECTION("regular column") {
-            using als = alias_z<User>;
             auto expression = &User::id;
             expected.emplace(table.name, "");
             iterate_ast(expression, collector);
@@ -40,6 +39,11 @@ TEST_CASE("table name collector") {
             using als = alias_z<User>;
             auto expression = alias_column<als>(column<User>(&User::id));
             expected.emplace(table.name, "z");
+            iterate_ast(expression, collector);
+        }
+        SECTION("count asterisk") {
+            auto expression = count<User>();
+            expected.emplace(table.name, "");
             iterate_ast(expression, collector);
         }
         REQUIRE(collector.table_names == expected);
@@ -65,6 +69,13 @@ TEST_CASE("table name collector") {
             expected.emplace(alias_extractor<decltype(c)>::extract(), "");
             iterate_ast(expression, collector);
         }
+        SECTION("CTE count asterisk") {
+            constexpr auto c = 1_ctealias;
+            using cte_1 = decltype(1_ctealias);
+            auto expression = count<cte_1>();
+            expected.emplace(alias_extractor<decltype(c)>::extract(), "");
+            iterate_ast(expression, collector);
+        }
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         SECTION("aliased CTE column") {
             constexpr auto c = "1"_cte;
@@ -78,6 +89,12 @@ TEST_CASE("table name collector") {
             constexpr auto z_alias = "z"_alias.for_<c>();
             auto expression = z_alias->*1_colalias;
             expected.emplace(alias_extractor<decltype(c)>::extract(), "z");
+            iterate_ast(expression, collector);
+        }
+        SECTION("CTE count asterisk 2") {
+            constexpr auto c = 1_ctealias;
+            auto expression = count<c>();
+            expected.emplace(alias_extractor<decltype(c)>::extract(), "");
             iterate_ast(expression, collector);
         }
 #endif
