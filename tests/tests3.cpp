@@ -396,17 +396,37 @@ TEST_CASE("With select") {
         auto rows = storage.with(cte<cnt>().as(select(1)), select(column<cnt>(1_colalias)));
         REQUIRE_THAT(rows, Equals(std::vector<int>{1}));
     }
+    SECTION("with ordinary, compound") {
+        auto rows = storage.with(cte<cnt>().as(select(1)),
+                                 union_all(select(column<cnt>(1_colalias)), select(column<cnt>(1_colalias))));
+        REQUIRE_THAT(rows, Equals(std::vector<int>{1, 1}));
+    }
     SECTION("with not enforced recursive") {
         auto rows = storage.with_recursive(cte<cnt>().as(select(1)), select(column<cnt>(1_colalias)));
         REQUIRE_THAT(rows, Equals(std::vector<int>{1}));
     }
-    SECTION("with ordinary 2") {
+    SECTION("with not enforced recursive, compound") {
+        auto rows = storage.with_recursive(cte<cnt>().as(select(1)),
+                                           union_all(select(column<cnt>(1_colalias)), select(column<cnt>(1_colalias))));
+        REQUIRE_THAT(rows, Equals(std::vector<int>{1, 1}));
+    }
+    SECTION("with ordinary, multiple") {
         auto rows = storage.with(std::make_tuple(cte<cnt>().as(select(1))), select(column<cnt>(1_colalias)));
         REQUIRE_THAT(rows, Equals(std::vector<int>{1}));
     }
-    SECTION("with not enforced recursive 2") {
+    SECTION("with ordinary, multiple, compound") {
+        auto rows = storage.with(std::make_tuple(cte<cnt>().as(select(1))),
+                                 union_all(select(column<cnt>(1_colalias)), select(column<cnt>(1_colalias))));
+        REQUIRE_THAT(rows, Equals(std::vector<int>{1, 1}));
+    }
+    SECTION("with not enforced recursive, multiple") {
         auto rows = storage.with_recursive(std::make_tuple(cte<cnt>().as(select(1))), select(column<cnt>(1_colalias)));
         REQUIRE_THAT(rows, Equals(std::vector<int>{1}));
+    }
+    SECTION("with not enforced recursive, multiple, compound") {
+        auto rows = storage.with_recursive(std::make_tuple(cte<cnt>().as(select(1))),
+                                           union_all(select(column<cnt>(1_colalias)), select(column<cnt>(1_colalias))));
+        REQUIRE_THAT(rows, Equals(std::vector<int>{1, 1}));
     }
     SECTION("with optional recursive") {
         auto rows = storage.with(

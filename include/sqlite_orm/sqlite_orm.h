@@ -7973,9 +7973,20 @@ namespace sqlite_orm {
      *  
      *  Despite the missing RECURSIVE keyword, the CTEs can be recursive.
      */
-    template<class E, class... CTEs>
+    template<class E, class... CTEs, internal::satisfies_not<internal::is_compound_operator, E> = true>
     internal::with_t<E, CTEs...> with(internal::common_table_expressions<CTEs...> ctes, E expression) {
         return {false, std::move(ctes), std::move(expression)};
+    }
+
+    /** 
+     *  With-clause for a tuple of ordinary CTEs.
+     *  
+     *  Despite the missing RECURSIVE keyword, the CTEs can be recursive.
+     */
+    template<class Compound, class... CTEs, internal::satisfies<internal::is_compound_operator, Compound> = true>
+    internal::with_t<internal::select_t<Compound>, CTEs...> with(internal::common_table_expressions<CTEs...> ctes,
+                                                                 Compound sel) {
+        return {false, std::move(ctes), sqlite_orm::select(std::move(sel))};
     }
 
     /** 
@@ -7989,9 +8000,27 @@ namespace sqlite_orm {
      */
     template<class E,
              class CTE,
-             internal::satisfies_is_specialization_of<CTE, internal::common_table_expression> = true>
+             internal::satisfies_is_specialization_of<CTE, internal::common_table_expression> = true,
+             internal::satisfies_not<internal::is_compound_operator, E> = true>
     internal::with_t<E, CTE> with(CTE cte, E expression) {
         return {false, {std::move(cte)}, std::move(expression)};
+    }
+
+    /** 
+     *  With-clause for a single ordinary CTE.
+     *  
+     *  Despite the missing `RECURSIVE` keyword, the CTE can be recursive.
+     *  
+     *  Example:
+     *  constexpr auto cte_1 = 1_ctealias;
+     *  with(cte_1().as(select(&Object::id)), select(cte_1->*1_colalias));
+     */
+    template<class Compound,
+             class CTE,
+             internal::satisfies_is_specialization_of<CTE, internal::common_table_expression> = true,
+             internal::satisfies<internal::is_compound_operator, Compound> = true>
+    internal::with_t<internal::select_t<Compound>, CTE> with(CTE cte, Compound sel) {
+        return {false, {std::move(cte)}, sqlite_orm::select(std::move(sel))};
     }
 
     /** 
@@ -7999,9 +8028,20 @@ namespace sqlite_orm {
      *  
      *  @note The use of RECURSIVE does not force common table expressions to be recursive.
      */
-    template<class E, class... CTEs>
+    template<class E, class... CTEs, internal::satisfies_not<internal::is_compound_operator, E> = true>
     internal::with_t<E, CTEs...> with_recursive(internal::common_table_expressions<CTEs...> ctes, E expression) {
         return {true, std::move(ctes), std::move(expression)};
+    }
+
+    /** 
+     *  With-clause for a tuple of potentially recursive CTEs.
+     *  
+     *  @note The use of RECURSIVE does not force common table expressions to be recursive.
+     */
+    template<class Compound, class... CTEs, internal::satisfies<internal::is_compound_operator, Compound> = true>
+    internal::with_t<internal::select_t<Compound>, CTEs...>
+    with_recursive(internal::common_table_expressions<CTEs...> ctes, Compound sel) {
+        return {true, std::move(ctes), sqlite_orm::select(std::move(sel))};
     }
 
     /** 
@@ -8015,9 +8055,27 @@ namespace sqlite_orm {
      */
     template<class E,
              class CTE,
-             internal::satisfies_is_specialization_of<CTE, internal::common_table_expression> = true>
+             internal::satisfies_is_specialization_of<CTE, internal::common_table_expression> = true,
+             internal::satisfies_not<internal::is_compound_operator, E> = true>
     internal::with_t<E, CTE> with_recursive(CTE cte, E expression) {
         return {true, {std::move(cte)}, std::move(expression)};
+    }
+
+    /** 
+     *  With-clause for a single potentially recursive CTE.
+     *  
+     *  @note The use of RECURSIVE does not force common table expressions to be recursive.
+     *  
+     *  Example:
+     *  constexpr auto cte_1 = 1_ctealias;
+     *  with_recursive(cte_1().as(select(&Object::id)), select(cte_1->*1_colalias));
+     */
+    template<class Compound,
+             class CTE,
+             internal::satisfies_is_specialization_of<CTE, internal::common_table_expression> = true,
+             internal::satisfies<internal::is_compound_operator, Compound> = true>
+    internal::with_t<internal::select_t<Compound>, CTE> with_recursive(CTE cte, Compound sel) {
+        return {true, {std::move(cte)}, sqlite_orm::select(std::move(sel))};
     }
 #endif
 
@@ -19972,74 +20030,36 @@ namespace sqlite_orm {
             /**
              *  Using a CTE, select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
              */
-            template<class CTE, class T, class... Args>
-            auto with(CTE cte, select_t<T, Args...> sel) {
-                auto statement = this->prepare(sqlite_orm::with(std::move(cte), std::move(sel)));
+            template<class CTE, class E>
+            auto with(CTE cte, E expression) {
+                auto statement = this->prepare(sqlite_orm::with(std::move(cte), std::move(expression)));
                 return this->execute(statement);
             }
 
             /**
              *  Using a CTE, select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
              */
-            template<class... CTEs, class T, class... Args>
-            auto with(common_table_expressions<CTEs...> cte, select_t<T, Args...> sel) {
-                auto statement = this->prepare(sqlite_orm::with(std::move(cte), std::move(sel)));
+            template<class... CTEs, class E>
+            auto with(common_table_expressions<CTEs...> cte, E expression) {
+                auto statement = this->prepare(sqlite_orm::with(std::move(cte), std::move(expression)));
                 return this->execute(statement);
             }
 
             /**
              *  Using a CTE, select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
              */
-            template<class CTE, class Compound, satisfies<is_compound_operator, Compound> = true>
-            auto with(CTE cte, Compound sel) {
-                auto statement = this->prepare(sqlite_orm::with(std::move(cte), sqlite_orm::select(std::move(sel))));
+            template<class CTE, class E>
+            auto with_recursive(CTE cte, E expression) {
+                auto statement = this->prepare(sqlite_orm::with_recursive(std::move(cte), std::move(expression)));
                 return this->execute(statement);
             }
 
             /**
              *  Using a CTE, select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
              */
-            template<class... CTEs, class Compound, satisfies<is_compound_operator, Compound> = true>
-            auto with(common_table_expressions<CTEs...> cte, Compound sel) {
-                auto statement = this->prepare(sqlite_orm::with(std::move(cte), sqlite_orm::select(std::move(sel))));
-                return this->execute(statement);
-            }
-
-            /**
-             *  Using a CTE, select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
-             */
-            template<class CTE, class T, class... Args>
-            auto with_recursive(CTE cte, select_t<T, Args...> sel) {
-                auto statement = this->prepare(sqlite_orm::with_recursive(std::move(cte), std::move(sel)));
-                return this->execute(statement);
-            }
-
-            /**
-             *  Using a CTE, select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
-             */
-            template<class... CTEs, class T, class... Args>
-            auto with_recursive(common_table_expressions<CTEs...> cte, select_t<T, Args...> sel) {
-                auto statement = this->prepare(sqlite_orm::with_recursive(std::move(cte), std::move(sel)));
-                return this->execute(statement);
-            }
-
-            /**
-             *  Using a CTE, select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
-             */
-            template<class CTE, class Compound, satisfies<is_compound_operator, Compound> = true>
-            auto with_recursive(CTE cte, Compound sel) {
-                auto statement =
-                    this->prepare(sqlite_orm::with_recursive(std::move(cte), sqlite_orm::select(std::move(sel))));
-                return this->execute(statement);
-            }
-
-            /**
-             *  Using a CTE, select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
-             */
-            template<class... CTEs, class Compound, satisfies<is_compound_operator, Compound> = true>
-            auto with_recursive(common_table_expressions<CTEs...> cte, Compound sel) {
-                auto statement =
-                    this->prepare(sqlite_orm::with_recursive(std::move(cte), sqlite_orm::select(std::move(sel))));
+            template<class... CTEs, class E>
+            auto with_recursive(common_table_expressions<CTEs...> cte, E expression) {
+                auto statement = this->prepare(sqlite_orm::with_recursive(std::move(cte), std::move(expression)));
                 return this->execute(statement);
             }
 #endif
