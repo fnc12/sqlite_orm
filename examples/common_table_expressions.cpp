@@ -164,10 +164,10 @@ void supervisor_chain() {
         //    SELECT name FROM chain;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         constexpr auto chain = "chain"_cte;
+        constexpr auto parent = "parent"_alias.for_<Org>();
         auto ast = with_recursive(
-            chain().as(union_all(
-                select(asterisk<Org>(), where(&Org::name == c("Fred"))),
-                select(asterisk<alias_a<Org>>(), where(alias_column<alias_a<Org>>(&Org::name) == chain->*&Org::boss)))),
+            chain().as(union_all(select(asterisk<Org>(), where(&Org::name == c("Fred"))),
+                                 select(asterisk<parent>(), where(parent->*&Org::name == chain->*&Org::boss)))),
             select(chain->*&Org::name));
 #else
         using chain = decltype(1_ctealias);
