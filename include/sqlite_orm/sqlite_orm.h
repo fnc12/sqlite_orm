@@ -4697,8 +4697,8 @@ namespace sqlite_orm {
         /*
          * Encapsulates extracting the alias identifier of an alias.
          * 
-         * `extract()` always returns the alias identifier.
-         * `as_alias()` is used in contexts where a table is aliased, and the alias identifier is returned.
+         * `extract()` always returns the alias identifier or CTE moniker.
+         * `as_alias()` is used in contexts where a recordset is aliased, and the alias identifier is returned.
          * `as_qualifier()` is used in contexts where a table is aliased, and the alias identifier is returned.
          */
         template<class A>
@@ -4716,7 +4716,7 @@ namespace sqlite_orm {
             }
 
 #ifdef SQLITE_ORM_WITH_CTE
-            // for cte monikers -> empty
+            // for CTE monikers -> empty
             template<class T = A, satisfies<std::is_same, polyfill::detected_t<type_t, T>, A> = true>
             static std::string as_alias() {
                 return {};
