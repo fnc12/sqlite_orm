@@ -24,6 +24,7 @@
 #include "ast/into.h"
 #include "ast/match.h"
 #include "ast/rank.h"
+#include "ast/special_keywords.h"
 #include "core_functions.h"
 #include "constraints.h"
 #include "conditions.h"
@@ -154,6 +155,36 @@ namespace sqlite_orm {
                     ss << " WITHOUT ROWID";
                 }
                 return ss.str();
+            }
+        };
+
+        template<>
+        struct statement_serializer<current_time_t, void> {
+            using statement_type = current_time_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) {
+                return "CURRENT_TIME";
+            }
+        };
+
+        template<>
+        struct statement_serializer<current_date_t, void> {
+            using statement_type = current_date_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) {
+                return "CURRENT_DATE";
+            }
+        };
+
+        template<>
+        struct statement_serializer<current_timestamp_t, void> {
+            using statement_type = current_timestamp_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) {
+                return "CURRENT_TIMESTAMP";
             }
         };
 
@@ -886,6 +917,26 @@ namespace sqlite_orm {
             }
         };
 
+        template<>
+        struct statement_serializer<null_t, void> {
+            using statement_type = null_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) const {
+                return "NULL";
+            }
+        };
+
+        template<>
+        struct statement_serializer<not_null_t, void> {
+            using statement_type = not_null_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) const {
+                return "NOT NULL";
+            }
+        };
+
         template<class... Cs>
         struct statement_serializer<primary_key_t<Cs...>, void> {
             using statement_type = primary_key_t<Cs...>;
@@ -1030,14 +1081,11 @@ namespace sqlite_orm {
                 ss << streaming_identifier(column.name);
                 if(!context.skip_types_and_constraints) {
                     ss << " " << type_printer<field_type_t<column_type>>().print();
-                    const bool columnIsNotNull = column.is_not_null();
-                    auto constraintsTuple = streaming_column_constraints(
-                        call_as_template_base<column_constraints>(polyfill::identity{})(column),
-                        columnIsNotNull,
-                        context);
-                    if(std::tuple_size<decltype(constraintsTuple)>::value > 0) {
-                        ss << " " << constraintsTuple;
-                    }
+                    ss << " "
+                       << streaming_column_constraints(
+                              call_as_template_base<column_constraints>(polyfill::identity{})(column),
+                              column.is_not_null(),
+                              context);
                 }
                 return ss.str();
             }

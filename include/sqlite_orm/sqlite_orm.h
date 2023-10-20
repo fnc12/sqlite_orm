@@ -1698,6 +1698,9 @@ namespace sqlite_orm {
             }
         };
 
+        struct null_t {};
+
+        struct not_null_t {};
     }
 
     namespace internal {
@@ -1744,6 +1747,8 @@ namespace sqlite_orm {
         using is_constraint =
             mpl::instantiate<mpl::disjunction<check_if<is_primary_key>,
                                               check_if<is_foreign_key>,
+                                              check_if_is_type<null_t>,
+                                              check_if_is_type<not_null_t>,
                                               check_if_is_template<unique_t>,
                                               check_if_is_template<default_t>,
                                               check_if_is_template<check_t>,
@@ -1821,6 +1826,14 @@ namespace sqlite_orm {
     template<class T>
     internal::check_t<T> check(T t) {
         return {std::move(t)};
+    }
+
+    inline internal::null_t null() {
+        return {};
+    }
+
+    inline internal::not_null_t not_null() {
+        return {};
     }
 }
 #pragma once
@@ -10810,6 +10823,28 @@ namespace sqlite_orm {
 
 }
 
+// #include "ast/special_keywords.h"
+
+namespace sqlite_orm {
+    namespace internal {
+        struct current_time_t {};
+        struct current_date_t {};
+        struct current_timestamp_t {};
+    }
+
+    inline internal::current_time_t current_time() {
+        return {};
+    }
+
+    inline internal::current_date_t current_date() {
+        return {};
+    }
+
+    inline internal::current_timestamp_t current_timestamp() {
+        return {};
+    }
+}
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -10852,6 +10887,21 @@ namespace sqlite_orm {
         template<class DBOs, class L, class... Args>
         struct column_result_t<DBOs, in_t<L, Args...>, void> {
             using type = bool;
+        };
+
+        template<class DBOs>
+        struct column_result_t<DBOs, current_time_t, void> {
+            using type = std::string;
+        };
+
+        template<class DBOs>
+        struct column_result_t<DBOs, current_date_t, void> {
+            using type = std::string;
+        };
+
+        template<class DBOs>
+        struct column_result_t<DBOs, current_timestamp_t, void> {
+            using type = std::string;
         };
 
         template<class DBOs, class T>
@@ -11229,14 +11279,14 @@ namespace sqlite_orm {
                 next();
             }
 
-            const value_type& operator*() const {
+            value_type& operator*() const {
                 if(!this->stmt || !this->current) {
                     throw std::system_error{orm_error_code::trying_to_dereference_null_iterator};
                 }
                 return *this->current;
             }
 
-            const value_type* operator->() const {
+            value_type* operator->() const {
                 return &(this->operator*());
             }
 
@@ -13663,11 +13713,23 @@ namespace sqlite_orm {
             const bool& isNotNull = get<2>(tpl);
             auto& context = get<3>(tpl);
 
-            iterate_tuple(column.constraints, [&ss, &context](auto& constraint) {
-                ss << serialize(constraint, context) << ' ';
+            auto first = true;
+            constexpr std::array<const char*, 2> sep = {" ", ""};
+            iterate_tuple(column.constraints, [&ss, &context, &first, &sep](auto& constraint) {
+                ss << sep[std::exchange(first, false)];
+                ss << serialize(constraint, context);
             });
-            if(isNotNull) {
-                ss << "NOT NULL";
+            using constraints_tuple = decltype(column.constraints);
+            constexpr bool hasExplicitNullableConstraint =
+                mpl::invoke_t<mpl::disjunction<check_if_tuple_has_type<null_t>, check_if_tuple_has_type<not_null_t>>,
+                              constraints_tuple>::value;
+            if(!hasExplicitNullableConstraint) {
+                ss << sep[std::exchange(first, false)];
+                if(isNotNull) {
+                    ss << "NOT NULL";
+                } else {
+                    ss << "NULL";
+                }
             }
 
             return ss;
@@ -14531,6 +14593,16 @@ namespace sqlite_orm {
                 return guard.commit_on_destroy = f();
             }
 
+            std::string current_time() {
+                auto con = this->get_connection();
+                return this->current_time(con.get());
+            }
+
+            std::string current_date() {
+                auto con = this->get_connection();
+                return this->current_date(con.get());
+            }
+
             std::string current_timestamp() {
                 auto con = this->get_connection();
                 return this->current_timestamp(con.get());
@@ -14575,6 +14647,15 @@ namespace sqlite_orm {
                 return tableNames;
             }
 
+            /**
+             *  Call it once during storage lifetime to make it keeping its connection opened till dtor call.
+             *  By default if storage is not in-memory it calls `sqlite3_open` only when the connection is really
+             *  needed and closes when it is not needed. This function breaks this rule. In memory storage always
+             *  keeps connection opened so calling this for in-memory storage changes nothing.
+             *  Note about multithreading: in multithreading context avoiding using this function for not in-memory
+             *  storage may lead to data races. If you have data races in such a configuration try to call `open_forever`
+             *  before accessing your storage - it may fix data races.
+             */
             void open_forever() {
                 this->isOpenedForever = true;
                 this->connection->retain();
@@ -15082,6 +15163,18 @@ namespace sqlite_orm {
                 delete fPointer;
             }
 
+            std::string current_time(sqlite3* db) {
+                std::string result;
+                perform_exec(db, "SELECT CURRENT_TIME", extract_single_value<std::string>, &result);
+                return result;
+            }
+
+            std::string current_date(sqlite3* db) {
+                std::string result;
+                perform_exec(db, "SELECT CURRENT_DATE", extract_single_value<std::string>, &result);
+                return result;
+            }
+
             std::string current_timestamp(sqlite3* db) {
                 std::string result;
                 perform_exec(db, "SELECT CURRENT_TIMESTAMP", extract_single_value<std::string>, &result);
@@ -15346,6 +15439,8 @@ namespace sqlite_orm {
         return {};
     }
 }
+
+// #include "ast/special_keywords.h"
 
 // #include "core_functions.h"
 
@@ -15701,6 +15796,36 @@ namespace sqlite_orm {
                     ss << " WITHOUT ROWID";
                 }
                 return ss.str();
+            }
+        };
+
+        template<>
+        struct statement_serializer<current_time_t, void> {
+            using statement_type = current_time_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) {
+                return "CURRENT_TIME";
+            }
+        };
+
+        template<>
+        struct statement_serializer<current_date_t, void> {
+            using statement_type = current_date_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) {
+                return "CURRENT_DATE";
+            }
+        };
+
+        template<>
+        struct statement_serializer<current_timestamp_t, void> {
+            using statement_type = current_timestamp_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) {
+                return "CURRENT_TIMESTAMP";
             }
         };
 
@@ -16433,6 +16558,26 @@ namespace sqlite_orm {
             }
         };
 
+        template<>
+        struct statement_serializer<null_t, void> {
+            using statement_type = null_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) const {
+                return "NULL";
+            }
+        };
+
+        template<>
+        struct statement_serializer<not_null_t, void> {
+            using statement_type = not_null_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) const {
+                return "NOT NULL";
+            }
+        };
+
         template<class... Cs>
         struct statement_serializer<primary_key_t<Cs...>, void> {
             using statement_type = primary_key_t<Cs...>;
@@ -16577,14 +16722,11 @@ namespace sqlite_orm {
                 ss << streaming_identifier(column.name);
                 if(!context.skip_types_and_constraints) {
                     ss << " " << type_printer<field_type_t<column_type>>().print();
-                    const bool columnIsNotNull = column.is_not_null();
-                    auto constraintsTuple = streaming_column_constraints(
-                        call_as_template_base<column_constraints>(polyfill::identity{})(column),
-                        columnIsNotNull,
-                        context);
-                    if(std::tuple_size<decltype(constraintsTuple)>::value > 0) {
-                        ss << " " << constraintsTuple;
-                    }
+                    ss << " "
+                       << streaming_column_constraints(
+                              call_as_template_base<column_constraints>(polyfill::identity{})(column),
+                              column.is_not_null(),
+                              context);
                 }
                 return ss.str();
             }
