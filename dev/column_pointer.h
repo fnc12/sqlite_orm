@@ -14,7 +14,6 @@ namespace sqlite_orm {
          */
         template<class T, class F>
         struct column_pointer {
-            using self = column_pointer<T, F>;
             using type = T;
             using field_type = F;
 
@@ -36,8 +35,8 @@ namespace sqlite_orm {
      *  struct MyType : BaseType { ... };
      *  storage.select(column<MyType>(&BaseType::id));
      */
-    template<class T, class F>
-    internal::column_pointer<T, F> column(F f) {
-        return {std::move(f)};
+    template<class Object, class F, internal::satisfies_not<internal::is_recordset_alias, Object> = true>
+    constexpr internal::column_pointer<Object, F> column(F field) {
+        return {std::move(field)};
     }
 }
