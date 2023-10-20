@@ -92,9 +92,9 @@ TEST_CASE("statement_serializer aggregate functions") {
                 auto expression = count<1_ctealias>();
                 value = serialize(expression, context);
                 expected = R"(COUNT(*))";
-#endif
-#endif
             }
+#endif
+#endif
         }
     }
     SECTION("group_concat(X)") {
