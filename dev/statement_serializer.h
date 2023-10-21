@@ -163,7 +163,7 @@ namespace sqlite_orm {
             using statement_type = current_time_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) {
+            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) {
                 return "CURRENT_TIME";
             }
         };
@@ -173,7 +173,7 @@ namespace sqlite_orm {
             using statement_type = current_date_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) {
+            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) {
                 return "CURRENT_DATE";
             }
         };
@@ -183,7 +183,7 @@ namespace sqlite_orm {
             using statement_type = current_timestamp_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) {
+            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) {
                 return "CURRENT_TIMESTAMP";
             }
         };

@@ -587,7 +587,7 @@ TEST_CASE("Node tuple") {
             STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(get<colalias_a>()))>, tuple<>>::value);
         }
         SECTION("column alias in expression") {
-            STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(get<colalias_a>() > c(1)))>, tuple<int>>::value);
+            STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(get<colalias_a>() > 1))>, tuple<int>>::value);
         }
     }
     SECTION("glob_t") {

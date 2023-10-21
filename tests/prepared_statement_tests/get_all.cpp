@@ -217,7 +217,7 @@ TEST_CASE("Prepared get all") {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     SECTION("from alias") {
         auto statement =
-            storage.prepare(get_all<sqlite_schema>(where(c(sqlite_schema->*&sqlite_master::type) == "table")));
+            storage.prepare(get_all<sqlite_schema>(where(sqlite_schema->*&sqlite_master::type == "table")));
         auto str = storage.dump(statement);
         testSerializing(statement);
     }
