@@ -171,6 +171,17 @@ namespace sqlite_orm {
                               "type is not mapped to storage");
             }
 
+            template<class O>
+            void assert_updatable_type() const {
+                using Table = storage_pick_table_t<O, db_objects_type>;
+                constexpr int primaryKeyColumnsCount = Table::primary_key_columns_count + Table::dedicated_primary_key_columns_count;
+                constexpr int nonPrimaryKeysColumnsCount = Table::columns_count - primaryKeyColumnsCount;
+                static_assert(primaryKeyColumnsCount > 0,
+                    "Type with no primary keys can't be updated");
+                static_assert(nonPrimaryKeysColumnsCount > 0,
+                    "Type with primary keys only can't be updated. You need at least 1 non-primary key column");
+            }
+
             template<class O,
                      class Table = storage_pick_table_t<O, db_objects_type>,
                      std::enable_if_t<Table::is_without_rowid_v, bool> = true>
@@ -1081,8 +1092,11 @@ namespace sqlite_orm {
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
             template<class T>
-            prepared_statement_t<update_t<T>> prepare(update_t<T> upd) {
-                return prepare_impl<update_t<T>>(std::move(upd));
+            prepared_statement_t<update_t<T>> prepare(update_t<T> statement) {
+                using object_type = typename expression_object_type<decltype(statement)>::type;
+                this->assert_mapped_type<object_type>();
+                this->assert_updatable_type<object_type>();
+                return prepare_impl<update_t<T>>(std::move(statement));
             }
 
             template<class T, class... Ids>
