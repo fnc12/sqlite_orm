@@ -7441,7 +7441,7 @@ namespace sqlite_orm {
      *  Example:
      *  constexpr auto m = "m"_alias.for_<Employee>();
      *  auto reportingTo = 
-     *      storage.select(asterisk<m>(), inner_join<m>(on(m->*&Employee::reportsTo == c(&Employee::employeeId))));
+     *      storage.select(asterisk<m>(), inner_join<m>(on(m->*&Employee::reportsTo == &Employee::employeeId)));
      */
     template<orm_recordset_alias auto alias>
     auto asterisk(bool definedOrder = false) {
