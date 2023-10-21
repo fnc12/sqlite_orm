@@ -404,6 +404,12 @@ namespace sqlite_orm {
         using target_type_t = typename T::target_type;
 
         template<typename T>
+        using left_type_t = typename T::left_type;
+
+        template<typename T>
+        using right_type_t = typename T::right_type;
+
+        template<typename T>
         using on_type_t = typename T::on_type;
     }
 
@@ -1930,6 +1936,47 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::false_type, std::true_type
 #include <utility>  //  std::move
 
+// #include "functional/cxx_type_traits_polyfill.h"
+
+// #include "is_base_of_template.h"
+
+#include <type_traits>  //  std::true_type, std::false_type, std::declval
+
+namespace sqlite_orm {
+
+    namespace internal {
+
+        /*
+         * This is because of bug in MSVC, for more information, please visit
+         * https://stackoverflow.com/questions/34672441/stdis-base-of-for-template-classes/34672753#34672753
+         */
+#ifdef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+        template<template<typename...> class Base>
+        struct is_base_of_template_impl {
+            template<typename... Ts>
+            static constexpr std::true_type test(const Base<Ts...>&);
+
+            static constexpr std::false_type test(...);
+        };
+
+        template<typename T, template<typename...> class C>
+        using is_base_of_template = decltype(is_base_of_template_impl<C>::test(std::declval<T>()));
+#else
+        template<template<typename...> class C, typename... Ts>
+        std::true_type is_base_of_template_impl(const C<Ts...>&);
+
+        template<template<typename...> class C>
+        std::false_type is_base_of_template_impl(...);
+
+        template<typename T, template<typename...> class C>
+        using is_base_of_template = decltype(is_base_of_template_impl<C>(std::declval<T>()));
+#endif
+
+        template<typename T, template<typename...> class C>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_base_of_template_v = is_base_of_template<T, C>::value;
+    }
+}
+
 // #include "tags.h"
 
 // #include "functional/cxx_functional_polyfill.h"
@@ -2179,6 +2226,12 @@ namespace sqlite_orm {
 
             binary_operator(left_type lhs_, right_type rhs_) : lhs(std::move(lhs_)), rhs(std::move(rhs_)) {}
         };
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_binary_operator_v = is_base_of_template_v<T, binary_operator>;
+
+        template<class T>
+        using is_binary_operator = polyfill::bool_constant<is_binary_operator_v<T>>;
 
         struct conc_string {
             serialize_result_type serialize() const {
@@ -2805,43 +2858,6 @@ namespace sqlite_orm {
 // #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "is_base_of_template.h"
-
-#include <type_traits>  //  std::true_type, std::false_type, std::declval
-
-namespace sqlite_orm {
-
-    namespace internal {
-
-        /*
-         * This is because of bug in MSVC, for more information, please visit
-         * https://stackoverflow.com/questions/34672441/stdis-base-of-for-template-classes/34672753#34672753
-         */
-#ifdef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
-        template<template<typename...> class Base>
-        struct is_base_of_template_impl {
-            template<typename... Ts>
-            static constexpr std::true_type test(const Base<Ts...>&);
-
-            static constexpr std::false_type test(...);
-        };
-
-        template<typename T, template<typename...> class C>
-        using is_base_of_template = decltype(is_base_of_template_impl<C>::test(std::declval<T>()));
-#else
-        template<template<typename...> class C, typename... Ts>
-        std::true_type is_base_of_template_impl(const C<Ts...>&);
-
-        template<template<typename...> class C>
-        std::false_type is_base_of_template_impl(...);
-
-        template<typename T, template<typename...> class C>
-        using is_base_of_template = decltype(is_base_of_template_impl<C>(std::declval<T>()));
-#endif
-
-        template<typename T, template<typename...> class C>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_base_of_template_v = is_base_of_template<T, C>::value;
-    }
-}
 
 // #include "type_traits.h"
 
@@ -12746,9 +12762,9 @@ namespace sqlite_orm {
             }
         };
 
-        template<class L, class R, class... Ds>
-        struct ast_iterator<binary_operator<L, R, Ds...>, void> {
-            using node_type = binary_operator<L, R, Ds...>;
+        template<class T>
+        struct ast_iterator<T, match_if<is_binary_operator, T>> {
+            using node_type = T;
 
             template<class C>
             void operator()(const node_type& node, C& lambda) const {
@@ -19351,6 +19367,8 @@ namespace sqlite_orm {
 
 // #include "tuple_helper/tuple_filter.h"
 
+// #include "type_traits.h"
+
 // #include "conditions.h"
 
 // #include "operators.h"
@@ -19388,6 +19406,16 @@ namespace sqlite_orm {
         template<class T>
         using node_tuple_t = typename node_tuple<T>::type;
 
+        template<class... T>
+        struct node_tuple_for {
+            using type = tuple_cat_t<node_tuple_t<T>...>;
+        };
+
+        template<class... Types>
+        struct node_tuple_for<std::tuple<Types...>> {
+            using type = tuple_cat_t<node_tuple_t<Types>...>;
+        };
+
         template<>
         struct node_tuple<void, void> {
             using type = std::tuple<>;
@@ -19400,30 +19428,19 @@ namespace sqlite_orm {
         struct node_tuple<std::reference_wrapper<T>, void> : node_tuple<T> {};
 
         template<class... Args>
-        struct node_tuple<group_by_t<Args...>, void> : node_tuple<std::tuple<Args...>> {};
+        struct node_tuple<group_by_t<Args...>, void> : node_tuple_for<Args...> {};
 
         template<class T, class... Args>
-        struct node_tuple<group_by_with_having<T, Args...>, void> {
-            using args_tuple = node_tuple_t<std::tuple<Args...>>;
-            using expression_tuple = node_tuple_t<T>;
-            using type = tuple_cat_t<args_tuple, expression_tuple>;
-        };
+        struct node_tuple<group_by_with_having<T, Args...>, void> : node_tuple_for<Args..., T> {};
 
-        template<class T>
-        struct node_tuple<T, match_if<is_upsert_clause, T>> : node_tuple<typename T::actions_tuple> {};
+        template<class Targets, class Actions>
+        struct node_tuple<upsert_clause<Targets, Actions>, void> : node_tuple_for<Actions> {};
 
         template<class... Args>
-        struct node_tuple<set_t<Args...>, void> {
-            using type = tuple_cat_t<node_tuple_t<Args>...>;
-        };
+        struct node_tuple<set_t<Args...>, void> : node_tuple_for<Args...> {};
 
         template<class T, class X, class Y, class Z>
-        struct node_tuple<highlight_t<T, X, Y, Z>, void> {
-            using x_node_tuple = node_tuple_t<X>;
-            using y_node_tuple = node_tuple_t<Y>;
-            using z_node_tuple = node_tuple_t<Z>;
-            using type = tuple_cat_t<x_node_tuple, y_node_tuple, z_node_tuple>;
-        };
+        struct node_tuple<highlight_t<T, X, Y, Z>, void> : node_tuple_for<X, Y, Z> {};
 
         template<class T>
         struct node_tuple<excluded_t<T>, void> : node_tuple<T> {};
@@ -19459,105 +19476,57 @@ namespace sqlite_orm {
         struct node_tuple<is_equal_with_table_t<L, R>, void> : node_tuple<R> {};
 
         template<class T>
-        struct node_tuple<T, match_if<is_binary_condition, T>> {
-            using node_type = T;
-            using left_type = typename node_type::left_type;
-            using right_type = typename node_type::right_type;
-            using left_node_tuple = node_tuple_t<left_type>;
-            using right_node_tuple = node_tuple_t<right_type>;
-            using type = tuple_cat_t<left_node_tuple, right_node_tuple>;
-        };
-
-        template<class L, class R, class... Ds>
-        struct node_tuple<binary_operator<L, R, Ds...>, void> {
-            using node_type = binary_operator<L, R, Ds...>;
-            using left_type = typename node_type::left_type;
-            using right_type = typename node_type::right_type;
-            using left_node_tuple = node_tuple_t<left_type>;
-            using right_node_tuple = node_tuple_t<right_type>;
-            using type = tuple_cat_t<left_node_tuple, right_node_tuple>;
-        };
-
-        template<class... Args>
-        struct node_tuple<columns_t<Args...>, void> {
-            using type = tuple_cat_t<node_tuple_t<Args>...>;
-        };
-
-        template<class L, class A>
-        struct node_tuple<dynamic_in_t<L, A>, void> {
-            using left_tuple = node_tuple_t<L>;
-            using right_tuple = node_tuple_t<A>;
-            using type = tuple_cat_t<left_tuple, right_tuple>;
-        };
-
-        template<class L, class... Args>
-        struct node_tuple<in_t<L, Args...>, void> {
-            using left_tuple = node_tuple_t<L>;
-            using right_tuple = tuple_cat_t<node_tuple_t<Args>...>;
-            using type = tuple_cat_t<left_tuple, right_tuple>;
-        };
+        struct node_tuple<T, match_if<is_binary_condition, T>> : node_tuple_for<left_type_t<T>, right_type_t<T>> {};
 
         template<class T>
-        struct node_tuple<T, match_if<is_compound_operator, T>> : node_tuple<typename T::expressions_tuple> {};
+        struct node_tuple<T, match_if<is_binary_operator, T>> : node_tuple_for<left_type_t<T>, right_type_t<T>> {};
+
+        template<class... Args>
+        struct node_tuple<columns_t<Args...>, void> : node_tuple_for<Args...> {};
+
+        template<class L, class A>
+        struct node_tuple<dynamic_in_t<L, A>, void> : node_tuple_for<L, A> {};
+
+        template<class L, class... Args>
+        struct node_tuple<in_t<L, Args...>, void> : node_tuple_for<L, Args...> {};
+
+        template<class T>
+        struct node_tuple<T, match_if<is_compound_operator, T>> : node_tuple_for<typename T::expressions_tuple> {};
 
         template<class T, class... Args>
-        struct node_tuple<select_t<T, Args...>, void> {
-            using columns_tuple = node_tuple_t<T>;
-            using args_tuple = tuple_cat_t<node_tuple_t<Args>...>;
-            using type = tuple_cat_t<columns_tuple, args_tuple>;
-        };
+        struct node_tuple<select_t<T, Args...>, void> : node_tuple_for<T, Args...> {};
 
         template<class... Args>
-        struct node_tuple<insert_raw_t<Args...>, void> {
-            using type = tuple_cat_t<node_tuple_t<Args>...>;
-        };
+        struct node_tuple<insert_raw_t<Args...>, void> : node_tuple_for<Args...> {};
 
         template<class... Args>
-        struct node_tuple<replace_raw_t<Args...>, void> {
-            using type = tuple_cat_t<node_tuple_t<Args>...>;
-        };
+        struct node_tuple<replace_raw_t<Args...>, void> : node_tuple_for<Args...> {};
 
         template<class T>
         struct node_tuple<into_t<T>, void> : node_tuple<void> {};
 
         template<class... Args>
-        struct node_tuple<values_t<Args...>, void> {
-            using type = tuple_cat_t<node_tuple_t<Args>...>;
-        };
+        struct node_tuple<values_t<Args...>, void> : node_tuple_for<Args...> {};
 
         template<class... Args>
-        struct node_tuple<std::tuple<Args...>, void> {
-            using type = tuple_cat_t<node_tuple_t<Args>...>;
-        };
+        struct node_tuple<std::tuple<Args...>, void> : node_tuple_for<Args...> {};
 
         template<class T, class R, class... Args>
-        struct node_tuple<get_all_t<T, R, Args...>, void> {
-            using type = tuple_cat_t<node_tuple_t<Args>...>;
-        };
+        struct node_tuple<get_all_t<T, R, Args...>, void> : node_tuple_for<Args...> {};
 
         template<class T, class... Args>
-        struct node_tuple<get_all_pointer_t<T, Args...>, void> {
-            using type = tuple_cat_t<node_tuple_t<Args>...>;
-        };
+        struct node_tuple<get_all_pointer_t<T, Args...>, void> : node_tuple_for<Args...> {};
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T, class... Args>
-        struct node_tuple<get_all_optional_t<T, Args...>, void> {
-            using type = tuple_cat_t<node_tuple_t<Args>...>;
-        };
+        struct node_tuple<get_all_optional_t<T, Args...>, void> : node_tuple_for<Args...> {};
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
         template<class... Args, class... Wargs>
-        struct node_tuple<update_all_t<set_t<Args...>, Wargs...>, void> {
-            using set_tuple = tuple_cat_t<node_tuple_t<Args>...>;
-            using conditions_tuple = tuple_cat_t<node_tuple_t<Wargs>...>;
-            using type = tuple_cat_t<set_tuple, conditions_tuple>;
-        };
+        struct node_tuple<update_all_t<set_t<Args...>, Wargs...>, void> : node_tuple_for<Args..., Wargs...> {};
 
         template<class T, class... Args>
-        struct node_tuple<remove_all_t<T, Args...>, void> {
-            using type = tuple_cat_t<node_tuple_t<Args>...>;
-        };
+        struct node_tuple<remove_all_t<T, Args...>, void> : node_tuple_for<Args...> {};
 
         template<class T, class E>
         struct node_tuple<cast_t<T, E>, void> : node_tuple<E> {};
@@ -19569,27 +19538,13 @@ namespace sqlite_orm {
         struct node_tuple<optional_container<T>, void> : node_tuple<T> {};
 
         template<class A, class T, class E>
-        struct node_tuple<like_t<A, T, E>, void> {
-            using arg_tuple = node_tuple_t<A>;
-            using pattern_tuple = node_tuple_t<T>;
-            using escape_tuple = node_tuple_t<E>;
-            using type = tuple_cat_t<arg_tuple, pattern_tuple, escape_tuple>;
-        };
+        struct node_tuple<like_t<A, T, E>, void> : node_tuple_for<A, T, E> {};
 
         template<class A, class T>
-        struct node_tuple<glob_t<A, T>, void> {
-            using arg_tuple = node_tuple_t<A>;
-            using pattern_tuple = node_tuple_t<T>;
-            using type = tuple_cat_t<arg_tuple, pattern_tuple>;
-        };
+        struct node_tuple<glob_t<A, T>, void> : node_tuple_for<A, T> {};
 
         template<class A, class T>
-        struct node_tuple<between_t<A, T>, void> {
-            using expression_tuple = node_tuple_t<A>;
-            using lower_tuple = node_tuple_t<T>;
-            using upper_tuple = node_tuple_t<T>;
-            using type = tuple_cat_t<expression_tuple, lower_tuple, upper_tuple>;
-        };
+        struct node_tuple<between_t<A, T>, void> : node_tuple_for<A, T, T> {};
 
         template<class T>
         struct node_tuple<named_collate<T>, void> : node_tuple<T> {};
@@ -19604,26 +19559,16 @@ namespace sqlite_orm {
         struct node_tuple<negated_condition_t<C>, void> : node_tuple<C> {};
 
         template<class R, class S, class... Args>
-        struct node_tuple<built_in_function_t<R, S, Args...>, void> {
-            using type = tuple_cat_t<node_tuple_t<Args>...>;
-        };
+        struct node_tuple<built_in_function_t<R, S, Args...>, void> : node_tuple_for<Args...> {};
 
         template<class R, class S, class... Args>
-        struct node_tuple<built_in_aggregate_function_t<R, S, Args...>, void> {
-            using type = tuple_cat_t<node_tuple_t<Args>...>;
-        };
+        struct node_tuple<built_in_aggregate_function_t<R, S, Args...>, void> : node_tuple_for<Args...> {};
 
         template<class F, class W>
-        struct node_tuple<filtered_aggregate_function<F, W>, void> {
-            using left_tuple = node_tuple_t<F>;
-            using right_tuple = node_tuple_t<W>;
-            using type = tuple_cat_t<left_tuple, right_tuple>;
-        };
+        struct node_tuple<filtered_aggregate_function<F, W>, void> : node_tuple_for<F, W> {};
 
         template<class F, class... Args>
-        struct node_tuple<function_call<F, Args...>, void> {
-            using type = tuple_cat_t<node_tuple_t<Args>...>;
-        };
+        struct node_tuple<function_call<F, Args...>, void> : node_tuple_for<Args...> {};
 
         template<class T, class O>
         struct node_tuple<left_join_t<T, O>, void> : node_tuple<O> {};
@@ -19646,19 +19591,10 @@ namespace sqlite_orm {
         struct node_tuple<inner_join_t<T, O>, void> : node_tuple<O> {};
 
         template<class R, class T, class E, class... Args>
-        struct node_tuple<simple_case_t<R, T, E, Args...>, void> {
-            using case_tuple = node_tuple_t<T>;
-            using args_tuple = tuple_cat_t<node_tuple_t<Args>...>;
-            using else_tuple = node_tuple_t<E>;
-            using type = tuple_cat_t<case_tuple, args_tuple, else_tuple>;
-        };
+        struct node_tuple<simple_case_t<R, T, E, Args...>, void> : node_tuple_for<T, Args..., E> {};
 
         template<class L, class R>
-        struct node_tuple<std::pair<L, R>, void> {
-            using left_tuple = node_tuple_t<L>;
-            using right_tuple = node_tuple_t<R>;
-            using type = tuple_cat_t<left_tuple, right_tuple>;
-        };
+        struct node_tuple<std::pair<L, R>, void> : node_tuple_for<L, R> {};
 
         template<class T, class E>
         struct node_tuple<as_t<T, E>, void> : node_tuple<E> {};
@@ -19667,14 +19603,10 @@ namespace sqlite_orm {
         struct node_tuple<limit_t<T, false, false, void>, void> : node_tuple<T> {};
 
         template<class T, class O>
-        struct node_tuple<limit_t<T, true, false, O>, void> {
-            using type = tuple_cat_t<node_tuple_t<T>, node_tuple_t<O>>;
-        };
+        struct node_tuple<limit_t<T, true, false, O>, void> : node_tuple_for<T, O> {};
 
         template<class T, class O>
-        struct node_tuple<limit_t<T, true, true, O>, void> {
-            using type = tuple_cat_t<node_tuple_t<O>, node_tuple_t<T>>;
-        };
+        struct node_tuple<limit_t<T, true, true, O>, void> : node_tuple_for<O, T> {};
     }
 }
 

@@ -160,9 +160,9 @@ namespace sqlite_orm {
             }
         };
 
-        template<class L, class R, class... Ds>
-        struct ast_iterator<binary_operator<L, R, Ds...>, void> {
-            using node_type = binary_operator<L, R, Ds...>;
+        template<class T>
+        struct ast_iterator<T, match_if<is_binary_operator, T>> {
+            using node_type = T;
 
             template<class C>
             void operator()(const node_type& node, C& lambda) const {
