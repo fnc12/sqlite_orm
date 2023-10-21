@@ -56,10 +56,27 @@ TEST_CASE("statement_serializer select_t") {
             expected = "SELECT ((1, 2, 3) = (4, 5, 6))";
         }
     }
-    SECTION("compound operator") {
-        auto statement = select(union_(select(1), select(2)));
-        stringValue = serialize(statement, context);
-        expected = "SELECT 1 UNION SELECT 2";
+    SECTION("compound operators") {
+        SECTION("union") {
+            auto statement = select(union_(select(1), select(2), select(3)));
+            stringValue = serialize(statement, context);
+            expected = "SELECT 1 UNION SELECT 2 UNION SELECT 3";
+        }
+        SECTION("union all") {
+            auto statement = select(union_all(select(1), select(2), select(3)));
+            stringValue = serialize(statement, context);
+            expected = "SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3";
+        }
+        SECTION("except") {
+            auto statement = select(except(select(1), select(2), select(3)));
+            stringValue = serialize(statement, context);
+            expected = "SELECT 1 EXCEPT SELECT 2 EXCEPT SELECT 3";
+        }
+        SECTION("intersect") {
+            auto statement = select(intersect(select(1), select(2), select(3)));
+            stringValue = serialize(statement, context);
+            expected = "SELECT 1 INTERSECT SELECT 2 INTERSECT SELECT 3";
+        }
     }
     SECTION("columns") {
         SECTION("literals") {

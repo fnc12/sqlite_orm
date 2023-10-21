@@ -143,14 +143,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct node_tuple<T, match_if<is_compound_operator, T>> {
-            using node_type = T;
-            using left_type = typename node_type::left_type;
-            using right_type = typename node_type::right_type;
-            using left_tuple = node_tuple_t<left_type>;
-            using right_tuple = node_tuple_t<right_type>;
-            using type = tuple_cat_t<left_tuple, right_tuple>;
-        };
+        struct node_tuple<T, match_if<is_compound_operator, T>> : node_tuple<typename T::expressions_tuple> {};
 
         template<class T, class... Args>
         struct node_tuple<select_t<T, Args...>, void> {

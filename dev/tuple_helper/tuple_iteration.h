@@ -37,7 +37,7 @@ namespace sqlite_orm {
 
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
         template<bool reversed = false, class Tpl, size_t... Idx, class L>
-        void iterate_tuple(const Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
+        void iterate_tuple(Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
             if constexpr(reversed) {
                 // nifty fold expression trick: make use of guaranteed right-to-left evaluation order when folding over operator=
                 int sink;
@@ -48,10 +48,10 @@ namespace sqlite_orm {
         }
 #else
         template<bool reversed = false, class Tpl, class L>
-        void iterate_tuple(const Tpl& /*tpl*/, std::index_sequence<>, L&& /*lambda*/) {}
+        void iterate_tuple(Tpl& /*tpl*/, std::index_sequence<>, L&& /*lambda*/) {}
 
         template<bool reversed = false, class Tpl, size_t I, size_t... Idx, class L>
-        void iterate_tuple(const Tpl& tpl, std::index_sequence<I, Idx...>, L&& lambda) {
+        void iterate_tuple(Tpl& tpl, std::index_sequence<I, Idx...>, L&& lambda) {
 #ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
             if constexpr(reversed) {
 #else
@@ -66,9 +66,9 @@ namespace sqlite_orm {
         }
 #endif
         template<bool reversed = false, class Tpl, class L>
-        void iterate_tuple(const Tpl& tpl, L&& lambda) {
+        void iterate_tuple(Tpl&& tpl, L&& lambda) {
             iterate_tuple<reversed>(tpl,
-                                    std::make_index_sequence<std::tuple_size<Tpl>::value>{},
+                                    std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
                                     std::forward<L>(lambda));
         }
 

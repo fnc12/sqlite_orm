@@ -740,12 +740,14 @@ namespace sqlite_orm {
  *  such as filtering columns by constraints having various traits.
  *  Hence it contains only a very small subset of a full MPL.
  *  
- *  Two key concepts are critical to understanding:
+ *  Three key concepts are critical to understanding:
  *  1. A 'metafunction' is a class template that represents a function invocable at compile-time.
- *  2. A 'metafunction class' is a certain form of metafunction representation that enables higher-order metaprogramming.
+ *     E.g. `template<class T> struct x { using type = int; };`
+ *  2. A 'metafunction operation' is an alias template that represents a nested template expression, whose instantiation yields a type.
+ *     E.g. `template<class T> using alias_op_t = typename x<T>::type`
+ *  3. A 'metafunction class' is a certain form of metafunction representation that enables higher-order metaprogramming.
  *     More precisely, it's a class with a nested metafunction called "fn"
  *     Correspondingly, a metafunction class invocation is defined as invocation of its nested "fn" metafunction.
- *  3. A 'metafunction operation' is an alias template that represents a function whose instantiation already yields a type.
  *
  *  Conventions:
  *  - "Fn" is the name for a metafunction template template parameter.
@@ -754,7 +756,7 @@ namespace sqlite_orm {
  *  - "higher order" denotes a metafunction that operates on another metafunction (i.e. takes it as an argument).
  */
 
-#include <type_traits>  //  std::false_type, std::true_type
+#include <type_traits>  //  std::enable_if, std::is_same
 
 // #include "cxx_universal.h"
 
@@ -788,6 +790,16 @@ namespace sqlite_orm {
 #endif
 
             /*
+             *  Given suitable template arguments, detect whether a template is an alias template.
+             *  
+             *  @note It exploits the fact that the `is_specialization_of` trait is only true for class templates
+             *  but always false for alias templates.
+             */
+            template<template<class...> class Template, class... Args>
+            SQLITE_ORM_INLINE_VAR constexpr bool is_alias_template_v =
+                !polyfill::is_specialization_of_v<Template<Args...>, Template>;
+
+            /*
              *  Invoke metafunction.
              */
             template<template<class...> class Fn, class... Args>
@@ -814,6 +826,32 @@ namespace sqlite_orm {
             template<template<class...> class Op, class... Args>
             using invoke_op_t = typename wrap_op<Op, Args...>::type;
 #endif
+
+            template<class AlwaysVoid, template<class...> class F, class... Args>
+            struct invoke_meta;
+
+            template<template<class...> class Op, class... Args>
+            struct invoke_meta<std::enable_if_t<is_alias_template_v<Op, Args...>>, Op, Args...> {
+                using type = Op<Args...>;
+            };
+
+            template<template<class...> class Fn, class... Args>
+            struct invoke_meta<std::enable_if_t<!is_alias_template_v<Fn, Args...>>, Fn, Args...> {
+                using type = typename Fn<Args...>::type;
+            };
+
+            /*
+             *  Invoke metafunction or metafunction operation.
+             *  
+             *  @attention If using an alias template, be aware that it isn't recognizable whether an alias template is
+             *  a. an alias of a class template (e.g. `template<class T> using aliased = x<T>`) or
+             *  b. an alias of a nested template expression yielding a result (e.g. `template<class T> alias_op_t = typename x<T>::type`)
+             *  Therefore, one cannot use `invoke_meta_t` with an alias of a class template (a.), or
+             *  in other words, `invoke_meta_t` expects an alias of a nested template expression (b.).
+             *  The alternative in that case is to use `invoke_fn_t`.
+             */
+            template<template<class...> class F, class... Args>
+            using invoke_meta_t = typename invoke_meta<void, F, Args...>::type;
 
             /*
              *  Invoke metafunction class by invoking its nested metafunction.
@@ -1066,9 +1104,20 @@ namespace sqlite_orm {
             using type = A;
         };
 
+        template<class... Args>
+        using same_or_void_t = typename same_or_void<Args...>::type;
+
         template<class A, class... Args>
         struct same_or_void<A, A, Args...> : same_or_void<A, Args...> {};
 
+        template<class Pack>
+        struct same_or_void_of;
+
+        template<template<class...> class Pack, class... Types>
+        struct same_or_void_of<Pack<Types...>> : same_or_void<Types...> {};
+
+        template<class Pack>
+        using same_or_void_of_t = typename same_or_void_of<Pack>::type;
     }
 }
 
@@ -1577,12 +1626,12 @@ namespace sqlite_orm {
             /**
              * Holds obect type of all referenced columns.
              */
-            using target_type = typename same_or_void<table_type_of_t<Rs>...>::type;
+            using target_type = same_or_void_t<table_type_of_t<Rs>...>;
 
             /**
              * Holds obect type of all source columns.
              */
-            using source_type = typename same_or_void<table_type_of_t<Cs>...>::type;
+            using source_type = same_or_void_t<table_type_of_t<Cs>...>;
 
             columns_type columns;
             references_type references;
@@ -6862,6 +6911,144 @@ namespace sqlite_orm {
 
 // #include "tuple_helper/tuple_filter.h"
 
+// #include "tuple_helper/tuple_iteration.h"
+
+#include <tuple>  //  std::tuple, std::get, std::tuple_element, std::tuple_size
+#include <type_traits>  //  std::remove_reference, std::index_sequence, std::make_index_sequence
+#include <utility>  //  std::forward, std::move
+
+// #include "../functional/cxx_universal.h"
+//  ::size_t
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../functional/cxx_functional_polyfill.h"
+
+namespace sqlite_orm {
+    namespace internal {
+
+        //  got it form here https://stackoverflow.com/questions/7858817/unpacking-a-tuple-to-call-a-matching-function-pointer
+        template<class Function, class FunctionPointer, class Tpl, size_t... Idx>
+        auto call(Function& f, FunctionPointer functionPointer, Tpl&& tpl, std::index_sequence<Idx...>) {
+            return (f.*functionPointer)(std::get<Idx>(std::forward<Tpl>(tpl))...);
+        }
+
+        template<class Function, class Tpl, size_t... Idx>
+        auto call(Function& f, Tpl&& tpl, std::index_sequence<Idx...>) {
+            return f(std::get<Idx>(std::forward<Tpl>(tpl))...);
+        }
+
+        template<class Function, class FunctionPointer, class Tpl>
+        auto call(Function& f, FunctionPointer functionPointer, Tpl&& tpl) {
+            constexpr size_t size = std::tuple_size<std::remove_reference_t<Tpl>>::value;
+            return call(f, functionPointer, std::forward<Tpl>(tpl), std::make_index_sequence<size>{});
+        }
+
+        // custom std::apply
+        template<class Function, class Tpl>
+        auto call(Function& f, Tpl&& tpl) {
+            constexpr size_t size = std::tuple_size<std::remove_reference_t<Tpl>>::value;
+            return call(f, std::forward<Tpl>(tpl), std::make_index_sequence<size>{});
+        }
+
+#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
+        template<bool reversed = false, class Tpl, size_t... Idx, class L>
+        void iterate_tuple(Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
+            if constexpr(reversed) {
+                // nifty fold expression trick: make use of guaranteed right-to-left evaluation order when folding over operator=
+                int sink;
+                ((lambda(std::get<Idx>(tpl)), sink) = ... = 0);
+            } else {
+                (lambda(std::get<Idx>(tpl)), ...);
+            }
+        }
+#else
+        template<bool reversed = false, class Tpl, class L>
+        void iterate_tuple(Tpl& /*tpl*/, std::index_sequence<>, L&& /*lambda*/) {}
+
+        template<bool reversed = false, class Tpl, size_t I, size_t... Idx, class L>
+        void iterate_tuple(Tpl& tpl, std::index_sequence<I, Idx...>, L&& lambda) {
+#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
+            if constexpr(reversed) {
+#else
+            if(reversed) {
+#endif
+                iterate_tuple<reversed>(tpl, std::index_sequence<Idx...>{}, std::forward<L>(lambda));
+                lambda(std::get<I>(tpl));
+            } else {
+                lambda(std::get<I>(tpl));
+                iterate_tuple<reversed>(tpl, std::index_sequence<Idx...>{}, std::forward<L>(lambda));
+            }
+        }
+#endif
+        template<bool reversed = false, class Tpl, class L>
+        void iterate_tuple(Tpl&& tpl, L&& lambda) {
+            iterate_tuple<reversed>(tpl,
+                                    std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
+                                    std::forward<L>(lambda));
+        }
+
+#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
+        template<class Tpl, size_t... Idx, class L>
+        void iterate_tuple(std::index_sequence<Idx...>, L&& lambda) {
+            (lambda((std::tuple_element_t<Idx, Tpl>*)nullptr), ...);
+        }
+#else
+        template<class Tpl, class L>
+        void iterate_tuple(std::index_sequence<>, L&& /*lambda*/) {}
+
+        template<class Tpl, size_t I, size_t... Idx, class L>
+        void iterate_tuple(std::index_sequence<I, Idx...>, L&& lambda) {
+            lambda((std::tuple_element_t<I, Tpl>*)nullptr);
+            iterate_tuple<Tpl>(std::index_sequence<Idx...>{}, std::forward<L>(lambda));
+        }
+#endif
+        template<class Tpl, class L>
+        void iterate_tuple(L&& lambda) {
+            iterate_tuple<Tpl>(std::make_index_sequence<std::tuple_size<Tpl>::value>{}, std::forward<L>(lambda));
+        }
+
+        template<class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
+        R create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, Projection project = {}) {
+            return R{polyfill::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
+        }
+
+        template<class R, class Tpl, class Projection = polyfill::identity>
+        R create_from_tuple(Tpl&& tpl, Projection project = {}) {
+            return create_from_tuple<R>(
+                std::forward<Tpl>(tpl),
+                std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
+                std::forward<Projection>(project));
+        }
+
+        template<template<class...> class Base, class L>
+        struct lambda_as_template_base : L {
+#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
+            lambda_as_template_base(L&& lambda) : L{std::move(lambda)} {}
+#endif
+            template<class... T>
+            decltype(auto) operator()(const Base<T...>& object) {
+                return L::operator()(object);
+            }
+        };
+
+        /*
+         *  This method wraps the specified callable in another function object,
+         *  which in turn implicitly casts its single argument to the specified template base class,
+         *  then passes the converted argument to the lambda.
+         *  
+         *  Note: This method is useful for reducing combinatorial instantiation of template lambdas,
+         *  as long as this library supports compilers that do not implement
+         *  explicit template parameters in generic lambdas [SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED].
+         *  Unfortunately it doesn't work with user-defined conversion operators in order to extract
+         *  parts of a class. In other words, the destination type must be a direct template base class.
+         */
+        template<template<class...> class Base, class L>
+        lambda_as_template_base<Base, L> call_as_template_base(L lambda) {
+            return {std::move(lambda)};
+        }
+    }
+}
+
 // #include "optional_container.h"
 
 // #include "ast/where.h"
@@ -7067,17 +7254,16 @@ namespace sqlite_orm {
         /**
          *  Base for UNION, UNION ALL, EXCEPT and INTERSECT
          */
-        template<class L, class R>
+        template<class... E>
         struct compound_operator {
-            using left_type = L;
-            using right_type = R;
+            using expressions_tuple = std::tuple<E...>;
 
-            left_type left;
-            right_type right;
+            expressions_tuple compound;
 
-            compound_operator(left_type l, right_type r) : left(std::move(l)), right(std::move(r)) {
-                this->left.highest_level = true;
-                this->right.highest_level = true;
+            compound_operator(expressions_tuple compound) : compound{std::move(compound)} {
+                iterate_tuple(this->compound, [](auto& expression) {
+                    expression.highest_level = true;
+                });
             }
         };
 
@@ -7106,15 +7292,12 @@ namespace sqlite_orm {
         /**
          *  UNION object type.
          */
-        template<class L, class R>
-        struct union_t : public compound_operator<L, R>, union_base {
-            using left_type = typename compound_operator<L, R>::left_type;
-            using right_type = typename compound_operator<L, R>::right_type;
+        template<class... E>
+        struct union_t : public compound_operator<E...>, union_base {
+            using typename compound_operator<E...>::expressions_tuple;
 
-            union_t(left_type l, right_type r, bool all_) :
-                compound_operator<L, R>{std::move(l), std::move(r)}, union_base{all_} {}
-
-            union_t(left_type l, right_type r) : union_t{std::move(l), std::move(r), false} {}
+            union_t(expressions_tuple compound, bool all) :
+                compound_operator<E...>{std::move(compound)}, union_base{all} {}
         };
 
         struct except_string {
@@ -7126,11 +7309,9 @@ namespace sqlite_orm {
         /**
          *  EXCEPT object type.
          */
-        template<class L, class R>
-        struct except_t : compound_operator<L, R>, except_string {
-            using super = compound_operator<L, R>;
-            using left_type = typename super::left_type;
-            using right_type = typename super::right_type;
+        template<class... E>
+        struct except_t : compound_operator<E...>, except_string {
+            using super = compound_operator<E...>;
 
             using super::super;
         };
@@ -7143,11 +7324,9 @@ namespace sqlite_orm {
         /**
          *  INTERSECT object type.
          */
-        template<class L, class R>
-        struct intersect_t : compound_operator<L, R>, intersect_string {
-            using super = compound_operator<L, R>;
-            using left_type = typename super::left_type;
-            using right_type = typename super::right_type;
+        template<class... E>
+        struct intersect_t : compound_operator<E...>, intersect_string {
+            using super = compound_operator<E...>;
 
             using super::super;
         };
@@ -7305,37 +7484,41 @@ namespace sqlite_orm {
 
     /**
      *  Public function for UNION operator.
-     *  lhs and rhs are subselect objects.
+     *  Expressions are subselect objects.
      *  Look through example in examples/union.cpp
      */
-    template<class L, class R>
-    internal::union_t<L, R> union_(L lhs, R rhs) {
-        return {std::move(lhs), std::move(rhs)};
-    }
-
-    /**
-     *  Public function for EXCEPT operator.
-     *  lhs and rhs are subselect objects.
-     *  Look through example in examples/except.cpp
-     */
-    template<class L, class R>
-    internal::except_t<L, R> except(L lhs, R rhs) {
-        return {std::move(lhs), std::move(rhs)};
-    }
-
-    template<class L, class R>
-    internal::intersect_t<L, R> intersect(L lhs, R rhs) {
-        return {std::move(lhs), std::move(rhs)};
+    template<class... E>
+    internal::union_t<E...> union_(E... expressions) {
+        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 expressions");
+        return {{std::forward<E>(expressions)...}, false};
     }
 
     /**
      *  Public function for UNION ALL operator.
-     *  lhs and rhs are subselect objects.
+     *  Expressions are subselect objects.
      *  Look through example in examples/union.cpp
      */
-    template<class L, class R>
-    internal::union_t<L, R> union_all(L lhs, R rhs) {
-        return {std::move(lhs), std::move(rhs), true};
+    template<class... E>
+    internal::union_t<E...> union_all(E... expressions) {
+        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 expressions");
+        return {{std::forward<E>(expressions)...}, true};
+    }
+
+    /**
+     *  Public function for EXCEPT operator.
+     *  Expressions are subselect objects.
+     *  Look through example in examples/except.cpp
+     */
+    template<class... E>
+    internal::except_t<E...> except(E... expressions) {
+        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 expressions");
+        return {{std::forward<E>(expressions)...}};
+    }
+
+    template<class... E>
+    internal::intersect_t<E...> intersect(E... expressions) {
+        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 expressions");
+        return {{std::forward<E>(expressions)...}};
     }
 
     /**
@@ -9595,142 +9778,6 @@ namespace sqlite_orm {
 
 // #include "../tuple_helper/tuple_iteration.h"
 
-#include <tuple>  //  std::tuple, std::get, std::tuple_element, std::tuple_size
-#include <type_traits>  //  std::remove_reference, std::index_sequence, std::make_index_sequence
-#include <utility>  //  std::forward, std::move
-
-// #include "../functional/cxx_universal.h"
-//  ::size_t
-// #include "../functional/cxx_type_traits_polyfill.h"
-
-// #include "../functional/cxx_functional_polyfill.h"
-
-namespace sqlite_orm {
-    namespace internal {
-
-        //  got it form here https://stackoverflow.com/questions/7858817/unpacking-a-tuple-to-call-a-matching-function-pointer
-        template<class Function, class FunctionPointer, class Tpl, size_t... Idx>
-        auto call(Function& f, FunctionPointer functionPointer, Tpl&& tpl, std::index_sequence<Idx...>) {
-            return (f.*functionPointer)(std::get<Idx>(std::forward<Tpl>(tpl))...);
-        }
-
-        template<class Function, class Tpl, size_t... Idx>
-        auto call(Function& f, Tpl&& tpl, std::index_sequence<Idx...>) {
-            return f(std::get<Idx>(std::forward<Tpl>(tpl))...);
-        }
-
-        template<class Function, class FunctionPointer, class Tpl>
-        auto call(Function& f, FunctionPointer functionPointer, Tpl&& tpl) {
-            constexpr size_t size = std::tuple_size<std::remove_reference_t<Tpl>>::value;
-            return call(f, functionPointer, std::forward<Tpl>(tpl), std::make_index_sequence<size>{});
-        }
-
-        // custom std::apply
-        template<class Function, class Tpl>
-        auto call(Function& f, Tpl&& tpl) {
-            constexpr size_t size = std::tuple_size<std::remove_reference_t<Tpl>>::value;
-            return call(f, std::forward<Tpl>(tpl), std::make_index_sequence<size>{});
-        }
-
-#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
-        template<bool reversed = false, class Tpl, size_t... Idx, class L>
-        void iterate_tuple(const Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
-            if constexpr(reversed) {
-                // nifty fold expression trick: make use of guaranteed right-to-left evaluation order when folding over operator=
-                int sink;
-                ((lambda(std::get<Idx>(tpl)), sink) = ... = 0);
-            } else {
-                (lambda(std::get<Idx>(tpl)), ...);
-            }
-        }
-#else
-        template<bool reversed = false, class Tpl, class L>
-        void iterate_tuple(const Tpl& /*tpl*/, std::index_sequence<>, L&& /*lambda*/) {}
-
-        template<bool reversed = false, class Tpl, size_t I, size_t... Idx, class L>
-        void iterate_tuple(const Tpl& tpl, std::index_sequence<I, Idx...>, L&& lambda) {
-#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
-            if constexpr(reversed) {
-#else
-            if(reversed) {
-#endif
-                iterate_tuple<reversed>(tpl, std::index_sequence<Idx...>{}, std::forward<L>(lambda));
-                lambda(std::get<I>(tpl));
-            } else {
-                lambda(std::get<I>(tpl));
-                iterate_tuple<reversed>(tpl, std::index_sequence<Idx...>{}, std::forward<L>(lambda));
-            }
-        }
-#endif
-        template<bool reversed = false, class Tpl, class L>
-        void iterate_tuple(const Tpl& tpl, L&& lambda) {
-            iterate_tuple<reversed>(tpl,
-                                    std::make_index_sequence<std::tuple_size<Tpl>::value>{},
-                                    std::forward<L>(lambda));
-        }
-
-#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
-        template<class Tpl, size_t... Idx, class L>
-        void iterate_tuple(std::index_sequence<Idx...>, L&& lambda) {
-            (lambda((std::tuple_element_t<Idx, Tpl>*)nullptr), ...);
-        }
-#else
-        template<class Tpl, class L>
-        void iterate_tuple(std::index_sequence<>, L&& /*lambda*/) {}
-
-        template<class Tpl, size_t I, size_t... Idx, class L>
-        void iterate_tuple(std::index_sequence<I, Idx...>, L&& lambda) {
-            lambda((std::tuple_element_t<I, Tpl>*)nullptr);
-            iterate_tuple<Tpl>(std::index_sequence<Idx...>{}, std::forward<L>(lambda));
-        }
-#endif
-        template<class Tpl, class L>
-        void iterate_tuple(L&& lambda) {
-            iterate_tuple<Tpl>(std::make_index_sequence<std::tuple_size<Tpl>::value>{}, std::forward<L>(lambda));
-        }
-
-        template<class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
-        R create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, Projection project = {}) {
-            return R{polyfill::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
-        }
-
-        template<class R, class Tpl, class Projection = polyfill::identity>
-        R create_from_tuple(Tpl&& tpl, Projection project = {}) {
-            return create_from_tuple<R>(
-                std::forward<Tpl>(tpl),
-                std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
-                std::forward<Projection>(project));
-        }
-
-        template<template<class...> class Base, class L>
-        struct lambda_as_template_base : L {
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            lambda_as_template_base(L&& lambda) : L{std::move(lambda)} {}
-#endif
-            template<class... T>
-            decltype(auto) operator()(const Base<T...>& object) {
-                return L::operator()(object);
-            }
-        };
-
-        /*
-         *  This method wraps the specified callable in another function object,
-         *  which in turn implicitly casts its single argument to the specified template base class,
-         *  then passes the converted argument to the lambda.
-         *  
-         *  Note: This method is useful for reducing combinatorial instantiation of template lambdas,
-         *  as long as this library supports compilers that do not implement
-         *  explicit template parameters in generic lambdas [SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED].
-         *  Unfortunately it doesn't work with user-defined conversion operators in order to extract
-         *  parts of a class. In other words, the destination type must be a direct template base class.
-         */
-        template<template<class...> class Base, class L>
-        lambda_as_template_base<Base, L> call_as_template_base(L lambda) {
-            return {std::move(lambda)};
-        }
-    }
-}
-
 // #include "../member_traits/member_traits.h"
 
 // #include "../typed_comparator.h"
@@ -10441,6 +10488,8 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_universal.h"
 
+// #include "functional/mpl.h"
+
 // #include "tuple_helper/tuple_traits.h"
 
 // #include "tuple_helper/tuple_fy.h"
@@ -10466,6 +10515,8 @@ namespace sqlite_orm {
 }
 
 // #include "tuple_helper/tuple_filter.h"
+
+// #include "tuple_helper/same_or_void.h"
 
 // #include "type_traits.h"
 
@@ -10518,28 +10569,26 @@ namespace sqlite_orm {
 
 // #include "tuple_helper/tuple_transformer.h"
 
-#include <tuple>  //  std::tuple
-
 // #include "../functional/mpl.h"
 
 namespace sqlite_orm {
     namespace internal {
 
-        template<class Tpl, template<class...> class Op>
+        template<class Pack, template<class...> class Op>
         struct tuple_transformer;
 
-        template<class... Types, template<class...> class Op>
-        struct tuple_transformer<std::tuple<Types...>, Op> {
-            using type = std::tuple<mpl::invoke_op_t<Op, Types>...>;
+        template<template<class...> class Pack, class... Types, template<class...> class Op>
+        struct tuple_transformer<Pack<Types...>, Op> {
+            using type = Pack<mpl::invoke_meta_t<Op, Types>...>;
         };
 
         /*
          *  Transform specified tuple.
          *  
-         *  `Op` is a metafunction operation.
+         *  `Op` is a metafunction or metafunction operation.
          */
-        template<class Tpl, template<class...> class Op>
-        using transform_tuple_t = typename tuple_transformer<Tpl, Op>::type;
+        template<class Pack, template<class...> class Op>
+        using transform_tuple_t = typename tuple_transformer<Pack, Op>::type;
     }
 }
 
@@ -11054,11 +11103,11 @@ namespace sqlite_orm {
 
         template<class DBOs, class T>
         struct column_result_t<DBOs, T, match_if<is_compound_operator, T>> {
-            using left_result = column_result_of_t<DBOs, typename T::left_type>;
-            using right_result = column_result_of_t<DBOs, typename T::right_type>;
-            static_assert(std::is_same<left_result, right_result>::value,
+            using column_result_fn = mpl::bind_front_fn<column_result_of_t, DBOs>;
+            using types_tuple = transform_tuple_t<typename T::expressions_tuple, column_result_fn::template fn>;
+            using type = std::tuple_element_t<0, types_tuple>;
+            static_assert(!std::is_same<void, same_or_void_of_t<types_tuple>>::value,
                           "Compound subselect queries must return same types");
-            using type = left_result;
         };
 
         template<class DBOs, class T>
@@ -12778,8 +12827,7 @@ namespace sqlite_orm {
 
             template<class L>
             void operator()(const node_type& c, L& lambda) const {
-                iterate_ast(c.left, lambda);
-                iterate_ast(c.right, lambda);
+                iterate_ast(c.compound, lambda);
             }
         };
 
@@ -13439,6 +13487,7 @@ namespace sqlite_orm {
             actions_tuple,
             expressions_tuple,
             dynamic_expressions,
+            compound_expressions,
             serialized,
             identifier,
             identifiers,
@@ -13466,6 +13515,7 @@ namespace sqlite_orm {
         constexpr streaming<stream_as::actions_tuple> streaming_actions_tuple{};
         constexpr streaming<stream_as::expressions_tuple> streaming_expressions_tuple{};
         constexpr streaming<stream_as::dynamic_expressions> streaming_dynamic_expressions{};
+        constexpr streaming<stream_as::compound_expressions> streaming_compound_expressions{};
         constexpr streaming<stream_as::serialized> streaming_serialized{};
         constexpr streaming<stream_as::identifier> streaming_identifier{};
         constexpr streaming<stream_as::identifiers> streaming_identifiers{};
@@ -13515,6 +13565,25 @@ namespace sqlite_orm {
             iterate_tuple(args, [&ss, &context, first = true](auto& arg) mutable {
                 constexpr std::array<const char*, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)] << serialize(arg, context);
+            });
+            return ss;
+        }
+
+        // serialize and stream expressions of a compound statement;
+        // separated by compound operator
+        template<class T, class Ctx>
+        std::ostream&
+        operator<<(std::ostream& ss,
+                   std::tuple<const streaming<stream_as::compound_expressions>&, T, const std::string&, Ctx> tpl) {
+            const auto& args = get<1>(tpl);
+            const std::string& opString = get<2>(tpl);
+            auto& context = get<3>(tpl);
+
+            iterate_tuple(args, [&ss, &opString, &context, first = true](auto& arg) mutable {
+                if(!std::exchange(first, false)) {
+                    ss << ' ' << opString << ' ';
+                }
+                ss << serialize(arg, context);
             });
             return ss;
         }
@@ -16255,9 +16324,7 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& c, const Ctx& context) const {
                 std::stringstream ss;
-                ss << serialize(c.left, context) << " ";
-                ss << static_cast<std::string>(c) << " ";
-                ss << serialize(c.right, context);
+                ss << streaming_compound_expressions(c.compound, static_cast<std::string>(c), context);
                 return ss.str();
             }
         };
@@ -19431,14 +19498,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct node_tuple<T, match_if<is_compound_operator, T>> {
-            using node_type = T;
-            using left_type = typename node_type::left_type;
-            using right_type = typename node_type::right_type;
-            using left_tuple = node_tuple_t<left_type>;
-            using right_tuple = node_tuple_t<right_type>;
-            using type = tuple_cat_t<left_tuple, right_tuple>;
-        };
+        struct node_tuple<T, match_if<is_compound_operator, T>> : node_tuple<typename T::expressions_tuple> {};
 
         template<class T, class... Args>
         struct node_tuple<select_t<T, Args...>, void> {

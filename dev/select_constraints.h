@@ -10,6 +10,7 @@
 #include "functional/cxx_type_traits_polyfill.h"
 #include "is_base_of_template.h"
 #include "tuple_helper/tuple_filter.h"
+#include "tuple_helper/tuple_iteration.h"
 #include "optional_container.h"
 #include "ast/where.h"
 #include "ast/group_by.h"
@@ -109,17 +110,16 @@ namespace sqlite_orm {
         /**
          *  Base for UNION, UNION ALL, EXCEPT and INTERSECT
          */
-        template<class L, class R>
+        template<class... E>
         struct compound_operator {
-            using left_type = L;
-            using right_type = R;
+            using expressions_tuple = std::tuple<E...>;
 
-            left_type left;
-            right_type right;
+            expressions_tuple compound;
 
-            compound_operator(left_type l, right_type r) : left(std::move(l)), right(std::move(r)) {
-                this->left.highest_level = true;
-                this->right.highest_level = true;
+            compound_operator(expressions_tuple compound) : compound{std::move(compound)} {
+                iterate_tuple(this->compound, [](auto& expression) {
+                    expression.highest_level = true;
+                });
             }
         };
 
@@ -148,15 +148,12 @@ namespace sqlite_orm {
         /**
          *  UNION object type.
          */
-        template<class L, class R>
-        struct union_t : public compound_operator<L, R>, union_base {
-            using left_type = typename compound_operator<L, R>::left_type;
-            using right_type = typename compound_operator<L, R>::right_type;
+        template<class... E>
+        struct union_t : public compound_operator<E...>, union_base {
+            using typename compound_operator<E...>::expressions_tuple;
 
-            union_t(left_type l, right_type r, bool all_) :
-                compound_operator<L, R>{std::move(l), std::move(r)}, union_base{all_} {}
-
-            union_t(left_type l, right_type r) : union_t{std::move(l), std::move(r), false} {}
+            union_t(expressions_tuple compound, bool all) :
+                compound_operator<E...>{std::move(compound)}, union_base{all} {}
         };
 
         struct except_string {
@@ -168,11 +165,9 @@ namespace sqlite_orm {
         /**
          *  EXCEPT object type.
          */
-        template<class L, class R>
-        struct except_t : compound_operator<L, R>, except_string {
-            using super = compound_operator<L, R>;
-            using left_type = typename super::left_type;
-            using right_type = typename super::right_type;
+        template<class... E>
+        struct except_t : compound_operator<E...>, except_string {
+            using super = compound_operator<E...>;
 
             using super::super;
         };
@@ -185,11 +180,9 @@ namespace sqlite_orm {
         /**
          *  INTERSECT object type.
          */
-        template<class L, class R>
-        struct intersect_t : compound_operator<L, R>, intersect_string {
-            using super = compound_operator<L, R>;
-            using left_type = typename super::left_type;
-            using right_type = typename super::right_type;
+        template<class... E>
+        struct intersect_t : compound_operator<E...>, intersect_string {
+            using super = compound_operator<E...>;
 
             using super::super;
         };
@@ -347,37 +340,41 @@ namespace sqlite_orm {
 
     /**
      *  Public function for UNION operator.
-     *  lhs and rhs are subselect objects.
+     *  Expressions are subselect objects.
      *  Look through example in examples/union.cpp
      */
-    template<class L, class R>
-    internal::union_t<L, R> union_(L lhs, R rhs) {
-        return {std::move(lhs), std::move(rhs)};
-    }
-
-    /**
-     *  Public function for EXCEPT operator.
-     *  lhs and rhs are subselect objects.
-     *  Look through example in examples/except.cpp
-     */
-    template<class L, class R>
-    internal::except_t<L, R> except(L lhs, R rhs) {
-        return {std::move(lhs), std::move(rhs)};
-    }
-
-    template<class L, class R>
-    internal::intersect_t<L, R> intersect(L lhs, R rhs) {
-        return {std::move(lhs), std::move(rhs)};
+    template<class... E>
+    internal::union_t<E...> union_(E... expressions) {
+        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 expressions");
+        return {{std::forward<E>(expressions)...}, false};
     }
 
     /**
      *  Public function for UNION ALL operator.
-     *  lhs and rhs are subselect objects.
+     *  Expressions are subselect objects.
      *  Look through example in examples/union.cpp
      */
-    template<class L, class R>
-    internal::union_t<L, R> union_all(L lhs, R rhs) {
-        return {std::move(lhs), std::move(rhs), true};
+    template<class... E>
+    internal::union_t<E...> union_all(E... expressions) {
+        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 expressions");
+        return {{std::forward<E>(expressions)...}, true};
+    }
+
+    /**
+     *  Public function for EXCEPT operator.
+     *  Expressions are subselect objects.
+     *  Look through example in examples/except.cpp
+     */
+    template<class... E>
+    internal::except_t<E...> except(E... expressions) {
+        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 expressions");
+        return {{std::forward<E>(expressions)...}};
+    }
+
+    template<class... E>
+    internal::intersect_t<E...> intersect(E... expressions) {
+        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 expressions");
+        return {{std::forward<E>(expressions)...}};
     }
 
     /**

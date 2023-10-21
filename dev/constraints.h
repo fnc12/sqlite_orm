@@ -291,12 +291,12 @@ namespace sqlite_orm {
             /**
              * Holds obect type of all referenced columns.
              */
-            using target_type = typename same_or_void<table_type_of_t<Rs>...>::type;
+            using target_type = same_or_void_t<table_type_of_t<Rs>...>;
 
             /**
              * Holds obect type of all source columns.
              */
-            using source_type = typename same_or_void<table_type_of_t<Cs>...>::type;
+            using source_type = same_or_void_t<table_type_of_t<Cs>...>;
 
             columns_type columns;
             references_type references;

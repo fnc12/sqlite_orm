@@ -8,12 +8,14 @@
  *  such as filtering columns by constraints having various traits.
  *  Hence it contains only a very small subset of a full MPL.
  *  
- *  Two key concepts are critical to understanding:
+ *  Three key concepts are critical to understanding:
  *  1. A 'metafunction' is a class template that represents a function invocable at compile-time.
- *  2. A 'metafunction class' is a certain form of metafunction representation that enables higher-order metaprogramming.
+ *     E.g. `template<class T> struct x { using type = int; };`
+ *  2. A 'metafunction operation' is an alias template that represents a nested template expression, whose instantiation yields a type.
+ *     E.g. `template<class T> using alias_op_t = typename x<T>::type`
+ *  3. A 'metafunction class' is a certain form of metafunction representation that enables higher-order metaprogramming.
  *     More precisely, it's a class with a nested metafunction called "fn"
  *     Correspondingly, a metafunction class invocation is defined as invocation of its nested "fn" metafunction.
- *  3. A 'metafunction operation' is an alias template that represents a function whose instantiation already yields a type.
  *
  *  Conventions:
  *  - "Fn" is the name for a metafunction template template parameter.
@@ -22,7 +24,7 @@
  *  - "higher order" denotes a metafunction that operates on another metafunction (i.e. takes it as an argument).
  */
 
-#include <type_traits>  //  std::false_type, std::true_type
+#include <type_traits>  //  std::enable_if, std::is_same
 
 #include "cxx_universal.h"
 #include "cxx_type_traits_polyfill.h"
@@ -55,6 +57,16 @@ namespace sqlite_orm {
 #endif
 
             /*
+             *  Given suitable template arguments, detect whether a template is an alias template.
+             *  
+             *  @note It exploits the fact that the `is_specialization_of` trait is only true for class templates
+             *  but always false for alias templates.
+             */
+            template<template<class...> class Template, class... Args>
+            SQLITE_ORM_INLINE_VAR constexpr bool is_alias_template_v =
+                !polyfill::is_specialization_of_v<Template<Args...>, Template>;
+
+            /*
              *  Invoke metafunction.
              */
             template<template<class...> class Fn, class... Args>
@@ -81,6 +93,32 @@ namespace sqlite_orm {
             template<template<class...> class Op, class... Args>
             using invoke_op_t = typename wrap_op<Op, Args...>::type;
 #endif
+
+            template<class AlwaysVoid, template<class...> class F, class... Args>
+            struct invoke_meta;
+
+            template<template<class...> class Op, class... Args>
+            struct invoke_meta<std::enable_if_t<is_alias_template_v<Op, Args...>>, Op, Args...> {
+                using type = Op<Args...>;
+            };
+
+            template<template<class...> class Fn, class... Args>
+            struct invoke_meta<std::enable_if_t<!is_alias_template_v<Fn, Args...>>, Fn, Args...> {
+                using type = typename Fn<Args...>::type;
+            };
+
+            /*
+             *  Invoke metafunction or metafunction operation.
+             *  
+             *  @attention If using an alias template, be aware that it isn't recognizable whether an alias template is
+             *  a. an alias of a class template (e.g. `template<class T> using aliased = x<T>`) or
+             *  b. an alias of a nested template expression yielding a result (e.g. `template<class T> alias_op_t = typename x<T>::type`)
+             *  Therefore, one cannot use `invoke_meta_t` with an alias of a class template (a.), or
+             *  in other words, `invoke_meta_t` expects an alias of a nested template expression (b.).
+             *  The alternative in that case is to use `invoke_fn_t`.
+             */
+            template<template<class...> class F, class... Args>
+            using invoke_meta_t = typename invoke_meta<void, F, Args...>::type;
 
             /*
              *  Invoke metafunction class by invoking its nested metafunction.
