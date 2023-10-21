@@ -10077,7 +10077,7 @@ namespace sqlite_orm {
                 basic_table{std::move(name)}, module_details{std::move(module_details)} {}
 #endif
 
-            /** 
+            /**
              *  Call passed lambda with columns not having the specified constraint trait `OpTrait`. 
              *  @param lambda Lambda called for each column. 
              */
