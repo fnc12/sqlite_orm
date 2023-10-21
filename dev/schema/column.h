@@ -83,7 +83,8 @@ namespace sqlite_orm {
                 return tuple_has<Trait, constraints_type>::value;
             }
 
-            constexpr static bool is_primary_key = mpl::invoke_t<check_if_tuple_has<internal::is_primary_key>, constraints_type>::value;
+            constexpr static bool is_primary_key =
+                mpl::invoke_t<check_if_tuple_has<internal::is_primary_key>, constraints_type>::value;
 
             constexpr bool is_generated() const {
 #if SQLITE_VERSION_NUMBER >= 3031000

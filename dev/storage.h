@@ -174,11 +174,12 @@ namespace sqlite_orm {
             template<class O>
             void assert_updatable_type() const {
                 using Table = storage_pick_table_t<O, db_objects_type>;
-                constexpr int primaryKeyColumnsCount = Table::primary_key_columns_count + Table::dedicated_primary_key_columns_count;
+                constexpr int primaryKeyColumnsCount =
+                    Table::primary_key_columns_count + Table::dedicated_primary_key_columns_count;
                 constexpr int nonPrimaryKeysColumnsCount = Table::columns_count - primaryKeyColumnsCount;
-                static_assert(primaryKeyColumnsCount > 0,
-                    "Type with no primary keys can't be updated");
-                static_assert(nonPrimaryKeysColumnsCount > 0,
+                static_assert(primaryKeyColumnsCount > 0, "Type with no primary keys can't be updated");
+                static_assert(
+                    nonPrimaryKeysColumnsCount > 0,
                     "Type with primary keys only can't be updated. You need at least 1 non-primary key column");
             }
 

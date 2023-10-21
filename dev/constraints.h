@@ -460,16 +460,17 @@ namespace sqlite_orm {
         template<class T>
         struct primary_key_colums_count_t;
 
-        template<class ...Cs>
-        struct primary_key_colums_count_t<primary_key_t<Cs...>>: std::integral_constant<int, static_cast<int>(sizeof...(Cs))> {};
+        template<class... Cs>
+        struct primary_key_colums_count_t<primary_key_t<Cs...>>
+            : std::integral_constant<int, static_cast<int>(sizeof...(Cs))> {};
 
-        template<class ...Pks>
+        template<class... Pks>
         struct flatten_primry_keys_columns {
             using columns_tuple = typename conc_tuple<typename Pks::columns_tuple...>::type;
         };
 
-        template<class ...Pks>
-        struct flatten_primry_keys_columns<std::tuple<Pks...>>: flatten_primry_keys_columns<Pks...> {};
+        template<class... Pks>
+        struct flatten_primry_keys_columns<std::tuple<Pks...>> : flatten_primry_keys_columns<Pks...> {};
 
         template<class T>
         using is_constraint =

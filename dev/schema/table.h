@@ -43,12 +43,14 @@ namespace sqlite_orm {
             using elements_type = std::tuple<Cs...>;
             using columns_tuple = filter_tuple_t<elements_type, is_column>;
             using dedicated_primary_keys_tuple = filter_tuple_t<elements_type, is_primary_key>;
-            using dedicated_primary_keys_columns_tuple = typename flatten_primry_keys_columns<dedicated_primary_keys_tuple>::columns_tuple;
+            using dedicated_primary_keys_columns_tuple =
+                typename flatten_primry_keys_columns<dedicated_primary_keys_tuple>::columns_tuple;
 
             static constexpr bool is_without_rowid_v = WithoutRowId;
             static constexpr int columns_count = static_cast<int>(std::tuple_size<columns_tuple>::value);
             static constexpr int primary_key_columns_count = count_tuple<columns_tuple, is_primary_key_column>::value;
-            static constexpr int dedicated_primary_key_columns_count = static_cast<int>(std::tuple_size<dedicated_primary_keys_columns_tuple>::value);
+            static constexpr int dedicated_primary_key_columns_count =
+                static_cast<int>(std::tuple_size<dedicated_primary_keys_columns_tuple>::value);
 
             using is_without_rowid = polyfill::bool_constant<is_without_rowid_v>;
 
@@ -66,7 +68,7 @@ namespace sqlite_orm {
             /**
              *  Returns foreign keys count in table definition
              */
-            static constexpr int foreign_keys_count = 
+            static constexpr int foreign_keys_count =
 #if SQLITE_VERSION_NUMBER >= 3006019
                 static_cast<int>(filter_tuple_sequence_t<elements_type, is_foreign_key>::size());
 #else
