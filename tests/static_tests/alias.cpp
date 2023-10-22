@@ -24,6 +24,7 @@ TEST_CASE("aliases") {
     struct User {
         int id;
     };
+    struct DerivedUser : User {};
 
     SECTION("column alias expressions") {
         runTest<alias_holder<column_alias<'a'>>>(get<colalias_a>());
@@ -31,6 +32,11 @@ TEST_CASE("aliases") {
         runTest<alias_column_t<alias_z<User>, int User::*>>(alias_column<alias_z<User>>(&User::id));
         runTest<alias_column_t<alias_z<User>, column_pointer<User, int User::*>>>(
             alias_column<alias_z<User>>(column<User>(&User::id)));
+        runTest<alias_column_t<alias_d<DerivedUser>, column_pointer<DerivedUser, int User::*>>>(
+            alias_column<alias_d<DerivedUser>>(column<DerivedUser>(&User::id)));
+        // must implicitly create column pointer
+        runTest<alias_column_t<alias_d<DerivedUser>, column_pointer<DerivedUser, int User::*>>>(
+            alias_column<alias_d<DerivedUser>>(&User::id));
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         runTest<alias_holder<column_alias<'a'>>>(get<"a"_col>());
         runTest<column_alias<'a'>>("a"_col);
@@ -44,6 +50,13 @@ TEST_CASE("aliases") {
         runTest<alias_column_t<alias_z<User>, column_pointer<User, int User::*>>>(z_alias->*column<User>(&User::id));
         runTest<alias_column_t<alias_z<User>, column_pointer<User, int User::*>>>(
             alias_column<z_alias>(column<User>(&User::id)));
+        constexpr auto d_alias = "d"_alias.for_<DerivedUser>();
+        runTest<alias_column_t<alias_d<DerivedUser>, column_pointer<DerivedUser, int User::*>>>(
+            alias_column<d_alias>(column<DerivedUser>(&User::id)));
+        // must implicitly create column pointer
+        runTest<alias_column_t<alias_d<DerivedUser>, column_pointer<DerivedUser, int User::*>>>(
+            alias_column<d_alias>(&User::id));
+        runTest<alias_column_t<alias_d<DerivedUser>, column_pointer<DerivedUser, int User::*>>>(d_alias->*&User::id);
 #endif
     }
 }
