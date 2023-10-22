@@ -10078,26 +10078,26 @@ namespace sqlite_orm {
 #endif
 
             /**
-             *  Call passed lambda with columns not having the specified constraint trait `OpTrait`. 
-             *  @param lambda Lambda called for each column. 
+             *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
+             *  @param lambda Lambda called for each column.
              */
             template<template<class...> class OpTraitFn, class L>
             void for_each_column_excluding(L&& lambda) const {
                 this->module_details.template for_each_column_excluding<OpTraitFn>(lambda);
             }
 
-            /** 
-             *  Call passed lambda with columns not having the specified constraint trait `OpTrait`. 
-             *  @param lambda Lambda called for each column. 
+            /**
+             *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
+             *  @param lambda Lambda called for each column.
              */
             template<class OpTraitFnCls, class L, satisfies<mpl::is_metafunction_class, OpTraitFnCls> = true>
             void for_each_column_excluding(L&& lambda) const {
                 this->module_details.template for_each_column_excluding<OpTraitFnCls>(lambda);
             }
 
-            /** 
-             *  Call passed lambda with all defined columns. 
-             *  @param lambda Lambda called for each column. Function signature: `void(auto& column)` 
+            /**
+             *  Call passed lambda with all defined columns.
+             *  @param lambda Lambda called for each column. Function signature: `void(auto& column)`
              */
             template<class L>
             void for_each_column(L&& lambda) const {
@@ -10120,27 +10120,27 @@ namespace sqlite_orm {
 
             using_fts5_t(columns_type columns) : columns(std::move(columns)) {}
 
-            /** 
-             *  Call passed lambda with columns not having the specified constraint trait `OpTrait`. 
-             *  @param lambda Lambda called for each column. 
+            /**
+             *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
+             *  @param lambda Lambda called for each column.
              */
             template<template<class...> class OpTraitFn, class L>
             void for_each_column_excluding(L&& lambda) const {
                 iterate_tuple(this->columns, col_index_sequence_excluding<columns_type, OpTraitFn>{}, lambda);
             }
 
-            /** 
-             *  Call passed lambda with columns not having the specified constraint trait `OpTrait`. 
-             *  @param lambda Lambda called for each column. 
+            /**
+             *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
+             *  @param lambda Lambda called for each column.
              */
             template<class OpTraitFnCls, class L, satisfies<mpl::is_metafunction_class, OpTraitFnCls> = true>
             void for_each_column_excluding(L&& lambda) const {
                 this->for_each_column_excluding<OpTraitFnCls::template fn>(lambda);
             }
 
-            /** 
-             *  Call passed lambda with all defined columns. 
-             *  @param lambda Lambda called for each column. Function signature: `void(auto& column)` 
+            /**
+             *  Call passed lambda with all defined columns.
+             *  @param lambda Lambda called for each column. Function signature: `void(auto& column)`
              */
             template<class L>
             void for_each_column(L&& lambda) const {
@@ -10185,10 +10185,10 @@ namespace sqlite_orm {
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(columns)...)});
     }
 
-    /** 
-     *  Factory function for a table definition. 
-     * 
-     *  The mapped object type is determined implicitly from the first column definition. 
+    /**
+     *  Factory function for a table definition.
+     *  
+     *  The mapped object type is determined implicitly from the first column definition.
      */
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::table_t<T, false, Cs...> make_table(std::string name, Cs... args) {
@@ -10196,10 +10196,10 @@ namespace sqlite_orm {
             return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
     }
 
-    /** 
-     *  Factory function for a table definition. 
+    /**
+     *  Factory function for a table definition.
      *  
-     *  The mapped object type is explicitly specified. 
+     *  The mapped object type is explicitly specified.
      */
     template<class T, class... Cs>
     internal::table_t<T, false, Cs...> make_table(std::string name, Cs... args) {
