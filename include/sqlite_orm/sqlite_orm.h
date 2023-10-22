@@ -8222,7 +8222,7 @@ namespace sqlite_orm {
      *  Example:
      *  constexpr auto m = "m"_alias.for_<Employee>();
      *  auto reportingTo = 
-     *      storage.select(asterisk<m>(), inner_join<m>(on(m->*&Employee::reportsTo == c(&Employee::employeeId))));
+     *      storage.select(asterisk<m>(), inner_join<m>(on(m->*&Employee::reportsTo == &Employee::employeeId)));
      */
     template<orm_recordset_alias auto alias>
     auto asterisk(bool definedOrder = false) {
@@ -10991,7 +10991,7 @@ namespace sqlite_orm {
 
     /**
      *  Factory function for a table definition.
-     *
+     *  
      *  The mapped object type is determined implicitly from the first column definition.
      */
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
@@ -11002,7 +11002,7 @@ namespace sqlite_orm {
 
     /**
      *  Factory function for a table definition.
-     * 
+     *  
      *  The mapped object type is explicitly specified.
      */
     template<class T, class... Cs>
@@ -15709,6 +15709,15 @@ namespace sqlite_orm {
                 return tableNames;
             }
 
+            /**
+             *  Call it once during storage lifetime to make it keeping its connection opened till dtor call.
+             *  By default if storage is not in-memory it calls `sqlite3_open` only when the connection is really
+             *  needed and closes when it is not needed. This function breaks this rule. In memory storage always
+             *  keeps connection opened so calling this for in-memory storage changes nothing.
+             *  Note about multithreading: in multithreading context avoiding using this function for not in-memory
+             *  storage may lead to data races. If you have data races in such a configuration try to call `open_forever`
+             *  before accessing your storage - it may fix data races.
+             */
             void open_forever() {
                 this->isOpenedForever = true;
                 this->connection->retain();

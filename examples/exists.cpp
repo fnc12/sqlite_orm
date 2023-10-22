@@ -483,7 +483,7 @@ int main(int, char**) {
         auto where_clause = select(d->*&Customer::agentCode,
                                    from<d>(),
                                    where(is_equal(c_als->*&Customer::paymentAmt, std::ref(amount)) and
-                                         (d->*&Customer::agentCode == c(c_als->*&Customer::agentCode))));
+                                         (d->*&Customer::agentCode == c_als->*&Customer::agentCode)));
 
         amount = 7000;
 
@@ -502,7 +502,7 @@ int main(int, char**) {
             select(alias_column<als_2>(&Customer::agentCode),
                    from<als_2>(),
                    where(is_equal(alias_column<als>(&Customer::paymentAmt), std::ref(amount)) and
-                         (alias_column<als_2>(&Customer::agentCode) == c(alias_column<als>(&Customer::agentCode)))));
+                         (alias_column<als_2>(&Customer::agentCode) == alias_column<als>(&Customer::agentCode))));
 
         amount = 7000;
 
@@ -513,7 +513,7 @@ int main(int, char**) {
                                            &Order::custCode,
                                            alias_column<als>(&Customer::paymentAmt)),
                                    from<Order>(),
-                                   inner_join<als>(on(alias_column<als>(&Customer::agentCode) == c(&Order::agentCode))),
+                                   inner_join<als>(on(alias_column<als>(&Customer::agentCode) == &Order::agentCode)),
                                    where(not exists(where_clause)),
                                    order_by(alias_column<als>(&Customer::paymentAmt))));
 #endif

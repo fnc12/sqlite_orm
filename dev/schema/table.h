@@ -415,7 +415,7 @@ namespace sqlite_orm {
 
     /**
      *  Factory function for a table definition.
-     *
+     *  
      *  The mapped object type is determined implicitly from the first column definition.
      */
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
@@ -426,7 +426,7 @@ namespace sqlite_orm {
 
     /**
      *  Factory function for a table definition.
-     * 
+     *  
      *  The mapped object type is explicitly specified.
      */
     template<class T, class... Cs>
