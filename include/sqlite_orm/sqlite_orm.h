@@ -4688,6 +4688,10 @@ namespace sqlite_orm {
             column_type column;
         };
 
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool
+            is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of_v<T, alias_column_t>>> = true;
+
         struct basic_table;
 
         /*

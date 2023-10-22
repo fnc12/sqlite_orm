@@ -4,6 +4,8 @@
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 using sqlite_orm::operator"" _col;
 #endif
+using sqlite_orm::alias_a;
+using sqlite_orm::alias_column;
 using sqlite_orm::and_;
 using sqlite_orm::c;
 using sqlite_orm::colalias_a;
@@ -109,6 +111,7 @@ TEST_CASE("ADL and expression operators") {
     runTests(c(&User::id));
     runTests(column<User>(&User::id));
     runTests(get<colalias_a>());
+    runTests(alias_column<alias_a<User>>(&User::id));
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     runTests("a"_col);
 #endif
