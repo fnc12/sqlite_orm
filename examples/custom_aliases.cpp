@@ -119,7 +119,7 @@ int main(int, char** argv) {
     //  WHERE COMPANY_ID = DEPARTMENT.EMP_ID;
     auto rowsWithColumnAliases = storage.select(
         columns(&Employee::id >>= empId, as<CompanyNameAlias>(&Employee::name), &Employee::age, &Department::dept),
-        where(get<empId>() == c(&Department::empId)));
+        where(get<empId>() == &Department::empId));
     assert(rowsWithColumnAliases == rowsWithTableAliases);
 
     //  SELECT C.ID AS COMPANY_ID, C.NAME AS COMPANY_NAME, C.AGE, D.DEPT
