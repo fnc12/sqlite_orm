@@ -187,7 +187,7 @@ TEST_CASE("statement_serializer select_t") {
                 using als_e = alias_e<Employee>;
 
                 auto expression = select(asterisk<als_d>(),
-                                         left_join<als_e>(on(c(alias_column<als_d>(&Department::m_deptno)) ==
+                                         left_join<als_e>(on(alias_column<als_d>(&Department::m_deptno) ==
                                                              alias_column<als_e>(&Employee::m_deptno))),
                                          where(is_null(alias_column<als_e>(&Employee::m_deptno))));
                 expression.highest_level = true;
