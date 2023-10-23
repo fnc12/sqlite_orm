@@ -25,4 +25,4 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
 endif()
 
 # CMake <3.24: exposes targets only locally, but caches them. So call find_package again in the directory of usage
-find_package(SQLite3 REQUIRED)
+#find_package(SQLite3 REQUIRED)
