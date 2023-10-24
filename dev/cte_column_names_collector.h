@@ -101,7 +101,7 @@ namespace sqlite_orm {
                 auto& table = pick_table<T>(context.db_objects);
 
                 std::vector<std::string> columnNames;
-                columnNames.reserve(size_t(table.count_columns_amount()));
+                columnNames.reserve(size_t(table.template count_of<is_column>()));
 
                 table.for_each_column([&columnNames](const column_identifier& column) {
                     columnNames.push_back(column.name);

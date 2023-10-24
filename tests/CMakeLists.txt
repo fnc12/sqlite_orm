@@ -34,6 +34,7 @@ add_executable(unit_tests
     static_tests/is_primary_key_insertable.cpp
     static_tests/is_column_with_insertable_primary_key.cpp
     static_tests/operators_adl.cpp
+    static_tests/table_static_tests.cpp
     tuple_iteration.cpp
     sync_schema_tests.cpp
     tests.cpp

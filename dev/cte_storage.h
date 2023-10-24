@@ -101,7 +101,7 @@ namespace sqlite_orm {
          *  Because CTEs can recursively refer to themselves in a compound statement, parsing
          *  the whole compound statement would lead to compiler errors if a column_pointer<>
          *  can't be resolved. Therefore, at the time of building a CTE table, we are only
-         *  interested in the column results of the left expression.
+         *  interested in the column results of the left-most select expression.
          */
         template<class Select>
         decltype(auto) get_cte_driving_subselect(const Select& subSelect);
@@ -115,11 +115,11 @@ namespace sqlite_orm {
         }
 
         /**
-         *  Return left expression of compound statement.
+         *  Return left-most select expression of compound statement.
          */
         template<class Compound, class... Args, std::enable_if_t<is_compound_operator_v<Compound>, bool> = true>
         decltype(auto) get_cte_driving_subselect(const select_t<Compound, Args...>& subSelect) {
-            return subSelect.col.left;
+            return std::get<0>(subSelect.col.compound);
         }
 
         /**

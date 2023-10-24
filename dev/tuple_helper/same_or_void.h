@@ -21,8 +21,19 @@ namespace sqlite_orm {
             using type = A;
         };
 
+        template<class... Args>
+        using same_or_void_t = typename same_or_void<Args...>::type;
+
         template<class A, class... Args>
         struct same_or_void<A, A, Args...> : same_or_void<A, Args...> {};
 
+        template<class Pack>
+        struct same_or_void_of;
+
+        template<template<class...> class Pack, class... Types>
+        struct same_or_void_of<Pack<Types...>> : same_or_void<Types...> {};
+
+        template<class Pack>
+        using same_or_void_of_t = typename same_or_void_of<Pack>::type;
     }
 }

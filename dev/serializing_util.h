@@ -92,6 +92,7 @@ namespace sqlite_orm {
             actions_tuple,
             expressions_tuple,
             dynamic_expressions,
+            compound_expressions,
             serialized,
             identifier,
             identifiers,
@@ -120,6 +121,7 @@ namespace sqlite_orm {
         constexpr streaming<stream_as::actions_tuple> streaming_actions_tuple{};
         constexpr streaming<stream_as::expressions_tuple> streaming_expressions_tuple{};
         constexpr streaming<stream_as::dynamic_expressions> streaming_dynamic_expressions{};
+        constexpr streaming<stream_as::compound_expressions> streaming_compound_expressions{};
         constexpr streaming<stream_as::serialized> streaming_serialized{};
         constexpr streaming<stream_as::identifier> streaming_identifier{};
         constexpr streaming<stream_as::identifiers> streaming_identifiers{};
@@ -170,6 +172,25 @@ namespace sqlite_orm {
             iterate_tuple(args, [&ss, &context, first = true](auto& arg) mutable {
                 constexpr std::array<const char*, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)] << serialize(arg, context);
+            });
+            return ss;
+        }
+
+        // serialize and stream expressions of a compound statement;
+        // separated by compound operator
+        template<class T, class Ctx>
+        std::ostream&
+        operator<<(std::ostream& ss,
+                   std::tuple<const streaming<stream_as::compound_expressions>&, T, const std::string&, Ctx> tpl) {
+            const auto& args = get<1>(tpl);
+            const std::string& opString = get<2>(tpl);
+            auto& context = get<3>(tpl);
+
+            iterate_tuple(args, [&ss, &opString, &context, first = true](auto& arg) mutable {
+                if(!std::exchange(first, false)) {
+                    ss << ' ' << opString << ' ';
+                }
+                ss << serialize(arg, context);
             });
             return ss;
         }

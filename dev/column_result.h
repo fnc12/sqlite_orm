@@ -5,9 +5,11 @@
 #include <functional>  //  std::reference_wrapper
 
 #include "functional/cxx_universal.h"
+#include "functional/mpl.h"
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_fy.h"
 #include "tuple_helper/tuple_filter.h"
+#include "tuple_helper/same_or_void.h"
 #include "type_traits.h"
 #include "member_traits/member_traits.h"
 #include "mapped_type_proxy.h"
@@ -248,11 +250,11 @@ namespace sqlite_orm {
 
         template<class DBOs, class T>
         struct column_result_t<DBOs, T, match_if<is_compound_operator, T>> {
-            using left_result = column_result_of_t<DBOs, typename T::left_type>;
-            using right_result = column_result_of_t<DBOs, typename T::right_type>;
-            static_assert(std::is_same<left_result, right_result>::value,
+            using column_result_fn = mpl::bind_front_fn<column_result_of_t, DBOs>;
+            using types_tuple = transform_tuple_t<typename T::expressions_tuple, column_result_fn::template fn>;
+            using type = std::tuple_element_t<0, types_tuple>;
+            static_assert(!std::is_same<void, same_or_void_of_t<types_tuple>>::value,
                           "Compound subselect queries must return same types");
-            using type = left_result;
         };
 
         template<class DBOs, class T>

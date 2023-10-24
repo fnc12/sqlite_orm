@@ -1,12 +1,10 @@
 #pragma once
 
 #include <tuple>  //  std::tuple, std::get, std::tuple_element, std::tuple_size
-#include <type_traits>  //  std::remove_reference, std::index_sequence, std::make_index_sequence
+#include <type_traits>  //  std::remove_reference, std::index_sequence, std::make_index_sequence, std::forward, std::move
 #include <utility>  //  std::forward, std::move
 
 #include "../functional/cxx_universal.h"  //  ::size_t
-#include "../functional/cxx_type_traits_polyfill.h"
-#include "../functional/cxx_functional_polyfill.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -37,7 +35,7 @@ namespace sqlite_orm {
 
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
         template<bool reversed = false, class Tpl, size_t... Idx, class L>
-        void iterate_tuple(const Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
+        void iterate_tuple(Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
             if constexpr(reversed) {
                 // nifty fold expression trick: make use of guaranteed right-to-left evaluation order when folding over operator=
                 int sink;
@@ -48,10 +46,10 @@ namespace sqlite_orm {
         }
 #else
         template<bool reversed = false, class Tpl, class L>
-        void iterate_tuple(const Tpl& /*tpl*/, std::index_sequence<>, L&& /*lambda*/) {}
+        void iterate_tuple(Tpl& /*tpl*/, std::index_sequence<>, L&& /*lambda*/) {}
 
         template<bool reversed = false, class Tpl, size_t I, size_t... Idx, class L>
-        void iterate_tuple(const Tpl& tpl, std::index_sequence<I, Idx...>, L&& lambda) {
+        void iterate_tuple(Tpl& tpl, std::index_sequence<I, Idx...>, L&& lambda) {
 #ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
             if constexpr(reversed) {
 #else
@@ -66,9 +64,9 @@ namespace sqlite_orm {
         }
 #endif
         template<bool reversed = false, class Tpl, class L>
-        void iterate_tuple(const Tpl& tpl, L&& lambda) {
+        void iterate_tuple(Tpl&& tpl, L&& lambda) {
             iterate_tuple<reversed>(tpl,
-                                    std::make_index_sequence<std::tuple_size<Tpl>::value>{},
+                                    std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
                                     std::forward<L>(lambda));
         }
 
@@ -90,19 +88,6 @@ namespace sqlite_orm {
         template<class Tpl, class L>
         void iterate_tuple(L&& lambda) {
             iterate_tuple<Tpl>(std::make_index_sequence<std::tuple_size<Tpl>::value>{}, std::forward<L>(lambda));
-        }
-
-        template<class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
-        R create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, Projection project = {}) {
-            return R{polyfill::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
-        }
-
-        template<class R, class Tpl, class Projection = polyfill::identity>
-        R create_from_tuple(Tpl&& tpl, Projection project = {}) {
-            return create_from_tuple<R>(
-                std::forward<Tpl>(tpl),
-                std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
-                std::forward<Projection>(project));
         }
 
         template<template<class...> class Base, class L>

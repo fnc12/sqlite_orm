@@ -3,11 +3,13 @@
 
 #include <type_traits>  //  std::is_same
 #include <string>  //  std::string
+#include <tuple>  //  std::tuple
 
 using namespace sqlite_orm;
 
 TEST_CASE("same_or_void") {
     using internal::same_or_void;
+    using internal::same_or_void_of_t;
 
     //  one argument
     STATIC_REQUIRE(std::is_same<same_or_void<int>::type, int>::value);
@@ -31,4 +33,8 @@ TEST_CASE("same_or_void") {
     STATIC_REQUIRE(std::is_same<same_or_void<int, int, int, int>::type, int>::value);
     STATIC_REQUIRE(std::is_same<same_or_void<long, long, long, long>::type, long>::value);
     STATIC_REQUIRE(std::is_same<same_or_void<int, int, int, long>::type, void>::value);
+
+    //  type pack, e.g. tuple
+    STATIC_REQUIRE(std::is_same<same_or_void_of_t<std::tuple<int, int>>, int>::value);
+    STATIC_REQUIRE(std::is_same<same_or_void_of_t<std::tuple<int, long>>, void>::value);
 }
