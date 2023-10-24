@@ -76,19 +76,11 @@ namespace sqlite_orm {
             constraints_type constraints;
 
             /**
-             *  Checks whether contraints are of trait `Trait`
+             *  Checks whether contraints contain specified type.
              */
             template<template<class...> class Trait>
-            constexpr bool is() const {
+            constexpr static bool is() {
                 return tuple_has<Trait, constraints_type>::value;
-            }
-
-            constexpr bool is_generated() const {
-#if SQLITE_VERSION_NUMBER >= 3031000
-                return is<is_generated_always>();
-#else
-                return false;
-#endif
             }
 
             /**
