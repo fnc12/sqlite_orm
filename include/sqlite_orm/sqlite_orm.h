@@ -19572,26 +19572,27 @@ namespace sqlite_orm {
         template<class T>
         using node_tuple_t = typename node_tuple<T>::type;
 
+        /*
+         *   Node tuple for several types.
+         */
         template<class... T>
-        struct node_tuple_for {
-            using type = tuple_cat_t<node_tuple_t<T>...>;
-        };
-
-        template<class... Types>
-        struct node_tuple_for<std::tuple<Types...>> {
-            using type = tuple_cat_t<node_tuple_t<Types>...>;
-        };
+        using node_tuple_for = conc_tuple<node_tuple_t<T>...>;
 
         template<>
         struct node_tuple<void, void> {
             using type = std::tuple<>;
         };
+
+        template<class T>
+        struct node_tuple<std::reference_wrapper<T>, void> : node_tuple<T> {};
+
+        template<class... Args>
+        struct node_tuple<std::tuple<Args...>, void> : node_tuple_for<Args...> {};
+
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T>
         struct node_tuple<as_optional_t<T>, void> : node_tuple<T> {};
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
-        template<class T>
-        struct node_tuple<std::reference_wrapper<T>, void> : node_tuple<T> {};
 
         template<class... Args>
         struct node_tuple<group_by_t<Args...>, void> : node_tuple_for<Args...> {};
@@ -19600,7 +19601,7 @@ namespace sqlite_orm {
         struct node_tuple<group_by_with_having<T, Args...>, void> : node_tuple_for<Args..., T> {};
 
         template<class Targets, class Actions>
-        struct node_tuple<upsert_clause<Targets, Actions>, void> : node_tuple_for<Actions> {};
+        struct node_tuple<upsert_clause<Targets, Actions>, void> : node_tuple<Actions> {};
 
         template<class... Args>
         struct node_tuple<set_t<Args...>, void> : node_tuple_for<Args...> {};
@@ -19657,7 +19658,7 @@ namespace sqlite_orm {
         struct node_tuple<in_t<L, Args...>, void> : node_tuple_for<L, Args...> {};
 
         template<class T>
-        struct node_tuple<T, match_if<is_compound_operator, T>> : node_tuple_for<typename T::expressions_tuple> {};
+        struct node_tuple<T, match_if<is_compound_operator, T>> : node_tuple<typename T::expressions_tuple> {};
 
         template<class T, class... Args>
         struct node_tuple<select_t<T, Args...>, void> : node_tuple_for<T, Args...> {};
@@ -19673,9 +19674,6 @@ namespace sqlite_orm {
 
         template<class... Args>
         struct node_tuple<values_t<Args...>, void> : node_tuple_for<Args...> {};
-
-        template<class... Args>
-        struct node_tuple<std::tuple<Args...>, void> : node_tuple_for<Args...> {};
 
         template<class T, class R, class... Args>
         struct node_tuple<get_all_t<T, R, Args...>, void> : node_tuple_for<Args...> {};
