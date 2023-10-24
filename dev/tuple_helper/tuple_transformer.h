@@ -62,11 +62,11 @@ namespace sqlite_orm {
          *  Function object that takes integral constants and returns the sum of their values as an integral constant.
          *  Because it's a "transparent" functor, it must be called with at least one argument, otherwise it cannot deduce the integral constant type.
          */
-        struct plus_reduce_integrals {
+        struct plus_fold_integrals {
             template<class... Integrals>
-            constexpr auto operator()(const Integrals&... integrals) const {
+            constexpr auto operator()(const Integrals&...) const {
                 using integral_type = std::common_type_t<typename Integrals::value_type...>;
-                return std::integral_constant<integral_type, (integrals.value + ...)>{};
+                return std::integral_constant<integral_type, (Integrals::value + ...)>{};
             }
         };
 
@@ -83,7 +83,7 @@ namespace sqlite_orm {
         };
 
         template<template<class...> class NestedProject, class Tpl, class IdxSeq>
-        using nested_tuple_size_for_t = decltype(recombine_tuple(plus_reduce_integrals{},
+        using nested_tuple_size_for_t = decltype(recombine_tuple(plus_fold_integrals{},
                                                                  std::declval<Tpl>(),
                                                                  IdxSeq{},
                                                                  project_nested_tuple_size<NestedProject>{},
