@@ -1,5 +1,8 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <type_traits>
+#include <vector>
+#include <functional>  //  std::less
 
 using namespace sqlite_orm;
 
@@ -11,7 +14,12 @@ TEST_CASE("mpl") {
 
     STATIC_REQUIRE_FALSE(mpl::is_metafunction_class_v<std::true_type>);
     STATIC_REQUIRE(mpl::is_metafunction_class_v<mpl_is_same>);
-    STATIC_REQUIRE(mpl::invoke_fn_t<std::is_same, int, int>::value);
+    STATIC_REQUIRE_FALSE(mpl::is_alias_template_v<std::common_type, int>);
+    STATIC_REQUIRE(mpl::is_alias_template_v<std::common_type_t, int>);
+    STATIC_REQUIRE(std::is_same<mpl::invoke_fn_t<std::common_type, int>, int>::value);
+    STATIC_REQUIRE(std::is_same<mpl::invoke_op_t<std::common_type_t, int>, int>::value);
+    STATIC_REQUIRE(std::is_same<mpl::invoke_meta_t<std::common_type, int>, int>::value);
+    STATIC_REQUIRE(std::is_same<mpl::invoke_meta_t<std::common_type_t, int>, int>::value);
     STATIC_REQUIRE(mpl::invoke_t<mpl_is_same, int, int>::value);
     STATIC_REQUIRE_FALSE(mpl::invoke_t<mpl::not_<mpl_is_same>, int, int>::value);
     STATIC_REQUIRE(mpl::invoke_t<mpl::bind_front_fn<std::is_constructible, std::vector<int>>, size_t, int>::value);
