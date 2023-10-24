@@ -44,12 +44,15 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct primary_key_with_autoincrement {
+        struct primary_key_with_autoincrement : T {
             using primary_key_type = T;
 
-            primary_key_type primary_key;
-
-            primary_key_with_autoincrement(primary_key_type primary_key_) : primary_key(primary_key_) {}
+            const primary_key_type& as_base() const {
+                return *this;
+            }
+#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
+            primary_key_with_autoincrement(T primary_key) : T{primary_key} {}
+#endif
         };
 
         /**
@@ -65,7 +68,7 @@ namespace sqlite_orm {
 
             columns_tuple columns;
 
-            primary_key_t(decltype(columns) columns) : columns(std::move(columns)) {}
+            primary_key_t(columns_tuple columns) : columns(std::move(columns)) {}
 
             self asc() const {
                 auto res = *this;
@@ -433,16 +436,10 @@ namespace sqlite_orm {
         using is_foreign_key = polyfill::bool_constant<is_foreign_key_v<T>>;
 
         template<class T>
-        struct is_primary_key : std::false_type {};
-
-        template<class... Cs>
-        struct is_primary_key<primary_key_t<Cs...>> : std::true_type {};
+        SQLITE_ORM_INLINE_VAR constexpr bool is_primary_key_v = std::is_base_of<primary_key_base, T>::value;
 
         template<class T>
-        struct is_primary_key<primary_key_with_autoincrement<T>> : std::true_type {};
-
-        template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_primary_key_v = is_primary_key<T>::value;
+        using is_primary_key = polyfill::bool_constant<is_primary_key_v<T>>;
 
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_generated_always_v =
@@ -477,7 +474,6 @@ namespace sqlite_orm {
                                                                 check_if_is_template<unique_t>,
                                                                 check_if_is_template<default_t>,
                                                                 check_if_is_template<check_t>,
-                                                                check_if_is_template<primary_key_with_autoincrement>,
                                                                 check_if_is_type<collate_constraint_t>,
                                                                 check_if<is_generated_always>>,
                                                T>;

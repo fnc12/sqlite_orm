@@ -54,6 +54,15 @@ TEST_CASE("table static count_of<is_column>()") {
         STATIC_REQUIRE(dedicated_pk_columns_count_t<decltype(table.elements)>::value == 1);
 #endif
     }
+    {  //  1 column with 1 dedicated pk autoincrement
+        auto table = make_table("users", make_column("id", &User::id), primary_key(&User::id).autoincrement());
+        STATIC_REQUIRE(table.count_of<is_column>() == 1);
+        STATIC_REQUIRE(table.count_of<is_primary_key>() == 1);
+        STATIC_REQUIRE(table.count_of_columns_with<is_primary_key>() == 0);
+#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
+        STATIC_REQUIRE(dedicated_pk_columns_count_t<decltype(table.elements)>::value == 1);
+#endif
+    }
     {  //  2 columns no pk
         auto table = make_table("users", make_column("id", &User::id), make_column("id", &User::name));
         STATIC_REQUIRE(table.count_of<is_column>() == 2);
