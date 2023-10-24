@@ -65,10 +65,6 @@ using std::nullptr_t;
 #define SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
 #endif
 
-#if __cpp_inline_variables >= 201606L
-#define SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
-#endif
-
 #if __cpp_if_constexpr >= 201606L
 #define SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
 #endif
@@ -1263,6 +1259,9 @@ namespace sqlite_orm {
 
 // #include "table_type_of.h"
 
+#include <type_traits>  //  std::declval
+// #include "functional/cxx_type_traits_polyfill.h"
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -1296,12 +1295,31 @@ namespace sqlite_orm {
         };
 
         template<class C>
-        struct table_type_of<indexed_column_t<C>> {
-            using type = typename table_type_of<C>::type;
-        };
+        struct table_type_of<indexed_column_t<C>> : table_type_of<C> {};
 
         template<class T>
         using table_type_of_t = typename table_type_of<T>::type;
+
+        /*
+         *  This trait can be used to check whether the object type of a member pointer or column pointer matches the target type.
+         *  
+         *  One use case is the ability to create column reference to an aliased table column of a derived object field without explicitly using a column pointer.
+         *  E.g.
+         *  regular: `alias_column<alias_d<Derived>>(column<Derived>(&Base::field))`
+         *  short:   `alias_column<alias_d<Derived>>(&Base::field)`
+         */
+        template<class F, class T, class SFINAE = void>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_field_of_v = false;
+
+        /*
+         *  `true` if a pointer-to-member operator is a valid expression for an object of type `T` and a member pointer of type `F O::*`.
+         */
+        template<class F, class O, class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool
+            is_field_of_v<F O::*, T, polyfill::void_t<decltype(std::declval<T>().*std::declval<F O::*>())>> = true;
+
+        template<class F, class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_field_of_v<column_pointer<T, F>, T, void> = true;
     }
 }
 
@@ -3078,7 +3096,6 @@ namespace sqlite_orm {
          */
         template<class T, class F>
         struct column_pointer {
-            using self = column_pointer<T, F>;
             using type = T;
             using field_type = F;
 
@@ -3100,9 +3117,9 @@ namespace sqlite_orm {
      *  struct MyType : BaseType { ... };
      *  storage.select(column<MyType>(&BaseType::id));
      */
-    template<class T, class F>
-    internal::column_pointer<T, F> column(F f) {
-        return {std::move(f)};
+    template<class Object, class F, internal::satisfies_not<internal::is_recordset_alias, Object> = true>
+    constexpr internal::column_pointer<Object, F> column(F field) {
+        return {std::move(field)};
     }
 }
 
@@ -4399,6 +4416,8 @@ namespace sqlite_orm {
 
 // #include "alias_traits.h"
 
+// #include "table_type_of.h"
+
 // #include "tags.h"
 
 namespace sqlite_orm {
@@ -4455,6 +4474,10 @@ namespace sqlite_orm {
 
             column_type column;
         };
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool
+            is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of_v<T, alias_column_t>>> = true;
 
         struct basic_table;
 
@@ -4555,30 +4578,81 @@ namespace sqlite_orm {
     }
 
     /**
-     *  @return column with table alias attached. Place it instead of a column statement in case you need to specify a
-     *  column with table alias prefix like 'a.column'.
+     *  Using a column pointer, create a column reference to an aliased table column.
+     *  
+     *  Example:
+     *  using als = alias_u<User>;
+     *  select(alias_column<als>(column<User>(&User::id)))
      */
     template<class A, class C, std::enable_if_t<internal::is_table_alias_v<A>, bool> = true>
-    internal::alias_column_t<A, C> alias_column(C c) {
-        using aliased_type = internal::type_t<A>;
-        static_assert(std::is_same<polyfill::detected_t<internal::table_type_of_t, C>, aliased_type>::value,
-                      "Column must be from aliased table");
-        return {c};
+    constexpr auto alias_column(C field) {
+        using namespace ::sqlite_orm::internal;
+        using aliased_type = type_t<A>;
+        static_assert(is_field_of_v<C, aliased_type>, "Column must be from aliased table");
+
+        return alias_column_t<A, C>{std::move(field)};
+    }
+
+    /**
+     *  Using an object member field, create a column reference to an aliased table column.
+     *  
+     *  @note The object member pointer can be from a derived class without explicitly forming a column pointer.
+     *  
+     *  Example:
+     *  using als = alias_u<User>;
+     *  select(alias_column<als>(&User::id))
+     */
+    template<class A, class F, class O, std::enable_if_t<internal::is_table_alias_v<A>, bool> = true>
+    constexpr auto alias_column(F O::*field) {
+        using namespace ::sqlite_orm::internal;
+        using aliased_type = type_t<A>;
+        static_assert(is_field_of_v<F O::*, aliased_type>, "Column must be from aliased table");
+
+        using C1 =
+            std::conditional_t<std::is_same<O, aliased_type>::value, F O::*, column_pointer<aliased_type, F O::*>>;
+        return alias_column_t<A, C1>{{field}};
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Create a column reference to an aliased table column.
+     *  
+     *  @note An object member pointer can be from a derived class without explicitly forming a column pointer.
+     *  
+     *  Example:
+     *  constexpr auto als = "u"_alias.for_<User>();
+     *  select(alias_column<als>(&User::id))
+     */
     template<orm_table_alias auto als, class C>
-    auto alias_column(C c) {
+    constexpr auto alias_column(C field) {
+        using namespace ::sqlite_orm::internal;
         using A = std::remove_const_t<decltype(als)>;
-        using aliased_type = internal::type_t<A>;
-        static_assert(std::is_same_v<polyfill::detected_t<internal::table_type_of_t, C>, aliased_type>,
-                      "Column must be from aliased table");
-        return internal::alias_column_t<A, decltype(c)>{c};
+        using aliased_type = type_t<A>;
+        static_assert(is_field_of_v<C, aliased_type>, "Column must be from aliased table");
+
+        if constexpr(is_column_pointer_v<C>) {
+            return alias_column_t<A, C>{std::move(field)};
+        } else if constexpr(std::is_same_v<member_object_type_t<C>, aliased_type>) {
+            return alias_column_t<A, C>{field};
+        } else {
+            // wrap in column_pointer
+            using C1 = column_pointer<aliased_type, C>;
+            return alias_column_t<A, C1>{{field}};
+        }
     }
 
+    /**
+     *  Create a column reference to an aliased table column.
+     *  
+     *  @note An object member pointer can be from a derived class without explicitly forming a column pointer.
+     *  
+     *  Example:
+     *  constexpr auto als = "u"_alias.for_<User>();
+     *  select(als->*&User::id)
+     */
     template<orm_table_alias A, class F>
-    constexpr auto operator->*(const A&, F field) {
-        return internal::alias_column_t<A, decltype(field)>{field};
+    constexpr auto operator->*(const A& /*tableAlias*/, F field) {
+        return alias_column<A>(std::move(field));
     }
 #endif
 
@@ -7369,7 +7443,7 @@ namespace sqlite_orm {
      *  Example:
      *  constexpr auto m = "m"_alias.for_<Employee>();
      *  auto reportingTo = 
-     *      storage.select(asterisk<m>(), inner_join<m>(on(m->*&Employee::reportsTo == c(&Employee::employeeId))));
+     *      storage.select(asterisk<m>(), inner_join<m>(on(m->*&Employee::reportsTo == &Employee::employeeId)));
      */
     template<orm_recordset_alias auto alias>
     auto asterisk(bool definedOrder = false) {
@@ -10089,8 +10163,10 @@ namespace sqlite_orm {
 
             module_details_type module_details;
 
+#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
             virtual_table_t(std::string name, module_details_type module_details) :
                 basic_table{std::move(name)}, module_details{std::move(module_details)} {}
+#endif
 
             /**
              *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
@@ -10202,7 +10278,7 @@ namespace sqlite_orm {
 
     /**
      *  Factory function for a table definition.
-     *
+     *  
      *  The mapped object type is determined implicitly from the first column definition.
      */
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
@@ -10213,7 +10289,7 @@ namespace sqlite_orm {
 
     /**
      *  Factory function for a table definition.
-     * 
+     *  
      *  The mapped object type is explicitly specified.
      */
     template<class T, class... Cs>
@@ -10224,7 +10300,7 @@ namespace sqlite_orm {
 
     template<class M>
     internal::virtual_table_t<M> make_virtual_table(std::string name, M module_details) {
-        return internal::virtual_table_t<M>(std::move(name), std::move(module_details));
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name), std::move(module_details)});
     }
 }
 #pragma once
@@ -15872,7 +15948,7 @@ namespace sqlite_orm {
             using statement_type = current_time_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) {
+            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) {
                 return "CURRENT_TIME";
             }
         };
@@ -15882,7 +15958,7 @@ namespace sqlite_orm {
             using statement_type = current_date_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) {
+            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) {
                 return "CURRENT_DATE";
             }
         };
@@ -15892,7 +15968,7 @@ namespace sqlite_orm {
             using statement_type = current_timestamp_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) {
+            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) {
                 return "CURRENT_TIMESTAMP";
             }
         };

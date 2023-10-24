@@ -273,8 +273,10 @@ namespace sqlite_orm {
 
             module_details_type module_details;
 
+#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
             virtual_table_t(std::string name, module_details_type module_details) :
                 basic_table{std::move(name)}, module_details{std::move(module_details)} {}
+#endif
 
             /**
              *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
@@ -386,7 +388,7 @@ namespace sqlite_orm {
 
     /**
      *  Factory function for a table definition.
-     *
+     *  
      *  The mapped object type is determined implicitly from the first column definition.
      */
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
@@ -397,7 +399,7 @@ namespace sqlite_orm {
 
     /**
      *  Factory function for a table definition.
-     * 
+     *  
      *  The mapped object type is explicitly specified.
      */
     template<class T, class... Cs>
@@ -408,6 +410,6 @@ namespace sqlite_orm {
 
     template<class M>
     internal::virtual_table_t<M> make_virtual_table(std::string name, M module_details) {
-        return internal::virtual_table_t<M>(std::move(name), std::move(module_details));
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name), std::move(module_details)});
     }
 }
