@@ -1358,7 +1358,7 @@ namespace sqlite_orm {
                 return *this;
             }
 #ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            primary_key_with_autoincrement(T primary_key) : T{primary_key} {}
+            primary_key_with_autoincrement(primary_key_type primary_key) : primary_key_type{primary_key} {}
 #endif
         };
 
