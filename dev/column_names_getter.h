@@ -30,7 +30,7 @@ namespace sqlite_orm {
                                                              const Ctx& context) {
             if(definedOrder) {
                 auto& table = pick_table<mapped_type_proxy_t<T>>(context.db_objects);
-                collectedExpressions.reserve(collectedExpressions.size() + table.columns_count);
+                collectedExpressions.reserve(collectedExpressions.size() + table.template count_of<is_column>());
                 table.for_each_column([qualified = !context.skip_table_name,
                                        &tableName = table.name,
                                        &collectedExpressions](const column_identifier& column) {

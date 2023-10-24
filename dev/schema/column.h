@@ -76,22 +76,11 @@ namespace sqlite_orm {
             constraints_type constraints;
 
             /**
-             *  Checks whether contraints are of trait `Trait`
+             *  Checks whether contraints contain specified type.
              */
             template<template<class...> class Trait>
             constexpr static bool is() {
                 return tuple_has<Trait, constraints_type>::value;
-            }
-
-            constexpr static bool is_primary_key =
-                mpl::invoke_t<check_if_tuple_has<internal::is_primary_key>, constraints_type>::value;
-
-            constexpr bool is_generated() const {
-#if SQLITE_VERSION_NUMBER >= 3031000
-                return is<is_generated_always>();
-#else
-                return false;
-#endif
             }
 
             /**
@@ -117,9 +106,6 @@ namespace sqlite_orm {
 
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_column_v = polyfill::is_specialization_of_v<T, column_t>;
-
-        template<class T>
-        using is_primary_key_column = polyfill::bool_constant<T::is_primary_key>;
 
         template<class T>
         using is_column = polyfill::bool_constant<is_column_v<T>>;

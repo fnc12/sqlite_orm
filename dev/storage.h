@@ -20,6 +20,7 @@
 #include "functional/mpl.h"
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_filter.h"
+#include "tuple_helper/tuple_transformer.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "type_traits.h"
 #include "alias.h"
@@ -173,14 +174,23 @@ namespace sqlite_orm {
 
             template<class O>
             void assert_updatable_type() const {
+#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
                 using Table = storage_pick_table_t<O, db_objects_type>;
-                constexpr int primaryKeyColumnsCount =
-                    Table::primary_key_columns_count + Table::dedicated_primary_key_columns_count;
-                constexpr int nonPrimaryKeysColumnsCount = Table::columns_count - primaryKeyColumnsCount;
-                static_assert(primaryKeyColumnsCount > 0, "Type with no primary keys can't be updated");
+                using elements_type = elements_type_t<Table>;
+                using col_index_sequence = filter_tuple_sequence_t<elements_type, is_column>;
+                using pk_index_sequence = filter_tuple_sequence_t<elements_type, is_primary_key>;
+                using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
+                constexpr size_t dedicatedPrimaryKeyColumnsCount =
+                    nested_tuple_size_for_t<columns_tuple_t, elements_type, pk_index_sequence>::value;
+
+                constexpr size_t primaryKeyColumnsCount =
+                    dedicatedPrimaryKeyColumnsCount + pkcol_index_sequence::size();
+                constexpr ptrdiff_t nonPrimaryKeysColumnsCount = col_index_sequence::size() - primaryKeyColumnsCount;
+                static_assert(primaryKeyColumnsCount > 0, "A table without primary keys cannot be updated");
                 static_assert(
                     nonPrimaryKeysColumnsCount > 0,
-                    "Type with primary keys only can't be updated. You need at least 1 non-primary key column");
+                    "A table with only primary keys cannot be updated. You need at least 1 non-primary key column");
+#endif
             }
 
             template<class O,

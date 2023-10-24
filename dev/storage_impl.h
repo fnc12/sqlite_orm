@@ -21,7 +21,7 @@ namespace sqlite_orm {
         int foreign_keys_count(const DBOs& dbObjects) {
             int res = 0;
             iterate_tuple<true>(dbObjects, tables_index_sequence<DBOs>{}, [&res](const auto& table) {
-                res += table.foreign_keys_count;
+                res += table.template count_of<is_foreign_key>();
             });
             return res;
         }

@@ -395,6 +395,9 @@ namespace sqlite_orm {
         using constraints_type_t = typename T::constraints_type;
 
         template<typename T>
+        using columns_tuple_t = typename T::columns_tuple;
+
+        template<typename T>
         using object_type_t = typename T::object_type;
 
         template<typename T>
@@ -1133,10 +1136,10 @@ namespace sqlite_orm {
 #include <tuple>  //  std::tuple
 
 // #include "../functional/cxx_universal.h"
-
+//  ::size_t
 // #include "../functional/index_sequence_util.h"
 
-#include <utility>  //  std::index_sequence, std::make_index_sequence
+#include <utility>  //  std::index_sequence
 
 // #include "../functional/cxx_universal.h"
 
@@ -1665,6 +1668,7 @@ namespace sqlite_orm {
             expression_type expression;
         };
 
+#if SQLITE_VERSION_NUMBER >= 3031000
         struct basic_generated_always {
             enum class storage_type {
                 not_specified,
@@ -1697,6 +1701,7 @@ namespace sqlite_orm {
                 return {std::move(this->expression), this->full, storage_type::stored};
             }
         };
+#endif
 
         struct null_t {};
 
@@ -1706,7 +1711,12 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_foreign_key_v = polyfill::is_specialization_of_v<T, foreign_key_t>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_foreign_key_v =
+#if SQLITE_VERSION_NUMBER >= 3006019
+            polyfill::is_specialization_of_v<T, foreign_key_t>;
+#else
+            false;
+#endif
 
         template<class T>
         using is_foreign_key = polyfill::bool_constant<is_foreign_key_v<T>>;
@@ -1724,10 +1734,15 @@ namespace sqlite_orm {
         SQLITE_ORM_INLINE_VAR constexpr bool is_primary_key_v = is_primary_key<T>::value;
 
         template<class T>
-        using is_generated_always = polyfill::is_specialization_of<T, generated_always_t>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_generated_always_v =
+#if SQLITE_VERSION_NUMBER >= 3031000
+            polyfill::is_specialization_of_v<T, generated_always_t>;
+#else
+            false;
+#endif
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_generated_always_v = is_generated_always<T>::value;
+        using is_generated_always = polyfill::bool_constant<is_generated_always_v<T>>;
 
         /**
          * PRIMARY KEY INSERTABLE traits.
@@ -1744,37 +1759,17 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct primary_key_colums_count_t;
-
-        template<class... Cs>
-        struct primary_key_colums_count_t<primary_key_t<Cs...>>
-            : std::integral_constant<int, static_cast<int>(sizeof...(Cs))> {};
-
-        template<class... Pks>
-        struct flatten_primry_keys_columns {
-            using columns_tuple = typename conc_tuple<typename Pks::columns_tuple...>::type;
-        };
-
-        template<class... Pks>
-        struct flatten_primry_keys_columns<std::tuple<Pks...>> : flatten_primry_keys_columns<Pks...> {};
-
-        template<class T>
-        using is_constraint =
-            mpl::instantiate<mpl::disjunction<check_if<is_primary_key>,
-                                              check_if<is_foreign_key>,
-                                              check_if_is_type<null_t>,
-                                              check_if_is_type<not_null_t>,
-                                              check_if_is_template<unique_t>,
-                                              check_if_is_template<default_t>,
-                                              check_if_is_template<check_t>,
-                                              check_if_is_template<primary_key_with_autoincrement>,
-                                              check_if_is_type<collate_constraint_t>,
-#if SQLITE_VERSION_NUMBER >= 3031000
-                                              check_if<is_generated_always>,
-#endif
-                                              // dummy tail because of SQLITE_VERSION_NUMBER checks above
-                                              mpl::always<std::false_type>>,
-                             T>;
+        using is_constraint = mpl::instantiate<mpl::disjunction<check_if<is_primary_key>,
+                                                                check_if<is_foreign_key>,
+                                                                check_if_is_type<null_t>,
+                                                                check_if_is_type<not_null_t>,
+                                                                check_if_is_template<unique_t>,
+                                                                check_if_is_template<default_t>,
+                                                                check_if_is_template<check_t>,
+                                                                check_if_is_template<primary_key_with_autoincrement>,
+                                                                check_if_is_type<collate_constraint_t>,
+                                                                check_if<is_generated_always>>,
+                                               T>;
     }
 
 #if SQLITE_VERSION_NUMBER >= 3031000
@@ -2476,22 +2471,11 @@ namespace sqlite_orm {
             constraints_type constraints;
 
             /**
-             *  Checks whether contraints are of trait `Trait`
+             *  Checks whether contraints contain specified type.
              */
             template<template<class...> class Trait>
             constexpr static bool is() {
                 return tuple_has<Trait, constraints_type>::value;
-            }
-
-            constexpr static bool is_primary_key =
-                mpl::invoke_t<check_if_tuple_has<internal::is_primary_key>, constraints_type>::value;
-
-            constexpr bool is_generated() const {
-#if SQLITE_VERSION_NUMBER >= 3031000
-                return is<is_generated_always>();
-#else
-                return false;
-#endif
             }
 
             /**
@@ -2517,9 +2501,6 @@ namespace sqlite_orm {
 
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_column_v = polyfill::is_specialization_of_v<T, column_t>;
-
-        template<class T>
-        using is_primary_key_column = polyfill::bool_constant<T::is_primary_key>;
 
         template<class T>
         using is_column = polyfill::bool_constant<is_column_v<T>>;
@@ -9617,14 +9598,11 @@ namespace sqlite_orm {
 // #include "../tuple_helper/tuple_iteration.h"
 
 #include <tuple>  //  std::tuple, std::get, std::tuple_element, std::tuple_size
-#include <type_traits>  //  std::remove_reference, std::index_sequence, std::make_index_sequence
+#include <type_traits>  //  std::remove_reference, std::index_sequence, std::make_index_sequence, std::forward, std::move
 #include <utility>  //  std::forward, std::move
 
 // #include "../functional/cxx_universal.h"
 //  ::size_t
-// #include "../functional/cxx_type_traits_polyfill.h"
-
-// #include "../functional/cxx_functional_polyfill.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -9710,19 +9688,6 @@ namespace sqlite_orm {
             iterate_tuple<Tpl>(std::make_index_sequence<std::tuple_size<Tpl>::value>{}, std::forward<L>(lambda));
         }
 
-        template<class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
-        R create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, Projection project = {}) {
-            return R{polyfill::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
-        }
-
-        template<class R, class Tpl, class Projection = polyfill::identity>
-        R create_from_tuple(Tpl&& tpl, Projection project = {}) {
-            return create_from_tuple<R>(
-                std::forward<Tpl>(tpl),
-                std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
-                std::forward<Projection>(project));
-        }
-
         template<template<class...> class Base, class L>
         struct lambda_as_template_base : L {
 #ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
@@ -9748,6 +9713,116 @@ namespace sqlite_orm {
         template<template<class...> class Base, class L>
         lambda_as_template_base<Base, L> call_as_template_base(L lambda) {
             return {std::move(lambda)};
+        }
+    }
+}
+
+// #include "../tuple_helper/tuple_transformer.h"
+
+#include <type_traits>  //  std::remove_reference, std::common_type, std::index_sequence, std::make_index_sequence, std::forward, std::move, std::integral_constant, std::declval
+#include <tuple>  //  std::tuple_size, std::get
+
+// #include "../functional/cxx_universal.h"
+//  ::size_t
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../functional/cxx_functional_polyfill.h"
+
+// #include "../functional/mpl.h"
+
+namespace sqlite_orm {
+    namespace internal {
+
+        template<class Tpl, template<class...> class Op>
+        struct tuple_transformer;
+
+        template<template<class...> class Pack, class... Types, template<class...> class Op>
+        struct tuple_transformer<Pack<Types...>, Op> {
+            using type = Pack<mpl::invoke_op_t<Op, Types>...>;
+        };
+
+        /*
+         *  Transform specified tuple.
+         *  
+         *  `Op` is a metafunction operation.
+         */
+        template<class Tpl, template<class...> class Op>
+        using transform_tuple_t = typename tuple_transformer<Tpl, Op>::type;
+
+#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
+        /*
+         *  Apply a projection to a tuple's elements filtered by the specified indexes, and combine the results.
+         *  
+         *  @note It's a glorified version of `std::apply()` and a variant of `std::accumulate()`.
+         *  It combines filtering the tuple (indexes), transforming the elements (projection) and finally applying the callable (combine).
+         */
+        template<class CombineOp, class Tpl, size_t... Idx, class Projector, class Init>
+        constexpr auto recombine_tuple(CombineOp combine,
+                                       const Tpl& tpl,
+                                       std::index_sequence<Idx...>,
+                                       Projector project,
+                                       Init initial) {
+            return combine(initial, polyfill::invoke(project, std::get<Idx>(tpl))...);
+        }
+
+        /*
+         *  Apply a projection to a tuple's elements, and combine the results.
+         *  
+         *  @note It's a glorified version of `std::apply()` and a variant of `std::accumulate()`.
+         *  It combines filtering the tuple (indexes), transforming the elements (projection) and finally applying the callable (combine).
+         */
+        template<class CombineOp, class Tpl, class Projector, class Init>
+        constexpr auto recombine_tuple(CombineOp combine, const Tpl& tpl, Projector project, Init initial) {
+            return recombine_tuple(std::move(combine),
+                                   std::forward<decltype(tpl)>(tpl),
+                                   std::make_index_sequence<std::tuple_size<Tpl>::value>{},
+                                   std::move(project),
+                                   std::move(initial));
+        }
+
+        /*
+         *  Function object that takes integral constants and returns the sum of their values as an integral constant.
+         *  Because it's a "transparent" functor, it must be called with at least one argument, otherwise it cannot deduce the integral constant type.
+         */
+        struct plus_reduce_integrals {
+            template<class... Integrals>
+            constexpr auto operator()(const Integrals&... integrals) const {
+                using integral_type = std::common_type_t<typename Integrals::value_type...>;
+                return std::integral_constant<integral_type, (integrals.value + ...)>{};
+            }
+        };
+
+        /*
+         *  Function object that takes a type, applies a projection on it, and returns the tuple size of the projected type (as an integral constant).
+         *  The projection is applied on the argument type, not the argument value/object.
+         */
+        template<template<class...> class NestedProject>
+        struct project_nested_tuple_size {
+            template<class T>
+            constexpr auto operator()(const T&) const {
+                return typename std::tuple_size<NestedProject<T>>::type{};
+            }
+        };
+
+        template<template<class...> class NestedProject, class Tpl, class IdxSeq>
+        using nested_tuple_size_for_t = decltype(recombine_tuple(plus_reduce_integrals{},
+                                                                 std::declval<Tpl>(),
+                                                                 IdxSeq{},
+                                                                 project_nested_tuple_size<NestedProject>{},
+                                                                 std::integral_constant<size_t, 0u>{}));
+#endif
+
+        template<class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
+        R create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, Projection project = {}) {
+            return R{polyfill::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
+        }
+
+        template<class R, class Tpl, class Projection = polyfill::identity>
+        R create_from_tuple(Tpl&& tpl, Projection project = {}) {
+            return create_from_tuple<R>(
+                std::forward<Tpl>(tpl),
+                std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
+                std::forward<Projection>(project));
         }
     }
 }
@@ -9783,16 +9858,8 @@ namespace sqlite_orm {
         struct table_t : basic_table {
             using object_type = O;
             using elements_type = std::tuple<Cs...>;
-            using columns_tuple = filter_tuple_t<elements_type, is_column>;
-            using dedicated_primary_keys_tuple = filter_tuple_t<elements_type, is_primary_key>;
-            using dedicated_primary_keys_columns_tuple =
-                typename flatten_primry_keys_columns<dedicated_primary_keys_tuple>::columns_tuple;
 
             static constexpr bool is_without_rowid_v = WithoutRowId;
-            static constexpr int columns_count = static_cast<int>(std::tuple_size<columns_tuple>::value);
-            static constexpr int primary_key_columns_count = count_tuple<columns_tuple, is_primary_key_column>::value;
-            static constexpr int dedicated_primary_key_columns_count =
-                static_cast<int>(std::tuple_size<dedicated_primary_keys_columns_tuple>::value);
 
             using is_without_rowid = polyfill::bool_constant<is_without_rowid_v>;
 
@@ -9807,15 +9874,32 @@ namespace sqlite_orm {
                 return {this->name, this->elements};
             }
 
-            /**
-             *  Returns foreign keys count in table definition
+            /*
+             *  Returns the number of elements of the specified type.
              */
-            static constexpr int foreign_keys_count =
-#if SQLITE_VERSION_NUMBER >= 3006019
-                static_cast<int>(filter_tuple_sequence_t<elements_type, is_foreign_key>::size());
-#else
-                0;
-#endif
+            template<template<class...> class Trait>
+            static constexpr int count_of() {
+                using sequence_of = filter_tuple_sequence_t<elements_type, Trait>;
+                return int(sequence_of::size());
+            }
+
+            /*
+             *  Returns the number of columns having the specified constraint trait.
+             */
+            template<template<class...> class Trait>
+            static constexpr int count_of_columns_with() {
+                using filtered_index_sequence = col_index_sequence_with<elements_type, Trait>;
+                return int(filtered_index_sequence::size());
+            }
+
+            /*
+             *  Returns the number of columns having the specified constraint trait.
+             */
+            template<template<class...> class Trait>
+            static constexpr int count_of_columns_excluding() {
+                using excluded_col_index_sequence = col_index_sequence_excluding<elements_type, Trait>;
+                return int(excluded_col_index_sequence::size());
+            }
 
             /**
              *  Function used to get field value from object by mapped member pointer/setter/getter.
@@ -9935,19 +10019,6 @@ namespace sqlite_orm {
                                   }
                               });
                 return res;
-            }
-
-            /**
-             *  Counts and returns amount of columns without GENERATED ALWAYS constraints. Skips table constraints.
-             */
-            constexpr int non_generated_columns_count() const {
-#if SQLITE_VERSION_NUMBER >= 3031000
-                using non_generated_col_index_sequence =
-                    col_index_sequence_excluding<elements_type, is_generated_always>;
-                return int(non_generated_col_index_sequence::size());
-#else
-                return this->columns_count;
-#endif
             }
 
             /**
@@ -10327,7 +10398,7 @@ namespace sqlite_orm {
         int foreign_keys_count(const DBOs& dbObjects) {
             int res = 0;
             iterate_tuple<true>(dbObjects, tables_index_sequence<DBOs>{}, [&res](const auto& table) {
-                res += table.foreign_keys_count;
+                res += table.template count_of<is_foreign_key>();
             });
             return res;
         }
@@ -10426,6 +10497,8 @@ namespace sqlite_orm {
 // #include "tuple_helper/tuple_traits.h"
 
 // #include "tuple_helper/tuple_filter.h"
+
+// #include "tuple_helper/tuple_transformer.h"
 
 // #include "tuple_helper/tuple_iteration.h"
 
@@ -10537,31 +10610,6 @@ namespace sqlite_orm {
 // #include "tuple_helper/tuple_filter.h"
 
 // #include "tuple_helper/tuple_transformer.h"
-
-#include <tuple>  //  std::tuple
-
-// #include "../functional/mpl.h"
-
-namespace sqlite_orm {
-    namespace internal {
-
-        template<class Tpl, template<class...> class Op>
-        struct tuple_transformer;
-
-        template<class... Types, template<class...> class Op>
-        struct tuple_transformer<std::tuple<Types...>, Op> {
-            using type = std::tuple<mpl::invoke_op_t<Op, Types>...>;
-        };
-
-        /*
-         *  Transform specified tuple.
-         *  
-         *  `Op` is a metafunction operation.
-         */
-        template<class Tpl, template<class...> class Op>
-        using transform_tuple_t = typename tuple_transformer<Tpl, Op>::type;
-    }
-}
 
 // #include "type_traits.h"
 
@@ -15528,7 +15576,7 @@ namespace sqlite_orm {
                                                              const Ctx& context) {
             if(definedOrder) {
                 auto& table = pick_table<mapped_type_proxy_t<T>>(context.db_objects);
-                collectedExpressions.reserve(collectedExpressions.size() + table.columns_count);
+                collectedExpressions.reserve(collectedExpressions.size() + table.template count_of<is_column>());
                 table.for_each_column([qualified = !context.skip_table_name,
                                        &tableName = table.name,
                                        &collectedExpressions](const column_identifier& column) {
@@ -17091,7 +17139,7 @@ namespace sqlite_orm {
                 ss << "REPLACE INTO " << streaming_identifier(table.name) << " ("
                    << streaming_non_generated_column_names(table) << ")";
                 const auto valuesCount = std::distance(rep.range.first, rep.range.second);
-                const auto columnsCount = table.non_generated_columns_count();
+                const auto columnsCount = table.template count_of_columns_excluding<is_generated_always>();
                 ss << " VALUES " << streaming_values_placeholders(columnsCount, valuesCount);
                 return ss.str();
             }
@@ -17967,14 +18015,23 @@ namespace sqlite_orm {
 
             template<class O>
             void assert_updatable_type() const {
+#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
                 using Table = storage_pick_table_t<O, db_objects_type>;
-                constexpr int primaryKeyColumnsCount =
-                    Table::primary_key_columns_count + Table::dedicated_primary_key_columns_count;
-                constexpr int nonPrimaryKeysColumnsCount = Table::columns_count - primaryKeyColumnsCount;
-                static_assert(primaryKeyColumnsCount > 0, "Type with no primary keys can't be updated");
+                using elements_type = elements_type_t<Table>;
+                using col_index_sequence = filter_tuple_sequence_t<elements_type, is_column>;
+                using pk_index_sequence = filter_tuple_sequence_t<elements_type, is_primary_key>;
+                using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
+                constexpr size_t dedicatedPrimaryKeyColumnsCount =
+                    nested_tuple_size_for_t<columns_tuple_t, elements_type, pk_index_sequence>::value;
+
+                constexpr size_t primaryKeyColumnsCount =
+                    dedicatedPrimaryKeyColumnsCount + pkcol_index_sequence::size();
+                constexpr ptrdiff_t nonPrimaryKeysColumnsCount = col_index_sequence::size() - primaryKeyColumnsCount;
+                static_assert(primaryKeyColumnsCount > 0, "A table without primary keys cannot be updated");
                 static_assert(
                     nonPrimaryKeysColumnsCount > 0,
-                    "Type with primary keys only can't be updated. You need at least 1 non-primary key column");
+                    "A table with only primary keys cannot be updated. You need at least 1 non-primary key column");
+#endif
             }
 
             template<class O,
@@ -20071,7 +20128,7 @@ namespace sqlite_orm {
                                  column.is_not_null(),
                                  std::move(dft),
                                  column.template is<is_primary_key>(),
-                                 column.is_generated());
+                                 column.template is<is_generated_always>());
             });
             auto compositeKeyColumnNames = this->composite_key_columns_names();
             for(size_t i = 0; i < compositeKeyColumnNames.size(); ++i) {
@@ -20221,7 +20278,7 @@ namespace sqlite_orm {
             const Table& table,
             const std::vector<const table_xinfo*>& columnsToIgnore) const {  // must ignore generated columns
             std::vector<std::reference_wrapper<const std::string>> columnNames;
-            columnNames.reserve(table.columns_count);
+            columnNames.reserve(table.template count_of<is_column>());
             table.for_each_column([&columnNames, &columnsToIgnore](const column_identifier& column) {
                 auto& columnName = column.name;
 #if __cpp_lib_ranges >= 201911L

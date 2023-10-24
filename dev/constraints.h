@@ -379,6 +379,7 @@ namespace sqlite_orm {
             expression_type expression;
         };
 
+#if SQLITE_VERSION_NUMBER >= 3031000
         struct basic_generated_always {
             enum class storage_type {
                 not_specified,
@@ -411,6 +412,7 @@ namespace sqlite_orm {
                 return {std::move(this->expression), this->full, storage_type::stored};
             }
         };
+#endif
 
         struct null_t {};
 
@@ -420,7 +422,12 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_foreign_key_v = polyfill::is_specialization_of_v<T, foreign_key_t>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_foreign_key_v =
+#if SQLITE_VERSION_NUMBER >= 3006019
+            polyfill::is_specialization_of_v<T, foreign_key_t>;
+#else
+            false;
+#endif
 
         template<class T>
         using is_foreign_key = polyfill::bool_constant<is_foreign_key_v<T>>;
@@ -438,10 +445,15 @@ namespace sqlite_orm {
         SQLITE_ORM_INLINE_VAR constexpr bool is_primary_key_v = is_primary_key<T>::value;
 
         template<class T>
-        using is_generated_always = polyfill::is_specialization_of<T, generated_always_t>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_generated_always_v =
+#if SQLITE_VERSION_NUMBER >= 3031000
+            polyfill::is_specialization_of_v<T, generated_always_t>;
+#else
+            false;
+#endif
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_generated_always_v = is_generated_always<T>::value;
+        using is_generated_always = polyfill::bool_constant<is_generated_always_v<T>>;
 
         /**
          * PRIMARY KEY INSERTABLE traits.
@@ -458,37 +470,17 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct primary_key_colums_count_t;
-
-        template<class... Cs>
-        struct primary_key_colums_count_t<primary_key_t<Cs...>>
-            : std::integral_constant<int, static_cast<int>(sizeof...(Cs))> {};
-
-        template<class... Pks>
-        struct flatten_primry_keys_columns {
-            using columns_tuple = typename conc_tuple<typename Pks::columns_tuple...>::type;
-        };
-
-        template<class... Pks>
-        struct flatten_primry_keys_columns<std::tuple<Pks...>> : flatten_primry_keys_columns<Pks...> {};
-
-        template<class T>
-        using is_constraint =
-            mpl::instantiate<mpl::disjunction<check_if<is_primary_key>,
-                                              check_if<is_foreign_key>,
-                                              check_if_is_type<null_t>,
-                                              check_if_is_type<not_null_t>,
-                                              check_if_is_template<unique_t>,
-                                              check_if_is_template<default_t>,
-                                              check_if_is_template<check_t>,
-                                              check_if_is_template<primary_key_with_autoincrement>,
-                                              check_if_is_type<collate_constraint_t>,
-#if SQLITE_VERSION_NUMBER >= 3031000
-                                              check_if<is_generated_always>,
-#endif
-                                              // dummy tail because of SQLITE_VERSION_NUMBER checks above
-                                              mpl::always<std::false_type>>,
-                             T>;
+        using is_constraint = mpl::instantiate<mpl::disjunction<check_if<is_primary_key>,
+                                                                check_if<is_foreign_key>,
+                                                                check_if_is_type<null_t>,
+                                                                check_if_is_type<not_null_t>,
+                                                                check_if_is_template<unique_t>,
+                                                                check_if_is_template<default_t>,
+                                                                check_if_is_template<check_t>,
+                                                                check_if_is_template<primary_key_with_autoincrement>,
+                                                                check_if_is_type<collate_constraint_t>,
+                                                                check_if<is_generated_always>>,
+                                               T>;
     }
 
 #if SQLITE_VERSION_NUMBER >= 3031000

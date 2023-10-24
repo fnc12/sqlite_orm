@@ -15,6 +15,7 @@
 #include "../tuple_helper/tuple_filter.h"
 #include "../tuple_helper/tuple_traits.h"
 #include "../tuple_helper/tuple_iteration.h"
+#include "../tuple_helper/tuple_transformer.h"
 #include "../member_traits/member_traits.h"
 #include "../typed_comparator.h"
 #include "../type_traits.h"
@@ -41,16 +42,8 @@ namespace sqlite_orm {
         struct table_t : basic_table {
             using object_type = O;
             using elements_type = std::tuple<Cs...>;
-            using columns_tuple = filter_tuple_t<elements_type, is_column>;
-            using dedicated_primary_keys_tuple = filter_tuple_t<elements_type, is_primary_key>;
-            using dedicated_primary_keys_columns_tuple =
-                typename flatten_primry_keys_columns<dedicated_primary_keys_tuple>::columns_tuple;
 
             static constexpr bool is_without_rowid_v = WithoutRowId;
-            static constexpr int columns_count = static_cast<int>(std::tuple_size<columns_tuple>::value);
-            static constexpr int primary_key_columns_count = count_tuple<columns_tuple, is_primary_key_column>::value;
-            static constexpr int dedicated_primary_key_columns_count =
-                static_cast<int>(std::tuple_size<dedicated_primary_keys_columns_tuple>::value);
 
             using is_without_rowid = polyfill::bool_constant<is_without_rowid_v>;
 
@@ -65,15 +58,32 @@ namespace sqlite_orm {
                 return {this->name, this->elements};
             }
 
-            /**
-             *  Returns foreign keys count in table definition
+            /*
+             *  Returns the number of elements of the specified type.
              */
-            static constexpr int foreign_keys_count =
-#if SQLITE_VERSION_NUMBER >= 3006019
-                static_cast<int>(filter_tuple_sequence_t<elements_type, is_foreign_key>::size());
-#else
-                0;
-#endif
+            template<template<class...> class Trait>
+            static constexpr int count_of() {
+                using sequence_of = filter_tuple_sequence_t<elements_type, Trait>;
+                return int(sequence_of::size());
+            }
+
+            /*
+             *  Returns the number of columns having the specified constraint trait.
+             */
+            template<template<class...> class Trait>
+            static constexpr int count_of_columns_with() {
+                using filtered_index_sequence = col_index_sequence_with<elements_type, Trait>;
+                return int(filtered_index_sequence::size());
+            }
+
+            /*
+             *  Returns the number of columns having the specified constraint trait.
+             */
+            template<template<class...> class Trait>
+            static constexpr int count_of_columns_excluding() {
+                using excluded_col_index_sequence = col_index_sequence_excluding<elements_type, Trait>;
+                return int(excluded_col_index_sequence::size());
+            }
 
             /**
              *  Function used to get field value from object by mapped member pointer/setter/getter.
@@ -193,19 +203,6 @@ namespace sqlite_orm {
                                   }
                               });
                 return res;
-            }
-
-            /**
-             *  Counts and returns amount of columns without GENERATED ALWAYS constraints. Skips table constraints.
-             */
-            constexpr int non_generated_columns_count() const {
-#if SQLITE_VERSION_NUMBER >= 3031000
-                using non_generated_col_index_sequence =
-                    col_index_sequence_excluding<elements_type, is_generated_always>;
-                return int(non_generated_col_index_sequence::size());
-#else
-                return this->columns_count;
-#endif
             }
 
             /**
