@@ -20,6 +20,7 @@ TEST_CASE("mpl") {
     STATIC_REQUIRE(mpl::is_metafunction_class_v<mpl_is_same>);
     STATIC_REQUIRE_FALSE(mpl::is_alias_template_v<std::common_type, int>);
     STATIC_REQUIRE(mpl::is_alias_template_v<std::common_type_t, int>);
+    STATIC_REQUIRE(mpl::is_alias_template_v<make_literal_holder, int>);
     STATIC_REQUIRE(std::is_same<mpl::invoke_fn_t<std::common_type, int>, int>::value);
     STATIC_REQUIRE(std::is_same<mpl::invoke_op_t<std::common_type_t, int>, int>::value);
     STATIC_REQUIRE(std::is_same<mpl::invoke_meta_t<std::common_type, int>, int>::value);
