@@ -907,13 +907,13 @@ namespace sqlite_orm {
             }
         };
 
-        template<class T>
-        struct statement_serializer<primary_key_with_autoincrement<T>, void> {
-            using statement_type = primary_key_with_autoincrement<T>;
+        template<class PK>
+        struct statement_serializer<primary_key_with_autoincrement<PK>, void> {
+            using statement_type = primary_key_with_autoincrement<PK>;
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
-                return serialize(statement.primary_key, context) + " AUTOINCREMENT";
+                return serialize(statement.as_base(), context) + " AUTOINCREMENT";
             }
         };
 
@@ -1430,7 +1430,7 @@ namespace sqlite_orm {
                 ss << "REPLACE INTO " << streaming_identifier(table.name) << " ("
                    << streaming_non_generated_column_names(table) << ")";
                 const auto valuesCount = std::distance(rep.range.first, rep.range.second);
-                const auto columnsCount = table.non_generated_columns_count();
+                const auto columnsCount = table.template count_of_columns_excluding<is_generated_always>();
                 ss << " VALUES " << streaming_values_placeholders(columnsCount, valuesCount);
                 return ss.str();
             }
