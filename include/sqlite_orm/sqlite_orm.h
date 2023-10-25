@@ -11084,6 +11084,10 @@ namespace sqlite_orm {
         template<class DBOs, class T>
         using column_result_of_t = typename column_result_t<DBOs, T>::type;
 
+        template<class DBOs, class Tpl>
+        using column_result_for_tuple_t =
+            transform_tuple_t<Tpl, mpl::bind_front_fn<column_result_of_t, DBOs>::template fn>;
+
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class DBOs, class T>
         struct column_result_t<DBOs, as_optional_t<T>, void> {
@@ -11271,10 +11275,8 @@ namespace sqlite_orm {
         template<class DBOs, class T>
         struct column_result_t<DBOs, T, match_if<is_compound_operator, T>> {
             using type =
-                polyfill::detected_t<common_type_of_t,
-                                     transform_tuple_t<typename T::expressions_tuple,
-                                                       mpl::bind_front_fn<column_result_of_t, DBOs>::template fn>>;
-            static_assert(!std::is_same<polyfill::nonesuch, type>::value,
+                polyfill::detected_t<common_type_of_t, column_result_for_tuple_t<DBOs, typename T::expressions_tuple>>;
+            static_assert(!std::is_same<type, polyfill::nonesuch>::value,
                           "Compound select statements must return a common type");
         };
 
