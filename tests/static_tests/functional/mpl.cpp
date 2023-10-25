@@ -5,9 +5,13 @@
 #include <functional>  //  std::less
 
 using namespace sqlite_orm;
+using internal::literal_holder;
 
 template<class TransparentFunction>
 using transparent_of_t = typename TransparentFunction::is_transparent;
+
+template<class T>
+using make_literal_holder = literal_holder<T>;
 
 TEST_CASE("mpl") {
     using mpl_is_same = mpl::quote_fn<std::is_same>;
@@ -20,6 +24,7 @@ TEST_CASE("mpl") {
     STATIC_REQUIRE(std::is_same<mpl::invoke_op_t<std::common_type_t, int>, int>::value);
     STATIC_REQUIRE(std::is_same<mpl::invoke_meta_t<std::common_type, int>, int>::value);
     STATIC_REQUIRE(std::is_same<mpl::invoke_meta_t<std::common_type_t, int>, int>::value);
+    STATIC_REQUIRE(std::is_same<mpl::invoke_meta_t<make_literal_holder, int>, literal_holder<int>>::value);
     STATIC_REQUIRE(mpl::invoke_t<mpl_is_same, int, int>::value);
     STATIC_REQUIRE_FALSE(mpl::invoke_t<mpl::not_<mpl_is_same>, int, int>::value);
     STATIC_REQUIRE(mpl::invoke_t<mpl::bind_front_fn<std::is_constructible, std::vector<int>>, size_t, int>::value);

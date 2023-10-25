@@ -9,9 +9,9 @@
  *  Hence it contains only a very small subset of a full MPL.
  *  
  *  Three key concepts are critical to understanding:
- *  1. A 'metafunction' is a class template that represents a function invocable at compile-time.
+ *  1. A 'metafunction' is a class template with a nested `type` typename, and represents a function invocable at compile-time.
  *     E.g. `template<class T> struct x { using type = int; };`
- *  2. A 'metafunction operation' is an alias template that represents a nested template expression, whose instantiation yields a type.
+ *  2. A 'metafunction operation' is an alias template for a class template or a nested template expression, whose instantiation yields a type.
  *     E.g. `template<class T> using alias_op_t = typename x<T>::type`
  *  3. A 'metafunction class' is a certain form of metafunction representation that enables higher-order metaprogramming.
  *     More precisely, it's a class with a nested metafunction called "fn"
@@ -103,16 +103,14 @@ namespace sqlite_orm {
             };
 
             template<template<class...> class Fn, class... Args>
-            struct invoke_meta<std::enable_if_t<!is_alias_template_v<Fn, Args...>>, Fn, Args...> {
-                using type = typename Fn<Args...>::type;
-            };
+            struct invoke_meta<std::enable_if_t<!is_alias_template_v<Fn, Args...>>, Fn, Args...> : Fn<Args...> {};
 
             /*
              *  Invoke metafunction or metafunction operation.
              *  
              *  @attention If using an alias template, be aware that it isn't recognizable whether an alias template is
              *  a. an alias of a class template (e.g. `template<class T> using aliased = x<T>`) or
-             *  b. an alias of a nested template expression yielding a result (e.g. `template<class T> alias_op_t = typename x<T>::type`)
+             *  b. an alias of a class template or nested template expression yielding a result (e.g. `template<class T> alias_op_t = typename x<T>::type`)
              *  Therefore, one cannot use `invoke_meta_t` with an alias of a class template (a.), or
              *  in other words, `invoke_meta_t` expects an alias of a nested template expression (b.).
              *  The alternative in that case is to use `invoke_fn_t`.

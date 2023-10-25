@@ -27,6 +27,7 @@ namespace sqlite_orm {
         template<class Pack, template<class...> class Op>
         using transform_tuple_t = typename tuple_transformer<Pack, Op>::type;
 
+        //  note: applying a combiner like `plus_fold_integrals` needs fold expressions
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
         /*
          *  Apply a projection to a tuple's elements filtered by the specified indexes, and combine the results.
