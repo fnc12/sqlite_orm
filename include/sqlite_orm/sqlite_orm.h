@@ -1088,11 +1088,13 @@ namespace sqlite_orm {
 
 // #include "tuple_helper/same_or_void.h"
 
+#include <type_traits>  //  std::common_type
+
 namespace sqlite_orm {
     namespace internal {
 
         /**
-         *  Accepts any number of arguments and evaluates `type` alias as T if all arguments are the same or void otherwise
+         *  Accepts any number of arguments and evaluates a nested `type` typename as `T` if all arguments are the same, otherwise `void`.
          */
         template<class... Args>
         struct same_or_void {
@@ -1116,13 +1118,18 @@ namespace sqlite_orm {
         struct same_or_void<A, A, Args...> : same_or_void<A, Args...> {};
 
         template<class Pack>
-        struct same_or_void_of;
+        struct common_type_of;
 
         template<template<class...> class Pack, class... Types>
-        struct same_or_void_of<Pack<Types...>> : same_or_void<Types...> {};
+        struct common_type_of<Pack<Types...>> : std::common_type<Types...> {};
 
+        /**
+         *  Accepts a pack of types and defines a nested `type` typename to a common type if possible, otherwise nonexistent.
+         *  
+         *  @note: SFINAE friendly like `std::common_type`.
+         */
         template<class Pack>
-        using same_or_void_of_t = typename same_or_void_of<Pack>::type;
+        using common_type_of_t = typename common_type_of<Pack>::type;
     }
 }
 
@@ -7561,7 +7568,7 @@ namespace sqlite_orm {
      */
     template<class... E>
     internal::union_t<E...> union_(E... expressions) {
-        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 expressions");
+        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}, false};
     }
 
@@ -7572,7 +7579,7 @@ namespace sqlite_orm {
      */
     template<class... E>
     internal::union_t<E...> union_all(E... expressions) {
-        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 expressions");
+        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}, true};
     }
 
@@ -7583,13 +7590,13 @@ namespace sqlite_orm {
      */
     template<class... E>
     internal::except_t<E...> except(E... expressions) {
-        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 expressions");
+        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}};
     }
 
     template<class... E>
     internal::intersect_t<E...> intersect(E... expressions) {
-        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 expressions");
+        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}};
     }
 
@@ -10664,10 +10671,11 @@ namespace sqlite_orm {
 // #include "column_result.h"
 
 #include <type_traits>  //  std::enable_if, std::is_same, std::decay, std::is_arithmetic, std::is_base_of
-#include <tuple>  //  std::tuple
 #include <functional>  //  std::reference_wrapper
 
 // #include "functional/cxx_universal.h"
+//  ::nullptr_t
+// #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "functional/mpl.h"
 
@@ -10696,6 +10704,8 @@ namespace sqlite_orm {
 }
 
 // #include "tuple_helper/tuple_filter.h"
+
+// #include "tuple_helper/tuple_transformer.h"
 
 // #include "tuple_helper/same_or_void.h"
 
@@ -11252,20 +11262,20 @@ namespace sqlite_orm {
         struct column_result_t<DBOs, column_pointer<T, F>, void> : column_result_t<DBOs, F> {};
 
         template<class DBOs, class... Args>
-        struct column_result_t<DBOs, columns_t<Args...>, void> {
-            using type = tuple_cat_t<tuplify_t<column_result_of_t<DBOs, std::decay_t<Args>>>...>;
-        };
+        struct column_result_t<DBOs, columns_t<Args...>, void>
+            : conc_tuple<tuplify_t<column_result_of_t<DBOs, std::decay_t<Args>>>...> {};
 
         template<class DBOs, class T, class... Args>
         struct column_result_t<DBOs, select_t<T, Args...>> : column_result_t<DBOs, T> {};
 
         template<class DBOs, class T>
         struct column_result_t<DBOs, T, match_if<is_compound_operator, T>> {
-            using column_result_fn = mpl::bind_front_fn<column_result_of_t, DBOs>;
-            using types_tuple = transform_tuple_t<typename T::expressions_tuple, column_result_fn::template fn>;
-            using type = std::tuple_element_t<0, types_tuple>;
-            static_assert(!std::is_same<void, same_or_void_of_t<types_tuple>>::value,
-                          "Compound subselect queries must return same types");
+            using type =
+                polyfill::detected_t<common_type_of_t,
+                                     transform_tuple_t<typename T::expressions_tuple,
+                                                       mpl::bind_front_fn<column_result_of_t, DBOs>::template fn>>;
+            static_assert(!std::is_same<polyfill::nonesuch, type>::value,
+                          "Compound select statements must return a common type");
         };
 
         template<class DBOs, class T>

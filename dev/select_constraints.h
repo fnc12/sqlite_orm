@@ -345,7 +345,7 @@ namespace sqlite_orm {
      */
     template<class... E>
     internal::union_t<E...> union_(E... expressions) {
-        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 expressions");
+        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}, false};
     }
 
@@ -356,7 +356,7 @@ namespace sqlite_orm {
      */
     template<class... E>
     internal::union_t<E...> union_all(E... expressions) {
-        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 expressions");
+        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}, true};
     }
 
@@ -367,13 +367,13 @@ namespace sqlite_orm {
      */
     template<class... E>
     internal::except_t<E...> except(E... expressions) {
-        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 expressions");
+        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}};
     }
 
     template<class... E>
     internal::intersect_t<E...> intersect(E... expressions) {
-        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 expressions");
+        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}};
     }
 
