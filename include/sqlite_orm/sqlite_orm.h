@@ -795,16 +795,6 @@ namespace sqlite_orm {
 #endif
 
             /*
-             *  Given suitable template arguments, detect whether a template is an alias template.
-             *  
-             *  @note It exploits the fact that the `is_specialization_of` trait is only true for class templates
-             *  but always false for alias templates.
-             */
-            template<template<class...> class Template, class... Args>
-            SQLITE_ORM_INLINE_VAR constexpr bool is_alias_template_v =
-                !polyfill::is_specialization_of_v<Template<Args...>, Template>;
-
-            /*
              *  Invoke metafunction.
              */
             template<template<class...> class Fn, class... Args>
@@ -832,30 +822,6 @@ namespace sqlite_orm {
             using invoke_op_t = typename wrap_op<Op, Args...>::type;
 #endif
 
-            template<class AlwaysVoid, template<class...> class F, class... Args>
-            struct invoke_meta;
-
-            template<template<class...> class Op, class... Args>
-            struct invoke_meta<std::enable_if_t<is_alias_template_v<Op, Args...>>, Op, Args...> {
-                using type = Op<Args...>;
-            };
-
-            template<template<class...> class Fn, class... Args>
-            struct invoke_meta<std::enable_if_t<!is_alias_template_v<Fn, Args...>>, Fn, Args...> : Fn<Args...> {};
-
-            /*
-             *  Invoke metafunction or metafunction operation.
-             *  
-             *  @attention If using an alias template, be aware that it isn't recognizable whether an alias template is
-             *  a. an alias of a class template (e.g. `template<class T> using aliased = x<T>`) or
-             *  b. an alias of a class template or nested template expression yielding a result (e.g. `template<class T> alias_op_t = typename x<T>::type`)
-             *  Therefore, one cannot use `invoke_meta_t` with an alias of a class template (a.), or
-             *  in other words, `invoke_meta_t` expects an alias of a nested template expression (b.).
-             *  The alternative in that case is to use `invoke_fn_t`.
-             */
-            template<template<class...> class F, class... Args>
-            using invoke_meta_t = typename invoke_meta<void, F, Args...>::type;
-
             /*
              *  Invoke metafunction class by invoking its nested metafunction.
              */
@@ -869,12 +835,21 @@ namespace sqlite_orm {
             using instantiate = typename FnCls::template fn<Args...>;
 
             /*
-             *  Wrap given type such that `typename T::type` is valid.
+             *  Provides the metafunction operation of metafunction class as alias template `op`.
              */
-            template<class T, class SFINAE = void>
-            struct type_wrap : polyfill::type_identity<T> {};
-            template<class T>
-            struct type_wrap<T, polyfill::void_t<typename T::type>> : T {};
+            template<class FnCls>
+            struct op_of {
+                template<class... Args>
+                using op = invoke_t<FnCls, Args...>;
+            };
+
+            /*
+             *  Turn a metafunction class into a metafunction operation.
+             *  
+             *  Useful when a metafunction class needs to be passed as a metafunction operation outside the mpl framework.
+             */
+            template<class FnCls>
+            using as_op = typename op_of<FnCls>::template op;
 
             /*
              *  Turn metafunction into a metafunction class.
@@ -886,15 +861,15 @@ namespace sqlite_orm {
             template<template<class...> class Fn>
             struct quote_fn {
                 template<class InvocableTest, template<class...> class, class...>
-                struct invoke_fn;
+                struct invoke_fn {};
 
                 template<template<class...> class F, class... Args>
                 struct invoke_fn<polyfill::void_t<F<Args...>>, F, Args...> {
-                    using type = type_wrap<F<Args...>>;
+                    using type = F<Args...>;
                 };
 
                 template<class... Args>
-                using fn = typename invoke_fn<void, Fn, Args...>::type;
+                struct fn : invoke_fn<void, Fn, Args...> {};
             };
 
             /*
@@ -912,7 +887,9 @@ namespace sqlite_orm {
                 template<template<template<class...> class Fn, class... Args2> class HigherFn>
                 struct quote_fn {
                     template<class QuotedFn, class... Args2>
-                    struct fn : HigherFn<QuotedFn::template fn, Args2...> {};
+                    struct fn {
+                        using type = HigherFn<as_op<QuotedFn>, Args2...>;
+                    };
                 };
             };
 
@@ -970,7 +947,9 @@ namespace sqlite_orm {
             template<class T>
             struct always {
                 template<class...>
-                struct fn : type_wrap<T> {};
+                struct fn {
+                    using type = T;
+                };
             };
 
             /*
@@ -978,16 +957,29 @@ namespace sqlite_orm {
              */
             struct identity {
                 template<class T>
-                struct fn : type_wrap<T> {};
+                struct fn {
+                    using type = T;
+                };
+            };
+
+            /*
+             *  Assume that the invocation of metafunction class yields a trait, and provide members `type` and `value` from the resulting trait.
+             *  
+             *  The goal of using this struct would be to attain lazy evaluation for trait metafunction classes like `conjunction` and `disjunction`.
+             */
+            template<class FnCls, class... Args>
+            struct yield_trait {
+                using type = invoke_t<FnCls, Args...>;
+                static constexpr auto value = type::value;
             };
 
             /*
              *  Metafunction class equivalent to std::negation.
              */
-            template<class FnCls>
+            template<class TraitFnCls>
             struct not_ {
                 template<class... Args>
-                struct fn : polyfill::negation<invoke_t<FnCls, Args...>> {};
+                struct fn : polyfill::negation<yield_trait<TraitFnCls, Args...>> {};
             };
 
             /*
@@ -996,7 +988,7 @@ namespace sqlite_orm {
             template<class... TraitFnCls>
             struct conjunction {
                 template<class... Args>
-                struct fn : polyfill::conjunction<typename TraitFnCls::template fn<Args...>...> {};
+                struct fn : polyfill::conjunction<yield_trait<TraitFnCls, Args...>...> {};
             };
 
             /*
@@ -1005,7 +997,7 @@ namespace sqlite_orm {
             template<class... TraitFnCls>
             struct disjunction {
                 template<class... Args>
-                struct fn : polyfill::disjunction<typename TraitFnCls::template fn<Args...>...> {};
+                struct fn : polyfill::disjunction<yield_trait<TraitFnCls, Args...>...> {};
             };
 
 #ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
@@ -1070,9 +1062,11 @@ namespace sqlite_orm {
 
         /*
          *  Trait metafunction class that checks if a type (possibly projected) is the same as the specified type.
+         *  
+         *  `Proj` is a projection applied to `Type` and must be a metafunction operation.
          */
-        template<class Type, template<class...> class Proj = polyfill::type_identity_t>
-        using check_if_is_type = mpl::pass_result_to<Proj, mpl::bind_front_fn<std::is_same, Type>>;
+        template<class Type, template<class...> class ProjOp = polyfill::type_identity_t>
+        using check_if_is_type = mpl::pass_result_to<ProjOp, mpl::bind_front_fn<std::is_same, Type>>;
 
         /*
          *  Trait metafunction class that checks if a type's template matches the specified template
@@ -1167,7 +1161,7 @@ namespace sqlite_orm {
          */
         template<class T, template<class...> class Proj = polyfill::type_identity_t>
         using check_if_tuple_has_type =
-            mpl::bind_front_higherorder_fn<tuple_has, check_if_is_type<T, Proj>::template fn>;
+            mpl::bind_front_higherorder_fn<tuple_has, mpl::as_op<check_if_is_type<T, Proj>>>;
 
         /*
          *  Metafunction class that checks whether a tuple contains a given template.
@@ -1183,7 +1177,7 @@ namespace sqlite_orm {
          */
         template<template<class...> class Primary>
         using check_if_tuple_has_template =
-            mpl::bind_front_higherorder_fn<tuple_has, check_if_is_template<Primary>::template fn>;
+            mpl::bind_front_higherorder_fn<tuple_has, mpl::as_op<check_if_is_template<Primary>>>;
     }
 }
 // #include "tuple_helper/tuple_filter.h"
@@ -1275,13 +1269,21 @@ namespace sqlite_orm {
             : flatten_idxseq<typename tuple_seq_single<Idx, Proj<std::tuple_element_t<Idx, Tpl>>, Pred>::type...> {};
 #endif
 
+        /*
+         *  `Pred` is a metafunction that defines a bool member named `value`
+         *  `FilterProj` is a metafunction operation
+         */
         template<class Tpl,
                  template<class...>
                  class Pred,
-                 template<class...> class Proj = polyfill::type_identity_t,
+                 template<class...> class FilterProj = polyfill::type_identity_t,
                  class Seq = std::make_index_sequence<std::tuple_size<Tpl>::value>>
-        using filter_tuple_sequence_t = typename filter_tuple_sequence<Tpl, Pred, Proj, Seq>::type;
+        using filter_tuple_sequence_t = typename filter_tuple_sequence<Tpl, Pred, FilterProj, Seq>::type;
 
+        /*
+         *  `Pred` is a metafunction that defines a bool member named `value`
+         *  `FilterProj` is a metafunction operation
+         */
         template<class Tpl,
                  template<class...>
                  class Pred,
@@ -1289,6 +1291,10 @@ namespace sqlite_orm {
                  class Seq = std::make_index_sequence<std::tuple_size<Tpl>::value>>
         using filter_tuple_t = tuple_from_index_sequence_t<Tpl, filter_tuple_sequence_t<Tpl, Pred, FilterProj, Seq>>;
 
+        /*
+         *  `Pred` is a metafunction that defines a bool member named `value`
+         *  `FilterProj` is a metafunction operation
+         */
         template<class Tpl,
                  template<class...>
                  class Pred,
@@ -1297,6 +1303,9 @@ namespace sqlite_orm {
 
         /*
          *  Count a tuple, picking only those elements specified in the index sequence.
+         *  
+         *  `Pred` is a metafunction that defines a bool member named `value`
+         *  `FilterProj` is a metafunction operation
          *  
          *  Implementation note: must be distinct from `count_tuple` because legacy compilers have problems
          *  with a default Sequence in function template parameters [SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION].
@@ -1825,25 +1834,25 @@ namespace sqlite_orm {
         template<typename T>
         struct is_primary_key_insertable
             : polyfill::disjunction<
-                  mpl::instantiate<mpl::disjunction<check_if_tuple_has_template<default_t>,
-                                                    check_if_tuple_has_template<primary_key_with_autoincrement>>,
-                                   constraints_type_t<T>>,
+                  mpl::invoke_t<mpl::disjunction<check_if_tuple_has_template<default_t>,
+                                                 check_if_tuple_has_template<primary_key_with_autoincrement>>,
+                                constraints_type_t<T>>,
                   std::is_base_of<integer_printer, type_printer<field_type_t<T>>>> {
 
             static_assert(tuple_has<is_primary_key, constraints_type_t<T>>::value, "an unexpected type was passed");
         };
 
         template<class T>
-        using is_constraint = mpl::instantiate<mpl::disjunction<check_if<is_primary_key>,
-                                                                check_if<is_foreign_key>,
-                                                                check_if_is_type<null_t>,
-                                                                check_if_is_type<not_null_t>,
-                                                                check_if_is_template<unique_t>,
-                                                                check_if_is_template<default_t>,
-                                                                check_if_is_template<check_t>,
-                                                                check_if_is_type<collate_constraint_t>,
-                                                                check_if<is_generated_always>>,
-                                               T>;
+        using is_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_primary_key>,
+                                                             check_if<is_foreign_key>,
+                                                             check_if_is_type<null_t>,
+                                                             check_if_is_type<not_null_t>,
+                                                             check_if_is_template<unique_t>,
+                                                             check_if_is_template<default_t>,
+                                                             check_if_is_template<check_t>,
+                                                             check_if_is_type<collate_constraint_t>,
+                                                             check_if<is_generated_always>>,
+                                            T>;
     }
 
 #if SQLITE_VERSION_NUMBER >= 3031000
@@ -2629,19 +2638,19 @@ namespace sqlite_orm {
         template<class Elements, class F>
         using col_index_sequence_with_field_type =
             filter_tuple_sequence_t<Elements,
-                                    check_if_is_type<F>::template fn,
+                                    mpl::as_op<check_if_is_type<F>>,
                                     field_type_t,
                                     filter_tuple_sequence_t<Elements, is_column>>;
 
         template<class Elements, template<class...> class TraitFn>
         using col_index_sequence_with = filter_tuple_sequence_t<Elements,
-                                                                check_if_tuple_has<TraitFn>::template fn,
+                                                                mpl::as_op<check_if_tuple_has<TraitFn>>,
                                                                 constraints_type_t,
                                                                 filter_tuple_sequence_t<Elements, is_column>>;
 
         template<class Elements, template<class...> class TraitFn>
         using col_index_sequence_excluding = filter_tuple_sequence_t<Elements,
-                                                                     check_if_tuple_has_not<TraitFn>::template fn,
+                                                                     mpl::as_op<check_if_tuple_has_not<TraitFn>>,
                                                                      constraints_type_t,
                                                                      filter_tuple_sequence_t<Elements, is_column>>;
     }
@@ -9876,13 +9885,13 @@ namespace sqlite_orm {
 
         template<template<class...> class Pack, class... Types, template<class...> class Op>
         struct tuple_transformer<Pack<Types...>, Op> {
-            using type = Pack<mpl::invoke_meta_t<Op, Types>...>;
+            using type = Pack<mpl::invoke_op_t<Op, Types>...>;
         };
 
         /*
          *  Transform specified tuple.
          *  
-         *  `Op` is a metafunction or metafunction operation.
+         *  `Op` is a metafunction operation.
          */
         template<class Pack, template<class...> class Op>
         using transform_tuple_t = typename tuple_transformer<Pack, Op>::type;
@@ -10174,7 +10183,7 @@ namespace sqlite_orm {
             void for_each_foreign_key_to(L&& lambda) const {
                 using fk_index_sequence = filter_tuple_sequence_t<elements_type, is_foreign_key>;
                 using filtered_index_sequence = filter_tuple_sequence_t<elements_type,
-                                                                        check_if_is_type<Target>::template fn,
+                                                                        mpl::as_op<check_if_is_type<Target>>,
                                                                         target_type_t,
                                                                         fk_index_sequence>;
                 iterate_tuple(this->elements, filtered_index_sequence{}, lambda);
@@ -10205,7 +10214,7 @@ namespace sqlite_orm {
              */
             template<class OpTraitFnCls, class L, satisfies<mpl::is_metafunction_class, OpTraitFnCls> = true>
             void for_each_column_excluding(L&& lambda) const {
-                this->for_each_column_excluding<OpTraitFnCls::template fn>(lambda);
+                this->for_each_column_excluding<mpl::as_op<OpTraitFnCls>>(lambda);
             }
 
             std::vector<table_xinfo> get_table_info() const;
@@ -10291,7 +10300,7 @@ namespace sqlite_orm {
              */
             template<class OpTraitFnCls, class L, satisfies<mpl::is_metafunction_class, OpTraitFnCls> = true>
             void for_each_column_excluding(L&& lambda) const {
-                this->for_each_column_excluding<OpTraitFnCls::template fn>(lambda);
+                this->for_each_column_excluding<mpl::as_op<OpTraitFnCls>>(lambda);
             }
 
             /**
@@ -10313,7 +10322,7 @@ namespace sqlite_orm {
                 using colrefs_tuple = decltype(primaryKey.columns);
                 using same_type_index_sequence =
                     filter_tuple_sequence_t<colrefs_tuple,
-                                            check_if_is_type<member_field_type_t<G>>::template fn,
+                                            mpl::as_op<check_if_is_type<member_field_type_t<G>>>,
                                             member_field_type_t>;
                 iterate_tuple(primaryKey.columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
                     if(compare_any(memberPointer, column.member_pointer) || compare_any(memberPointer, column.setter)) {
@@ -11085,7 +11094,7 @@ namespace sqlite_orm {
 
         template<class DBOs, class Tpl>
         using column_result_for_tuple_t =
-            transform_tuple_t<Tpl, mpl::bind_front_fn<column_result_of_t, DBOs>::template fn>;
+            transform_tuple_t<Tpl, mpl::as_op<mpl::bind_front_fn<column_result_of_t, DBOs>>>;
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class DBOs, class T>
@@ -15814,8 +15823,8 @@ namespace sqlite_orm {
                     (*this)(colExpr, context);
                 });
                 // note: `capacity() > size()` can occur in case `asterisk_t<>` does spell out the columns in defined order
-                if(mpl::instantiate<check_if_tuple_has_template<asterisk_t>,
-                                    typename columns_t<Args...>::columns_type>::value &&
+                if(mpl::invoke_t<check_if_tuple_has_template<asterisk_t>,
+                                 typename columns_t<Args...>::columns_type>::value &&
                    collectedExpressions.capacity() > collectedExpressions.size()) {
                     collectedExpressions.shrink_to_fit();
                 }
@@ -18219,7 +18228,7 @@ namespace sqlite_orm {
                     "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
                     "'insert', or you can use 'insert' with explicit column listing.");
                 static_assert(count_filtered_tuple<elements_type,
-                                                   check_if_not<is_primary_key_insertable>::template fn,
+                                                   mpl::as_op<check_if_not<is_primary_key_insertable>>,
                                                    pkcol_index_sequence>::value == 0,
                               "Attempting to execute 'insert' request into an noninsertable table was detected. "
                               "Insertable table cannot contain non-standard primary keys. Please use 'replace' instead "
@@ -20149,7 +20158,7 @@ namespace sqlite_orm {
         template<class... Op>
         std::unique_ptr<std::string> column_constraints<Op...>::default_value() const {
             using default_op_index_sequence =
-                filter_tuple_sequence_t<constraints_type, check_if_is_template<default_t>::template fn>;
+                filter_tuple_sequence_t<constraints_type, mpl::as_op<check_if_is_template<default_t>>>;
 
             std::unique_ptr<std::string> value;
             call_if_constexpr<default_op_index_sequence::size()>(

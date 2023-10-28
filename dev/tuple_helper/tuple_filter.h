@@ -53,13 +53,21 @@ namespace sqlite_orm {
             : flatten_idxseq<typename tuple_seq_single<Idx, Proj<std::tuple_element_t<Idx, Tpl>>, Pred>::type...> {};
 #endif
 
+        /*
+         *  `Pred` is a metafunction that defines a bool member named `value`
+         *  `FilterProj` is a metafunction operation
+         */
         template<class Tpl,
                  template<class...>
                  class Pred,
-                 template<class...> class Proj = polyfill::type_identity_t,
+                 template<class...> class FilterProj = polyfill::type_identity_t,
                  class Seq = std::make_index_sequence<std::tuple_size<Tpl>::value>>
-        using filter_tuple_sequence_t = typename filter_tuple_sequence<Tpl, Pred, Proj, Seq>::type;
+        using filter_tuple_sequence_t = typename filter_tuple_sequence<Tpl, Pred, FilterProj, Seq>::type;
 
+        /*
+         *  `Pred` is a metafunction that defines a bool member named `value`
+         *  `FilterProj` is a metafunction operation
+         */
         template<class Tpl,
                  template<class...>
                  class Pred,
@@ -67,6 +75,10 @@ namespace sqlite_orm {
                  class Seq = std::make_index_sequence<std::tuple_size<Tpl>::value>>
         using filter_tuple_t = tuple_from_index_sequence_t<Tpl, filter_tuple_sequence_t<Tpl, Pred, FilterProj, Seq>>;
 
+        /*
+         *  `Pred` is a metafunction that defines a bool member named `value`
+         *  `FilterProj` is a metafunction operation
+         */
         template<class Tpl,
                  template<class...>
                  class Pred,
@@ -75,6 +87,9 @@ namespace sqlite_orm {
 
         /*
          *  Count a tuple, picking only those elements specified in the index sequence.
+         *  
+         *  `Pred` is a metafunction that defines a bool member named `value`
+         *  `FilterProj` is a metafunction operation
          *  
          *  Implementation note: must be distinct from `count_tuple` because legacy compilers have problems
          *  with a default Sequence in function template parameters [SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION].

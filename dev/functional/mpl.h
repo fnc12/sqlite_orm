@@ -57,16 +57,6 @@ namespace sqlite_orm {
 #endif
 
             /*
-             *  Given suitable template arguments, detect whether a template is an alias template.
-             *  
-             *  @note It exploits the fact that the `is_specialization_of` trait is only true for class templates
-             *  but always false for alias templates.
-             */
-            template<template<class...> class Template, class... Args>
-            SQLITE_ORM_INLINE_VAR constexpr bool is_alias_template_v =
-                !polyfill::is_specialization_of_v<Template<Args...>, Template>;
-
-            /*
              *  Invoke metafunction.
              */
             template<template<class...> class Fn, class... Args>
@@ -94,30 +84,6 @@ namespace sqlite_orm {
             using invoke_op_t = typename wrap_op<Op, Args...>::type;
 #endif
 
-            template<class AlwaysVoid, template<class...> class F, class... Args>
-            struct invoke_meta;
-
-            template<template<class...> class Op, class... Args>
-            struct invoke_meta<std::enable_if_t<is_alias_template_v<Op, Args...>>, Op, Args...> {
-                using type = Op<Args...>;
-            };
-
-            template<template<class...> class Fn, class... Args>
-            struct invoke_meta<std::enable_if_t<!is_alias_template_v<Fn, Args...>>, Fn, Args...> : Fn<Args...> {};
-
-            /*
-             *  Invoke metafunction or metafunction operation.
-             *  
-             *  @attention If using an alias template, be aware that it isn't recognizable whether an alias template is
-             *  a. an alias of a class template (e.g. `template<class T> using aliased = x<T>`) or
-             *  b. an alias of a class template or nested template expression yielding a result (e.g. `template<class T> alias_op_t = typename x<T>::type`)
-             *  Therefore, one cannot use `invoke_meta_t` with an alias of a class template (a.), or
-             *  in other words, `invoke_meta_t` expects an alias of a nested template expression (b.).
-             *  The alternative in that case is to use `invoke_fn_t`.
-             */
-            template<template<class...> class F, class... Args>
-            using invoke_meta_t = typename invoke_meta<void, F, Args...>::type;
-
             /*
              *  Invoke metafunction class by invoking its nested metafunction.
              */
@@ -131,12 +97,21 @@ namespace sqlite_orm {
             using instantiate = typename FnCls::template fn<Args...>;
 
             /*
-             *  Wrap given type such that `typename T::type` is valid.
+             *  Provides the metafunction operation of metafunction class as alias template `op`.
              */
-            template<class T, class SFINAE = void>
-            struct type_wrap : polyfill::type_identity<T> {};
-            template<class T>
-            struct type_wrap<T, polyfill::void_t<typename T::type>> : T {};
+            template<class FnCls>
+            struct op_of {
+                template<class... Args>
+                using op = invoke_t<FnCls, Args...>;
+            };
+
+            /*
+             *  Turn a metafunction class into a metafunction operation.
+             *  
+             *  Useful when a metafunction class needs to be passed as a metafunction operation outside the mpl framework.
+             */
+            template<class FnCls>
+            using as_op = typename op_of<FnCls>::template op;
 
             /*
              *  Turn metafunction into a metafunction class.
@@ -148,15 +123,15 @@ namespace sqlite_orm {
             template<template<class...> class Fn>
             struct quote_fn {
                 template<class InvocableTest, template<class...> class, class...>
-                struct invoke_fn;
+                struct invoke_fn {};
 
                 template<template<class...> class F, class... Args>
                 struct invoke_fn<polyfill::void_t<F<Args...>>, F, Args...> {
-                    using type = type_wrap<F<Args...>>;
+                    using type = F<Args...>;
                 };
 
                 template<class... Args>
-                using fn = typename invoke_fn<void, Fn, Args...>::type;
+                struct fn : invoke_fn<void, Fn, Args...> {};
             };
 
             /*
@@ -174,7 +149,9 @@ namespace sqlite_orm {
                 template<template<template<class...> class Fn, class... Args2> class HigherFn>
                 struct quote_fn {
                     template<class QuotedFn, class... Args2>
-                    struct fn : HigherFn<QuotedFn::template fn, Args2...> {};
+                    struct fn {
+                        using type = HigherFn<as_op<QuotedFn>, Args2...>;
+                    };
                 };
             };
 
@@ -232,7 +209,9 @@ namespace sqlite_orm {
             template<class T>
             struct always {
                 template<class...>
-                struct fn : type_wrap<T> {};
+                struct fn {
+                    using type = T;
+                };
             };
 
             /*
@@ -240,16 +219,29 @@ namespace sqlite_orm {
              */
             struct identity {
                 template<class T>
-                struct fn : type_wrap<T> {};
+                struct fn {
+                    using type = T;
+                };
+            };
+
+            /*
+             *  Assume that the invocation of metafunction class yields a trait, and provide members `type` and `value` from the resulting trait.
+             *  
+             *  The goal of using this struct would be to attain lazy evaluation for trait metafunction classes like `conjunction` and `disjunction`.
+             */
+            template<class FnCls, class... Args>
+            struct yield_trait {
+                using type = invoke_t<FnCls, Args...>;
+                static constexpr auto value = type::value;
             };
 
             /*
              *  Metafunction class equivalent to std::negation.
              */
-            template<class FnCls>
+            template<class TraitFnCls>
             struct not_ {
                 template<class... Args>
-                struct fn : polyfill::negation<invoke_t<FnCls, Args...>> {};
+                struct fn : polyfill::negation<yield_trait<TraitFnCls, Args...>> {};
             };
 
             /*
@@ -258,7 +250,7 @@ namespace sqlite_orm {
             template<class... TraitFnCls>
             struct conjunction {
                 template<class... Args>
-                struct fn : polyfill::conjunction<typename TraitFnCls::template fn<Args...>...> {};
+                struct fn : polyfill::conjunction<yield_trait<TraitFnCls, Args...>...> {};
             };
 
             /*
@@ -267,7 +259,7 @@ namespace sqlite_orm {
             template<class... TraitFnCls>
             struct disjunction {
                 template<class... Args>
-                struct fn : polyfill::disjunction<typename TraitFnCls::template fn<Args...>...> {};
+                struct fn : polyfill::disjunction<yield_trait<TraitFnCls, Args...>...> {};
             };
 
 #ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
@@ -332,9 +324,11 @@ namespace sqlite_orm {
 
         /*
          *  Trait metafunction class that checks if a type (possibly projected) is the same as the specified type.
+         *  
+         *  `Proj` is a projection applied to `Type` and must be a metafunction operation.
          */
-        template<class Type, template<class...> class Proj = polyfill::type_identity_t>
-        using check_if_is_type = mpl::pass_result_to<Proj, mpl::bind_front_fn<std::is_same, Type>>;
+        template<class Type, template<class...> class ProjOp = polyfill::type_identity_t>
+        using check_if_is_type = mpl::pass_result_to<ProjOp, mpl::bind_front_fn<std::is_same, Type>>;
 
         /*
          *  Trait metafunction class that checks if a type's template matches the specified template

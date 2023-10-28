@@ -16,13 +16,13 @@ namespace sqlite_orm {
 
         template<template<class...> class Pack, class... Types, template<class...> class Op>
         struct tuple_transformer<Pack<Types...>, Op> {
-            using type = Pack<mpl::invoke_meta_t<Op, Types>...>;
+            using type = Pack<mpl::invoke_op_t<Op, Types>...>;
         };
 
         /*
          *  Transform specified tuple.
          *  
-         *  `Op` is a metafunction or metafunction operation.
+         *  `Op` is a metafunction operation.
          */
         template<class Pack, template<class...> class Op>
         using transform_tuple_t = typename tuple_transformer<Pack, Op>::type;

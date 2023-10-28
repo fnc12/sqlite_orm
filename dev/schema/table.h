@@ -219,7 +219,7 @@ namespace sqlite_orm {
             void for_each_foreign_key_to(L&& lambda) const {
                 using fk_index_sequence = filter_tuple_sequence_t<elements_type, is_foreign_key>;
                 using filtered_index_sequence = filter_tuple_sequence_t<elements_type,
-                                                                        check_if_is_type<Target>::template fn,
+                                                                        mpl::as_op<check_if_is_type<Target>>,
                                                                         target_type_t,
                                                                         fk_index_sequence>;
                 iterate_tuple(this->elements, filtered_index_sequence{}, lambda);
@@ -250,7 +250,7 @@ namespace sqlite_orm {
              */
             template<class OpTraitFnCls, class L, satisfies<mpl::is_metafunction_class, OpTraitFnCls> = true>
             void for_each_column_excluding(L&& lambda) const {
-                this->for_each_column_excluding<OpTraitFnCls::template fn>(lambda);
+                this->for_each_column_excluding<mpl::as_op<OpTraitFnCls>>(lambda);
             }
 
             std::vector<table_xinfo> get_table_info() const;
@@ -336,7 +336,7 @@ namespace sqlite_orm {
              */
             template<class OpTraitFnCls, class L, satisfies<mpl::is_metafunction_class, OpTraitFnCls> = true>
             void for_each_column_excluding(L&& lambda) const {
-                this->for_each_column_excluding<OpTraitFnCls::template fn>(lambda);
+                this->for_each_column_excluding<mpl::as_op<OpTraitFnCls>>(lambda);
             }
 
             /**
@@ -358,7 +358,7 @@ namespace sqlite_orm {
                 using colrefs_tuple = decltype(primaryKey.columns);
                 using same_type_index_sequence =
                     filter_tuple_sequence_t<colrefs_tuple,
-                                            check_if_is_type<member_field_type_t<G>>::template fn,
+                                            mpl::as_op<check_if_is_type<member_field_type_t<G>>>,
                                             member_field_type_t>;
                 iterate_tuple(primaryKey.columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
                     if(compare_any(memberPointer, column.member_pointer) || compare_any(memberPointer, column.setter)) {

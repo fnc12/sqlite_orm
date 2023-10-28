@@ -40,7 +40,7 @@ namespace sqlite_orm {
             template<class Table, class Lookup>
             struct table_foreign_keys_count
                 : count_filtered_tuple<elements_type_t<Table>,
-                                       check_if_is_type<Lookup>::template fn,
+                                       mpl::as_op<check_if_is_type<Lookup>>,
                                        filter_tuple_sequence_t<elements_type_t<Table>, is_foreign_key>,
                                        target_type_t> {};
 
@@ -75,7 +75,7 @@ namespace sqlite_orm {
             template<class Table, class Lookup>
             using table_foreign_keys_t =
                 filter_tuple_t<elements_type_t<Table>,
-                               check_if_is_type<Lookup>::template fn,
+                               mpl::as_op<check_if_is_type<Lookup>>,
                                target_type_t,
                                filter_tuple_sequence_t<elements_type_t<Table>, is_foreign_key>>;
 

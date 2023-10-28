@@ -33,7 +33,7 @@ namespace sqlite_orm {
          */
         template<class T, template<class...> class Proj = polyfill::type_identity_t>
         using check_if_tuple_has_type =
-            mpl::bind_front_higherorder_fn<tuple_has, check_if_is_type<T, Proj>::template fn>;
+            mpl::bind_front_higherorder_fn<tuple_has, mpl::as_op<check_if_is_type<T, Proj>>>;
 
         /*
          *  Metafunction class that checks whether a tuple contains a given template.
@@ -49,6 +49,6 @@ namespace sqlite_orm {
          */
         template<template<class...> class Primary>
         using check_if_tuple_has_template =
-            mpl::bind_front_higherorder_fn<tuple_has, check_if_is_template<Primary>::template fn>;
+            mpl::bind_front_higherorder_fn<tuple_has, mpl::as_op<check_if_is_template<Primary>>>;
     }
 }
