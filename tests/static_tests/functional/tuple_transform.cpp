@@ -16,7 +16,7 @@ using internal::recombine_tuple;
 template<class T>
 using make_literal_holder = literal_holder<T>;
 
-#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
+#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && (__cpp_lib_constexpr_functional >= 201907L)
 struct tuple_maker {
     template<class... Types>
     constexpr auto operator()(Types&&... types) const {
@@ -50,7 +50,7 @@ TEST_CASE("tuple_helper static") {
         STATIC_REQUIRE(create_from_tuple<std::array<int, 2>>(std::make_tuple(1, 2), polyfill::identity{}) ==
                        std::array<int, 2>{1, 2});
 #endif
-#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
+#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && (__cpp_lib_constexpr_functional >= 201907L)
         STATIC_REQUIRE(recombine_tuple(tuple_maker{}, std::make_tuple(1, 2), polyfill::identity{}, 3) ==
                        std::make_tuple(3, 1, 2));
 

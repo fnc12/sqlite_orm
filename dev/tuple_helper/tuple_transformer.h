@@ -34,13 +34,15 @@ namespace sqlite_orm {
          *  
          *  @note It's a glorified version of `std::apply()` and a variant of `std::accumulate()`.
          *  It combines filtering the tuple (indexes), transforming the elements (projection) and finally applying the callable (combine).
+         *  
+         *  @note `project` is called using `std::invoke`, which is `constexpr` since C++20.
          */
         template<class CombineOp, class Tpl, size_t... Idx, class Projector, class Init>
-        constexpr auto recombine_tuple(CombineOp combine,
-                                       const Tpl& tpl,
-                                       std::index_sequence<Idx...>,
-                                       Projector project,
-                                       Init initial) {
+        SQLITE_ORM_CONSTEXPR_CPP20 auto recombine_tuple(CombineOp combine,
+                                                        const Tpl& tpl,
+                                                        std::index_sequence<Idx...>,
+                                                        Projector project,
+                                                        Init initial) {
             return combine(initial, polyfill::invoke(project, std::get<Idx>(tpl))...);
         }
 
@@ -49,9 +51,12 @@ namespace sqlite_orm {
          *  
          *  @note It's a glorified version of `std::apply()` and a variant of `std::accumulate()`.
          *  It combines filtering the tuple (indexes), transforming the elements (projection) and finally applying the callable (combine).
+         *  
+         *  @note `project` is called using `std::invoke`, which is `constexpr` since C++20.
          */
         template<class CombineOp, class Tpl, class Projector, class Init>
-        constexpr auto recombine_tuple(CombineOp combine, const Tpl& tpl, Projector project, Init initial) {
+        SQLITE_ORM_CONSTEXPR_CPP20 auto
+        recombine_tuple(CombineOp combine, const Tpl& tpl, Projector project, Init initial) {
             return recombine_tuple(std::move(combine),
                                    std::forward<decltype(tpl)>(tpl),
                                    std::make_index_sequence<std::tuple_size<Tpl>::value>{},
