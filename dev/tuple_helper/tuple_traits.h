@@ -14,7 +14,7 @@ namespace sqlite_orm {
         template<template<class...> class TraitFn, class Tuple>
         struct tuple_has {};
         template<template<class...> class TraitFn, class... Types>
-        struct tuple_has<TraitFn, std::tuple<Types...>> : polyfill::disjunction<TraitFn<Types>...> {};
+        struct tuple_has<TraitFn, std::tuple<Types...>> : polyfill::disjunction<mpl::invoke_fn_t<TraitFn, Types>...> {};
 
         /*
          *  Trait metafunction class that checks whether a tuple contains a type with given trait.

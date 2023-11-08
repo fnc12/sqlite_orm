@@ -38,7 +38,7 @@ namespace sqlite_orm {
          *   Node tuple for several types.
          */
         template<class... T>
-        using node_tuple_for = conc_tuple<node_tuple_t<T>...>;
+        using node_tuple_for = conc_tuple<typename node_tuple<T>::type...>;
 
         template<>
         struct node_tuple<void, void> {

@@ -1099,7 +1099,7 @@ namespace sqlite_orm {
         template<template<class...> class TraitFn, class Tuple>
         struct tuple_has {};
         template<template<class...> class TraitFn, class... Types>
-        struct tuple_has<TraitFn, std::tuple<Types...>> : polyfill::disjunction<TraitFn<Types>...> {};
+        struct tuple_has<TraitFn, std::tuple<Types...>> : polyfill::disjunction<mpl::invoke_fn_t<TraitFn, Types>...> {};
 
         /*
          *  Trait metafunction class that checks whether a tuple contains a type with given trait.
@@ -1207,7 +1207,7 @@ namespace sqlite_orm {
 #ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
         template<class Tpl, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
         struct filter_tuple_sequence<Tpl, Pred, Proj, std::index_sequence<Idx...>>
-            : flatten_idxseq<std::conditional_t<Pred<Proj<std::tuple_element_t<Idx, Tpl>>>::value,
+            : flatten_idxseq<std::conditional_t<Pred<mpl::invoke_fn_t<Proj, std::tuple_element_t<Idx, Tpl>>>::value,
                                                 std::index_sequence<Idx>,
                                                 std::index_sequence<>>...> {};
 #else
@@ -1223,7 +1223,9 @@ namespace sqlite_orm {
 
         template<class Tpl, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
         struct filter_tuple_sequence<Tpl, Pred, Proj, std::index_sequence<Idx...>>
-            : flatten_idxseq<typename tuple_seq_single<Idx, Proj<std::tuple_element_t<Idx, Tpl>>, Pred>::type...> {};
+            : flatten_idxseq<typename tuple_seq_single<Idx,
+                                                       mpl::invoke_fn_t<Proj, std::tuple_element_t<Idx, Tpl>>,
+                                                       Pred>::type...> {};
 #endif
 
         /*
@@ -18084,7 +18086,7 @@ namespace sqlite_orm {
 
                 context_t context{this->db_objects};
                 statement_serializer<Table, void> serializer;
-                const auto sql = serializer.serialize(table, context, tableName);
+                const std::string sql = serializer.serialize(table, context, tableName);
                 perform_void_exec(db, sql);
             }
 
@@ -18959,7 +18961,7 @@ namespace sqlite_orm {
                 context.replace_bindable_with_question = true;
 
                 auto con = this->get_connection();
-                const auto sql = serialize(statement, context);
+                const std::string sql = serialize(statement, context);
                 sqlite3_stmt* stmt = prepare_stmt(con.get(), sql);
                 return prepared_statement_t<S>{std::forward<S>(statement), stmt, con};
             }
@@ -19555,7 +19557,7 @@ namespace sqlite_orm {
          *   Node tuple for several types.
          */
         template<class... T>
-        using node_tuple_for = conc_tuple<node_tuple_t<T>...>;
+        using node_tuple_for = conc_tuple<typename node_tuple<T>::type...>;
 
         template<>
         struct node_tuple<void, void> {

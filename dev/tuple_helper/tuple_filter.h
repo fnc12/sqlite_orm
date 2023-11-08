@@ -34,7 +34,7 @@ namespace sqlite_orm {
 #ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
         template<class Tpl, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
         struct filter_tuple_sequence<Tpl, Pred, Proj, std::index_sequence<Idx...>>
-            : flatten_idxseq<std::conditional_t<Pred<Proj<std::tuple_element_t<Idx, Tpl>>>::value,
+            : flatten_idxseq<std::conditional_t<Pred<mpl::invoke_fn_t<Proj, std::tuple_element_t<Idx, Tpl>>>::value,
                                                 std::index_sequence<Idx>,
                                                 std::index_sequence<>>...> {};
 #else
@@ -50,7 +50,9 @@ namespace sqlite_orm {
 
         template<class Tpl, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
         struct filter_tuple_sequence<Tpl, Pred, Proj, std::index_sequence<Idx...>>
-            : flatten_idxseq<typename tuple_seq_single<Idx, Proj<std::tuple_element_t<Idx, Tpl>>, Pred>::type...> {};
+            : flatten_idxseq<typename tuple_seq_single<Idx,
+                                                       mpl::invoke_fn_t<Proj, std::tuple_element_t<Idx, Tpl>>,
+                                                       Pred>::type...> {};
 #endif
 
         /*
