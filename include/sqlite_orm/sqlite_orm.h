@@ -745,7 +745,7 @@ namespace sqlite_orm {
 
 /*
  *  Symbols for 'template metaprogramming' (compile-time template programming),
- *  inspired by the MPL of Aleksey Gurtovoy and David Abrahams, and the Mp11 of Peter Dimov and Bjørn Reese.
+ *  inspired by the MPL of Aleksey Gurtovoy and David Abrahams, and the Mp11 of Peter Dimov and Bjorn Reese.
  *  
  *  Currently, the focus is on facilitating advanced type filtering,
  *  such as filtering columns by constraints having various traits.
