@@ -2,25 +2,29 @@
 
 /*
  *  Symbols for 'template metaprogramming' (compile-time template programming),
- *  inspired by the MPL of Aleksey Gurtovoy and David Abrahams.
+ *  inspired by the MPL of Aleksey Gurtovoy and David Abrahams, and the Mp11 of Peter Dimov and Bjørn Reese.
  *  
  *  Currently, the focus is on facilitating advanced type filtering,
  *  such as filtering columns by constraints having various traits.
  *  Hence it contains only a very small subset of a full MPL.
  *  
  *  Three key concepts are critical to understanding:
- *  1. A 'metafunction' is a class template with a nested `type` typename, and represents a function invocable at compile-time.
- *     E.g. `template<class T> struct x { using type = int; };`
- *  2. A 'metafunction operation' is an alias template for a class template or a nested template expression, whose instantiation yields a type.
+ *  1. A 'trait' is a class template with a nested `type` typename.
+ *     The term 'trait' might be too narrow or not entirely accurate, however in the STL those class templates are summarized as "Type transformations".
+ *     hence being "transformation type traits".
+ *     It was the traditional way of transforming types before the arrival of alias templates.
+ *     E.g. `template<class T> struct x { using type = T; };`
+ *     They are of course still available today, but are rather used as building blocks.
+ *  2. A 'metafunction' is an alias template for a class template or a nested template expression, whose instantiation yields a type.
  *     E.g. `template<class T> using alias_op_t = typename x<T>::type`
- *  3. A 'metafunction class' is a certain form of metafunction representation that enables higher-order metaprogramming.
- *     More precisely, it's a class with a nested metafunction called "fn"
- *     Correspondingly, a metafunction class invocation is defined as invocation of its nested "fn" metafunction.
+ *  3. A 'quoted metafunction' (aka 'metafunction class') is a certain form of metafunction representation that enables higher-order metaprogramming.
+ *     More precisely, it's a class with a nested metafunction called "fn".
+ *     Correspondingly, a quoted metafunction invocation is defined as invocation of its nested "fn" metafunction.
  *
  *  Conventions:
- *  - "Fn" is the name for a metafunction template template parameter.
- *  - "FnCls" is the name for a metafunction class template parameter.
- *  - "_fn" is a suffix for a type that accepts metafunctions and turns them into metafunction classes.
+ *  - "Fn" is the name of a template template parameter for a metafunction.
+ *  - "Q" is the name of class template parameter for a quoted metafunction.
+ *  - "_fn" is a suffix for a class or alias template that accepts metafunctions and turns them into quoted metafunctions.
  *  - "higher order" denotes a metafunction that operates on another metafunction (i.e. takes it as an argument).
  */
 
@@ -42,79 +46,53 @@ namespace sqlite_orm {
              *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
              */
             template<class T, class SFINAE = void>
-            SQLITE_ORM_INLINE_VAR constexpr bool is_metafunction_class_v = false;
-            template<class FnCls>
+            SQLITE_ORM_INLINE_VAR constexpr bool is_quoted_metafuntion_v = false;
+            template<class Q>
             SQLITE_ORM_INLINE_VAR constexpr bool
-                is_metafunction_class_v<FnCls, polyfill::void_t<indirectly_test_metafunction<FnCls::template fn>>> =
-                    true;
+                is_quoted_metafuntion_v<Q, polyfill::void_t<indirectly_test_metafunction<Q::template fn>>> = true;
 
 #ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
             template<class T>
-            using is_metafunction_class = polyfill::bool_constant<is_metafunction_class_v<T>>;
+            using is_quoted_metafuntion = polyfill::bool_constant<is_quoted_metafuntion_v<T>>;
 #else
             template<class T>
-            struct is_metafunction_class : polyfill::bool_constant<is_metafunction_class_v<T>> {};
+            struct is_quoted_metafuntion : polyfill::bool_constant<is_quoted_metafuntion_v<T>> {};
 #endif
 
+            /*
+             *  The indirection through `defer_fn` works around the language inability
+             *  to expand `Args...` into a fixed parameter list of an alias template.
+             */
+            template<template<class...> class Fn, class... Args>
+            struct defer {
+                using type = Fn<Args...>;
+            };
+
+#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
             /*
              *  Invoke metafunction.
              */
             template<template<class...> class Fn, class... Args>
-            using invoke_fn_t = typename Fn<Args...>::type;
-
-#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
-            /*
-             *  Invoke metafunction operation.
-             */
-            template<template<class...> class Op, class... Args>
-            using invoke_op_t = Op<Args...>;
+            using invoke_fn_t = Fn<Args...>;
 #else
-            template<template<class...> class Op, class... Args>
-            struct wrap_op {
-                using type = Op<Args...>;
-            };
-
             /*
-             *  Invoke metafunction operation.
+             *  Invoke metafunction.
              *  
              *  Note: legacy compilers need an extra layer of indirection, otherwise type replacement may fail
-             *  if alias template `Op` has a dependent expression in it.
+             *  if alias template `Fn` has a dependent expression in it.
              */
-            template<template<class...> class Op, class... Args>
-            using invoke_op_t = typename wrap_op<Op, Args...>::type;
+            template<template<class...> class Fn, class... Args>
+            using invoke_fn_t = typename defer<Fn, Args...>::type;
 #endif
 
             /*
-             *  Invoke metafunction class by invoking its nested metafunction.
+             *  Invoke quoted metafunction by invoking its nested metafunction.
              */
-            template<class FnCls, class... Args>
-            using invoke_t = typename FnCls::template fn<Args...>::type;
+            template<class Q, class... Args>
+            using invoke_t = typename Q::template fn<Args...>;
 
             /*
-             *  Instantiate metafunction class' nested metafunction.
-             */
-            template<class FnCls, class... Args>
-            using instantiate = typename FnCls::template fn<Args...>;
-
-            /*
-             *  Provides the metafunction operation of metafunction class as alias template `op`.
-             */
-            template<class FnCls>
-            struct op_of {
-                template<class... Args>
-                using op = invoke_t<FnCls, Args...>;
-            };
-
-            /*
-             *  Turn a metafunction class into a metafunction operation.
-             *  
-             *  Useful when a metafunction class needs to be passed as a metafunction operation outside the mpl framework.
-             */
-            template<class FnCls>
-            using as_op = typename op_of<FnCls>::template op;
-
-            /*
-             *  Turn metafunction into a metafunction class.
+             *  Turn metafunction into a quoted metafunction.
              *  
              *  Invocation of the nested metafunction `fn` is SFINAE-friendly (detection idiom).
              *  This is necessary because `fn` is a proxy to the originally quoted metafunction,
@@ -123,15 +101,15 @@ namespace sqlite_orm {
             template<template<class...> class Fn>
             struct quote_fn {
                 template<class InvocableTest, template<class...> class, class...>
-                struct invoke_fn {};
+                struct invoke_this_fn {};
 
                 template<template<class...> class F, class... Args>
-                struct invoke_fn<polyfill::void_t<F<Args...>>, F, Args...> {
+                struct invoke_this_fn<polyfill::void_t<F<Args...>>, F, Args...> {
                     using type = F<Args...>;
                 };
 
                 template<class... Args>
-                struct fn : invoke_fn<void, Fn, Args...> {};
+                using fn = typename invoke_this_fn<void, Fn, Args...>::type;
             };
 
             /*
@@ -144,158 +122,131 @@ namespace sqlite_orm {
             template<>
             struct higherorder<0u> {
                 /*
-                 *  Turn higher-order metafunction into a metafunction class.
+                 *  Turn higher-order metafunction into a quoted metafunction.
                  */
                 template<template<template<class...> class Fn, class... Args2> class HigherFn>
                 struct quote_fn {
-                    template<class QuotedFn, class... Args2>
-                    struct fn {
-                        using type = HigherFn<as_op<QuotedFn>, Args2...>;
-                    };
+                    template<class Q, class... Args>
+                    using fn = HigherFn<Q::template fn, Args...>;
                 };
             };
 
             /*
-             *  Metafunction class that extracts the nested metafunction of its metafunction class argument,
-             *  quotes the extracted metafunction and passes it on to the next metafunction class
+             *  Quoted metafunction that extracts the nested metafunction of its quoted metafunction argument,
+             *  quotes the extracted metafunction and passes it on to the next quoted metafunction
              *  (kind of the inverse of quoting).
              */
-            template<class FnCls>
+            template<class Q>
             struct pass_extracted_fn_to {
                 template<class... Args>
-                struct fn : FnCls::template fn<Args...> {};
+                struct invoke_this_fn {
+                    using type = typename Q::template fn<Args...>;
+                };
 
-                // extract, quote, pass on
-                template<template<class...> class Fn, class... Args>
-                struct fn<Fn<Args...>> : FnCls::template fn<quote_fn<Fn>> {};
-            };
+                // extract class template, quote, pass on
+                template<template<class...> class Fn, class... T>
+                struct invoke_this_fn<Fn<T...>> {
+                    using type = typename Q::template fn<quote_fn<Fn>>;
+                };
 
-            /*
-             *  Metafunction class that invokes the specified metafunction operation,
-             *  and passes its result on to the next metafunction class.
-             */
-            template<template<class...> class Op, class FnCls>
-            struct pass_result_to {
-                // call Op, pass on its result
                 template<class... Args>
-                struct fn : FnCls::template fn<Op<Args...>> {};
+                using fn = typename invoke_this_fn<Args...>::type;
             };
 
             /*
-             *  Bind arguments at the front of a metafunction class.
-             *  Metafunction class equivalent to std::bind_front().
+             *  Quoted metafunction that invokes the specified metafunctions,
+             *  and passes its result on to the next quoted metafunction.
              */
-            template<class FnCls, class... Bound>
+            template<class Q, template<class...> class... Fn>
+            struct pass_result_of {
+                // invoke `Fn`, pass on their result
+                template<class... Args>
+                using fn = typename Q::template fn<typename defer<Fn, Args...>::type...>;
+            };
+
+            /*
+             *  Bind arguments at the front of a quoted metafunction.
+             */
+            template<class Q, class... Bound>
             struct bind_front {
                 template<class... Args>
-                struct fn : FnCls::template fn<Bound..., Args...> {};
+                using fn = typename Q::template fn<Bound..., Args...>;
             };
 
             /*
-             *  Bind arguments at the back of a metafunction class.
-             *  Metafunction class equivalent to std::bind_back()
+             *  Bind arguments at the back of a quoted metafunction.
              */
-            template<class FnCls, class... Bound>
+            template<class Q, class... Bound>
             struct bind_back {
                 template<class... Args>
-                struct fn : FnCls::template fn<Args..., Bound...> {};
+                using fn = typename Q::template fn<Args..., Bound...>;
             };
 
             /*
-             *  Metafunction class equivalent to polyfill::always_false.
-             *  It ignores arguments passed to the metafunction,
-             *  and always returns the given type.
+             *  Quoted metafunction equivalent to `polyfill::always_false`.
+             *  It ignores arguments passed to the metafunction, and always returns the specified type.
              */
             template<class T>
             struct always {
-                template<class...>
-                struct fn {
-                    using type = T;
-                };
+                template<class... /*Args*/>
+                using fn = T;
             };
 
             /*
-             *  Unary metafunction class equivalent to std::type_identity.
+             *  Unary quoted metafunction equivalent to `std::type_identity_t`.
              */
-            struct identity {
-                template<class T>
-                struct fn {
-                    using type = T;
-                };
-            };
+            using identity = quote_fn<polyfill::type_identity_t>;
 
             /*
-             *  Assume that the invocation of metafunction class yields a trait, and provide members `type` and `value` from the resulting trait.
-             *  
-             *  The goal of using this struct would be to attain lazy evaluation for trait metafunction classes like `conjunction` and `disjunction`.
+             *  Quoted metafunction equivalent to `std::negation`.
              */
-            template<class FnCls, class... Args>
-            struct yield_trait {
-                using type = invoke_t<FnCls, Args...>;
-                static constexpr auto value = type::value;
-            };
+            template<class TraitQ>
+            using not_ = pass_result_of<quote_fn<polyfill::negation>, TraitQ::template fn>;
 
             /*
-             *  Metafunction class equivalent to std::negation.
+             *  Quoted metafunction equivalent to `std::conjunction`.
              */
-            template<class TraitFnCls>
-            struct not_ {
-                template<class... Args>
-                struct fn : polyfill::negation<yield_trait<TraitFnCls, Args...>> {};
-            };
+            template<class... TraitQ>
+            using conjunction = pass_result_of<quote_fn<polyfill::conjunction>, TraitQ::template fn...>;
 
             /*
-             *  Metafunction class equivalent to std::conjunction
+             *  Quoted metafunction equivalent to `std::disjunction`.
              */
-            template<class... TraitFnCls>
-            struct conjunction {
-                template<class... Args>
-                struct fn : polyfill::conjunction<yield_trait<TraitFnCls, Args...>...> {};
-            };
+            template<class... TraitQ>
+            using disjunction = pass_result_of<quote_fn<polyfill::disjunction>, TraitQ::template fn...>;
 
             /*
-             *  Metafunction class equivalent to std::disjunction.
-             */
-            template<class... TraitFnCls>
-            struct disjunction {
-                template<class... Args>
-                struct fn : polyfill::disjunction<yield_trait<TraitFnCls, Args...>...> {};
-            };
-
-#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
-            /*
-             *  Metafunction equivalent to std::conjunction.
+             *  Metafunction equivalent to `std::conjunction`.
              */
             template<template<class...> class... TraitFn>
-            using conjunction_fn = conjunction<quote_fn<TraitFn>...>;
+            using conjunction_fn = pass_result_of<quote_fn<polyfill::conjunction>, TraitFn...>;
 
             /*
-             *  Metafunction equivalent to std::disjunction.
+             *  Metafunction equivalent to `std::disjunction`.
              */
             template<template<class...> class... TraitFn>
-            using disjunction_fn = disjunction<quote_fn<TraitFn>...>;
-#else
-            template<template<class...> class... TraitFn>
-            struct conjunction_fn : conjunction<quote_fn<TraitFn>...> {};
-
-            template<template<class...> class... TraitFn>
-            struct disjunction_fn : disjunction<quote_fn<TraitFn>...> {};
-#endif
+            using disjunction_fn = pass_result_of<quote_fn<polyfill::disjunction>, TraitFn...>;
 
             /*
-             *  Convenience template alias for binding arguments at the front of a metafunction.
+             *  Metafunction equivalent to `std::negation`.
+             */
+            template<template<class...> class Fn>
+            using not_fn = not_<quote_fn<Fn>>;
+
+            /*
+             *  Bind arguments at the front of a metafunction.
              */
             template<template<class...> class Fn, class... Bound>
             using bind_front_fn = bind_front<quote_fn<Fn>, Bound...>;
 
             /*
-             *  Convenience template alias for binding arguments at the back of a metafunction.
+             *  Bind arguments at the back of a metafunction.
              */
             template<template<class...> class Fn, class... Bound>
             using bind_back_fn = bind_back<quote_fn<Fn>, Bound...>;
 
             /*
-             *  Convenience template alias for binding a metafunction at the front of a higher-order metafunction.
+             *  Bind a metafunction and arguments at the front of a higher-order metafunction.
              */
             template<template<template<class...> class Fn, class... Args2> class HigherFn,
                      template<class...>
@@ -308,30 +259,30 @@ namespace sqlite_orm {
 
     namespace mpl = internal::mpl;
 
-    // convenience metafunction classes
+    // convenience quoted metafunctions
     namespace internal {
         /*
-         *  Trait metafunction class that checks if a type has the specified trait.
+         *  Quoted trait metafunction that checks if a type has the specified trait.
          */
         template<template<class...> class TraitFn>
         using check_if = mpl::quote_fn<TraitFn>;
 
         /*
-         *  Trait metafunction class that checks if a type doesn't have the specified trait.
+         *  Quoted trait metafunction that checks if a type doesn't have the specified trait.
          */
         template<template<class...> class TraitFn>
-        using check_if_not = mpl::not_<mpl::quote_fn<TraitFn>>;
+        using check_if_not = mpl::not_fn<TraitFn>;
 
         /*
-         *  Trait metafunction class that checks if a type (possibly projected) is the same as the specified type.
+         *  Quoted trait metafunction that checks if a type (possibly projected) is the same as the specified type.
          *  
-         *  `Proj` is a projection applied to `Type` and must be a metafunction operation.
+         *  `ProjOp` is a projection applied to `Type` and must be a metafunction.
          */
         template<class Type, template<class...> class ProjOp = polyfill::type_identity_t>
-        using check_if_is_type = mpl::pass_result_to<ProjOp, mpl::bind_front_fn<std::is_same, Type>>;
+        using check_if_is_type = mpl::pass_result_of<mpl::bind_front_fn<std::is_same, Type>, ProjOp>;
 
         /*
-         *  Trait metafunction class that checks if a type's template matches the specified template
+         *  Quoted trait metafunction that checks if a type's template matches the specified template
          *  (similar to `is_specialization_of`).
          */
         template<template<class...> class Template>

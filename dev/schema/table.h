@@ -219,7 +219,7 @@ namespace sqlite_orm {
             void for_each_foreign_key_to(L&& lambda) const {
                 using fk_index_sequence = filter_tuple_sequence_t<elements_type, is_foreign_key>;
                 using filtered_index_sequence = filter_tuple_sequence_t<elements_type,
-                                                                        mpl::as_op<check_if_is_type<Target>>,
+                                                                        check_if_is_type<Target>::template fn,
                                                                         target_type_t,
                                                                         fk_index_sequence>;
                 iterate_tuple(this->elements, filtered_index_sequence{}, lambda);
@@ -248,9 +248,9 @@ namespace sqlite_orm {
              *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
              *  @param lambda Lambda called for each column.
              */
-            template<class OpTraitFnCls, class L, satisfies<mpl::is_metafunction_class, OpTraitFnCls> = true>
+            template<class OpTraitFnCls, class L, satisfies<mpl::is_quoted_metafuntion, OpTraitFnCls> = true>
             void for_each_column_excluding(L&& lambda) const {
-                this->for_each_column_excluding<mpl::as_op<OpTraitFnCls>>(lambda);
+                this->for_each_column_excluding<OpTraitFnCls::template fn>(lambda);
             }
 
             std::vector<table_xinfo> get_table_info() const;
@@ -291,7 +291,7 @@ namespace sqlite_orm {
              *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
              *  @param lambda Lambda called for each column.
              */
-            template<class OpTraitFnCls, class L, satisfies<mpl::is_metafunction_class, OpTraitFnCls> = true>
+            template<class OpTraitFnCls, class L, satisfies<mpl::is_quoted_metafuntion, OpTraitFnCls> = true>
             void for_each_column_excluding(L&& lambda) const {
                 this->module_details.template for_each_column_excluding<OpTraitFnCls>(lambda);
             }
@@ -334,9 +334,9 @@ namespace sqlite_orm {
              *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
              *  @param lambda Lambda called for each column.
              */
-            template<class OpTraitFnCls, class L, satisfies<mpl::is_metafunction_class, OpTraitFnCls> = true>
+            template<class OpTraitFnCls, class L, satisfies<mpl::is_quoted_metafuntion, OpTraitFnCls> = true>
             void for_each_column_excluding(L&& lambda) const {
-                this->for_each_column_excluding<mpl::as_op<OpTraitFnCls>>(lambda);
+                this->for_each_column_excluding<OpTraitFnCls::template fn>(lambda);
             }
 
             /**
@@ -358,7 +358,7 @@ namespace sqlite_orm {
                 using colrefs_tuple = decltype(primaryKey.columns);
                 using same_type_index_sequence =
                     filter_tuple_sequence_t<colrefs_tuple,
-                                            mpl::as_op<check_if_is_type<member_field_type_t<G>>>,
+                                            check_if_is_type<member_field_type_t<G>>::template fn,
                                             member_field_type_t>;
                 iterate_tuple(primaryKey.columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
                     if(compare_any(memberPointer, column.member_pointer) || compare_any(memberPointer, column.setter)) {

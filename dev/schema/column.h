@@ -113,19 +113,19 @@ namespace sqlite_orm {
         template<class Elements, class F>
         using col_index_sequence_with_field_type =
             filter_tuple_sequence_t<Elements,
-                                    mpl::as_op<check_if_is_type<F>>,
+                                    check_if_is_type<F>::template fn,
                                     field_type_t,
                                     filter_tuple_sequence_t<Elements, is_column>>;
 
         template<class Elements, template<class...> class TraitFn>
         using col_index_sequence_with = filter_tuple_sequence_t<Elements,
-                                                                mpl::as_op<check_if_tuple_has<TraitFn>>,
+                                                                check_if_tuple_has<TraitFn>::template fn,
                                                                 constraints_type_t,
                                                                 filter_tuple_sequence_t<Elements, is_column>>;
 
         template<class Elements, template<class...> class TraitFn>
         using col_index_sequence_excluding = filter_tuple_sequence_t<Elements,
-                                                                     mpl::as_op<check_if_tuple_has_not<TraitFn>>,
+                                                                     check_if_tuple_has_not<TraitFn>::template fn,
                                                                      constraints_type_t,
                                                                      filter_tuple_sequence_t<Elements, is_column>>;
     }

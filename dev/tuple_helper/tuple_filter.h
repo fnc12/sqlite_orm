@@ -55,7 +55,7 @@ namespace sqlite_orm {
 
         /*
          *  `Pred` is a metafunction that defines a bool member named `value`
-         *  `FilterProj` is a metafunction operation
+         *  `FilterProj` is a metafunction
          */
         template<class Tpl,
                  template<class...>
@@ -66,7 +66,7 @@ namespace sqlite_orm {
 
         /*
          *  `Pred` is a metafunction that defines a bool member named `value`
-         *  `FilterProj` is a metafunction operation
+         *  `FilterProj` is a metafunction
          */
         template<class Tpl,
                  template<class...>
@@ -77,7 +77,7 @@ namespace sqlite_orm {
 
         /*
          *  `Pred` is a metafunction that defines a bool member named `value`
-         *  `FilterProj` is a metafunction operation
+         *  `FilterProj` is a metafunction
          */
         template<class Tpl,
                  template<class...>
@@ -89,7 +89,7 @@ namespace sqlite_orm {
          *  Count a tuple, picking only those elements specified in the index sequence.
          *  
          *  `Pred` is a metafunction that defines a bool member named `value`
-         *  `FilterProj` is a metafunction operation
+         *  `FilterProj` is a metafunction
          *  
          *  Implementation note: must be distinct from `count_tuple` because legacy compilers have problems
          *  with a default Sequence in function template parameters [SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION].

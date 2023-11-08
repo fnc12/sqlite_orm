@@ -47,7 +47,7 @@ namespace sqlite_orm {
 
         template<class DBOs, class Tpl>
         using column_result_for_tuple_t =
-            transform_tuple_t<Tpl, mpl::as_op<mpl::bind_front_fn<column_result_of_t, DBOs>>>;
+            transform_tuple_t<Tpl, mpl::bind_front_fn<column_result_of_t, DBOs>::template fn>;
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class DBOs, class T>

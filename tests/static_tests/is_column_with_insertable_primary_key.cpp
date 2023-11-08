@@ -11,7 +11,7 @@ using insertable_index_sequence = filter_tuple_sequence_t<Tpl,
                                                           col_index_sequence_with<Tpl, is_primary_key>>;
 template<class Tpl>
 using noninsertable_index_sequence = filter_tuple_sequence_t<Tpl,
-                                                             mpl::as_op<check_if_not<is_primary_key_insertable>>,
+                                                             check_if_not<is_primary_key_insertable>::template fn,
                                                              polyfill::type_identity_t,
                                                              col_index_sequence_with<Tpl, is_primary_key>>;
 
