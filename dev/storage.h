@@ -110,7 +110,7 @@ namespace sqlite_orm {
 
                 context_t context{this->db_objects};
                 statement_serializer<Table, void> serializer;
-                const auto sql = serializer.serialize(table, context, tableName);
+                const std::string sql = serializer.serialize(table, context, tableName);
                 perform_void_exec(db, sql);
             }
 
@@ -1025,7 +1025,7 @@ namespace sqlite_orm {
                 context.replace_bindable_with_question = true;
 
                 auto con = this->get_connection();
-                const auto sql = serialize(statement, context);
+                const std::string sql = serialize(statement, context);
                 sqlite3_stmt* stmt = prepare_stmt(con.get(), sql);
                 return prepared_statement_t<S>{std::forward<S>(statement), stmt, con};
             }

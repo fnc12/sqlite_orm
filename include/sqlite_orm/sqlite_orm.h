@@ -173,6 +173,12 @@ using std::nullptr_t;
 #define SQLITE_ORM_INLINE_VAR
 #endif
 
+#if __cpp_lib_constexpr_functional >= 201907L
+#define SQLITE_ORM_CONSTEXPR_CPP20 constexpr
+#else
+#define SQLITE_ORM_CONSTEXPR_CPP20
+#endif
+
 #if SQLITE_ORM_HAS_CPP_ATTRIBUTE(no_unique_address) >= 201803L
 #define SQLITE_ORM_NOUNIQUEADDRESS [[no_unique_address]]
 #else
@@ -777,25 +783,29 @@ namespace sqlite_orm {
 
 /*
  *  Symbols for 'template metaprogramming' (compile-time template programming),
- *  inspired by the MPL of Aleksey Gurtovoy and David Abrahams.
+ *  inspired by the MPL of Aleksey Gurtovoy and David Abrahams, and the Mp11 of Peter Dimov and Bjorn Reese.
  *  
  *  Currently, the focus is on facilitating advanced type filtering,
  *  such as filtering columns by constraints having various traits.
  *  Hence it contains only a very small subset of a full MPL.
  *  
  *  Three key concepts are critical to understanding:
- *  1. A 'metafunction' is a class template that represents a function invocable at compile-time.
- *     E.g. `template<class T> struct x { using type = int; };`
- *  2. A 'metafunction operation' is an alias template that represents a nested template expression, whose instantiation yields a type.
+ *  1. A 'trait' is a class template with a nested `type` typename.
+ *     The term 'trait' might be too narrow or not entirely accurate, however in the STL those class templates are summarized as "Type transformations".
+ *     hence being "transformation type traits".
+ *     It was the traditional way of transforming types before the arrival of alias templates.
+ *     E.g. `template<class T> struct x { using type = T; };`
+ *     They are of course still available today, but are rather used as building blocks.
+ *  2. A 'metafunction' is an alias template for a class template or a nested template expression, whose instantiation yields a type.
  *     E.g. `template<class T> using alias_op_t = typename x<T>::type`
- *  3. A 'metafunction class' is a certain form of metafunction representation that enables higher-order metaprogramming.
- *     More precisely, it's a class with a nested metafunction called "fn"
- *     Correspondingly, a metafunction class invocation is defined as invocation of its nested "fn" metafunction.
+ *  3. A 'quoted metafunction' (aka 'metafunction class') is a certain form of metafunction representation that enables higher-order metaprogramming.
+ *     More precisely, it's a class with a nested metafunction called "fn".
+ *     Correspondingly, a quoted metafunction invocation is defined as invocation of its nested "fn" metafunction.
  *
  *  Conventions:
- *  - "Fn" is the name for a metafunction template template parameter.
- *  - "FnCls" is the name for a metafunction class template parameter.
- *  - "_fn" is a suffix for a type that accepts metafunctions and turns them into metafunction classes.
+ *  - "Fn" is the name of a template template parameter for a metafunction.
+ *  - "Q" is the name of class template parameter for a quoted metafunction.
+ *  - "_fn" is a suffix for a class or alias template that accepts metafunctions and turns them into quoted metafunctions.
  *  - "higher order" denotes a metafunction that operates on another metafunction (i.e. takes it as an argument).
  */
 
@@ -818,106 +828,53 @@ namespace sqlite_orm {
              *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
              */
             template<class T, class SFINAE = void>
-            SQLITE_ORM_INLINE_VAR constexpr bool is_metafunction_class_v = false;
-            template<class FnCls>
+            SQLITE_ORM_INLINE_VAR constexpr bool is_quoted_metafuntion_v = false;
+            template<class Q>
             SQLITE_ORM_INLINE_VAR constexpr bool
-                is_metafunction_class_v<FnCls, polyfill::void_t<indirectly_test_metafunction<FnCls::template fn>>> =
-                    true;
+                is_quoted_metafuntion_v<Q, polyfill::void_t<indirectly_test_metafunction<Q::template fn>>> = true;
 
 #ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
             template<class T>
-            using is_metafunction_class = polyfill::bool_constant<is_metafunction_class_v<T>>;
+            using is_quoted_metafuntion = polyfill::bool_constant<is_quoted_metafuntion_v<T>>;
 #else
             template<class T>
-            struct is_metafunction_class : polyfill::bool_constant<is_metafunction_class_v<T>> {};
+            struct is_quoted_metafuntion : polyfill::bool_constant<is_quoted_metafuntion_v<T>> {};
 #endif
 
             /*
-             *  Given suitable template arguments, detect whether a template is an alias template.
-             *  
-             *  @note It exploits the fact that the `is_specialization_of` trait is only true for class templates
-             *  but always false for alias templates.
+             *  The indirection through `defer_fn` works around the language inability
+             *  to expand `Args...` into a fixed parameter list of an alias template.
              */
-            template<template<class...> class Template, class... Args>
-            SQLITE_ORM_INLINE_VAR constexpr bool is_alias_template_v =
-                !polyfill::is_specialization_of_v<Template<Args...>, Template>;
+            template<template<class...> class Fn, class... Args>
+            struct defer {
+                using type = Fn<Args...>;
+            };
 
+#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
             /*
              *  Invoke metafunction.
              */
             template<template<class...> class Fn, class... Args>
-            using invoke_fn_t = typename Fn<Args...>::type;
-
-#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
-            /*
-             *  Invoke metafunction operation.
-             */
-            template<template<class...> class Op, class... Args>
-            using invoke_op_t = Op<Args...>;
+            using invoke_fn_t = Fn<Args...>;
 #else
-            template<template<class...> class Op, class... Args>
-            struct wrap_op {
-                using type = Op<Args...>;
-            };
-
             /*
-             *  Invoke metafunction operation.
+             *  Invoke metafunction.
              *  
              *  Note: legacy compilers need an extra layer of indirection, otherwise type replacement may fail
-             *  if alias template `Op` has a dependent expression in it.
+             *  if alias template `Fn` has a dependent expression in it.
              */
-            template<template<class...> class Op, class... Args>
-            using invoke_op_t = typename wrap_op<Op, Args...>::type;
+            template<template<class...> class Fn, class... Args>
+            using invoke_fn_t = typename defer<Fn, Args...>::type;
 #endif
 
-            template<class AlwaysVoid, template<class...> class F, class... Args>
-            struct invoke_meta;
-
-            template<template<class...> class Op, class... Args>
-            struct invoke_meta<std::enable_if_t<is_alias_template_v<Op, Args...>>, Op, Args...> {
-                using type = Op<Args...>;
-            };
-
-            template<template<class...> class Fn, class... Args>
-            struct invoke_meta<std::enable_if_t<!is_alias_template_v<Fn, Args...>>, Fn, Args...> {
-                using type = typename Fn<Args...>::type;
-            };
-
             /*
-             *  Invoke metafunction or metafunction operation.
-             *  
-             *  @attention If using an alias template, be aware that it isn't recognizable whether an alias template is
-             *  a. an alias of a class template (e.g. `template<class T> using aliased = x<T>`) or
-             *  b. an alias of a nested template expression yielding a result (e.g. `template<class T> alias_op_t = typename x<T>::type`)
-             *  Therefore, one cannot use `invoke_meta_t` with an alias of a class template (a.), or
-             *  in other words, `invoke_meta_t` expects an alias of a nested template expression (b.).
-             *  The alternative in that case is to use `invoke_fn_t`.
+             *  Invoke quoted metafunction by invoking its nested metafunction.
              */
-            template<template<class...> class F, class... Args>
-            using invoke_meta_t = typename invoke_meta<void, F, Args...>::type;
+            template<class Q, class... Args>
+            using invoke_t = typename Q::template fn<Args...>;
 
             /*
-             *  Invoke metafunction class by invoking its nested metafunction.
-             */
-            template<class FnCls, class... Args>
-            using invoke_t = typename FnCls::template fn<Args...>::type;
-
-            /*
-             *  Instantiate metafunction class' nested metafunction.
-             */
-            template<class FnCls, class... Args>
-            using instantiate = typename FnCls::template fn<Args...>;
-
-            /*
-             *  Wrap given type such that `typename T::type` is valid.
-             */
-            template<class T, class SFINAE = void>
-            struct type_wrap : polyfill::type_identity<T> {};
-            template<class T>
-            struct type_wrap<T, polyfill::void_t<typename T::type>> : T {};
-
-            /*
-             *  Turn metafunction into a metafunction class.
+             *  Turn metafunction into a quoted metafunction.
              *  
              *  Invocation of the nested metafunction `fn` is SFINAE-friendly (detection idiom).
              *  This is necessary because `fn` is a proxy to the originally quoted metafunction,
@@ -926,15 +883,15 @@ namespace sqlite_orm {
             template<template<class...> class Fn>
             struct quote_fn {
                 template<class InvocableTest, template<class...> class, class...>
-                struct invoke_fn;
+                struct invoke_this_fn {};
 
                 template<template<class...> class F, class... Args>
-                struct invoke_fn<polyfill::void_t<F<Args...>>, F, Args...> {
-                    using type = type_wrap<F<Args...>>;
+                struct invoke_this_fn<polyfill::void_t<F<Args...>>, F, Args...> {
+                    using type = F<Args...>;
                 };
 
                 template<class... Args>
-                using fn = typename invoke_fn<void, Fn, Args...>::type;
+                using fn = typename invoke_this_fn<void, Fn, Args...>::type;
             };
 
             /*
@@ -947,141 +904,131 @@ namespace sqlite_orm {
             template<>
             struct higherorder<0u> {
                 /*
-                 *  Turn higher-order metafunction into a metafunction class.
+                 *  Turn higher-order metafunction into a quoted metafunction.
                  */
                 template<template<template<class...> class Fn, class... Args2> class HigherFn>
                 struct quote_fn {
-                    template<class QuotedFn, class... Args2>
-                    struct fn : HigherFn<QuotedFn::template fn, Args2...> {};
+                    template<class Q, class... Args>
+                    using fn = HigherFn<Q::template fn, Args...>;
                 };
             };
 
             /*
-             *  Metafunction class that extracts the nested metafunction of its metafunction class argument,
-             *  quotes the extracted metafunction and passes it on to the next metafunction class
+             *  Quoted metafunction that extracts the nested metafunction of its quoted metafunction argument,
+             *  quotes the extracted metafunction and passes it on to the next quoted metafunction
              *  (kind of the inverse of quoting).
              */
-            template<class FnCls>
+            template<class Q>
             struct pass_extracted_fn_to {
                 template<class... Args>
-                struct fn : FnCls::template fn<Args...> {};
+                struct invoke_this_fn {
+                    using type = typename Q::template fn<Args...>;
+                };
 
-                // extract, quote, pass on
-                template<template<class...> class Fn, class... Args>
-                struct fn<Fn<Args...>> : FnCls::template fn<quote_fn<Fn>> {};
-            };
+                // extract class template, quote, pass on
+                template<template<class...> class Fn, class... T>
+                struct invoke_this_fn<Fn<T...>> {
+                    using type = typename Q::template fn<quote_fn<Fn>>;
+                };
 
-            /*
-             *  Metafunction class that invokes the specified metafunction operation,
-             *  and passes its result on to the next metafunction class.
-             */
-            template<template<class...> class Op, class FnCls>
-            struct pass_result_to {
-                // call Op, pass on its result
                 template<class... Args>
-                struct fn : FnCls::template fn<Op<Args...>> {};
+                using fn = typename invoke_this_fn<Args...>::type;
             };
 
             /*
-             *  Bind arguments at the front of a metafunction class.
-             *  Metafunction class equivalent to std::bind_front().
+             *  Quoted metafunction that invokes the specified metafunctions,
+             *  and passes its result on to the next quoted metafunction.
              */
-            template<class FnCls, class... Bound>
+            template<class Q, template<class...> class... Fn>
+            struct pass_result_of {
+                // invoke `Fn`, pass on their result
+                template<class... Args>
+                using fn = typename Q::template fn<typename defer<Fn, Args...>::type...>;
+            };
+
+            /*
+             *  Bind arguments at the front of a quoted metafunction.
+             */
+            template<class Q, class... Bound>
             struct bind_front {
                 template<class... Args>
-                struct fn : FnCls::template fn<Bound..., Args...> {};
+                using fn = typename Q::template fn<Bound..., Args...>;
             };
 
             /*
-             *  Bind arguments at the back of a metafunction class.
-             *  Metafunction class equivalent to std::bind_back()
+             *  Bind arguments at the back of a quoted metafunction.
              */
-            template<class FnCls, class... Bound>
+            template<class Q, class... Bound>
             struct bind_back {
                 template<class... Args>
-                struct fn : FnCls::template fn<Args..., Bound...> {};
+                using fn = typename Q::template fn<Args..., Bound...>;
             };
 
             /*
-             *  Metafunction class equivalent to polyfill::always_false.
-             *  It ignores arguments passed to the metafunction,
-             *  and always returns the given type.
+             *  Quoted metafunction equivalent to `polyfill::always_false`.
+             *  It ignores arguments passed to the metafunction, and always returns the specified type.
              */
             template<class T>
             struct always {
-                template<class...>
-                struct fn : type_wrap<T> {};
+                template<class... /*Args*/>
+                using fn = T;
             };
 
             /*
-             *  Unary metafunction class equivalent to std::type_identity.
+             *  Unary quoted metafunction equivalent to `std::type_identity_t`.
              */
-            struct identity {
-                template<class T>
-                struct fn : type_wrap<T> {};
-            };
+            using identity = quote_fn<polyfill::type_identity_t>;
 
             /*
-             *  Metafunction class equivalent to std::negation.
+             *  Quoted metafunction equivalent to `std::negation`.
              */
-            template<class FnCls>
-            struct not_ {
-                template<class... Args>
-                struct fn : polyfill::negation<invoke_t<FnCls, Args...>> {};
-            };
+            template<class TraitQ>
+            using not_ = pass_result_of<quote_fn<polyfill::negation>, TraitQ::template fn>;
 
             /*
-             *  Metafunction class equivalent to std::conjunction
+             *  Quoted metafunction equivalent to `std::conjunction`.
              */
-            template<class... TraitFnCls>
-            struct conjunction {
-                template<class... Args>
-                struct fn : polyfill::conjunction<typename TraitFnCls::template fn<Args...>...> {};
-            };
+            template<class... TraitQ>
+            using conjunction = pass_result_of<quote_fn<polyfill::conjunction>, TraitQ::template fn...>;
 
             /*
-             *  Metafunction class equivalent to std::disjunction.
+             *  Quoted metafunction equivalent to `std::disjunction`.
              */
-            template<class... TraitFnCls>
-            struct disjunction {
-                template<class... Args>
-                struct fn : polyfill::disjunction<typename TraitFnCls::template fn<Args...>...> {};
-            };
+            template<class... TraitQ>
+            using disjunction = pass_result_of<quote_fn<polyfill::disjunction>, TraitQ::template fn...>;
 
-#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
             /*
-             *  Metafunction equivalent to std::conjunction.
+             *  Metafunction equivalent to `std::conjunction`.
              */
             template<template<class...> class... TraitFn>
-            using conjunction_fn = conjunction<quote_fn<TraitFn>...>;
+            using conjunction_fn = pass_result_of<quote_fn<polyfill::conjunction>, TraitFn...>;
 
             /*
-             *  Metafunction equivalent to std::disjunction.
+             *  Metafunction equivalent to `std::disjunction`.
              */
             template<template<class...> class... TraitFn>
-            using disjunction_fn = disjunction<quote_fn<TraitFn>...>;
-#else
-            template<template<class...> class... TraitFn>
-            struct conjunction_fn : conjunction<quote_fn<TraitFn>...> {};
-
-            template<template<class...> class... TraitFn>
-            struct disjunction_fn : disjunction<quote_fn<TraitFn>...> {};
-#endif
+            using disjunction_fn = pass_result_of<quote_fn<polyfill::disjunction>, TraitFn...>;
 
             /*
-             *  Convenience template alias for binding arguments at the front of a metafunction.
+             *  Metafunction equivalent to `std::negation`.
+             */
+            template<template<class...> class Fn>
+            using not_fn = not_<quote_fn<Fn>>;
+
+            /*
+             *  Bind arguments at the front of a metafunction.
              */
             template<template<class...> class Fn, class... Bound>
             using bind_front_fn = bind_front<quote_fn<Fn>, Bound...>;
 
             /*
-             *  Convenience template alias for binding arguments at the back of a metafunction.
+             *  Bind arguments at the back of a metafunction.
              */
             template<template<class...> class Fn, class... Bound>
             using bind_back_fn = bind_back<quote_fn<Fn>, Bound...>;
 
             /*
-             *  Convenience template alias for binding a metafunction at the front of a higher-order metafunction.
+             *  Bind a metafunction and arguments at the front of a higher-order metafunction.
              */
             template<template<template<class...> class Fn, class... Args2> class HigherFn,
                      template<class...>
@@ -1094,28 +1041,30 @@ namespace sqlite_orm {
 
     namespace mpl = internal::mpl;
 
-    // convenience metafunction classes
+    // convenience quoted metafunctions
     namespace internal {
         /*
-         *  Trait metafunction class that checks if a type has the specified trait.
+         *  Quoted trait metafunction that checks if a type has the specified trait.
          */
         template<template<class...> class TraitFn>
         using check_if = mpl::quote_fn<TraitFn>;
 
         /*
-         *  Trait metafunction class that checks if a type doesn't have the specified trait.
+         *  Quoted trait metafunction that checks if a type doesn't have the specified trait.
          */
         template<template<class...> class TraitFn>
-        using check_if_not = mpl::not_<mpl::quote_fn<TraitFn>>;
+        using check_if_not = mpl::not_fn<TraitFn>;
 
         /*
-         *  Trait metafunction class that checks if a type (possibly projected) is the same as the specified type.
+         *  Quoted trait metafunction that checks if a type (possibly projected) is the same as the specified type.
+         *  
+         *  `ProjOp` is a projection applied to `Type` and must be a metafunction.
          */
-        template<class Type, template<class...> class Proj = polyfill::type_identity_t>
-        using check_if_is_type = mpl::pass_result_to<Proj, mpl::bind_front_fn<std::is_same, Type>>;
+        template<class Type, template<class...> class ProjOp = polyfill::type_identity_t>
+        using check_if_is_type = mpl::pass_result_of<mpl::bind_front_fn<std::is_same, Type>, ProjOp>;
 
         /*
-         *  Trait metafunction class that checks if a type's template matches the specified template
+         *  Quoted trait metafunction that checks if a type's template matches the specified template
          *  (similar to `is_specialization_of`).
          */
         template<template<class...> class Template>
@@ -1126,11 +1075,13 @@ namespace sqlite_orm {
 
 // #include "tuple_helper/same_or_void.h"
 
+#include <type_traits>  //  std::common_type
+
 namespace sqlite_orm {
     namespace internal {
 
         /**
-         *  Accepts any number of arguments and evaluates `type` alias as T if all arguments are the same or void otherwise
+         *  Accepts any number of arguments and evaluates a nested `type` typename as `T` if all arguments are the same, otherwise `void`.
          */
         template<class... Args>
         struct same_or_void {
@@ -1154,13 +1105,18 @@ namespace sqlite_orm {
         struct same_or_void<A, A, Args...> : same_or_void<A, Args...> {};
 
         template<class Pack>
-        struct same_or_void_of;
+        struct common_type_of;
 
         template<template<class...> class Pack, class... Types>
-        struct same_or_void_of<Pack<Types...>> : same_or_void<Types...> {};
+        struct common_type_of<Pack<Types...>> : std::common_type<Types...> {};
 
+        /**
+         *  Accepts a pack of types and defines a nested `type` typename to a common type if possible, otherwise nonexistent.
+         *  
+         *  @note: SFINAE friendly like `std::common_type`.
+         */
         template<class Pack>
-        using same_or_void_of_t = typename same_or_void_of<Pack>::type;
+        using common_type_of_t = typename common_type_of<Pack>::type;
     }
 }
 
@@ -1204,7 +1160,7 @@ namespace sqlite_orm {
         template<template<class...> class TraitFn, class Tuple>
         struct tuple_has {};
         template<template<class...> class TraitFn, class... Types>
-        struct tuple_has<TraitFn, std::tuple<Types...>> : polyfill::disjunction<TraitFn<Types>...> {};
+        struct tuple_has<TraitFn, std::tuple<Types...>> : polyfill::disjunction<mpl::invoke_fn_t<TraitFn, Types>...> {};
 
         /*
          *  Trait metafunction class that checks whether a tuple contains a type with given trait.
@@ -1330,7 +1286,7 @@ namespace sqlite_orm {
 #ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
         template<class Tpl, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
         struct filter_tuple_sequence<Tpl, Pred, Proj, std::index_sequence<Idx...>>
-            : flatten_idxseq<std::conditional_t<Pred<Proj<std::tuple_element_t<Idx, Tpl>>>::value,
+            : flatten_idxseq<std::conditional_t<Pred<mpl::invoke_fn_t<Proj, std::tuple_element_t<Idx, Tpl>>>::value,
                                                 std::index_sequence<Idx>,
                                                 std::index_sequence<>>...> {};
 #else
@@ -1346,16 +1302,26 @@ namespace sqlite_orm {
 
         template<class Tpl, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
         struct filter_tuple_sequence<Tpl, Pred, Proj, std::index_sequence<Idx...>>
-            : flatten_idxseq<typename tuple_seq_single<Idx, Proj<std::tuple_element_t<Idx, Tpl>>, Pred>::type...> {};
+            : flatten_idxseq<typename tuple_seq_single<Idx,
+                                                       mpl::invoke_fn_t<Proj, std::tuple_element_t<Idx, Tpl>>,
+                                                       Pred>::type...> {};
 #endif
 
+        /*
+         *  `Pred` is a metafunction that defines a bool member named `value`
+         *  `FilterProj` is a metafunction
+         */
         template<class Tpl,
                  template<class...>
                  class Pred,
-                 template<class...> class Proj = polyfill::type_identity_t,
+                 template<class...> class FilterProj = polyfill::type_identity_t,
                  class Seq = std::make_index_sequence<std::tuple_size<Tpl>::value>>
-        using filter_tuple_sequence_t = typename filter_tuple_sequence<Tpl, Pred, Proj, Seq>::type;
+        using filter_tuple_sequence_t = typename filter_tuple_sequence<Tpl, Pred, FilterProj, Seq>::type;
 
+        /*
+         *  `Pred` is a metafunction that defines a bool member named `value`
+         *  `FilterProj` is a metafunction
+         */
         template<class Tpl,
                  template<class...>
                  class Pred,
@@ -1363,6 +1329,10 @@ namespace sqlite_orm {
                  class Seq = std::make_index_sequence<std::tuple_size<Tpl>::value>>
         using filter_tuple_t = tuple_from_index_sequence_t<Tpl, filter_tuple_sequence_t<Tpl, Pred, FilterProj, Seq>>;
 
+        /*
+         *  `Pred` is a metafunction that defines a bool member named `value`
+         *  `FilterProj` is a metafunction
+         */
         template<class Tpl,
                  template<class...>
                  class Pred,
@@ -1371,6 +1341,9 @@ namespace sqlite_orm {
 
         /*
          *  Count a tuple, picking only those elements specified in the index sequence.
+         *  
+         *  `Pred` is a metafunction that defines a bool member named `value`
+         *  `FilterProj` is a metafunction
          *  
          *  Implementation note: must be distinct from `count_tuple` because legacy compilers have problems
          *  with a default Sequence in function template parameters [SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION].
@@ -1899,25 +1872,25 @@ namespace sqlite_orm {
         template<typename T>
         struct is_primary_key_insertable
             : polyfill::disjunction<
-                  mpl::instantiate<mpl::disjunction<check_if_tuple_has_template<default_t>,
-                                                    check_if_tuple_has_template<primary_key_with_autoincrement>>,
-                                   constraints_type_t<T>>,
+                  mpl::invoke_t<mpl::disjunction<check_if_tuple_has_template<default_t>,
+                                                 check_if_tuple_has_template<primary_key_with_autoincrement>>,
+                                constraints_type_t<T>>,
                   std::is_base_of<integer_printer, type_printer<field_type_t<T>>>> {
 
             static_assert(tuple_has<is_primary_key, constraints_type_t<T>>::value, "an unexpected type was passed");
         };
 
         template<class T>
-        using is_constraint = mpl::instantiate<mpl::disjunction<check_if<is_primary_key>,
-                                                                check_if<is_foreign_key>,
-                                                                check_if_is_type<null_t>,
-                                                                check_if_is_type<not_null_t>,
-                                                                check_if_is_template<unique_t>,
-                                                                check_if_is_template<default_t>,
-                                                                check_if_is_template<check_t>,
-                                                                check_if_is_type<collate_constraint_t>,
-                                                                check_if<is_generated_always>>,
-                                               T>;
+        using is_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_primary_key>,
+                                                             check_if<is_foreign_key>,
+                                                             check_if_is_type<null_t>,
+                                                             check_if_is_type<not_null_t>,
+                                                             check_if_is_template<unique_t>,
+                                                             check_if_is_template<default_t>,
+                                                             check_if_is_template<check_t>,
+                                                             check_if_is_type<collate_constraint_t>,
+                                                             check_if<is_generated_always>>,
+                                            T>;
     }
 
 #if SQLITE_VERSION_NUMBER >= 3031000
@@ -7372,30 +7345,33 @@ namespace sqlite_orm {
 
         template<template<class...> class Pack, class... Types, template<class...> class Op>
         struct tuple_transformer<Pack<Types...>, Op> {
-            using type = Pack<mpl::invoke_meta_t<Op, Types>...>;
+            using type = Pack<mpl::invoke_fn_t<Op, Types>...>;
         };
 
         /*
          *  Transform specified tuple.
          *  
-         *  `Op` is a metafunction or metafunction operation.
+         *  `Op` is a metafunction.
          */
         template<class Pack, template<class...> class Op>
         using transform_tuple_t = typename tuple_transformer<Pack, Op>::type;
 
+        //  note: applying a combiner like `plus_fold_integrals` needs fold expressions
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
         /*
          *  Apply a projection to a tuple's elements filtered by the specified indexes, and combine the results.
          *  
          *  @note It's a glorified version of `std::apply()` and a variant of `std::accumulate()`.
          *  It combines filtering the tuple (indexes), transforming the elements (projection) and finally applying the callable (combine).
+         *  
+         *  @note `project` is called using `std::invoke`, which is `constexpr` since C++20.
          */
         template<class CombineOp, class Tpl, size_t... Idx, class Projector, class Init>
-        constexpr auto recombine_tuple(CombineOp combine,
-                                       const Tpl& tpl,
-                                       std::index_sequence<Idx...>,
-                                       Projector project,
-                                       Init initial) {
+        SQLITE_ORM_CONSTEXPR_CPP20 auto recombine_tuple(CombineOp combine,
+                                                        const Tpl& tpl,
+                                                        std::index_sequence<Idx...>,
+                                                        Projector project,
+                                                        Init initial) {
             return combine(initial, polyfill::invoke(project, std::get<Idx>(tpl))...);
         }
 
@@ -7404,9 +7380,12 @@ namespace sqlite_orm {
          *  
          *  @note It's a glorified version of `std::apply()` and a variant of `std::accumulate()`.
          *  It combines filtering the tuple (indexes), transforming the elements (projection) and finally applying the callable (combine).
+         *  
+         *  @note `project` is called using `std::invoke`, which is `constexpr` since C++20.
          */
         template<class CombineOp, class Tpl, class Projector, class Init>
-        constexpr auto recombine_tuple(CombineOp combine, const Tpl& tpl, Projector project, Init initial) {
+        SQLITE_ORM_CONSTEXPR_CPP20 auto
+        recombine_tuple(CombineOp combine, const Tpl& tpl, Projector project, Init initial) {
             return recombine_tuple(std::move(combine),
                                    std::forward<decltype(tpl)>(tpl),
                                    std::make_index_sequence<std::tuple_size<Tpl>::value>{},
@@ -7447,12 +7426,12 @@ namespace sqlite_orm {
 #endif
 
         template<class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
-        R create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, Projection project = {}) {
+        constexpr R create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, Projection project = {}) {
             return R{polyfill::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
         }
 
         template<class R, class Tpl, class Projection = polyfill::identity>
-        R create_from_tuple(Tpl&& tpl, Projection project = {}) {
+        constexpr R create_from_tuple(Tpl&& tpl, Projection project = {}) {
             return create_from_tuple<R>(
                 std::forward<Tpl>(tpl),
                 std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
@@ -7540,13 +7519,10 @@ namespace sqlite_orm {
             (lambda((std::tuple_element_t<Idx, Tpl>*)nullptr), ...);
         }
 #else
-        template<class Tpl, class L>
-        void iterate_tuple(std::index_sequence<>, L&& /*lambda*/) {}
-
-        template<class Tpl, size_t I, size_t... Idx, class L>
-        void iterate_tuple(std::index_sequence<I, Idx...>, L&& lambda) {
-            lambda((std::tuple_element_t<I, Tpl>*)nullptr);
-            iterate_tuple<Tpl>(std::index_sequence<Idx...>{}, std::forward<L>(lambda));
+        template<class Tpl, size_t... Idx, class L>
+        void iterate_tuple(std::index_sequence<Idx...>, L&& lambda) {
+            using Sink = int[sizeof...(Idx)];
+            (void)Sink{(lambda((std::tuple_element_t<Idx, Tpl>*)nullptr), 0)...};
         }
 #endif
         template<class Tpl, class L>
@@ -8212,7 +8188,7 @@ namespace sqlite_orm {
      */
     template<class... E>
     internal::union_t<E...> union_(E... expressions) {
-        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 expressions");
+        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}, false};
     }
 
@@ -8223,7 +8199,7 @@ namespace sqlite_orm {
      */
     template<class... E>
     internal::union_t<E...> union_all(E... expressions) {
-        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 expressions");
+        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}, true};
     }
 
@@ -8234,13 +8210,13 @@ namespace sqlite_orm {
      */
     template<class... E>
     internal::except_t<E...> except(E... expressions) {
-        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 expressions");
+        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}};
     }
 
     template<class... E>
     internal::intersect_t<E...> intersect(E... expressions) {
-        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 expressions");
+        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}};
     }
 
@@ -10976,7 +10952,7 @@ namespace sqlite_orm {
              *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
              *  @param lambda Lambda called for each column.
              */
-            template<class OpTraitFnCls, class L, satisfies<mpl::is_metafunction_class, OpTraitFnCls> = true>
+            template<class OpTraitFnCls, class L, satisfies<mpl::is_quoted_metafuntion, OpTraitFnCls> = true>
             void for_each_column_excluding(L&& lambda) const {
                 this->for_each_column_excluding<OpTraitFnCls::template fn>(lambda);
             }
@@ -11019,7 +10995,7 @@ namespace sqlite_orm {
              *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
              *  @param lambda Lambda called for each column.
              */
-            template<class OpTraitFnCls, class L, satisfies<mpl::is_metafunction_class, OpTraitFnCls> = true>
+            template<class OpTraitFnCls, class L, satisfies<mpl::is_quoted_metafuntion, OpTraitFnCls> = true>
             void for_each_column_excluding(L&& lambda) const {
                 this->module_details.template for_each_column_excluding<OpTraitFnCls>(lambda);
             }
@@ -11062,7 +11038,7 @@ namespace sqlite_orm {
              *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
              *  @param lambda Lambda called for each column.
              */
-            template<class OpTraitFnCls, class L, satisfies<mpl::is_metafunction_class, OpTraitFnCls> = true>
+            template<class OpTraitFnCls, class L, satisfies<mpl::is_quoted_metafuntion, OpTraitFnCls> = true>
             void for_each_column_excluding(L&& lambda) const {
                 this->for_each_column_excluding<OpTraitFnCls::template fn>(lambda);
             }
@@ -11591,10 +11567,11 @@ namespace sqlite_orm {
 // #include "column_result.h"
 
 #include <type_traits>  //  std::enable_if, std::is_same, std::decay, std::is_arithmetic, std::is_base_of
-#include <tuple>  //  std::tuple
 #include <functional>  //  std::reference_wrapper
 
 // #include "functional/cxx_universal.h"
+//  ::nullptr_t
+// #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "functional/mpl.h"
 
@@ -11603,6 +11580,8 @@ namespace sqlite_orm {
 // #include "tuple_helper/tuple_fy.h"
 
 // #include "tuple_helper/tuple_filter.h"
+
+// #include "tuple_helper/tuple_transformer.h"
 
 // #include "tuple_helper/same_or_void.h"
 
@@ -12004,6 +11983,10 @@ namespace sqlite_orm {
         template<class DBOs, class T>
         using column_result_of_t = typename column_result_t<DBOs, T>::type;
 
+        template<class DBOs, class Tpl>
+        using column_result_for_tuple_t =
+            transform_tuple_t<Tpl, mpl::bind_front_fn<column_result_of_t, DBOs>::template fn>;
+
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class DBOs, class T>
         struct column_result_t<DBOs, as_optional_t<T>, void> {
@@ -12200,20 +12183,18 @@ namespace sqlite_orm {
 #endif
 
         template<class DBOs, class... Args>
-        struct column_result_t<DBOs, columns_t<Args...>, void> {
-            using type = tuple_cat_t<tuplify_t<column_result_of_t<DBOs, std::decay_t<Args>>>...>;
-        };
+        struct column_result_t<DBOs, columns_t<Args...>, void>
+            : conc_tuple<tuplify_t<column_result_of_t<DBOs, std::decay_t<Args>>>...> {};
 
         template<class DBOs, class T, class... Args>
         struct column_result_t<DBOs, select_t<T, Args...>> : column_result_t<DBOs, T> {};
 
         template<class DBOs, class T>
         struct column_result_t<DBOs, T, match_if<is_compound_operator, T>> {
-            using column_result_fn = mpl::bind_front_fn<column_result_of_t, DBOs>;
-            using types_tuple = transform_tuple_t<typename T::expressions_tuple, column_result_fn::template fn>;
-            using type = std::tuple_element_t<0, types_tuple>;
-            static_assert(!std::is_same<void, same_or_void_of_t<types_tuple>>::value,
-                          "Compound subselect queries must return same types");
+            using type =
+                polyfill::detected_t<common_type_of_t, column_result_for_tuple_t<DBOs, typename T::expressions_tuple>>;
+            static_assert(!std::is_same<type, polyfill::nonesuch>::value,
+                          "Compound select statements must return a common type");
         };
 
         template<class DBOs, class T>
@@ -16789,8 +16770,8 @@ namespace sqlite_orm {
                     (*this)(colExpr, context);
                 });
                 // note: `capacity() > size()` can occur in case `asterisk_t<>` does spell out the columns in defined order
-                if(mpl::instantiate<check_if_tuple_has_template<asterisk_t>,
-                                    typename columns_t<Args...>::columns_type>::value &&
+                if(mpl::invoke_t<check_if_tuple_has_template<asterisk_t>,
+                                 typename columns_t<Args...>::columns_type>::value &&
                    collectedExpressions.capacity() > collectedExpressions.size()) {
                     collectedExpressions.shrink_to_fit();
                 }
@@ -19820,7 +19801,7 @@ namespace sqlite_orm {
 
                 context_t context{this->db_objects};
                 statement_serializer<Table, void> serializer;
-                const auto sql = serializer.serialize(table, context, tableName);
+                const std::string sql = serializer.serialize(table, context, tableName);
                 perform_void_exec(db, sql);
             }
 
@@ -20735,7 +20716,7 @@ namespace sqlite_orm {
                 context.replace_bindable_with_question = true;
 
                 auto con = this->get_connection();
-                const auto sql = serialize(statement, context);
+                const std::string sql = serialize(statement, context);
                 sqlite3_stmt* stmt = prepare_stmt(con.get(), sql);
                 return prepared_statement_t<S>{std::forward<S>(statement), stmt, con};
             }
@@ -21350,7 +21331,7 @@ namespace sqlite_orm {
          *   Node tuple for several types.
          */
         template<class... T>
-        using node_tuple_for = conc_tuple<node_tuple_t<T>...>;
+        using node_tuple_for = conc_tuple<typename node_tuple<T>::type...>;
 
         template<>
         struct node_tuple<void, void> {

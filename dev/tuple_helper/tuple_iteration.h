@@ -76,13 +76,10 @@ namespace sqlite_orm {
             (lambda((std::tuple_element_t<Idx, Tpl>*)nullptr), ...);
         }
 #else
-        template<class Tpl, class L>
-        void iterate_tuple(std::index_sequence<>, L&& /*lambda*/) {}
-
-        template<class Tpl, size_t I, size_t... Idx, class L>
-        void iterate_tuple(std::index_sequence<I, Idx...>, L&& lambda) {
-            lambda((std::tuple_element_t<I, Tpl>*)nullptr);
-            iterate_tuple<Tpl>(std::index_sequence<Idx...>{}, std::forward<L>(lambda));
+        template<class Tpl, size_t... Idx, class L>
+        void iterate_tuple(std::index_sequence<Idx...>, L&& lambda) {
+            using Sink = int[sizeof...(Idx)];
+            (void)Sink{(lambda((std::tuple_element_t<Idx, Tpl>*)nullptr), 0)...};
         }
 #endif
         template<class Tpl, class L>

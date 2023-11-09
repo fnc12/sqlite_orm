@@ -8,8 +8,8 @@
 using namespace sqlite_orm;
 
 TEST_CASE("same_or_void") {
+    using internal::common_type_of_t;
     using internal::same_or_void;
-    using internal::same_or_void_of_t;
 
     //  one argument
     STATIC_REQUIRE(std::is_same<same_or_void<int>::type, int>::value);
@@ -35,6 +35,8 @@ TEST_CASE("same_or_void") {
     STATIC_REQUIRE(std::is_same<same_or_void<int, int, int, long>::type, void>::value);
 
     //  type pack, e.g. tuple
-    STATIC_REQUIRE(std::is_same<same_or_void_of_t<std::tuple<int, int>>, int>::value);
-    STATIC_REQUIRE(std::is_same<same_or_void_of_t<std::tuple<int, long>>, void>::value);
+    STATIC_REQUIRE(std::is_same<common_type_of_t<std::tuple<int, int>>, int>::value);
+    STATIC_REQUIRE(std::is_same<common_type_of_t<std::tuple<int, long>>, long>::value);
+    STATIC_REQUIRE(
+        std::is_same<polyfill::detected_t<common_type_of_t, std::tuple<int, const char*>>, polyfill::nonesuch>::value);
 }

@@ -12,6 +12,12 @@
 #define SQLITE_ORM_INLINE_VAR
 #endif
 
+#if __cpp_lib_constexpr_functional >= 201907L
+#define SQLITE_ORM_CONSTEXPR_CPP20 constexpr
+#else
+#define SQLITE_ORM_CONSTEXPR_CPP20
+#endif
+
 #if SQLITE_ORM_HAS_CPP_ATTRIBUTE(no_unique_address) >= 201803L
 #define SQLITE_ORM_NOUNIQUEADDRESS [[no_unique_address]]
 #else

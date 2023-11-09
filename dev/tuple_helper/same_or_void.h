@@ -1,10 +1,11 @@
 #pragma once
+#include <type_traits>  //  std::common_type
 
 namespace sqlite_orm {
     namespace internal {
 
         /**
-         *  Accepts any number of arguments and evaluates `type` alias as T if all arguments are the same or void otherwise
+         *  Accepts any number of arguments and evaluates a nested `type` typename as `T` if all arguments are the same, otherwise `void`.
          */
         template<class... Args>
         struct same_or_void {
@@ -28,12 +29,17 @@ namespace sqlite_orm {
         struct same_or_void<A, A, Args...> : same_or_void<A, Args...> {};
 
         template<class Pack>
-        struct same_or_void_of;
+        struct common_type_of;
 
         template<template<class...> class Pack, class... Types>
-        struct same_or_void_of<Pack<Types...>> : same_or_void<Types...> {};
+        struct common_type_of<Pack<Types...>> : std::common_type<Types...> {};
 
+        /**
+         *  Accepts a pack of types and defines a nested `type` typename to a common type if possible, otherwise nonexistent.
+         *  
+         *  @note: SFINAE friendly like `std::common_type`.
+         */
         template<class Pack>
-        using same_or_void_of_t = typename same_or_void_of<Pack>::type;
+        using common_type_of_t = typename common_type_of<Pack>::type;
     }
 }

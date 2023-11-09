@@ -47,6 +47,10 @@ TEST_CASE("column_result_of_t") {
 
     runTest<db_objects_t, int>(&User::id);
     runTest<db_objects_t, std::string>(&User::name);
+    {
+        int n = 0;
+        runTest<db_objects_t, int>(std::ref(n));
+    }
     runTest<db_objects_t, bool>(in(&User::id, {1, 2, 3}));
     {
         std::vector<int> vector;
@@ -115,6 +119,8 @@ TEST_CASE("column_result_of_t") {
     runTest<db_objects_t, int>(column<User>(&User::id));
     runTest<db_objects_t, int>(alias_column<alias_a<User>>(&User::id));
     runTest<db_objects_t, User>(object<User>());
+    runTest<db_objects_t, int>(union_all(select(1), select(2)));
+    runTest<db_objects_t, int64>(union_all(select(1ll), select(2)));
 #ifdef SQLITE_ORM_WITH_CTE
     using cte_1 = decltype(1_ctealias);
     // note: even though used with the CTE, &User::id doesn't need to be mapped into the CTE to make column results work;

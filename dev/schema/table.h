@@ -271,7 +271,7 @@ namespace sqlite_orm {
              *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
              *  @param lambda Lambda called for each column.
              */
-            template<class OpTraitFnCls, class L, satisfies<mpl::is_metafunction_class, OpTraitFnCls> = true>
+            template<class OpTraitFnCls, class L, satisfies<mpl::is_quoted_metafuntion, OpTraitFnCls> = true>
             void for_each_column_excluding(L&& lambda) const {
                 this->for_each_column_excluding<OpTraitFnCls::template fn>(lambda);
             }
@@ -314,7 +314,7 @@ namespace sqlite_orm {
              *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
              *  @param lambda Lambda called for each column.
              */
-            template<class OpTraitFnCls, class L, satisfies<mpl::is_metafunction_class, OpTraitFnCls> = true>
+            template<class OpTraitFnCls, class L, satisfies<mpl::is_quoted_metafuntion, OpTraitFnCls> = true>
             void for_each_column_excluding(L&& lambda) const {
                 this->module_details.template for_each_column_excluding<OpTraitFnCls>(lambda);
             }
@@ -357,7 +357,7 @@ namespace sqlite_orm {
              *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
              *  @param lambda Lambda called for each column.
              */
-            template<class OpTraitFnCls, class L, satisfies<mpl::is_metafunction_class, OpTraitFnCls> = true>
+            template<class OpTraitFnCls, class L, satisfies<mpl::is_quoted_metafuntion, OpTraitFnCls> = true>
             void for_each_column_excluding(L&& lambda) const {
                 this->for_each_column_excluding<OpTraitFnCls::template fn>(lambda);
             }
