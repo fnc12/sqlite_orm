@@ -11,35 +11,38 @@
 namespace sqlite_orm {
     namespace internal {
 
-        template<class Tpl, template<class...> class Op>
+        template<class Pack, template<class...> class Op>
         struct tuple_transformer;
 
         template<template<class...> class Pack, class... Types, template<class...> class Op>
         struct tuple_transformer<Pack<Types...>, Op> {
-            using type = Pack<mpl::invoke_op_t<Op, Types>...>;
+            using type = Pack<mpl::invoke_fn_t<Op, Types>...>;
         };
 
         /*
          *  Transform specified tuple.
          *  
-         *  `Op` is a metafunction operation.
+         *  `Op` is a metafunction.
          */
-        template<class Tpl, template<class...> class Op>
-        using transform_tuple_t = typename tuple_transformer<Tpl, Op>::type;
+        template<class Pack, template<class...> class Op>
+        using transform_tuple_t = typename tuple_transformer<Pack, Op>::type;
 
+        //  note: applying a combiner like `plus_fold_integrals` needs fold expressions
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
         /*
          *  Apply a projection to a tuple's elements filtered by the specified indexes, and combine the results.
          *  
          *  @note It's a glorified version of `std::apply()` and a variant of `std::accumulate()`.
          *  It combines filtering the tuple (indexes), transforming the elements (projection) and finally applying the callable (combine).
+         *  
+         *  @note `project` is called using `std::invoke`, which is `constexpr` since C++20.
          */
         template<class CombineOp, class Tpl, size_t... Idx, class Projector, class Init>
-        constexpr auto recombine_tuple(CombineOp combine,
-                                       const Tpl& tpl,
-                                       std::index_sequence<Idx...>,
-                                       Projector project,
-                                       Init initial) {
+        SQLITE_ORM_CONSTEXPR_CPP20 auto recombine_tuple(CombineOp combine,
+                                                        const Tpl& tpl,
+                                                        std::index_sequence<Idx...>,
+                                                        Projector project,
+                                                        Init initial) {
             return combine(initial, polyfill::invoke(project, std::get<Idx>(tpl))...);
         }
 
@@ -48,9 +51,12 @@ namespace sqlite_orm {
          *  
          *  @note It's a glorified version of `std::apply()` and a variant of `std::accumulate()`.
          *  It combines filtering the tuple (indexes), transforming the elements (projection) and finally applying the callable (combine).
+         *  
+         *  @note `project` is called using `std::invoke`, which is `constexpr` since C++20.
          */
         template<class CombineOp, class Tpl, class Projector, class Init>
-        constexpr auto recombine_tuple(CombineOp combine, const Tpl& tpl, Projector project, Init initial) {
+        SQLITE_ORM_CONSTEXPR_CPP20 auto
+        recombine_tuple(CombineOp combine, const Tpl& tpl, Projector project, Init initial) {
             return recombine_tuple(std::move(combine),
                                    std::forward<decltype(tpl)>(tpl),
                                    std::make_index_sequence<std::tuple_size<Tpl>::value>{},
@@ -91,12 +97,12 @@ namespace sqlite_orm {
 #endif
 
         template<class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
-        R create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, Projection project = {}) {
+        constexpr R create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, Projection project = {}) {
             return R{polyfill::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
         }
 
         template<class R, class Tpl, class Projection = polyfill::identity>
-        R create_from_tuple(Tpl&& tpl, Projection project = {}) {
+        constexpr R create_from_tuple(Tpl&& tpl, Projection project = {}) {
             return create_from_tuple<R>(
                 std::forward<Tpl>(tpl),
                 std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},

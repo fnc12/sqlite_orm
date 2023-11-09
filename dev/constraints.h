@@ -294,12 +294,12 @@ namespace sqlite_orm {
             /**
              * Holds obect type of all referenced columns.
              */
-            using target_type = typename same_or_void<table_type_of_t<Rs>...>::type;
+            using target_type = same_or_void_t<table_type_of_t<Rs>...>;
 
             /**
              * Holds obect type of all source columns.
              */
-            using source_type = typename same_or_void<table_type_of_t<Cs>...>::type;
+            using source_type = same_or_void_t<table_type_of_t<Cs>...>;
 
             columns_type columns;
             references_type references;
@@ -458,25 +458,25 @@ namespace sqlite_orm {
         template<typename T>
         struct is_primary_key_insertable
             : polyfill::disjunction<
-                  mpl::instantiate<mpl::disjunction<check_if_tuple_has_template<default_t>,
-                                                    check_if_tuple_has_template<primary_key_with_autoincrement>>,
-                                   constraints_type_t<T>>,
+                  mpl::invoke_t<mpl::disjunction<check_if_tuple_has_template<default_t>,
+                                                 check_if_tuple_has_template<primary_key_with_autoincrement>>,
+                                constraints_type_t<T>>,
                   std::is_base_of<integer_printer, type_printer<field_type_t<T>>>> {
 
             static_assert(tuple_has<is_primary_key, constraints_type_t<T>>::value, "an unexpected type was passed");
         };
 
         template<class T>
-        using is_constraint = mpl::instantiate<mpl::disjunction<check_if<is_primary_key>,
-                                                                check_if<is_foreign_key>,
-                                                                check_if_is_type<null_t>,
-                                                                check_if_is_type<not_null_t>,
-                                                                check_if_is_template<unique_t>,
-                                                                check_if_is_template<default_t>,
-                                                                check_if_is_template<check_t>,
-                                                                check_if_is_type<collate_constraint_t>,
-                                                                check_if<is_generated_always>>,
-                                               T>;
+        using is_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_primary_key>,
+                                                             check_if<is_foreign_key>,
+                                                             check_if_is_type<null_t>,
+                                                             check_if_is_type<not_null_t>,
+                                                             check_if_is_template<unique_t>,
+                                                             check_if_is_template<default_t>,
+                                                             check_if_is_template<check_t>,
+                                                             check_if_is_type<collate_constraint_t>,
+                                                             check_if<is_generated_always>>,
+                                            T>;
     }
 
 #if SQLITE_VERSION_NUMBER >= 3031000
