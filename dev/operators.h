@@ -3,6 +3,8 @@
 #include <type_traits>  //  std::false_type, std::true_type
 #include <utility>  //  std::move
 
+#include "functional/cxx_type_traits_polyfill.h"
+#include "is_base_of_template.h"
 #include "tags.h"
 #include "serialize_result_type.h"
 
@@ -20,6 +22,12 @@ namespace sqlite_orm {
 
             binary_operator(left_type lhs_, right_type rhs_) : lhs(std::move(lhs_)), rhs(std::move(rhs_)) {}
         };
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_binary_operator_v = is_base_of_template_v<T, binary_operator>;
+
+        template<class T>
+        using is_binary_operator = polyfill::bool_constant<is_binary_operator_v<T>>;
 
         struct conc_string {
             serialize_result_type serialize() const {

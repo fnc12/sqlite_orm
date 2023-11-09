@@ -1,13 +1,16 @@
 #pragma once
 
 #include <type_traits>  //  std::enable_if, std::is_same, std::decay, std::is_arithmetic, std::is_base_of
-#include <tuple>  //  std::tuple
 #include <functional>  //  std::reference_wrapper
 
-#include "functional/cxx_universal.h"
+#include "functional/cxx_universal.h"  //  ::nullptr_t
+#include "functional/cxx_type_traits_polyfill.h"
+#include "functional/mpl.h"
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_fy.h"
 #include "tuple_helper/tuple_filter.h"
+#include "tuple_helper/tuple_transformer.h"
+#include "tuple_helper/same_or_void.h"
 #include "type_traits.h"
 #include "member_traits/member_traits.h"
 #include "mapped_type_proxy.h"
@@ -41,6 +44,10 @@ namespace sqlite_orm {
 
         template<class DBOs, class T>
         using column_result_of_t = typename column_result_t<DBOs, T>::type;
+
+        template<class DBOs, class Tpl>
+        using column_result_for_tuple_t =
+            transform_tuple_t<Tpl, mpl::bind_front_fn<column_result_of_t, DBOs>::template fn>;
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class DBOs, class T>
@@ -220,20 +227,18 @@ namespace sqlite_orm {
         struct column_result_t<DBOs, column_pointer<T, F>, void> : column_result_t<DBOs, F> {};
 
         template<class DBOs, class... Args>
-        struct column_result_t<DBOs, columns_t<Args...>, void> {
-            using type = tuple_cat_t<tuplify_t<column_result_of_t<DBOs, std::decay_t<Args>>>...>;
-        };
+        struct column_result_t<DBOs, columns_t<Args...>, void>
+            : conc_tuple<tuplify_t<column_result_of_t<DBOs, std::decay_t<Args>>>...> {};
 
         template<class DBOs, class T, class... Args>
         struct column_result_t<DBOs, select_t<T, Args...>> : column_result_t<DBOs, T> {};
 
         template<class DBOs, class T>
         struct column_result_t<DBOs, T, match_if<is_compound_operator, T>> {
-            using left_result = column_result_of_t<DBOs, typename T::left_type>;
-            using right_result = column_result_of_t<DBOs, typename T::right_type>;
-            static_assert(std::is_same<left_result, right_result>::value,
-                          "Compound subselect queries must return same types");
-            using type = left_result;
+            using type =
+                polyfill::detected_t<common_type_of_t, column_result_for_tuple_t<DBOs, typename T::expressions_tuple>>;
+            static_assert(!std::is_same<type, polyfill::nonesuch>::value,
+                          "Compound select statements must return a common type");
         };
 
         template<class DBOs, class T>

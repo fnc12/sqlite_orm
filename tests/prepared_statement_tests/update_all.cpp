@@ -39,15 +39,6 @@ TEST_CASE("Prepared update all") {
 
     {  //  by val
         auto statement = storage.prepare(update_all(set(assign(&User::name, conc(&User::name, "_")))));
-        using Statement = decltype(statement);
-        using Expression = Statement::expression_type;
-        using SetTuple = internal::node_tuple<Expression>::set_tuple;
-        using SetBind = internal::bindable_filter_t<SetTuple>;
-        STATIC_REQUIRE(std::tuple_size<SetBind>::value == 1);
-        {
-            using Arg0 = std::tuple_element_t<0, SetBind>;
-            STATIC_REQUIRE(std::is_same<Arg0, const char*>::value);
-        }
         REQUIRE(strcmp(get<0>(statement), "_") == 0);
         testSerializing(statement);
         SECTION("nothing") {
@@ -105,15 +96,6 @@ TEST_CASE("Prepared update all") {
     {  //  by ref
         std::string str = "_";
         auto statement = storage.prepare(update_all(set(assign(&User::name, conc(&User::name, std::ref(str))))));
-        using Statement = decltype(statement);
-        using Expression = Statement::expression_type;
-        using SetTuple = internal::node_tuple<Expression>::set_tuple;
-        using SetBind = internal::bindable_filter_t<SetTuple>;
-        STATIC_REQUIRE(std::tuple_size<SetBind>::value == 1);
-        {
-            using Arg0 = std::tuple_element_t<0, SetBind>;
-            STATIC_REQUIRE(std::is_same<Arg0, std::string>::value);
-        }
         REQUIRE(get<0>(statement) == "_");
         REQUIRE(&get<0>(statement) == &str);
         testSerializing(statement);

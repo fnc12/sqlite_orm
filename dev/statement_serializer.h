@@ -614,9 +614,7 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& c, const Ctx& context) const {
                 std::stringstream ss;
-                ss << serialize(c.left, context) << " ";
-                ss << static_cast<std::string>(c) << " ";
-                ss << serialize(c.right, context);
+                ss << streaming_compound_expressions(c.compound, static_cast<std::string>(c), context);
                 return ss.str();
             }
         };
