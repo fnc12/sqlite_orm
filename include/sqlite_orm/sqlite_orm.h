@@ -4556,8 +4556,8 @@ namespace sqlite_orm {
      * Example: storage.get_all<Singer>(multi_order_by(order_by(&Singer::name).asc(), order_by(&Singer::gender).desc())
      */
     template<class... Args>
-    internal::multi_order_by_t<Args...> multi_order_by(Args&&... args) {
-        return {std::make_tuple(std::forward<Args>(args)...)};
+    internal::multi_order_by_t<Args...> multi_order_by(Args... args) {
+        return {{std::forward<Args>(args)...}};
     }
 
     /**
@@ -7640,8 +7640,8 @@ namespace sqlite_orm {
      *  Example: storage.get_all<Employee>(group_by(&Employee::name))
      */
     template<class... Args>
-    internal::group_by_t<Args...> group_by(Args&&... args) {
-        return {std::make_tuple(std::forward<Args>(args)...)};
+    internal::group_by_t<Args...> group_by(Args... args) {
+        return {{std::forward<Args>(args)...}};
     }
 }
 

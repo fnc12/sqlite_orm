@@ -43,7 +43,7 @@ namespace sqlite_orm {
      *  Example: storage.get_all<Employee>(group_by(&Employee::name))
      */
     template<class... Args>
-    internal::group_by_t<Args...> group_by(Args&&... args) {
-        return {std::make_tuple(std::forward<Args>(args)...)};
+    internal::group_by_t<Args...> group_by(Args... args) {
+        return {{std::forward<Args>(args)...}};
     }
 }
