@@ -3,10 +3,12 @@
 
 #include <type_traits>  //  std::is_same
 #include <string>  //  std::string
+#include <tuple>  //  std::tuple
 
 using namespace sqlite_orm;
 
 TEST_CASE("same_or_void") {
+    using internal::common_type_of_t;
     using internal::same_or_void;
 
     //  one argument
@@ -31,4 +33,10 @@ TEST_CASE("same_or_void") {
     STATIC_REQUIRE(std::is_same<same_or_void<int, int, int, int>::type, int>::value);
     STATIC_REQUIRE(std::is_same<same_or_void<long, long, long, long>::type, long>::value);
     STATIC_REQUIRE(std::is_same<same_or_void<int, int, int, long>::type, void>::value);
+
+    //  type pack, e.g. tuple
+    STATIC_REQUIRE(std::is_same<common_type_of_t<std::tuple<int, int>>, int>::value);
+    STATIC_REQUIRE(std::is_same<common_type_of_t<std::tuple<int, long>>, long>::value);
+    STATIC_REQUIRE(
+        std::is_same<polyfill::detected_t<common_type_of_t, std::tuple<int, const char*>>, polyfill::nonesuch>::value);
 }

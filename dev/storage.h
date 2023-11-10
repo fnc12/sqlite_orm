@@ -20,6 +20,7 @@
 #include "functional/mpl.h"
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_filter.h"
+#include "tuple_helper/tuple_transformer.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "type_traits.h"
 #include "alias.h"
@@ -106,7 +107,7 @@ namespace sqlite_orm {
 
                 context_t context{this->db_objects};
                 statement_serializer<Table, void> serializer;
-                const auto sql = serializer.serialize(table, context, tableName);
+                const std::string sql = serializer.serialize(table, context, tableName);
                 perform_void_exec(db, sql);
             }
 
@@ -169,6 +170,27 @@ namespace sqlite_orm {
             void assert_mapped_type() const {
                 static_assert(mpl::invoke_t<check_if_tuple_has_type<O, object_type_t>, db_objects_type>::value,
                               "type is not mapped to storage");
+            }
+
+            template<class O>
+            void assert_updatable_type() const {
+#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
+                using Table = storage_pick_table_t<O, db_objects_type>;
+                using elements_type = elements_type_t<Table>;
+                using col_index_sequence = filter_tuple_sequence_t<elements_type, is_column>;
+                using pk_index_sequence = filter_tuple_sequence_t<elements_type, is_primary_key>;
+                using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
+                constexpr size_t dedicatedPrimaryKeyColumnsCount =
+                    nested_tuple_size_for_t<columns_tuple_t, elements_type, pk_index_sequence>::value;
+
+                constexpr size_t primaryKeyColumnsCount =
+                    dedicatedPrimaryKeyColumnsCount + pkcol_index_sequence::size();
+                constexpr ptrdiff_t nonPrimaryKeysColumnsCount = col_index_sequence::size() - primaryKeyColumnsCount;
+                static_assert(primaryKeyColumnsCount > 0, "A table without primary keys cannot be updated");
+                static_assert(
+                    nonPrimaryKeysColumnsCount > 0,
+                    "A table with only primary keys cannot be updated. You need at least 1 non-primary key column");
+#endif
             }
 
             template<class O,
@@ -960,7 +982,7 @@ namespace sqlite_orm {
                 context.replace_bindable_with_question = true;
 
                 auto con = this->get_connection();
-                const auto sql = serialize(statement, context);
+                const std::string sql = serialize(statement, context);
                 sqlite3_stmt* stmt = prepare_stmt(con.get(), sql);
                 return prepared_statement_t<S>{std::forward<S>(statement), stmt, con};
             }
@@ -1081,8 +1103,11 @@ namespace sqlite_orm {
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
             template<class T>
-            prepared_statement_t<update_t<T>> prepare(update_t<T> upd) {
-                return prepare_impl<update_t<T>>(std::move(upd));
+            prepared_statement_t<update_t<T>> prepare(update_t<T> statement) {
+                using object_type = typename expression_object_type<decltype(statement)>::type;
+                this->assert_mapped_type<object_type>();
+                this->assert_updatable_type<object_type>();
+                return prepare_impl<update_t<T>>(std::move(statement));
             }
 
             template<class T, class... Ids>

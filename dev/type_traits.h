@@ -50,6 +50,9 @@ namespace sqlite_orm {
         using constraints_type_t = typename T::constraints_type;
 
         template<typename T>
+        using columns_tuple_t = typename T::columns_tuple;
+
+        template<typename T>
         using object_type_t = typename T::object_type;
 
         template<typename T>
@@ -57,6 +60,12 @@ namespace sqlite_orm {
 
         template<typename T>
         using target_type_t = typename T::target_type;
+
+        template<typename T>
+        using left_type_t = typename T::left_type;
+
+        template<typename T>
+        using right_type_t = typename T::right_type;
 
         template<typename T>
         using on_type_t = typename T::on_type;

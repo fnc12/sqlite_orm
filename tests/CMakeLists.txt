@@ -32,6 +32,7 @@ add_executable(unit_tests
     static_tests/is_primary_key_insertable.cpp
     static_tests/is_column_with_insertable_primary_key.cpp
     static_tests/operators_adl.cpp
+    static_tests/table_static_tests.cpp
     tuple_iteration.cpp
     sync_schema_tests.cpp
     tests.cpp
@@ -87,6 +88,8 @@ add_executable(unit_tests
     statement_serializer_tests/column_constraints/primary_key.cpp
     statement_serializer_tests/column_constraints/unique.cpp
     statement_serializer_tests/column_constraints/check.cpp
+    statement_serializer_tests/column_constraints/null.cpp
+    statement_serializer_tests/column_constraints/not_null.cpp
     statement_serializer_tests/bindables.cpp
     statement_serializer_tests/ast/upsert_clause.cpp
     statement_serializer_tests/ast/excluded.cpp

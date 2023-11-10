@@ -37,10 +37,6 @@
 #define SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
 #endif
 
-#if __cpp_inline_variables >= 201606L
-#define SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
-#endif
-
 #if __cpp_if_constexpr >= 201606L
 #define SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
 #endif

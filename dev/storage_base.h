@@ -160,6 +160,16 @@ namespace sqlite_orm {
                 return guard.commit_on_destroy = f();
             }
 
+            std::string current_time() {
+                auto con = this->get_connection();
+                return this->current_time(con.get());
+            }
+
+            std::string current_date() {
+                auto con = this->get_connection();
+                return this->current_date(con.get());
+            }
+
             std::string current_timestamp() {
                 auto con = this->get_connection();
                 return this->current_timestamp(con.get());
@@ -204,6 +214,15 @@ namespace sqlite_orm {
                 return tableNames;
             }
 
+            /**
+             *  Call it once during storage lifetime to make it keeping its connection opened till dtor call.
+             *  By default if storage is not in-memory it calls `sqlite3_open` only when the connection is really
+             *  needed and closes when it is not needed. This function breaks this rule. In memory storage always
+             *  keeps connection opened so calling this for in-memory storage changes nothing.
+             *  Note about multithreading: in multithreading context avoiding using this function for not in-memory
+             *  storage may lead to data races. If you have data races in such a configuration try to call `open_forever`
+             *  before accessing your storage - it may fix data races.
+             */
             void open_forever() {
                 this->isOpenedForever = true;
                 this->connection->retain();
@@ -709,6 +728,18 @@ namespace sqlite_orm {
                 auto voidPointer = static_cast<void*>(pointer);
                 auto fPointer = static_cast<F*>(voidPointer);
                 delete fPointer;
+            }
+
+            std::string current_time(sqlite3* db) {
+                std::string result;
+                perform_exec(db, "SELECT CURRENT_TIME", extract_single_value<std::string>, &result);
+                return result;
+            }
+
+            std::string current_date(sqlite3* db) {
+                std::string result;
+                perform_exec(db, "SELECT CURRENT_DATE", extract_single_value<std::string>, &result);
+                return result;
             }
 
             std::string current_timestamp(sqlite3* db) {
