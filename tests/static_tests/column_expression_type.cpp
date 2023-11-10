@@ -56,9 +56,8 @@ TEST_CASE("column_expression_of_t") {
                                  internal::make_cte_table(dbObjects, cte<cte_1>().as(select(columns(&Org::id, 1)))));
     using db_objects2_t = decltype(dbObjects2);
     runTest<db_objects_t, column_pointer<cte_1, int64 Org::*>>(column<cte_1>(&Org::id));
-    runTest<db_objects_t, column_pointer<cte_1, int64 Org::*>>(cte_1{}->*&Org::id);
     runTest<db_objects_t, column_pointer<cte_1, alias_holder<column_alias<'1'>>>>(column<cte_1>(1_colalias));
-    runTest<db_objects_t, column_pointer<cte_1, alias_holder<colalias_c>>>(1_ctealias->*colalias_c{});
+    runTest<db_objects_t, column_pointer<cte_1, alias_holder<colalias_c>>>(column<cte_1>(colalias_c{}));
     runTest<db_objects_t, alias_column_t<alias_a<cte_1>, column_pointer<cte_1, int64 Org::*>>>(
         alias_column<alias_a<cte_1>>(&Org::id));
     runTest<db_objects_t, alias_column_t<alias_a<cte_1>, column_pointer<cte_1, alias_holder<column_alias<'1'>>>>>(

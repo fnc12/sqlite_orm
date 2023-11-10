@@ -618,11 +618,6 @@ void apfelmaennchen() {
     using cte_m = decltype(3_ctealias);
     using cte_m2 = decltype(4_ctealias);
     using cte_a = decltype(5_ctealias);
-    constexpr cte_xaxis xaxis{};
-    constexpr cte_yaxis yaxis{};
-    constexpr cte_m m{};
-    constexpr cte_m2 m2{};
-    constexpr cte_a a{};
     constexpr auto x = colalias_a{};
     constexpr auto y = colalias_b{};
     constexpr auto iter = colalias_c{};
@@ -631,21 +626,32 @@ void apfelmaennchen() {
     constexpr auto t = colalias_f{};
     auto ast = with_recursive(
         make_tuple(
-            cte<cte_xaxis>("x").as(union_all(select(-2.0 >>= x), select(xaxis->*x + 0.05, where(xaxis->*x < 1.2)))),
-            cte<cte_yaxis>("y").as(union_all(select(-1.0 >>= y), select(yaxis->*y + 0.10, where(yaxis->*y < 1.0)))),
+            cte<cte_xaxis>("x").as(
+                union_all(select(-2.0 >>= x), select(column<cte_xaxis>(x) + 0.05, where(column<cte_xaxis>(x) < 1.2)))),
+            cte<cte_yaxis>("y").as(
+                union_all(select(-1.0 >>= y), select(column<cte_yaxis>(y) + 0.10, where(column<cte_yaxis>(y) < 1.0)))),
             cte<cte_m>("iter", "cx", "cy", "x", "y")
-                .as(union_all(select(columns(0 >>= iter, xaxis->*x >>= cx, yaxis->*y >>= cy, 0.0 >>= x, 0.0 >>= y)),
-                              select(columns(m->*iter + 1,
-                                             m->*cx,
-                                             m->*cy,
-                                             m->*x * m->*x - m->*y * m->*y + m->*cx,
-                                             2.0 * m->*x * m->*y + m->*cy),
-                                     where((m->*x * m->*x + m->*y * m->*y) < 4.0 && m->*iter < 28)))),
+                .as(union_all(
+                    select(columns(0 >>= iter,
+                                   column<cte_xaxis>(x) >>= cx,
+                                   column<cte_yaxis>(y) >>= cy,
+                                   0.0 >>= x,
+                                   0.0 >>= y)),
+                    select(columns(column<cte_m>(iter) + 1,
+                                   column<cte_m>(cx),
+                                   column<cte_m>(cy),
+                                   column<cte_m>(x) * column<cte_m>(x) - column<cte_m>(y) * column<cte_m>(y) +
+                                       column<cte_m>(cx),
+                                   2.0 * column<cte_m>(x) * column<cte_m>(y) + column<cte_m>(cy)),
+                           where((column<cte_m>(x) * column<cte_m>(x) + column<cte_m>(y) * column<cte_m>(y)) < 4.0 &&
+                                 column<cte_m>(iter) < 28)))),
             cte<cte_m2>("iter", "cx", "cy")
-                .as(select(columns(max<>(m->*iter) >>= iter, m->*cx, m->*cy), group_by(m->*cx, m->*cy))),
-            cte<cte_a>("t").as(select(group_concat(substr(" .+*#", 1 + min<>(m2->*iter / 7.0, 4.0), 1), "") >>= t,
-                                      group_by(m2->*cy)))),
-        select(group_concat(rtrim(a->*t), "\n")));
+                .as(select(columns(max<>(column<cte_m>(iter)) >>= iter, column<cte_m>(cx), column<cte_m>(cy)),
+                           group_by(column<cte_m>(cx), column<cte_m>(cy)))),
+            cte<cte_a>("t").as(
+                select(group_concat(substr(" .+*#", 1 + min<>(column<cte_m2>(iter) / 7.0, 4.0), 1), "") >>= t,
+                       group_by(column<cte_m2>(cy))))),
+        select(group_concat(rtrim(column<cte_a>(t)), "\n")));
 #endif
 
     string sql = storage.dump(ast);
@@ -807,15 +813,6 @@ void show_mapping_and_backreferencing() {
     {
         auto ast = with(cte<cte_1>("x").as(union_all(select(as<cnt>(1)), select(column<cte_1>(cnt{}) + 1, limit(10)))),
                         select(column<cte_1>(cnt{})));
-
-        string sql = storage.dump(ast);
-        auto stmt = storage.prepare(ast);
-    }
-    // map column via alias_holder into cte,
-    // back-reference via `column_pointer<cte_1, alias_holder>`
-    {
-        auto ast = with(cte<cte_1>("x").as(union_all(select(as<cnt>(1)), select(cte_1{}->*cnt{} + 1, limit(10)))),
-                        select(cte_1{}->*cnt{}));
 
         string sql = storage.dump(ast);
         auto stmt = storage.prepare(ast);

@@ -92,20 +92,10 @@ namespace sqlite_orm {
      *  storage.with(cte<"z"_cte>()(select(&Object::id)), select(column<"z"_cte>(1_colalias)));
      */
     template<orm_cte_moniker auto moniker, class F>
-    constexpr auto column([[maybe_unused]] F field) {
-        using namespace ::sqlite_orm::internal;
+    constexpr auto column(F field) {
         using Moniker = std::remove_const_t<decltype(moniker)>;
-
-        if constexpr(polyfill::is_specialization_of_v<F, alias_holder>) {
-            static_assert(is_column_alias_v<type_t<F>>);
-            return column_pointer<Moniker, F>{{}};
-        } else if constexpr(is_column_alias_v<F>) {
-            return column_pointer<Moniker, alias_holder<F>>{{}};
-        } else {
-            return column_pointer<Moniker, F>{std::move(field)};
-        }
+        return column<Moniker>(std::forward<F>(field));
     }
-#endif
 
     /**
      *  Explicitly refer to a column mapped into a CTE or subquery.
@@ -116,19 +106,10 @@ namespace sqlite_orm {
      *  storage.with(cte<cte_1>()(select(&Object::id)), select(1_ctealias->*&Object::id));
      *  storage.with(cte<cte_1>()(select(&Object::id)), select(1_ctealias->*1_colalias));
      */
-    template<class Moniker, class F, internal::satisfies<internal::is_cte_moniker, Moniker> = true>
+    template<orm_cte_moniker Moniker, class F>
     constexpr auto operator->*(const Moniker& /*moniker*/, F field) {
-        using namespace ::sqlite_orm::internal;
-
-        if constexpr(polyfill::is_specialization_of_v<F, alias_holder>) {
-            static_assert(is_column_alias_v<type_t<F>>);
-            return column_pointer<Moniker, F>{{}};
-        } else if constexpr(is_column_alias_v<F>) {
-            return column_pointer<Moniker, alias_holder<F>>{{}};
-        } else {
-            return column_pointer<Moniker, F>{std::move(field)};
-        }
-        (void)field;
+        return column<Moniker>(std::forward<F>(field));
     }
+#endif
 #endif
 }

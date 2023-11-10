@@ -131,7 +131,6 @@ TEST_CASE("column_result_of_t") {
     runTest<db_objects_t, int>(column<cte_1>(&User::id));
     runTest<db_objects2_t, int>(column<cte_1>(1_colalias));
     runTest<db_objects2_t, int>(column<cte_1>(get<internal::column_alias<'1'>>()));
-    runTest<db_objects_t, int>(1_ctealias->*&User::id);
     runTest<db_objects_t, int>(alias_column<alias_a<cte_1>>(&User::id));
     runTest<db_objects2_t, int>(alias_column<alias_a<cte_1>>(1_colalias));
     runTest<db_objects2_t, std::tuple<int>>(asterisk<cte_1>());
