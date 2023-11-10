@@ -11,14 +11,19 @@ using internal::column_t;
 using std::is_same, std::is_constructible;
 using std::tuple;
 
-template<class ColRefs, class E>
+template<class T, class E>
 void do_assert() {
-    STATIC_REQUIRE(is_same<ColRefs, E>::value);
+    STATIC_REQUIRE(is_same<T, E>::value);
 }
 
 template<class E, class ColRef>
-void runTest(ColRef /*colRef*/) {
+void runDecay(ColRef /*colRef*/) {
     do_assert<internal::transform_tuple_t<tuple<ColRef>, internal::decay_explicit_column_t>, E>();
+}
+
+template<class E, class T>
+void runTest(T /*test*/) {
+    do_assert<T, E>();
 }
 
 TEST_CASE("CTE type traits") {
@@ -31,19 +36,25 @@ TEST_CASE("CTE type traits") {
         };
 
         STATIC_REQUIRE(is_constructible<alias_holder<column_alias<'c'>>, column_alias<'c'>>::value);
-        runTest<tuple<decltype(&Org::id)>>(&Org::id);
-        runTest<tuple<decltype(&Org::getId)>>(&Org::getId);
-        runTest<tuple<alias_holder<column_alias<'1'>>>>(1_colalias);
+        runDecay<tuple<decltype(&Org::id)>>(&Org::id);
+        runDecay<tuple<decltype(&Org::getId)>>(&Org::getId);
+        runDecay<tuple<alias_holder<column_alias<'1'>>>>(1_colalias);
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        runTest<tuple<alias_holder<column_alias<'a'>>>>("a"_col);
+        runDecay<tuple<alias_holder<column_alias<'a'>>>>("a"_col);
 #endif
-        runTest<tuple<column_t<int64 Org::*, internal::empty_setter>>>(make_column("id", &Org::id));
-        runTest<tuple<polyfill::remove_cvref_t<decltype(std::ignore)>>>(std::ignore);
-        runTest<tuple<std::string>>("");
+        runDecay<tuple<column_t<int64 Org::*, internal::empty_setter>>>(make_column("id", &Org::id));
+        runDecay<tuple<polyfill::remove_cvref_t<decltype(std::ignore)>>>(std::ignore);
+        runDecay<tuple<std::string>>("");
     }
 }
 
 TEST_CASE("CTE building") {
+    SECTION("moniker") {
+        runTest<internal::cte_moniker<'1'>>(1_ctealias);
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        runTest<internal::cte_moniker<'z'>>("z"_cte);
+#endif
+    }
     SECTION("builder") {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         auto builder1 = cte<1_ctealias>();
@@ -51,7 +62,7 @@ TEST_CASE("CTE building") {
         auto builder1 = cte<decltype(1_ctealias)>();
 #endif
         auto builder2 = 1_ctealias();
-        static_assert(std::is_same<decltype(builder2), decltype(builder1)>::value);
+        STATIC_REQUIRE(std::is_same<decltype(builder2), decltype(builder1)>::value);
     }
 }
 
@@ -69,9 +80,9 @@ TEST_CASE("CTE storage") {
         auto dbObjects2 = internal::db_objects_cat(dbObjects, cteTable);
 
         // note: deliberately make indexes resulting in the same index_t<> type, such that we know `db_objects_cat()` is working properly
-        static_assert(is_same<decltype(idx1), decltype(idx2)>::value);
-        static_assert(is_same<decltype(dbObjects2),
-                              tuple<decltype(cteTable), decltype(idx1), decltype(idx2), decltype(table)>>::value);
+        STATIC_REQUIRE(is_same<decltype(idx1), decltype(idx2)>::value);
+        STATIC_REQUIRE(is_same<decltype(dbObjects2),
+                               tuple<decltype(cteTable), decltype(idx1), decltype(idx2), decltype(table)>>::value);
     }
 }
 #endif

@@ -21417,18 +21417,12 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CTE
         template<class CTE>
-        struct node_tuple<CTE, std::enable_if_t<polyfill::is_specialization_of_v<CTE, common_table_expression>>> {
-            using node_type = CTE;
-            using type = node_tuple_t<typename node_type::expression_type>;
-        };
+        struct node_tuple<CTE, match_specialization_of<CTE, common_table_expression>>
+            : node_tuple<typename CTE::expression_type> {};
 
         template<class With>
-        struct node_tuple<With, std::enable_if_t<polyfill::is_specialization_of_v<With, with_t>>> {
-            using node_type = With;
-            using cte_tuple = node_tuple_t<typename node_type::cte_type>;
-            using expression_tuple = node_tuple_t<typename node_type::expression_type>;
-            using type = typename conc_tuple<cte_tuple, expression_tuple>::type;
-        };
+        struct node_tuple<With, match_specialization_of<With, with_t>>
+            : node_tuple_for<typename With::cte_type, typename With::expression_type> {};
 #endif
 
         template<class T, class... Args>
