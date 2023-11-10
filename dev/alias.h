@@ -323,19 +323,16 @@ namespace sqlite_orm {
         }
     }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
      *  Create a column reference to an aliased CTE column.
      */
-    template<class A,
-             class F,
-             std::enable_if_t<
-                 polyfill::conjunction_v<internal::is_table_alias<A>, internal::is_cte_moniker<internal::type_t<A>>>,
-                 bool> = true>
-    constexpr auto operator->*(const A& /*tableAlias*/, F field) {
+    template<orm_table_alias A, class C>
+        requires(orm_cte_moniker<internal::type_t<A>>)
+    constexpr auto operator->*(const A& /*tableAlias*/, C field) {
         return alias_column<A>(std::move(field));
     }
 
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
      *  Create a column reference to an aliased CTE column.
      */
