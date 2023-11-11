@@ -1,10 +1,11 @@
 #pragma once
 
-#include <type_traits>  //  std::enable_if
+#include <type_traits>  //  std::enable_if, std::remove_const
 #include <utility>  // std::move
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "tags.h"
+#include "alias_traits.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -35,8 +36,46 @@ namespace sqlite_orm {
      *  struct MyType : BaseType { ... };
      *  storage.select(column<MyType>(&BaseType::id));
      */
-    template<class Object, class F, internal::satisfies_not<internal::is_recordset_alias, Object> = true>
-    constexpr internal::column_pointer<Object, F> column(F field) {
-        return {std::move(field)};
+    template<class Object, class F, class O, internal::satisfies_not<internal::is_recordset_alias, Object> = true>
+    constexpr internal::column_pointer<Object, F O::*> column(F O::*field) {
+        static_assert(internal::is_field_of_v<F O::*, Object>, "Column must be from derived class");
+        return {field};
     }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Explicitly refer to a column.
+     */
+    template<orm_table_reference auto table, class O, class F>
+    constexpr auto column(F O::*field) {
+        using R = std::remove_const_t<decltype(table)>;
+        return column<typename R::type>(field);
+    }
+
+    /**
+     *  Explicitly refer to a column.
+     */
+    template<orm_table_reference R, class O, class F>
+    constexpr auto operator->*(const R& /*table*/, F O::*field) {
+        return column<typename R::type>(field);
+    }
+
+    /**
+     *  Make table reference.
+     */
+    template<class O>
+        requires(!orm_recordset_alias<O>)
+    constexpr internal::table_reference<O> column() {
+        return {};
+    }
+
+    /**
+     *  Make table reference.
+     */
+    template<class O>
+        requires(!orm_recordset_alias<O>)
+    constexpr internal::table_reference<O> c() {
+        return {};
+    }
+#endif
 }
