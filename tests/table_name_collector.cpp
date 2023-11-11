@@ -58,22 +58,21 @@ TEST_CASE("table name collector") {
         auto collector = internal::make_table_name_collector(context.db_objects);
 
         SECTION("CTE column") {
-            constexpr auto c = 1_ctealias;
-            auto expression = c->*&User::id;
-            expected.emplace(alias_extractor<decltype(c)>::extract(), "");
+            using cte_1 = decltype(1_ctealias);
+            auto expression = column<cte_1>(&User::id);
+            expected.emplace(alias_extractor<cte_1>::extract(), "");
             iterate_ast(expression, collector);
         }
         SECTION("CTE column alias") {
-            constexpr auto c = 1_ctealias;
-            auto expression = c->*1_colalias;
-            expected.emplace(alias_extractor<decltype(c)>::extract(), "");
+            using cte_1 = decltype(1_ctealias);
+            auto expression = column<cte_1>(1_colalias);
+            expected.emplace(alias_extractor<cte_1>::extract(), "");
             iterate_ast(expression, collector);
         }
         SECTION("CTE count asterisk") {
-            constexpr auto c = 1_ctealias;
             using cte_1 = decltype(1_ctealias);
             auto expression = count<cte_1>();
-            expected.emplace(alias_extractor<decltype(c)>::extract(), "");
+            expected.emplace(alias_extractor<cte_1>::extract(), "");
             iterate_ast(expression, collector);
         }
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
