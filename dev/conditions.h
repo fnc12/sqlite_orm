@@ -834,10 +834,9 @@ namespace sqlite_orm {
      *  Explicit FROM function. Usage:
      *  `storage.select(&User::id, from<"a"_alias.for_<User>>());`
      */
-    template<orm_recordset_alias auto... tables>
+    template<orm_refers_to_recordset auto... recordsets>
     auto from() {
-        static_assert(sizeof...(tables) > 0);
-        return internal::from_t<std::remove_const_t<decltype(tables)>...>{};
+        return from<internal::decay_table_reference_t<recordsets>...>();
     }
 #endif
 
@@ -954,12 +953,12 @@ namespace sqlite_orm {
     }
 
     template<class F, class O>
-    internal::using_t<O, F O::*> using_(F O::*p) {
-        return {p};
+    internal::using_t<O, F O::*> using_(F O::*field) {
+        return {field};
     }
     template<class T, class M>
-    internal::using_t<T, M> using_(internal::column_pointer<T, M> cp) {
-        return {std::move(cp)};
+    internal::using_t<T, M> using_(internal::column_pointer<T, M> field) {
+        return {std::move(field)};
     }
 
     template<class T>
@@ -983,9 +982,9 @@ namespace sqlite_orm {
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_recordset_alias auto alias, class On>
+    template<orm_refers_to_recordset auto alias, class On>
     auto left_join(On on) {
-        return internal::left_join_t<std::remove_const_t<decltype(alias)>, On>{std::move(on)};
+        return left_join<internal::decay_table_reference_t<alias>, On>(std::move(on));
     }
 #endif
 
@@ -995,9 +994,9 @@ namespace sqlite_orm {
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_recordset_alias auto alias, class On>
+    template<orm_refers_to_recordset auto alias, class On>
     auto join(On on) {
-        return internal::join_t<std::remove_const_t<decltype(alias)>, On>{std::move(on)};
+        return join<internal::decay_table_reference_t<alias>, On>(std::move(on));
     }
 #endif
 
@@ -1007,9 +1006,9 @@ namespace sqlite_orm {
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_recordset_alias auto alias, class On>
+    template<orm_refers_to_recordset auto alias, class On>
     auto left_outer_join(On on) {
-        return internal::left_outer_join_t<std::remove_const_t<decltype(alias)>, On>{std::move(on)};
+        return left_outer_join<internal::decay_table_reference_t<alias>, On>(std::move(on));
     }
 #endif
 
@@ -1019,9 +1018,9 @@ namespace sqlite_orm {
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<orm_recordset_alias auto alias, class On>
+    template<orm_refers_to_recordset auto alias, class On>
     auto inner_join(On on) {
-        return internal::inner_join_t<std::remove_const_t<decltype(alias)>, On>{std::move(on)};
+        return inner_join<internal::decay_table_reference_t<alias>, On>(std::move(on));
     }
 #endif
 
