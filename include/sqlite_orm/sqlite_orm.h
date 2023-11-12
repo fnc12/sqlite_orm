@@ -3343,7 +3343,7 @@ namespace sqlite_orm {
     }
 
     /**
-     *  Make table reference.
+     *  Make a table reference.
      */
     template<class O>
         requires(!orm_recordset_alias<O>)
@@ -3352,7 +3352,7 @@ namespace sqlite_orm {
     }
 
     /**
-     *  Make table reference.
+     *  Make a table reference.
      */
     template<class O>
         requires(!orm_recordset_alias<O>)
