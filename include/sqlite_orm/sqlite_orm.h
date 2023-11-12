@@ -3347,7 +3347,7 @@ namespace sqlite_orm {
      */
     template<class O>
         requires(!orm_recordset_alias<O>)
-    constexpr internal::table_reference<O> column() {
+    consteval internal::table_reference<O> column() {
         return {};
     }
 
@@ -3356,7 +3356,7 @@ namespace sqlite_orm {
      */
     template<class O>
         requires(!orm_recordset_alias<O>)
-    constexpr internal::table_reference<O> c() {
+    consteval internal::table_reference<O> c() {
         return {};
     }
 #endif
@@ -10755,6 +10755,8 @@ namespace sqlite_orm {
 
 // #include "../type_traits.h"
 
+// #include "../alias_traits.h"
+
 // #include "../constraints.h"
 
 // #include "../table_info.h"
@@ -11168,6 +11170,18 @@ namespace sqlite_orm {
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
             return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
     }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Factory function for a table definition.
+     *  
+     *  The mapped object type is explicitly specified.
+     */
+    template<orm_table_reference auto table, class... Cs>
+    auto make_table(std::string name, Cs... args) {
+        return make_table<internal::decay_table_reference_t<table>>(std::move(name), std::forward<Cs>(args)...);
+    }
+#endif
 
     template<class M>
     internal::virtual_table_t<M> make_virtual_table(std::string name, M module_details) {
