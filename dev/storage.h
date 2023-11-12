@@ -319,18 +319,18 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
             /**
              *  SELECT * routine.
-             *  `alias` is an explicitly specified table alias of an object to be extracted.
+             *  `als` is an explicitly specified table proxy of an object to be extracted.
              *  `R` is the container return type, which must have a `R::push_back(O&&)` method, and defaults to `std::vector<O>`
              *  @return All objects stored in database.
              *  @example: storage.get_all<sqlite_schema, std::list<sqlite_master>>(); - SELECT sqlite_schema.* FROM sqlite_master AS sqlite_schema
             */
-            template<orm_table_alias auto alias,
-                     class R = std::vector<mapped_type_proxy_t<decltype(alias)>>,
+            template<orm_refers_to_table auto als,
+                     class R = std::vector<mapped_type_proxy_t<decltype(als)>>,
                      class... Args>
             R get_all(Args&&... args) {
-                using A = decltype(alias);
+                using A = decltype(als);
                 this->assert_mapped_type<mapped_type_proxy_t<A>>();
-                auto statement = this->prepare(sqlite_orm::get_all<alias, R>(std::forward<Args>(args)...));
+                auto statement = this->prepare(sqlite_orm::get_all<als, R>(std::forward<Args>(args)...));
                 return this->execute(statement);
             }
 #endif
@@ -382,6 +382,13 @@ namespace sqlite_orm {
                 return this->execute(statement);
             }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            template<orm_table_reference auto mapped, class... Ids>
+            auto get(Ids... ids) {
+                return this->get<decay_table_reference_t<mapped>>(std::forward<Ids>(ids)...);
+            }
+#endif
+
             /**
              *  The same as `get` function but doesn't throw an exception if noting found but returns std::unique_ptr
              * with null value. throws std::system_error in case of db error.
@@ -428,8 +435,9 @@ namespace sqlite_orm {
              *  SELECT COUNT(*) https://www.sqlite.org/lang_aggfunc.html#count
              *  @return Number of O object in table.
              */
-            template<class O, class... Args, class R = mapped_type_proxy_t<O>>
+            template<class O, class... Args>
             int count(Args&&... args) {
+                using R = mapped_type_proxy_t<O>;
                 this->assert_mapped_type<R>();
                 auto rows = this->select(sqlite_orm::count<R>(), std::forward<Args>(args)...);
                 if(!rows.empty()) {
@@ -439,15 +447,25 @@ namespace sqlite_orm {
                 }
             }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            template<orm_refers_to_recordset auto mapped, class... Args>
+            int count(Args&&... args) {
+                return this->count<decay_table_reference_t<mapped>>(std::forward<Args>(args)...);
+            }
+#endif
+
             /**
              *  SELECT COUNT(X) https://www.sqlite.org/lang_aggfunc.html#count
              *  @param m member pointer to class mapped to the storage.
              *  @return count of `m` values from database.
              */
-            template<class F, class O, class... Args>
-            int count(F O::*m, Args&&... args) {
-                this->assert_mapped_type<O>();
-                auto rows = this->select(sqlite_orm::count(m), std::forward<Args>(args)...);
+            template<
+                class F,
+                class... Args,
+                std::enable_if_t<polyfill::disjunction_v<std::is_member_pointer<F>, is_column_pointer<F>>, bool> = true>
+            int count(F field, Args&&... args) {
+                this->assert_mapped_type<table_type_of_t<F>>();
+                auto rows = this->select(sqlite_orm::count(std::move(field)), std::forward<Args>(args)...);
                 if(!rows.empty()) {
                     return rows.front();
                 } else {
@@ -460,10 +478,13 @@ namespace sqlite_orm {
              *  @param m is a class member pointer (the same you passed into make_column).
              *  @return average value from database.
              */
-            template<class F, class O, class... Args>
-            double avg(F O::*m, Args&&... args) {
-                this->assert_mapped_type<O>();
-                auto rows = this->select(sqlite_orm::avg(m), std::forward<Args>(args)...);
+            template<
+                class F,
+                class... Args,
+                std::enable_if_t<polyfill::disjunction_v<std::is_member_pointer<F>, is_column_pointer<F>>, bool> = true>
+            double avg(F field, Args&&... args) {
+                this->assert_mapped_type<table_type_of_t<F>>();
+                auto rows = this->select(sqlite_orm::avg(std::move(field)), std::forward<Args>(args)...);
                 if(!rows.empty()) {
                     return rows.front();
                 } else {
@@ -471,9 +492,11 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class F, class O>
-            std::string group_concat(F O::*m) {
-                return this->group_concat_internal(m, {});
+            template<
+                class F,
+                std::enable_if_t<polyfill::disjunction_v<std::is_member_pointer<F>, is_column_pointer<F>>, bool> = true>
+            std::string group_concat(F field) {
+                return this->group_concat_internal(std::move(field), {});
             }
 
             /**
@@ -481,13 +504,14 @@ namespace sqlite_orm {
              *  @param m is a class member pointer (the same you passed into make_column).
              *  @return group_concat query result.
              */
-            template<class F,
-                     class O,
-                     class... Args,
-                     class Tuple = std::tuple<Args...>,
-                     std::enable_if_t<std::tuple_size<Tuple>::value >= 1, bool> = true>
-            std::string group_concat(F O::*m, Args&&... args) {
-                return this->group_concat_internal(m, {}, std::forward<Args>(args)...);
+            template<
+                class F,
+                class... Args,
+                class Tuple = std::tuple<Args...>,
+                std::enable_if_t<std::tuple_size<Tuple>::value >= 1, bool> = true,
+                std::enable_if_t<polyfill::disjunction_v<std::is_member_pointer<F>, is_column_pointer<F>>, bool> = true>
+            std::string group_concat(F field, Args&&... args) {
+                return this->group_concat_internal(std::move(field), {}, std::forward<Args>(args)...);
             }
 
             /**
@@ -495,22 +519,28 @@ namespace sqlite_orm {
              *  @param m is a class member pointer (the same you passed into make_column).
              *  @return group_concat query result.
              */
-            template<class F, class O, class... Args>
-            std::string group_concat(F O::*m, std::string y, Args&&... args) {
-                return this->group_concat_internal(m,
+            template<
+                class F,
+                class... Args,
+                std::enable_if_t<polyfill::disjunction_v<std::is_member_pointer<F>, is_column_pointer<F>>, bool> = true>
+            std::string group_concat(F field, std::string y, Args&&... args) {
+                return this->group_concat_internal(std::move(field),
                                                    std::make_unique<std::string>(std::move(y)),
                                                    std::forward<Args>(args)...);
             }
 
-            template<class F, class O, class... Args>
-            std::string group_concat(F O::*m, const char* y, Args&&... args) {
+            template<
+                class F,
+                class... Args,
+                std::enable_if_t<polyfill::disjunction_v<std::is_member_pointer<F>, is_column_pointer<F>>, bool> = true>
+            std::string group_concat(F field, const char* y, Args&&... args) {
                 std::unique_ptr<std::string> str;
                 if(y) {
                     str = std::make_unique<std::string>(y);
                 } else {
                     str = std::make_unique<std::string>();
                 }
-                return this->group_concat_internal(m, std::move(str), std::forward<Args>(args)...);
+                return this->group_concat_internal(std::move(field), std::move(str), std::forward<Args>(args)...);
             }
 
             /**
@@ -518,10 +548,14 @@ namespace sqlite_orm {
              *  @param m is a class member pointer (the same you passed into make_column).
              *  @return std::unique_ptr with max value or null if sqlite engine returned null.
              */
-            template<class F, class O, class... Args, class Ret = column_result_of_t<db_objects_type, F O::*>>
-            std::unique_ptr<Ret> max(F O::*m, Args&&... args) {
-                this->assert_mapped_type<O>();
-                auto rows = this->select(sqlite_orm::max(m), std::forward<Args>(args)...);
+            template<
+                class F,
+                class... Args,
+                class Ret = column_result_of_t<db_objects_type, F>,
+                std::enable_if_t<polyfill::disjunction_v<std::is_member_pointer<F>, is_column_pointer<F>>, bool> = true>
+            std::unique_ptr<Ret> max(F field, Args&&... args) {
+                this->assert_mapped_type<table_type_of_t<F>>();
+                auto rows = this->select(sqlite_orm::max(std::move(field)), std::forward<Args>(args)...);
                 if(!rows.empty()) {
                     return std::move(rows.front());
                 } else {
@@ -534,10 +568,14 @@ namespace sqlite_orm {
              *  @param m is a class member pointer (the same you passed into make_column).
              *  @return std::unique_ptr with min value or null if sqlite engine returned null.
              */
-            template<class F, class O, class... Args, class Ret = column_result_of_t<db_objects_type, F O::*>>
-            std::unique_ptr<Ret> min(F O::*m, Args&&... args) {
-                this->assert_mapped_type<O>();
-                auto rows = this->select(sqlite_orm::min(m), std::forward<Args>(args)...);
+            template<
+                class F,
+                class... Args,
+                class Ret = column_result_of_t<db_objects_type, F>,
+                std::enable_if_t<polyfill::disjunction_v<std::is_member_pointer<F>, is_column_pointer<F>>, bool> = true>
+            std::unique_ptr<Ret> min(F field, Args&&... args) {
+                this->assert_mapped_type<table_type_of_t<F>>();
+                auto rows = this->select(sqlite_orm::min(std::move(field)), std::forward<Args>(args)...);
                 if(!rows.empty()) {
                     return std::move(rows.front());
                 } else {
@@ -550,11 +588,15 @@ namespace sqlite_orm {
              *  @param m is a class member pointer (the same you passed into make_column).
              *  @return std::unique_ptr with sum value or null if sqlite engine returned null.
              */
-            template<class F, class O, class... Args, class Ret = column_result_of_t<db_objects_type, F O::*>>
-            std::unique_ptr<Ret> sum(F O::*m, Args&&... args) {
-                this->assert_mapped_type<O>();
+            template<
+                class F,
+                class... Args,
+                class Ret = column_result_of_t<db_objects_type, F>,
+                std::enable_if_t<polyfill::disjunction_v<std::is_member_pointer<F>, is_column_pointer<F>>, bool> = true>
+            std::unique_ptr<Ret> sum(F field, Args&&... args) {
+                this->assert_mapped_type<table_type_of_t<F>>();
                 std::vector<std::unique_ptr<double>> rows =
-                    this->select(sqlite_orm::sum(m), std::forward<Args>(args)...);
+                    this->select(sqlite_orm::sum(std::move(field)), std::forward<Args>(args)...);
                 if(!rows.empty()) {
                     if(rows.front()) {
                         return std::make_unique<Ret>(std::move(*rows.front()));
@@ -572,10 +614,13 @@ namespace sqlite_orm {
              *  @return total value (the same as SUM but not nullable. More details here
              * https://www.sqlite.org/lang_aggfunc.html)
              */
-            template<class F, class O, class... Args>
-            double total(F O::*m, Args&&... args) {
-                this->assert_mapped_type<O>();
-                auto rows = this->select(sqlite_orm::total(m), std::forward<Args>(args)...);
+            template<
+                class F,
+                class... Args,
+                std::enable_if_t<polyfill::disjunction_v<std::is_member_pointer<F>, is_column_pointer<F>>, bool> = true>
+            double total(F field, Args&&... args) {
+                this->assert_mapped_type<table_type_of_t<F>>();
+                auto rows = this->select(sqlite_orm::total(std::move(field)), std::forward<Args>(args)...);
                 if(!rows.empty()) {
                     return std::move(rows.front());
                 } else {

@@ -20,6 +20,8 @@ namespace sqlite_orm {
          *  -   `table_type_of<decltype(&User::id)>::type` is `User`
          *  -   `table_type_of<decltype(&User::getName)>::type` is `User`
          *  -   `table_type_of<decltype(&User::setName)>::type` is `User`
+         *  -   `table_type_of<decltype(column<User>(&User::id))>::type` is `User`
+         *  -   `table_type_of<decltype(derived->*&User::id)>::type` is `User`
          */
         template<class T>
         struct table_type_of;

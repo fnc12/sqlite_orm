@@ -1845,6 +1845,17 @@ namespace sqlite_orm {
         return {};
     }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  COUNT(*) with FROM function. Specified recordset will be serialized as
+     *  a from argument.
+     */
+    template<orm_refers_to_recordset auto mapped>
+    auto count() {
+        return count<internal::decay_table_reference_t<mapped>>();
+    }
+#endif
+
     /**
      *  AVG(X) aggregate function.
      */

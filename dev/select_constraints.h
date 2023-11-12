@@ -408,9 +408,9 @@ namespace sqlite_orm {
      *  auto reportingTo = 
      *      storage.select(asterisk<m>(), inner_join<m>(on(m->*&Employee::reportsTo == &Employee::employeeId)));
      */
-    template<orm_recordset_alias auto alias>
+    template<orm_refers_to_recordset auto recordset>
     auto asterisk(bool definedOrder = false) {
-        return internal::asterisk_t<std::remove_const_t<decltype(alias)>>{definedOrder};
+        return asterisk<internal::decay_table_reference_t<recordset>>(definedOrder);
     }
 #endif
 
@@ -429,4 +429,11 @@ namespace sqlite_orm {
     internal::object_t<T> object(bool definedOrder = false) {
         return {definedOrder};
     }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_table auto als>
+    auto object(bool definedOrder = false) {
+        return object<internal::decay_table_reference_t<als>>(definedOrder);
+    }
+#endif
 }
