@@ -86,6 +86,14 @@ TEST_CASE("statement_serializer aggregate functions") {
                 value = serialize(expression, context);
                 expected = R"(COUNT(*) FILTER (WHERE ("id" < 10)))";
             }
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            SECTION("with table reference") {
+                constexpr auto user = c<User>();
+                auto expression = count<user>();
+                value = serialize(expression, context);
+                expected = R"(COUNT(*))";
+            }
+#endif
 #ifdef SQLITE_ORM_WITH_CTE
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
             SECTION("with CTE") {

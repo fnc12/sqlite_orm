@@ -329,8 +329,8 @@ namespace sqlite_orm {
      */
     template<orm_table_alias A, class C>
         requires(orm_cte_moniker<internal::type_t<A>>)
-    constexpr auto operator->*(const A& /*tableAlias*/, C field) {
-        return alias_column<A>(std::move(field));
+    constexpr auto operator->*(const A& /*tableAlias*/, C c) {
+        return alias_column<A>(std::move(c));
     }
 
     /**

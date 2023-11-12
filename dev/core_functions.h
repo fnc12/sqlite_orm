@@ -1845,17 +1845,15 @@ namespace sqlite_orm {
         return {};
     }
 
-#ifdef SQLITE_ORM_WITH_CTE
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
-     *  COUNT(*) with FROM function. Specified cte moniker will be serialized as
+     *  COUNT(*) with FROM function. Specified recordset will be serialized as
      *  a from argument.
      */
-    template<orm_cte_moniker auto moniker>
-    internal::count_asterisk_t<std::remove_const_t<decltype(moniker)>> count() {
-        return {};
+    template<orm_refers_to_recordset auto mapped>
+    auto count() {
+        return count<internal::decay_table_reference_t<mapped>>();
     }
-#endif
 #endif
 
     /**

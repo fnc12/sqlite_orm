@@ -9,6 +9,7 @@ using internal::as_t;
 using internal::column_alias;
 using internal::column_pointer;
 using internal::recordset_alias;
+using internal::using_t;
 
 template<class ColAlias, class E>
 void do_assert() {
@@ -19,6 +20,14 @@ template<class E, class ColAlias>
 void runTest(ColAlias /*colRef*/) {
     do_assert<ColAlias, E>();
 }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+template<class S, orm_table_alias auto als>
+concept storage_table_alias_callable = requires(S& storage) {
+    { storage.get_all<als>() };
+    { storage.count<als>() };
+};
+#endif
 
 TEST_CASE("aliases") {
     struct User {
@@ -74,4 +83,30 @@ TEST_CASE("aliases") {
 #endif
 #endif
     }
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    SECTION("table alias expressions") {
+        constexpr auto derived_user = c<DerivedUser>();
+        constexpr auto d_alias = "d"_alias.for_<DerivedUser>();
+        using d_alias_type = decltype("d"_alias.for_<DerivedUser>());
+        runTest<internal::from_t<d_alias_type>>(from<d_alias>());
+        runTest<internal::asterisk_t<d_alias_type>>(asterisk<d_alias>());
+        runTest<internal::object_t<d_alias_type>>(object<d_alias>());
+        runTest<internal::count_asterisk_t<d_alias_type>>(count<d_alias>());
+        runTest<internal::get_all_t<d_alias_type, std::vector<DerivedUser>>>(get_all<d_alias>());
+        runTest<internal::left_join_t<d_alias_type, using_t<DerivedUser, decltype(&DerivedUser::id)>>>(
+            left_join<d_alias>(using_(derived_user->*&DerivedUser::id)));
+        runTest<internal::join_t<d_alias_type, using_t<DerivedUser, decltype(&DerivedUser::id)>>>(
+            join<d_alias>(using_(derived_user->*&DerivedUser::id)));
+        runTest<internal::left_outer_join_t<d_alias_type, using_t<DerivedUser, decltype(&DerivedUser::id)>>>(
+            left_outer_join<d_alias>(using_(derived_user->*&DerivedUser::id)));
+        runTest<internal::inner_join_t<d_alias_type, using_t<DerivedUser, decltype(&DerivedUser::id)>>>(
+            inner_join<d_alias>(using_(derived_user->*&DerivedUser::id)));
+
+        using storage_type = decltype(make_storage(
+            "",
+            make_table<DerivedUser>("derived_user", make_column("id", &DerivedUser::id, primary_key()))));
+
+        STATIC_REQUIRE(storage_table_alias_callable<storage_type, d_alias>);
+    }
+#endif
 }

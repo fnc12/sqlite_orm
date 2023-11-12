@@ -49,6 +49,11 @@ TEST_CASE("column_expression_of_t") {
     runTest<db_objects_t, alias_column_t<alias_a<Org>, int64 Org::*>>(alias_column<alias_a<Org>>(&Org::id));
 
     runTest<db_objects_t, column_pointer<Derived, int64 Org::*>>(column<Derived>(&Org::id));
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    constexpr auto moniker = c<Derived>();
+    runTest<db_objects_t, column_pointer<Derived, int64 Org::*>>(moniker->*&Org::id);
+    runTest<db_objects_t, std::tuple<int64 Org::*, int64 Org::*>>(asterisk<moniker>());
+#endif
 #ifdef SQLITE_ORM_WITH_CTE
     using cte_1 = decltype(1_ctealias);
     auto dbObjects2 =

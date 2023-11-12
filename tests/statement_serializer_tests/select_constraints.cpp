@@ -73,6 +73,12 @@ TEST_CASE("statement_serializer select constraints") {
         }
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         {
+            SECTION("with table reference") {
+                constexpr auto user = c<User>();
+                auto expression = from<user>();
+                value = serialize(expression, context);
+                expected = R"(FROM "users")";
+            }
             SECTION("with alias 2") {
                 auto expression = from<alias<'u'>.for_<User>()>();
                 value = serialize(expression, context);
