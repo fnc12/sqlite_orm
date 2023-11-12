@@ -10,6 +10,9 @@ using internal::alias_holder, internal::column_alias;
 using internal::column_t;
 using std::is_same, std::is_constructible;
 using std::tuple;
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+using internal::using_t;
+#endif
 
 template<class T, class E>
 void do_assert() {
@@ -50,16 +53,26 @@ TEST_CASE("CTE type traits") {
 
 TEST_CASE("CTE building") {
     SECTION("moniker") {
+        constexpr auto cte1 = 1_ctealias;
+        using cte_1 = decltype(1_ctealias);
         runTest<internal::cte_moniker<'1'>>(1_ctealias);
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         runTest<internal::cte_moniker<'z'>>("z"_cte);
+        STATIC_REQUIRE(internal::is_cte_moniker_v<cte_1>);
+        STATIC_REQUIRE(orm_cte_moniker<cte_1>);
+        STATIC_REQUIRE(internal::is_recordset_alias_v<cte_1>);
+        STATIC_REQUIRE(orm_recordset_alias<cte_1>);
+        STATIC_REQUIRE_FALSE(internal::is_table_alias_v<cte_1>);
+        STATIC_REQUIRE_FALSE(orm_table_alias<cte_1>);
 #endif
     }
     SECTION("builder") {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        constexpr auto cte1 = 1_ctealias;
         auto builder1 = cte<1_ctealias>();
 #else
-        auto builder1 = cte<decltype(1_ctealias)>();
+        using cte_1 = decltype(1_ctealias);
+        auto builder1 = cte<cte_1>();
 #endif
         auto builder2 = 1_ctealias();
         STATIC_REQUIRE(std::is_same<decltype(builder2), decltype(builder1)>::value);
@@ -84,5 +97,24 @@ TEST_CASE("CTE storage") {
         STATIC_REQUIRE(is_same<decltype(dbObjects2),
                                tuple<decltype(cteTable), decltype(idx1), decltype(idx2), decltype(table)>>::value);
     }
+}
+
+TEST_CASE("CTE expressions") {
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    constexpr auto cte1 = 1_ctealias;
+    using cte_1 = decltype(1_ctealias);
+    constexpr auto x = 1_colalias;
+    using x_t = decltype(1_colalias);
+    SECTION("moniker expressions") {
+        runTest<internal::from_t<cte_1>>(from<cte1>());
+        runTest<internal::asterisk_t<cte_1>>(asterisk<cte1>());
+        runTest<internal::count_asterisk_t<cte_1>>(count<cte1>());
+        runTest<internal::left_join_t<cte_1, using_t<cte_1, alias_holder<x_t>>>>(left_join<cte1>(using_(cte1->*x)));
+        runTest<internal::join_t<cte_1, using_t<cte_1, alias_holder<x_t>>>>(join<cte1>(using_(cte1->*x)));
+        runTest<internal::left_outer_join_t<cte_1, using_t<cte_1, alias_holder<x_t>>>>(
+            left_outer_join<cte1>(using_(cte1->*x)));
+        runTest<internal::inner_join_t<cte_1, using_t<cte_1, alias_holder<x_t>>>>(inner_join<cte1>(using_(cte1->*x)));
+    }
+#endif
 }
 #endif
