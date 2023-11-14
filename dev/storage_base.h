@@ -24,6 +24,7 @@
 #include "values_to_tuple.h"
 #include "arg_values.h"
 #include "util.h"
+#include "xdestroy_handling.h"
 #include "serializing_util.h"
 
 namespace sqlite_orm {
@@ -268,15 +269,16 @@ namespace sqlite_orm {
                     []() -> void* {
                         return new F();
                     },
+                    /* destroy = */
+                    obtain_xdestroy_for<F>(std::default_delete<F>{}),
                     /* call = */
-                    [](sqlite3_context* context, void* udfHandle, int argsCount, sqlite3_value** values) {
+                    [](void* udfHandle, sqlite3_context* context, int argsCount, sqlite3_value** values) {
                         F& udf = *static_cast<F*>(udfHandle);
                         args_tuple argsTuple;
                         values_to_tuple{}(values, argsTuple, argsCount);
                         auto result = call(udf, std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
-                    },
-                    delete_function_callback<F>));
+                    }));
 
                 if(this->connection->retain_count() > 0) {
                     sqlite3* db = this->connection->get();
@@ -335,20 +337,21 @@ namespace sqlite_orm {
                     []() -> void* {
                         return new F();
                     },
+                    /* destroy = */
+                    obtain_xdestroy_for<F>(std::default_delete<F>{}),
                     /* step = */
-                    [](sqlite3_context*, void* udfHandle, int argsCount, sqlite3_value** values) {
+                    [](void* udfHandle, sqlite3_context*, int argsCount, sqlite3_value** values) {
                         F& udf = *static_cast<F*>(udfHandle);
                         args_tuple argsTuple;
                         values_to_tuple{}(values, argsTuple, argsCount);
                         call(udf, &F::step, std::move(argsTuple));
                     },
                     /* finalCall = */
-                    [](sqlite3_context* context, void* udfHandle) {
+                    [](void* udfHandle, sqlite3_context* context) {
                         F& udf = *static_cast<F*>(udfHandle);
                         auto result = udf.fin();
                         statement_binder<return_type>().result(context, result);
-                    },
-                    delete_function_callback<F>));
+                    }));
 
                 if(this->connection->retain_count() > 0) {
                     sqlite3* db = this->connection->get();
@@ -730,7 +733,7 @@ namespace sqlite_orm {
                     }
                     udfHandle = udfProxy->create();
                 }
-                udfProxy->step(context, udfHandle, argsCount, values);
+                udfProxy->func(udfHandle, context, argsCount, values);
             }
 
             static void aggregate_function_final_callback(sqlite3_context* context) {
@@ -742,23 +745,17 @@ namespace sqlite_orm {
                 if(udfHandle == nullptr) {
                     udfHandle = udfProxy->create();
                 }
-                udfProxy->finalCall(context, udfHandle);
+                udfProxy->finalAggregateCall(udfHandle, context);
                 udfProxy->destroy(udfHandle);
             }
 
             static void scalar_function_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
-                auto udfProxy = static_cast<scalar_udf_proxy*>(sqlite3_user_data(context));
+                auto* udfProxy = static_cast<scalar_udf_proxy*>(sqlite3_user_data(context));
                 if(udfProxy->argumentsCount != -1 && udfProxy->argumentsCount != argsCount) {
                     throw std::system_error{orm_error_code::arguments_count_does_not_match};
                 }
-                const std::unique_ptr<void, xdestroy_fn_t> udfHandle(udfProxy->create(), udfProxy->destroy);
-                udfProxy->run(context, udfHandle.get(), argsCount, values);
-            }
-
-            template<class F>
-            static void delete_function_callback(void* udfHandle) {
-                F* udf = static_cast<F*>(udfHandle);
-                delete udf;
+                const std::unique_ptr<void, xdestroy_fn_t> udfHandle{udfProxy->create(), udfProxy->destroy};
+                udfProxy->func(udfHandle.get(), context, argsCount, values);
             }
 
             std::string current_time(sqlite3* db) {

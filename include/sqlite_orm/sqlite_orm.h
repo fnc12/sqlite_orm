@@ -8285,8 +8285,8 @@ namespace sqlite_orm {
      *  
      *  Explicitly declared for better error messages.
      */
-    template<typename D, typename P>
-    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) noexcept
+    template<typename P, typename D>
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P* = nullptr) noexcept
         requires(internal::is_unusable_for_xdestroy<D>)
     {
         static_assert(polyfill::always_false_v<D>,
@@ -8306,8 +8306,8 @@ namespace sqlite_orm {
      *  Type-safety is garanteed by checking whether the deleter or yielded function pointer
      *  is invocable with the non-q-qualified pointer value.
      */
-    template<typename D, typename P>
-    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) noexcept
+    template<typename P, typename D>
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P* = nullptr) noexcept
         requires(internal::needs_xdestroy_proxy<D, P>)
     {
         return internal::xdestroy_proxy<D, P>;
@@ -8327,27 +8327,27 @@ namespace sqlite_orm {
      *  Type-safety is garanteed by checking whether the deleter or yielded function pointer
      *  is invocable with the non-q-qualified pointer value.
      */
-    template<typename D, typename P>
-    constexpr xdestroy_fn_t obtain_xdestroy_for(D d, P*) noexcept
+    template<typename P, typename D>
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D d, P* = nullptr) noexcept
         requires(internal::yields_xdestroy<D>)
     {
         return d;
     }
 #else
-    template<typename D, typename P, std::enable_if_t<internal::is_unusable_for_xdestroy_v<D>, bool> = true>
-    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) {
+    template<typename P, typename D, std::enable_if_t<internal::is_unusable_for_xdestroy_v<D>, bool> = true>
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P* = nullptr) {
         static_assert(polyfill::always_false_v<D>,
                       "A function pointer, which is not of type xdestroy_fn_t, is prohibited.");
         return nullptr;
     }
 
-    template<typename D, typename P, std::enable_if_t<internal::needs_xdestroy_proxy_v<D, P>, bool> = true>
-    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) noexcept {
+    template<typename P, typename D, std::enable_if_t<internal::needs_xdestroy_proxy_v<D, P>, bool> = true>
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P* = nullptr) noexcept {
         return internal::xdestroy_proxy<D, P>;
     }
 
-    template<typename D, typename P, std::enable_if_t<internal::can_yield_xdestroy_v<D>, bool> = true>
-    constexpr xdestroy_fn_t obtain_xdestroy_for(D d, P*) noexcept {
+    template<typename P, typename D, std::enable_if_t<internal::can_yield_xdestroy_v<D>, bool> = true>
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D d, P* = nullptr) noexcept {
         return d;
     }
 #endif
@@ -10904,49 +10904,44 @@ namespace sqlite_orm {
     namespace internal {
 
         struct udf_proxy_base {
-            using func_call =
-                std::function<void(sqlite3_context* context, void* udfHandle, int argsCount, sqlite3_value** values)>;
-            using final_call = std::function<void(sqlite3_context* context, void* udfHandle)>;
+            using func_call_fn_t = void (*)(void* udfHandle,
+                                            sqlite3_context* context,
+                                            int argsCount,
+                                            sqlite3_value** values);
+            using final_call_fn_t = void (*)(void* udfHandle, sqlite3_context* context);
 
             std::string name;
             int argumentsCount = 0;
             std::function<void*()> create;
             xdestroy_fn_t destroy = nullptr;
+            func_call_fn_t func = nullptr;
+            final_call_fn_t finalAggregateCall = nullptr;
 
-            udf_proxy_base(decltype(name) name_,
-                           decltype(argumentsCount) argumentsCount_,
-                           decltype(create) create_,
-                           decltype(destroy) destroy_) :
-                name(std::move(name_)),
-                argumentsCount(argumentsCount_), create(std::move(create_)), destroy(destroy_) {}
+            udf_proxy_base(std::string name,
+                           int argumentsCount,
+                           std::function<void*()> create,
+                           xdestroy_fn_t destroy,
+                           func_call_fn_t run) :
+                name(std::move(name)),
+                argumentsCount(argumentsCount), create(std::move(create)), destroy(destroy), func(run) {}
 
-            virtual ~udf_proxy_base() = default;
+            udf_proxy_base(std::string name,
+                           int argumentsCount,
+                           std::function<void*()> create,
+                           xdestroy_fn_t destroy,
+                           func_call_fn_t step,
+                           final_call_fn_t finalCall) :
+                name(std::move(name)),
+                argumentsCount(argumentsCount), create(std::move(create)), destroy(destroy), func(step),
+                finalAggregateCall(finalCall) {}
         };
 
         struct scalar_udf_proxy : udf_proxy_base {
-            func_call run;
-
-            scalar_udf_proxy(decltype(name) name_,
-                             int argumentsCount_,
-                             decltype(create) create_,
-                             decltype(run) run_,
-                             decltype(destroy) destroy_) :
-                udf_proxy_base{std::move(name_), argumentsCount_, std::move(create_), destroy_},
-                run(std::move(run_)) {}
+            using udf_proxy_base::udf_proxy_base;
         };
 
         struct aggregate_udf_proxy : udf_proxy_base {
-            func_call step;
-            final_call finalCall;
-
-            aggregate_udf_proxy(decltype(name) name_,
-                                int argumentsCount_,
-                                decltype(create) create_,
-                                decltype(step) step_,
-                                decltype(finalCall) finalCall_,
-                                decltype(destroy) destroy_) :
-                udf_proxy_base{std::move(name_), argumentsCount_, std::move(create_), destroy_},
-                step(std::move(step_)), finalCall(std::move(finalCall_)) {}
+            using udf_proxy_base::udf_proxy_base;
         };
 
         template<class F>
@@ -14841,6 +14836,8 @@ namespace sqlite_orm {
 
 // #include "util.h"
 
+// #include "xdestroy_handling.h"
+
 // #include "serializing_util.h"
 
 namespace sqlite_orm {
@@ -15085,15 +15082,16 @@ namespace sqlite_orm {
                     []() -> void* {
                         return new F();
                     },
+                    /* destroy = */
+                    obtain_xdestroy_for<F>(std::default_delete<F>{}),
                     /* call = */
-                    [](sqlite3_context* context, void* udfHandle, int argsCount, sqlite3_value** values) {
+                    [](void* udfHandle, sqlite3_context* context, int argsCount, sqlite3_value** values) {
                         F& udf = *static_cast<F*>(udfHandle);
                         args_tuple argsTuple;
                         values_to_tuple{}(values, argsTuple, argsCount);
                         auto result = call(udf, std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
-                    },
-                    delete_function_callback<F>));
+                    }));
 
                 if(this->connection->retain_count() > 0) {
                     sqlite3* db = this->connection->get();
@@ -15152,20 +15150,21 @@ namespace sqlite_orm {
                     []() -> void* {
                         return new F();
                     },
+                    /* destroy = */
+                    obtain_xdestroy_for<F>(std::default_delete<F>{}),
                     /* step = */
-                    [](sqlite3_context*, void* udfHandle, int argsCount, sqlite3_value** values) {
+                    [](void* udfHandle, sqlite3_context*, int argsCount, sqlite3_value** values) {
                         F& udf = *static_cast<F*>(udfHandle);
                         args_tuple argsTuple;
                         values_to_tuple{}(values, argsTuple, argsCount);
                         call(udf, &F::step, std::move(argsTuple));
                     },
                     /* finalCall = */
-                    [](sqlite3_context* context, void* udfHandle) {
+                    [](void* udfHandle, sqlite3_context* context) {
                         F& udf = *static_cast<F*>(udfHandle);
                         auto result = udf.fin();
                         statement_binder<return_type>().result(context, result);
-                    },
-                    delete_function_callback<F>));
+                    }));
 
                 if(this->connection->retain_count() > 0) {
                     sqlite3* db = this->connection->get();
@@ -15547,7 +15546,7 @@ namespace sqlite_orm {
                     }
                     udfHandle = udfProxy->create();
                 }
-                udfProxy->step(context, udfHandle, argsCount, values);
+                udfProxy->func(udfHandle, context, argsCount, values);
             }
 
             static void aggregate_function_final_callback(sqlite3_context* context) {
@@ -15559,23 +15558,17 @@ namespace sqlite_orm {
                 if(udfHandle == nullptr) {
                     udfHandle = udfProxy->create();
                 }
-                udfProxy->finalCall(context, udfHandle);
+                udfProxy->finalAggregateCall(udfHandle, context);
                 udfProxy->destroy(udfHandle);
             }
 
             static void scalar_function_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
-                auto udfProxy = static_cast<scalar_udf_proxy*>(sqlite3_user_data(context));
+                auto* udfProxy = static_cast<scalar_udf_proxy*>(sqlite3_user_data(context));
                 if(udfProxy->argumentsCount != -1 && udfProxy->argumentsCount != argsCount) {
                     throw std::system_error{orm_error_code::arguments_count_does_not_match};
                 }
-                const std::unique_ptr<void, xdestroy_fn_t> udfHandle(udfProxy->create(), udfProxy->destroy);
-                udfProxy->run(context, udfHandle.get(), argsCount, values);
-            }
-
-            template<class F>
-            static void delete_function_callback(void* udfHandle) {
-                F* udf = static_cast<F*>(udfHandle);
-                delete udf;
+                const std::unique_ptr<void, xdestroy_fn_t> udfHandle{udfProxy->create(), udfProxy->destroy};
+                udfProxy->func(udfHandle.get(), context, argsCount, values);
             }
 
             std::string current_time(sqlite3* db) {

@@ -23,49 +23,44 @@ namespace sqlite_orm {
     namespace internal {
 
         struct udf_proxy_base {
-            using func_call =
-                std::function<void(sqlite3_context* context, void* udfHandle, int argsCount, sqlite3_value** values)>;
-            using final_call = std::function<void(sqlite3_context* context, void* udfHandle)>;
+            using func_call_fn_t = void (*)(void* udfHandle,
+                                            sqlite3_context* context,
+                                            int argsCount,
+                                            sqlite3_value** values);
+            using final_call_fn_t = void (*)(void* udfHandle, sqlite3_context* context);
 
             std::string name;
             int argumentsCount = 0;
             std::function<void*()> create;
             xdestroy_fn_t destroy = nullptr;
+            func_call_fn_t func = nullptr;
+            final_call_fn_t finalAggregateCall = nullptr;
 
-            udf_proxy_base(decltype(name) name_,
-                           decltype(argumentsCount) argumentsCount_,
-                           decltype(create) create_,
-                           decltype(destroy) destroy_) :
-                name(std::move(name_)),
-                argumentsCount(argumentsCount_), create(std::move(create_)), destroy(destroy_) {}
+            udf_proxy_base(std::string name,
+                           int argumentsCount,
+                           std::function<void*()> create,
+                           xdestroy_fn_t destroy,
+                           func_call_fn_t run) :
+                name(std::move(name)),
+                argumentsCount(argumentsCount), create(std::move(create)), destroy(destroy), func(run) {}
 
-            virtual ~udf_proxy_base() = default;
+            udf_proxy_base(std::string name,
+                           int argumentsCount,
+                           std::function<void*()> create,
+                           xdestroy_fn_t destroy,
+                           func_call_fn_t step,
+                           final_call_fn_t finalCall) :
+                name(std::move(name)),
+                argumentsCount(argumentsCount), create(std::move(create)), destroy(destroy), func(step),
+                finalAggregateCall(finalCall) {}
         };
 
         struct scalar_udf_proxy : udf_proxy_base {
-            func_call run;
-
-            scalar_udf_proxy(decltype(name) name_,
-                             int argumentsCount_,
-                             decltype(create) create_,
-                             decltype(run) run_,
-                             decltype(destroy) destroy_) :
-                udf_proxy_base{std::move(name_), argumentsCount_, std::move(create_), destroy_},
-                run(std::move(run_)) {}
+            using udf_proxy_base::udf_proxy_base;
         };
 
         struct aggregate_udf_proxy : udf_proxy_base {
-            func_call step;
-            final_call finalCall;
-
-            aggregate_udf_proxy(decltype(name) name_,
-                                int argumentsCount_,
-                                decltype(create) create_,
-                                decltype(step) step_,
-                                decltype(finalCall) finalCall_,
-                                decltype(destroy) destroy_) :
-                udf_proxy_base{std::move(name_), argumentsCount_, std::move(create_), destroy_},
-                step(std::move(step_)), finalCall(std::move(finalCall_)) {}
+            using udf_proxy_base::udf_proxy_base;
         };
 
         template<class F>

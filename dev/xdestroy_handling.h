@@ -181,8 +181,8 @@ namespace sqlite_orm {
      *  
      *  Explicitly declared for better error messages.
      */
-    template<typename D, typename P>
-    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) noexcept
+    template<typename P, typename D>
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P* = nullptr) noexcept
         requires(internal::is_unusable_for_xdestroy<D>)
     {
         static_assert(polyfill::always_false_v<D>,
@@ -202,8 +202,8 @@ namespace sqlite_orm {
      *  Type-safety is garanteed by checking whether the deleter or yielded function pointer
      *  is invocable with the non-q-qualified pointer value.
      */
-    template<typename D, typename P>
-    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) noexcept
+    template<typename P, typename D>
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P* = nullptr) noexcept
         requires(internal::needs_xdestroy_proxy<D, P>)
     {
         return internal::xdestroy_proxy<D, P>;
@@ -223,27 +223,27 @@ namespace sqlite_orm {
      *  Type-safety is garanteed by checking whether the deleter or yielded function pointer
      *  is invocable with the non-q-qualified pointer value.
      */
-    template<typename D, typename P>
-    constexpr xdestroy_fn_t obtain_xdestroy_for(D d, P*) noexcept
+    template<typename P, typename D>
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D d, P* = nullptr) noexcept
         requires(internal::yields_xdestroy<D>)
     {
         return d;
     }
 #else
-    template<typename D, typename P, std::enable_if_t<internal::is_unusable_for_xdestroy_v<D>, bool> = true>
-    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) {
+    template<typename P, typename D, std::enable_if_t<internal::is_unusable_for_xdestroy_v<D>, bool> = true>
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P* = nullptr) {
         static_assert(polyfill::always_false_v<D>,
                       "A function pointer, which is not of type xdestroy_fn_t, is prohibited.");
         return nullptr;
     }
 
-    template<typename D, typename P, std::enable_if_t<internal::needs_xdestroy_proxy_v<D, P>, bool> = true>
-    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) noexcept {
+    template<typename P, typename D, std::enable_if_t<internal::needs_xdestroy_proxy_v<D, P>, bool> = true>
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P* = nullptr) noexcept {
         return internal::xdestroy_proxy<D, P>;
     }
 
-    template<typename D, typename P, std::enable_if_t<internal::can_yield_xdestroy_v<D>, bool> = true>
-    constexpr xdestroy_fn_t obtain_xdestroy_for(D d, P*) noexcept {
+    template<typename P, typename D, std::enable_if_t<internal::can_yield_xdestroy_v<D>, bool> = true>
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D d, P* = nullptr) noexcept {
         return d;
     }
 #endif
