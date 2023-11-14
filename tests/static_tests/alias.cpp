@@ -47,10 +47,11 @@ TEST_CASE("aliases") {
         runTest<alias_column_t<alias_d<DerivedUser>, column_pointer<DerivedUser, int User::*>>>(
             alias_column<alias_d<DerivedUser>>(&User::id));
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        runTest<alias_holder<column_alias<'a'>>>(get<"a"_col>());
-        runTest<column_alias<'a'>>("a"_col);
-        runTest<as_t<column_alias<'a'>, int User::*>>(as<"a"_col>(&User::id));
-        runTest<as_t<column_alias<'a'>, int User::*>>(&User::id >>= "a"_col);
+        constexpr auto a_col = "a"_col;
+        runTest<alias_holder<column_alias<'a'>>>(get<a_col>());
+        runTest<column_alias<'a'>>(a_col);
+        runTest<as_t<column_alias<'a'>, int User::*>>(as<a_col>(&User::id));
+        runTest<as_t<column_alias<'a'>, int User::*>>(&User::id >>= a_col);
         runTest<recordset_alias<User, 'a', 'l', 's'>>(alias<'a', 'l', 's'>.for_<User>());
         constexpr auto z_alias = "z"_alias.for_<User>();
         runTest<recordset_alias<User, 'z'>>(z_alias);
