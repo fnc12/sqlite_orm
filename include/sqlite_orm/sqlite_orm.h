@@ -18562,9 +18562,9 @@ namespace sqlite_orm {
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-            template<orm_table_reference auto mapped, class... Ids>
+            template<orm_table_reference auto table, class... Ids>
             auto get(Ids... ids) {
-                return this->get<decay_table_reference_t<mapped>>(std::forward<Ids>(ids)...);
+                return this->get<decay_table_reference_t<table>>(std::forward<Ids>(ids)...);
             }
 #endif
 
@@ -18627,7 +18627,7 @@ namespace sqlite_orm {
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-            template<orm_refers_to_recordset auto mapped, class... Args>
+            template<orm_refers_to_table auto mapped, class... Args>
             int count(Args&&... args) {
                 return this->count<decay_table_reference_t<mapped>>(std::forward<Args>(args)...);
             }
