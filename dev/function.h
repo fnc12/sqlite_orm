@@ -23,23 +23,23 @@ namespace sqlite_orm {
     namespace internal {
 
         struct udf_proxy_base {
-            using func_call = std::function<
-                void(sqlite3_context* context, void* functionPointer, int argsCount, sqlite3_value** values)>;
-            using final_call = std::function<void(sqlite3_context* context, void* functionPointer)>;
+            using func_call =
+                std::function<void(sqlite3_context* context, void* udfHandle, int argsCount, sqlite3_value** values)>;
+            using final_call = std::function<void(sqlite3_context* context, void* udfHandle)>;
 
             std::string name;
             int argumentsCount = 0;
-            std::function<int*()> create;
-            void (*destroy)(int*) = nullptr;
+            std::function<void*()> create;
+            xdestroy_fn_t destroy = nullptr;
 
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
             udf_proxy_base(decltype(name) name_,
                            decltype(argumentsCount) argumentsCount_,
                            decltype(create) create_,
                            decltype(destroy) destroy_) :
                 name(std::move(name_)),
                 argumentsCount(argumentsCount_), create(std::move(create_)), destroy(destroy_) {}
-#endif
+
+            virtual ~udf_proxy_base() = default;
         };
 
         struct scalar_udf_proxy : udf_proxy_base {

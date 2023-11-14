@@ -10907,23 +10907,23 @@ namespace sqlite_orm {
     namespace internal {
 
         struct udf_proxy_base {
-            using func_call = std::function<
-                void(sqlite3_context* context, void* functionPointer, int argsCount, sqlite3_value** values)>;
-            using final_call = std::function<void(sqlite3_context* context, void* functionPointer)>;
+            using func_call =
+                std::function<void(sqlite3_context* context, void* udfHandle, int argsCount, sqlite3_value** values)>;
+            using final_call = std::function<void(sqlite3_context* context, void* udfHandle)>;
 
             std::string name;
             int argumentsCount = 0;
-            std::function<int*()> create;
-            void (*destroy)(int*) = nullptr;
+            std::function<void*()> create;
+            xdestroy_fn_t destroy = nullptr;
 
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
             udf_proxy_base(decltype(name) name_,
                            decltype(argumentsCount) argumentsCount_,
                            decltype(create) create_,
                            decltype(destroy) destroy_) :
                 name(std::move(name_)),
                 argumentsCount(argumentsCount_), create(std::move(create_)), destroy(destroy_) {}
-#endif
+
+            virtual ~udf_proxy_base() = default;
         };
 
         struct scalar_udf_proxy : udf_proxy_base {
@@ -15086,8 +15086,9 @@ namespace sqlite_orm {
                 this->scalarFunctions.push_back(std::make_unique<scalar_udf_proxy>(
                     std::move(name),
                     argsCount,
-                    []() -> int* {
-                        return (int*)(new F());
+                    /* create = */
+                    []() -> void* {
+                        return new F();
                     },
                     /* call = */
                     [](sqlite3_context* context, void* udfHandle, int argsCount, sqlite3_value** values) {
@@ -15153,8 +15154,8 @@ namespace sqlite_orm {
                     std::move(name),
                     argsCount,
                     /* create = */
-                    []() -> int* {
-                        return (int*)(new F());
+                    []() -> void* {
+                        return new F();
                     },
                     /* step = */
                     [](sqlite3_context*, void* udfHandle, int argsCount, sqlite3_value** values) {
@@ -15493,7 +15494,7 @@ namespace sqlite_orm {
                         sqlite3* db = this->connection->get();
                         int rc = sqlite3_create_function_v2(db,
                                                             name.c_str(),
-                                                            0,
+                                                            (*it)->argumentsCount,
                                                             SQLITE_UTF8,
                                                             nullptr,
                                                             nullptr,
@@ -15541,26 +15542,26 @@ namespace sqlite_orm {
 
             static void
             aggregate_function_step_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
-                auto udfProxy = static_cast<aggregate_udf_proxy*>(sqlite3_user_data(context));
-                auto aggregateContextHandle = sqlite3_aggregate_context(context, sizeof(int**));
-                auto aggregateContextIntHandle = static_cast<int**>(aggregateContextHandle);
-                if(*aggregateContextIntHandle == nullptr) {
-                    *aggregateContextIntHandle = udfProxy->create();
+                auto* udfProxy = static_cast<aggregate_udf_proxy*>(sqlite3_user_data(context));
+                void* aggregateStateMem = sqlite3_aggregate_context(context, sizeof(void**));
+                void* udfHandle = *static_cast<void**>(aggregateStateMem);
+                if(udfHandle == nullptr) {
+                    udfHandle = udfProxy->create();
                 }
-                udfProxy->step(context, *aggregateContextIntHandle, argsCount, values);
+                udfProxy->step(context, udfHandle, argsCount, values);
             }
 
             static void aggregate_function_final_callback(sqlite3_context* context) {
-                auto udfProxy = static_cast<aggregate_udf_proxy*>(sqlite3_user_data(context));
-                auto aggregateContextHandle = sqlite3_aggregate_context(context, sizeof(int**));
-                auto aggregateContextIntHandle = static_cast<int**>(aggregateContextHandle);
-                udfProxy->finalCall(context, *aggregateContextIntHandle);
-                udfProxy->destroy(*aggregateContextIntHandle);
+                auto* udfProxy = static_cast<aggregate_udf_proxy*>(sqlite3_user_data(context));
+                void* aggregateStateMem = sqlite3_aggregate_context(context, sizeof(void**));
+                void* udfHandle = *static_cast<void**>(aggregateStateMem);
+                udfProxy->finalCall(context, udfHandle);
+                udfProxy->destroy(udfHandle);
             }
 
             static void scalar_function_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
                 auto udfProxy = static_cast<scalar_udf_proxy*>(sqlite3_user_data(context));
-                const std::unique_ptr<int, void (*)(int*)> callableGuard(udfProxy->create(), udfProxy->destroy);
+                const std::unique_ptr<void, xdestroy_fn_t> udfHandleGuard(udfProxy->create(), udfProxy->destroy);
                 if(udfProxy->argumentsCount != -1 && udfProxy->argumentsCount != argsCount) {
                     throw std::system_error{orm_error_code::arguments_count_does_not_match};
                 }
@@ -15568,9 +15569,8 @@ namespace sqlite_orm {
             }
 
             template<class F>
-            static void delete_function_callback(int* pointer) {
-                auto voidPointer = static_cast<void*>(pointer);
-                auto fPointer = static_cast<F*>(voidPointer);
+            static void delete_function_callback(void* pointer) {
+                auto fPointer = static_cast<F*>(pointer);
                 delete fPointer;
             }
 
