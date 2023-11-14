@@ -10,7 +10,7 @@
 #include <memory>  //  std::make_unique, std::unique_ptr
 #include <map>  //  std::map
 #include <type_traits>  //  std::is_same
-#include <algorithm>  //  std::find_if
+#include <algorithm>  //  std::find_if, std::ranges::find
 
 #include "functional/cxx_universal.h"  //  ::size_t
 #include "tuple_helper/tuple_iteration.h"
@@ -410,12 +410,10 @@ namespace sqlite_orm {
             }
 
             void create_collation(const std::string& name, collating_function f) {
-                collating_function* function = nullptr;
                 const auto functionExists = bool(f);
+                collating_function* function = nullptr;
                 if(functionExists) {
                     function = &(collatingFunctions[name] = std::move(f));
-                } else {
-                    collatingFunctions.erase(name);
                 }
 
                 //  create collations if db is open
@@ -429,6 +427,10 @@ namespace sqlite_orm {
                     if(rc != SQLITE_OK) {
                         throw_translated_sqlite_error(db);
                     }
+                }
+
+                if(!functionExists) {
+                    collatingFunctions.erase(name);
                 }
             }
 
@@ -656,14 +658,15 @@ namespace sqlite_orm {
             }
 
             void delete_function_impl(const std::string& name,
-                                      std::vector<std::unique_ptr<udf_proxy_base>>& functionsVector) const {
-                auto it = find_if(functionsVector.begin(), functionsVector.end(), [&name](auto& udfProxy) {
+                                      std::vector<std::unique_ptr<udf_proxy_base>>& functions) const {
+#if __cpp_lib_ranges >= 201911L
+                auto it = std::ranges::find(functions, name, &udf_proxy_base::name);
+#else
+                auto it = std::find_if(functions.begin(), functions.end(), [&name](auto& udfProxy) {
                     return udfProxy->name == name;
                 });
-                if(it != functionsVector.end()) {
-                    functionsVector.erase(it);
-                    it = functionsVector.end();
-
+#endif
+                if(it != functions.end()) {
                     if(this->connection->retain_count() > 0) {
                         sqlite3* db = this->connection->get();
                         int rc = sqlite3_create_function_v2(db,
@@ -679,6 +682,7 @@ namespace sqlite_orm {
                             throw_translated_sqlite_error(db);
                         }
                     }
+                    it = functions.erase(it);
                 } else {
                     throw std::system_error{orm_error_code::function_not_found};
                 }
@@ -796,13 +800,17 @@ namespace sqlite_orm {
                     ++storageColumnInfoIndex) {
 
                     //  get storage's column info
-                    auto& storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
-                    auto& columnName = storageColumnInfo.name;
+                    table_xinfo& storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
+                    const std::string& columnName = storageColumnInfo.name;
 
-                    //  search for a column in db eith the same name
+                    //  search for a column in db with the same name
+#if __cpp_lib_ranges >= 201911L
+                    auto dbColumnInfoIt = std::ranges::find(dbTableInfo, columnName, &table_xinfo::name);
+#else
                     auto dbColumnInfoIt = std::find_if(dbTableInfo.begin(), dbTableInfo.end(), [&columnName](auto& ti) {
                         return ti.name == columnName;
                     });
+#endif
                     if(dbColumnInfoIt != dbTableInfo.end()) {
                         auto& dbColumnInfo = *dbColumnInfoIt;
                         auto columnsAreEqual =
