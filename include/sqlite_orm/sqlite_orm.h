@@ -15243,12 +15243,12 @@ namespace sqlite_orm {
                 //  create collations if db is open
                 if(this->connection->retain_count() > 0) {
                     sqlite3* db = this->connection->get();
-                    auto resultCode = sqlite3_create_collation(db,
-                                                               name.c_str(),
-                                                               SQLITE_UTF8,
-                                                               function,
-                                                               functionExists ? collate_callback : nullptr);
-                    if(resultCode != SQLITE_OK) {
+                    int rc = sqlite3_create_collation(db,
+                                                      name.c_str(),
+                                                      SQLITE_UTF8,
+                                                      function,
+                                                      functionExists ? collate_callback : nullptr);
+                    if(rc != SQLITE_OK) {
                         throw_translated_sqlite_error(db);
                     }
                 }
@@ -15450,9 +15450,8 @@ namespace sqlite_orm {
                 }
 
                 for(auto& p: this->collatingFunctions) {
-                    auto resultCode =
-                        sqlite3_create_collation(db, p.first.c_str(), SQLITE_UTF8, &p.second, collate_callback);
-                    if(resultCode != SQLITE_OK) {
+                    int rc = sqlite3_create_collation(db, p.first.c_str(), SQLITE_UTF8, &p.second, collate_callback);
+                    if(rc != SQLITE_OK) {
                         throw_translated_sqlite_error(db);
                     }
                 }
@@ -15489,16 +15488,16 @@ namespace sqlite_orm {
 
                     if(this->connection->retain_count() > 0) {
                         sqlite3* db = this->connection->get();
-                        auto resultCode = sqlite3_create_function_v2(db,
-                                                                     name.c_str(),
-                                                                     0,
-                                                                     SQLITE_UTF8,
-                                                                     nullptr,
-                                                                     nullptr,
-                                                                     nullptr,
-                                                                     nullptr,
-                                                                     nullptr);
-                        if(resultCode != SQLITE_OK) {
+                        int rc = sqlite3_create_function_v2(db,
+                                                            name.c_str(),
+                                                            0,
+                                                            SQLITE_UTF8,
+                                                            nullptr,
+                                                            nullptr,
+                                                            nullptr,
+                                                            nullptr,
+                                                            nullptr);
+                        if(rc != SQLITE_OK) {
                             throw_translated_sqlite_error(db);
                         }
                     }
@@ -15508,31 +15507,31 @@ namespace sqlite_orm {
             }
 
             void try_to_create_function(sqlite3* db, scalar_udf_proxy& udfProxy) {
-                auto resultCode = sqlite3_create_function_v2(db,
-                                                             udfProxy.name.c_str(),
-                                                             udfProxy.argumentsCount,
-                                                             SQLITE_UTF8,
-                                                             &udfProxy,
-                                                             scalar_function_callback,
-                                                             nullptr,
-                                                             nullptr,
-                                                             nullptr);
-                if(resultCode != SQLITE_OK) {
+                int rc = sqlite3_create_function_v2(db,
+                                                    udfProxy.name.c_str(),
+                                                    udfProxy.argumentsCount,
+                                                    SQLITE_UTF8,
+                                                    &udfProxy,
+                                                    scalar_function_callback,
+                                                    nullptr,
+                                                    nullptr,
+                                                    nullptr);
+                if(rc != SQLITE_OK) {
                     throw_translated_sqlite_error(db);
                 }
             }
 
             void try_to_create_function(sqlite3* db, aggregate_udf_proxy& udfProxy) {
-                auto resultCode = sqlite3_create_function(db,
-                                                          udfProxy.name.c_str(),
-                                                          udfProxy.argumentsCount,
-                                                          SQLITE_UTF8,
-                                                          &udfProxy,
-                                                          nullptr,
-                                                          aggregate_function_step_callback,
-                                                          aggregate_function_final_callback);
-                if(resultCode != SQLITE_OK) {
-                    throw_translated_sqlite_error(resultCode);
+                int rc = sqlite3_create_function(db,
+                                                 udfProxy.name.c_str(),
+                                                 udfProxy.argumentsCount,
+                                                 SQLITE_UTF8,
+                                                 &udfProxy,
+                                                 nullptr,
+                                                 aggregate_function_step_callback,
+                                                 aggregate_function_final_callback);
+                if(rc != SQLITE_OK) {
+                    throw_translated_sqlite_error(rc);
                 }
             }
 
