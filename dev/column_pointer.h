@@ -64,7 +64,7 @@ namespace sqlite_orm {
      */
     template<class O>
         requires(!orm_recordset_alias<O>)
-    constexpr internal::table_reference<O> column() {
+    consteval internal::table_reference<O> column() {
         return {};
     }
 
@@ -73,7 +73,7 @@ namespace sqlite_orm {
      */
     template<class O>
         requires(!orm_recordset_alias<O>)
-    constexpr internal::table_reference<O> c() {
+    consteval internal::table_reference<O> c() {
         return {};
     }
 #endif
