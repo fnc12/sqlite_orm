@@ -15538,6 +15538,7 @@ namespace sqlite_orm {
             static void
             aggregate_function_step_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
                 auto* udfProxy = static_cast<aggregate_udf_proxy*>(sqlite3_user_data(context));
+                // allocate or fetch pointer handle to user-defined function
                 void* aggregateStateMem = sqlite3_aggregate_context(context, sizeof(void**));
                 void* udfHandle = *static_cast<void**>(aggregateStateMem);
                 if(udfHandle == nullptr) {
@@ -15548,8 +15549,13 @@ namespace sqlite_orm {
 
             static void aggregate_function_final_callback(sqlite3_context* context) {
                 auto* udfProxy = static_cast<aggregate_udf_proxy*>(sqlite3_user_data(context));
+                // allocate or fetch pointer handle to user-defined function
                 void* aggregateStateMem = sqlite3_aggregate_context(context, sizeof(void**));
                 void* udfHandle = *static_cast<void**>(aggregateStateMem);
+                // note: it is possible that the 'step' function was never called
+                if(udfHandle == nullptr) {
+                    udfHandle = udfProxy->create();
+                }
                 udfProxy->finalCall(context, udfHandle);
                 udfProxy->destroy(udfHandle);
             }
