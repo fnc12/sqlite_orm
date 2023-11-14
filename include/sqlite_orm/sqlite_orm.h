@@ -15090,8 +15090,8 @@ namespace sqlite_orm {
                         return (int*)(new F());
                     },
                     /* call = */
-                    [](sqlite3_context* context, void* udfVoidPointer, int argsCount, sqlite3_value** values) {
-                        F& function = *static_cast<F*>(udfVoidPointer);
+                    [](sqlite3_context* context, void* udfHandle, int argsCount, sqlite3_value** values) {
+                        F& function = *static_cast<F*>(udfHandle);
                         args_tuple argsTuple;
                         values_to_tuple{}(values, argsTuple, argsCount);
                         auto result = call(function, std::move(argsTuple));
@@ -15157,15 +15157,15 @@ namespace sqlite_orm {
                         return (int*)(new F());
                     },
                     /* step = */
-                    [](sqlite3_context*, void* udfVoidPointer, int argsCount, sqlite3_value** values) {
-                        F& function = *static_cast<F*>(udfVoidPointer);
+                    [](sqlite3_context*, void* udfHandle, int argsCount, sqlite3_value** values) {
+                        F& function = *static_cast<F*>(udfHandle);
                         args_tuple argsTuple;
                         values_to_tuple{}(values, argsTuple, argsCount);
                         call(function, &F::step, std::move(argsTuple));
                     },
                     /* finalCall = */
-                    [](sqlite3_context* context, void* udfVoidPointer) {
-                        F& function = *static_cast<F*>(udfVoidPointer);
+                    [](sqlite3_context* context, void* udfHandle) {
+                        F& function = *static_cast<F*>(udfHandle);
                         auto result = function.fin();
                         statement_binder<return_type>().result(context, result);
                     },
@@ -15507,12 +15507,12 @@ namespace sqlite_orm {
                 }
             }
 
-            void try_to_create_function(sqlite3* db, scalar_udf_proxy& function) {
+            void try_to_create_function(sqlite3* db, scalar_udf_proxy& udfProxy) {
                 auto resultCode = sqlite3_create_function_v2(db,
-                                                             function.name.c_str(),
-                                                             function.argumentsCount,
+                                                             udfProxy.name.c_str(),
+                                                             udfProxy.argumentsCount,
                                                              SQLITE_UTF8,
-                                                             &function,
+                                                             &udfProxy,
                                                              scalar_function_callback,
                                                              nullptr,
                                                              nullptr,
@@ -15522,12 +15522,12 @@ namespace sqlite_orm {
                 }
             }
 
-            void try_to_create_function(sqlite3* db, aggregate_udf_proxy& function) {
+            void try_to_create_function(sqlite3* db, aggregate_udf_proxy& udfProxy) {
                 auto resultCode = sqlite3_create_function(db,
-                                                          function.name.c_str(),
-                                                          function.argumentsCount,
+                                                          udfProxy.name.c_str(),
+                                                          udfProxy.argumentsCount,
                                                           SQLITE_UTF8,
-                                                          &function,
+                                                          &udfProxy,
                                                           nullptr,
                                                           aggregate_function_step_callback,
                                                           aggregate_function_final_callback);
@@ -15539,20 +15539,20 @@ namespace sqlite_orm {
             static void
             aggregate_function_step_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
                 auto udfProxy = static_cast<aggregate_udf_proxy*>(sqlite3_user_data(context));
-                auto aggregateContextVoidPointer = sqlite3_aggregate_context(context, sizeof(int**));
-                auto aggregateContextIntPointer = static_cast<int**>(aggregateContextVoidPointer);
-                if(*aggregateContextIntPointer == nullptr) {
-                    *aggregateContextIntPointer = udfProxy->create();
+                auto aggregateContextHandle = sqlite3_aggregate_context(context, sizeof(int**));
+                auto aggregateContextIntHandle = static_cast<int**>(aggregateContextHandle);
+                if(*aggregateContextIntHandle == nullptr) {
+                    *aggregateContextIntHandle = udfProxy->create();
                 }
-                udfProxy->step(context, *aggregateContextIntPointer, argsCount, values);
+                udfProxy->step(context, *aggregateContextIntHandle, argsCount, values);
             }
 
             static void aggregate_function_final_callback(sqlite3_context* context) {
                 auto udfProxy = static_cast<aggregate_udf_proxy*>(sqlite3_user_data(context));
-                auto aggregateContextVoidPointer = sqlite3_aggregate_context(context, sizeof(int**));
-                auto aggregateContextIntPointer = static_cast<int**>(aggregateContextVoidPointer);
-                udfProxy->finalCall(context, *aggregateContextIntPointer);
-                udfProxy->destroy(*aggregateContextIntPointer);
+                auto aggregateContextHandle = sqlite3_aggregate_context(context, sizeof(int**));
+                auto aggregateContextIntHandle = static_cast<int**>(aggregateContextHandle);
+                udfProxy->finalCall(context, *aggregateContextIntHandle);
+                udfProxy->destroy(*aggregateContextIntHandle);
             }
 
             static void scalar_function_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
