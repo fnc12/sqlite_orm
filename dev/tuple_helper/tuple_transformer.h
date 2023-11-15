@@ -101,6 +101,9 @@ namespace sqlite_orm {
             return R{polyfill::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
         }
 
+        /*
+         *  Like `std::make_from_tuple`, but using a projection on the tuple elements.
+         */
         template<class R, class Tpl, class Projection = polyfill::identity>
         constexpr R create_from_tuple(Tpl&& tpl, Projection project = {}) {
             return create_from_tuple<R>(

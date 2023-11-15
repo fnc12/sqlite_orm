@@ -1,7 +1,7 @@
 #pragma once
 
 #include <sqlite3.h>
-#include <functional>  //  std::function, std::bind
+#include <functional>  //  std::function, std::bind, std::bind_front
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
 #include <utility>  //  std::move
@@ -13,6 +13,7 @@
 #include <algorithm>  //  std::find_if, std::ranges::find
 
 #include "functional/cxx_universal.h"  //  ::size_t
+#include "functional/cxx_tuple_polyfill.h"  //  std::apply
 #include "tuple_helper/tuple_iteration.h"
 #include "pragma.h"
 #include "limit_accessor.h"
@@ -274,9 +275,8 @@ namespace sqlite_orm {
                     /* call = */
                     [](void* udfHandle, sqlite3_context* context, int argsCount, sqlite3_value** values) {
                         F& udf = *static_cast<F*>(udfHandle);
-                        args_tuple argsTuple;
-                        values_to_tuple{}(values, argsTuple, argsCount);
-                        auto result = call(udf, std::move(argsTuple));
+                        args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
+                        auto result = polyfill::apply(udf, std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
                     }));
 
@@ -342,9 +342,16 @@ namespace sqlite_orm {
                     /* step = */
                     [](void* udfHandle, sqlite3_context*, int argsCount, sqlite3_value** values) {
                         F& udf = *static_cast<F*>(udfHandle);
-                        args_tuple argsTuple;
-                        values_to_tuple{}(values, argsTuple, argsCount);
-                        call(udf, &F::step, std::move(argsTuple));
+                        args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
+#if __cpp_lib_bind_front >= 201907L
+                        std::apply(std::bind_front(&F::step, &udf), std::move(argsTuple));
+#else
+                        polyfill::apply(
+                            [&udf](auto&&... args) {
+                                udf.step(std::forward<decltype(args)>(args)...);
+                            },
+                            std::move(argsTuple));
+#endif
                     },
                     /* finalCall = */
                     [](void* udfHandle, sqlite3_context* context) {

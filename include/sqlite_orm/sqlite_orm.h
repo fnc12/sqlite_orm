@@ -1988,10 +1988,8 @@ namespace sqlite_orm {
 #endif
 #include <utility>  //  std::forward
 
-#if __cpp_lib_invoke < 201411L
 // #include "cxx_type_traits_polyfill.h"
 
-#endif
 // #include "../member_traits/member_traits.h"
 
 #include <type_traits>  //  std::enable_if, std::is_function, std::true_type, std::false_type
@@ -7068,8 +7066,8 @@ namespace sqlite_orm {
 
 // #include "tuple_helper/tuple_iteration.h"
 
-#include <tuple>  //  std::tuple, std::get, std::tuple_element, std::tuple_size
-#include <type_traits>  //  std::remove_reference, std::index_sequence, std::make_index_sequence, std::forward, std::move
+#include <tuple>  //  std::get, std::tuple_element, std::tuple_size
+#include <type_traits>  //  std::index_sequence, std::make_index_sequence
 #include <utility>  //  std::forward, std::move
 
 // #include "../functional/cxx_universal.h"
@@ -7077,31 +7075,6 @@ namespace sqlite_orm {
 
 namespace sqlite_orm {
     namespace internal {
-
-        //  got it form here https://stackoverflow.com/questions/7858817/unpacking-a-tuple-to-call-a-matching-function-pointer
-        template<class Function, class FunctionPointer, class Tpl, size_t... Idx>
-        auto call(Function& f, FunctionPointer functionPointer, Tpl&& tpl, std::index_sequence<Idx...>) {
-            return (f.*functionPointer)(std::get<Idx>(std::forward<Tpl>(tpl))...);
-        }
-
-        template<class Function, class Tpl, size_t... Idx>
-        auto call(Function& f, Tpl&& tpl, std::index_sequence<Idx...>) {
-            return f(std::get<Idx>(std::forward<Tpl>(tpl))...);
-        }
-
-        template<class Function, class FunctionPointer, class Tpl>
-        auto call(Function& f, FunctionPointer functionPointer, Tpl&& tpl) {
-            constexpr size_t size = std::tuple_size<std::remove_reference_t<Tpl>>::value;
-            return call(f, functionPointer, std::forward<Tpl>(tpl), std::make_index_sequence<size>{});
-        }
-
-        // custom std::apply
-        template<class Function, class Tpl>
-        auto call(Function& f, Tpl&& tpl) {
-            constexpr size_t size = std::tuple_size<std::remove_reference_t<Tpl>>::value;
-            return call(f, std::forward<Tpl>(tpl), std::make_index_sequence<size>{});
-        }
-
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
         template<bool reversed = false, class Tpl, size_t... Idx, class L>
         void iterate_tuple(Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
@@ -10024,6 +9997,9 @@ namespace sqlite_orm {
             return R{polyfill::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
         }
 
+        /*
+         *  Like `std::make_from_tuple`, but using a projection on the tuple elements.
+         */
         template<class R, class Tpl, class Projection = polyfill::identity>
         constexpr R create_from_tuple(Tpl&& tpl, Projection project = {}) {
             return create_from_tuple<R>(
@@ -13701,7 +13677,7 @@ namespace sqlite_orm {
 // #include "storage_base.h"
 
 #include <sqlite3.h>
-#include <functional>  //  std::function, std::bind
+#include <functional>  //  std::function, std::bind, std::bind_front
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
 #include <utility>  //  std::move
@@ -13714,6 +13690,43 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_universal.h"
 //  ::size_t
+// #include "functional/cxx_tuple_polyfill.h"
+
+#include <tuple>  //  std::apply; std::tuple_size
+#if __cpp_lib_apply < 201603L
+#include <utility>  //  std::forward, std::index_sequence, std::make_index_sequence
+#endif
+
+// #include "../functional/cxx_universal.h"
+//  ::size_t
+// #include "../functional/cxx_functional_polyfill.h"
+//  std::invoke
+
+namespace sqlite_orm {
+    namespace internal {
+        namespace polyfill {
+#if __cpp_lib_apply >= 201603L
+            using std::apply;
+#else
+            template<class Callable, class Tpl, size_t... Idx>
+            decltype(auto) apply(Callable&& callable, Tpl&& tpl, std::index_sequence<Idx...>) {
+                return polyfill::invoke(std::forward<Callable>(callable), std::get<Idx>(std::forward<Tpl>(tpl))...);
+            }
+
+            template<class Callable, class Tpl>
+            decltype(auto) apply(Callable&& callable, Tpl&& tpl) {
+                constexpr size_t size = std::tuple_size<std::remove_reference_t<Tpl>>::value;
+                return apply(std::forward<Callable>(callable),
+                             std::forward<Tpl>(tpl),
+                             std::make_index_sequence<size>{});
+            }
+#endif
+        }
+    }
+
+    namespace polyfill = internal::polyfill;
+}
+//  std::apply
 // #include "tuple_helper/tuple_iteration.h"
 
 // #include "pragma.h"
@@ -14676,11 +14689,11 @@ namespace sqlite_orm {
 // #include "values_to_tuple.h"
 
 #include <sqlite3.h>
-#include <type_traits>  //  std::index_sequence, std::make_index_sequence
-#include <tuple>  //  std::tuple, std::tuple_size, std::get
+#include <type_traits>  //  std::enable_if, std::is_same, std::index_sequence, std::make_index_sequence
+#include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
 
 // #include "functional/cxx_universal.h"
-
+//  ::size_t
 // #include "row_extractor.h"
 
 // #include "arg_values.h"
@@ -14836,33 +14849,29 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        struct values_to_tuple {
-            template<class Tpl>
-            void operator()(sqlite3_value** values, Tpl& tuple, int /*argsCount*/) const {
-                (*this)(values, tuple, std::make_index_sequence<std::tuple_size<Tpl>::value>{});
+        template<class Tpl>
+        struct tuple_from_values {
+            template<class R = Tpl,
+                     std::enable_if_t<polyfill::negation_v<std::is_same<R, std::tuple<arg_values>>>, bool> = true>
+            R operator()(sqlite3_value** values, int /*argsCount*/) const {
+                return this->create_from(values, std::make_index_sequence<std::tuple_size<Tpl>::value>{});
             }
 
-            void operator()(sqlite3_value** values, std::tuple<arg_values>& tuple, int argsCount) const {
-                std::get<0>(tuple) = arg_values(argsCount, values);
+            template<class R = Tpl, std::enable_if_t<std::is_same<R, std::tuple<arg_values>>::value, bool> = true>
+            R operator()(sqlite3_value** values, int argsCount) const {
+                return {arg_values(argsCount, values)};
             }
 
           private:
-#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
-            template<class Tpl, size_t... Idx>
-            void operator()(sqlite3_value** values, Tpl& tuple, std::index_sequence<Idx...>) const {
-                (this->extract(values[Idx], std::get<Idx>(tuple)), ...);
+            template<size_t... Idx>
+            Tpl create_from(sqlite3_value** values, std::index_sequence<Idx...>) const {
+                return {this->extract<std::tuple_element_t<Idx, Tpl>>(values[Idx])...};
             }
-#else
-            template<class Tpl, size_t... Idx>
-            void operator()(sqlite3_value** values, Tpl& tuple, std::index_sequence<Idx...>) const {
-                using Sink = int[sizeof...(Idx)];
-                (void)Sink{(this->extract(values[Idx], std::get<Idx>(tuple)), 0)...};
-            }
-#endif
+
             template<class T>
-            void extract(sqlite3_value* value, T& t) const {
+            T extract(sqlite3_value* value) const {
                 const auto rowExtractor = boxed_value_extractor<T>();
-                t = rowExtractor.extract(value);
+                return rowExtractor.extract(value);
             }
         };
     }
@@ -15123,9 +15132,8 @@ namespace sqlite_orm {
                     /* call = */
                     [](void* udfHandle, sqlite3_context* context, int argsCount, sqlite3_value** values) {
                         F& udf = *static_cast<F*>(udfHandle);
-                        args_tuple argsTuple;
-                        values_to_tuple{}(values, argsTuple, argsCount);
-                        auto result = call(udf, std::move(argsTuple));
+                        args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
+                        auto result = polyfill::apply(udf, std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
                     }));
 
@@ -15191,9 +15199,16 @@ namespace sqlite_orm {
                     /* step = */
                     [](void* udfHandle, sqlite3_context*, int argsCount, sqlite3_value** values) {
                         F& udf = *static_cast<F*>(udfHandle);
-                        args_tuple argsTuple;
-                        values_to_tuple{}(values, argsTuple, argsCount);
-                        call(udf, &F::step, std::move(argsTuple));
+                        args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
+#if __cpp_lib_bind_front >= 201907L
+                        std::apply(std::bind_front(&F::step, &udf), std::move(argsTuple));
+#else
+                        polyfill::apply(
+                            [&udf](auto&&... args) {
+                                udf.step(std::forward<decltype(args)>(args)...);
+                            },
+                            std::move(argsTuple));
+#endif
                     },
                     /* finalCall = */
                     [](void* udfHandle, sqlite3_context* context) {
