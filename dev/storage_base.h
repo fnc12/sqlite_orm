@@ -26,6 +26,7 @@
 #include "arg_values.h"
 #include "util.h"
 #include "xdestroy_handling.h"
+#include "udf_proxy.h"
 #include "serializing_util.h"
 
 namespace sqlite_orm {
@@ -263,15 +264,15 @@ namespace sqlite_orm {
                 constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
                                                ? -1
                                                : int(std::tuple_size<args_tuple>::value);
-                this->scalarFunctions.push_back(std::make_unique<scalar_udf_proxy<F>>(
+                this->scalarFunctions.push_back(std::make_unique<udf_proxy_veneer<F>>(
                     std::move(name),
                     argsCount,
                     /* constructAt = */
-                    [](void* place) -> void* {
-                        return new(place) F();
+                    [](void* location) -> void* {
+                        return new(location) F();
                     },
                     /* destroy = */
-                    obtain_xdestroy_for<F>(udf_proxy_base::destruct_only_deleter{}),
+                    obtain_xdestroy_for<F>(udf_proxy::destruct_only_deleter{}),
                     /* call = */
                     [](void* udfHandle, sqlite3_context* context, int argsCount, sqlite3_value** values) {
                         F& udf = *static_cast<F*>(udfHandle);
@@ -330,15 +331,15 @@ namespace sqlite_orm {
                 constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
                                                ? -1
                                                : int(std::tuple_size<args_tuple>::value);
-                this->aggregateFunctions.push_back(std::make_unique<aggregate_udf_proxy<F>>(
+                this->aggregateFunctions.push_back(std::make_unique<udf_proxy_veneer<F>>(
                     std::move(name),
                     argsCount,
                     /* constructAt = */
-                    [](void* place) -> void* {
-                        return new(place) F();
+                    [](void* location) -> void* {
+                        return new(location) F();
                     },
                     /* destroy = */
-                    obtain_xdestroy_for<F>(udf_proxy_base::destruct_only_deleter{}),
+                    obtain_xdestroy_for<F>(udf_proxy::destruct_only_deleter{}),
                     /* step = */
                     [](void* udfHandle, sqlite3_context*, int argsCount, sqlite3_value** values) {
                         F& udf = *static_cast<F*>(udfHandle);
@@ -669,9 +670,9 @@ namespace sqlite_orm {
             }
 
             void delete_function_impl(const std::string& name,
-                                      std::vector<std::unique_ptr<udf_proxy_base>>& functions) const {
+                                      std::vector<std::unique_ptr<udf_proxy>>& functions) const {
 #if __cpp_lib_ranges >= 201911L
-                auto it = std::ranges::find(functions, name, &udf_proxy_base::name);
+                auto it = std::ranges::find(functions, name, &udf_proxy::name);
 #else
                 auto it = std::find_if(functions.begin(), functions.end(), [&name](auto& udfProxy) {
                     return udfProxy->name == name;
@@ -699,7 +700,7 @@ namespace sqlite_orm {
                 }
             }
 
-            static void try_to_create_scalar_function(sqlite3* db, udf_proxy_base& udfProxy) {
+            static void try_to_create_scalar_function(sqlite3* db, udf_proxy& udfProxy) {
                 int rc = sqlite3_create_function_v2(db,
                                                     udfProxy.name.c_str(),
                                                     udfProxy.argumentsCount,
@@ -714,7 +715,7 @@ namespace sqlite_orm {
                 }
             }
 
-            static void try_to_create_aggregate_function(sqlite3* db, udf_proxy_base& udfProxy) {
+            static void try_to_create_aggregate_function(sqlite3* db, udf_proxy& udfProxy) {
                 int rc = sqlite3_create_function(db,
                                                  udfProxy.name.c_str(),
                                                  udfProxy.argumentsCount,
@@ -726,41 +727,6 @@ namespace sqlite_orm {
                 if(rc != SQLITE_OK) {
                     throw_translated_sqlite_error(rc);
                 }
-            }
-
-            static void
-            aggregate_function_step_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
-                auto* udfProxy = static_cast<udf_proxy_base*>(sqlite3_user_data(context));
-                if(!udfProxy->constructed) {
-                    if(udfProxy->argumentsCount != -1 && udfProxy->argumentsCount != argsCount) {
-                        throw std::system_error{orm_error_code::arguments_count_does_not_match};
-                    }
-                    udfProxy->constructAt(udfProxy->udfHandle);
-                    udfProxy->constructed = true;
-                }
-                udfProxy->func(udfProxy->udfHandle, context, argsCount, values);
-            }
-
-            static void aggregate_function_final_callback(sqlite3_context* context) {
-                auto* udfProxy = static_cast<udf_proxy_base*>(sqlite3_user_data(context));
-                // note: it is possible that the 'step' function was never called
-                if(!udfProxy->constructed) {
-                    udfProxy->constructAt(udfProxy->udfHandle);
-                    udfProxy->constructed = true;
-                }
-                udfProxy->finalAggregateCall(udfProxy->udfHandle, context);
-                udfProxy->destroy(udfProxy->udfHandle);
-                udfProxy->constructed = false;
-            }
-
-            static void scalar_function_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
-                auto* udfProxy = static_cast<udf_proxy_base*>(sqlite3_user_data(context));
-                if(udfProxy->argumentsCount != -1 && udfProxy->argumentsCount != argsCount) {
-                    throw std::system_error{orm_error_code::arguments_count_does_not_match};
-                }
-                const std::unique_ptr<void, xdestroy_fn_t> udfHandle{udfProxy->constructAt(udfProxy->udfHandle),
-                                                                     udfProxy->destroy};
-                udfProxy->func(udfHandle.get(), context, argsCount, values);
             }
 
             std::string current_time(sqlite3* db) {
@@ -851,8 +817,8 @@ namespace sqlite_orm {
             std::map<std::string, collating_function> collatingFunctions;
             const int cachedForeignKeysCount;
             std::function<int(int)> _busy_handler;
-            std::vector<std::unique_ptr<udf_proxy_base>> scalarFunctions;
-            std::vector<std::unique_ptr<udf_proxy_base>> aggregateFunctions;
+            std::vector<std::unique_ptr<udf_proxy>> scalarFunctions;
+            std::vector<std::unique_ptr<udf_proxy>> aggregateFunctions;
         };
     }
 }
