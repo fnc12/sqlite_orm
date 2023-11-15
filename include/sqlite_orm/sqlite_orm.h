@@ -10865,6 +10865,8 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
+// #include "tags.h"
+
 namespace sqlite_orm {
 
     struct arg_values;
@@ -10942,6 +10944,10 @@ namespace sqlite_orm {
 
             args_tuple args;
         };
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool
+            is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of_v<T, function_call>>> = true;
 
         template<class T>
         struct unpacked_arg {

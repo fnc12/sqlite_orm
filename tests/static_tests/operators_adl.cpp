@@ -10,6 +10,7 @@ using sqlite_orm::and_;
 using sqlite_orm::c;
 using sqlite_orm::colalias_a;
 using sqlite_orm::column;
+using sqlite_orm::func;
 using sqlite_orm::get;
 using sqlite_orm::or_;
 using sqlite_orm::internal::and_condition_t;
@@ -107,11 +108,15 @@ TEST_CASE("ADL and expression operators") {
     struct User {
         int id;
     };
+    struct ScalarFunction {
+        int operator()() const;
+    };
 
     runTests(c(&User::id));
     runTests(column<User>(&User::id));
     runTests(get<colalias_a>());
     runTests(alias_column<alias_a<User>>(&User::id));
+    runTests(func<ScalarFunction>());
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     runTests("a"_col);
 #endif
