@@ -29,13 +29,11 @@ namespace sqlite_orm {
                 (this->extract(values[Idx], std::get<Idx>(tuple)), ...);
             }
 #else
-            template<class Tpl, size_t I, size_t... Idx>
-            void operator()(sqlite3_value** values, Tpl& tuple, std::index_sequence<I, Idx...>) const {
-                this->extract(values[I], std::get<I>(tuple));
-                (*this)(values, tuple, std::index_sequence<Idx...>{});
-            }
             template<class Tpl, size_t... Idx>
-            void operator()(sqlite3_value** /*values*/, Tpl&, std::index_sequence<Idx...>) const {}
+            void operator()(sqlite3_value** values, Tpl& tuple, std::index_sequence<Idx...>) const {
+                using Sink = int[sizeof...(Idx)];
+                (void)Sink{(this->extract(values[Idx], std::get<Idx>(tuple)), 0)...};
+            }
 #endif
             template<class T>
             void extract(sqlite3_value* value, T& t) const {

@@ -74,7 +74,7 @@ namespace sqlite_orm {
     template<class A>
     concept orm_alias = std::derived_from<A, alias_tag>;
 
-    /** @short Alias of a column in a record set.
+    /** @short Specifies that a type is an alias of a column in a record set.
      *
      *  A column alias has the following traits:
      *  - is derived from `alias_tag`
@@ -83,7 +83,7 @@ namespace sqlite_orm {
     template<class A>
     concept orm_column_alias = (orm_alias<A> && !orm_names_type<A>);
 
-    /** @short Alias of any type of record set.
+    /** @short Specifies that a type is an alias of any type of record set.
      *
      *  A record set alias has the following traits:
      *  - is derived from `alias_tag`.
@@ -92,7 +92,7 @@ namespace sqlite_orm {
     template<class A>
     concept orm_recordset_alias = (orm_alias<A> && orm_names_type<A>);
 
-    /** @short Alias of a concrete table.
+    /** @short Specifies that a type is an alias of a concrete table.
      *
      *  A concrete table alias has the following traits:
      *  - is derived from `alias_tag`.
@@ -101,7 +101,7 @@ namespace sqlite_orm {
     template<class A>
     concept orm_table_alias = (orm_recordset_alias<A> && !std::same_as<typename A::type, std::remove_const_t<A>>);
 
-    /** @short Reference of a concrete table, especially of a derived class.
+    /** @short Specifies that a type is a reference of a concrete table, especially of a derived class.
      *
      *  A concrete table reference has the following traits:
      *  - specialization of `table_reference`, whose `type` typename references a mapped object.
@@ -109,12 +109,18 @@ namespace sqlite_orm {
     template<class R>
     concept orm_table_reference = polyfill::is_specialization_of_v<std::remove_const_t<R>, internal::table_reference>;
 
+    /** @short Specifies that a type refers to a mapped table (possibly aliased).
+     */
     template<class T>
     concept orm_refers_to_table = (orm_table_reference<T> || orm_table_alias<T>);
 
+    /** @short Specifies that a type refers to a recordset.
+     */
     template<class T>
     concept orm_refers_to_recordset = (orm_table_reference<T> || orm_recordset_alias<T>);
 
+    /** @short Specifies that a type is a mapped recordset (table reference).
+     */
     template<class T>
     concept orm_mapped_recordset = (orm_table_reference<T>);
 #endif
