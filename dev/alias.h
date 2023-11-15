@@ -1,6 +1,6 @@
 #pragma once
 
-#include <type_traits>  //  std::enable_if, std::is_base_of, std::is_member_pointer, std::remove_const
+#include <type_traits>  //  std::enable_if
 #include <utility>  //  std::index_sequence, std::make_index_sequence
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
@@ -219,7 +219,7 @@ namespace sqlite_orm {
     template<orm_table_alias auto als, class C>
     constexpr auto alias_column(C field) {
         using namespace ::sqlite_orm::internal;
-        using A = std::remove_const_t<decltype(als)>;
+        using A = decltype(als);
         using aliased_type = type_t<A>;
         static_assert(is_field_of_v<C, aliased_type>, "Column must be from aliased table");
 
@@ -263,7 +263,7 @@ namespace sqlite_orm {
      */
     template<orm_column_alias auto als, class E>
     auto as(E expression) {
-        return internal::as_t<std::remove_const_t<decltype(als)>, E>{std::move(expression)};
+        return internal::as_t<decltype(als), E>{std::move(expression)};
     }
 
     /** 
@@ -283,7 +283,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<orm_column_alias auto als>
     auto get() {
-        return internal::alias_holder<std::remove_const_t<decltype(als)>>{};
+        return internal::alias_holder<decltype(als)>{};
     }
 #endif
 

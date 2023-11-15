@@ -94,6 +94,7 @@ TEST_CASE("column pointers") {
     }
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     SECTION("table reference expressions") {
+        runTest<internal::table_t<DerivedUser, false>>(make_table<derived_user>("derived_user"));
         runTest<internal::from_t<DerivedUser>>(from<derived_user>());
         runTest<internal::asterisk_t<DerivedUser>>(asterisk<derived_user>());
         runTest<internal::object_t<DerivedUser>>(object<derived_user>());

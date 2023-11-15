@@ -1,6 +1,6 @@
 #pragma once
 
-#include <type_traits>  //  std::enable_if, std::remove_const
+#include <type_traits>  //  std::enable_if
 #include <utility>  // std::move
 
 #include "functional/cxx_type_traits_polyfill.h"
@@ -48,8 +48,7 @@ namespace sqlite_orm {
      */
     template<orm_table_reference auto table, class O, class F>
     constexpr auto column(F O::*field) {
-        using R = std::remove_const_t<decltype(table)>;
-        return column<typename R::type>(field);
+        return column<internal::auto_type_t<table>>(field);
     }
 
     /**
@@ -65,7 +64,7 @@ namespace sqlite_orm {
      */
     template<class O>
         requires(!orm_recordset_alias<O>)
-    constexpr internal::table_reference<O> column() {
+    consteval internal::table_reference<O> column() {
         return {};
     }
 
@@ -74,7 +73,7 @@ namespace sqlite_orm {
      */
     template<class O>
         requires(!orm_recordset_alias<O>)
-    constexpr internal::table_reference<O> c() {
+    consteval internal::table_reference<O> c() {
         return {};
     }
 #endif
