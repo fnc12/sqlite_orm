@@ -268,9 +268,5 @@ TEST_CASE("function static") {
         STATIC_REQUIRE(storage_aggregate_callable<storage_type, aggregate>);
         STATIC_REQUIRE_FALSE(storage_scalar_callable<storage_type, aggregate>);
 #endif
-
-        // must be veneers (no additional data members)
-        STATIC_REQUIRE(sizeof(internal::scalar_udf_proxy) == sizeof(internal::udf_proxy_base));
-        STATIC_REQUIRE(sizeof(internal::aggregate_udf_proxy) == sizeof(internal::udf_proxy_base));
     }
 }

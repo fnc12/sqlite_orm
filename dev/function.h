@@ -22,6 +22,15 @@ namespace sqlite_orm {
 
     namespace internal {
 
+        /*
+         *  Stores type-erased information about a user-defined scalar or aggregate function:
+         *  - name and argument count
+         *  - function pointers for construction/destruction
+         *  - function dispatch
+         *  - allocated memory and location
+         *  
+         *  As such, it also serves as a context for aggregation operations instead of using `sqlite3_aggregate_context()`.
+         */
         struct udf_proxy_base {
             using func_call_fn_t = void (*)(void* udfHandle,
                                             sqlite3_context* context,
@@ -29,38 +38,65 @@ namespace sqlite_orm {
                                             sqlite3_value** values);
             using final_call_fn_t = void (*)(void* udfHandle, sqlite3_context* context);
 
+            struct destruct_only_deleter {
+                template<class F>
+                void operator()(F* f) const noexcept {
+                    f->~F();
+                }
+            };
+
             std::string name;
-            int argumentsCount = 0;
-            std::function<void*()> create;
-            xdestroy_fn_t destroy = nullptr;
-            func_call_fn_t func = nullptr;
-            final_call_fn_t finalAggregateCall = nullptr;
-
-            udf_proxy_base(std::string name,
-                           int argumentsCount,
-                           std::function<void*()> create,
-                           xdestroy_fn_t destroy,
-                           func_call_fn_t run) :
-                name(std::move(name)),
-                argumentsCount(argumentsCount), create(std::move(create)), destroy(destroy), func(run) {}
-
-            udf_proxy_base(std::string name,
-                           int argumentsCount,
-                           std::function<void*()> create,
-                           xdestroy_fn_t destroy,
-                           func_call_fn_t step,
-                           final_call_fn_t finalCall) :
-                name(std::move(name)),
-                argumentsCount(argumentsCount), create(std::move(create)), destroy(destroy), func(step),
-                finalAggregateCall(finalCall) {}
+            int argumentsCount;
+            std::function<void*(void* place)> constructAt;
+            xdestroy_fn_t destroy;
+            func_call_fn_t func;
+            final_call_fn_t finalAggregateCall;
+            // flag whether the UDF has been constructed at `udfHandle`;
+            // necessary for aggregation operations
+            bool constructed;
+            // pointer to memory for UDF in derived proxy class
+            void* const udfHandle;
         };
 
+        template<class UDF>
         struct scalar_udf_proxy : udf_proxy_base {
-            using udf_proxy_base::udf_proxy_base;
+            // allocated memory for user-defined function
+            alignas(UDF) char udfMem[sizeof(UDF)];
+
+            scalar_udf_proxy(std::string name,
+                             int argumentsCount,
+                             std::function<void*(void* place)> constructAt,
+                             xdestroy_fn_t destroy,
+                             func_call_fn_t run) :
+                udf_proxy_base{std::move(name),
+                               argumentsCount,
+                               std::move(constructAt),
+                               destroy,
+                               run,
+                               nullptr,
+                               false,
+                               udfMem} {}
         };
 
+        template<class UDF>
         struct aggregate_udf_proxy : udf_proxy_base {
-            using udf_proxy_base::udf_proxy_base;
+            // allocated memory for user-defined function
+            alignas(UDF) char udfMem[sizeof(UDF)];
+
+            aggregate_udf_proxy(std::string name,
+                                int argumentsCount,
+                                std::function<void*(void* place)> constructAt,
+                                xdestroy_fn_t destroy,
+                                func_call_fn_t step,
+                                final_call_fn_t finalCall) :
+                udf_proxy_base{std::move(name),
+                               argumentsCount,
+                               std::move(constructAt),
+                               destroy,
+                               step,
+                               finalCall,
+                               false,
+                               udfMem} {}
         };
 
         template<class F>

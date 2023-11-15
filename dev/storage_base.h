@@ -262,15 +262,15 @@ namespace sqlite_orm {
                 constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
                                                ? -1
                                                : int(std::tuple_size<args_tuple>::value);
-                this->scalarFunctions.push_back(std::make_unique<scalar_udf_proxy>(
+                this->scalarFunctions.push_back(std::make_unique<scalar_udf_proxy<F>>(
                     std::move(name),
                     argsCount,
-                    /* create = */
-                    []() -> void* {
-                        return new F();
+                    /* constructAt = */
+                    [](void* place) -> void* {
+                        return new(place) F();
                     },
                     /* destroy = */
-                    obtain_xdestroy_for<F>(std::default_delete<F>{}),
+                    obtain_xdestroy_for<F>(udf_proxy_base::destruct_only_deleter{}),
                     /* call = */
                     [](void* udfHandle, sqlite3_context* context, int argsCount, sqlite3_value** values) {
                         F& udf = *static_cast<F*>(udfHandle);
@@ -282,7 +282,7 @@ namespace sqlite_orm {
 
                 if(this->connection->retain_count() > 0) {
                     sqlite3* db = this->connection->get();
-                    try_to_create_function(db, static_cast<scalar_udf_proxy&>(*this->scalarFunctions.back()));
+                    try_to_create_scalar_function(db, *this->scalarFunctions.back());
                 }
             }
 
@@ -330,15 +330,15 @@ namespace sqlite_orm {
                 constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
                                                ? -1
                                                : int(std::tuple_size<args_tuple>::value);
-                this->aggregateFunctions.push_back(std::make_unique<aggregate_udf_proxy>(
+                this->aggregateFunctions.push_back(std::make_unique<aggregate_udf_proxy<F>>(
                     std::move(name),
                     argsCount,
-                    /* create = */
-                    []() -> void* {
-                        return new F();
+                    /* constructAt = */
+                    [](void* place) -> void* {
+                        return new(place) F();
                     },
                     /* destroy = */
-                    obtain_xdestroy_for<F>(std::default_delete<F>{}),
+                    obtain_xdestroy_for<F>(udf_proxy_base::destruct_only_deleter{}),
                     /* step = */
                     [](void* udfHandle, sqlite3_context*, int argsCount, sqlite3_value** values) {
                         F& udf = *static_cast<F*>(udfHandle);
@@ -355,7 +355,7 @@ namespace sqlite_orm {
 
                 if(this->connection->retain_count() > 0) {
                     sqlite3* db = this->connection->get();
-                    try_to_create_function(db, static_cast<aggregate_udf_proxy&>(*this->aggregateFunctions.back()));
+                    try_to_create_aggregate_function(db, *this->aggregateFunctions.back());
                 }
             }
 
@@ -371,7 +371,7 @@ namespace sqlite_orm {
              */
             template<class F>
             void delete_scalar_function() {
-                static_assert(is_scalar_udf_v<F>, "F cannot be an aggregate function");
+                static_assert(is_scalar_udf_v<F>, "F must be a scalar function");
                 std::stringstream ss;
                 ss << F::name() << std::flush;
                 this->delete_function_impl(ss.str(), this->scalarFunctions);
@@ -389,7 +389,7 @@ namespace sqlite_orm {
              */
             template<class F>
             void delete_aggregate_function() {
-                static_assert(is_aggregate_udf_v<F>, "F cannot be a scalar function");
+                static_assert(is_aggregate_udf_v<F>, "F must be an aggregate function");
                 std::stringstream ss;
                 ss << F::name() << std::flush;
                 this->delete_function_impl(ss.str(), this->aggregateFunctions);
@@ -649,11 +649,11 @@ namespace sqlite_orm {
                 }
 
                 for(auto& udfProxy: this->scalarFunctions) {
-                    try_to_create_function(db, static_cast<scalar_udf_proxy&>(*udfProxy));
+                    try_to_create_scalar_function(db, *udfProxy);
                 }
 
                 for(auto& udfProxy: this->aggregateFunctions) {
-                    try_to_create_function(db, static_cast<aggregate_udf_proxy&>(*udfProxy));
+                    try_to_create_aggregate_function(db, *udfProxy);
                 }
 
                 if(this->on_open) {
@@ -692,7 +692,7 @@ namespace sqlite_orm {
                 }
             }
 
-            static void try_to_create_function(sqlite3* db, scalar_udf_proxy& udfProxy) {
+            static void try_to_create_scalar_function(sqlite3* db, udf_proxy_base& udfProxy) {
                 int rc = sqlite3_create_function_v2(db,
                                                     udfProxy.name.c_str(),
                                                     udfProxy.argumentsCount,
@@ -707,7 +707,7 @@ namespace sqlite_orm {
                 }
             }
 
-            static void try_to_create_function(sqlite3* db, aggregate_udf_proxy& udfProxy) {
+            static void try_to_create_aggregate_function(sqlite3* db, udf_proxy_base& udfProxy) {
                 int rc = sqlite3_create_function(db,
                                                  udfProxy.name.c_str(),
                                                  udfProxy.argumentsCount,
@@ -723,38 +723,36 @@ namespace sqlite_orm {
 
             static void
             aggregate_function_step_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
-                auto* udfProxy = static_cast<aggregate_udf_proxy*>(sqlite3_user_data(context));
-                // allocate or fetch pointer handle to user-defined function
-                void* aggregateStateMem = sqlite3_aggregate_context(context, sizeof(void**));
-                void*& udfHandle = *static_cast<void**>(aggregateStateMem);
-                if(udfHandle == nullptr) {
+                auto* udfProxy = static_cast<udf_proxy_base*>(sqlite3_user_data(context));
+                if(!udfProxy->constructed) {
                     if(udfProxy->argumentsCount != -1 && udfProxy->argumentsCount != argsCount) {
                         throw std::system_error{orm_error_code::arguments_count_does_not_match};
                     }
-                    udfHandle = udfProxy->create();
+                    udfProxy->constructAt(udfProxy->udfHandle);
+                    udfProxy->constructed = true;
                 }
-                udfProxy->func(udfHandle, context, argsCount, values);
+                udfProxy->func(udfProxy->udfHandle, context, argsCount, values);
             }
 
             static void aggregate_function_final_callback(sqlite3_context* context) {
-                auto* udfProxy = static_cast<aggregate_udf_proxy*>(sqlite3_user_data(context));
-                // allocate or fetch pointer handle to user-defined function
-                void* aggregateStateMem = sqlite3_aggregate_context(context, sizeof(void**));
-                void*& udfHandle = *static_cast<void**>(aggregateStateMem);
+                auto* udfProxy = static_cast<udf_proxy_base*>(sqlite3_user_data(context));
                 // note: it is possible that the 'step' function was never called
-                if(udfHandle == nullptr) {
-                    udfHandle = udfProxy->create();
+                if(!udfProxy->constructed) {
+                    udfProxy->constructAt(udfProxy->udfHandle);
+                    udfProxy->constructed = true;
                 }
-                udfProxy->finalAggregateCall(udfHandle, context);
-                udfProxy->destroy(udfHandle);
+                udfProxy->finalAggregateCall(udfProxy->udfHandle, context);
+                udfProxy->destroy(udfProxy->udfHandle);
+                udfProxy->constructed = false;
             }
 
             static void scalar_function_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
-                auto* udfProxy = static_cast<scalar_udf_proxy*>(sqlite3_user_data(context));
+                auto* udfProxy = static_cast<udf_proxy_base*>(sqlite3_user_data(context));
                 if(udfProxy->argumentsCount != -1 && udfProxy->argumentsCount != argsCount) {
                     throw std::system_error{orm_error_code::arguments_count_does_not_match};
                 }
-                const std::unique_ptr<void, xdestroy_fn_t> udfHandle{udfProxy->create(), udfProxy->destroy};
+                const std::unique_ptr<void, xdestroy_fn_t> udfHandle{udfProxy->constructAt(udfProxy->udfHandle),
+                                                                     udfProxy->destroy};
                 udfProxy->func(udfHandle.get(), context, argsCount, values);
             }
 
