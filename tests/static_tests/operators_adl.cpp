@@ -109,6 +109,7 @@ TEST_CASE("ADL and expression operators") {
         int id;
     };
     struct ScalarFunction {
+        static const char* name();
         int operator()() const;
     };
 
