@@ -204,6 +204,10 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /** @short Specifies that a type is a user-defined scalar function.
+     *  
+     *  `UDF` must meet the following requirements:
+     *  - `UDF::name()` static function
+     *  - `UDF::operator()()` call operator
      */
     template<class UDF>
     concept orm_scalar_udf = requires {
@@ -212,6 +216,11 @@ namespace sqlite_orm {
     };
 
     /** @short Specifies that a type is a user-defined aggregate function.
+     *  
+     *  `UDF` must meet the following requirements:
+     *  - `UDF::name()` static function
+     *  - `UDF::step()` member function
+     *  - `UDF::fin()` member function
      */
     template<class UDF>
     concept orm_aggregate_udf = requires {

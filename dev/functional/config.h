@@ -24,6 +24,14 @@
 #define SQLITE_ORM_NOUNIQUEADDRESS
 #endif
 
+#if SQLITE_ORM_HAS_CPP_ATTRIBUTE(likely) >= 201803L
+#define SQLITE_ORM_CPP_LIKELY [[likely]]
+#define SQLITE_ORM_CPP_UNLIKELY [[unlikely]]
+#else
+#define SQLITE_ORM_CPP_LIKELY
+#define SQLITE_ORM_CPP_UNLIKELY
+#endif
+
 #ifdef SQLITE_ORM_CONSTEVAL_SUPPORTED
 #define SQLITE_ORM_CONSTEVAL consteval
 #else

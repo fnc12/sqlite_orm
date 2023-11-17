@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sqlite3.h>
+#include <memory>  //  std::allocator
 #include <functional>  //  std::function, std::bind, std::bind_front
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
@@ -235,7 +236,9 @@ namespace sqlite_orm {
             }
 
             /**
-             * Call this to create user defined scalar function. Can be called at any time no matter connection is opened or no.
+             * Create a user-defined scalar function.
+             * Can be called at any time no matter whether the database connection is opened or no.
+             * 
              * T - function class. T must have operator() overload and static name function like this:
              * ```
              *  struct SqrtFunction {
@@ -250,7 +253,7 @@ namespace sqlite_orm {
              *  };
              * ```
              * 
-             * Note: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
+             * Attention: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
              */
             template<class F>
             void create_scalar_function() {
@@ -264,12 +267,14 @@ namespace sqlite_orm {
                 constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
                                                ? -1
                                                : int(std::tuple_size<args_tuple>::value);
-                this->scalarFunctions.push_back(std::make_unique<udf_proxy_veneer<F>>(
+                this->scalarFunctions.push_back(make_udf_proxy<F>(
                     std::move(name),
                     argsCount,
                     /* constructAt = */
-                    [](void* location) -> void* {
-                        return new(location) F();
+                    [](void* location) {
+                        std::allocator<F> allocator;
+                        using traits = std::allocator_traits<decltype(allocator)>;
+                        traits::construct(allocator, (F*)location);
                     },
                     /* destroy = */
                     obtain_xdestroy_for<F>(udf_proxy::destruct_only_deleter{}),
@@ -288,6 +293,12 @@ namespace sqlite_orm {
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            /**
+             * Create a user-defined scalar function.
+             * Can be called at any time no matter whether the database connection is opened or no.
+             * 
+             * Attention: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
+             */
             template<orm_scalar_function auto f>
             void create_scalar_function() {
                 return this->create_scalar_function<auto_type_t<f>>();
@@ -295,7 +306,9 @@ namespace sqlite_orm {
 #endif
 
             /**
-             * Call this to create user defined aggregate function. Can be called at any time no matter connection is opened or no.
+             * Create a user-defined aggregate function.
+             * Can be called at any time no matter whether the database connection is opened or no.
+             * 
              * T - function class. T must have step member function, fin member function and static name function like this:
              * ```
              *   struct MeanFunction {
@@ -317,7 +330,7 @@ namespace sqlite_orm {
              *   };
              * ```
              * 
-             * Note: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
+             * Attention: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
              */
             template<class F>
             void create_aggregate_function() {
@@ -331,12 +344,14 @@ namespace sqlite_orm {
                 constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
                                                ? -1
                                                : int(std::tuple_size<args_tuple>::value);
-                this->aggregateFunctions.push_back(std::make_unique<udf_proxy_veneer<F>>(
+                this->aggregateFunctions.push_back(make_udf_proxy<F>(
                     std::move(name),
                     argsCount,
                     /* constructAt = */
-                    [](void* location) -> void* {
-                        return new(location) F();
+                    [](void* location) {
+                        std::allocator<F> allocator;
+                        using traits = std::allocator_traits<decltype(allocator)>;
+                        traits::construct(allocator, (F*)location);
                     },
                     /* destroy = */
                     obtain_xdestroy_for<F>(udf_proxy::destruct_only_deleter{}),
@@ -368,6 +383,12 @@ namespace sqlite_orm {
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            /**
+             * Create a user-defined aggregate function.
+             * Can be called at any time no matter whether the database connection is opened or no.
+             * 
+             * Attention: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
+             */
             template<orm_aggregate_function auto f>
             void create_aggregate_function() {
                 return this->create_aggregate_function<auto_type_t<f>>();
@@ -375,7 +396,8 @@ namespace sqlite_orm {
 #endif
 
             /**
-             *  Use it to delete scalar function you created before. Can be called at any time no matter connection is open or no.
+             *  Delete a scalar function you created before.
+             *  Can be called at any time no matter whether the database connection is open or not.
              */
             template<class F>
             void delete_scalar_function() {
@@ -393,7 +415,8 @@ namespace sqlite_orm {
 #endif
 
             /**
-             *  Use it to delete aggregate function you created before. Can be called at any time no matter connection is open or no.
+             *  Delete aggregate function you created before.
+             *  Can be called at any time no matter whether the database connection is open or not.
              */
             template<class F>
             void delete_aggregate_function() {

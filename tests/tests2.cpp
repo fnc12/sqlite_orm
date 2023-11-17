@@ -356,6 +356,33 @@ int MultiSum::objectsCount = 0;
 int FirstFunction::objectsCount = 0;
 int FirstFunction::callsCount = 0;
 
+#if __cpp_aligned_new >= 201606L
+struct alignas(__STDCPP_DEFAULT_NEW_ALIGNMENT__ * 2) OverAlignedScalarFunction {
+    int operator()(int arg) const {
+        return arg;
+    }
+
+    static const char* name() {
+        return "OVERALIGNED";
+    }
+};
+
+struct alignas(__STDCPP_DEFAULT_NEW_ALIGNMENT__ * 2) OverAlignedAggregateFunction {
+    double sum = 0;
+
+    void step(double arg) {
+        sum += arg;
+    }
+    int fin() const {
+        return sum;
+    }
+
+    static const char* name() {
+        return "OVERALIGNED";
+    }
+};
+#endif
+
 TEST_CASE("custom functions") {
     using Catch::Matchers::ContainsSubstring;
 
@@ -381,6 +408,12 @@ TEST_CASE("custom functions") {
     };
     auto storage = make_storage(path, make_table("users", make_column("id", &User::id)));
     storage.sync_schema();
+
+    storage.create_aggregate_function<MeanFunction>();
+    // test the case when `MeanFunction::step()` was never called
+    { REQUIRE_NOTHROW(storage.select(func<MeanFunction>(&User::id))); }
+    storage.delete_aggregate_function<MeanFunction>();
+
     //   call before creation
     REQUIRE_THROWS_WITH(storage.select(func<SqrtFunction>(4)), ContainsSubstring("no such function"));
 
@@ -492,6 +525,15 @@ TEST_CASE("custom functions") {
         REQUIRE(MultiSum::objectsCount == 0);
     }
     storage.delete_aggregate_function<MultiSum>();
+
+#if __cpp_aligned_new >= 201606L
+    {
+        storage.create_scalar_function<OverAlignedScalarFunction>();
+        REQUIRE_NOTHROW(storage.delete_scalar_function<OverAlignedScalarFunction>());
+        storage.create_aggregate_function<OverAlignedAggregateFunction>();
+        REQUIRE_NOTHROW(storage.delete_aggregate_function<OverAlignedAggregateFunction>());
+    }
+#endif
 }
 
 // Wrap std::default_delete in a function
