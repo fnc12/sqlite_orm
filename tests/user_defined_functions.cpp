@@ -171,7 +171,7 @@ int FirstFunction::objectsCount = 0;
 int FirstFunction::callsCount = 0;
 
 #if __cpp_aligned_new >= 201606L
-struct alignas(__STDCPP_DEFAULT_NEW_ALIGNMENT__ * 2) OverAlignedScalarFunction {
+struct alignas(2 * __STDCPP_DEFAULT_NEW_ALIGNMENT__) OverAlignedScalarFunction {
     int operator()(int arg) const {
         return arg;
     }
@@ -181,7 +181,7 @@ struct alignas(__STDCPP_DEFAULT_NEW_ALIGNMENT__ * 2) OverAlignedScalarFunction {
     }
 };
 
-struct alignas(__STDCPP_DEFAULT_NEW_ALIGNMENT__ * 2) OverAlignedAggregateFunction {
+struct alignas(2 * __STDCPP_DEFAULT_NEW_ALIGNMENT__) OverAlignedAggregateFunction {
     double sum = 0;
 
     void step(double arg) {

@@ -6,6 +6,12 @@
 #include <version>
 #endif
 
+#ifdef SQLITE_ORM_CONSTEXPR_LAMBDAS_SUPPORTED
+#define SQLITE_ORM_CONSTEXPR_LAMBDA_CPP17 constexpr
+#else
+#define SQLITE_ORM_CONSTEXPR_LAMBDA_CPP17
+#endif
+
 #ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 #define SQLITE_ORM_INLINE_VAR inline
 #else

@@ -65,6 +65,10 @@ using std::nullptr_t;
 #define SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
 #endif
 
+#if __cpp_constexpr >= 201603L
+#define SQLITE_ORM_CONSTEXPR_LAMBDAS_SUPPORTED
+#endif
+
 #if __cpp_if_constexpr >= 201606L
 #define SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
 #endif
@@ -165,6 +169,12 @@ using std::nullptr_t;
 
 #if SQLITE_ORM_HAS_INCLUDE(<version>)
 #include <version>
+#endif
+
+#ifdef SQLITE_ORM_CONSTEXPR_LAMBDAS_SUPPORTED
+#define SQLITE_ORM_CONSTEXPR_LAMBDA_CPP17 constexpr
+#else
+#define SQLITE_ORM_CONSTEXPR_LAMBDA_CPP17
 #endif
 
 #ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
@@ -14885,7 +14895,7 @@ namespace sqlite_orm {
             std::allocator<UDF> allocator;
             using traits = std::allocator_traits<decltype(allocator)>;
 
-            constexpr auto deallocate = [](void* location) noexcept {
+            SQLITE_ORM_CONSTEXPR_LAMBDA_CPP17 auto deallocate = [](void* location) noexcept {
                 std::allocator<UDF> allocator;
                 using traits = std::allocator_traits<decltype(allocator)>;
                 traits::deallocate(allocator, (UDF*)location, 1);
