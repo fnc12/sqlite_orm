@@ -177,7 +177,7 @@ struct alignas(2 * __STDCPP_DEFAULT_NEW_ALIGNMENT__) OverAlignedScalarFunction {
     }
 
     static const char* name() {
-        return "OVERALIGNED";
+        return "OVERALIGNED1";
     }
 };
 
@@ -187,15 +187,46 @@ struct alignas(2 * __STDCPP_DEFAULT_NEW_ALIGNMENT__) OverAlignedAggregateFunctio
     void step(double arg) {
         sum += arg;
     }
+    double fin() const {
+        return sum;
+    }
+
+    static const char* name() {
+        return "OVERALIGNED2";
+    }
+};
+#endif
+
+struct NonDefaultCtorScalarFunction {
+    const int multiplier;
+
+    NonDefaultCtorScalarFunction(int multiplier) : multiplier{multiplier} {}
+
+    int operator()(int arg) const {
+        return multiplier * arg;
+    }
+
+    static const char* name() {
+        return "CTORTEST1";
+    }
+};
+
+struct NonDefaultCtorAggregateFunction {
+    int sum;
+
+    NonDefaultCtorAggregateFunction(int initialValue) : sum{initialValue} {}
+
+    void step(int arg) {
+        sum += arg;
+    }
     int fin() const {
         return sum;
     }
 
     static const char* name() {
-        return "OVERALIGNED";
+        return "CTORTEST2";
     }
 };
-#endif
 
 TEST_CASE("custom functions") {
     using Catch::Matchers::ContainsSubstring;
@@ -348,4 +379,20 @@ TEST_CASE("custom functions") {
         REQUIRE_NOTHROW(storage.delete_aggregate_function<OverAlignedAggregateFunction>());
     }
 #endif
+
+    storage.create_scalar_function<NonDefaultCtorScalarFunction>(42);
+    {
+        auto rows = storage.select(func<NonDefaultCtorScalarFunction>(1));
+        decltype(rows) expected{42};
+        REQUIRE(rows == expected);
+    }
+    storage.delete_scalar_function<NonDefaultCtorScalarFunction>();
+
+    storage.create_aggregate_function<NonDefaultCtorAggregateFunction>(42);
+    {
+        auto rows = storage.select(func<NonDefaultCtorAggregateFunction>(1));
+        decltype(rows) expected{43};
+        REQUIRE(rows == expected);
+    }
+    storage.delete_aggregate_function<NonDefaultCtorAggregateFunction>();
 }
