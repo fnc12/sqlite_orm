@@ -14867,7 +14867,9 @@ namespace sqlite_orm {
             struct destruct_only_deleter {
                 template<class UDF>
                 void operator()(UDF* f) const noexcept {
-                    f->~UDF();
+                    std::allocator<UDF> allocator;
+                    using traits = std::allocator_traits<decltype(allocator)>;
+                    traits::destroy(allocator, f);
                 }
             };
 
@@ -14879,10 +14881,10 @@ namespace sqlite_orm {
             final_call_fn_t finalAggregateCall;
 
             const xdestroy_fn_t udfDeallocate;
-            // flag whether the UDF has been udfConstructed at `udfHandle`;
+            // flag whether the UDF has been constructed at `udfHandle`;
             // necessary for aggregation operations
             bool udfConstructed;
-            // pointer to memory for UDF
+            // pointer to memory space for UDF
             void* const udfHandle;
 
             ~udf_proxy() {
