@@ -5,6 +5,7 @@
 #include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
 
 #include "functional/cxx_universal.h"  //  ::size_t
+#include "functional/cxx_functional_polyfill.h"
 #include "row_extractor.h"
 #include "arg_values.h"
 

@@ -14647,6 +14647,8 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_universal.h"
 //  ::size_t
+// #include "functional/cxx_functional_polyfill.h"
+
 // #include "row_extractor.h"
 
 // #include "arg_values.h"
