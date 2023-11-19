@@ -261,13 +261,13 @@ namespace sqlite_orm {
              * Attention: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
              */
             template<class F, class... Args>
-            void create_scalar_function(Args&&... args) {
+            void create_scalar_function(Args&&... constructorArgs) {
                 static_assert(is_scalar_udf_v<F>, "F must be a scalar function");
 
-                this->create_scalar_function_impl<F>(/* constructAt */ [args...](void* location) {
+                this->create_scalar_function_impl<F>(/* constructAt */ [constructorArgs...](void* location) {
                     std::allocator<F> allocator;
                     using traits = std::allocator_traits<decltype(allocator)>;
-                    traits::construct(allocator, (F*)location, args...);
+                    traits::construct(allocator, (F*)location, constructorArgs...);
                 });
             }
 
@@ -284,8 +284,8 @@ namespace sqlite_orm {
              * Attention: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
              */
             template<orm_scalar_function auto f, std::copy_constructible... Args>
-            void create_scalar_function(Args&&... args) {
-                return this->create_scalar_function<auto_type_t<f>>(std::forward<Args>(args)...);
+            void create_scalar_function(Args&&... constructorArgs) {
+                return this->create_scalar_function<auto_type_t<f>>(std::forward<Args>(constructorArgs)...);
             }
 #endif
 
@@ -293,7 +293,7 @@ namespace sqlite_orm {
              * Create an application-defined aggregate SQL function.
              * Can be called at any time no matter whether the database connection is opened or not.
              * 
-             * Note: `create_aggregate_function()` merely creates a closure to generate an instance of the scalar function object,
+             * Note: `create_aggregate_function()` merely creates a closure to generate an instance of the aggregate function object,
              * together with a copy of the passed initialization arguments.
              * An instance of the function object is repeatedly recreated for each result row,
              * ensuring that the calculations always start with freshly initialized values.
@@ -322,14 +322,16 @@ namespace sqlite_orm {
              * Attention: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
              */
             template<class F, class... Args>
-            void create_aggregate_function(Args&&... args) {
+            void create_aggregate_function(Args&&... constructorArgs) {
                 static_assert(is_aggregate_udf_v<F>, "F must be an aggregate function");
 
                 this->create_aggregate_function_impl<F>(/* constructAt = */
-                                                        [args...](void* location) {
+                                                        [constructorArgs...](void* location) {
                                                             std::allocator<F> allocator;
                                                             using traits = std::allocator_traits<decltype(allocator)>;
-                                                            traits::construct(allocator, (F*)location, args...);
+                                                            traits::construct(allocator,
+                                                                              (F*)location,
+                                                                              constructorArgs...);
                                                         });
             }
 
@@ -338,7 +340,7 @@ namespace sqlite_orm {
              * Create an application-defined aggregate function.
              * Can be called at any time no matter whether the database connection is opened or not.
              * 
-             * Note: `create_aggregate_function()` merely creates a closure to generate an instance of the scalar function object,
+             * Note: `create_aggregate_function()` merely creates a closure to generate an instance of the aggregate function object,
              * together with a copy of the passed initialization arguments.
              * An instance of the function object is repeatedly recreated for each result row,
              * ensuring that the calculations always start with freshly initialized values.
@@ -346,8 +348,8 @@ namespace sqlite_orm {
              * Attention: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
              */
             template<orm_aggregate_function auto f, std::copy_constructible... Args>
-            void create_aggregate_function(Args&&... args) {
-                return this->create_aggregate_function<auto_type_t<f>>(std::forward<Args>(args)...);
+            void create_aggregate_function(Args&&... constructorArgs) {
+                return this->create_aggregate_function<auto_type_t<f>>(std::forward<Args>(constructorArgs)...);
             }
 #endif
 
