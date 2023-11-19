@@ -52,9 +52,6 @@ namespace sqlite_orm {
             ~udf_proxy() {
                 udfDeallocate(udfHandle);
             }
-
-            udf_proxy(const udf_proxy&) = delete;
-            udf_proxy& operator=(const udf_proxy&) = delete;
         };
 
         template<class UDF>
