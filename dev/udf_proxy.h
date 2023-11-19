@@ -1,7 +1,7 @@
 #pragma once
 
 #include <sqlite3.h>
-#include <memory>  //  std::allocator
+#include <memory>  //  std::allocator, std::allocator_traits, std::unique_ptr
 #include <string>  //  std::string
 #include <functional>  //  std::function
 #include <utility>  //  std::move, std::pair
@@ -52,6 +52,9 @@ namespace sqlite_orm {
             ~udf_proxy() {
                 udfDeallocate(udfHandle);
             }
+
+            udf_proxy(const udf_proxy&) = delete;
+            udf_proxy& operator=(const udf_proxy&) = delete;
         };
 
         template<class UDF>
@@ -138,7 +141,7 @@ namespace sqlite_orm {
         inline void scalar_function_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
             udf_proxy* proxy = static_cast<udf_proxy*>(sqlite3_user_data(context));
             check_args_count(proxy, argsCount);
-            // 1. Thread-safe with regard to the construction/destruction of the function object in the same memory area.
+            // 1. Thread-safe with regard to the construction/destruction of the function object in the same memory space.
             //    The `udf_proxy` is one instance per database connection,
             //    and SQLite internally locks access to the database object during the generation of a result row with `sqlite3_step()`.
             // 2. Note on the use of the `udfHandle` pointer after the object construction:
