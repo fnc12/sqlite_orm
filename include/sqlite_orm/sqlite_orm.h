@@ -14960,6 +14960,10 @@ namespace sqlite_orm {
                     return;
                 }
             check_args_count(proxy, argsCount);
+            // Note on the use of the `udfHandle` pointer after the object construction:
+            // since we only ever cast between void* and UDF* pointer types and
+            // only use the memory space for one type during the entire lifetime of a proxy,
+            // we can use `udfHandle` interconvertibly without laundering its provenance.
             proxy->constructAt(proxy->udfHandle);
             proxy->udfConstructed = true;
         }
@@ -14972,6 +14976,13 @@ namespace sqlite_orm {
         inline void scalar_function_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
             udf_proxy* proxy = static_cast<udf_proxy*>(sqlite3_user_data(context));
             check_args_count(proxy, argsCount);
+            // 1. Thread-safe with regard to the construction/destruction of the function object in the same memory area.
+            //    The `udf_proxy` is one instance per database connection,
+            //    and SQLite internally locks access to the database object during the generation of a result row with `sqlite3_step()`.
+            // 2. Note on the use of the `udfHandle` pointer after the object construction:
+            //    since we only ever cast between void* and UDF* pointer types and
+            //    only use the memory space for one type during the entire lifetime of a proxy,
+            //    we can use `udfHandle` interconvertibly without laundering its provenance.
             proxy->constructAt(proxy->udfHandle);
             const std::unique_ptr<void, xdestroy_fn_t> udfGuard{proxy->udfHandle, proxy->destroy};
             proxy->func(proxy->udfHandle, context, argsCount, values);
