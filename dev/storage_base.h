@@ -8,6 +8,7 @@
 #include <utility>  //  std::move
 #include <system_error>  //  std::system_error
 #include <vector>  //  std::vector
+#include <list>  //  std::list
 #include <memory>  //  std::make_unique, std::unique_ptr
 #include <map>  //  std::map
 #include <type_traits>  //  std::is_same
@@ -638,11 +639,11 @@ namespace sqlite_orm {
                 }
 
                 for(auto& udfProxy: this->scalarFunctions) {
-                    try_to_create_scalar_function(db, *udfProxy);
+                    try_to_create_scalar_function(db, udfProxy);
                 }
 
                 for(auto& udfProxy: this->aggregateFunctions) {
-                    try_to_create_aggregate_function(db, *udfProxy);
+                    try_to_create_aggregate_function(db, udfProxy);
                 }
 
                 if(this->on_open) {
@@ -660,7 +661,7 @@ namespace sqlite_orm {
                 constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
                                                ? -1
                                                : int(std::tuple_size<args_tuple>::value);
-                this->scalarFunctions.push_back(make_udf_proxy<F>(
+                this->scalarFunctions.emplace_back(
                     std::move(name),
                     argsCount,
                     std::move(constructAt),
@@ -672,11 +673,13 @@ namespace sqlite_orm {
                         args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
                         auto result = polyfill::apply(udf, std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
-                    }));
+                    },
+                    nullptr,
+                    allocate_udf_storage<F>());
 
                 if(this->connection->retain_count() > 0) {
                     sqlite3* db = this->connection->get();
-                    try_to_create_scalar_function(db, *this->scalarFunctions.back());
+                    try_to_create_scalar_function(db, this->scalarFunctions.back());
                 }
             }
 
@@ -690,7 +693,7 @@ namespace sqlite_orm {
                 constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
                                                ? -1
                                                : int(std::tuple_size<args_tuple>::value);
-                this->aggregateFunctions.push_back(make_udf_proxy<F>(
+                this->aggregateFunctions.emplace_back(
                     std::move(name),
                     argsCount,
                     std::move(constructAt),
@@ -715,21 +718,21 @@ namespace sqlite_orm {
                         F& udf = *static_cast<F*>(udfHandle);
                         auto result = udf.fin();
                         statement_binder<return_type>().result(context, result);
-                    }));
+                    },
+                    allocate_udf_storage<F>());
 
                 if(this->connection->retain_count() > 0) {
                     sqlite3* db = this->connection->get();
-                    try_to_create_aggregate_function(db, *this->aggregateFunctions.back());
+                    try_to_create_aggregate_function(db, this->aggregateFunctions.back());
                 }
             }
 
-            void delete_function_impl(const std::string& name,
-                                      std::vector<std::unique_ptr<udf_proxy>>& functions) const {
+            void delete_function_impl(const std::string& name, std::list<udf_proxy>& functions) const {
 #if __cpp_lib_ranges >= 201911L
                 auto it = std::ranges::find(functions, name, &udf_proxy::name);
 #else
                 auto it = std::find_if(functions.begin(), functions.end(), [&name](auto& udfProxy) {
-                    return udfProxy->name == name;
+                    return udfProxy.name == name;
                 });
 #endif
                 if(it != functions.end()) {
@@ -737,7 +740,7 @@ namespace sqlite_orm {
                         sqlite3* db = this->connection->get();
                         int rc = sqlite3_create_function_v2(db,
                                                             name.c_str(),
-                                                            (*it)->argumentsCount,
+                                                            it->argumentsCount,
                                                             SQLITE_UTF8,
                                                             nullptr,
                                                             nullptr,
@@ -871,8 +874,8 @@ namespace sqlite_orm {
             std::map<std::string, collating_function> collatingFunctions;
             const int cachedForeignKeysCount;
             std::function<int(int)> _busy_handler;
-            std::vector<std::unique_ptr<udf_proxy>> scalarFunctions;
-            std::vector<std::unique_ptr<udf_proxy>> aggregateFunctions;
+            std::list<udf_proxy> scalarFunctions;
+            std::list<udf_proxy> aggregateFunctions;
         };
     }
 }
