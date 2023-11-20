@@ -5,8 +5,6 @@
 
 using namespace sqlite_orm;
 using internal::alias_column_t;
-using internal::alias_holder;
-using internal::column_alias;
 using internal::column_pointer;
 using internal::iterate_ast;
 
@@ -192,7 +190,7 @@ TEST_CASE("ast_iterator") {
             iterate_ast(node, lambda);
         }
         SECTION("column alias in expression") {
-            auto node = order_by(get<colalias_a>() > c(1));
+            auto node = order_by(get<colalias_a>() > 1);
             expected.push_back(typeid(int));
             iterate_ast(node, lambda);
         }
@@ -217,6 +215,11 @@ TEST_CASE("ast_iterator") {
 #endif
     SECTION("into") {
         auto node = into<User>();
+        iterate_ast(node, lambda);
+    }
+    SECTION("match") {
+        auto node = match<User>(std::string("Plazma"));
+        expected.push_back(typeid(std::string));
         iterate_ast(node, lambda);
     }
     SECTION("replace") {
@@ -269,6 +272,7 @@ TEST_CASE("ast_iterator") {
     }
     SECTION("function_call") {
         struct Func {
+            static const char* name();
             bool operator()(int value) const {
                 return value % 2 == 0;
             }
@@ -279,19 +283,24 @@ TEST_CASE("ast_iterator") {
     }
     SECTION("aliases") {
         SECTION("holder") {
-            auto expression = get<colalias_a>() > c(0);
+            auto expression = get<colalias_a>() > 0;
             expected.push_back(typeid(int));
             iterate_ast(expression, lambda);
         }
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         {
             SECTION("direct") {
-                auto expression = "a"_col > c(0);
+                auto expression = "a"_col > 0;
                 expected.push_back(typeid(int));
                 iterate_ast(expression, lambda);
             }
         }
 #endif
+    }
+    SECTION("is_equal_with_table_t") {
+        auto expression = is_equal<User>(std::string("Claude"));
+        expected.push_back(typeid(std::string));
+        iterate_ast(expression, lambda);
     }
     SECTION("aliased regular column") {
         using als = alias_z<User>;
@@ -319,5 +328,13 @@ TEST_CASE("ast_iterator") {
         iterate_ast(expression, lambda);
     }
 #endif
+    SECTION("highlight") {
+        auto expression = highlight<User>(0, std::string("<b>"), std::string("</b>"));
+        expected.push_back(typeid(expression));
+        expected.push_back(typeid(int));
+        expected.push_back(typeid(std::string));
+        expected.push_back(typeid(std::string));
+        iterate_ast(expression, lambda);
+    }
     REQUIRE(typeIndexes == expected);
 }

@@ -39,9 +39,13 @@ namespace sqlite_orm {
             // The strangest thing is that this is mutually exclusive with `is_printable_v`.
             ;
 
+#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
         template<class T>
         using is_bindable = polyfill::bool_constant<is_bindable_v<T>>;
-
+#else
+        template<class T>
+        struct is_bindable : polyfill::bool_constant<is_bindable_v<T>> {};
+#endif
     }
 
     /**
@@ -328,14 +332,11 @@ namespace sqlite_orm {
                 (this->bind(polyfill::invoke(project, std::get<Idx>(tpl)), Idx), ...);
             }
 #else
-            template<class Tpl, size_t I, size_t... Idx, class Projection>
-            void operator()(const Tpl& tpl, std::index_sequence<I, Idx...>, Projection project) const {
-                this->bind(polyfill::invoke(project, std::get<I>(tpl)), I);
-                (*this)(tpl, std::index_sequence<Idx...>{}, std::forward<Projection>(project));
+            template<class Tpl, size_t... Idx, class Projection>
+            void operator()(const Tpl& tpl, std::index_sequence<Idx...>, Projection project) const {
+                using Sink = int[sizeof...(Idx)];
+                (void)Sink{(this->bind(polyfill::invoke(project, std::get<Idx>(tpl)), Idx), 0)...};
             }
-
-            template<class Tpl, class Projection>
-            void operator()(const Tpl&, std::index_sequence<>, Projection) const {}
 #endif
 
             template<class T>

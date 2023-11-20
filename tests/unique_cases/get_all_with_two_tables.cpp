@@ -71,18 +71,17 @@ TEST_CASE("get_all with two tables") {
     }
     {
         storage.replace(Item{4, "nwa"});
-        auto rows = storage.select(&Item::id,
-                                   where(like(&Item::attributes, conc(conc("%", &Pattern::value), "%"))),
-                                   group_by(&Item::id),
-                                   having(is_equal(count(&Pattern::value), select(count<Pattern>()))));
+        auto rows =
+            storage.select(&Item::id,
+                           where(like(&Item::attributes, conc(conc("%", &Pattern::value), "%"))),
+                           group_by(&Item::id).having(is_equal(count(&Pattern::value), select(count<Pattern>()))));
         REQUIRE_THAT(rows, UnorderedEquals<int>({4}));
 
         auto items = storage.get_all<Item>(
             where(in(&Item::id,
                      select(&Item::id,
                             where(like(&Item::attributes, conc(conc("%", &Pattern::value), "%"))),
-                            group_by(&Item::id),
-                            having(is_equal(count(&Pattern::value), select(count<Pattern>())))))));
+                            group_by(&Item::id).having(is_equal(count(&Pattern::value), select(count<Pattern>())))))));
         REQUIRE_THAT(items, UnorderedEquals<Item>({item4}));
     }
     storage.rollback();

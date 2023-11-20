@@ -4,8 +4,15 @@
 using namespace sqlite_orm;
 
 TEST_CASE("statement_serializer comparison operators") {
-    internal::db_objects_tuple<> storage;
-    internal::serializer_context<internal::db_objects_tuple<>> context{storage};
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    auto table = make_table("users", make_column("id", &User::id), make_column("name", &User::name));
+    using db_objects_t = internal::db_objects_tuple<decltype(table)>;
+    auto dbObjects = db_objects_t{table};
+    using context_t = internal::serializer_context<db_objects_t>;
+    context_t context{dbObjects};
     std::string value;
     std::string expected;
     SECTION("less_than") {
@@ -79,6 +86,10 @@ TEST_CASE("statement_serializer comparison operators") {
             value = serialize(c("lala") != 7, context);
         }
         expected = "('lala' != 7)";
+    }
+    SECTION("is_equal_with_table_t") {
+        value = serialize(is_equal<User>("Tom Gregory"), context);
+        expected = "\"users\" = 'Tom Gregory'";
     }
     REQUIRE(value == expected);
 }

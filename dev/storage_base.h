@@ -1,18 +1,21 @@
 #pragma once
 
 #include <sqlite3.h>
-#include <functional>  //  std::function, std::bind
+#include <memory>  //  std::allocator
+#include <functional>  //  std::function, std::bind, std::bind_front
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
 #include <utility>  //  std::move
 #include <system_error>  //  std::system_error
 #include <vector>  //  std::vector
+#include <list>  //  std::list
 #include <memory>  //  std::make_unique, std::unique_ptr
 #include <map>  //  std::map
 #include <type_traits>  //  std::is_same
-#include <algorithm>  //  std::find_if
+#include <algorithm>  //  std::find_if, std::ranges::find
 
 #include "functional/cxx_universal.h"  //  ::size_t
+#include "functional/cxx_tuple_polyfill.h"  //  std::apply
 #include "tuple_helper/tuple_iteration.h"
 #include "pragma.h"
 #include "limit_accessor.h"
@@ -24,6 +27,8 @@
 #include "values_to_tuple.h"
 #include "arg_values.h"
 #include "util.h"
+#include "xdestroy_handling.h"
+#include "udf_proxy.h"
 #include "serializing_util.h"
 
 namespace sqlite_orm {
@@ -160,6 +165,16 @@ namespace sqlite_orm {
                 return guard.commit_on_destroy = f();
             }
 
+            std::string current_time() {
+                auto con = this->get_connection();
+                return this->current_time(con.get());
+            }
+
+            std::string current_date() {
+                auto con = this->get_connection();
+                return this->current_date(con.get());
+            }
+
             std::string current_timestamp() {
                 auto con = this->get_connection();
                 return this->current_timestamp(con.get());
@@ -204,6 +219,15 @@ namespace sqlite_orm {
                 return tableNames;
             }
 
+            /**
+             *  Call it once during storage lifetime to make it keeping its connection opened till dtor call.
+             *  By default if storage is not in-memory it calls `sqlite3_open` only when the connection is really
+             *  needed and closes when it is not needed. This function breaks this rule. In memory storage always
+             *  keeps connection opened so calling this for in-memory storage changes nothing.
+             *  Note about multithreading: in multithreading context avoiding using this function for not in-memory
+             *  storage may lead to data races. If you have data races in such a configuration try to call `open_forever`
+             *  before accessing your storage - it may fix data races.
+             */
             void open_forever() {
                 this->isOpenedForever = true;
                 this->connection->retain();
@@ -213,7 +237,14 @@ namespace sqlite_orm {
             }
 
             /**
-             * Call this to create user defined scalar function. Can be called at any time no matter connection is opened or no.
+             * Create an application-defined scalar SQL function.
+             * Can be called at any time no matter whether the database connection is opened or not.
+             * 
+             * Note: `create_scalar_function()` merely creates a closure to generate an instance of the scalar function object,
+             * together with a copy of the passed initialization arguments.
+             * An instance of the function object is repeatedly recreated for each result row,
+             * ensuring that the calculations always start with freshly initialized values.
+             * 
              * T - function class. T must have operator() overload and static name function like this:
              * ```
              *  struct SqrtFunction {
@@ -228,46 +259,46 @@ namespace sqlite_orm {
              *  };
              * ```
              * 
-             * Note: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
+             * Attention: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
              */
-            template<class F>
-            void create_scalar_function() {
-                static_assert(is_scalar_function_v<F>, "F can't be an aggregate function");
+            template<class F, class... Args>
+            void create_scalar_function(Args&&... constructorArgs) {
+                static_assert(is_scalar_udf_v<F>, "F must be a scalar function");
 
-                std::stringstream ss;
-                ss << F::name() << std::flush;
-                auto name = ss.str();
-                using args_tuple = typename callable_arguments<F>::args_tuple;
-                using return_type = typename callable_arguments<F>::return_type;
-                constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
-                                               ? -1
-                                               : int(std::tuple_size<args_tuple>::value);
-                this->scalarFunctions.emplace_back(new user_defined_scalar_function_t{
-                    std::move(name),
-                    argsCount,
-                    []() -> int* {
-                        return (int*)(new F());
-                    },
-                    /* call = */
-                    [](sqlite3_context* context, void* functionVoidPointer, int argsCount, sqlite3_value** values) {
-                        auto& function = *static_cast<F*>(functionVoidPointer);
-                        args_tuple argsTuple;
-                        values_to_tuple{}(values, argsTuple, argsCount);
-                        auto result = call(function, std::move(argsTuple));
-                        statement_binder<return_type>().result(context, result);
-                    },
-                    delete_function_callback<F>,
+                this->create_scalar_function_impl<F>(/* constructAt */ [constructorArgs...](void* location) {
+                    std::allocator<F> allocator;
+                    using traits = std::allocator_traits<decltype(allocator)>;
+                    traits::construct(allocator, (F*)location, constructorArgs...);
                 });
-
-                if(this->connection->retain_count() > 0) {
-                    sqlite3* db = this->connection->get();
-                    try_to_create_function(db,
-                                           static_cast<user_defined_scalar_function_t&>(*this->scalarFunctions.back()));
-                }
             }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
             /**
-             * Call this to create user defined aggregate function. Can be called at any time no matter connection is opened or no.
+             * Create an application-defined scalar function.
+             * Can be called at any time no matter whether the database connection is opened or not.
+             * 
+             * Note: `create_scalar_function()` merely creates a closure to generate an instance of the scalar function object,
+             * together with a copy of the passed initialization arguments.
+             * An instance of the function object is repeatedly recreated for each result row,
+             * ensuring that the calculations always start with freshly initialized values.
+             * 
+             * Attention: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
+             */
+            template<orm_scalar_function auto f, std::copy_constructible... Args>
+            void create_scalar_function(Args&&... constructorArgs) {
+                return this->create_scalar_function<auto_type_t<f>>(std::forward<Args>(constructorArgs)...);
+            }
+#endif
+
+            /**
+             * Create an application-defined aggregate SQL function.
+             * Can be called at any time no matter whether the database connection is opened or not.
+             * 
+             * Note: `create_aggregate_function()` merely creates a closure to generate an instance of the aggregate function object,
+             * together with a copy of the passed initialization arguments.
+             * An instance of the function object is repeatedly recreated for each result row,
+             * ensuring that the calculations always start with freshly initialized values.
+             * 
              * T - function class. T must have step member function, fin member function and static name function like this:
              * ```
              *   struct MeanFunction {
@@ -289,72 +320,77 @@ namespace sqlite_orm {
              *   };
              * ```
              * 
-             * Note: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
+             * Attention: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
              */
-            template<class F>
-            void create_aggregate_function() {
-                static_assert(is_aggregate_function_v<F>, "F can't be a scalar function");
+            template<class F, class... Args>
+            void create_aggregate_function(Args&&... constructorArgs) {
+                static_assert(is_aggregate_udf_v<F>, "F must be an aggregate function");
 
-                std::stringstream ss;
-                ss << F::name() << std::flush;
-                auto name = ss.str();
-                using args_tuple = typename callable_arguments<F>::args_tuple;
-                using return_type = typename callable_arguments<F>::return_type;
-                constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
-                                               ? -1
-                                               : int(std::tuple_size<args_tuple>::value);
-                this->aggregateFunctions.emplace_back(new user_defined_aggregate_function_t{
-                    std::move(name),
-                    argsCount,
-                    /* create = */
-                    []() -> int* {
-                        return (int*)(new F());
-                    },
-                    /* step = */
-                    [](sqlite3_context*, void* functionVoidPointer, int argsCount, sqlite3_value** values) {
-                        auto& function = *static_cast<F*>(functionVoidPointer);
-                        args_tuple argsTuple;
-                        values_to_tuple{}(values, argsTuple, argsCount);
-                        call(function, &F::step, std::move(argsTuple));
-                    },
-                    /* finalCall = */
-                    [](sqlite3_context* context, void* functionVoidPointer) {
-                        auto& function = *static_cast<F*>(functionVoidPointer);
-                        auto result = function.fin();
-                        statement_binder<return_type>().result(context, result);
-                    },
-                    delete_function_callback<F>,
-                });
-
-                if(this->connection->retain_count() > 0) {
-                    sqlite3* db = this->connection->get();
-                    try_to_create_function(
-                        db,
-                        static_cast<user_defined_aggregate_function_t&>(*this->aggregateFunctions.back()));
-                }
+                this->create_aggregate_function_impl<F>(/* constructAt = */
+                                                        [constructorArgs...](void* location) {
+                                                            std::allocator<F> allocator;
+                                                            using traits = std::allocator_traits<decltype(allocator)>;
+                                                            traits::construct(allocator,
+                                                                              (F*)location,
+                                                                              constructorArgs...);
+                                                        });
             }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
             /**
-             *  Use it to delete scalar function you created before. Can be called at any time no matter connection is open or no.
+             * Create an application-defined aggregate function.
+             * Can be called at any time no matter whether the database connection is opened or not.
+             * 
+             * Note: `create_aggregate_function()` merely creates a closure to generate an instance of the aggregate function object,
+             * together with a copy of the passed initialization arguments.
+             * An instance of the function object is repeatedly recreated for each result row,
+             * ensuring that the calculations always start with freshly initialized values.
+             * 
+             * Attention: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
+             */
+            template<orm_aggregate_function auto f, std::copy_constructible... Args>
+            void create_aggregate_function(Args&&... constructorArgs) {
+                return this->create_aggregate_function<auto_type_t<f>>(std::forward<Args>(constructorArgs)...);
+            }
+#endif
+
+            /**
+             *  Delete a scalar function you created before.
+             *  Can be called at any time no matter whether the database connection is open or not.
              */
             template<class F>
             void delete_scalar_function() {
-                static_assert(is_scalar_function_v<F>, "F cannot be an aggregate function");
+                static_assert(is_scalar_udf_v<F>, "F must be a scalar function");
                 std::stringstream ss;
                 ss << F::name() << std::flush;
                 this->delete_function_impl(ss.str(), this->scalarFunctions);
             }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            template<orm_scalar_function auto f>
+            void delete_scalar_function() {
+                this->delete_scalar_function<auto_type_t<f>>();
+            }
+#endif
+
             /**
-             *  Use it to delete aggregate function you created before. Can be called at any time no matter connection is open or no.
+             *  Delete aggregate function you created before.
+             *  Can be called at any time no matter whether the database connection is open or not.
              */
             template<class F>
             void delete_aggregate_function() {
-                static_assert(is_aggregate_function_v<F>, "F cannot be a scalar function");
+                static_assert(is_aggregate_udf_v<F>, "F must be an aggregate function");
                 std::stringstream ss;
                 ss << F::name() << std::flush;
                 this->delete_function_impl(ss.str(), this->aggregateFunctions);
             }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            template<orm_aggregate_function auto f>
+            void delete_aggregate_function() {
+                this->delete_aggregate_function<auto_type_t<f>>();
+            }
+#endif
 
             template<class C>
             void create_collation() {
@@ -368,25 +404,27 @@ namespace sqlite_orm {
             }
 
             void create_collation(const std::string& name, collating_function f) {
-                collating_function* function = nullptr;
                 const auto functionExists = bool(f);
+                collating_function* function = nullptr;
                 if(functionExists) {
                     function = &(collatingFunctions[name] = std::move(f));
-                } else {
-                    collatingFunctions.erase(name);
                 }
 
                 //  create collations if db is open
                 if(this->connection->retain_count() > 0) {
                     sqlite3* db = this->connection->get();
-                    auto resultCode = sqlite3_create_collation(db,
-                                                               name.c_str(),
-                                                               SQLITE_UTF8,
-                                                               function,
-                                                               functionExists ? collate_callback : nullptr);
-                    if(resultCode != SQLITE_OK) {
+                    int rc = sqlite3_create_collation(db,
+                                                      name.c_str(),
+                                                      SQLITE_UTF8,
+                                                      function,
+                                                      functionExists ? collate_callback : nullptr);
+                    if(rc != SQLITE_OK) {
                         throw_translated_sqlite_error(db);
                     }
+                }
+
+                if(!functionExists) {
+                    collatingFunctions.erase(name);
                 }
             }
 
@@ -586,9 +624,8 @@ namespace sqlite_orm {
                 }
 
                 for(auto& p: this->collatingFunctions) {
-                    auto resultCode =
-                        sqlite3_create_collation(db, p.first.c_str(), SQLITE_UTF8, &p.second, collate_callback);
-                    if(resultCode != SQLITE_OK) {
+                    int rc = sqlite3_create_collation(db, p.first.c_str(), SQLITE_UTF8, &p.second, collate_callback);
+                    if(rc != SQLITE_OK) {
                         throw_translated_sqlite_error(db);
                     }
                 }
@@ -601,12 +638,12 @@ namespace sqlite_orm {
                     sqlite3_busy_handler(this->connection->get(), busy_handler_callback, this);
                 }
 
-                for(auto& functionPointer: this->scalarFunctions) {
-                    try_to_create_function(db, static_cast<user_defined_scalar_function_t&>(*functionPointer));
+                for(auto& udfProxy: this->scalarFunctions) {
+                    try_to_create_scalar_function(db, udfProxy);
                 }
 
-                for(auto& functionPointer: this->aggregateFunctions) {
-                    try_to_create_function(db, static_cast<user_defined_aggregate_function_t&>(*functionPointer));
+                for(auto& udfProxy: this->aggregateFunctions) {
+                    try_to_create_aggregate_function(db, udfProxy);
                 }
 
                 if(this->on_open) {
@@ -614,101 +651,151 @@ namespace sqlite_orm {
                 }
             }
 
-            void delete_function_impl(const std::string& name,
-                                      std::vector<std::unique_ptr<user_defined_function_base>>& functionsVector) const {
-                auto it = find_if(functionsVector.begin(), functionsVector.end(), [&name](auto& functionPointer) {
-                    return functionPointer->name == name;
-                });
-                if(it != functionsVector.end()) {
-                    functionsVector.erase(it);
-                    it = functionsVector.end();
+            template<class F>
+            void create_scalar_function_impl(std::function<void(void* location)> constructAt) {
+                std::stringstream ss;
+                ss << F::name() << std::flush;
+                auto name = ss.str();
+                using args_tuple = typename callable_arguments<F>::args_tuple;
+                using return_type = typename callable_arguments<F>::return_type;
+                constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
+                                               ? -1
+                                               : int(std::tuple_size<args_tuple>::value);
+                this->scalarFunctions.emplace_back(
+                    std::move(name),
+                    argsCount,
+                    std::move(constructAt),
+                    /* destroy = */
+                    obtain_xdestroy_for<F>(udf_proxy::destruct_only_deleter{}),
+                    /* call = */
+                    [](void* udfHandle, sqlite3_context* context, int argsCount, sqlite3_value** values) {
+                        F& udf = *static_cast<F*>(udfHandle);
+                        args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
+                        auto result = polyfill::apply(udf, std::move(argsTuple));
+                        statement_binder<return_type>().result(context, result);
+                    },
+                    nullptr,
+                    allocate_udf_storage<F>());
 
+                if(this->connection->retain_count() > 0) {
+                    sqlite3* db = this->connection->get();
+                    try_to_create_scalar_function(db, this->scalarFunctions.back());
+                }
+            }
+
+            template<class F>
+            void create_aggregate_function_impl(std::function<void(void* location)> constructAt) {
+                std::stringstream ss;
+                ss << F::name() << std::flush;
+                auto name = ss.str();
+                using args_tuple = typename callable_arguments<F>::args_tuple;
+                using return_type = typename callable_arguments<F>::return_type;
+                constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
+                                               ? -1
+                                               : int(std::tuple_size<args_tuple>::value);
+                this->aggregateFunctions.emplace_back(
+                    std::move(name),
+                    argsCount,
+                    std::move(constructAt),
+                    /* destroy = */
+                    obtain_xdestroy_for<F>(udf_proxy::destruct_only_deleter{}),
+                    /* step = */
+                    [](void* udfHandle, sqlite3_context*, int argsCount, sqlite3_value** values) {
+                        F& udf = *static_cast<F*>(udfHandle);
+                        args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
+#if __cpp_lib_bind_front >= 201907L
+                        std::apply(std::bind_front(&F::step, &udf), std::move(argsTuple));
+#else
+                        polyfill::apply(
+                            [&udf](auto&&... args) {
+                                udf.step(std::forward<decltype(args)>(args)...);
+                            },
+                            std::move(argsTuple));
+#endif
+                    },
+                    /* finalCall = */
+                    [](void* udfHandle, sqlite3_context* context) {
+                        F& udf = *static_cast<F*>(udfHandle);
+                        auto result = udf.fin();
+                        statement_binder<return_type>().result(context, result);
+                    },
+                    allocate_udf_storage<F>());
+
+                if(this->connection->retain_count() > 0) {
+                    sqlite3* db = this->connection->get();
+                    try_to_create_aggregate_function(db, this->aggregateFunctions.back());
+                }
+            }
+
+            void delete_function_impl(const std::string& name, std::list<udf_proxy>& functions) const {
+#if __cpp_lib_ranges >= 201911L
+                auto it = std::ranges::find(functions, name, &udf_proxy::name);
+#else
+                auto it = std::find_if(functions.begin(), functions.end(), [&name](auto& udfProxy) {
+                    return udfProxy.name == name;
+                });
+#endif
+                if(it != functions.end()) {
                     if(this->connection->retain_count() > 0) {
                         sqlite3* db = this->connection->get();
-                        auto resultCode = sqlite3_create_function_v2(db,
-                                                                     name.c_str(),
-                                                                     0,
-                                                                     SQLITE_UTF8,
-                                                                     nullptr,
-                                                                     nullptr,
-                                                                     nullptr,
-                                                                     nullptr,
-                                                                     nullptr);
-                        if(resultCode != SQLITE_OK) {
+                        int rc = sqlite3_create_function_v2(db,
+                                                            name.c_str(),
+                                                            it->argumentsCount,
+                                                            SQLITE_UTF8,
+                                                            nullptr,
+                                                            nullptr,
+                                                            nullptr,
+                                                            nullptr,
+                                                            nullptr);
+                        if(rc != SQLITE_OK) {
                             throw_translated_sqlite_error(db);
                         }
                     }
+                    it = functions.erase(it);
                 } else {
                     throw std::system_error{orm_error_code::function_not_found};
                 }
             }
 
-            void try_to_create_function(sqlite3* db, user_defined_scalar_function_t& function) {
-                auto resultCode = sqlite3_create_function_v2(db,
-                                                             function.name.c_str(),
-                                                             function.argumentsCount,
-                                                             SQLITE_UTF8,
-                                                             &function,
-                                                             scalar_function_callback,
-                                                             nullptr,
-                                                             nullptr,
-                                                             nullptr);
-                if(resultCode != SQLITE_OK) {
+            static void try_to_create_scalar_function(sqlite3* db, udf_proxy& udfProxy) {
+                int rc = sqlite3_create_function_v2(db,
+                                                    udfProxy.name.c_str(),
+                                                    udfProxy.argumentsCount,
+                                                    SQLITE_UTF8,
+                                                    &udfProxy,
+                                                    scalar_function_callback,
+                                                    nullptr,
+                                                    nullptr,
+                                                    nullptr);
+                if(rc != SQLITE_OK) {
                     throw_translated_sqlite_error(db);
                 }
             }
 
-            void try_to_create_function(sqlite3* db, user_defined_aggregate_function_t& function) {
-                auto resultCode = sqlite3_create_function(db,
-                                                          function.name.c_str(),
-                                                          function.argumentsCount,
-                                                          SQLITE_UTF8,
-                                                          &function,
-                                                          nullptr,
-                                                          aggregate_function_step_callback,
-                                                          aggregate_function_final_callback);
-                if(resultCode != SQLITE_OK) {
-                    throw_translated_sqlite_error(resultCode);
+            static void try_to_create_aggregate_function(sqlite3* db, udf_proxy& udfProxy) {
+                int rc = sqlite3_create_function(db,
+                                                 udfProxy.name.c_str(),
+                                                 udfProxy.argumentsCount,
+                                                 SQLITE_UTF8,
+                                                 &udfProxy,
+                                                 nullptr,
+                                                 aggregate_function_step_callback,
+                                                 aggregate_function_final_callback);
+                if(rc != SQLITE_OK) {
+                    throw_translated_sqlite_error(rc);
                 }
             }
 
-            static void
-            aggregate_function_step_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
-                auto functionVoidPointer = sqlite3_user_data(context);
-                auto functionPointer = static_cast<user_defined_aggregate_function_t*>(functionVoidPointer);
-                auto aggregateContextVoidPointer = sqlite3_aggregate_context(context, sizeof(int**));
-                auto aggregateContextIntPointer = static_cast<int**>(aggregateContextVoidPointer);
-                if(*aggregateContextIntPointer == nullptr) {
-                    *aggregateContextIntPointer = functionPointer->create();
-                }
-                functionPointer->step(context, *aggregateContextIntPointer, argsCount, values);
+            std::string current_time(sqlite3* db) {
+                std::string result;
+                perform_exec(db, "SELECT CURRENT_TIME", extract_single_value<std::string>, &result);
+                return result;
             }
 
-            static void aggregate_function_final_callback(sqlite3_context* context) {
-                auto functionVoidPointer = sqlite3_user_data(context);
-                auto functionPointer = static_cast<user_defined_aggregate_function_t*>(functionVoidPointer);
-                auto aggregateContextVoidPointer = sqlite3_aggregate_context(context, sizeof(int**));
-                auto aggregateContextIntPointer = static_cast<int**>(aggregateContextVoidPointer);
-                functionPointer->finalCall(context, *aggregateContextIntPointer);
-                functionPointer->destroy(*aggregateContextIntPointer);
-            }
-
-            static void scalar_function_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
-                auto functionVoidPointer = sqlite3_user_data(context);
-                auto functionPointer = static_cast<user_defined_scalar_function_t*>(functionVoidPointer);
-                std::unique_ptr<int, void (*)(int*)> callablePointer(functionPointer->create(),
-                                                                     functionPointer->destroy);
-                if(functionPointer->argumentsCount != -1 && functionPointer->argumentsCount != argsCount) {
-                    throw std::system_error{orm_error_code::arguments_count_does_not_match};
-                }
-                functionPointer->run(context, functionPointer, argsCount, values);
-            }
-
-            template<class F>
-            static void delete_function_callback(int* pointer) {
-                auto voidPointer = static_cast<void*>(pointer);
-                auto fPointer = static_cast<F*>(voidPointer);
-                delete fPointer;
+            std::string current_date(sqlite3* db) {
+                std::string result;
+                perform_exec(db, "SELECT CURRENT_DATE", extract_single_value<std::string>, &result);
+                return result;
             }
 
             std::string current_timestamp(sqlite3* db) {
@@ -747,13 +834,17 @@ namespace sqlite_orm {
                     ++storageColumnInfoIndex) {
 
                     //  get storage's column info
-                    auto& storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
-                    auto& columnName = storageColumnInfo.name;
+                    table_xinfo& storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
+                    const std::string& columnName = storageColumnInfo.name;
 
-                    //  search for a column in db eith the same name
+                    //  search for a column in db with the same name
+#if __cpp_lib_ranges >= 201911L
+                    auto dbColumnInfoIt = std::ranges::find(dbTableInfo, columnName, &table_xinfo::name);
+#else
                     auto dbColumnInfoIt = std::find_if(dbTableInfo.begin(), dbTableInfo.end(), [&columnName](auto& ti) {
                         return ti.name == columnName;
                     });
+#endif
                     if(dbColumnInfoIt != dbTableInfo.end()) {
                         auto& dbColumnInfo = *dbColumnInfoIt;
                         auto columnsAreEqual =
@@ -783,8 +874,8 @@ namespace sqlite_orm {
             std::map<std::string, collating_function> collatingFunctions;
             const int cachedForeignKeysCount;
             std::function<int(int)> _busy_handler;
-            std::vector<std::unique_ptr<user_defined_function_base>> scalarFunctions;
-            std::vector<std::unique_ptr<user_defined_function_base>> aggregateFunctions;
+            std::list<udf_proxy> scalarFunctions;
+            std::list<udf_proxy> aggregateFunctions;
         };
     }
 }

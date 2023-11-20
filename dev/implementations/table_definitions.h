@@ -9,8 +9,8 @@
 
 #include "../functional/cxx_universal.h"  //  ::size_t
 #include "../type_printer.h"
-#include "../column.h"
-#include "../table.h"
+#include "../schema/column.h"
+#include "../schema/table.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -31,7 +31,7 @@ namespace sqlite_orm {
                                  column.is_not_null(),
                                  std::move(dft),
                                  column.template is<is_primary_key>(),
-                                 column.is_generated());
+                                 column.template is<is_generated_always>());
             });
             auto compositeKeyColumnNames = this->composite_key_columns_names();
             for(size_t i = 0; i < compositeKeyColumnNames.size(); ++i) {

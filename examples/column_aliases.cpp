@@ -66,7 +66,7 @@ void marvel_hero_ordered_by_o_pos() {
         //  WHERE i > 0
         //  ORDER BY i
         auto rows = storage.select(columns(&MarvelHero::name, as<i>(instr(&MarvelHero::abilities, "o"))),
-                                   where(i > c(0)),
+                                   where(i > 0),
                                    order_by(i));
         for(auto& row: rows) {
             cout << get<0>(row) << '\t' << get<1>(row) << '\n';
@@ -86,9 +86,34 @@ void marvel_hero_ordered_by_o_pos() {
     cout << endl;
 }
 
+void cpp20_column_pointer() {
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    struct Result {
+        int64 id;
+        time_t stamp;
+    };
+
+    struct LastResult : Result {};
+    constexpr auto last_result = c<LastResult>();
+
+    auto storage = make_storage(
+        "",
+        make_table("result", make_column("id", &Result::id, primary_key()), make_column("stamp", &Result::stamp)),
+        make_table<LastResult>("last_result",
+                               make_column("id", &LastResult::id, primary_key()),
+                               make_column("stamp", &LastResult::stamp)));
+    storage.sync_schema();
+
+    //  SELECT "last_result"."id", "last_result"."stamp" FROM "last_result"
+    std::string sql = storage.dump(select(columns(last_result->*&LastResult::id, last_result->*&LastResult::stamp)));
+    cout << sql << endl;
+#endif
+}
+
 int main() {
     try {
         marvel_hero_ordered_by_o_pos();
+        cpp20_column_pointer();
     } catch(const system_error& e) {
         cout << "[" << e.code() << "] " << e.what();
     }

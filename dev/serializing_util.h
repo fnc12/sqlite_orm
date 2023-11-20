@@ -20,8 +20,8 @@ namespace sqlite_orm {
         template<class O>
         struct order_by_t;
 
-        template<class T, class DBOs>
-        std::string serialize(const T&, const serializer_context<DBOs>&);
+        template<class T, class C>
+        std::string serialize(const T& t, const C& context);
 
         template<class T, class Ctx>
         std::string serialize_order_by(const T&, const Ctx&);
@@ -92,6 +92,7 @@ namespace sqlite_orm {
             actions_tuple,
             expressions_tuple,
             dynamic_expressions,
+            compound_expressions,
             serialized,
             identifier,
             identifiers,
@@ -120,6 +121,7 @@ namespace sqlite_orm {
         constexpr streaming<stream_as::actions_tuple> streaming_actions_tuple{};
         constexpr streaming<stream_as::expressions_tuple> streaming_expressions_tuple{};
         constexpr streaming<stream_as::dynamic_expressions> streaming_dynamic_expressions{};
+        constexpr streaming<stream_as::compound_expressions> streaming_compound_expressions{};
         constexpr streaming<stream_as::serialized> streaming_serialized{};
         constexpr streaming<stream_as::identifier> streaming_identifier{};
         constexpr streaming<stream_as::identifiers> streaming_identifiers{};
@@ -173,6 +175,25 @@ namespace sqlite_orm {
             return ss;
         }
 
+        // serialize and stream expressions of a compound statement;
+        // separated by compound operator
+        template<class T, class Ctx>
+        std::ostream&
+        operator<<(std::ostream& ss,
+                   std::tuple<const streaming<stream_as::compound_expressions>&, T, const std::string&, Ctx> tpl) {
+            const auto& args = get<1>(tpl);
+            const std::string& opString = get<2>(tpl);
+            auto& context = get<3>(tpl);
+
+            iterate_tuple(args, [&ss, &opString, &context, first = true](auto& arg) mutable {
+                if(!std::exchange(first, false)) {
+                    ss << ' ' << opString << ' ';
+                }
+                ss << serialize(arg, context);
+            });
+            return ss;
+        }
+
         // serialize and stream multi_order_by arguments;
         // comma-separated
         template<class... Os, class Ctx>
@@ -189,7 +210,7 @@ namespace sqlite_orm {
             return ss;
         }
 
-        // serialize and stream a vector of expressions;
+        // serialize and stream a vector or any other STL container of expressions;
         // comma-separated
         template<class C, class Ctx>
         std::ostream& operator<<(std::ostream& ss,
@@ -198,8 +219,9 @@ namespace sqlite_orm {
             auto& context = get<2>(tpl);
 
             constexpr std::array<const char*, 2> sep = {", ", ""};
-            for(size_t i = 0, first = true; i < args.size(); ++i) {
-                ss << sep[std::exchange(first, false)] << serialize(args[i], context);
+            bool first = true;
+            for(auto& argument: args) {
+                ss << sep[std::exchange(first, false)] << serialize(argument, context);
             }
             return ss;
         }
@@ -211,9 +233,8 @@ namespace sqlite_orm {
             const auto& strings = get<1>(tpl);
 
             constexpr std::array<const char*, 2> sep = {", ", ""};
-            bool first = true;
-            for(auto it = strings.begin(); it != strings.end(); ++it) {
-                ss << sep[std::exchange(first, false)] << *it;
+            for(size_t i = 0, first = true; i < strings.size(); ++i) {
+                ss << sep[std::exchange(first, false)] << strings[i];
             }
             return ss;
         }
@@ -367,39 +388,27 @@ namespace sqlite_orm {
             const bool& isNotNull = get<2>(tpl);
             auto& context = get<3>(tpl);
 
-            using constraints_type = constraints_type_t<column_constraints<Op...>>;
-            constexpr size_t constraintsCount = std::tuple_size<constraints_type>::value;
-            if(constraintsCount) {
-                std::vector<std::string> constraintsStrings;
-                constraintsStrings.reserve(constraintsCount);
-                int primaryKeyIndex = -1;
-                int autoincrementIndex = -1;
-                int tupleIndex = 0;
-                iterate_tuple(column.constraints,
-                              [&constraintsStrings, &primaryKeyIndex, &autoincrementIndex, &tupleIndex, &context](
-                                  auto& constraint) {
-                                  using constraint_type = std::decay_t<decltype(constraint)>;
-                                  constraintsStrings.push_back(serialize(constraint, context));
-                                  if(is_primary_key_v<constraint_type>) {
-                                      primaryKeyIndex = tupleIndex;
-                                  } else if(is_autoincrement_v<constraint_type>) {
-                                      autoincrementIndex = tupleIndex;
-                                  }
-                                  ++tupleIndex;
-                              });
-                if(primaryKeyIndex != -1 && autoincrementIndex != -1 && autoincrementIndex < primaryKeyIndex) {
-                    iter_swap(constraintsStrings.begin() + primaryKeyIndex,
-                              constraintsStrings.begin() + autoincrementIndex);
+            auto first = true;
+            constexpr std::array<const char*, 2> sep = {" ", ""};
+            iterate_tuple(column.constraints, [&ss, &context, &first, &sep](auto& constraint) {
+                ss << sep[std::exchange(first, false)];
+                ss << serialize(constraint, context);
+            });
+            using constraints_tuple = decltype(column.constraints);
+            constexpr bool hasExplicitNullableConstraint =
+                mpl::invoke_t<mpl::disjunction<check_if_tuple_has_type<null_t>, check_if_tuple_has_type<not_null_t>>,
+                              constraints_tuple>::value;
+            if(!hasExplicitNullableConstraint) {
+                ss << sep[std::exchange(first, false)];
+                if(isNotNull) {
+                    ss << "NOT NULL";
+                } else {
+                    ss << "NULL";
                 }
-                for(auto& str: constraintsStrings) {
-                    ss << str << ' ';
-                }
-            }
-            if(isNotNull) {
-                ss << "NOT NULL ";
             }
 
             return ss;
         }
     }
 }
+

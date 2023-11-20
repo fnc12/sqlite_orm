@@ -215,9 +215,15 @@ TEST_CASE("Prepared get all") {
         }
     }
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    SECTION("from alias") {
+    SECTION("from table reference") {
+        constexpr auto schema = c<sqlite_master>();
+        auto statement = storage.prepare(get_all<schema>(where(schema->*&sqlite_master::type == "table")));
+        auto str = storage.dump(statement);
+        testSerializing(statement);
+    }
+    SECTION("from aliased table") {
         auto statement =
-            storage.prepare(get_all<sqlite_schema>(where(c(sqlite_schema->*&sqlite_master::type) == "table")));
+            storage.prepare(get_all<sqlite_schema>(where(sqlite_schema->*&sqlite_master::type == "table")));
         auto str = storage.dump(statement);
         testSerializing(statement);
     }

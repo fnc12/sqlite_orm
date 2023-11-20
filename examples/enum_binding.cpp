@@ -108,15 +108,15 @@ namespace sqlite_orm {
      */
     template<>
     struct row_extractor<Gender> {
-        Gender extract(const char* row_value) {
-            if(auto gender = GenderFromString(row_value)) {
+        Gender extract(const char* columnText) const {
+            if(auto gender = GenderFromString(columnText)) {
                 return *gender;
             } else {
-                throw std::runtime_error("incorrect gender string (" + std::string(row_value) + ")");
+                throw std::runtime_error("incorrect gender string (" + std::string(columnText) + ")");
             }
         }
 
-        Gender extract(sqlite3_stmt* stmt, int columnIndex) {
+        Gender extract(sqlite3_stmt* stmt, int columnIndex) const {
             auto str = sqlite3_column_text(stmt, columnIndex);
             return this->extract((const char*)str);
         }

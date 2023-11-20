@@ -12,7 +12,7 @@
 #include "../tuple_helper/tuple_filter.h"
 #include "../tuple_helper/tuple_traits.h"
 #include "../default_value_extractor.h"
-#include "../column.h"
+#include "../schema/column.h"
 
 namespace sqlite_orm {
     namespace internal {

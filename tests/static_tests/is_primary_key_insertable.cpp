@@ -1,6 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
-#include <type_traits>  //  std::std::decay
+#include <type_traits>  //  std::decay
 
 using namespace sqlite_orm;
 

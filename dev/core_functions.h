@@ -12,7 +12,7 @@
 #include "conditions.h"
 #include "serialize_result_type.h"
 #include "operators.h"
-#include "expression.h"
+#include "tags.h"
 #include "ast/into.h"
 
 namespace sqlite_orm {
@@ -612,40 +612,23 @@ namespace sqlite_orm {
 
         template<class T>
         using field_type_or_type_t = polyfill::detected_or_t<T, type_t, member_field_type<T>>;
+
+        template<class T, class X, class Y, class Z>
+        struct highlight_t {
+            using table_type = T;
+            using argument0_type = X;
+            using argument1_type = Y;
+            using argument2_type = Z;
+
+            argument0_type argument0;
+            argument1_type argument1;
+            argument2_type argument2;
+
+            highlight_t(argument0_type argument0, argument1_type argument1, argument2_type argument2) :
+                argument0(std::move(argument0)), argument1(std::move(argument1)), argument2(std::move(argument2)) {}
+        };
     }
 
-    /**
-     *  Cute operators for core functions
-     */
-    template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
-    internal::less_than_t<F, R> operator<(F f, R r) {
-        return {std::move(f), std::move(r)};
-    }
-
-    template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
-    internal::less_or_equal_t<F, R> operator<=(F f, R r) {
-        return {std::move(f), std::move(r)};
-    }
-
-    template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
-    internal::greater_than_t<F, R> operator>(F f, R r) {
-        return {std::move(f), std::move(r)};
-    }
-
-    template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
-    internal::greater_or_equal_t<F, R> operator>=(F f, R r) {
-        return {std::move(f), std::move(r)};
-    }
-
-    template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
-    internal::is_equal_t<F, R> operator==(F f, R r) {
-        return {std::move(f), std::move(r)};
-    }
-
-    template<class F, class R, internal::satisfies<internal::is_built_in_function, F> = true>
-    internal::is_not_equal_t<F, R> operator!=(F f, R r) {
-        return {std::move(f), std::move(r)};
-    }
 #ifdef SQLITE_ENABLE_MATH_FUNCTIONS
 
     /**
@@ -1862,6 +1845,17 @@ namespace sqlite_orm {
         return {};
     }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  COUNT(*) with FROM function. Specified recordset will be serialized as
+     *  a from argument.
+     */
+    template<orm_refers_to_recordset auto mapped>
+    auto count() {
+        return count<internal::decay_table_reference_t<mapped>>();
+    }
+#endif
+
     /**
      *  AVG(X) aggregate function.
      */
@@ -2044,15 +2038,15 @@ namespace sqlite_orm {
     }
 #endif  //  SQLITE_ENABLE_JSON1
 
-    // Deliberately put operators for `arithmetic_t` or `expression_t` into the internal namespace
+    // Intentionally place operators for types classified as arithmetic or general operator arguments in the internal namespace
     // to facilitate ADL (Argument Dependent Lookup)
     namespace internal {
         template<class L,
                  class R,
                  std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
                                                           std::is_base_of<arithmetic_t, R>,
-                                                          polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>>,
+                                                          is_operator_argument<L>,
+                                                          is_operator_argument<R>>,
                                   bool> = true>
         add_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator+(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -2062,8 +2056,8 @@ namespace sqlite_orm {
                  class R,
                  std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
                                                           std::is_base_of<arithmetic_t, R>,
-                                                          polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>>,
+                                                          is_operator_argument<L>,
+                                                          is_operator_argument<R>>,
                                   bool> = true>
         sub_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator-(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -2073,8 +2067,8 @@ namespace sqlite_orm {
                  class R,
                  std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
                                                           std::is_base_of<arithmetic_t, R>,
-                                                          polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>>,
+                                                          is_operator_argument<L>,
+                                                          is_operator_argument<R>>,
                                   bool> = true>
         mul_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator*(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -2084,8 +2078,8 @@ namespace sqlite_orm {
                  class R,
                  std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
                                                           std::is_base_of<arithmetic_t, R>,
-                                                          polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>>,
+                                                          is_operator_argument<L>,
+                                                          is_operator_argument<R>>,
                                   bool> = true>
         div_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator/(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -2095,11 +2089,16 @@ namespace sqlite_orm {
                  class R,
                  std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
                                                           std::is_base_of<arithmetic_t, R>,
-                                                          polyfill::is_specialization_of<L, expression_t>,
-                                                          polyfill::is_specialization_of<R, expression_t>>,
+                                                          is_operator_argument<L>,
+                                                          is_operator_argument<R>>,
                                   bool> = true>
         mod_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator%(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
         }
+    }
+
+    template<class T, class X, class Y, class Z>
+    internal::highlight_t<T, X, Y, Z> highlight(X x, Y y, Z z) {
+        return {std::move(x), std::move(y), std::move(z)};
     }
 }
