@@ -5,9 +5,7 @@
 #endif
 #include <utility>  //  std::forward
 
-#if __cpp_lib_invoke < 201411L
 #include "cxx_type_traits_polyfill.h"
-#endif
 #include "../member_traits/member_traits.h"
 
 namespace sqlite_orm {

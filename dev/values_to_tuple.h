@@ -1,10 +1,11 @@
 #pragma once
 
 #include <sqlite3.h>
-#include <type_traits>  //  std::index_sequence, std::make_index_sequence
-#include <tuple>  //  std::tuple, std::tuple_size, std::get
+#include <type_traits>  //  std::enable_if, std::is_same, std::index_sequence, std::make_index_sequence
+#include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
 
-#include "functional/cxx_universal.h"
+#include "functional/cxx_universal.h"  //  ::size_t
+#include "functional/cxx_functional_polyfill.h"
 #include "row_extractor.h"
 #include "arg_values.h"
 
@@ -12,33 +13,29 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        struct values_to_tuple {
-            template<class Tpl>
-            void operator()(sqlite3_value** values, Tpl& tuple, int /*argsCount*/) const {
-                (*this)(values, tuple, std::make_index_sequence<std::tuple_size<Tpl>::value>{});
+        template<class Tpl>
+        struct tuple_from_values {
+            template<class R = Tpl,
+                     std::enable_if_t<polyfill::negation_v<std::is_same<R, std::tuple<arg_values>>>, bool> = true>
+            R operator()(sqlite3_value** values, int /*argsCount*/) const {
+                return this->create_from(values, std::make_index_sequence<std::tuple_size<Tpl>::value>{});
             }
 
-            void operator()(sqlite3_value** values, std::tuple<arg_values>& tuple, int argsCount) const {
-                std::get<0>(tuple) = arg_values(argsCount, values);
+            template<class R = Tpl, std::enable_if_t<std::is_same<R, std::tuple<arg_values>>::value, bool> = true>
+            R operator()(sqlite3_value** values, int argsCount) const {
+                return {arg_values(argsCount, values)};
             }
 
           private:
-#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
-            template<class Tpl, size_t... Idx>
-            void operator()(sqlite3_value** values, Tpl& tuple, std::index_sequence<Idx...>) const {
-                (this->extract(values[Idx], std::get<Idx>(tuple)), ...);
+            template<size_t... Idx>
+            Tpl create_from(sqlite3_value** values, std::index_sequence<Idx...>) const {
+                return {this->extract<std::tuple_element_t<Idx, Tpl>>(values[Idx])...};
             }
-#else
-            template<class Tpl, size_t... Idx>
-            void operator()(sqlite3_value** values, Tpl& tuple, std::index_sequence<Idx...>) const {
-                using Sink = int[sizeof...(Idx)];
-                (void)Sink{(this->extract(values[Idx], std::get<Idx>(tuple)), 0)...};
-            }
-#endif
+
             template<class T>
-            void extract(sqlite3_value* value, T& t) const {
+            T extract(sqlite3_value* value) const {
                 const auto rowExtractor = boxed_value_extractor<T>();
-                t = rowExtractor.extract(value);
+                return rowExtractor.extract(value);
             }
         };
     }

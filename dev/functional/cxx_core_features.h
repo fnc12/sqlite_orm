@@ -37,6 +37,10 @@
 #define SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
 #endif
 
+#if __cpp_constexpr >= 201603L
+#define SQLITE_ORM_CONSTEXPR_LAMBDAS_SUPPORTED
+#endif
+
 #if __cpp_if_constexpr >= 201606L
 #define SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
 #endif
