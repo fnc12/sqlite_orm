@@ -233,8 +233,9 @@ namespace sqlite_orm {
             const auto& strings = get<1>(tpl);
 
             constexpr std::array<const char*, 2> sep = {", ", ""};
-            for(size_t i = 0, first = true; i < strings.size(); ++i) {
-                ss << sep[std::exchange(first, false)] << strings[i];
+            bool first = true;
+            for(auto it = strings.begin(); it != strings.end(); ++it) {
+                ss << sep[std::exchange(first, false)] << *it;
             }
             return ss;
         }
@@ -411,4 +412,3 @@ namespace sqlite_orm {
         }
     }
 }
-
