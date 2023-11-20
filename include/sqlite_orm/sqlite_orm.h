@@ -10883,6 +10883,72 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
+// #include "functional/function_traits.h"
+
+// #include "cxx_type_traits_polyfill.h"
+
+// #include "mpl.h"
+
+namespace sqlite_orm {
+    namespace internal {
+        template<class F>
+        struct function_traits;
+
+        /*
+         *  A function's return type
+         */
+        template<class F>
+        using function_return_type_t = typename function_traits<F>::return_type;
+
+        /*
+         *  A function's arguments tuple
+         */
+        template<class F,
+                 template<class...>
+                 class Tuple,
+                 template<class...> class ProjectOp = polyfill::type_identity_t>
+        using function_arguments = typename function_traits<F>::template arguments_tuple<Tuple, ProjectOp>;
+
+        /*
+         *  Define nested typenames:
+         *  - return_type
+         *  - arguments_tuple
+         */
+        template<class R, class... Args>
+        struct function_traits<R(Args...)> {
+            using return_type = R;
+
+            template<template<class...> class Tuple, template<class...> class ProjectOp>
+            using arguments_tuple = Tuple<mpl::invoke_fn_t<ProjectOp, Args>...>;
+        };
+
+        // non-exhaustive partial specializations of `function_traits`
+
+        template<class R, class... Args>
+        struct function_traits<R(Args...) const> : function_traits<R(Args...)> {};
+
+#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
+        template<class R, class... Args>
+        struct function_traits<R(Args...) noexcept> : function_traits<R(Args...)> {};
+
+        template<class R, class... Args>
+        struct function_traits<R(Args...) const noexcept> : function_traits<R(Args...)> {};
+#endif
+
+        /*
+         *  Pick signature of function pointer
+         */
+        template<class R, class... Args>
+        struct function_traits<R (*)(Args...)> : function_traits<R(Args...)> {};
+
+        /*
+         *  Pick signature of pointer-to-member function
+         */
+        template<class F, class O>
+        struct function_traits<F O::*> : function_traits<F> {};
+    }
+}
+
 // #include "tags.h"
 
 namespace sqlite_orm {
@@ -10920,47 +10986,30 @@ namespace sqlite_orm {
                              std::enable_if_t<std::is_member_function_pointer<aggregate_fin_function_t<F>>::value>>> =
             true;
 
-        template<class T>
-        struct member_function_arguments;
-
-        template<class O, class R, class... Args>
-        struct member_function_arguments<R (O::*)(Args...) const> {
-            using member_function_type = R (O::*)(Args...) const;
-            using tuple_type = std::tuple<std::decay_t<Args>...>;
-            using return_type = R;
-        };
-
-        template<class O, class R, class... Args>
-        struct member_function_arguments<R (O::*)(Args...)> {
-            using member_function_type = R (O::*)(Args...);
-            using tuple_type = std::tuple<std::decay_t<Args>...>;
-            using return_type = R;
-        };
-
         template<class F, class SFINAE = void>
         struct callable_arguments_impl;
 
         template<class F>
         struct callable_arguments_impl<F, std::enable_if_t<is_scalar_udf_v<F>>> {
-            using args_tuple = typename member_function_arguments<scalar_call_function_t<F>>::tuple_type;
-            using return_type = typename member_function_arguments<scalar_call_function_t<F>>::return_type;
+            using args_tuple = function_arguments<scalar_call_function_t<F>, std::tuple, std::decay_t>;
+            using return_type = function_return_type_t<scalar_call_function_t<F>>;
         };
 
         template<class F>
         struct callable_arguments_impl<F, std::enable_if_t<is_aggregate_udf_v<F>>> {
-            using args_tuple = typename member_function_arguments<aggregate_step_function_t<F>>::tuple_type;
-            using return_type = typename member_function_arguments<aggregate_fin_function_t<F>>::return_type;
+            using args_tuple = function_arguments<aggregate_step_function_t<F>, std::tuple, std::decay_t>;
+            using return_type = function_return_type_t<aggregate_fin_function_t<F>>;
         };
 
         template<class F>
         struct callable_arguments : callable_arguments_impl<F> {};
 
-        template<class UDF, class... Args>
+        template<class UDF, class... CallArgs>
         struct function_call {
             using udf_type = UDF;
-            using args_tuple = std::tuple<Args...>;
+            using args_tuple = std::tuple<CallArgs...>;
 
-            args_tuple args;
+            args_tuple callArgs;
         };
 
         template<class T>
@@ -10971,8 +11020,8 @@ namespace sqlite_orm {
         struct unpacked_arg {
             using type = T;
         };
-        template<class F, class... Args>
-        struct unpacked_arg<function_call<F, Args...>> {
+        template<class F, class... CallArgs>
+        struct unpacked_arg<function_call<F, CallArgs...>> {
             using type = typename callable_arguments<F>::return_type;
         };
         template<class T>
@@ -11061,9 +11110,9 @@ namespace sqlite_orm {
          */
         template<class UDF>
         struct function : polyfill::type_identity<UDF> {
-            template<typename... Args>
-            function_call<UDF, Args...> operator()(Args... args) const {
-                using args_tuple = std::tuple<Args...>;
+            template<typename... CallArgs>
+            function_call<UDF, CallArgs...> operator()(CallArgs... callArgs) const {
+                using args_tuple = std::tuple<CallArgs...>;
                 using function_args_tuple = typename callable_arguments<UDF>::args_tuple;
                 constexpr size_t argsCount = std::tuple_size<args_tuple>::value;
                 constexpr size_t functionArgsCount = std::tuple_size<function_args_tuple>::value;
@@ -11073,7 +11122,7 @@ namespace sqlite_orm {
                                    polyfill::index_constant<std::min(functionArgsCount, argsCount) - 1>{})) ||
                                   std::is_same<function_args_tuple, std::tuple<arg_values>>::value,
                               "The number of arguments does not match");
-                return {{std::forward<Args>(args)...}};
+                return {{std::forward<CallArgs>(callArgs)...}};
             }
         };
     }
@@ -13341,13 +13390,13 @@ namespace sqlite_orm {
             }
         };
 
-        template<class F, class... Args>
-        struct ast_iterator<function_call<F, Args...>, void> {
-            using node_type = function_call<F, Args...>;
+        template<class F, class... CallArgs>
+        struct ast_iterator<function_call<F, CallArgs...>, void> {
+            using node_type = function_call<F, CallArgs...>;
 
             template<class L>
             void operator()(const node_type& f, L& lambda) const {
-                iterate_ast(f.args, lambda);
+                iterate_ast(f.callArgs, lambda);
             }
         };
 
@@ -15635,6 +15684,7 @@ namespace sqlite_orm {
                         auto result = polyfill::apply(udf, std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
                     },
+                    /* finalCall = */
                     nullptr,
                     allocate_udf_storage<F>());
 
@@ -16592,14 +16642,14 @@ namespace sqlite_orm {
         struct statement_serializer<built_in_aggregate_function_t<R, S, Args...>, void>
             : statement_serializer<built_in_function_t<R, S, Args...>, void> {};
 
-        template<class F, class... Args>
-        struct statement_serializer<function_call<F, Args...>, void> {
-            using statement_type = function_call<F, Args...>;
+        template<class F, class... CallArgs>
+        struct statement_serializer<function_call<F, CallArgs...>, void> {
+            using statement_type = function_call<F, CallArgs...>;
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
-                ss << F::name() << "(" << streaming_expressions_tuple(statement.args, context) << ")";
+                ss << F::name() << "(" << streaming_expressions_tuple(statement.callArgs, context) << ")";
                 return ss.str();
             }
         };
