@@ -1,15 +1,13 @@
 #pragma once
 
-#include <sqlite3.h>
 #include <type_traits>  //  std::is_member_function_pointer, std::remove_const, std::decay, std::is_same, std::false_type, std::true_type
-#include <string>  //  std::string
 #include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
-#include <functional>  //  std::function
 #include <algorithm>  //  std::min
 #include <utility>  //  std::move, std::forward
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
+#include "tags.h"
 
 namespace sqlite_orm {
 
@@ -21,48 +19,6 @@ namespace sqlite_orm {
     class pointer_binding;
 
     namespace internal {
-
-        struct udf_proxy_base {
-            using func_call_fn_t = void (*)(void* udfHandle,
-                                            sqlite3_context* context,
-                                            int argsCount,
-                                            sqlite3_value** values);
-            using final_call_fn_t = void (*)(void* udfHandle, sqlite3_context* context);
-
-            std::string name;
-            int argumentsCount = 0;
-            std::function<void*()> create;
-            xdestroy_fn_t destroy = nullptr;
-            func_call_fn_t func = nullptr;
-            final_call_fn_t finalAggregateCall = nullptr;
-
-            udf_proxy_base(std::string name,
-                           int argumentsCount,
-                           std::function<void*()> create,
-                           xdestroy_fn_t destroy,
-                           func_call_fn_t run) :
-                name(std::move(name)),
-                argumentsCount(argumentsCount), create(std::move(create)), destroy(destroy), func(run) {}
-
-            udf_proxy_base(std::string name,
-                           int argumentsCount,
-                           std::function<void*()> create,
-                           xdestroy_fn_t destroy,
-                           func_call_fn_t step,
-                           final_call_fn_t finalCall) :
-                name(std::move(name)),
-                argumentsCount(argumentsCount), create(std::move(create)), destroy(destroy), func(step),
-                finalAggregateCall(finalCall) {}
-        };
-
-        struct scalar_udf_proxy : udf_proxy_base {
-            using udf_proxy_base::udf_proxy_base;
-        };
-
-        struct aggregate_udf_proxy : udf_proxy_base {
-            using udf_proxy_base::udf_proxy_base;
-        };
-
         template<class F>
         using scalar_call_function_t = decltype(&F::operator());
 
@@ -130,6 +86,10 @@ namespace sqlite_orm {
 
             args_tuple args;
         };
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool
+            is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of_v<T, function_call>>> = true;
 
         template<class T>
         struct unpacked_arg {
@@ -244,6 +204,10 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /** @short Specifies that a type is a user-defined scalar function.
+     *  
+     *  `UDF` must meet the following requirements:
+     *  - `UDF::name()` static function
+     *  - `UDF::operator()()` call operator
      */
     template<class UDF>
     concept orm_scalar_udf = requires {
@@ -252,6 +216,11 @@ namespace sqlite_orm {
     };
 
     /** @short Specifies that a type is a user-defined aggregate function.
+     *  
+     *  `UDF` must meet the following requirements:
+     *  - `UDF::name()` static function
+     *  - `UDF::step()` member function
+     *  - `UDF::fin()` member function
      */
     template<class UDF>
     concept orm_aggregate_udf = requires {
