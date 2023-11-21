@@ -10,6 +10,30 @@ TEST_CASE("module_list") {
     std::ignore = storage.pragma.module_list();
 }
 
+TEST_CASE("temp_store") {
+    auto storage = make_storage({});
+    const int newValue = 2;
+    storage.pragma.temp_store(newValue);
+    REQUIRE(storage.pragma.temp_store() == newValue);
+}
+
+TEST_CASE("cache_size") {
+    auto storage = make_storage({});
+    const int newValue = 100;
+    storage.pragma.cache_size(newValue);
+    REQUIRE(storage.pragma.cache_size() == newValue);
+}
+
+TEST_CASE("threads") {
+    auto storage = make_storage({});
+    std::ignore = storage.pragma.threads();
+
+    storage.pragma.threads(5);
+
+    const auto newValue = storage.pragma.threads();
+    REQUIRE(newValue == 5);
+}
+
 TEST_CASE("Journal mode") {
     auto filename = "journal_mode.sqlite";
     ::remove(filename);
