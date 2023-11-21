@@ -7,6 +7,17 @@ using namespace sqlite_orm;
 
 TEST_CASE("Column") {
     {
+        using column_type = decltype(make_column("name", &User::name));
+        STATIC_REQUIRE(std::tuple_size<column_type::constraints_type>::value == 0);
+        STATIC_REQUIRE(std::is_same<column_type::object_type, User>::value);
+        STATIC_REQUIRE(std::is_same<column_type::field_type, std::unique_ptr<std::string>>::value);
+        STATIC_REQUIRE(std::is_same<column_type::member_pointer_t, std::unique_ptr<std::string> User::*>::value);
+        STATIC_REQUIRE(std::is_same<column_type::setter_type, internal::empty_setter>::value);
+
+        using field_type = column_type::field_type;
+        STATIC_REQUIRE(type_is_nullable<field_type>::value);
+    }
+    {
         using column_type = decltype(make_column("id", &User::id));
         STATIC_REQUIRE(std::tuple_size<column_type::constraints_type>::value == 0);
         STATIC_REQUIRE(std::is_same<column_type::object_type, User>::value);
@@ -21,6 +32,7 @@ TEST_CASE("Column") {
         STATIC_REQUIRE(std::is_same<column_type::field_type, int>::value);
         STATIC_REQUIRE(std::is_same<column_type::member_pointer_t, const int& (User::*)() const>::value);
         STATIC_REQUIRE(std::is_same<column_type::setter_type, void (User::*)(int)>::value);
+        STATIC_REQUIRE(!internal::is_field_of_v<column_type::member_pointer_t, User>);
     }
     {
         using column_type = decltype(make_column("id", &User::setIdByVal, &User::getIdByRefConst));
@@ -68,6 +80,13 @@ TEST_CASE("Column") {
         using field_type = column_type::field_type;
         STATIC_REQUIRE(std::is_same<field_type, decltype(&Object::id)>::value);
         STATIC_REQUIRE(std::is_same<internal::table_type_of<column_type>::type, Token>::value);
+        STATIC_REQUIRE(std::is_same<internal::table_type_of<field_type>::type, Object>::value);
+        STATIC_REQUIRE(internal::is_field_of_v<column_type, Token>);
+        STATIC_REQUIRE(internal::is_field_of_v<field_type, Token>);
+        STATIC_REQUIRE(internal::is_field_of_v<field_type, Object>);
+        STATIC_REQUIRE(!internal::is_field_of_v<column_type, Object>);
+        STATIC_REQUIRE(!internal::is_field_of_v<column_type, User>);
+        STATIC_REQUIRE(!internal::is_field_of_v<field_type, User>);
         STATIC_REQUIRE(std::is_same<internal::table_type_of<field_type>::type, Object>::value);
         STATIC_REQUIRE(std::is_same<internal::column_result_t<internal::storage_t<>, field_type>::type, int>::value);
         STATIC_REQUIRE(std::is_member_pointer<field_type>::value);

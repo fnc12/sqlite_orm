@@ -137,7 +137,7 @@ namespace sqlite_orm {
     std::string get_error_message(sqlite3* db, T&&... args) {
         std::ostringstream stream;
         using unpack = int[];
-        static_cast<void>(unpack{0, (static_cast<void>(static_cast<void>(stream << args)), 0)...});
+        (void)unpack{0, (stream << args, 0)...};
         stream << sqlite3_errmsg(db);
         return stream.str();
     }

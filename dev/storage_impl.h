@@ -21,18 +21,9 @@ namespace sqlite_orm {
         int foreign_keys_count(const DBOs& dbObjects) {
             int res = 0;
             iterate_tuple<true>(dbObjects, tables_index_sequence<DBOs>{}, [&res](const auto& table) {
-                res += table.foreign_keys_count();
+                res += table.template count_of<is_foreign_key>();
             });
             return res;
-        }
-
-        template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs>>
-        auto lookup_table(const DBOs& dbObjects) {
-            return static_if<is_mapped_v<DBOs, Lookup>>(
-                [](const auto& dbObjects) {
-                    return &pick_table<Lookup>(dbObjects);
-                },
-                empty_callable<nullptr_t>())(dbObjects);
         }
 
         template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs>>

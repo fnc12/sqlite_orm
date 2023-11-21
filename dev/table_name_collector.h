@@ -85,6 +85,11 @@ namespace sqlite_orm {
             void operator()(const table__rowid_t<T>&) {
                 this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
             }
+
+            template<class T, class X, class Y, class Z>
+            void operator()(const highlight_t<T, X, Y, Z>&) {
+                this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
+            }
         };
 
         template<class DBOs, satisfies<is_db_objects, DBOs> = true>

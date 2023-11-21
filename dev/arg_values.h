@@ -6,6 +6,8 @@
 
 namespace sqlite_orm {
 
+    /** @short Wrapper around a dynamically typed value object.
+     */
     struct arg_value {
 
         arg_value() : arg_value(nullptr) {}
@@ -14,7 +16,8 @@ namespace sqlite_orm {
 
         template<class T>
         T get() const {
-            return row_extractor<T>().extract(this->value);
+            const auto rowExtractor = internal::boxed_value_extractor<T>();
+            return rowExtractor.extract(this->value);
         }
 
         bool is_null() const {

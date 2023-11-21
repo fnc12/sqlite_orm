@@ -1,10 +1,10 @@
 #pragma once
 
-#include <string>  //  std::string
-#include <utility>  //  std::move
+#include <type_traits>  //  std::enable_if
+#include <utility>  // std::move
 
-#include "functional/cxx_core_features.h"
-#include "conditions.h"
+#include "functional/cxx_type_traits_polyfill.h"
+#include "tags.h"
 #include "alias_traits.h"
 
 namespace sqlite_orm {
@@ -15,41 +15,10 @@ namespace sqlite_orm {
          */
         template<class T, class F>
         struct column_pointer {
-            using self = column_pointer<T, F>;
             using type = T;
             using field_type = F;
 
             field_type field;
-
-            template<class R>
-            is_equal_t<self, R> operator==(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
-
-            template<class R>
-            is_not_equal_t<self, R> operator!=(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
-
-            template<class R>
-            less_than_t<self, R> operator<(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
-
-            template<class R>
-            less_or_equal_t<self, R> operator<=(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
-
-            template<class R>
-            greater_than_t<self, R> operator>(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
-
-            template<class R>
-            greater_or_equal_t<self, R> operator>=(R rhs) const {
-                return {*this, std::move(rhs)};
-            }
         };
 
         template<class T>
@@ -58,5 +27,54 @@ namespace sqlite_orm {
         template<class T>
         using is_column_pointer = polyfill::bool_constant<is_column_pointer_v<T>>;
 
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_operator_argument_v<T, std::enable_if_t<is_column_pointer_v<T>>> = true;
     }
+
+    /**
+     *  Use it like this:
+     *  struct MyType : BaseType { ... };
+     *  storage.select(column<MyType>(&BaseType::id));
+     */
+    template<class Object, class F, class O, internal::satisfies_not<internal::is_recordset_alias, Object> = true>
+    constexpr internal::column_pointer<Object, F O::*> column(F O::*field) {
+        static_assert(internal::is_field_of_v<F O::*, Object>, "Column must be from derived class");
+        return {field};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Explicitly refer to a column.
+     */
+    template<orm_table_reference auto table, class O, class F>
+    constexpr auto column(F O::*field) {
+        return column<internal::auto_type_t<table>>(field);
+    }
+
+    /**
+     *  Explicitly refer to a column.
+     */
+    template<orm_table_reference R, class O, class F>
+    constexpr auto operator->*(const R& /*table*/, F O::*field) {
+        return column<typename R::type>(field);
+    }
+
+    /**
+     *  Make table reference.
+     */
+    template<class O>
+        requires(!orm_recordset_alias<O>)
+    consteval internal::table_reference<O> column() {
+        return {};
+    }
+
+    /**
+     *  Make table reference.
+     */
+    template<class O>
+        requires(!orm_recordset_alias<O>)
+    consteval internal::table_reference<O> c() {
+        return {};
+    }
+#endif
 }

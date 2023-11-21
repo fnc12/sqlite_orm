@@ -3,10 +3,7 @@
 
 #include <vector>  //  std::vector
 #include <string>  //  std::string
-#include <memory>  //  std::unique_ptr
 #include <cstdio>  //  remove
-#include <numeric>  //  std::iota
-#include <algorithm>  //  std::fill
 
 using namespace sqlite_orm;
 

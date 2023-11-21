@@ -3,8 +3,24 @@
 #include <type_traits>  //  std::is_same
 
 using namespace sqlite_orm;
-using internal::is_aggregate_function_v;
-using internal::is_scalar_function_v;
+using internal::function;
+using internal::function_call;
+using internal::is_aggregate_udf_v;
+using internal::is_scalar_udf_v;
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+template<class S, auto f>
+concept storage_scalar_callable = requires(S& storage) {
+    { storage.create_scalar_function<f>() };
+    { storage.delete_scalar_function<f>() };
+};
+
+template<class S, auto f>
+concept storage_aggregate_callable = requires(S& storage) {
+    { storage.create_aggregate_function<f>() };
+    { storage.delete_aggregate_function<f>() };
+};
+#endif
 
 TEST_CASE("function static") {
     SECTION("scalar") {
@@ -35,8 +51,8 @@ TEST_CASE("function static") {
                     }
                 };
 
-                STATIC_REQUIRE(is_scalar_function_v<Function>);
-                STATIC_REQUIRE_FALSE(is_aggregate_function_v<Function>);
+                STATIC_REQUIRE(is_scalar_udf_v<Function>);
+                STATIC_REQUIRE_FALSE(is_aggregate_udf_v<Function>);
 
                 using RunMemberFunctionPointer = internal::scalar_call_function_t<Function>;
                 using ExpectedType = double (Function::*)(double) const;
@@ -57,8 +73,8 @@ TEST_CASE("function static") {
                     }
                 };
 
-                STATIC_REQUIRE(is_scalar_function_v<Function>);
-                STATIC_REQUIRE_FALSE(is_aggregate_function_v<Function>);
+                STATIC_REQUIRE(is_scalar_udf_v<Function>);
+                STATIC_REQUIRE_FALSE(is_aggregate_udf_v<Function>);
 
                 using RunMemberFunctionPointer = internal::scalar_call_function_t<Function>;
                 using ExpectedType = double (Function::*)(double);
@@ -79,8 +95,8 @@ TEST_CASE("function static") {
                     }
                 };
 
-                STATIC_REQUIRE(is_scalar_function_v<Function>);
-                STATIC_REQUIRE_FALSE(is_aggregate_function_v<Function>);
+                STATIC_REQUIRE(is_scalar_udf_v<Function>);
+                STATIC_REQUIRE_FALSE(is_aggregate_udf_v<Function>);
 
                 using RunMemberFunctionPointer = internal::scalar_call_function_t<Function>;
                 using ExpectedType = int (Function::*)(std::string) const;
@@ -101,8 +117,8 @@ TEST_CASE("function static") {
                     }
                 };
 
-                STATIC_REQUIRE(is_scalar_function_v<Function>);
-                STATIC_REQUIRE_FALSE(is_aggregate_function_v<Function>);
+                STATIC_REQUIRE(is_scalar_udf_v<Function>);
+                STATIC_REQUIRE_FALSE(is_aggregate_udf_v<Function>);
 
                 using RunMemberFunctionPointer = internal::scalar_call_function_t<Function>;
                 using ExpectedType = int (Function::*)(std::string);
@@ -123,8 +139,8 @@ TEST_CASE("function static") {
                     }
                 };
 
-                STATIC_REQUIRE(is_scalar_function_v<Function>);
-                STATIC_REQUIRE_FALSE(is_aggregate_function_v<Function>);
+                STATIC_REQUIRE(is_scalar_udf_v<Function>);
+                STATIC_REQUIRE_FALSE(is_aggregate_udf_v<Function>);
 
                 using RunMemberFunctionPointer = internal::scalar_call_function_t<Function>;
                 using ExpectedType = std::string (Function::*)(const std::string&, const std::string&) const;
@@ -145,8 +161,8 @@ TEST_CASE("function static") {
                     }
                 };
 
-                STATIC_REQUIRE(is_scalar_function_v<Function>);
-                STATIC_REQUIRE_FALSE(is_aggregate_function_v<Function>);
+                STATIC_REQUIRE(is_scalar_udf_v<Function>);
+                STATIC_REQUIRE_FALSE(is_aggregate_udf_v<Function>);
 
                 using RunMemberFunctionPointer = internal::scalar_call_function_t<Function>;
                 using ExpectedType = std::string (Function::*)(const std::string&, const std::string&);
@@ -178,8 +194,8 @@ TEST_CASE("function static") {
                 }
             };
 
-            STATIC_REQUIRE(is_aggregate_function_v<Function>);
-            STATIC_REQUIRE_FALSE(is_scalar_function_v<Function>);
+            STATIC_REQUIRE(is_aggregate_udf_v<Function>);
+            STATIC_REQUIRE_FALSE(is_scalar_udf_v<Function>);
 
             using StepMemberFunctionPointer = internal::aggregate_step_function_t<Function>;
             using ExpectedStepType = void (Function::*)(int);
@@ -205,8 +221,8 @@ TEST_CASE("function static") {
                 }
             };
 
-            STATIC_REQUIRE(is_aggregate_function_v<Function>);
-            STATIC_REQUIRE_FALSE(is_scalar_function_v<Function>);
+            STATIC_REQUIRE(is_aggregate_udf_v<Function>);
+            STATIC_REQUIRE_FALSE(is_scalar_udf_v<Function>);
 
             using StepMemberFunctionPointer = internal::aggregate_step_function_t<Function>;
             using ExpectedStepType = void (Function::*)(std::string) const;
@@ -220,5 +236,37 @@ TEST_CASE("function static") {
             STATIC_REQUIRE(
                 std::is_same<internal::callable_arguments<Function>::args_tuple, std::tuple<std::string>>::value);
         }
+    }
+    SECTION("function call expressions") {
+        struct SFunction {
+            static const char* name();
+            int operator()(int) const;
+        };
+        struct AFunction {
+            static const char* name();
+            void step(int);
+            int fin() const;
+        };
+
+        constexpr auto scalar = func<SFunction>;
+        constexpr auto aggregate = func<AFunction>;
+
+        STATIC_REQUIRE(std::is_same<decltype(scalar), const function<SFunction>>::value);
+        STATIC_REQUIRE(std::is_same<decltype(scalar(42)), function_call<SFunction, int>>::value);
+        STATIC_REQUIRE(std::is_same<decltype(aggregate), const function<AFunction>>::value);
+        STATIC_REQUIRE(std::is_same<decltype(aggregate(42)), function_call<AFunction, int>>::value);
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        STATIC_REQUIRE(orm_scalar_function<decltype(scalar)>);
+        STATIC_REQUIRE_FALSE(orm_aggregate_function<decltype(scalar)>);
+        STATIC_REQUIRE(orm_aggregate_function<decltype(aggregate)>);
+        STATIC_REQUIRE_FALSE(orm_scalar_function<decltype(aggregate)>);
+
+        using storage_type = decltype(make_storage(""));
+        STATIC_REQUIRE(storage_scalar_callable<storage_type, scalar>);
+        STATIC_REQUIRE_FALSE(storage_aggregate_callable<storage_type, scalar>);
+        STATIC_REQUIRE(storage_aggregate_callable<storage_type, aggregate>);
+        STATIC_REQUIRE_FALSE(storage_scalar_callable<storage_type, aggregate>);
+#endif
     }
 }

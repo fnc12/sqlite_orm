@@ -1,6 +1,6 @@
 #pragma once
 
-#include <type_traits>  //  std::enable_if, std::is_base_of, std::is_member_pointer, std::remove_const
+#include <type_traits>  //  std::enable_if
 #include <utility>  //  std::index_sequence, std::make_index_sequence
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
@@ -10,6 +10,8 @@
 #include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"
 #include "alias_traits.h"
+#include "table_type_of.h"
+#include "tags.h"
 
 namespace sqlite_orm {
 
@@ -36,6 +38,9 @@ namespace sqlite_orm {
         consteval auto to_alias(std::index_sequence<Idx...>) {
             return Alias<t.id[Idx]...>{};
         }
+
+        template<class T>
+        inline constexpr bool is_operator_argument_v<T, std::enable_if_t<orm_column_alias<T>>> = true;
 #endif
 
         /**
@@ -62,6 +67,10 @@ namespace sqlite_orm {
 
             column_type column;
         };
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool
+            is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of_v<T, alias_column_t>>> = true;
 
         struct basic_table;
 
@@ -128,7 +137,7 @@ namespace sqlite_orm {
         };
 
         /**
-         *  This is a common built-in class used for custom single-character column aliases.
+         *  Built-in column alias.
          *  For convenience there exist type aliases `colalias_a`, `colalias_b`, ...
          *  The easiest way to create a column alias is using `"xyz"_col`.
          */
@@ -146,6 +155,10 @@ namespace sqlite_orm {
             alias_holder() = default;
         };
 
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool
+            is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of_v<T, alias_holder>>> = true;
+
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         template<char A, char... X>
         struct recordset_alias_builder {
@@ -158,30 +171,81 @@ namespace sqlite_orm {
     }
 
     /**
-     *  @return column with table alias attached. Place it instead of a column statement in case you need to specify a
-     *  column with table alias prefix like 'a.column'.
+     *  Using a column pointer, create a column reference to an aliased table column.
+     *  
+     *  Example:
+     *  using als = alias_u<User>;
+     *  select(alias_column<als>(column<User>(&User::id)))
      */
     template<class A, class C, std::enable_if_t<internal::is_table_alias_v<A>, bool> = true>
-    internal::alias_column_t<A, C> alias_column(C c) {
-        using aliased_type = internal::type_t<A>;
-        static_assert(std::is_same<polyfill::detected_t<internal::table_type_of_t, C>, aliased_type>::value,
-                      "Column must be from aliased table");
-        return {c};
+    constexpr auto alias_column(C field) {
+        using namespace ::sqlite_orm::internal;
+        using aliased_type = type_t<A>;
+        static_assert(is_field_of_v<C, aliased_type>, "Column must be from aliased table");
+
+        return alias_column_t<A, C>{std::move(field)};
+    }
+
+    /**
+     *  Using an object member field, create a column reference to an aliased table column.
+     *  
+     *  @note The object member pointer can be from a derived class without explicitly forming a column pointer.
+     *  
+     *  Example:
+     *  using als = alias_u<User>;
+     *  select(alias_column<als>(&User::id))
+     */
+    template<class A, class F, class O, std::enable_if_t<internal::is_table_alias_v<A>, bool> = true>
+    constexpr auto alias_column(F O::*field) {
+        using namespace ::sqlite_orm::internal;
+        using aliased_type = type_t<A>;
+        static_assert(is_field_of_v<F O::*, aliased_type>, "Column must be from aliased table");
+
+        using C1 =
+            std::conditional_t<std::is_same<O, aliased_type>::value, F O::*, column_pointer<aliased_type, F O::*>>;
+        return alias_column_t<A, C1>{{field}};
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Create a column reference to an aliased table column.
+     *  
+     *  @note An object member pointer can be from a derived class without explicitly forming a column pointer.
+     *  
+     *  Example:
+     *  constexpr auto als = "u"_alias.for_<User>();
+     *  select(alias_column<als>(&User::id))
+     */
     template<orm_table_alias auto als, class C>
-    auto alias_column(C c) {
-        using A = std::remove_const_t<decltype(als)>;
-        using aliased_type = internal::type_t<A>;
-        static_assert(std::is_same_v<polyfill::detected_t<internal::table_type_of_t, C>, aliased_type>,
-                      "Column must be from aliased table");
-        return internal::alias_column_t<A, decltype(c)>{c};
+    constexpr auto alias_column(C field) {
+        using namespace ::sqlite_orm::internal;
+        using A = decltype(als);
+        using aliased_type = type_t<A>;
+        static_assert(is_field_of_v<C, aliased_type>, "Column must be from aliased table");
+
+        if constexpr(is_column_pointer_v<C>) {
+            return alias_column_t<A, C>{std::move(field)};
+        } else if constexpr(std::is_same_v<member_object_type_t<C>, aliased_type>) {
+            return alias_column_t<A, C>{field};
+        } else {
+            // wrap in column_pointer
+            using C1 = column_pointer<aliased_type, C>;
+            return alias_column_t<A, C1>{{field}};
+        }
     }
 
+    /**
+     *  Create a column reference to an aliased table column.
+     *  
+     *  @note An object member pointer can be from a derived class without explicitly forming a column pointer.
+     *  
+     *  Example:
+     *  constexpr auto als = "u"_alias.for_<User>();
+     *  select(als->*&User::id)
+     */
     template<orm_table_alias A, class F>
-    constexpr auto operator->*(const A&, F field) {
-        return internal::alias_column_t<A, decltype(field)>{field};
+    constexpr auto operator->*(const A& /*tableAlias*/, F field) {
+        return alias_column<A>(std::move(field));
     }
 #endif
 
@@ -194,9 +258,12 @@ namespace sqlite_orm {
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /** 
+     *  Alias a column expression.
+     */
     template<orm_column_alias auto als, class E>
     auto as(E expression) {
-        return internal::as_t<std::remove_const_t<decltype(als)>, E>{std::move(expression)};
+        return internal::as_t<decltype(als), E>{std::move(expression)};
     }
 
     /** 
@@ -216,7 +283,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<orm_column_alias auto als>
     auto get() {
-        return internal::alias_holder<std::remove_const_t<decltype(als)>>{};
+        return internal::alias_holder<decltype(als)>{};
     }
 #endif
 

@@ -616,9 +616,20 @@ namespace sqlite_orm {
      */
     template<class T, class... Ids>
     internal::get_t<T, Ids...> get(Ids... ids) {
-        std::tuple<Ids...> idsTuple{std::forward<Ids>(ids)...};
-        return {std::move(idsTuple)};
+        return {{std::forward<Ids>(ids)...}};
     }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Create a get statement.
+     *  T is an object type mapped to a storage.
+     *  Usage: get<User>(5);
+     */
+    template<orm_table_reference auto als, class... Ids>
+    auto get(Ids... ids) {
+        return get<internal::mapped_type_proxy_t<decltype(als)>>(std::forward<Ids>(ids)...);
+    }
+#endif
 
     /**
      *  Create a get pointer statement.
@@ -627,8 +638,7 @@ namespace sqlite_orm {
      */
     template<class T, class... Ids>
     internal::get_pointer_t<T, Ids...> get_pointer(Ids... ids) {
-        std::tuple<Ids...> idsTuple{std::forward<Ids>(ids)...};
-        return {std::move(idsTuple)};
+        return {{std::forward<Ids>(ids)...}};
     }
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -639,8 +649,7 @@ namespace sqlite_orm {
      */
     template<class T, class... Ids>
     internal::get_optional_t<T, Ids...> get_optional(Ids... ids) {
-        std::tuple<Ids...> idsTuple{std::forward<Ids>(ids)...};
-        return {std::move(idsTuple)};
+        return {{std::forward<Ids>(ids)...}};
     }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
@@ -673,17 +682,15 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
      *  Create a get all statement.
-     *  `alias` is an explicitly specified table alias of an object to be extracted.
+     *  `als` is an explicitly specified table proxy of an object to be extracted.
      *  `R` is the container return type, which must have a `R::push_back(T&&)` method, and defaults to `std::vector<T>`
      *  Usage: storage.get_all<sqlite_schema>(...);
      */
-    template<orm_table_alias auto alias,
-             class R = std::vector<internal::mapped_type_proxy_t<decltype(alias)>>,
+    template<orm_refers_to_table auto als,
+             class R = std::vector<internal::mapped_type_proxy_t<decltype(als)>>,
              class... Args>
     auto get_all(Args&&... conditions) {
-        using expression_type = internal::get_all_t<std::remove_const_t<decltype(alias)>, R, std::decay_t<Args>...>;
-        internal::validate_conditions<typename expression_type::conditions_type>();
-        return expression_type{{std::forward<Args>(conditions)...}};
+        return get_all<internal::decay_table_reference_t<als>, R>(std::forward<Args>(conditions)...);
     }
 #endif
 

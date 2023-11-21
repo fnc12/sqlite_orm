@@ -36,20 +36,6 @@ namespace sqlite_orm {
         template<class T>
         using is_group_by = polyfill::disjunction<polyfill::is_specialization_of<T, group_by_t>,
                                                   polyfill::is_specialization_of<T, group_by_with_having>>;
-
-        /**
-         *  HAVING holder.
-         *  T is having argument type.
-         */
-        template<class T>
-        struct having_t {
-            using expression_type = T;
-
-            expression_type expression;
-        };
-
-        template<class T>
-        using is_having = polyfill::is_specialization_of<T, having_t>;
     }
 
     /**
@@ -57,18 +43,7 @@ namespace sqlite_orm {
      *  Example: storage.get_all<Employee>(group_by(&Employee::name))
      */
     template<class... Args>
-    internal::group_by_t<Args...> group_by(Args&&... args) {
-        return {std::make_tuple(std::forward<Args>(args)...)};
-    }
-
-    /**
-     *  [Deprecation notice]: this function is deprecated and will be removed in v1.9. Please use `group_by(...).having(...)` instead.
-     *
-     *  HAVING(expression).
-     *  Example: storage.get_all<Employee>(group_by(&Employee::name), having(greater_than(count(&Employee::name), 2)));
-     */
-    template<class T>
-    [[deprecated("Use group_by(...).having(...) instead")]] internal::having_t<T> having(T expression) {
-        return {std::move(expression)};
+    internal::group_by_t<Args...> group_by(Args... args) {
+        return {{std::forward<Args>(args)...}};
     }
 }

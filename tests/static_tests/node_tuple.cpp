@@ -3,8 +3,6 @@
 #include <type_traits>  //  std::is_same
 
 using namespace sqlite_orm;
-using internal::alias_holder;
-using internal::column_alias;
 using internal::column_pointer;
 
 template<class T>
@@ -31,6 +29,20 @@ TEST_CASE("Node tuple") {
         std::string name;
     };
 
+    SECTION("wrapper types") {
+        SECTION("reference wrapper") {
+            using Tuple = node_tuple_t<std::reference_wrapper<int>>;
+            STATIC_REQUIRE(is_same<Tuple, tuple<int>>::value);
+        }
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        {
+            SECTION("as_optional") {
+                using Tuple = node_tuple_t<internal::as_optional_t<int>>;
+                STATIC_REQUIRE(is_same<Tuple, tuple<int>>::value);
+            }
+        }
+#endif
+    }
     SECTION("bindables") {
         SECTION("int") {
             using Tuple = node_tuple_t<int>;
@@ -51,6 +63,14 @@ TEST_CASE("Node tuple") {
         using Expected = tuple<>;
         static_assert(is_same<Tuple, Expected>::value, "literal int");
         STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<>>::value);
+    }
+    SECTION("is_equal_with_table_t") {
+        auto node = is_equal<User>(std::string("Claude"));
+        using Node = decltype(node);
+        using Tuple = node_tuple_t<Node>;
+        using Expected = tuple<std::string>;
+        static_assert(is_same<Tuple, Expected>::value, "is_equal_with_table_t");
+        STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<std::string>>::value);
     }
     SECTION("binary_condition") {
         using namespace internal;
@@ -433,6 +453,12 @@ TEST_CASE("Node tuple") {
         using Tuple = node_tuple_t<Expression>;
         STATIC_REQUIRE(is_same<Tuple, tuple<>>::value);
     }
+    SECTION("match") {
+        auto expression = match<User>(std::string("Plazma"));
+        using Expression = decltype(expression);
+        using Tuple = node_tuple_t<Expression>;
+        STATIC_REQUIRE(is_same<Tuple, tuple<std::string>>::value);
+    }
     SECTION("select") {
         SECTION("select(&User::id)") {
             auto sel = select(&User::id);
@@ -502,14 +528,6 @@ TEST_CASE("Node tuple") {
                           "get_all<User>(where(is_equal(5.0, &User::id)))");
         }
     }
-    SECTION("having_t") {
-        using namespace internal;
-        auto hav = having(greater_or_equal(&User::id, 10));
-        using Having = decltype(hav);
-        using Tuple = node_tuple_t<Having>;
-        static_assert(is_same<Tuple, tuple<decltype(&User::id), int>>::value,
-                      "having(greater_or_equal(&User::id, 10))");
-    }
     SECTION("cast_t") {
         auto sel = select(columns(cast<int>(&User::id), cast<int>(&User::name)));
         using Select = decltype(sel);
@@ -534,19 +552,9 @@ TEST_CASE("Node tuple") {
         SECTION("like(&User::name, 'S%')") {
             auto lk = like(&User::name, "S%");
             using Like = decltype(lk);
-            using NodeTuple = node_tuple<Like>;
-            using ArgTuple = NodeTuple::arg_tuple;
-            static_assert(is_same<ArgTuple, tuple<decltype(&User::name)>>::value, "arg_tuple");
-            using PatternTuple = NodeTuple::pattern_tuple;
-            static_assert(is_same<PatternTuple, tuple<const char*>>::value, "pattern_tuple");
-            using EscapeTuple = NodeTuple::escape_tuple;
-            static_assert(is_same<EscapeTuple, tuple<>>::value, "escape_tuple");
-            using Tuple = NodeTuple::type;
-            static_assert(std::tuple_size<Tuple>::value == 2, "like(&User::name, \"S%\") size");
-            using Tuple0 = std::tuple_element_t<0, Tuple>;
-            static_assert(is_same<Tuple0, decltype(&User::name)>::value, "like(&User::name, \"S%\") type 0");
-            static_assert(is_same<Tuple, tuple<decltype(&User::name), const char*>>::value,
-                          "like(&User::name, \"S%\")");
+            using NodeTuple = node_tuple_t<Like>;
+            using Expected = tuple<decltype(&User::name), const char*>;
+            static_assert(is_same<NodeTuple, Expected>::value, "like(&User::name, \"S%\") type 0");
         }
         SECTION("like(&User::name, std::string('pattern'), '%')") {
             auto lk = like(&User::name, std::string("pattern"), "%");
@@ -579,7 +587,7 @@ TEST_CASE("Node tuple") {
             STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(get<colalias_a>()))>, tuple<>>::value);
         }
         SECTION("column alias in expression") {
-            STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(get<colalias_a>() > c(1)))>, tuple<int>>::value);
+            STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(get<colalias_a>() > 1))>, tuple<int>>::value);
         }
     }
     SECTION("glob_t") {
@@ -908,6 +916,7 @@ TEST_CASE("Node tuple") {
     }
     SECTION("function_call") {
         struct Func {
+            static const char* name();
             bool operator()(int value) const {
                 return value % 2;
             }
@@ -939,6 +948,12 @@ TEST_CASE("Node tuple") {
         using Statement = decltype(statement);
         using Tuple = node_tuple_t<Statement>;
         using ExpectedTuple = tuple<decltype(&User::id)>;
+        STATIC_REQUIRE(std::is_same<Tuple, ExpectedTuple>::value);
+    }
+    SECTION("set assign") {
+        auto statement = set(assign(&User::name, conc(&User::name, "_")));
+        using Tuple = node_tuple_t<decltype(statement)>;
+        using ExpectedTuple = tuple<decltype(&User::name), decltype(&User::name), const char*>;
         STATIC_REQUIRE(std::is_same<Tuple, ExpectedTuple>::value);
     }
 }

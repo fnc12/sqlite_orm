@@ -2,8 +2,8 @@
 
 #include <string>  //  std::string
 
-#include "column.h"
-#include "table.h"
+#include "schema/column.h"
+#include "schema/table.h"
 #include "alias.h"
 
 namespace sqlite_orm {

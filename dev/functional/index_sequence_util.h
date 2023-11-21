@@ -1,6 +1,6 @@
 #pragma once
 
-#include <utility>  //  std::index_sequence, std::make_index_sequence
+#include <utility>  //  std::index_sequence
 
 #include "../functional/cxx_universal.h"
 

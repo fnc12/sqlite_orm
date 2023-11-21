@@ -4,15 +4,16 @@
 #include <string>  //  std::string
 #include <memory>  //  std::unique_ptr
 #include <type_traits>  //  std::is_same, std::is_member_object_pointer
+#include <utility>  //  std::move
 
-#include "functional/cxx_universal.h"
-#include "functional/cxx_type_traits_polyfill.h"
-#include "tuple_helper/tuple_traits.h"
-#include "tuple_helper/tuple_filter.h"
-#include "type_traits.h"
-#include "member_traits/member_traits.h"
-#include "type_is_nullable.h"
-#include "constraints.h"
+#include "../functional/cxx_universal.h"
+#include "../functional/cxx_type_traits_polyfill.h"
+#include "../tuple_helper/tuple_traits.h"
+#include "../tuple_helper/tuple_filter.h"
+#include "../type_traits.h"
+#include "../member_traits/member_traits.h"
+#include "../type_is_nullable.h"
+#include "../constraints.h"
 
 namespace sqlite_orm {
 
@@ -75,19 +76,11 @@ namespace sqlite_orm {
             constraints_type constraints;
 
             /**
-             *  Checks whether contraints are of trait `Trait`
+             *  Checks whether contraints contain specified type.
              */
             template<template<class...> class Trait>
-            constexpr bool is() const {
+            constexpr static bool is() {
                 return tuple_has<Trait, constraints_type>::value;
-            }
-
-            constexpr bool is_generated() const {
-#if SQLITE_VERSION_NUMBER >= 3031000
-                return is<is_generated_always>();
-#else
-                return false;
-#endif
             }
 
             /**
@@ -138,17 +131,21 @@ namespace sqlite_orm {
     }
 
     /**
-     *  Column builder function. You should use it to create columns instead of constructor
+     *  Factory function for a column definition from a member object pointer of the object to be mapped.
      */
     template<class M, class... Op, internal::satisfies<std::is_member_object_pointer, M> = true>
-    internal::column_t<M, internal::empty_setter, Op...> make_column(std::string name, M m, Op... constraints) {
+    internal::column_t<M, internal::empty_setter, Op...>
+    make_column(std::string name, M memberPointer, Op... constraints) {
         static_assert(polyfill::conjunction_v<internal::is_constraint<Op>...>, "Incorrect constraints pack");
 
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name), m, {}, std::make_tuple(constraints...)});
+        // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
+        // as this will lead to UB with Clang on MinGW!
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
+            return {std::move(name), memberPointer, {}, std::tuple<Op...>{std::move(constraints)...}});
     }
 
     /**
-     *  Column builder function with setter and getter. You should use it to create columns instead of constructor
+     *  Factory function for a column definition from "setter" and "getter" member function pointers of the object to be mapped.
      */
     template<class G,
              class S,
@@ -160,13 +157,14 @@ namespace sqlite_orm {
                       "Getter and setter must get and set same data type");
         static_assert(polyfill::conjunction_v<internal::is_constraint<Op>...>, "Incorrect constraints pack");
 
+        // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
+        // as this will lead to UB with Clang on MinGW!
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {std::move(name), getter, setter, std::make_tuple(constraints...)});
+            return {std::move(name), getter, setter, std::tuple<Op...>{std::move(constraints)...}});
     }
 
     /**
-     *  Column builder function with getter and setter (reverse order). You should use it to create columns instead of
-     * constructor
+     *  Factory function for a column definition from "getter" and "setter" member function pointers of the object to be mapped.
      */
     template<class G,
              class S,
@@ -178,7 +176,9 @@ namespace sqlite_orm {
                       "Getter and setter must get and set same data type");
         static_assert(polyfill::conjunction_v<internal::is_constraint<Op>...>, "Incorrect constraints pack");
 
+        // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
+        // as this will lead to UB with Clang on MinGW!
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {std::move(name), getter, setter, std::make_tuple(constraints...)});
+            return {std::move(name), getter, setter, std::tuple<Op...>{std::move(constraints)...}});
     }
 }

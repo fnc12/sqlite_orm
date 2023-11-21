@@ -95,7 +95,7 @@ auto storage = make_storage("db.sqlite",
                                        make_column("name", &UserType::name, default_value("name_placeholder"))));
 ```
 
-Too easy isn't it? You do not have to specify mapped type explicitly - it is deduced from your member pointers you pass during making a column (for example: `&User::id`). To create a column you have to pass two arguments at least: its name in the table and your mapped class member pointer. You can also add extra arguments to tell your storage about column's constraints like `primary_key`, `autoincrement`, `default_value`, `unique` or `generated_always_as` (order isn't important; `not_null` is deduced from type automatically).
+Too easy isn't it? You do not have to specify mapped type explicitly - it is deduced from your member pointers you pass during making a column (for example: `&User::id`). To create a column you have to pass two arguments at least: its name in the table and your mapped class member pointer. You can also add extra arguments to tell your storage about column's constraints like `primary_key`, `autoincrement`, `default_value`, `unique` or `generated_always_as` (order isn't important; `not_null`/`null` are deduced from type automatically but can be added manually if you wish with `null()` and `not_null()`).
 
 More details about making storage can be found in [tutorial](https://github.com/fnc12/sqlite_orm/wiki/Making-a-storage).
 
@@ -686,7 +686,7 @@ storage.transaction([&] () mutable {    //  mutable keyword allows make non-cons
 
 The second way guarantees that `commit` or `rollback` will be called. You can use either way.
 
-Trancations are useful with `changes` sqlite function that returns number of rows modified.
+Transactions are useful with `changes` sqlite function that returns number of rows modified.
 
 ```c++
 storage.transaction([&] () mutable {
