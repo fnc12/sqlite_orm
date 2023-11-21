@@ -7,6 +7,7 @@
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
+#include "functional/char_array_template.h"
 #include "functional/function_traits.h"
 #include "tags.h"
 
@@ -60,14 +61,62 @@ namespace sqlite_orm {
             using return_type = function_return_type_t<aggregate_fin_function_t<F>>;
         };
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        template<class F>
+            requires(std::is_function_v<F>)
+        struct callable_arguments_impl<F, void> {
+            using args_tuple = function_arguments<F, std::tuple, std::decay_t>;
+            using return_type = std::decay_t<function_return_type_t<F>>;
+        };
+#endif
+
         template<class F>
         struct callable_arguments : callable_arguments_impl<F> {};
 
+        template<class UDF>
+        struct function;
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        template<class UDF>
+        struct named_udf : private std::string {
+            using udf_type = UDF;
+
+            using std::string::basic_string;
+
+            const std::string& operator()() const {
+                return *this;
+            }
+        };
+#endif
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        /*
+         *  Bundle of type and name of a user-defined function.
+         */
+        template<class UDF>
+            requires(requires { UDF::name(); })
+        struct named_udf<UDF>
+#else
+        template<class UDF>
+        struct named_udf
+#endif
+        {
+            using udf_type = UDF;
+
+            decltype(auto) operator()() const {
+                return UDF::name();
+            }
+        };
+
+        /*
+         *  Represents a call of a user-defined function.
+         */
         template<class UDF, class... CallArgs>
         struct function_call {
             using udf_type = UDF;
             using args_tuple = std::tuple<CallArgs...>;
 
+            named_udf<udf_type> name;
             args_tuple callArgs;
         };
 
@@ -162,6 +211,20 @@ namespace sqlite_orm {
 #endif
         }
 
+        template<typename UDF, typename... CallArgs>
+        SQLITE_ORM_CONSTEVAL void check_function_call() {
+            using args_tuple = std::tuple<CallArgs...>;
+            using function_args_tuple = typename callable_arguments<UDF>::args_tuple;
+            constexpr size_t argsCount = std::tuple_size<args_tuple>::value;
+            constexpr size_t functionArgsCount = std::tuple_size<function_args_tuple>::value;
+            static_assert((argsCount == functionArgsCount &&
+                           !std::is_same<function_args_tuple, std::tuple<arg_values>>::value &&
+                           validate_pointer_value_types<function_args_tuple, args_tuple>(
+                               polyfill::index_constant<std::min(functionArgsCount, argsCount) - 1>{})) ||
+                              std::is_same<function_args_tuple, std::tuple<arg_values>>::value,
+                          "The number of arguments does not match");
+        }
+
         /*
          *  Generator of a user-defined function call in a sql query expression.
          *  Use the variable template `func<>` to instantiate.
@@ -169,21 +232,100 @@ namespace sqlite_orm {
          */
         template<class UDF>
         struct function : polyfill::type_identity<UDF> {
+            using udf_type = UDF;
+
             template<typename... CallArgs>
             function_call<UDF, CallArgs...> operator()(CallArgs... callArgs) const {
-                using args_tuple = std::tuple<CallArgs...>;
-                using function_args_tuple = typename callable_arguments<UDF>::args_tuple;
-                constexpr size_t argsCount = std::tuple_size<args_tuple>::value;
-                constexpr size_t functionArgsCount = std::tuple_size<function_args_tuple>::value;
-                static_assert((argsCount == functionArgsCount &&
-                               !std::is_same<function_args_tuple, std::tuple<arg_values>>::value &&
-                               validate_pointer_value_types<function_args_tuple, args_tuple>(
-                                   polyfill::index_constant<std::min(functionArgsCount, argsCount) - 1>{})) ||
-                                  std::is_same<function_args_tuple, std::tuple<arg_values>>::value,
-                              "The number of arguments does not match");
-                return {{std::forward<CallArgs>(callArgs)...}};
+                check_function_call<UDF, CallArgs...>();
+                return {this->named_udf(), {std::forward<CallArgs>(callArgs)...}};
+            }
+
+            constexpr auto named_udf() const {
+                return internal::named_udf<UDF>{};
+            }
+
+            constexpr auto name() const {
+                return UDF::name();
             }
         };
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        template<typename T>
+        concept stateless = std::is_empty_v<T>;
+
+        template<typename T>
+        concept function_object = requires { &T::operator(); };
+
+        /*
+         *  Captures and represents a notably side-effect free function [pointer or `constexpr` object].
+         *  If `udf` is a function object, we assume it is possibly not side-effect free
+         *  and `quoted_scalar_function::callable()` returns a copy.
+         */
+        template<auto udf, size_t N>
+            requires(stateless<decltype(udf)> || std::copy_constructible<decltype(udf)>)
+        struct quoted_scalar_function : polyfill::type_identity<std::remove_pointer_t<decltype(udf)>> {
+            using type = typename quoted_scalar_function::type;
+
+            template<typename... CallArgs>
+            function_call<type, CallArgs...> operator()(CallArgs... callArgs) const {
+                check_function_call<type, CallArgs...>();
+                return {this->named_udf(), {std::forward<CallArgs>(callArgs)...}};
+            }
+
+            /*
+             *  Return original `udf` if stateless or a copy of it otherwise
+             */
+            constexpr decltype(auto) callable() const {
+                if constexpr(stateless<type>) {
+                    return (udf);
+                } else {
+                    return udf;
+                }
+            }
+
+            constexpr auto named_udf() const {
+                return internal::named_udf<type>{this->name()};
+            }
+
+            constexpr auto name() const {
+                return this->nme;
+            }
+
+            consteval quoted_scalar_function(const char (&name)[N]) {
+                std::copy_n(name, N, this->nme);
+            }
+
+            quoted_scalar_function(const quoted_scalar_function&) = delete;
+            quoted_scalar_function& operator=(const quoted_scalar_function&) = delete;
+
+            char nme[N];
+        };
+
+        template<size_t N>
+        struct quoted_function_builder {
+            char nme[N];
+
+            consteval quoted_function_builder(const char (&name)[N]) {
+                std::copy_n(name, N, this->nme);
+            }
+
+            // from function pointer or `constexpr` object
+            template<auto udf>
+                requires(std::is_function_v<decltype(udf)> ||
+                         (function_object<decltype(udf)> && (!requires { decltype(udf)::name(); })))
+            [[nodiscard]] consteval quoted_scalar_function<udf, N> callable() const {
+                return {this->nme};
+            }
+
+            // from function object type
+            template<class UDF, class... Args>
+                requires(function_object<UDF> && (!requires { UDF::name(); }))
+            [[nodiscard]] consteval auto make(Args&&... constructorArgs) const {
+                constexpr UDF udf(std::forward<Args>(constructorArgs)...);
+                return quoted_scalar_function<udf, N>{this->nme};
+            }
+        };
+#endif
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -226,6 +368,14 @@ namespace sqlite_orm {
     template<class F>
     concept orm_aggregate_function = (polyfill::is_specialization_of_v<std::remove_const_t<F>, internal::function> &&
                                       orm_aggregate_udf<typename F::type>);
+
+    /** @short Specifies that a type is a framed and quoted user-defined scalar function.
+     */
+    template<class Q>
+    concept orm_quoted_scalar_function = requires(const Q& quotedF) {
+        quotedF.name();
+        quotedF.callable();
+    };
 #endif
 
     /**
@@ -245,4 +395,17 @@ namespace sqlite_orm {
         requires(orm_scalar_udf<UDF> || orm_aggregate_udf<UDF>)
 #endif
     SQLITE_ORM_INLINE_VAR constexpr internal::function<UDF> func{};
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /*  @short Create a scalar function from a function object type, a function pointer or `constexpr` object.
+     *  
+     *  Examples:
+     *  constexpr auto clamp_int_f = "clamp_int"_scalar.func<std::clamp<int>>();
+     *  constexpr auto equal_to_int_f = "equal_to_int"_scalar.func<std::equal_to_int<int>>();
+     */
+    template<internal::quoted_function_builder builder>
+    [[nodiscard]] consteval auto operator"" _scalar() {
+        return builder;
+    }
+#endif
 }

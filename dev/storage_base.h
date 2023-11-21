@@ -265,11 +265,12 @@ namespace sqlite_orm {
             void create_scalar_function(Args&&... constructorArgs) {
                 static_assert(is_scalar_udf_v<F>, "F must be a scalar function");
 
-                this->create_scalar_function_impl<F>(/* constructAt */ [constructorArgs...](void* location) {
-                    std::allocator<F> allocator;
-                    using traits = std::allocator_traits<decltype(allocator)>;
-                    traits::construct(allocator, (F*)location, constructorArgs...);
-                });
+                this->create_scalar_function_impl(udf_holder<F>{},
+                                                  /* constructAt */ [constructorArgs...](void* location) {
+                                                      std::allocator<F> allocator;
+                                                      using traits = std::allocator_traits<decltype(allocator)>;
+                                                      traits::construct(allocator, (F*)location, constructorArgs...);
+                                                  });
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -287,6 +288,37 @@ namespace sqlite_orm {
             template<orm_scalar_function auto f, std::copy_constructible... Args>
             void create_scalar_function(Args&&... constructorArgs) {
                 return this->create_scalar_function<auto_type_t<f>>(std::forward<Args>(constructorArgs)...);
+            }
+
+            template<orm_quoted_scalar_function auto quotedF>
+            void create_scalar_function() {
+                using F = auto_type_t<quotedF>;
+                using args_tuple = typename callable_arguments<F>::args_tuple;
+                using return_type = typename callable_arguments<F>::return_type;
+                constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
+                                               ? -1
+                                               : int(std::tuple_size<args_tuple>::value);
+                this->scalarFunctions.emplace_back(
+                    std::string{quotedF.name()},
+                    argsCount,
+                    /* constructAt = */
+                    nullptr,
+                    /* destroy = */
+                    nullptr,
+                    /* call = */
+                    [](void* /*udfHandle*/, sqlite3_context* context, int argsCount, sqlite3_value** values) {
+                        args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
+                        auto result = polyfill::apply(quotedF.callable(), std::move(argsTuple));
+                        statement_binder<return_type>().result(context, result);
+                    },
+                    /* finalCall = */
+                    nullptr,
+                    std::pair{nullptr, null_xdestroy_f});
+
+                if(this->connection->retain_count() > 0) {
+                    sqlite3* db = this->connection->get();
+                    try_to_create_scalar_function(db, this->scalarFunctions.back());
+                }
             }
 #endif
 
@@ -326,14 +358,12 @@ namespace sqlite_orm {
             void create_aggregate_function(Args&&... constructorArgs) {
                 static_assert(is_aggregate_udf_v<F>, "F must be an aggregate function");
 
-                this->create_aggregate_function_impl<F>(/* constructAt = */
-                                                        [constructorArgs...](void* location) {
-                                                            std::allocator<F> allocator;
-                                                            using traits = std::allocator_traits<decltype(allocator)>;
-                                                            traits::construct(allocator,
-                                                                              (F*)location,
-                                                                              constructorArgs...);
-                                                        });
+                this->create_aggregate_function_impl(udf_holder<F>{}, /* constructAt = */
+                                                     [constructorArgs...](void* location) {
+                                                         std::allocator<F> allocator;
+                                                         using traits = std::allocator_traits<decltype(allocator)>;
+                                                         traits::construct(allocator, (F*)location, constructorArgs...);
+                                                     });
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -361,15 +391,19 @@ namespace sqlite_orm {
             template<class F>
             void delete_scalar_function() {
                 static_assert(is_scalar_udf_v<F>, "F must be a scalar function");
-                std::stringstream ss;
-                ss << F::name() << std::flush;
-                this->delete_function_impl(ss.str(), this->scalarFunctions);
+                udf_holder<F> udfName;
+                this->delete_function_impl(udfName(), this->scalarFunctions);
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
             template<orm_scalar_function auto f>
             void delete_scalar_function() {
-                this->delete_scalar_function<auto_type_t<f>>();
+                this->delete_function_impl(f.name(), this->scalarFunctions);
+            }
+
+            template<orm_quoted_scalar_function auto quotedF>
+            void delete_scalar_function() {
+                this->delete_function_impl(quotedF.name(), this->scalarFunctions);
             }
 #endif
 
@@ -380,15 +414,14 @@ namespace sqlite_orm {
             template<class F>
             void delete_aggregate_function() {
                 static_assert(is_aggregate_udf_v<F>, "F must be an aggregate function");
-                std::stringstream ss;
-                ss << F::name() << std::flush;
-                this->delete_function_impl(ss.str(), this->aggregateFunctions);
+                udf_holder<F> udfName;
+                this->delete_function_impl(udfName(), this->aggregateFunctions);
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
             template<orm_aggregate_function auto f>
             void delete_aggregate_function() {
-                this->delete_aggregate_function<auto_type_t<f>>();
+                this->delete_function_impl(f.name(), this->aggregateFunctions);
             }
 #endif
 
@@ -652,17 +685,14 @@ namespace sqlite_orm {
             }
 
             template<class F>
-            void create_scalar_function_impl(std::function<void(void* location)> constructAt) {
-                std::stringstream ss;
-                ss << F::name() << std::flush;
-                auto name = ss.str();
+            void create_scalar_function_impl(udf_holder<F> udfName, std::function<void(void* location)> constructAt) {
                 using args_tuple = typename callable_arguments<F>::args_tuple;
                 using return_type = typename callable_arguments<F>::return_type;
                 constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
                                                ? -1
                                                : int(std::tuple_size<args_tuple>::value);
                 this->scalarFunctions.emplace_back(
-                    std::move(name),
+                    udfName(),
                     argsCount,
                     std::move(constructAt),
                     /* destroy = */
@@ -685,17 +715,15 @@ namespace sqlite_orm {
             }
 
             template<class F>
-            void create_aggregate_function_impl(std::function<void(void* location)> constructAt) {
-                std::stringstream ss;
-                ss << F::name() << std::flush;
-                auto name = ss.str();
+            void create_aggregate_function_impl(udf_holder<F> udfName,
+                                                std::function<void(void* location)> constructAt) {
                 using args_tuple = typename callable_arguments<F>::args_tuple;
                 using return_type = typename callable_arguments<F>::return_type;
                 constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
                                                ? -1
                                                : int(std::tuple_size<args_tuple>::value);
                 this->aggregateFunctions.emplace_back(
-                    std::move(name),
+                    udfName(),
                     argsCount,
                     std::move(constructAt),
                     /* destroy = */
@@ -764,7 +792,8 @@ namespace sqlite_orm {
                                                     udfProxy.argumentsCount,
                                                     SQLITE_UTF8,
                                                     &udfProxy,
-                                                    scalar_function_callback,
+                                                    udfProxy.constructAt ? scalar_function_callback
+                                                                         : quoted_scalar_function_callback,
                                                     nullptr,
                                                     nullptr,
                                                     nullptr);

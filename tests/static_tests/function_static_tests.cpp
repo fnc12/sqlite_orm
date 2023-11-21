@@ -239,11 +239,15 @@ TEST_CASE("function static") {
     }
     SECTION("function call expressions") {
         struct SFunction {
-            static const char* name();
+            static const char* name() {
+                return "";
+            }
             int operator()(int) const;
         };
         struct AFunction {
-            static const char* name();
+            static const char* name() {
+                return "";
+            }
             void step(int);
             int fin() const;
         };

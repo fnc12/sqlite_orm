@@ -78,7 +78,9 @@ namespace sqlite_orm {
                 finalAggregateCall{finalAggregateCall}, udfConstructed{false}, udfMemory{udfMemory} {}
 
             ~udf_proxy() {
-                udfMemory.second(udfMemory.first);
+                if(udfMemory.second) {
+                    udfMemory.second(udfMemory.first);
+                }
             }
 
             friend void* udfHandle(udf_proxy* proxy) {
@@ -130,6 +132,12 @@ namespace sqlite_orm {
             //    we can use `udfHandle` interconvertibly without laundering its provenance.
             proxy->constructAt(udfHandle(proxy));
             const std::unique_ptr<void, xdestroy_fn_t> udfGuard{udfHandle(proxy), proxy->destroy};
+            proxy->func(udfHandle(proxy), context, argsCount, values);
+        }
+
+        inline void quoted_scalar_function_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
+            udf_proxy* proxy = static_cast<udf_proxy*>(sqlite3_user_data(context));
+            check_args_count(proxy, argsCount);
             proxy->func(udfHandle(proxy), context, argsCount, values);
         }
 
