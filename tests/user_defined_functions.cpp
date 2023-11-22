@@ -402,6 +402,15 @@ inline int ERR_FATAL_ERROR(unsigned long errcode) {
     return errcode != 0;
 }
 
+struct noncopyable_scalar {
+    int operator()(int x) const noexcept {
+        return x;
+    }
+
+    constexpr noncopyable_scalar() = default;
+    noncopyable_scalar(const noncopyable_scalar&) = delete;
+};
+
 struct stateful_scalar {
     int offset;
 
@@ -410,15 +419,14 @@ struct stateful_scalar {
     }
 
     constexpr stateful_scalar(int offset = 0) : offset{offset} {}
-    stateful_scalar(const stateful_scalar&) = default;
 };
 inline constexpr stateful_scalar offset0{};
 
-TEST_CASE("generalized udf") {
+TEST_CASE("generalized scalar udf") {
     auto storage = make_storage("");
     storage.sync_schema();
 
-    constexpr auto err_fatal_error_f = "ERR_FATAL_ERROR"_scalar.callable<ERR_FATAL_ERROR>();
+    constexpr auto err_fatal_error_f = "ERR_FATAL_ERROR"_scalar.from(ERR_FATAL_ERROR);
     storage.create_scalar_function<err_fatal_error_f>();
     {
         auto rows = storage.select(err_fatal_error_f(1));
@@ -427,18 +435,18 @@ TEST_CASE("generalized udf") {
     }
     storage.delete_scalar_function<err_fatal_error_f>();
 
-    constexpr auto err_fatal_error_2_f = "ERR_FATAL_ERROR_2"_scalar.callable<[](unsigned long errcode) {
+    constexpr auto is_fatal_error_f = "IS_FATAL_ERROR"_scalar.from([](unsigned long errcode) {
         return errcode != 0;
-    }>();
-    storage.create_scalar_function<err_fatal_error_2_f>();
+    });
+    storage.create_scalar_function<is_fatal_error_f>();
     {
-        auto rows = storage.select(err_fatal_error_2_f(1));
+        auto rows = storage.select(is_fatal_error_f(1));
         decltype(rows) expected{true};
         REQUIRE(rows == expected);
     }
-    storage.delete_scalar_function<err_fatal_error_f>();
+    storage.delete_scalar_function<is_fatal_error_f>();
 
-    constexpr auto equal_to_int_f = "equal_to"_scalar.callable<std::equal_to<int>{}>();
+    constexpr auto equal_to_int_f = "equal_to"_scalar.from(std::equal_to<int>{});
     storage.create_scalar_function<equal_to_int_f>();
     {
         auto rows = storage.select(equal_to_int_f(1, 1));
@@ -447,7 +455,7 @@ TEST_CASE("generalized udf") {
     }
     storage.delete_scalar_function<equal_to_int_f>();
 
-    constexpr auto equal_to_int_2_f = "equal_to"_scalar.make<std::equal_to<int>>();
+    constexpr auto equal_to_int_2_f = "equal_to"_scalar.from<std::equal_to<int>>();
     storage.create_scalar_function<equal_to_int_2_f>();
     {
         auto rows = storage.select(equal_to_int_2_f(1, 1));
@@ -456,7 +464,7 @@ TEST_CASE("generalized udf") {
     }
     storage.delete_scalar_function<equal_to_int_2_f>();
 
-    constexpr auto clamp_int_f = "clamp_int"_scalar.callable<std::clamp<int>>();
+    constexpr auto clamp_int_f = "clamp_int"_scalar.from(std::clamp<int>);
     storage.create_scalar_function<clamp_int_f>();
     {
         auto rows = storage.select(clamp_int_f(0, 1, 1));
@@ -465,7 +473,16 @@ TEST_CASE("generalized udf") {
     }
     storage.delete_scalar_function<clamp_int_f>();
 
-    constexpr auto offset0_f = "offset0"_scalar.callable<offset0>();
+    constexpr auto idfunc_f = "idfunc"_scalar.from<noncopyable_scalar>();
+    storage.create_scalar_function<idfunc_f>();
+    {
+        auto rows = storage.select(idfunc_f(1));
+        decltype(rows) expected{1};
+        REQUIRE(rows == expected);
+    }
+    storage.delete_scalar_function<idfunc_f>();
+
+    constexpr auto offset0_f = "offset0"_scalar.from(offset0);
     storage.create_scalar_function<offset0_f>();
     {
         auto rows = storage.select(offset0_f(1));

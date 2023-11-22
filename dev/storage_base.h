@@ -290,6 +290,16 @@ namespace sqlite_orm {
                 return this->create_scalar_function<auto_type_t<f>>(std::forward<Args>(constructorArgs)...);
             }
 
+            /**
+             * Create an application-defined scalar function.
+             * Can be called at any time no matter whether the database connection is opened or not.
+             *
+             * If `quotedF` contains a freestanding function, stateless lambda or stateless classic function object,
+             * `quoted_scalar_function::callable()` uses the original function object, assuming it is free of side effects;
+             * otherwise, it repeatedly uses a copy of the contained classic function object, assuming possible side effects.
+             * 
+             * Attention: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
+             */
             template<orm_quoted_scalar_function auto quotedF>
             void create_scalar_function() {
                 using F = auto_type_t<quotedF>;
@@ -396,11 +406,19 @@ namespace sqlite_orm {
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            /**
+             *  Delete a scalar function you created before.
+             *  Can be called at any time no matter whether the database connection is open or not.
+             */
             template<orm_scalar_function auto f>
             void delete_scalar_function() {
                 this->delete_function_impl(f.name(), this->scalarFunctions);
             }
 
+            /**
+             *  Delete a quoted scalar function you created before.
+             *  Can be called at any time no matter whether the database connection is open or not.
+             */
             template<orm_quoted_scalar_function auto quotedF>
             void delete_scalar_function() {
                 this->delete_function_impl(quotedF.name(), this->scalarFunctions);
