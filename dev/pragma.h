@@ -41,22 +41,99 @@ namespace sqlite_orm {
 
             pragma_t(get_connection_t get_connection_) : get_connection(std::move(get_connection_)) {}
 
+            /**
+             *  https://www.sqlite.org/pragma.html#pragma_module_list
+             */
             std::vector<std::string> module_list() {
                 return this->get_pragma<std::vector<std::string>>("module_list");
             }
 
+            template<class T>
+            void rekey(T value) {
+                this->set_pragma("rekey", value);
+            }
+
+            template<class T>
+            void key(T value) {
+                this->set_pragma("key", value);
+            }
+
+            template<class T>
+            void textrekey(T value) {
+                this->set_pragma("textrekey", value);
+            }
+
+            template<class T>
+            void textkey(T value) {
+                this->set_pragma("textkey", value);
+            }
+
+            /**
+             *  https://www.sqlite.org/pragma.html#pragma_temp_store
+             */
+            int temp_store() {
+                return this->get_pragma<int>("temp_store");
+            }
+
+            /**
+             *  https://www.sqlite.org/pragma.html#pragma_temp_store
+             */
+            void temp_store(int value) {
+                this->set_pragma("temp_store", value);
+            }
+
+            /**
+             *  https://www.sqlite.org/pragma.html#pragma_cache_size
+             */
+            void cache_size(int value) {
+                this->set_pragma("cache_size", value);
+            }
+
+            /**
+             *  https://www.sqlite.org/pragma.html#pragma_cache_size
+             */
+            int cache_size() {
+                return this->get_pragma<int>("cache_size");
+            }
+
+            /**
+             *  https://www.sqlite.org/pragma.html#pragma_threads
+             */
+            void threads(int value) {
+                this->set_pragma("threads", value);
+            }
+
+            /**
+             *  https://www.sqlite.org/pragma.html#pragma_threads
+             */
+            int threads() {
+                return this->get_pragma<int>("threads");
+            }
+
+            /**
+             *  https://www.sqlite.org/pragma.html#pragma_busy_timeout
+             */
             void busy_timeout(int value) {
                 this->set_pragma("busy_timeout", value);
             }
 
+            /**
+             *  https://www.sqlite.org/pragma.html#pragma_busy_timeout
+             */
             int busy_timeout() {
                 return this->get_pragma<int>("busy_timeout");
             }
 
+            /**
+             *  https://www.sqlite.org/pragma.html#pragma_journal_mode
+             */
             sqlite_orm::journal_mode journal_mode() {
                 return this->get_pragma<sqlite_orm::journal_mode>("journal_mode");
             }
 
+            /**
+             *  https://www.sqlite.org/pragma.html#pragma_journal_mode
+             */
             void journal_mode(sqlite_orm::journal_mode value) {
                 this->_journal_mode = -1;
                 this->set_pragma("journal_mode", value);
@@ -77,36 +154,60 @@ namespace sqlite_orm {
                 this->set_pragma("application_id", value);
             }
 
+            /**
+             *  https://www.sqlite.org/pragma.html#pragma_synchronous
+             */
             int synchronous() {
                 return this->get_pragma<int>("synchronous");
             }
 
+            /**
+             *  https://www.sqlite.org/pragma.html#pragma_synchronous
+             */
             void synchronous(int value) {
                 this->_synchronous = -1;
                 this->set_pragma("synchronous", value);
                 this->_synchronous = value;
             }
 
+            /**
+             *  https://www.sqlite.org/pragma.html#pragma_user_version
+             */
             int user_version() {
                 return this->get_pragma<int>("user_version");
             }
 
+            /**
+             *  https://www.sqlite.org/pragma.html#pragma_user_version
+             */
             void user_version(int value) {
                 this->set_pragma("user_version", value);
             }
 
+            /**
+             *  https://www.sqlite.org/pragma.html#pragma_auto_vacuum
+             */
             int auto_vacuum() {
                 return this->get_pragma<int>("auto_vacuum");
             }
 
+            /**
+             *  https://www.sqlite.org/pragma.html#pragma_auto_vacuum
+             */
             void auto_vacuum(int value) {
                 this->set_pragma("auto_vacuum", value);
             }
 
+            /**
+             *  https://www.sqlite.org/pragma.html#pragma_integrity_check
+             */
             std::vector<std::string> integrity_check() {
                 return this->get_pragma<std::vector<std::string>>("integrity_check");
             }
 
+            /**
+             *  https://www.sqlite.org/pragma.html#pragma_integrity_check
+             */
             template<class T>
             std::vector<std::string> integrity_check(T table_name) {
                 std::ostringstream ss;
@@ -114,13 +215,19 @@ namespace sqlite_orm {
                 return this->get_pragma<std::vector<std::string>>(ss.str());
             }
 
+            /**
+             *  https://www.sqlite.org/pragma.html#pragma_integrity_check
+             */
             std::vector<std::string> integrity_check(int n) {
                 std::ostringstream ss;
                 ss << "integrity_check(" << n << ")" << std::flush;
                 return this->get_pragma<std::vector<std::string>>(ss.str());
             }
 
-            // will include generated columns in response as opposed to table_info
+            /**
+             *  https://www.sqlite.org/pragma.html#pragma_table_xinfo
+             *  will include generated columns in response as opposed to table_info
+             */
             std::vector<sqlite_orm::table_xinfo> table_xinfo(const std::string& tableName) const {
                 auto connection = this->get_connection();
 
@@ -158,6 +265,9 @@ namespace sqlite_orm {
                 return result;
             }
 
+            /**
+             *  https://www.sqlite.org/pragma.html#pragma_table_info
+             */
             std::vector<sqlite_orm::table_info> table_info(const std::string& tableName) const {
                 auto connection = this->get_connection();
 
