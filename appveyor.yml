@@ -107,7 +107,7 @@ for:
   install:
     - |-
       cd C:\Tools\vcpkg
-      git fetch --tags && git checkout 2023.10.19
+      git fetch --tags && git checkout 2023.11.20
       cd %APPVEYOR_BUILD_FOLDER%
       C:\Tools\vcpkg\bootstrap-vcpkg.bat -disableMetrics
       C:\Tools\vcpkg\vcpkg integrate install
@@ -140,7 +140,7 @@ for:
   install:
     - |-
       pushd $HOME/vcpkg
-      git fetch --tags && git checkout 2023.10.19
+      git fetch --tags && git checkout 2023.11.20
       popd
       $HOME/vcpkg/bootstrap-vcpkg.sh -disableMetrics
       $HOME/vcpkg/vcpkg integrate install --overlay-triplets=vcpkg/triplets
@@ -168,7 +168,7 @@ for:
   # using custom vcpkg triplets for building and linking dynamic dependent libraries
   install:
     - |-
-      git clone --depth 1 --branch 2023.10.19 https://github.com/microsoft/vcpkg.git $HOME/vcpkg
+      git clone --depth 1 --branch 2023.11.20 https://github.com/microsoft/vcpkg.git $HOME/vcpkg
       $HOME/vcpkg/bootstrap-vcpkg.sh -disableMetrics
       $HOME/vcpkg/vcpkg integrate install --overlay-triplets=vcpkg/triplets
       vcpkg install sqlite3[core,dbstat,math,json1,fts5] catch2 --overlay-triplets=vcpkg/triplets
