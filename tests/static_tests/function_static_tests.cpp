@@ -58,7 +58,7 @@ TEST_CASE("function static") {
                 using ExpectedType = double (Function::*)(double) const;
                 STATIC_REQUIRE(std::is_same<RunMemberFunctionPointer, ExpectedType>::value);
 
-                using ArgumentsTuple = internal::member_function_arguments<RunMemberFunctionPointer>::tuple_type;
+                using ArgumentsTuple = internal::function_arguments<RunMemberFunctionPointer, std::tuple, std::decay_t>;
                 using ExpectedArgumentsTuple = std::tuple<double>;
                 STATIC_REQUIRE(std::is_same<ArgumentsTuple, ExpectedArgumentsTuple>::value);
 
@@ -80,7 +80,7 @@ TEST_CASE("function static") {
                 using ExpectedType = double (Function::*)(double);
                 STATIC_REQUIRE(std::is_same<RunMemberFunctionPointer, ExpectedType>::value);
 
-                using ArgumentsTuple = internal::member_function_arguments<RunMemberFunctionPointer>::tuple_type;
+                using ArgumentsTuple = internal::function_arguments<RunMemberFunctionPointer, std::tuple, std::decay_t>;
                 using ExpectedArgumentsTuple = std::tuple<double>;
                 STATIC_REQUIRE(std::is_same<ArgumentsTuple, ExpectedArgumentsTuple>::value);
 
@@ -102,7 +102,7 @@ TEST_CASE("function static") {
                 using ExpectedType = int (Function::*)(std::string) const;
                 STATIC_REQUIRE(std::is_same<RunMemberFunctionPointer, ExpectedType>::value);
 
-                using ArgumentsTuple = internal::member_function_arguments<RunMemberFunctionPointer>::tuple_type;
+                using ArgumentsTuple = internal::function_arguments<RunMemberFunctionPointer, std::tuple, std::decay_t>;
                 using ExpectedArgumentsTuple = std::tuple<std::string>;
                 STATIC_REQUIRE(std::is_same<ArgumentsTuple, ExpectedArgumentsTuple>::value);
 
@@ -124,7 +124,7 @@ TEST_CASE("function static") {
                 using ExpectedType = int (Function::*)(std::string);
                 STATIC_REQUIRE(std::is_same<RunMemberFunctionPointer, ExpectedType>::value);
 
-                using ArgumentsTuple = internal::member_function_arguments<RunMemberFunctionPointer>::tuple_type;
+                using ArgumentsTuple = internal::function_arguments<RunMemberFunctionPointer, std::tuple, std::decay_t>;
                 using ExpectedArgumentsTuple = std::tuple<std::string>;
                 STATIC_REQUIRE(std::is_same<ArgumentsTuple, ExpectedArgumentsTuple>::value);
 
@@ -146,7 +146,7 @@ TEST_CASE("function static") {
                 using ExpectedType = std::string (Function::*)(const std::string&, const std::string&) const;
                 STATIC_REQUIRE(std::is_same<RunMemberFunctionPointer, ExpectedType>::value);
 
-                using ArgumentsTuple = internal::member_function_arguments<RunMemberFunctionPointer>::tuple_type;
+                using ArgumentsTuple = internal::function_arguments<RunMemberFunctionPointer, std::tuple, std::decay_t>;
                 using ExpectedArgumentsTuple = std::tuple<std::string, std::string>;
                 STATIC_REQUIRE(std::is_same<ArgumentsTuple, ExpectedArgumentsTuple>::value);
 
@@ -168,7 +168,7 @@ TEST_CASE("function static") {
                 using ExpectedType = std::string (Function::*)(const std::string&, const std::string&);
                 STATIC_REQUIRE(std::is_same<RunMemberFunctionPointer, ExpectedType>::value);
 
-                using ArgumentsTuple = internal::member_function_arguments<RunMemberFunctionPointer>::tuple_type;
+                using ArgumentsTuple = internal::function_arguments<RunMemberFunctionPointer, std::tuple, std::decay_t>;
                 using ExpectedArgumentsTuple = std::tuple<std::string, std::string>;
                 STATIC_REQUIRE(std::is_same<ArgumentsTuple, ExpectedArgumentsTuple>::value);
 
