@@ -7,6 +7,7 @@
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
+#include "functional/function_traits.h"
 #include "tags.h"
 
 namespace sqlite_orm {
@@ -44,47 +45,30 @@ namespace sqlite_orm {
                              std::enable_if_t<std::is_member_function_pointer<aggregate_fin_function_t<F>>::value>>> =
             true;
 
-        template<class T>
-        struct member_function_arguments;
-
-        template<class O, class R, class... Args>
-        struct member_function_arguments<R (O::*)(Args...) const> {
-            using member_function_type = R (O::*)(Args...) const;
-            using tuple_type = std::tuple<std::decay_t<Args>...>;
-            using return_type = R;
-        };
-
-        template<class O, class R, class... Args>
-        struct member_function_arguments<R (O::*)(Args...)> {
-            using member_function_type = R (O::*)(Args...);
-            using tuple_type = std::tuple<std::decay_t<Args>...>;
-            using return_type = R;
-        };
-
         template<class F, class SFINAE = void>
         struct callable_arguments_impl;
 
         template<class F>
         struct callable_arguments_impl<F, std::enable_if_t<is_scalar_udf_v<F>>> {
-            using args_tuple = typename member_function_arguments<scalar_call_function_t<F>>::tuple_type;
-            using return_type = typename member_function_arguments<scalar_call_function_t<F>>::return_type;
+            using args_tuple = function_arguments<scalar_call_function_t<F>, std::tuple, std::decay_t>;
+            using return_type = function_return_type_t<scalar_call_function_t<F>>;
         };
 
         template<class F>
         struct callable_arguments_impl<F, std::enable_if_t<is_aggregate_udf_v<F>>> {
-            using args_tuple = typename member_function_arguments<aggregate_step_function_t<F>>::tuple_type;
-            using return_type = typename member_function_arguments<aggregate_fin_function_t<F>>::return_type;
+            using args_tuple = function_arguments<aggregate_step_function_t<F>, std::tuple, std::decay_t>;
+            using return_type = function_return_type_t<aggregate_fin_function_t<F>>;
         };
 
         template<class F>
         struct callable_arguments : callable_arguments_impl<F> {};
 
-        template<class UDF, class... Args>
+        template<class UDF, class... CallArgs>
         struct function_call {
             using udf_type = UDF;
-            using args_tuple = std::tuple<Args...>;
+            using args_tuple = std::tuple<CallArgs...>;
 
-            args_tuple args;
+            args_tuple callArgs;
         };
 
         template<class T>
@@ -95,8 +79,8 @@ namespace sqlite_orm {
         struct unpacked_arg {
             using type = T;
         };
-        template<class F, class... Args>
-        struct unpacked_arg<function_call<F, Args...>> {
+        template<class F, class... CallArgs>
+        struct unpacked_arg<function_call<F, CallArgs...>> {
             using type = typename callable_arguments<F>::return_type;
         };
         template<class T>
@@ -185,9 +169,9 @@ namespace sqlite_orm {
          */
         template<class UDF>
         struct function : polyfill::type_identity<UDF> {
-            template<typename... Args>
-            function_call<UDF, Args...> operator()(Args... args) const {
-                using args_tuple = std::tuple<Args...>;
+            template<typename... CallArgs>
+            function_call<UDF, CallArgs...> operator()(CallArgs... callArgs) const {
+                using args_tuple = std::tuple<CallArgs...>;
                 using function_args_tuple = typename callable_arguments<UDF>::args_tuple;
                 constexpr size_t argsCount = std::tuple_size<args_tuple>::value;
                 constexpr size_t functionArgsCount = std::tuple_size<function_args_tuple>::value;
@@ -197,7 +181,7 @@ namespace sqlite_orm {
                                    polyfill::index_constant<std::min(functionArgsCount, argsCount) - 1>{})) ||
                                   std::is_same<function_args_tuple, std::tuple<arg_values>>::value,
                               "The number of arguments does not match");
-                return {{std::forward<Args>(args)...}};
+                return {{std::forward<CallArgs>(callArgs)...}};
             }
         };
     }

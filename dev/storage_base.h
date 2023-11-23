@@ -674,6 +674,7 @@ namespace sqlite_orm {
                         auto result = polyfill::apply(udf, std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
                     },
+                    /* finalCall = */
                     nullptr,
                     allocate_udf_storage<F>());
 
