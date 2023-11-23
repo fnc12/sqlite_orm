@@ -427,7 +427,7 @@ TEST_CASE("generalized scalar udf") {
     storage.sync_schema();
 
     SECTION("freestanding function") {
-        constexpr auto err_fatal_error_f = "ERR_FATAL_ERROR"_scalar.from(ERR_FATAL_ERROR);
+        constexpr auto err_fatal_error_f = "ERR_FATAL_ERROR"_scalar.quote(ERR_FATAL_ERROR);
         storage.create_scalar_function<err_fatal_error_f>();
         {
             auto rows = storage.select(err_fatal_error_f(1));
@@ -438,7 +438,7 @@ TEST_CASE("generalized scalar udf") {
     }
 
     SECTION("stateless lambda") {
-        constexpr auto is_fatal_error_f = "is_fatal_error"_scalar.from([](unsigned long errcode) {
+        constexpr auto is_fatal_error_f = "is_fatal_error"_scalar.quote([](unsigned long errcode) {
             return errcode != 0;
         });
         storage.create_scalar_function<is_fatal_error_f>();
@@ -451,7 +451,7 @@ TEST_CASE("generalized scalar udf") {
     }
 
     SECTION("function object instance") {
-        constexpr auto equal_to_int_f = "equal_to"_scalar.from(std::equal_to<int>{});
+        constexpr auto equal_to_int_f = "equal_to"_scalar.quote(std::equal_to<int>{});
         storage.create_scalar_function<equal_to_int_f>();
         {
             auto rows = storage.select(equal_to_int_f(1, 1));
@@ -462,7 +462,7 @@ TEST_CASE("generalized scalar udf") {
     }
 
     SECTION("explicit function object type") {
-        constexpr auto equal_to_int_f = "equal_to"_scalar.from<std::equal_to<int>>();
+        constexpr auto equal_to_int_f = "equal_to"_scalar.quote<std::equal_to<int>>();
         storage.create_scalar_function<equal_to_int_f>();
         {
             auto rows = storage.select(equal_to_int_f(1, 1));
@@ -474,7 +474,7 @@ TEST_CASE("generalized scalar udf") {
 
     SECTION("'transparent' function object instance") {
         constexpr auto equal_to_int_f =
-            "equal_to"_scalar.from<bool(const int&, const int&) const>(std::equal_to<void>{});
+            "equal_to"_scalar.quote<bool(const int&, const int&) const>(std::equal_to<void>{});
         storage.create_scalar_function<equal_to_int_f>();
         {
             auto rows = storage.select(equal_to_int_f(1, 1));
@@ -486,7 +486,7 @@ TEST_CASE("generalized scalar udf") {
 
     SECTION("explicit 'transparent' function object type") {
         constexpr auto equal_to_int_f =
-            "equal_to"_scalar.from<bool(const int&, const int&) const, std::equal_to<void>>();
+            "equal_to"_scalar.quote<bool(const int&, const int&) const, std::equal_to<void>>();
         storage.create_scalar_function<equal_to_int_f>();
         {
             auto rows = storage.select(equal_to_int_f(1, 1));
@@ -497,7 +497,7 @@ TEST_CASE("generalized scalar udf") {
     }
 
     SECTION("specialized template function") {
-        constexpr auto clamp_int_f = "clamp_int"_scalar.from(std::clamp<int>);
+        constexpr auto clamp_int_f = "clamp_int"_scalar.quote(std::clamp<int>);
         storage.create_scalar_function<clamp_int_f>();
         {
             auto rows = storage.select(clamp_int_f(0, 1, 1));
@@ -509,7 +509,7 @@ TEST_CASE("generalized scalar udf") {
 
     SECTION("overloaded template function") {
         constexpr auto clamp_int_f =
-            "clamp_int"_scalar.from<const int&(const int&, const int&, const int&)>(std::clamp);
+            "clamp_int"_scalar.quote<const int&(const int&, const int&, const int&)>(std::clamp);
         storage.create_scalar_function<clamp_int_f>();
         {
             auto rows = storage.select(clamp_int_f(0, 1, 1));
@@ -520,7 +520,7 @@ TEST_CASE("generalized scalar udf") {
     }
 
     SECTION("non-copyable function object") {
-        constexpr auto idfunc_f = "idfunc"_scalar.from<noncopyable_scalar>();
+        constexpr auto idfunc_f = "idfunc"_scalar.quote<noncopyable_scalar>();
         storage.create_scalar_function<idfunc_f>();
         {
             auto rows = storage.select(idfunc_f(1));
@@ -531,7 +531,7 @@ TEST_CASE("generalized scalar udf") {
     }
 
     SECTION("stateful function object") {
-        constexpr auto offset0_f = "offset0"_scalar.from(offset0);
+        constexpr auto offset0_f = "offset0"_scalar.quote(offset0);
         storage.create_scalar_function<offset0_f>();
         {
             auto rows = storage.select(columns(offset0_f(1), offset0_f(1)));

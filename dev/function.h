@@ -350,7 +350,7 @@ namespace sqlite_orm {
         /*
          *  Generator of a user-defined function call in a sql query expression.
          *  
-         *  Use the string literal operator template `""_scalar.from()` to quote
+         *  Use the string literal operator template `""_scalar.quote()` to quote
          *  a freestanding function, stateless lambda or function object.
          *  
          *  Calling the function captures the parameters in a `function_call` node.
@@ -419,7 +419,7 @@ namespace sqlite_orm {
              */
             template<class F>
                 requires(std::is_function_v<std::remove_pointer_t<F>>)
-            [[nodiscard]] consteval auto from(F callable) const {
+            [[nodiscard]] consteval auto quote(F callable) const {
                 using Sig = function_signature_type_t<F>;
                 return quoted_scalar_function<F, Sig, N>{this->nme, std::move(callable)};
             }
@@ -428,7 +428,7 @@ namespace sqlite_orm {
              *  From an overloaded freestanding function.
              */
             template<orm_function_sig F>
-            [[nodiscard]] consteval auto from(F* callable) const {
+            [[nodiscard]] consteval auto quote(F* callable) const {
                 return quoted_scalar_function<F*, F, N>{this->nme, std::move(callable)};
             }
 
@@ -437,7 +437,7 @@ namespace sqlite_orm {
              */
             template<class F>
                 requires(orm_classic_function_object<F> && (stateless<F> || std::copy_constructible<F>))
-            [[nodiscard]] consteval auto from(F callable) const {
+            [[nodiscard]] consteval auto quote(F callable) const {
                 using Sig = function_signature_type_t<decltype(&F::operator())>;
                 // detect whether overloaded call operator can be picked using `Sig`
                 using call_operator_type = decltype(static_cast<Sig F::*>(&F::operator()));
@@ -449,7 +449,7 @@ namespace sqlite_orm {
              */
             template<orm_function_sig Sig, class F>
                 requires((stateless<F> || std::copy_constructible<F>))
-            [[nodiscard]] consteval auto from(F callable) const {
+            [[nodiscard]] consteval auto quote(F callable) const {
                 // detect whether overloaded call operator can be picked using `Sig`
                 using call_operator_type = decltype(static_cast<Sig F::*>(&F::operator()));
                 return quoted_scalar_function<F, Sig, N>{this->nme, std::move(callable)};
@@ -460,7 +460,7 @@ namespace sqlite_orm {
              */
             template<orm_classic_function_object F, class... Args>
                 requires(stateless<F> || std::copy_constructible<F>)
-            [[nodiscard]] consteval auto from(Args&&... constructorArgs) const {
+            [[nodiscard]] consteval auto quote(Args&&... constructorArgs) const {
                 using Sig = function_signature_type_t<decltype(&F::operator())>;
                 return quoted_scalar_function<F, Sig, N>{this->nme, std::forward<Args>(constructorArgs)...};
             }
@@ -470,7 +470,7 @@ namespace sqlite_orm {
              */
             template<orm_function_sig Sig, class F, class... Args>
                 requires((stateless<F> || std::copy_constructible<F>))
-            [[nodiscard]] consteval auto from(Args&&... constructorArgs) const {
+            [[nodiscard]] consteval auto quote(Args&&... constructorArgs) const {
                 // detect whether overloaded call operator can be picked using `Sig`
                 using call_operator_type = decltype(static_cast<Sig F::*>(&F::operator()));
                 return quoted_scalar_function<F, Sig, N>{this->nme, std::forward<Args>(constructorArgs)...};
@@ -505,17 +505,17 @@ namespace sqlite_orm {
      *  
      *  Examples:
      *  // freestanding function from a library
-     *  constexpr auto clamp_int_f = "clamp_int"_scalar.from(std::clamp<int>);
+     *  constexpr auto clamp_int_f = "clamp_int"_scalar.quote(std::clamp<int>);
      *  // stateless lambda
-     *  constexpr auto is_fatal_error_f = "IS_FATAL_ERROR"_scalar.from([](unsigned long errcode) {
+     *  constexpr auto is_fatal_error_f = "IS_FATAL_ERROR"_scalar.quote([](unsigned long errcode) {
      *      return errcode != 0;
      *  });
      *  // function object instance
-     *  constexpr auto equal_to_int_f = "equal_to"_scalar.from(std::equal_to<int>{});
+     *  constexpr auto equal_to_int_f = "equal_to"_scalar.quote(std::equal_to<int>{});
      *  // function object
-     *  constexpr auto equal_to_int_2_f = "equal_to"_scalar.from<std::equal_to<int>>();
+     *  constexpr auto equal_to_int_2_f = "equal_to"_scalar.quote<std::equal_to<int>>();
      *  // pick function object's template call operator
-     *  constexpr auto equal_to_int_3_f = "equal_to"_scalar.from<bool(const int&, const int&) const>(std::equal_to<void>{});
+     *  constexpr auto equal_to_int_3_f = "equal_to"_scalar.quote<bool(const int&, const int&) const>(std::equal_to<void>{});
      *
      *  storage.create_scalar_function<clamp_int_f>();
      *  storage.create_scalar_function<is_fatal_error_f>();
