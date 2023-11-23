@@ -437,6 +437,14 @@ namespace sqlite_orm {
         template<typename T>
         using on_type_t = typename T::on_type;
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        template<class T>
+        using udf_type_t = typename T::udf_type;
+
+        template<auto a>
+        using auto_udf_type_t = typename decltype(a)::udf_type;
+#endif
+
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
         template<typename T>
         concept stateless = std::is_empty_v<T>;
@@ -10909,6 +10917,12 @@ namespace sqlite_orm {
 
 namespace sqlite_orm {
     namespace internal {
+        /*
+         *  Define nested typenames:
+         *  - return_type
+         *  - arguments_tuple
+         *  - signature_type
+         */
         template<class F>
         struct function_traits;
 
@@ -10928,29 +10942,38 @@ namespace sqlite_orm {
         using function_arguments = typename function_traits<F>::template arguments_tuple<Tuple, ProjectOp>;
 
         /*
-         *  Define nested typenames:
-         *  - return_type
-         *  - arguments_tuple
+         *  A function's signature
          */
+        template<class F>
+        using function_signature_type_t = typename function_traits<F>::signature_type;
+
         template<class R, class... Args>
         struct function_traits<R(Args...)> {
             using return_type = R;
 
             template<template<class...> class Tuple, template<class...> class ProjectOp>
             using arguments_tuple = Tuple<mpl::invoke_fn_t<ProjectOp, Args>...>;
+
+            using signature_type = R(Args...);
         };
 
         // non-exhaustive partial specializations of `function_traits`
 
         template<class R, class... Args>
-        struct function_traits<R(Args...) const> : function_traits<R(Args...)> {};
+        struct function_traits<R(Args...) const> : function_traits<R(Args...)> {
+            using signature_type = R(Args...) const;
+        };
 
 #ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
         template<class R, class... Args>
-        struct function_traits<R(Args...) noexcept> : function_traits<R(Args...)> {};
+        struct function_traits<R(Args...) noexcept> : function_traits<R(Args...)> {
+            using signature_type = R(Args...) noexcept;
+        };
 
         template<class R, class... Args>
-        struct function_traits<R(Args...) const noexcept> : function_traits<R(Args...)> {};
+        struct function_traits<R(Args...) const noexcept> : function_traits<R(Args...)> {
+            using signature_type = R(Args...) const noexcept;
+        };
 #endif
 
         /*
@@ -10958,6 +10981,13 @@ namespace sqlite_orm {
          */
         template<class R, class... Args>
         struct function_traits<R (*)(Args...)> : function_traits<R(Args...)> {};
+
+#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
+        template<class R, class... Args>
+        struct function_traits<R (*)(Args...) noexcept> : function_traits<R(Args...)> {
+            using signature_type = R(Args...) noexcept;
+        };
+#endif
 
         /*
          *  Pick signature of pointer-to-member function
@@ -11011,6 +11041,17 @@ namespace sqlite_orm {
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /** @short Specifies that a type is a function signature (i.e. a function in the C++ type system).
+     */
+    template<class Sig>
+    concept orm_function_sig = std::is_function_v<Sig>;
+
+    /** @short Specifies that a type is a classic function object.
+     *  
+     *  A classic function object meets the following requirements:
+     *  - defines a single call operator `F::operator()`
+     *  - isn't a traditional sqlite_orm scalar function (having a static `F::name()` function
+     */
     template<class F>
     concept orm_classic_function_object =
         ((!requires { typename F::is_transparent; }) && (requires { &F::operator(); }) &&
@@ -11049,13 +11090,13 @@ namespace sqlite_orm {
      */
     template<class F>
     concept orm_scalar_function = (polyfill::is_specialization_of_v<std::remove_const_t<F>, internal::function> &&
-                                   orm_scalar_udf<typename F::type>);
+                                   orm_scalar_udf<typename F::udf_type>);
 
     /** @short Specifies that a type is a framed user-defined aggregate function.
      */
     template<class F>
     concept orm_aggregate_function = (polyfill::is_specialization_of_v<std::remove_const_t<F>, internal::function> &&
-                                      orm_aggregate_udf<typename F::type>);
+                                      orm_aggregate_udf<typename F::udf_type>);
 
     /** @short Specifies that a type is a framed and quoted user-defined scalar function.
      */
@@ -11268,7 +11309,10 @@ namespace sqlite_orm {
          *  Calling the function captures the parameters in a `function_call` node.
          */
         template<class UDF>
-        struct function : polyfill::type_identity<UDF> {
+        struct function {
+            using udf_type = UDF;
+            using callable_type = UDF;
+
             /*
              *  Generates the SQL function call.
              */
@@ -11293,25 +11337,28 @@ namespace sqlite_orm {
          *  Generator of a user-defined function call in a sql query expression.
          *  
          *  Use the string literal operator template `""_scalar.from()` to quote
-         *  a freestanding function, stateless lambda or classic function object.
+         *  a freestanding function, stateless lambda or function object.
          *  
          *  Calling the function captures the parameters in a `function_call` node.
          *  
          *  Internal note:
-         *  Captures and represents a function [pointer or object], especially one without side effects.
+         *  1. Captures and represents a function [pointer or object], especially one without side effects.
          *  If `F` is a stateless function object, `quoted_scalar_function::callable()` returns the original function object,
          *  otherwise it is assumed to have possibe side-effects and `quoted_scalar_function::callable()` returns a copy.
+         *  2. The nested `udf_type` typename is deliberately chosen to be the function signature,
+         *  and will be the abstracted version of the user-defined function. 
          */
-        template<class F, size_t N>
-        struct quoted_scalar_function : polyfill::type_identity<std::remove_pointer_t<F>> {
-            using type = typename quoted_scalar_function::type;
+        template<class F, class Sig, size_t N>
+        struct quoted_scalar_function {
+            using udf_type = Sig;
+            using callabe_type = F;
 
             /*
              *  Generates the SQL function call.
              */
             template<typename... CallArgs>
-            function_call<type, CallArgs...> operator()(CallArgs... callArgs) const {
-                check_function_call<type, CallArgs...>();
+            function_call<udf_type, CallArgs...> operator()(CallArgs... callArgs) const {
+                check_function_call<udf_type, CallArgs...>();
                 return {this->udf_holder(), {std::forward<CallArgs>(callArgs)...}};
             }
 
@@ -11328,7 +11375,7 @@ namespace sqlite_orm {
             }
 
             constexpr auto udf_holder() const {
-                return internal::udf_holder<type>{this->name()};
+                return internal::udf_holder<udf_type>{this->name()};
             }
 
             constexpr auto name() const {
@@ -11354,22 +11401,65 @@ namespace sqlite_orm {
             }
 
             /*
-             *  From function pointer or object.
+             *  From a freestanding function.
              */
             template<class F>
-                requires(std::is_function_v<std::remove_pointer_t<F>> ||
-                         (orm_classic_function_object<F> && (stateless<F> || std::copy_constructible<F>)))
+                requires(std::is_function_v<std::remove_pointer_t<F>>)
             [[nodiscard]] consteval auto from(F callable) const {
-                return quoted_scalar_function<F, N>{this->nme, std::move(callable)};
+                using Sig = function_signature_type_t<F>;
+                return quoted_scalar_function<F, Sig, N>{this->nme, std::move(callable)};
             }
 
             /*
-             *  From function object type.
+             *  From an overloaded freestanding function.
              */
-            template<class F, class... Args>
+            template<orm_function_sig F>
+            [[nodiscard]] consteval auto from(F* callable) const {
+                return quoted_scalar_function<F*, F, N>{this->nme, std::move(callable)};
+            }
+
+            /*
+             *  From a classic function object instance.
+             */
+            template<class F>
                 requires(orm_classic_function_object<F> && (stateless<F> || std::copy_constructible<F>))
+            [[nodiscard]] consteval auto from(F callable) const {
+                using Sig = function_signature_type_t<decltype(&F::operator())>;
+                // detect whether overloaded call operator can be picked using `Sig`
+                using call_operator_type = decltype(static_cast<Sig F::*>(&F::operator()));
+                return quoted_scalar_function<F, Sig, N>{this->nme, std::move(callable)};
+            }
+
+            /*
+             *  From a function object instance, picking the overloaded call operator.
+             */
+            template<orm_function_sig Sig, class F>
+                requires((stateless<F> || std::copy_constructible<F>))
+            [[nodiscard]] consteval auto from(F callable) const {
+                // detect whether overloaded call operator can be picked using `Sig`
+                using call_operator_type = decltype(static_cast<Sig F::*>(&F::operator()));
+                return quoted_scalar_function<F, Sig, N>{this->nme, std::move(callable)};
+            }
+
+            /*
+             *  From a classic function object type.
+             */
+            template<orm_classic_function_object F, class... Args>
+                requires(stateless<F> || std::copy_constructible<F>)
             [[nodiscard]] consteval auto from(Args&&... constructorArgs) const {
-                return quoted_scalar_function<F, N>{this->nme, std::forward<Args>(constructorArgs)...};
+                using Sig = function_signature_type_t<decltype(&F::operator())>;
+                return quoted_scalar_function<F, Sig, N>{this->nme, std::forward<Args>(constructorArgs)...};
+            }
+
+            /*
+             *  From a function object type, picking the overloaded call operator.
+             */
+            template<orm_function_sig Sig, class F, class... Args>
+                requires((stateless<F> || std::copy_constructible<F>))
+            [[nodiscard]] consteval auto from(Args&&... constructorArgs) const {
+                // detect whether overloaded call operator can be picked using `Sig`
+                using call_operator_type = decltype(static_cast<Sig F::*>(&F::operator()));
+                return quoted_scalar_function<F, Sig, N>{this->nme, std::forward<Args>(constructorArgs)...};
             }
         };
 #endif
@@ -11393,17 +11483,37 @@ namespace sqlite_orm {
     SQLITE_ORM_INLINE_VAR constexpr internal::function<UDF> func{};
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /*  @short Create a scalar function from a freestanding function, stateless lambda or classic function object,
+    /*  @short Create a scalar function from a freestanding function, stateless lambda or function object,
      *  and call such a user-defined function.
      *  
+     *  If you need to pick a function or method from an overload set, or pick a template function you can
+     *  specify an explicit function signature in the call to `from()`.
+     *  
      *  Examples:
+     *  // freestanding function from a library
      *  constexpr auto clamp_int_f = "clamp_int"_scalar.from(std::clamp<int>);
-     *  constexpr auto equal_to_int_f = "equal_to_int"_scalar.from<std::equal_to<int>>();
-     *  constexpr auto is_fatal_error_f = "is_fatal_error"_scalar.from([](unsigned long errcode) {
+     *  // stateless lambda
+     *  constexpr auto is_fatal_error_f = "IS_FATAL_ERROR"_scalar.from([](unsigned long errcode) {
      *      return errcode != 0;
      *  });
-     *  select(clamp_int_f(0, 1, 1));
-     *  select(is_fatal_error_f(1));
+     *  // function object instance
+     *  constexpr auto equal_to_int_f = "equal_to"_scalar.from(std::equal_to<int>{});
+     *  // function object
+     *  constexpr auto equal_to_int_2_f = "equal_to"_scalar.from<std::equal_to<int>>();
+     *  // pick function object's template call operator
+     *  constexpr auto equal_to_int_3_f = "equal_to"_scalar.from<bool(const int&, const int&) const>(std::equal_to<void>{});
+     *
+     *  storage.create_scalar_function<clamp_int_f>();
+     *  storage.create_scalar_function<is_fatal_error_f>();
+     *  storage.create_scalar_function<equal_to_int_f>();
+     *  storage.create_scalar_function<equal_to_int_2_f>();
+     *  storage.create_scalar_function<equal_to_int_3_f>();
+     *
+     *  auto rows = storage.select(clamp_int_f(0, 1, 1));
+     *  auto rows = storage.select(is_fatal_error_f(1));
+     *  auto rows = storage.select(equal_to_int_f(1, 1));
+     *  auto rows = storage.select(equal_to_int_2_f(1, 1));
+     *  auto rows = storage.select(equal_to_int_3_f(1, 1));
      */
     template<internal::quoted_function_builder builder>
     [[nodiscard]] consteval auto operator"" _scalar() {
@@ -15529,24 +15639,24 @@ namespace sqlite_orm {
              */
             template<orm_scalar_function auto f, std::copy_constructible... Args>
             void create_scalar_function(Args&&... constructorArgs) {
-                return this->create_scalar_function<auto_type_t<f>>(std::forward<Args>(constructorArgs)...);
+                return this->create_scalar_function<auto_udf_type_t<f>>(std::forward<Args>(constructorArgs)...);
             }
 
             /**
              * Create an application-defined scalar function.
              * Can be called at any time no matter whether the database connection is opened or not.
              *
-             * If `quotedF` contains a freestanding function, stateless lambda or stateless classic function object,
+             * If `quotedF` contains a freestanding function, stateless lambda or stateless function object,
              * `quoted_scalar_function::callable()` uses the original function object, assuming it is free of side effects;
-             * otherwise, it repeatedly uses a copy of the contained classic function object, assuming possible side effects.
+             * otherwise, it repeatedly uses a copy of the contained function object, assuming possible side effects.
              * 
              * Attention: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
              */
             template<orm_quoted_scalar_function auto quotedF>
             void create_scalar_function() {
-                using F = auto_type_t<quotedF>;
-                using args_tuple = typename callable_arguments<F>::args_tuple;
-                using return_type = typename callable_arguments<F>::return_type;
+                using Sig = auto_udf_type_t<quotedF>;
+                using args_tuple = typename callable_arguments<Sig>::args_tuple;
+                using return_type = typename callable_arguments<Sig>::return_type;
                 constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
                                                ? -1
                                                : int(std::tuple_size<args_tuple>::value);
@@ -15632,7 +15742,7 @@ namespace sqlite_orm {
              */
             template<orm_aggregate_function auto f, std::copy_constructible... Args>
             void create_aggregate_function(Args&&... constructorArgs) {
-                return this->create_aggregate_function<auto_type_t<f>>(std::forward<Args>(constructorArgs)...);
+                return this->create_aggregate_function<auto_udf_type_t<f>>(std::forward<Args>(constructorArgs)...);
             }
 #endif
 

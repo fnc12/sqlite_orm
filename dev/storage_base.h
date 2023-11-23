@@ -287,24 +287,24 @@ namespace sqlite_orm {
              */
             template<orm_scalar_function auto f, std::copy_constructible... Args>
             void create_scalar_function(Args&&... constructorArgs) {
-                return this->create_scalar_function<auto_type_t<f>>(std::forward<Args>(constructorArgs)...);
+                return this->create_scalar_function<auto_udf_type_t<f>>(std::forward<Args>(constructorArgs)...);
             }
 
             /**
              * Create an application-defined scalar function.
              * Can be called at any time no matter whether the database connection is opened or not.
              *
-             * If `quotedF` contains a freestanding function, stateless lambda or stateless classic function object,
+             * If `quotedF` contains a freestanding function, stateless lambda or stateless function object,
              * `quoted_scalar_function::callable()` uses the original function object, assuming it is free of side effects;
-             * otherwise, it repeatedly uses a copy of the contained classic function object, assuming possible side effects.
+             * otherwise, it repeatedly uses a copy of the contained function object, assuming possible side effects.
              * 
              * Attention: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
              */
             template<orm_quoted_scalar_function auto quotedF>
             void create_scalar_function() {
-                using F = auto_type_t<quotedF>;
-                using args_tuple = typename callable_arguments<F>::args_tuple;
-                using return_type = typename callable_arguments<F>::return_type;
+                using Sig = auto_udf_type_t<quotedF>;
+                using args_tuple = typename callable_arguments<Sig>::args_tuple;
+                using return_type = typename callable_arguments<Sig>::return_type;
                 constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
                                                ? -1
                                                : int(std::tuple_size<args_tuple>::value);
@@ -390,7 +390,7 @@ namespace sqlite_orm {
              */
             template<orm_aggregate_function auto f, std::copy_constructible... Args>
             void create_aggregate_function(Args&&... constructorArgs) {
-                return this->create_aggregate_function<auto_type_t<f>>(std::forward<Args>(constructorArgs)...);
+                return this->create_aggregate_function<auto_udf_type_t<f>>(std::forward<Args>(constructorArgs)...);
             }
 #endif
 

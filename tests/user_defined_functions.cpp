@@ -426,69 +426,119 @@ TEST_CASE("generalized scalar udf") {
     auto storage = make_storage("");
     storage.sync_schema();
 
-    constexpr auto err_fatal_error_f = "ERR_FATAL_ERROR"_scalar.from(ERR_FATAL_ERROR);
-    storage.create_scalar_function<err_fatal_error_f>();
-    {
-        auto rows = storage.select(err_fatal_error_f(1));
-        decltype(rows) expected{true};
-        REQUIRE(rows == expected);
+    SECTION("freestanding function") {
+        constexpr auto err_fatal_error_f = "ERR_FATAL_ERROR"_scalar.from(ERR_FATAL_ERROR);
+        storage.create_scalar_function<err_fatal_error_f>();
+        {
+            auto rows = storage.select(err_fatal_error_f(1));
+            decltype(rows) expected{true};
+            REQUIRE(rows == expected);
+        }
+        storage.delete_scalar_function<err_fatal_error_f>();
     }
-    storage.delete_scalar_function<err_fatal_error_f>();
 
-    constexpr auto is_fatal_error_f = "IS_FATAL_ERROR"_scalar.from([](unsigned long errcode) {
-        return errcode != 0;
-    });
-    storage.create_scalar_function<is_fatal_error_f>();
-    {
-        auto rows = storage.select(is_fatal_error_f(1));
-        decltype(rows) expected{true};
-        REQUIRE(rows == expected);
+    SECTION("stateless lambda") {
+        constexpr auto is_fatal_error_f = "is_fatal_error"_scalar.from([](unsigned long errcode) {
+            return errcode != 0;
+        });
+        storage.create_scalar_function<is_fatal_error_f>();
+        {
+            auto rows = storage.select(is_fatal_error_f(1));
+            decltype(rows) expected{true};
+            REQUIRE(rows == expected);
+        }
+        storage.delete_scalar_function<is_fatal_error_f>();
     }
-    storage.delete_scalar_function<is_fatal_error_f>();
 
-    constexpr auto equal_to_int_f = "equal_to"_scalar.from(std::equal_to<int>{});
-    storage.create_scalar_function<equal_to_int_f>();
-    {
-        auto rows = storage.select(equal_to_int_f(1, 1));
-        decltype(rows) expected{true};
-        REQUIRE(rows == expected);
+    SECTION("function object instance") {
+        constexpr auto equal_to_int_f = "equal_to"_scalar.from(std::equal_to<int>{});
+        storage.create_scalar_function<equal_to_int_f>();
+        {
+            auto rows = storage.select(equal_to_int_f(1, 1));
+            decltype(rows) expected{true};
+            REQUIRE(rows == expected);
+        }
+        storage.delete_scalar_function<equal_to_int_f>();
     }
-    storage.delete_scalar_function<equal_to_int_f>();
 
-    constexpr auto equal_to_int_2_f = "equal_to"_scalar.from<std::equal_to<int>>();
-    storage.create_scalar_function<equal_to_int_2_f>();
-    {
-        auto rows = storage.select(equal_to_int_2_f(1, 1));
-        decltype(rows) expected{true};
-        REQUIRE(rows == expected);
+    SECTION("explicit function object type") {
+        constexpr auto equal_to_int_f = "equal_to"_scalar.from<std::equal_to<int>>();
+        storage.create_scalar_function<equal_to_int_f>();
+        {
+            auto rows = storage.select(equal_to_int_f(1, 1));
+            decltype(rows) expected{true};
+            REQUIRE(rows == expected);
+        }
+        storage.delete_scalar_function<equal_to_int_f>();
     }
-    storage.delete_scalar_function<equal_to_int_2_f>();
 
-    constexpr auto clamp_int_f = "clamp_int"_scalar.from(std::clamp<int>);
-    storage.create_scalar_function<clamp_int_f>();
-    {
-        auto rows = storage.select(clamp_int_f(0, 1, 1));
-        decltype(rows) expected{1};
-        REQUIRE(rows == expected);
+    SECTION("'transparent' function object instance") {
+        constexpr auto equal_to_int_f =
+            "equal_to"_scalar.from<bool(const int&, const int&) const>(std::equal_to<void>{});
+        storage.create_scalar_function<equal_to_int_f>();
+        {
+            auto rows = storage.select(equal_to_int_f(1, 1));
+            decltype(rows) expected{true};
+            REQUIRE(rows == expected);
+        }
+        storage.delete_scalar_function<equal_to_int_f>();
     }
-    storage.delete_scalar_function<clamp_int_f>();
 
-    constexpr auto idfunc_f = "idfunc"_scalar.from<noncopyable_scalar>();
-    storage.create_scalar_function<idfunc_f>();
-    {
-        auto rows = storage.select(idfunc_f(1));
-        decltype(rows) expected{1};
-        REQUIRE(rows == expected);
+    SECTION("explicit 'transparent' function object type") {
+        constexpr auto equal_to_int_f =
+            "equal_to"_scalar.from<bool(const int&, const int&) const, std::equal_to<void>>();
+        storage.create_scalar_function<equal_to_int_f>();
+        {
+            auto rows = storage.select(equal_to_int_f(1, 1));
+            decltype(rows) expected{true};
+            REQUIRE(rows == expected);
+        }
+        storage.delete_scalar_function<equal_to_int_f>();
     }
-    storage.delete_scalar_function<idfunc_f>();
 
-    constexpr auto offset0_f = "offset0"_scalar.from(offset0);
-    storage.create_scalar_function<offset0_f>();
-    {
-        auto rows = storage.select(columns(offset0_f(1), offset0_f(1)));
-        decltype(rows) expected{{1, 1}};
-        REQUIRE(rows == expected);
+    SECTION("specialized template function") {
+        constexpr auto clamp_int_f = "clamp_int"_scalar.from(std::clamp<int>);
+        storage.create_scalar_function<clamp_int_f>();
+        {
+            auto rows = storage.select(clamp_int_f(0, 1, 1));
+            decltype(rows) expected{1};
+            REQUIRE(rows == expected);
+        }
+        storage.delete_scalar_function<clamp_int_f>();
     }
-    storage.delete_scalar_function<offset0_f>();
+
+    SECTION("overloaded template function") {
+        constexpr auto clamp_int_f =
+            "clamp_int"_scalar.from<const int&(const int&, const int&, const int&)>(std::clamp);
+        storage.create_scalar_function<clamp_int_f>();
+        {
+            auto rows = storage.select(clamp_int_f(0, 1, 1));
+            decltype(rows) expected{true};
+            REQUIRE(rows == expected);
+        }
+        storage.delete_scalar_function<clamp_int_f>();
+    }
+
+    SECTION("non-copyable function object") {
+        constexpr auto idfunc_f = "idfunc"_scalar.from<noncopyable_scalar>();
+        storage.create_scalar_function<idfunc_f>();
+        {
+            auto rows = storage.select(idfunc_f(1));
+            decltype(rows) expected{1};
+            REQUIRE(rows == expected);
+        }
+        storage.delete_scalar_function<idfunc_f>();
+    }
+
+    SECTION("stateful function object") {
+        constexpr auto offset0_f = "offset0"_scalar.from(offset0);
+        storage.create_scalar_function<offset0_f>();
+        {
+            auto rows = storage.select(columns(offset0_f(1), offset0_f(1)));
+            decltype(rows) expected{{1, 1}};
+            REQUIRE(rows == expected);
+        }
+        storage.delete_scalar_function<offset0_f>();
+    }
 }
 #endif
