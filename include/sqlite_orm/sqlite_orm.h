@@ -10888,7 +10888,9 @@ namespace sqlite_orm {
 // #include "function.h"
 
 #include <type_traits>  //  std::enable_if, std::is_member_function_pointer, std::is_function, std::remove_const, std::remove_pointer, std::decay, std::is_same, std::false_type, std::true_type
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #include <concepts>  //  std::copy_constructible
+#endif
 #include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
 #include <algorithm>  //  std::min, std::copy_n
 #include <utility>  //  std::move, std::forward
