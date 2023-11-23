@@ -363,7 +363,7 @@ namespace sqlite_orm {
              *  Return original `udf` if stateless or a copy of it otherwise
              */
             constexpr decltype(auto) callable() const {
-                if constexpr(stateless<type>) {
+                if constexpr(stateless<F>) {
                     return (this->udf);
                 } else {
                     // non-const copy
