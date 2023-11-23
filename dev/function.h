@@ -311,8 +311,9 @@ namespace sqlite_orm {
          */
         template<class UDF>
         struct function : polyfill::type_identity<UDF> {
-            using udf_type = UDF;
-
+            /*
+             *  Generates the SQL function call.
+             */
             template<typename... CallArgs>
             function_call<UDF, CallArgs...> operator()(CallArgs... callArgs) const {
                 check_function_call<UDF, CallArgs...>();
@@ -323,6 +324,7 @@ namespace sqlite_orm {
                 return internal::udf_holder<UDF>{};
             }
 
+            // returns a character range
             constexpr auto name() const {
                 return this->udf_holder()();
             }
@@ -346,6 +348,9 @@ namespace sqlite_orm {
         struct quoted_scalar_function : polyfill::type_identity<std::remove_pointer_t<F>> {
             using type = typename quoted_scalar_function::type;
 
+            /*
+             *  Generates the SQL function call.
+             */
             template<typename... CallArgs>
             function_call<type, CallArgs...> operator()(CallArgs... callArgs) const {
                 check_function_call<type, CallArgs...>();
@@ -377,9 +382,6 @@ namespace sqlite_orm {
                 udf(std::forward<Args>(constructorArgs)...) {
                 std::copy_n(name, N, this->nme);
             }
-
-            quoted_scalar_function(const quoted_scalar_function&) = delete;
-            quoted_scalar_function& operator=(const quoted_scalar_function&) = delete;
 
             F udf;
             char nme[N];
