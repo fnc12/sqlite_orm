@@ -1,8 +1,9 @@
 #pragma once
 
-#include <type_traits>  //  std::is_member_function_pointer, std::remove_const, std::decay, std::is_same, std::false_type, std::true_type
+#include <type_traits>  //  std::enable_if, std::is_member_function_pointer, std::is_function, std::remove_const, std::remove_pointer, std::decay, std::is_same, std::false_type, std::true_type
+#include <concepts>  //  std::copy_constructible
 #include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
-#include <algorithm>  //  std::min
+#include <algorithm>  //  std::min, std::copy_n
 #include <utility>  //  std::move, std::forward
 
 #include "functional/cxx_universal.h"
@@ -175,8 +176,8 @@ namespace sqlite_orm {
             }
 
             template<class R = decltype(UDF::name()), std::enable_if_t<std::is_same<R, char>::value, bool> = true>
-            decltype(auto) operator()() const {
-                return std::string(UDF::name());
+            std::string operator()() const {
+                return std::string{UDF::name()};
             }
         };
 
@@ -323,7 +324,7 @@ namespace sqlite_orm {
             }
 
             constexpr auto name() const {
-                return UDF::name();
+                return this->udf_holder()();
             }
         };
 

@@ -485,9 +485,8 @@ TEST_CASE("generalized scalar udf") {
     constexpr auto offset0_f = "offset0"_scalar.from(offset0);
     storage.create_scalar_function<offset0_f>();
     {
-        auto rows = storage.select(offset0_f(1));
-        rows = storage.select(offset0_f(1));
-        decltype(rows) expected{1};
+        auto rows = storage.select(columns(offset0_f(1), offset0_f(1)));
+        decltype(rows) expected{{1, 1}};
         REQUIRE(rows == expected);
     }
     storage.delete_scalar_function<offset0_f>();
