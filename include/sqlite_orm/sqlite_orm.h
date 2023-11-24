@@ -220,7 +220,7 @@ using std::nullptr_t;
 #endif
 #pragma once
 
-#include <type_traits>  //  std::enable_if, std::is_same
+#include <type_traits>  //  std::enable_if, std::is_same, std::is_empty
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
@@ -436,6 +436,19 @@ namespace sqlite_orm {
 
         template<typename T>
         using on_type_t = typename T::on_type;
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        template<class T>
+        using udf_type_t = typename T::udf_type;
+
+        template<auto a>
+        using auto_udf_type_t = typename decltype(a)::udf_type;
+#endif
+
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+        template<typename T>
+        concept stateless = std::is_empty_v<T>;
+#endif
     }
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
@@ -4535,15 +4548,48 @@ namespace sqlite_orm {
 }
 #pragma once
 
-#include <type_traits>  //  std::enable_if
-#include <utility>  //  std::index_sequence, std::make_index_sequence
+#include <type_traits>  //  std::enable_if, std::is_same, std::conditional
+#include <utility>  //  std::make_index_sequence, std::move
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
-#include <algorithm>  //  std::copy_n
 
-// #include "functional/cxx_universal.h"
-//  ::size_t
 // #include "functional/cxx_type_traits_polyfill.h"
+
+// #include "functional/cstring_literal.h"
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+#include <utility>  //  std::index_sequence
+#include <algorithm>  //  std::copy_n
+#endif
+
+// #include "cxx_universal.h"
+//  ::size_t
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+namespace sqlite_orm::internal {
+    /*
+     *  Wraps a C string of fixed size.
+     *  Its main purpose is to enable the user-defined string literal operator template.
+     */
+    template<size_t N>
+    struct cstring_literal {
+        static constexpr size_t size() {
+            return N - 1;
+        }
+
+        constexpr cstring_literal(const char (&cstr)[N]) {
+            std::copy_n(cstr, N, this->cstr);
+        }
+
+        char cstr[N];
+    };
+
+    template<template<char...> class Template, cstring_literal literal, size_t... Idx>
+    consteval auto explode_into(std::index_sequence<Idx...>) {
+        return Template<literal.cstr[Idx]...>{};
+    }
+}
+#endif
 
 // #include "type_traits.h"
 
@@ -4556,29 +4602,7 @@ namespace sqlite_orm {
 namespace sqlite_orm {
 
     namespace internal {
-
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        /*
-         *  Helper class to facilitate user-defined string literal operator template
-         */
-        template<size_t N>
-        struct string_identifier_template {
-            static constexpr size_t size() {
-                return N - 1;
-            }
-
-            constexpr string_identifier_template(const char (&id)[N]) {
-                std::copy_n(id, N, this->id);
-            }
-
-            char id[N];
-        };
-
-        template<template<char...> class Alias, string_identifier_template t, size_t... Idx>
-        consteval auto to_alias(std::index_sequence<Idx...>) {
-            return Alias<t.id[Idx]...>{};
-        }
-
         template<class T>
         inline constexpr bool is_operator_argument_v<T, std::enable_if_t<orm_column_alias<T>>> = true;
 #endif
@@ -4904,18 +4928,18 @@ namespace sqlite_orm {
      *  Examples:
      *  constexpr auto z_alias = "z"_alias.for_<User>();
      */
-    template<internal::string_identifier_template t>
+    template<internal::cstring_literal name>
     [[nodiscard]] consteval auto operator"" _alias() {
-        return internal::to_alias<internal::recordset_alias_builder, t>(std::make_index_sequence<t.size()>{});
+        return internal::explode_into<internal::recordset_alias_builder, name>(std::make_index_sequence<name.size()>{});
     }
 
     /** @short Create a column alias.
      *  column_alias<'a'[, ...]> from a string literal.
      *  E.g. "a"_col, "b"_col
      */
-    template<internal::string_identifier_template t>
+    template<internal::cstring_literal name>
     [[nodiscard]] consteval auto operator"" _col() {
-        return internal::to_alias<internal::column_alias, t>(std::make_index_sequence<t.size()>{});
+        return internal::explode_into<internal::column_alias, name>(std::make_index_sequence<name.size()>{});
     }
 #endif
 }
@@ -10874,14 +10898,19 @@ namespace sqlite_orm {
 
 // #include "function.h"
 
-#include <type_traits>  //  std::is_member_function_pointer, std::remove_const, std::decay, std::is_same, std::false_type, std::true_type
+#include <type_traits>  //  std::enable_if, std::is_member_function_pointer, std::is_function, std::remove_const, std::remove_pointer, std::decay, std::is_same, std::false_type, std::true_type
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#include <concepts>  //  std::copy_constructible
+#endif
 #include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
-#include <algorithm>  //  std::min
+#include <algorithm>  //  std::min, std::copy_n
 #include <utility>  //  std::move, std::forward
 
 // #include "functional/cxx_universal.h"
 
 // #include "functional/cxx_type_traits_polyfill.h"
+
+// #include "functional/cstring_literal.h"
 
 // #include "functional/function_traits.h"
 
@@ -10891,6 +10920,12 @@ namespace sqlite_orm {
 
 namespace sqlite_orm {
     namespace internal {
+        /*
+         *  Define nested typenames:
+         *  - return_type
+         *  - arguments_tuple
+         *  - signature_type
+         */
         template<class F>
         struct function_traits;
 
@@ -10910,36 +10945,51 @@ namespace sqlite_orm {
         using function_arguments = typename function_traits<F>::template arguments_tuple<Tuple, ProjectOp>;
 
         /*
-         *  Define nested typenames:
-         *  - return_type
-         *  - arguments_tuple
+         *  A function's signature
          */
+        template<class F>
+        using function_signature_type_t = typename function_traits<F>::signature_type;
+
         template<class R, class... Args>
         struct function_traits<R(Args...)> {
             using return_type = R;
 
             template<template<class...> class Tuple, template<class...> class ProjectOp>
             using arguments_tuple = Tuple<mpl::invoke_fn_t<ProjectOp, Args>...>;
+
+            using signature_type = R(Args...);
         };
 
         // non-exhaustive partial specializations of `function_traits`
 
         template<class R, class... Args>
-        struct function_traits<R(Args...) const> : function_traits<R(Args...)> {};
+        struct function_traits<R(Args...) const> : function_traits<R(Args...)> {
+            using signature_type = R(Args...) const;
+        };
 
 #ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
         template<class R, class... Args>
-        struct function_traits<R(Args...) noexcept> : function_traits<R(Args...)> {};
+        struct function_traits<R(Args...) noexcept> : function_traits<R(Args...)> {
+            using signature_type = R(Args...) noexcept;
+        };
 
         template<class R, class... Args>
-        struct function_traits<R(Args...) const noexcept> : function_traits<R(Args...)> {};
+        struct function_traits<R(Args...) const noexcept> : function_traits<R(Args...)> {
+            using signature_type = R(Args...) const noexcept;
+        };
 #endif
 
         /*
          *  Pick signature of function pointer
          */
-        template<class R, class... Args>
-        struct function_traits<R (*)(Args...)> : function_traits<R(Args...)> {};
+        template<class F>
+        struct function_traits<F(*)> : function_traits<F> {};
+
+        /*
+         *  Pick signature of function reference
+         */
+        template<class F>
+        struct function_traits<F(&)> : function_traits<F> {};
 
         /*
          *  Pick signature of pointer-to-member function
@@ -10948,6 +10998,8 @@ namespace sqlite_orm {
         struct function_traits<F O::*> : function_traits<F> {};
     }
 }
+
+// #include "type_traits.h"
 
 // #include "tags.h"
 
@@ -10986,6 +11038,78 @@ namespace sqlite_orm {
                              std::enable_if_t<std::is_member_function_pointer<aggregate_fin_function_t<F>>::value>>> =
             true;
 
+        template<class UDF>
+        struct function;
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /** @short Specifies that a type is a function signature (i.e. a function in the C++ type system).
+     */
+    template<class Sig>
+    concept orm_function_sig = std::is_function_v<Sig>;
+
+    /** @short Specifies that a type is a classic function object.
+     *  
+     *  A classic function object meets the following requirements:
+     *  - defines a single call operator `F::operator()`
+     *  - isn't a traditional sqlite_orm scalar function (having a static `F::name()` function
+     */
+    template<class F>
+    concept orm_classic_function_object =
+        ((!requires { typename F::is_transparent; }) && (requires { &F::operator(); }) &&
+         /*rule out sqlite_orm scalar function*/
+         (!requires { F::name(); }));
+
+    /** @short Specifies that a type is a user-defined scalar function.
+     *  
+     *  `UDF` must meet the following requirements:
+     *  - `UDF::name()` static function
+     *  - `UDF::operator()()` call operator
+     */
+    template<class UDF>
+    concept orm_scalar_udf = requires {
+        UDF::name();
+        typename internal::scalar_call_function_t<UDF>;
+    };
+
+    /** @short Specifies that a type is a user-defined aggregate function.
+     *  
+     *  `UDF` must meet the following requirements:
+     *  - `UDF::name()` static function
+     *  - `UDF::step()` member function
+     *  - `UDF::fin()` member function
+     */
+    template<class UDF>
+    concept orm_aggregate_udf = requires {
+        UDF::name();
+        typename internal::aggregate_step_function_t<UDF>;
+        typename internal::aggregate_fin_function_t<UDF>;
+        requires std::is_member_function_pointer_v<internal::aggregate_step_function_t<UDF>>;
+        requires std::is_member_function_pointer_v<internal::aggregate_fin_function_t<UDF>>;
+    };
+
+    /** @short Specifies that a type is a framed user-defined scalar function.
+     */
+    template<class F>
+    concept orm_scalar_function = (polyfill::is_specialization_of_v<std::remove_const_t<F>, internal::function> &&
+                                   orm_scalar_udf<typename F::udf_type>);
+
+    /** @short Specifies that a type is a framed user-defined aggregate function.
+     */
+    template<class F>
+    concept orm_aggregate_function = (polyfill::is_specialization_of_v<std::remove_const_t<F>, internal::function> &&
+                                      orm_aggregate_udf<typename F::udf_type>);
+
+    /** @short Specifies that a type is a framed and quoted user-defined scalar function.
+     */
+    template<class Q>
+    concept orm_quoted_scalar_function = requires(const Q& quotedF) {
+        quotedF.name();
+        quotedF.callable();
+    };
+#endif
+
+    namespace internal {
         template<class F, class SFINAE = void>
         struct callable_arguments_impl;
 
@@ -11001,14 +11125,72 @@ namespace sqlite_orm {
             using return_type = function_return_type_t<aggregate_fin_function_t<F>>;
         };
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        template<class F>
+            requires(std::is_function_v<F>)
+        struct callable_arguments_impl<F, void> {
+            using args_tuple = function_arguments<F, std::tuple, std::decay_t>;
+            using return_type = std::decay_t<function_return_type_t<F>>;
+        };
+#endif
+
         template<class F>
         struct callable_arguments : callable_arguments_impl<F> {};
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        /*
+         *  Bundle of type and name of a quoted user-defined function.
+         */
+        template<class UDF>
+        struct udf_holder : private std::string {
+            using udf_type = UDF;
+
+            using std::string::basic_string;
+
+            const std::string& operator()() const {
+                return *this;
+            }
+        };
+#endif
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        /*
+         *  Bundle of type and name of a traditional sqlite_orm user-defined function.
+         */
+        template<class UDF>
+            requires(requires { UDF::name(); })
+        struct udf_holder<UDF>
+#else
+        /*
+         *  Bundle of type and name of a traditional sqlite_orm user-defined function.
+         */
+        template<class UDF>
+        struct udf_holder
+#endif
+        {
+            using udf_type = UDF;
+
+            template<class R = decltype(UDF::name()),
+                     std::enable_if_t<polyfill::negation_v<std::is_same<R, char>>, bool> = true>
+            decltype(auto) operator()() const {
+                return UDF::name();
+            }
+
+            template<class R = decltype(UDF::name()), std::enable_if_t<std::is_same<R, char>::value, bool> = true>
+            std::string operator()() const {
+                return std::string{UDF::name()};
+            }
+        };
+
+        /*
+         *  Represents a call of a user-defined function.
+         */
         template<class UDF, class... CallArgs>
         struct function_call {
             using udf_type = UDF;
             using args_tuple = std::tuple<CallArgs...>;
 
+            udf_holder<udf_type> name;
             args_tuple callArgs;
         };
 
@@ -11103,74 +11285,175 @@ namespace sqlite_orm {
 #endif
         }
 
+        template<typename UDF, typename... CallArgs>
+#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
+        SQLITE_ORM_CONSTEVAL
+#endif
+            void
+            check_function_call() {
+            using args_tuple = std::tuple<CallArgs...>;
+            using function_args_tuple = typename callable_arguments<UDF>::args_tuple;
+            constexpr size_t argsCount = std::tuple_size<args_tuple>::value;
+            constexpr size_t functionArgsCount = std::tuple_size<function_args_tuple>::value;
+            static_assert((argsCount == functionArgsCount &&
+                           !std::is_same<function_args_tuple, std::tuple<arg_values>>::value &&
+                           validate_pointer_value_types<function_args_tuple, args_tuple>(
+                               polyfill::index_constant<std::min(functionArgsCount, argsCount) - 1>{})) ||
+                              std::is_same<function_args_tuple, std::tuple<arg_values>>::value,
+                          "The number of arguments does not match");
+        }
+
         /*
          *  Generator of a user-defined function call in a sql query expression.
+         *  
          *  Use the variable template `func<>` to instantiate.
+         *  
          *  Calling the function captures the parameters in a `function_call` node.
          */
         template<class UDF>
-        struct function : polyfill::type_identity<UDF> {
+        struct function {
+            using udf_type = UDF;
+            using callable_type = UDF;
+
+            /*
+             *  Generates the SQL function call.
+             */
             template<typename... CallArgs>
             function_call<UDF, CallArgs...> operator()(CallArgs... callArgs) const {
-                using args_tuple = std::tuple<CallArgs...>;
-                using function_args_tuple = typename callable_arguments<UDF>::args_tuple;
-                constexpr size_t argsCount = std::tuple_size<args_tuple>::value;
-                constexpr size_t functionArgsCount = std::tuple_size<function_args_tuple>::value;
-                static_assert((argsCount == functionArgsCount &&
-                               !std::is_same<function_args_tuple, std::tuple<arg_values>>::value &&
-                               validate_pointer_value_types<function_args_tuple, args_tuple>(
-                                   polyfill::index_constant<std::min(functionArgsCount, argsCount) - 1>{})) ||
-                                  std::is_same<function_args_tuple, std::tuple<arg_values>>::value,
-                              "The number of arguments does not match");
-                return {{std::forward<CallArgs>(callArgs)...}};
+                check_function_call<UDF, CallArgs...>();
+                return {this->udf_holder(), {std::forward<CallArgs>(callArgs)...}};
+            }
+
+            constexpr auto udf_holder() const {
+                return internal::udf_holder<UDF>{};
+            }
+
+            // returns a character range
+            constexpr auto name() const {
+                return this->udf_holder()();
             }
         };
-    }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /** @short Specifies that a type is a user-defined scalar function.
-     *  
-     *  `UDF` must meet the following requirements:
-     *  - `UDF::name()` static function
-     *  - `UDF::operator()()` call operator
-     */
-    template<class UDF>
-    concept orm_scalar_udf = requires {
-        UDF::name();
-        typename internal::scalar_call_function_t<UDF>;
-    };
+        /*
+         *  Generator of a user-defined function call in a sql query expression.
+         *  
+         *  Use the string literal operator template `""_scalar.quote()` to quote
+         *  a freestanding function, stateless lambda or function object.
+         *  
+         *  Calling the function captures the parameters in a `function_call` node.
+         *  
+         *  Internal note:
+         *  1. Captures and represents a function [pointer or object], especially one without side effects.
+         *  If `F` is a stateless function object, `quoted_scalar_function::callable()` returns the original function object,
+         *  otherwise it is assumed to have possibe side-effects and `quoted_scalar_function::callable()` returns a copy.
+         *  2. The nested `udf_type` typename is deliberately chosen to be the function signature,
+         *  and will be the abstracted version of the user-defined function. 
+         */
+        template<class F, class Sig, size_t N>
+        struct quoted_scalar_function {
+            using udf_type = Sig;
+            using callable_type = F;
 
-    /** @short Specifies that a type is a user-defined aggregate function.
-     *  
-     *  `UDF` must meet the following requirements:
-     *  - `UDF::name()` static function
-     *  - `UDF::step()` member function
-     *  - `UDF::fin()` member function
-     */
-    template<class UDF>
-    concept orm_aggregate_udf = requires {
-        UDF::name();
-        typename internal::aggregate_step_function_t<UDF>;
-        typename internal::aggregate_fin_function_t<UDF>;
-        requires std::is_member_function_pointer_v<internal::aggregate_step_function_t<UDF>>;
-        requires std::is_member_function_pointer_v<internal::aggregate_fin_function_t<UDF>>;
-    };
+            /*
+             *  Generates the SQL function call.
+             */
+            template<typename... CallArgs>
+            function_call<udf_type, CallArgs...> operator()(CallArgs... callArgs) const {
+                check_function_call<udf_type, CallArgs...>();
+                return {this->udf_holder(), {std::forward<CallArgs>(callArgs)...}};
+            }
 
-    /** @short Specifies that a type is a framed user-defined scalar function.
-     */
-    template<class F>
-    concept orm_scalar_function = (polyfill::is_specialization_of_v<std::remove_const_t<F>, internal::function> &&
-                                   orm_scalar_udf<typename F::type>);
+            /*
+             *  Return original `udf` if stateless or a copy of it otherwise
+             */
+            constexpr decltype(auto) callable() const {
+                if constexpr(stateless<F>) {
+                    return (this->udf);
+                } else {
+                    // non-const copy
+                    return F(this->udf);
+                }
+            }
 
-    /** @short Specifies that a type is a framed user-defined aggregate function.
-     */
-    template<class F>
-    concept orm_aggregate_function = (polyfill::is_specialization_of_v<std::remove_const_t<F>, internal::function> &&
-                                      orm_aggregate_udf<typename F::type>);
+            constexpr auto udf_holder() const {
+                return internal::udf_holder<udf_type>{this->name()};
+            }
+
+            constexpr auto name() const {
+                return this->nme;
+            }
+
+            template<class... Args>
+            consteval quoted_scalar_function(const char (&name)[N], Args&&... constructorArgs) :
+                udf(std::forward<Args>(constructorArgs)...) {
+                std::copy_n(name, N, this->nme);
+            }
+
+            F udf;
+            char nme[N];
+        };
+
+        template<size_t N>
+        struct quoted_function_builder : cstring_literal<N> {
+            using cstring_literal<N>::cstring_literal;
+
+            /*
+             *  From a freestanding function, possibly overloaded.
+             */
+            template<orm_function_sig F>
+            [[nodiscard]] consteval auto quote(F* callable) const {
+                return quoted_scalar_function<F*, F, N>{this->cstr, std::move(callable)};
+            }
+
+            /*
+             *  From a classic function object instance.
+             */
+            template<class F>
+                requires(orm_classic_function_object<F> && (stateless<F> || std::copy_constructible<F>))
+            [[nodiscard]] consteval auto quote(F callable) const {
+                using Sig = function_signature_type_t<decltype(&F::operator())>;
+                // detect whether overloaded call operator can be picked using `Sig`
+                using call_operator_type = decltype(static_cast<Sig F::*>(&F::operator()));
+                return quoted_scalar_function<F, Sig, N>{this->cstr, std::move(callable)};
+            }
+
+            /*
+             *  From a function object instance, picking the overloaded call operator.
+             */
+            template<orm_function_sig Sig, class F>
+                requires((stateless<F> || std::copy_constructible<F>))
+            [[nodiscard]] consteval auto quote(F callable) const {
+                // detect whether overloaded call operator can be picked using `Sig`
+                using call_operator_type = decltype(static_cast<Sig F::*>(&F::operator()));
+                return quoted_scalar_function<F, Sig, N>{this->cstr, std::move(callable)};
+            }
+
+            /*
+             *  From a classic function object type.
+             */
+            template<orm_classic_function_object F, class... Args>
+                requires(stateless<F> || std::copy_constructible<F>)
+            [[nodiscard]] consteval auto quote(Args&&... constructorArgs) const {
+                using Sig = function_signature_type_t<decltype(&F::operator())>;
+                return quoted_scalar_function<F, Sig, N>{this->cstr, std::forward<Args>(constructorArgs)...};
+            }
+
+            /*
+             *  From a function object type, picking the overloaded call operator.
+             */
+            template<orm_function_sig Sig, class F, class... Args>
+                requires((stateless<F> || std::copy_constructible<F>))
+            [[nodiscard]] consteval auto quote(Args&&... constructorArgs) const {
+                // detect whether overloaded call operator can be picked using `Sig`
+                using call_operator_type = decltype(static_cast<Sig F::*>(&F::operator()));
+                return quoted_scalar_function<F, Sig, N>{this->cstr, std::forward<Args>(constructorArgs)...};
+            }
+        };
 #endif
+    }
 
-    /**
-     *  Call a user-defined function.
+    /** @short Call a user-defined function.
      *  
      *  Example:
      *  struct IdFunc { int oeprator(int arg)() const { return arg; } };
@@ -11186,6 +11469,45 @@ namespace sqlite_orm {
         requires(orm_scalar_udf<UDF> || orm_aggregate_udf<UDF>)
 #endif
     SQLITE_ORM_INLINE_VAR constexpr internal::function<UDF> func{};
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /*  @short Create a scalar function from a freestanding function, stateless lambda or function object,
+     *  and call such a user-defined function.
+     *  
+     *  If you need to pick a function or method from an overload set, or pick a template function you can
+     *  specify an explicit function signature in the call to `from()`.
+     *  
+     *  Examples:
+     *  // freestanding function from a library
+     *  constexpr auto clamp_int_f = "clamp_int"_scalar.quote(std::clamp<int>);
+     *  // stateless lambda
+     *  constexpr auto is_fatal_error_f = "IS_FATAL_ERROR"_scalar.quote([](unsigned long errcode) {
+     *      return errcode != 0;
+     *  });
+     *  // function object instance
+     *  constexpr auto equal_to_int_f = "equal_to"_scalar.quote(std::equal_to<int>{});
+     *  // function object
+     *  constexpr auto equal_to_int_2_f = "equal_to"_scalar.quote<std::equal_to<int>>();
+     *  // pick function object's template call operator
+     *  constexpr auto equal_to_int_3_f = "equal_to"_scalar.quote<bool(const int&, const int&) const>(std::equal_to<void>{});
+     *
+     *  storage.create_scalar_function<clamp_int_f>();
+     *  storage.create_scalar_function<is_fatal_error_f>();
+     *  storage.create_scalar_function<equal_to_int_f>();
+     *  storage.create_scalar_function<equal_to_int_2_f>();
+     *  storage.create_scalar_function<equal_to_int_3_f>();
+     *
+     *  auto rows = storage.select(clamp_int_f(0, 1, 1));
+     *  auto rows = storage.select(is_fatal_error_f(1));
+     *  auto rows = storage.select(equal_to_int_f(1, 1));
+     *  auto rows = storage.select(equal_to_int_2_f(1, 1));
+     *  auto rows = storage.select(equal_to_int_3_f(1, 1));
+     */
+    template<internal::quoted_function_builder builder>
+    [[nodiscard]] consteval auto operator"" _scalar() {
+        return builder;
+    }
+#endif
 }
 
 // #include "ast/special_keywords.h"
@@ -14968,7 +15290,9 @@ namespace sqlite_orm {
                 finalAggregateCall{finalAggregateCall}, udfConstructed{false}, udfMemory{udfMemory} {}
 
             ~udf_proxy() {
-                udfMemory.second(udfMemory.first);
+                if(udfMemory.second) {
+                    udfMemory.second(udfMemory.first);
+                }
             }
 
             friend void* udfHandle(udf_proxy* proxy) {
@@ -15020,6 +15344,12 @@ namespace sqlite_orm {
             //    we can use `udfHandle` interconvertibly without laundering its provenance.
             proxy->constructAt(udfHandle(proxy));
             const std::unique_ptr<void, xdestroy_fn_t> udfGuard{udfHandle(proxy), proxy->destroy};
+            proxy->func(udfHandle(proxy), context, argsCount, values);
+        }
+
+        inline void quoted_scalar_function_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
+            udf_proxy* proxy = static_cast<udf_proxy*>(sqlite3_user_data(context));
+            check_args_count(proxy, argsCount);
             proxy->func(udfHandle(proxy), context, argsCount, values);
         }
 
@@ -15275,11 +15605,12 @@ namespace sqlite_orm {
             void create_scalar_function(Args&&... constructorArgs) {
                 static_assert(is_scalar_udf_v<F>, "F must be a scalar function");
 
-                this->create_scalar_function_impl<F>(/* constructAt */ [constructorArgs...](void* location) {
-                    std::allocator<F> allocator;
-                    using traits = std::allocator_traits<decltype(allocator)>;
-                    traits::construct(allocator, (F*)location, constructorArgs...);
-                });
+                this->create_scalar_function_impl(udf_holder<F>{},
+                                                  /* constructAt */ [constructorArgs...](void* location) {
+                                                      std::allocator<F> allocator;
+                                                      using traits = std::allocator_traits<decltype(allocator)>;
+                                                      traits::construct(allocator, (F*)location, constructorArgs...);
+                                                  });
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -15296,7 +15627,48 @@ namespace sqlite_orm {
              */
             template<orm_scalar_function auto f, std::copy_constructible... Args>
             void create_scalar_function(Args&&... constructorArgs) {
-                return this->create_scalar_function<auto_type_t<f>>(std::forward<Args>(constructorArgs)...);
+                return this->create_scalar_function<auto_udf_type_t<f>>(std::forward<Args>(constructorArgs)...);
+            }
+
+            /**
+             * Create an application-defined scalar function.
+             * Can be called at any time no matter whether the database connection is opened or not.
+             *
+             * If `quotedF` contains a freestanding function, stateless lambda or stateless function object,
+             * `quoted_scalar_function::callable()` uses the original function object, assuming it is free of side effects;
+             * otherwise, it repeatedly uses a copy of the contained function object, assuming possible side effects.
+             * 
+             * Attention: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
+             */
+            template<orm_quoted_scalar_function auto quotedF>
+            void create_scalar_function() {
+                using Sig = auto_udf_type_t<quotedF>;
+                using args_tuple = typename callable_arguments<Sig>::args_tuple;
+                using return_type = typename callable_arguments<Sig>::return_type;
+                constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
+                                               ? -1
+                                               : int(std::tuple_size<args_tuple>::value);
+                this->scalarFunctions.emplace_back(
+                    std::string{quotedF.name()},
+                    argsCount,
+                    /* constructAt = */
+                    nullptr,
+                    /* destroy = */
+                    nullptr,
+                    /* call = */
+                    [](void* /*udfHandle*/, sqlite3_context* context, int argsCount, sqlite3_value** values) {
+                        args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
+                        auto result = polyfill::apply(quotedF.callable(), std::move(argsTuple));
+                        statement_binder<return_type>().result(context, result);
+                    },
+                    /* finalCall = */
+                    nullptr,
+                    std::pair{nullptr, null_xdestroy_f});
+
+                if(this->connection->retain_count() > 0) {
+                    sqlite3* db = this->connection->get();
+                    try_to_create_scalar_function(db, this->scalarFunctions.back());
+                }
             }
 #endif
 
@@ -15336,14 +15708,12 @@ namespace sqlite_orm {
             void create_aggregate_function(Args&&... constructorArgs) {
                 static_assert(is_aggregate_udf_v<F>, "F must be an aggregate function");
 
-                this->create_aggregate_function_impl<F>(/* constructAt = */
-                                                        [constructorArgs...](void* location) {
-                                                            std::allocator<F> allocator;
-                                                            using traits = std::allocator_traits<decltype(allocator)>;
-                                                            traits::construct(allocator,
-                                                                              (F*)location,
-                                                                              constructorArgs...);
-                                                        });
+                this->create_aggregate_function_impl(udf_holder<F>{}, /* constructAt = */
+                                                     [constructorArgs...](void* location) {
+                                                         std::allocator<F> allocator;
+                                                         using traits = std::allocator_traits<decltype(allocator)>;
+                                                         traits::construct(allocator, (F*)location, constructorArgs...);
+                                                     });
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -15360,7 +15730,7 @@ namespace sqlite_orm {
              */
             template<orm_aggregate_function auto f, std::copy_constructible... Args>
             void create_aggregate_function(Args&&... constructorArgs) {
-                return this->create_aggregate_function<auto_type_t<f>>(std::forward<Args>(constructorArgs)...);
+                return this->create_aggregate_function<auto_udf_type_t<f>>(std::forward<Args>(constructorArgs)...);
             }
 #endif
 
@@ -15371,15 +15741,27 @@ namespace sqlite_orm {
             template<class F>
             void delete_scalar_function() {
                 static_assert(is_scalar_udf_v<F>, "F must be a scalar function");
-                std::stringstream ss;
-                ss << F::name() << std::flush;
-                this->delete_function_impl(ss.str(), this->scalarFunctions);
+                udf_holder<F> udfName;
+                this->delete_function_impl(udfName(), this->scalarFunctions);
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            /**
+             *  Delete a scalar function you created before.
+             *  Can be called at any time no matter whether the database connection is open or not.
+             */
             template<orm_scalar_function auto f>
             void delete_scalar_function() {
-                this->delete_scalar_function<auto_type_t<f>>();
+                this->delete_function_impl(f.name(), this->scalarFunctions);
+            }
+
+            /**
+             *  Delete a quoted scalar function you created before.
+             *  Can be called at any time no matter whether the database connection is open or not.
+             */
+            template<orm_quoted_scalar_function auto quotedF>
+            void delete_scalar_function() {
+                this->delete_function_impl(quotedF.name(), this->scalarFunctions);
             }
 #endif
 
@@ -15390,15 +15772,14 @@ namespace sqlite_orm {
             template<class F>
             void delete_aggregate_function() {
                 static_assert(is_aggregate_udf_v<F>, "F must be an aggregate function");
-                std::stringstream ss;
-                ss << F::name() << std::flush;
-                this->delete_function_impl(ss.str(), this->aggregateFunctions);
+                udf_holder<F> udfName;
+                this->delete_function_impl(udfName(), this->aggregateFunctions);
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
             template<orm_aggregate_function auto f>
             void delete_aggregate_function() {
-                this->delete_aggregate_function<auto_type_t<f>>();
+                this->delete_function_impl(f.name(), this->aggregateFunctions);
             }
 #endif
 
@@ -15662,17 +16043,14 @@ namespace sqlite_orm {
             }
 
             template<class F>
-            void create_scalar_function_impl(std::function<void(void* location)> constructAt) {
-                std::stringstream ss;
-                ss << F::name() << std::flush;
-                auto name = ss.str();
+            void create_scalar_function_impl(udf_holder<F> udfName, std::function<void(void* location)> constructAt) {
                 using args_tuple = typename callable_arguments<F>::args_tuple;
                 using return_type = typename callable_arguments<F>::return_type;
                 constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
                                                ? -1
                                                : int(std::tuple_size<args_tuple>::value);
                 this->scalarFunctions.emplace_back(
-                    std::move(name),
+                    udfName(),
                     argsCount,
                     std::move(constructAt),
                     /* destroy = */
@@ -15695,17 +16073,15 @@ namespace sqlite_orm {
             }
 
             template<class F>
-            void create_aggregate_function_impl(std::function<void(void* location)> constructAt) {
-                std::stringstream ss;
-                ss << F::name() << std::flush;
-                auto name = ss.str();
+            void create_aggregate_function_impl(udf_holder<F> udfName,
+                                                std::function<void(void* location)> constructAt) {
                 using args_tuple = typename callable_arguments<F>::args_tuple;
                 using return_type = typename callable_arguments<F>::return_type;
                 constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
                                                ? -1
                                                : int(std::tuple_size<args_tuple>::value);
                 this->aggregateFunctions.emplace_back(
-                    std::move(name),
+                    udfName(),
                     argsCount,
                     std::move(constructAt),
                     /* destroy = */
@@ -15774,7 +16150,8 @@ namespace sqlite_orm {
                                                     udfProxy.argumentsCount,
                                                     SQLITE_UTF8,
                                                     &udfProxy,
-                                                    scalar_function_callback,
+                                                    udfProxy.constructAt ? scalar_function_callback
+                                                                         : quoted_scalar_function_callback,
                                                     nullptr,
                                                     nullptr,
                                                     nullptr);
@@ -16649,7 +17026,7 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
-                ss << F::name() << "(" << streaming_expressions_tuple(statement.callArgs, context) << ")";
+                ss << statement.name() << "(" << streaming_expressions_tuple(statement.callArgs, context) << ")";
                 return ss.str();
             }
         };

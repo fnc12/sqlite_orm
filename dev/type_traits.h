@@ -1,6 +1,6 @@
 #pragma once
 
-#include <type_traits>  //  std::enable_if, std::is_same
+#include <type_traits>  //  std::enable_if, std::is_same, std::is_empty
 
 #include "functional/cxx_type_traits_polyfill.h"
 
@@ -71,6 +71,19 @@ namespace sqlite_orm {
 
         template<typename T>
         using on_type_t = typename T::on_type;
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        template<class T>
+        using udf_type_t = typename T::udf_type;
+
+        template<auto a>
+        using auto_udf_type_t = typename decltype(a)::udf_type;
+#endif
+
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+        template<typename T>
+        concept stateless = std::is_empty_v<T>;
+#endif
     }
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
