@@ -259,8 +259,8 @@ TEST_CASE("function static") {
         STATIC_REQUIRE(std::is_same<decltype(aggregate), const function<AFunction>>::value);
         STATIC_REQUIRE(std::is_same<decltype(aggregate(42)), function_call<AFunction, int>>::value);
 
-        STATIC_REQUIRE(std::is_same_v<function<SFunction>::callable_type, SFunction>);
-        STATIC_REQUIRE(std::is_same_v<function<SFunction>::udf_type, SFunction>);
+        STATIC_REQUIRE(std::is_same<function<SFunction>::callable_type, SFunction>::value);
+        STATIC_REQUIRE(std::is_same<function<SFunction>::udf_type, SFunction>::value);
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         STATIC_REQUIRE(orm_scalar_function<decltype(scalar)>);
