@@ -365,7 +365,7 @@ namespace sqlite_orm {
         template<class F, class Sig, size_t N>
         struct quoted_scalar_function {
             using udf_type = Sig;
-            using callabe_type = F;
+            using callable_type = F;
 
             /*
              *  Generates the SQL function call.

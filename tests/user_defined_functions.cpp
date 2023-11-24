@@ -436,7 +436,6 @@ TEST_CASE("generalized scalar udf") {
         }
         storage.delete_scalar_function<err_fatal_error_f>();
     }
-
     SECTION("stateless lambda") {
         constexpr auto is_fatal_error_f = "is_fatal_error"_scalar.quote([](unsigned long errcode) {
             return errcode != 0;
@@ -449,7 +448,6 @@ TEST_CASE("generalized scalar udf") {
         }
         storage.delete_scalar_function<is_fatal_error_f>();
     }
-
     SECTION("function object instance") {
         constexpr auto equal_to_int_f = "equal_to"_scalar.quote(std::equal_to<int>{});
         storage.create_scalar_function<equal_to_int_f>();
@@ -460,7 +458,6 @@ TEST_CASE("generalized scalar udf") {
         }
         storage.delete_scalar_function<equal_to_int_f>();
     }
-
     SECTION("explicit function object type") {
         constexpr auto equal_to_int_f = "equal_to"_scalar.quote<std::equal_to<int>>();
         storage.create_scalar_function<equal_to_int_f>();
@@ -471,7 +468,6 @@ TEST_CASE("generalized scalar udf") {
         }
         storage.delete_scalar_function<equal_to_int_f>();
     }
-
     SECTION("'transparent' function object instance") {
         constexpr auto equal_to_int_f =
             "equal_to"_scalar.quote<bool(const int&, const int&) const>(std::equal_to<void>{});
@@ -483,7 +479,6 @@ TEST_CASE("generalized scalar udf") {
         }
         storage.delete_scalar_function<equal_to_int_f>();
     }
-
     SECTION("explicit 'transparent' function object type") {
         constexpr auto equal_to_int_f =
             "equal_to"_scalar.quote<bool(const int&, const int&) const, std::equal_to<void>>();
@@ -495,7 +490,6 @@ TEST_CASE("generalized scalar udf") {
         }
         storage.delete_scalar_function<equal_to_int_f>();
     }
-
     SECTION("specialized template function") {
         constexpr auto clamp_int_f = "clamp_int"_scalar.quote(std::clamp<int>);
         storage.create_scalar_function<clamp_int_f>();
@@ -506,7 +500,6 @@ TEST_CASE("generalized scalar udf") {
         }
         storage.delete_scalar_function<clamp_int_f>();
     }
-
     SECTION("overloaded template function") {
         constexpr auto clamp_int_f =
             "clamp_int"_scalar.quote<const int&(const int&, const int&, const int&)>(std::clamp);
@@ -518,7 +511,6 @@ TEST_CASE("generalized scalar udf") {
         }
         storage.delete_scalar_function<clamp_int_f>();
     }
-
     SECTION("non-copyable function object") {
         constexpr auto idfunc_f = "idfunc"_scalar.quote<noncopyable_scalar>();
         storage.create_scalar_function<idfunc_f>();
@@ -529,7 +521,6 @@ TEST_CASE("generalized scalar udf") {
         }
         storage.delete_scalar_function<idfunc_f>();
     }
-
     SECTION("stateful function object") {
         constexpr auto offset0_f = "offset0"_scalar.quote(offset0);
         storage.create_scalar_function<offset0_f>();

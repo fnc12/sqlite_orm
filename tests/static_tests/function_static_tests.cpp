@@ -3,10 +3,14 @@
 #include <type_traits>  //  std::is_same
 
 using namespace sqlite_orm;
+using internal::callable_arguments;
 using internal::function;
 using internal::function_call;
 using internal::is_aggregate_udf_v;
 using internal::is_scalar_udf_v;
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+using internal::quoted_scalar_function;
+#endif
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 template<class S, auto f>
@@ -62,9 +66,8 @@ TEST_CASE("function static") {
                 using ExpectedArgumentsTuple = std::tuple<double>;
                 STATIC_REQUIRE(std::is_same<ArgumentsTuple, ExpectedArgumentsTuple>::value);
 
-                STATIC_REQUIRE(std::is_same<internal::callable_arguments<Function>::return_type, double>::value);
-                STATIC_REQUIRE(
-                    std::is_same<internal::callable_arguments<Function>::args_tuple, std::tuple<double>>::value);
+                STATIC_REQUIRE(std::is_same<callable_arguments<Function>::return_type, double>::value);
+                STATIC_REQUIRE(std::is_same<callable_arguments<Function>::args_tuple, std::tuple<double>>::value);
             }
             SECTION("double(double)") {
                 struct Function {
@@ -84,9 +87,8 @@ TEST_CASE("function static") {
                 using ExpectedArgumentsTuple = std::tuple<double>;
                 STATIC_REQUIRE(std::is_same<ArgumentsTuple, ExpectedArgumentsTuple>::value);
 
-                STATIC_REQUIRE(std::is_same<internal::callable_arguments<Function>::return_type, double>::value);
-                STATIC_REQUIRE(
-                    std::is_same<internal::callable_arguments<Function>::args_tuple, std::tuple<double>>::value);
+                STATIC_REQUIRE(std::is_same<callable_arguments<Function>::return_type, double>::value);
+                STATIC_REQUIRE(std::is_same<callable_arguments<Function>::args_tuple, std::tuple<double>>::value);
             }
             SECTION("int(std::string) const") {
                 struct Function {
@@ -106,9 +108,8 @@ TEST_CASE("function static") {
                 using ExpectedArgumentsTuple = std::tuple<std::string>;
                 STATIC_REQUIRE(std::is_same<ArgumentsTuple, ExpectedArgumentsTuple>::value);
 
-                STATIC_REQUIRE(std::is_same<internal::callable_arguments<Function>::return_type, int>::value);
-                STATIC_REQUIRE(
-                    std::is_same<internal::callable_arguments<Function>::args_tuple, std::tuple<std::string>>::value);
+                STATIC_REQUIRE(std::is_same<callable_arguments<Function>::return_type, int>::value);
+                STATIC_REQUIRE(std::is_same<callable_arguments<Function>::args_tuple, std::tuple<std::string>>::value);
             }
             SECTION("int(std::string)") {
                 struct Function {
@@ -128,9 +129,8 @@ TEST_CASE("function static") {
                 using ExpectedArgumentsTuple = std::tuple<std::string>;
                 STATIC_REQUIRE(std::is_same<ArgumentsTuple, ExpectedArgumentsTuple>::value);
 
-                STATIC_REQUIRE(std::is_same<internal::callable_arguments<Function>::return_type, int>::value);
-                STATIC_REQUIRE(
-                    std::is_same<internal::callable_arguments<Function>::args_tuple, std::tuple<std::string>>::value);
+                STATIC_REQUIRE(std::is_same<callable_arguments<Function>::return_type, int>::value);
+                STATIC_REQUIRE(std::is_same<callable_arguments<Function>::args_tuple, std::tuple<std::string>>::value);
             }
             SECTION("std::string(const std::string &, const std::string &) const") {
                 struct Function {
@@ -150,8 +150,8 @@ TEST_CASE("function static") {
                 using ExpectedArgumentsTuple = std::tuple<std::string, std::string>;
                 STATIC_REQUIRE(std::is_same<ArgumentsTuple, ExpectedArgumentsTuple>::value);
 
-                STATIC_REQUIRE(std::is_same<internal::callable_arguments<Function>::return_type, std::string>::value);
-                STATIC_REQUIRE(std::is_same<internal::callable_arguments<Function>::args_tuple,
+                STATIC_REQUIRE(std::is_same<callable_arguments<Function>::return_type, std::string>::value);
+                STATIC_REQUIRE(std::is_same<callable_arguments<Function>::args_tuple,
                                             std::tuple<std::string, std::string>>::value);
             }
             SECTION("std::string(const std::string &, const std::string &)") {
@@ -172,8 +172,8 @@ TEST_CASE("function static") {
                 using ExpectedArgumentsTuple = std::tuple<std::string, std::string>;
                 STATIC_REQUIRE(std::is_same<ArgumentsTuple, ExpectedArgumentsTuple>::value);
 
-                STATIC_REQUIRE(std::is_same<internal::callable_arguments<Function>::return_type, std::string>::value);
-                STATIC_REQUIRE(std::is_same<internal::callable_arguments<Function>::args_tuple,
+                STATIC_REQUIRE(std::is_same<callable_arguments<Function>::return_type, std::string>::value);
+                STATIC_REQUIRE(std::is_same<callable_arguments<Function>::args_tuple,
                                             std::tuple<std::string, std::string>>::value);
             }
         }
@@ -205,8 +205,8 @@ TEST_CASE("function static") {
             using ExpectedFinType = int (Function::*)() const;
             STATIC_REQUIRE(std::is_same<FinMemberFunctionPointer, ExpectedFinType>::value);
 
-            STATIC_REQUIRE(std::is_same<internal::callable_arguments<Function>::return_type, int>::value);
-            STATIC_REQUIRE(std::is_same<internal::callable_arguments<Function>::args_tuple, std::tuple<int>>::value);
+            STATIC_REQUIRE(std::is_same<callable_arguments<Function>::return_type, int>::value);
+            STATIC_REQUIRE(std::is_same<callable_arguments<Function>::args_tuple, std::tuple<int>>::value);
         }
         SECTION("void(std::string) const & std::string()") {
             struct Function {
@@ -232,9 +232,8 @@ TEST_CASE("function static") {
             using ExpectedFinType = std::string (Function::*)();
             STATIC_REQUIRE(std::is_same<FinMemberFunctionPointer, ExpectedFinType>::value);
 
-            STATIC_REQUIRE(std::is_same<internal::callable_arguments<Function>::return_type, std::string>::value);
-            STATIC_REQUIRE(
-                std::is_same<internal::callable_arguments<Function>::args_tuple, std::tuple<std::string>>::value);
+            STATIC_REQUIRE(std::is_same<callable_arguments<Function>::return_type, std::string>::value);
+            STATIC_REQUIRE(std::is_same<callable_arguments<Function>::args_tuple, std::tuple<std::string>>::value);
         }
     }
     SECTION("function call expressions") {
@@ -260,6 +259,9 @@ TEST_CASE("function static") {
         STATIC_REQUIRE(std::is_same<decltype(aggregate), const function<AFunction>>::value);
         STATIC_REQUIRE(std::is_same<decltype(aggregate(42)), function_call<AFunction, int>>::value);
 
+        STATIC_REQUIRE(std::is_same_v<function<SFunction>::callable_type, SFunction>);
+        STATIC_REQUIRE(std::is_same_v<function<SFunction>::udf_type, SFunction>);
+
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         STATIC_REQUIRE(orm_scalar_function<decltype(scalar)>);
         STATIC_REQUIRE_FALSE(orm_aggregate_function<decltype(scalar)>);
@@ -273,4 +275,32 @@ TEST_CASE("function static") {
         STATIC_REQUIRE_FALSE(storage_scalar_callable<storage_type, aggregate>);
 #endif
     }
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    SECTION("quoted") {
+        constexpr auto quotedScalar = "f"_scalar.quote(std::clamp<int>);
+        using quoted_type = decltype("f"_scalar.quote(std::clamp<int>));
+
+        STATIC_REQUIRE(quotedScalar.nme[0] == 'f' && quotedScalar.nme[1] == '\0');
+        STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar),
+                                      const quoted_scalar_function<decltype(std::clamp<int>)*,
+                                                                   const int&(const int&, const int&, const int&),
+                                                                   2>>);
+
+        STATIC_REQUIRE(std::is_same_v<quoted_type::callable_type, decltype(std::clamp<int>)*>);
+        STATIC_REQUIRE(std::is_same_v<quoted_type::udf_type, const int&(const int&, const int&, const int&)>);
+
+        STATIC_REQUIRE(std::is_same_v<callable_arguments<quoted_type::udf_type>::return_type, int>);
+        STATIC_REQUIRE(
+            std::is_same_v<callable_arguments<quoted_type::udf_type>::args_tuple, std::tuple<int, int, int>>);
+
+        STATIC_REQUIRE(orm_quoted_scalar_function<decltype(quotedScalar)>);
+        STATIC_REQUIRE_FALSE(orm_scalar_function<decltype(quotedScalar)>);
+
+        STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar(0, 1, 1)),
+                                      function_call<const int&(const int&, const int&, const int&), int, int, int>>);
+
+        using storage_type = decltype(make_storage(""));
+        STATIC_REQUIRE(storage_scalar_callable<storage_type, quotedScalar>);
+    }
+#endif
 }

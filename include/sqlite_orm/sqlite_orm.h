@@ -10982,15 +10982,14 @@ namespace sqlite_orm {
         /*
          *  Pick signature of function pointer
          */
-        template<class R, class... Args>
-        struct function_traits<R (*)(Args...)> : function_traits<R(Args...)> {};
+        template<class F>
+        struct function_traits<F(*)> : function_traits<F> {};
 
-#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
-        template<class R, class... Args>
-        struct function_traits<R (*)(Args...) noexcept> : function_traits<R(Args...)> {
-            using signature_type = R(Args...) noexcept;
-        };
-#endif
+        /*
+         *  Pick signature of function reference
+         */
+        template<class F>
+        struct function_traits<F(&)> : function_traits<F> {};
 
         /*
          *  Pick signature of pointer-to-member function
@@ -11354,7 +11353,7 @@ namespace sqlite_orm {
         template<class F, class Sig, size_t N>
         struct quoted_scalar_function {
             using udf_type = Sig;
-            using callabe_type = F;
+            using callable_type = F;
 
             /*
              *  Generates the SQL function call.
