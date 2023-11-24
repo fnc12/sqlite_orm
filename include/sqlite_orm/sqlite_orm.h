@@ -11399,17 +11399,7 @@ namespace sqlite_orm {
             using cstring_literal<N>::cstring_literal;
 
             /*
-             *  From a freestanding function.
-             */
-            template<class F>
-                requires(std::is_function_v<std::remove_pointer_t<F>>)
-            [[nodiscard]] consteval auto quote(F callable) const {
-                using Sig = function_signature_type_t<F>;
-                return quoted_scalar_function<F, Sig, N>{this->cstr, std::move(callable)};
-            }
-
-            /*
-             *  From an overloaded freestanding function.
+             *  From a freestanding function, possibly overloaded.
              */
             template<orm_function_sig F>
             [[nodiscard]] consteval auto quote(F* callable) const {
