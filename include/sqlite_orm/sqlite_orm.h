@@ -4555,10 +4555,12 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
-// #include "functional/char_array_template.h"
+// #include "functional/cstring_literal.h"
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <utility>  //  std::index_sequence
 #include <algorithm>  //  std::copy_n
+#endif
 
 // #include "cxx_universal.h"
 //  ::size_t
@@ -4566,24 +4568,25 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 namespace sqlite_orm::internal {
     /*
-     *  Helper class to facilitate user-defined string literal operator template
+     *  Wraps a C string of fixed size.
+     *  Its main purpose is to enable the user-defined string literal operator template.
      */
     template<size_t N>
-    struct char_array_template {
+    struct cstring_literal {
         static constexpr size_t size() {
             return N - 1;
         }
 
-        constexpr char_array_template(const char (&charArray)[N]) {
-            std::copy_n(charArray, N, this->id);
+        constexpr cstring_literal(const char (&cstr)[N]) {
+            std::copy_n(cstr, N, this->cstr);
         }
 
-        char id[N];
+        char cstr[N];
     };
 
-    template<template<char...> class Template, char_array_template chars, size_t... Idx>
+    template<template<char...> class Template, cstring_literal literal, size_t... Idx>
     consteval auto explode_into(std::index_sequence<Idx...>) {
-        return Template<chars.id[Idx]...>{};
+        return Template<literal.cstr[Idx]...>{};
     }
 }
 #endif
@@ -4925,7 +4928,7 @@ namespace sqlite_orm {
      *  Examples:
      *  constexpr auto z_alias = "z"_alias.for_<User>();
      */
-    template<internal::char_array_template name>
+    template<internal::cstring_literal name>
     [[nodiscard]] consteval auto operator"" _alias() {
         return internal::explode_into<internal::recordset_alias_builder, name>(std::make_index_sequence<name.size()>{});
     }
@@ -4934,7 +4937,7 @@ namespace sqlite_orm {
      *  column_alias<'a'[, ...]> from a string literal.
      *  E.g. "a"_col, "b"_col
      */
-    template<internal::char_array_template name>
+    template<internal::cstring_literal name>
     [[nodiscard]] consteval auto operator"" _col() {
         return internal::explode_into<internal::column_alias, name>(std::make_index_sequence<name.size()>{});
     }
@@ -10907,7 +10910,7 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
-// #include "functional/char_array_template.h"
+// #include "functional/cstring_literal.h"
 
 // #include "functional/function_traits.h"
 
@@ -11393,12 +11396,8 @@ namespace sqlite_orm {
         };
 
         template<size_t N>
-        struct quoted_function_builder {
-            char nme[N];
-
-            consteval quoted_function_builder(const char (&name)[N]) {
-                std::copy_n(name, N, this->nme);
-            }
+        struct quoted_function_builder : cstring_literal<N> {
+            using cstring_literal<N>::cstring_literal;
 
             /*
              *  From a freestanding function.
@@ -11407,7 +11406,7 @@ namespace sqlite_orm {
                 requires(std::is_function_v<std::remove_pointer_t<F>>)
             [[nodiscard]] consteval auto quote(F callable) const {
                 using Sig = function_signature_type_t<F>;
-                return quoted_scalar_function<F, Sig, N>{this->nme, std::move(callable)};
+                return quoted_scalar_function<F, Sig, N>{this->cstr, std::move(callable)};
             }
 
             /*
@@ -11415,7 +11414,7 @@ namespace sqlite_orm {
              */
             template<orm_function_sig F>
             [[nodiscard]] consteval auto quote(F* callable) const {
-                return quoted_scalar_function<F*, F, N>{this->nme, std::move(callable)};
+                return quoted_scalar_function<F*, F, N>{this->cstr, std::move(callable)};
             }
 
             /*
@@ -11427,7 +11426,7 @@ namespace sqlite_orm {
                 using Sig = function_signature_type_t<decltype(&F::operator())>;
                 // detect whether overloaded call operator can be picked using `Sig`
                 using call_operator_type = decltype(static_cast<Sig F::*>(&F::operator()));
-                return quoted_scalar_function<F, Sig, N>{this->nme, std::move(callable)};
+                return quoted_scalar_function<F, Sig, N>{this->cstr, std::move(callable)};
             }
 
             /*
@@ -11438,7 +11437,7 @@ namespace sqlite_orm {
             [[nodiscard]] consteval auto quote(F callable) const {
                 // detect whether overloaded call operator can be picked using `Sig`
                 using call_operator_type = decltype(static_cast<Sig F::*>(&F::operator()));
-                return quoted_scalar_function<F, Sig, N>{this->nme, std::move(callable)};
+                return quoted_scalar_function<F, Sig, N>{this->cstr, std::move(callable)};
             }
 
             /*
@@ -11448,7 +11447,7 @@ namespace sqlite_orm {
                 requires(stateless<F> || std::copy_constructible<F>)
             [[nodiscard]] consteval auto quote(Args&&... constructorArgs) const {
                 using Sig = function_signature_type_t<decltype(&F::operator())>;
-                return quoted_scalar_function<F, Sig, N>{this->nme, std::forward<Args>(constructorArgs)...};
+                return quoted_scalar_function<F, Sig, N>{this->cstr, std::forward<Args>(constructorArgs)...};
             }
 
             /*
@@ -11459,7 +11458,7 @@ namespace sqlite_orm {
             [[nodiscard]] consteval auto quote(Args&&... constructorArgs) const {
                 // detect whether overloaded call operator can be picked using `Sig`
                 using call_operator_type = decltype(static_cast<Sig F::*>(&F::operator()));
-                return quoted_scalar_function<F, Sig, N>{this->nme, std::forward<Args>(constructorArgs)...};
+                return quoted_scalar_function<F, Sig, N>{this->cstr, std::forward<Args>(constructorArgs)...};
             }
         };
 #endif

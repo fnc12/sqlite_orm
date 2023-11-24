@@ -6,7 +6,7 @@
 #include <sstream>  //  std::stringstream
 
 #include "functional/cxx_type_traits_polyfill.h"
-#include "functional/char_array_template.h"
+#include "functional/cstring_literal.h"
 #include "type_traits.h"
 #include "alias_traits.h"
 #include "table_type_of.h"
@@ -341,7 +341,7 @@ namespace sqlite_orm {
      *  Examples:
      *  constexpr auto z_alias = "z"_alias.for_<User>();
      */
-    template<internal::char_array_template name>
+    template<internal::cstring_literal name>
     [[nodiscard]] consteval auto operator"" _alias() {
         return internal::explode_into<internal::recordset_alias_builder, name>(std::make_index_sequence<name.size()>{});
     }
@@ -350,7 +350,7 @@ namespace sqlite_orm {
      *  column_alias<'a'[, ...]> from a string literal.
      *  E.g. "a"_col, "b"_col
      */
-    template<internal::char_array_template name>
+    template<internal::cstring_literal name>
     [[nodiscard]] consteval auto operator"" _col() {
         return internal::explode_into<internal::column_alias, name>(std::make_index_sequence<name.size()>{});
     }
