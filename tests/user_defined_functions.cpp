@@ -582,5 +582,15 @@ TEST_CASE("generalized scalar udf") {
         }
         storage.delete_scalar_function<offset0_f>();
     }
+    SECTION("escaped function identifier") {
+        constexpr auto clamp_f = R"("clamp int")"_scalar.quote(std::clamp<int>);
+        storage.create_scalar_function<clamp_f>();
+        {
+            auto rows = storage.select(columns(clamp_f(0, 1, 1)));
+            decltype(rows) expected{{1}};
+            REQUIRE(rows == expected);
+        }
+        storage.delete_scalar_function<clamp_f>();
+    }
 }
 #endif

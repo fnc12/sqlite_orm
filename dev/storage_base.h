@@ -259,8 +259,6 @@ namespace sqlite_orm {
              *      }
              *  };
              * ```
-             * 
-             * Attention: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
              */
             template<class F, class... Args>
             void create_scalar_function(Args&&... constructorArgs) {
@@ -284,8 +282,6 @@ namespace sqlite_orm {
              * If `F` is a stateless function object, an instance of the function object is created once, otherwise
              * an instance of the function object is repeatedly recreated for each result row,
              * ensuring that the calculations always start with freshly initialized values.
-             * 
-             * Attention: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
              */
             template<orm_scalar_function auto f, std::copy_constructible... Args>
             void create_scalar_function(Args&&... constructorArgs) {
@@ -299,8 +295,6 @@ namespace sqlite_orm {
              * If `quotedF` contains a freestanding function, stateless lambda or stateless function object,
              * `quoted_scalar_function::callable()` uses the original function object, assuming it is free of side effects;
              * otherwise, it repeatedly uses a copy of the contained function object, assuming possible side effects.
-             * 
-             * Attention: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
              */
             template<orm_quoted_scalar_function auto quotedF>
             void create_scalar_function() {
@@ -363,8 +357,6 @@ namespace sqlite_orm {
              *       }
              *   };
              * ```
-             * 
-             * Attention: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
              */
             template<class F, class... Args>
             void create_aggregate_function(Args&&... constructorArgs) {
@@ -387,8 +379,6 @@ namespace sqlite_orm {
              * together with a copy of the passed initialization arguments.
              * An instance of the function object is repeatedly recreated for each result row,
              * ensuring that the calculations always start with freshly initialized values.
-             * 
-             * Attention: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
              */
             template<orm_aggregate_function auto f, std::copy_constructible... Args>
             void create_aggregate_function(Args&&... constructorArgs) {
