@@ -183,6 +183,12 @@ using std::nullptr_t;
 #define SQLITE_ORM_INLINE_VAR
 #endif
 
+#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
+#define SQLITE_ORM_CONSTEXPR_IF constexpr
+#else
+#define SQLITE_ORM_CONSTEXPR_IF
+#endif
+
 #if __cpp_lib_constexpr_functional >= 201907L
 #define SQLITE_ORM_CONSTEXPR_CPP20 constexpr
 #else
@@ -7134,11 +7140,7 @@ namespace sqlite_orm {
 
         template<bool reversed = false, class Tpl, size_t I, size_t... Idx, class L>
         void iterate_tuple(Tpl& tpl, std::index_sequence<I, Idx...>, L&& lambda) {
-#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
-            if constexpr(reversed) {
-#else
-            if(reversed) {
-#endif
+            if SQLITE_ORM_CONSTEXPR_IF(reversed) {
                 iterate_tuple<reversed>(tpl, std::index_sequence<Idx...>{}, std::forward<L>(lambda));
                 lambda(std::get<I>(tpl));
             } else {
@@ -15290,6 +15292,9 @@ namespace sqlite_orm {
                 finalAggregateCall{finalAggregateCall}, udfConstructed{false}, udfMemory{udfMemory} {}
 
             ~udf_proxy() {
+                if(!constructAt && destroy) {
+                    destroy(udfMemory.first);
+                }
                 if(udfMemory.second) {
                     udfMemory.second(udfMemory.first);
                 }
@@ -15352,6 +15357,8 @@ namespace sqlite_orm {
             check_args_count(proxy, argsCount);
             proxy->func(udfHandle(proxy), context, argsCount, values);
         }
+
+        SQLITE_ORM_INLINE_VAR constexpr auto stateless_scalar_function_callback = quoted_scalar_function_callback;
 
         inline void aggregate_function_step_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
             udf_proxy* proxy = static_cast<udf_proxy*>(sqlite3_user_data(context));
@@ -15582,7 +15589,8 @@ namespace sqlite_orm {
              * 
              * Note: `create_scalar_function()` merely creates a closure to generate an instance of the scalar function object,
              * together with a copy of the passed initialization arguments.
-             * An instance of the function object is repeatedly recreated for each result row,
+             * If `F` is a stateless function object, an instance of the function object is created once, otherwise
+             * an instance of the function object is repeatedly recreated for each result row,
              * ensuring that the calculations always start with freshly initialized values.
              * 
              * T - function class. T must have operator() overload and static name function like this:
@@ -15620,7 +15628,8 @@ namespace sqlite_orm {
              * 
              * Note: `create_scalar_function()` merely creates a closure to generate an instance of the scalar function object,
              * together with a copy of the passed initialization arguments.
-             * An instance of the function object is repeatedly recreated for each result row,
+             * If `F` is a stateless function object, an instance of the function object is created once, otherwise
+             * an instance of the function object is repeatedly recreated for each result row,
              * ensuring that the calculations always start with freshly initialized values.
              * 
              * Attention: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
@@ -16049,10 +16058,15 @@ namespace sqlite_orm {
                 constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
                                                ? -1
                                                : int(std::tuple_size<args_tuple>::value);
+                constexpr bool isStateless = std::is_empty<F>::value;
+                auto udfStorage = allocate_udf_storage<F>();
+                if SQLITE_ORM_CONSTEXPR_IF(isStateless) {
+                    constructAt(udfStorage.first);
+                }
                 this->scalarFunctions.emplace_back(
                     udfName(),
                     argsCount,
-                    std::move(constructAt),
+                    isStateless ? nullptr : std::move(constructAt),
                     /* destroy = */
                     obtain_xdestroy_for<F>(udf_proxy::destruct_only_deleter{}),
                     /* call = */
@@ -16064,7 +16078,7 @@ namespace sqlite_orm {
                     },
                     /* finalCall = */
                     nullptr,
-                    allocate_udf_storage<F>());
+                    udfStorage);
 
                 if(this->connection->retain_count() > 0) {
                     sqlite3* db = this->connection->get();
@@ -16145,16 +16159,18 @@ namespace sqlite_orm {
             }
 
             static void try_to_create_scalar_function(sqlite3* db, udf_proxy& udfProxy) {
-                int rc = sqlite3_create_function_v2(db,
-                                                    udfProxy.name.c_str(),
-                                                    udfProxy.argumentsCount,
-                                                    SQLITE_UTF8,
-                                                    &udfProxy,
-                                                    udfProxy.constructAt ? scalar_function_callback
-                                                                         : quoted_scalar_function_callback,
-                                                    nullptr,
-                                                    nullptr,
-                                                    nullptr);
+                int rc = sqlite3_create_function_v2(
+                    db,
+                    udfProxy.name.c_str(),
+                    udfProxy.argumentsCount,
+                    SQLITE_UTF8,
+                    &udfProxy,
+                    !udfProxy.constructAt && !udfProxy.destroy  ? quoted_scalar_function_callback
+                    : !udfProxy.constructAt && udfProxy.destroy ? stateless_scalar_function_callback
+                                                                : scalar_function_callback,
+                    nullptr,
+                    nullptr,
+                    nullptr);
                 if(rc != SQLITE_OK) {
                     throw_translated_sqlite_error(db);
                 }

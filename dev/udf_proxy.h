@@ -78,6 +78,9 @@ namespace sqlite_orm {
                 finalAggregateCall{finalAggregateCall}, udfConstructed{false}, udfMemory{udfMemory} {}
 
             ~udf_proxy() {
+                if(!constructAt && destroy) {
+                    destroy(udfMemory.first);
+                }
                 if(udfMemory.second) {
                     udfMemory.second(udfMemory.first);
                 }
@@ -140,6 +143,8 @@ namespace sqlite_orm {
             check_args_count(proxy, argsCount);
             proxy->func(udfHandle(proxy), context, argsCount, values);
         }
+
+        SQLITE_ORM_INLINE_VAR constexpr auto stateless_scalar_function_callback = quoted_scalar_function_callback;
 
         inline void aggregate_function_step_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
             udf_proxy* proxy = static_cast<udf_proxy*>(sqlite3_user_data(context));
