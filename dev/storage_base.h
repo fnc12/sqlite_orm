@@ -312,15 +312,12 @@ namespace sqlite_orm {
                     /* destroy = */
                     nullptr,
                     /* call = */
-                    udf_proxy::func_type{.direct =
-                                             [](sqlite3_context* context, int argsCount, sqlite3_value** values) {
-                                                 assert_args_count(context, argsCount);
-                                                 args_tuple argsTuple =
-                                                     tuple_from_values<args_tuple>{}(values, argsCount);
-                                                 auto result =
-                                                     polyfill::apply(quotedF.callable(), std::move(argsTuple));
-                                                 statement_binder<return_type>().result(context, result);
-                                             }},
+                    [](sqlite3_context* context, int argsCount, sqlite3_value** values) {
+                        proxy_assert_args_count(context, argsCount);
+                        args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
+                        auto result = polyfill::apply(quotedF.callable(), std::move(argsTuple));
+                        statement_binder<return_type>().result(context, result);
+                    },
                     /* finalCall = */
                     nullptr,
                     std::pair{nullptr, null_xdestroy_f});
@@ -705,25 +702,24 @@ namespace sqlite_orm {
                 constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
                                                ? -1
                                                : int(std::tuple_size<args_tuple>::value);
-                constexpr bool isStateless = std::is_empty<F>::value;
+                using is_stateless = std::is_empty<F>;
                 auto udfStorage = allocate_udf_storage<F>();
-                if SQLITE_ORM_CONSTEXPR_IF(isStateless) {
+                if SQLITE_ORM_CONSTEXPR_IF(is_stateless::value) {
                     constructAt(udfStorage.first);
                 }
                 this->scalarFunctions.emplace_back(
                     udfName(),
                     argsCount,
-                    isStateless ? nullptr : std::move(constructAt),
+                    is_stateless::value ? nullptr : std::move(constructAt),
                     /* destroy = */
                     obtain_xdestroy_for<F>(udf_proxy::destruct_only_deleter{}),
                     /* call = */
-                    udf_proxy::func_type{
-                        [](void* udfHandle, sqlite3_context* context, int argsCount, sqlite3_value** values) {
-                            F& udf = *static_cast<F*>(udfHandle);
-                            args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
-                            auto result = polyfill::apply(udf, std::move(argsTuple));
-                            statement_binder<return_type>().result(context, result);
-                        }},
+                    [](sqlite3_context* context, int argsCount, sqlite3_value** values) {
+                        auto udfPointer = proxy_get_scalar_udf<F>(is_stateless{}, context, argsCount);
+                        args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
+                        auto result = polyfill::apply(*udfPointer, std::move(argsTuple));
+                        statement_binder<return_type>().result(context, result);
+                    },
                     /* finalCall = */
                     nullptr,
                     udfStorage);
@@ -749,8 +745,8 @@ namespace sqlite_orm {
                     /* destroy = */
                     obtain_xdestroy_for<F>(udf_proxy::destruct_only_deleter{}),
                     /* step = */
-                    udf_proxy::func_type{[](void* udfHandle, sqlite3_context*, int argsCount, sqlite3_value** values) {
-                        F& udf = *static_cast<F*>(udfHandle);
+                    [](sqlite3_context* context, int argsCount, sqlite3_value** values) {
+                        F& udf = *proxy_get_aggregate_step_udf<F>(context, argsCount);
                         args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
 #if __cpp_lib_bind_front >= 201907L
                         std::apply(std::bind_front(&F::step, &udf), std::move(argsTuple));
@@ -761,7 +757,7 @@ namespace sqlite_orm {
                             },
                             std::move(argsTuple));
 #endif
-                    }},
+                    },
                     /* finalCall = */
                     [](void* udfHandle, sqlite3_context* context) {
                         F& udf = *static_cast<F*>(udfHandle);
@@ -812,10 +808,7 @@ namespace sqlite_orm {
                                                     udfProxy.argumentsCount,
                                                     SQLITE_UTF8,
                                                     &udfProxy,
-                                                    !udfProxy.constructAt && !udfProxy.destroy ? udfProxy.func.direct
-                                                    : !udfProxy.constructAt && udfProxy.destroy
-                                                        ? stateless_scalar_function_dispatch
-                                                        : scalar_function_callback,
+                                                    udfProxy.func,
                                                     nullptr,
                                                     nullptr,
                                                     nullptr);
@@ -831,7 +824,7 @@ namespace sqlite_orm {
                                                  SQLITE_UTF8,
                                                  &udfProxy,
                                                  nullptr,
-                                                 aggregate_function_step_callback,
+                                                 udfProxy.func,
                                                  aggregate_function_final_callback);
                 if(rc != SQLITE_OK) {
                     throw_translated_sqlite_error(rc);
