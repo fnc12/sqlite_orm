@@ -82,6 +82,10 @@ using std::nullptr_t;
 #else
 #endif
 
+#if __cpp_init_captures >= 201803L
+#define SQLITE_ORM_PACK_EXPANSION_IN_INIT_CAPTURE_SUPPORTED
+#endif
+
 #if __cpp_consteval >= 201811L
 #define SQLITE_ORM_CONSTEVAL_SUPPORTED
 #endif
@@ -15617,12 +15621,18 @@ namespace sqlite_orm {
             void create_scalar_function(Args&&... constructorArgs) {
                 static_assert(is_scalar_udf_v<F>, "F must be a scalar function");
 
-                this->create_scalar_function_impl(udf_holder<F>{},
-                                                  /* constructAt */ [constructorArgs...](void* location) {
-                                                      std::allocator<F> allocator;
-                                                      using traits = std::allocator_traits<decltype(allocator)>;
-                                                      traits::construct(allocator, (F*)location, constructorArgs...);
-                                                  });
+                this->create_scalar_function_impl(
+                    udf_holder<F>{},
+#ifdef SQLITE_ORM_PACK_EXPANSION_IN_INIT_CAPTURE_SUPPORTED
+                    /* constructAt */ [... constructorArgs = std::move(constructorArgs)](void* location) {
+#else
+                    /* constructAt */
+                    [constructorArgs...](void* location) {
+#endif
+                        std::allocator<F> allocator;
+                        using traits = std::allocator_traits<decltype(allocator)>;
+                        traits::construct(allocator, (F*)location, constructorArgs...);
+                    });
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -15716,12 +15726,18 @@ namespace sqlite_orm {
             void create_aggregate_function(Args&&... constructorArgs) {
                 static_assert(is_aggregate_udf_v<F>, "F must be an aggregate function");
 
-                this->create_aggregate_function_impl(udf_holder<F>{}, /* constructAt = */
-                                                     [constructorArgs...](void* location) {
-                                                         std::allocator<F> allocator;
-                                                         using traits = std::allocator_traits<decltype(allocator)>;
-                                                         traits::construct(allocator, (F*)location, constructorArgs...);
-                                                     });
+                this->create_aggregate_function_impl(
+                    udf_holder<F>{}, /* constructAt = */
+#ifdef SQLITE_ORM_PACK_EXPANSION_IN_INIT_CAPTURE_SUPPORTED
+                    /* constructAt */ [... constructorArgs = std::move(constructorArgs)](void* location) {
+#else
+                    /* constructAt */
+                    [constructorArgs...](void* location) {
+#endif
+                        std::allocator<F> allocator;
+                        using traits = std::allocator_traits<decltype(allocator)>;
+                        traits::construct(allocator, (F*)location, constructorArgs...);
+                    });
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
