@@ -312,11 +312,15 @@ namespace sqlite_orm {
                     /* destroy = */
                     nullptr,
                     /* call = */
-                    [](void* /*udfHandle*/, sqlite3_context* context, int argsCount, sqlite3_value** values) {
-                        args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
-                        auto result = polyfill::apply(quotedF.callable(), std::move(argsTuple));
-                        statement_binder<return_type>().result(context, result);
-                    },
+                    udf_proxy::func_type{.direct =
+                                             [](sqlite3_context* context, int argsCount, sqlite3_value** values) {
+                                                 assert_args_count(context, argsCount);
+                                                 args_tuple argsTuple =
+                                                     tuple_from_values<args_tuple>{}(values, argsCount);
+                                                 auto result =
+                                                     polyfill::apply(quotedF.callable(), std::move(argsTuple));
+                                                 statement_binder<return_type>().result(context, result);
+                                             }},
                     /* finalCall = */
                     nullptr,
                     std::pair{nullptr, null_xdestroy_f});
@@ -713,12 +717,13 @@ namespace sqlite_orm {
                     /* destroy = */
                     obtain_xdestroy_for<F>(udf_proxy::destruct_only_deleter{}),
                     /* call = */
-                    [](void* udfHandle, sqlite3_context* context, int argsCount, sqlite3_value** values) {
-                        F& udf = *static_cast<F*>(udfHandle);
-                        args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
-                        auto result = polyfill::apply(udf, std::move(argsTuple));
-                        statement_binder<return_type>().result(context, result);
-                    },
+                    udf_proxy::func_type{
+                        [](void* udfHandle, sqlite3_context* context, int argsCount, sqlite3_value** values) {
+                            F& udf = *static_cast<F*>(udfHandle);
+                            args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
+                            auto result = polyfill::apply(udf, std::move(argsTuple));
+                            statement_binder<return_type>().result(context, result);
+                        }},
                     /* finalCall = */
                     nullptr,
                     udfStorage);
@@ -744,7 +749,7 @@ namespace sqlite_orm {
                     /* destroy = */
                     obtain_xdestroy_for<F>(udf_proxy::destruct_only_deleter{}),
                     /* step = */
-                    [](void* udfHandle, sqlite3_context*, int argsCount, sqlite3_value** values) {
+                    udf_proxy::func_type{[](void* udfHandle, sqlite3_context*, int argsCount, sqlite3_value** values) {
                         F& udf = *static_cast<F*>(udfHandle);
                         args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
 #if __cpp_lib_bind_front >= 201907L
@@ -756,7 +761,7 @@ namespace sqlite_orm {
                             },
                             std::move(argsTuple));
 #endif
-                    },
+                    }},
                     /* finalCall = */
                     [](void* udfHandle, sqlite3_context* context) {
                         F& udf = *static_cast<F*>(udfHandle);
@@ -802,18 +807,18 @@ namespace sqlite_orm {
             }
 
             static void try_to_create_scalar_function(sqlite3* db, udf_proxy& udfProxy) {
-                int rc = sqlite3_create_function_v2(
-                    db,
-                    udfProxy.name.c_str(),
-                    udfProxy.argumentsCount,
-                    SQLITE_UTF8,
-                    &udfProxy,
-                    !udfProxy.constructAt && !udfProxy.destroy  ? quoted_scalar_function_callback
-                    : !udfProxy.constructAt && udfProxy.destroy ? stateless_scalar_function_callback
-                                                                : scalar_function_callback,
-                    nullptr,
-                    nullptr,
-                    nullptr);
+                int rc = sqlite3_create_function_v2(db,
+                                                    udfProxy.name.c_str(),
+                                                    udfProxy.argumentsCount,
+                                                    SQLITE_UTF8,
+                                                    &udfProxy,
+                                                    !udfProxy.constructAt && !udfProxy.destroy ? udfProxy.func.direct
+                                                    : !udfProxy.constructAt && udfProxy.destroy
+                                                        ? stateless_scalar_function_dispatch
+                                                        : scalar_function_callback,
+                                                    nullptr,
+                                                    nullptr,
+                                                    nullptr);
                 if(rc != SQLITE_OK) {
                     throw_translated_sqlite_error(db);
                 }

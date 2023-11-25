@@ -15215,6 +15215,7 @@ namespace sqlite_orm {
 // #include "udf_proxy.h"
 
 #include <sqlite3.h>
+#include <cassert>  //  assert
 #include <memory>  //  std::allocator, std::allocator_traits, std::unique_ptr
 #include <string>  //  std::string
 #include <functional>  //  std::function
@@ -15251,12 +15252,17 @@ namespace sqlite_orm {
          *  As such, it also serves as a context for aggregation operations instead of using `sqlite3_aggregate_context()`.
          */
         struct udf_proxy {
+            using sqlite_callback_fn_t = void (*)(sqlite3_context* context, int argsCount, sqlite3_value** values);
             using func_call_fn_t = void (*)(void* udfHandle,
                                             sqlite3_context* context,
                                             int argsCount,
                                             sqlite3_value** values);
             using final_call_fn_t = void (*)(void* udfHandle, sqlite3_context* context);
             using memory_space = std::pair<void* /*udfHandle*/, xdestroy_fn_t /*deallocate*/>;
+            using func_type = union {
+                func_call_fn_t intermediate;
+                sqlite_callback_fn_t direct;
+            };
 
             struct destruct_only_deleter {
                 template<class UDF>
@@ -15271,7 +15277,7 @@ namespace sqlite_orm {
             int argumentsCount;
             std::function<void(void* location)> constructAt;
             xdestroy_fn_t destroy;
-            func_call_fn_t func;
+            func_type func;
             final_call_fn_t finalAggregateCall;
 
             // flag whether the UDF has been constructed at `udfHandle`;
@@ -15284,7 +15290,7 @@ namespace sqlite_orm {
                       int argumentsCount,
                       std::function<void(void* location)> constructAt,
                       xdestroy_fn_t destroy,
-                      func_call_fn_t func,
+                      func_type func,
                       final_call_fn_t finalAggregateCall,
                       memory_space udfMemory) :
                 name{std::move(name)},
@@ -15308,14 +15314,20 @@ namespace sqlite_orm {
             udf_proxy& operator=(const udf_proxy&) = delete;
         };
 
-        inline void check_args_count(const udf_proxy* proxy, int argsCount) {
-            if(proxy->argumentsCount != -1) {
-                if(proxy->argumentsCount != argsCount &&
-                   /*check fin call*/ argsCount != -1)
-                    SQLITE_ORM_CPP_UNLIKELY {
-                        throw std::system_error{orm_error_code::arguments_count_does_not_match};
-                    }
-            }
+        // safety net of doing a triple check at runtime
+        inline void assert_args_count(const udf_proxy* proxy, int argsCount) {
+            assert((proxy->argumentsCount == -1) || (proxy->argumentsCount == argsCount ||
+                                                     /*check fin call*/ argsCount == -1));
+            (void)proxy;
+            (void)argsCount;
+        }
+
+        // safety net of doing a triple check at runtime
+        inline void assert_args_count(sqlite3_context* context, int argsCount) {
+            udf_proxy* proxy;
+            assert((proxy = static_cast<udf_proxy*>(sqlite3_user_data(context))) != nullptr);
+            assert_args_count(proxy, argsCount);
+            (void)context;
         }
 
         inline void ensure_udf(udf_proxy* proxy, int argsCount) {
@@ -15323,7 +15335,7 @@ namespace sqlite_orm {
                 SQLITE_ORM_CPP_LIKELY {
                     return;
                 }
-            check_args_count(proxy, argsCount);
+            assert_args_count(proxy, argsCount);
             // Note on the use of the `udfHandle` pointer after the object construction:
             // since we only ever cast between void* and UDF* pointer types and
             // only use the memory space for one type during the entire lifetime of a proxy,
@@ -15337,9 +15349,16 @@ namespace sqlite_orm {
             proxy->destroy(udfHandle(proxy));
         }
 
+        inline void
+        stateless_scalar_function_dispatch(sqlite3_context* context, int argsCount, sqlite3_value** values) {
+            udf_proxy* proxy = static_cast<udf_proxy*>(sqlite3_user_data(context));
+            assert_args_count(proxy, argsCount);
+            proxy->func.intermediate(udfHandle(proxy), context, argsCount, values);
+        }
+
         inline void scalar_function_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
             udf_proxy* proxy = static_cast<udf_proxy*>(sqlite3_user_data(context));
-            check_args_count(proxy, argsCount);
+            assert_args_count(proxy, argsCount);
             // 1. Thread-safe with regard to the construction/destruction of the function object in the same memory space.
             //    The `udf_proxy` is one instance per database connection,
             //    and SQLite internally locks access to the database object during the generation of a result row with `sqlite3_step()`.
@@ -15349,21 +15368,13 @@ namespace sqlite_orm {
             //    we can use `udfHandle` interconvertibly without laundering its provenance.
             proxy->constructAt(udfHandle(proxy));
             const std::unique_ptr<void, xdestroy_fn_t> udfGuard{udfHandle(proxy), proxy->destroy};
-            proxy->func(udfHandle(proxy), context, argsCount, values);
+            proxy->func.intermediate(udfHandle(proxy), context, argsCount, values);
         }
-
-        inline void quoted_scalar_function_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
-            udf_proxy* proxy = static_cast<udf_proxy*>(sqlite3_user_data(context));
-            check_args_count(proxy, argsCount);
-            proxy->func(udfHandle(proxy), context, argsCount, values);
-        }
-
-        SQLITE_ORM_INLINE_VAR constexpr auto stateless_scalar_function_callback = quoted_scalar_function_callback;
 
         inline void aggregate_function_step_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
             udf_proxy* proxy = static_cast<udf_proxy*>(sqlite3_user_data(context));
             ensure_udf(proxy, argsCount);
-            proxy->func(udfHandle(proxy), context, argsCount, values);
+            proxy->func.intermediate(udfHandle(proxy), context, argsCount, values);
         }
 
         inline void aggregate_function_final_callback(sqlite3_context* context) {
@@ -15659,11 +15670,15 @@ namespace sqlite_orm {
                     /* destroy = */
                     nullptr,
                     /* call = */
-                    [](void* /*udfHandle*/, sqlite3_context* context, int argsCount, sqlite3_value** values) {
-                        args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
-                        auto result = polyfill::apply(quotedF.callable(), std::move(argsTuple));
-                        statement_binder<return_type>().result(context, result);
-                    },
+                    udf_proxy::func_type{.direct =
+                                             [](sqlite3_context* context, int argsCount, sqlite3_value** values) {
+                                                 assert_args_count(context, argsCount);
+                                                 args_tuple argsTuple =
+                                                     tuple_from_values<args_tuple>{}(values, argsCount);
+                                                 auto result =
+                                                     polyfill::apply(quotedF.callable(), std::move(argsTuple));
+                                                 statement_binder<return_type>().result(context, result);
+                                             }},
                     /* finalCall = */
                     nullptr,
                     std::pair{nullptr, null_xdestroy_f});
@@ -16060,12 +16075,13 @@ namespace sqlite_orm {
                     /* destroy = */
                     obtain_xdestroy_for<F>(udf_proxy::destruct_only_deleter{}),
                     /* call = */
-                    [](void* udfHandle, sqlite3_context* context, int argsCount, sqlite3_value** values) {
-                        F& udf = *static_cast<F*>(udfHandle);
-                        args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
-                        auto result = polyfill::apply(udf, std::move(argsTuple));
-                        statement_binder<return_type>().result(context, result);
-                    },
+                    udf_proxy::func_type{
+                        [](void* udfHandle, sqlite3_context* context, int argsCount, sqlite3_value** values) {
+                            F& udf = *static_cast<F*>(udfHandle);
+                            args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
+                            auto result = polyfill::apply(udf, std::move(argsTuple));
+                            statement_binder<return_type>().result(context, result);
+                        }},
                     /* finalCall = */
                     nullptr,
                     udfStorage);
@@ -16091,7 +16107,7 @@ namespace sqlite_orm {
                     /* destroy = */
                     obtain_xdestroy_for<F>(udf_proxy::destruct_only_deleter{}),
                     /* step = */
-                    [](void* udfHandle, sqlite3_context*, int argsCount, sqlite3_value** values) {
+                    udf_proxy::func_type{[](void* udfHandle, sqlite3_context*, int argsCount, sqlite3_value** values) {
                         F& udf = *static_cast<F*>(udfHandle);
                         args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
 #if __cpp_lib_bind_front >= 201907L
@@ -16103,7 +16119,7 @@ namespace sqlite_orm {
                             },
                             std::move(argsTuple));
 #endif
-                    },
+                    }},
                     /* finalCall = */
                     [](void* udfHandle, sqlite3_context* context) {
                         F& udf = *static_cast<F*>(udfHandle);
@@ -16149,18 +16165,18 @@ namespace sqlite_orm {
             }
 
             static void try_to_create_scalar_function(sqlite3* db, udf_proxy& udfProxy) {
-                int rc = sqlite3_create_function_v2(
-                    db,
-                    udfProxy.name.c_str(),
-                    udfProxy.argumentsCount,
-                    SQLITE_UTF8,
-                    &udfProxy,
-                    !udfProxy.constructAt && !udfProxy.destroy  ? quoted_scalar_function_callback
-                    : !udfProxy.constructAt && udfProxy.destroy ? stateless_scalar_function_callback
-                                                                : scalar_function_callback,
-                    nullptr,
-                    nullptr,
-                    nullptr);
+                int rc = sqlite3_create_function_v2(db,
+                                                    udfProxy.name.c_str(),
+                                                    udfProxy.argumentsCount,
+                                                    SQLITE_UTF8,
+                                                    &udfProxy,
+                                                    !udfProxy.constructAt && !udfProxy.destroy ? udfProxy.func.direct
+                                                    : !udfProxy.constructAt && udfProxy.destroy
+                                                        ? stateless_scalar_function_dispatch
+                                                        : scalar_function_callback,
+                                                    nullptr,
+                                                    nullptr,
+                                                    nullptr);
                 if(rc != SQLITE_OK) {
                     throw_translated_sqlite_error(db);
                 }
