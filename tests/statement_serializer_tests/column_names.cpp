@@ -183,6 +183,14 @@ TEST_CASE("statement_serializer column names") {
                 return R"(a"s)";
             }
         };
+        struct always42_function {
+            static const char* name() {
+                return R"("always 42")";
+            }
+            int operator()() const {
+                return 42;
+            }
+        };
         auto table1 = make_table(R"(object1"")", make_column(R"(i"d)", &Object1::id));
         auto table2 = make_table(R"(ob"ject2)", make_column(R"(i"d)", &Object2::id));
         using db_objects_t = internal::db_objects_tuple<decltype(table1), decltype(table2)>;
@@ -193,14 +201,18 @@ TEST_CASE("statement_serializer column names") {
 
             using als_d = alias_d<Object2>;
             auto expression =
-                select(columns(&Object1::id, as<colalias>(&Object1::id), alias_column<als_d>(&Object2::id)),
+                select(columns(&Object1::id,
+                               as<colalias>(&Object1::id),
+                               alias_column<als_d>(&Object2::id),
+                               func<always42_function>()),
                        join<als_d>(using_(&Object1::id)),
                        multi_order_by(order_by(get<colalias>()), order_by(alias_column<als_d>(&Object2::id))));
             expression.highest_level = true;
             auto value = serialize(expression, context);
-            REQUIRE(value ==
-                    R"(SELECT "object1"""""."i""d", "object1"""""."i""d" AS "a""s", "d"."i""d" FROM "object1""""" )"
-                    R"(JOIN "ob""ject2" "d" USING ("i""d") ORDER BY "a""s", "d"."i""d")");
+            REQUIRE(
+                value ==
+                R"(SELECT "object1"""""."i""d", "object1"""""."i""d" AS "a""s", "d"."i""d", """always 42"""() FROM "object1""""" )"
+                R"(JOIN "ob""ject2" "d" USING ("i""d") ORDER BY "a""s", "d"."i""d")");
         }
     }
 }

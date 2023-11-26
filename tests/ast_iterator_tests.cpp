@@ -274,6 +274,7 @@ TEST_CASE("ast_iterator") {
     }
     SECTION("function_call") {
         struct Func {
+            static const char* name();
             bool operator()(int value) const {
                 return value % 2 == 0;
             }

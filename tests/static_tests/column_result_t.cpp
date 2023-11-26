@@ -79,6 +79,7 @@ TEST_CASE("column_result_of_t") {
     runTest<db_objects_t, int>(count());
     {
         struct RandomFunc {
+            static const char* name();
             int operator()() const {
                 return 4;
             }

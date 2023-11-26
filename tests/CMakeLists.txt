@@ -37,6 +37,7 @@ add_executable(unit_tests
     static_tests/operators_adl.cpp
     static_tests/table_static_tests.cpp
     tuple_iteration.cpp
+    xdestroy_handling.cpp
     sync_schema_tests.cpp
     tests.cpp
     tests2.cpp
@@ -53,6 +54,7 @@ add_executable(unit_tests
     built_in_functions_tests/core_functions_tests.cpp
     built_in_functions_tests/datetime_function_tests.cpp
     built_in_functions_tests/math_functions.cpp
+    user_defined_functions.cpp
     constraints/composite_key.cpp
     operators/arithmetic_operators.cpp
     operators/like.cpp

@@ -6,10 +6,22 @@
 #include <version>
 #endif
 
+#ifdef SQLITE_ORM_CONSTEXPR_LAMBDAS_SUPPORTED
+#define SQLITE_ORM_CONSTEXPR_LAMBDA_CPP17 constexpr
+#else
+#define SQLITE_ORM_CONSTEXPR_LAMBDA_CPP17
+#endif
+
 #ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 #define SQLITE_ORM_INLINE_VAR inline
 #else
 #define SQLITE_ORM_INLINE_VAR
+#endif
+
+#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
+#define SQLITE_ORM_CONSTEXPR_IF constexpr
+#else
+#define SQLITE_ORM_CONSTEXPR_IF
 #endif
 
 #if __cpp_lib_constexpr_functional >= 201907L
@@ -22,6 +34,14 @@
 #define SQLITE_ORM_NOUNIQUEADDRESS [[no_unique_address]]
 #else
 #define SQLITE_ORM_NOUNIQUEADDRESS
+#endif
+
+#if SQLITE_ORM_HAS_CPP_ATTRIBUTE(likely) >= 201803L
+#define SQLITE_ORM_CPP_LIKELY [[likely]]
+#define SQLITE_ORM_CPP_UNLIKELY [[unlikely]]
+#else
+#define SQLITE_ORM_CPP_LIKELY
+#define SQLITE_ORM_CPP_UNLIKELY
 #endif
 
 #ifdef SQLITE_ORM_CONSTEVAL_SUPPORTED

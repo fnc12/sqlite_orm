@@ -364,14 +364,15 @@ namespace sqlite_orm {
         struct statement_serializer<built_in_aggregate_function_t<R, S, Args...>, void>
             : statement_serializer<built_in_function_t<R, S, Args...>, void> {};
 
-        template<class F, class... Args>
-        struct statement_serializer<function_call<F, Args...>, void> {
-            using statement_type = function_call<F, Args...>;
+        template<class F, class... CallArgs>
+        struct statement_serializer<function_call<F, CallArgs...>, void> {
+            using statement_type = function_call<F, CallArgs...>;
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
-                ss << F::name() << "(" << streaming_expressions_tuple(statement.args, context) << ")";
+                stream_identifier(ss, "", statement.name(), "");
+                ss << "(" << streaming_expressions_tuple(statement.callArgs, context) << ")";
                 return ss.str();
             }
         };

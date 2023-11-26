@@ -1,38 +1,13 @@
 #pragma once
 
-#include <tuple>  //  std::tuple, std::get, std::tuple_element, std::tuple_size
-#include <type_traits>  //  std::remove_reference, std::index_sequence, std::make_index_sequence, std::forward, std::move
+#include <tuple>  //  std::get, std::tuple_element, std::tuple_size
+#include <type_traits>  //  std::index_sequence, std::make_index_sequence
 #include <utility>  //  std::forward, std::move
 
 #include "../functional/cxx_universal.h"  //  ::size_t
 
 namespace sqlite_orm {
     namespace internal {
-
-        //  got it form here https://stackoverflow.com/questions/7858817/unpacking-a-tuple-to-call-a-matching-function-pointer
-        template<class Function, class FunctionPointer, class Tpl, size_t... Idx>
-        auto call(Function& f, FunctionPointer functionPointer, Tpl&& tpl, std::index_sequence<Idx...>) {
-            return (f.*functionPointer)(std::get<Idx>(std::forward<Tpl>(tpl))...);
-        }
-
-        template<class Function, class Tpl, size_t... Idx>
-        auto call(Function& f, Tpl&& tpl, std::index_sequence<Idx...>) {
-            return f(std::get<Idx>(std::forward<Tpl>(tpl))...);
-        }
-
-        template<class Function, class FunctionPointer, class Tpl>
-        auto call(Function& f, FunctionPointer functionPointer, Tpl&& tpl) {
-            constexpr size_t size = std::tuple_size<std::remove_reference_t<Tpl>>::value;
-            return call(f, functionPointer, std::forward<Tpl>(tpl), std::make_index_sequence<size>{});
-        }
-
-        // custom std::apply
-        template<class Function, class Tpl>
-        auto call(Function& f, Tpl&& tpl) {
-            constexpr size_t size = std::tuple_size<std::remove_reference_t<Tpl>>::value;
-            return call(f, std::forward<Tpl>(tpl), std::make_index_sequence<size>{});
-        }
-
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
         template<bool reversed = false, class Tpl, size_t... Idx, class L>
         void iterate_tuple(Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
@@ -50,11 +25,7 @@ namespace sqlite_orm {
 
         template<bool reversed = false, class Tpl, size_t I, size_t... Idx, class L>
         void iterate_tuple(Tpl& tpl, std::index_sequence<I, Idx...>, L&& lambda) {
-#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
-            if constexpr(reversed) {
-#else
-            if(reversed) {
-#endif
+            if SQLITE_ORM_CONSTEXPR_IF(reversed) {
                 iterate_tuple<reversed>(tpl, std::index_sequence<Idx...>{}, std::forward<L>(lambda));
                 lambda(std::get<I>(tpl));
             } else {

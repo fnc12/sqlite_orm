@@ -1,17 +1,16 @@
 #pragma once
 
-#include <type_traits>  //  std::enable_if, std::is_base_of, std::is_member_pointer, std::remove_const
-#include <utility>  //  std::index_sequence, std::make_index_sequence
+#include <type_traits>  //  std::enable_if, std::is_same, std::conditional
+#include <utility>  //  std::make_index_sequence, std::move
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
-#include <algorithm>  //  std::copy_n
 #include <string>  //  std::string
 #ifdef SQLITE_ORM_WITH_CTE
 #include <array>
 #endif
 
-#include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/cxx_type_traits_polyfill.h"
+#include "functional/cstring_literal.h"
 #include "type_traits.h"
 #include "alias_traits.h"
 #include "table_type_of.h"
@@ -21,29 +20,7 @@
 namespace sqlite_orm {
 
     namespace internal {
-
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        /*
-         *  Helper class to facilitate user-defined string literal operator template
-         */
-        template<size_t N>
-        struct string_identifier_template {
-            static constexpr size_t size() {
-                return N - 1;
-            }
-
-            constexpr string_identifier_template(const char (&id)[N]) {
-                std::copy_n(id, N, this->id);
-            }
-
-            char id[N];
-        };
-
-        template<template<char...> class Alias, string_identifier_template t, size_t... Idx>
-        consteval auto to_alias(std::index_sequence<Idx...>) {
-            return Alias<t.id[Idx]...>{};
-        }
-
         template<class T>
         inline constexpr bool is_operator_argument_v<T, std::enable_if_t<orm_column_alias<T>>> = true;
 #endif
@@ -269,7 +246,7 @@ namespace sqlite_orm {
         requires(!orm_cte_moniker<internal::auto_type_t<als>>)
     constexpr auto alias_column(C field) {
         using namespace ::sqlite_orm::internal;
-        using A = std::remove_const_t<decltype(als)>;
+        using A = decltype(als);
         using aliased_type = type_t<A>;
         static_assert(is_field_of_v<C, aliased_type>, "Column must be from aliased table");
 
@@ -359,8 +336,7 @@ namespace sqlite_orm {
      */
     template<orm_column_alias auto als, class E>
     auto as(E expression) {
-        using A = std::remove_const_t<decltype(als)>;
-        return internal::as_t<A, E>{std::move(expression)};
+        return internal::as_t<decltype(als), E>{std::move(expression)};
     }
 
     /**
@@ -392,7 +368,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<orm_column_alias auto als>
     auto get() {
-        return internal::alias_holder<std::remove_const_t<decltype(als)>>{};
+        return internal::alias_holder<decltype(als)>{};
     }
 #endif
 
@@ -473,18 +449,18 @@ namespace sqlite_orm {
      *  Examples:
      *  constexpr auto z_alias = "z"_alias.for_<User>();
      */
-    template<internal::string_identifier_template t>
+    template<internal::cstring_literal name>
     [[nodiscard]] consteval auto operator"" _alias() {
-        return internal::to_alias<internal::recordset_alias_builder, t>(std::make_index_sequence<t.size()>{});
+        return internal::explode_into<internal::recordset_alias_builder, name>(std::make_index_sequence<name.size()>{});
     }
 
     /** @short Create a column alias.
      *  column_alias<'a'[, ...]> from a string literal.
      *  E.g. "a"_col, "b"_col
      */
-    template<internal::string_identifier_template t>
+    template<internal::cstring_literal name>
     [[nodiscard]] consteval auto operator"" _col() {
-        return internal::to_alias<internal::column_alias, t>(std::make_index_sequence<t.size()>{});
+        return internal::explode_into<internal::column_alias, name>(std::make_index_sequence<name.size()>{});
     }
 #endif
 

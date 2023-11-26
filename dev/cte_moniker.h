@@ -11,6 +11,7 @@
 #endif
 
 #include "functional/cxx_universal.h"
+#include "functional/cstring_literal.h"
 #include "alias.h"
 
 #ifdef SQLITE_ORM_WITH_CTE
@@ -77,9 +78,9 @@ namespace sqlite_orm {
      *  cte_moniker<'1'[, ...]> from a string literal.
      *  E.g. "1"_cte, "2"_cte
      */
-    template<internal::string_identifier_template t>
+    template<internal::cstring_literal moniker>
     [[nodiscard]] consteval auto operator"" _cte() {
-        return internal::to_alias<internal::cte_moniker, t>(std::make_index_sequence<t.size()>{});
+        return internal::explode_into<internal::cte_moniker, moniker>(std::make_index_sequence<moniker.size()>{});
     }
 #endif
 }

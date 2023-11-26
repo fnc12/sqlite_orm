@@ -1,9 +1,6 @@
 #pragma once
 
-#include <type_traits>  //  std::enable_if, std::is_same
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-#include <concepts>
-#endif
+#include <type_traits>  //  std::enable_if, std::is_same, std::is_empty
 
 #include "functional/cxx_core_features.h"
 #include "functional/cxx_type_traits_polyfill.h"
@@ -44,6 +41,11 @@ namespace sqlite_orm {
         template<typename T>
         using type_t = typename T::type;
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        template<auto a>
+        using auto_type_t = typename decltype(a)::type;
+#endif
+
         template<typename T>
         using value_type_t = typename T::value_type;
 
@@ -77,6 +79,20 @@ namespace sqlite_orm {
         template<typename T>
         using on_type_t = typename T::on_type;
 
+        template<typename T>
+        using expression_type_t = typename T::expression_type;
+
+        template<class As>
+        using alias_type_t = typename As::alias_type;
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        template<class T>
+        using udf_type_t = typename T::udf_type;
+
+        template<auto a>
+        using auto_udf_type_t = typename decltype(a)::udf_type;
+#endif
+
 #ifdef SQLITE_ORM_WITH_CTE
         template<typename T>
         using cte_moniker_type_t = typename T::cte_moniker_type;
@@ -92,16 +108,10 @@ namespace sqlite_orm {
         using alias_holder_type_or_none_t = typename alias_holder_type_or_none<T>::type;
 #endif
 
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        template<auto T>
-        using auto_type_t = typename decltype(T)::type;
-#endif
-
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
         template<typename T>
-        using expression_type_t = typename T::expression_type;
-
-        template<class As>
-        using alias_type_t = typename As::alias_type;
+        concept stateless = std::is_empty_v<T>;
+#endif
     }
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED

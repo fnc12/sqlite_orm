@@ -502,13 +502,13 @@ namespace sqlite_orm {
             }
         };
 
-        template<class F, class... Args>
-        struct ast_iterator<function_call<F, Args...>, void> {
-            using node_type = function_call<F, Args...>;
+        template<class F, class... CallArgs>
+        struct ast_iterator<function_call<F, CallArgs...>, void> {
+            using node_type = function_call<F, CallArgs...>;
 
             template<class L>
             void operator()(const node_type& f, L& lambda) const {
-                iterate_ast(f.args, lambda);
+                iterate_ast(f.callArgs, lambda);
             }
         };
 

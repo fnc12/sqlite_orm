@@ -332,14 +332,11 @@ namespace sqlite_orm {
                 (this->bind(polyfill::invoke(project, std::get<Idx>(tpl)), Idx), ...);
             }
 #else
-            template<class Tpl, size_t I, size_t... Idx, class Projection>
-            void operator()(const Tpl& tpl, std::index_sequence<I, Idx...>, Projection project) const {
-                this->bind(polyfill::invoke(project, std::get<I>(tpl)), I);
-                (*this)(tpl, std::index_sequence<Idx...>{}, std::forward<Projection>(project));
+            template<class Tpl, size_t... Idx, class Projection>
+            void operator()(const Tpl& tpl, std::index_sequence<Idx...>, Projection project) const {
+                using Sink = int[sizeof...(Idx)];
+                (void)Sink{(this->bind(polyfill::invoke(project, std::get<Idx>(tpl)), Idx), 0)...};
             }
-
-            template<class Tpl, class Projection>
-            void operator()(const Tpl&, std::index_sequence<>, Projection) const {}
 #endif
 
             template<class T>

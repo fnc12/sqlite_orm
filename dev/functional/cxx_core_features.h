@@ -37,6 +37,10 @@
 #define SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
 #endif
 
+#if __cpp_constexpr >= 201603L
+#define SQLITE_ORM_CONSTEXPR_LAMBDAS_SUPPORTED
+#endif
+
 #if __cpp_if_constexpr >= 201606L
 #define SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
 #endif
@@ -48,6 +52,10 @@
 #if __cpp_generic_lambdas >= 201707L
 #define SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
 #else
+#endif
+
+#if __cpp_init_captures >= 201803L
+#define SQLITE_ORM_PACK_EXPANSION_IN_INIT_CAPTURE_SUPPORTED
 #endif
 
 #if __cpp_consteval >= 201811L
