@@ -283,12 +283,12 @@ TEST_CASE("bindables") {
         SECTION("null as function argument") {
             auto ast = func<remember_fn>(1, statically_bindable_pointer<carray_pvt, nullptr_t>(nullptr));
             value = serialize(ast, context);
-            expected = "remember(1, null)";
+            expected = R"("remember"(1, null))";
         }
         SECTION("null as function argument 2") {
             auto ast = func<remember_fn>(1, nullptr);
             value = serialize(ast, context);
-            expected = "remember(1, null)";
+            expected = R"("remember"(1, null))";
         }
 
         REQUIRE(value == expected);
