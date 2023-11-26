@@ -288,7 +288,9 @@ namespace sqlite_orm {
 
             with_t(bool recursiveIndicated, cte_type cte, expression_type expression) :
                 recursiveIndicated{recursiveIndicated}, cte{std::move(cte)}, expression{std::move(expression)} {
-                this->expression.highest_level = true;
+                if constexpr(is_select_v<expression_type>) {
+                    this->expression.highest_level = true;
+                }
             }
         };
 #endif

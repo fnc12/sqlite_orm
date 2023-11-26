@@ -8102,7 +8102,9 @@ namespace sqlite_orm {
 
             with_t(bool recursiveIndicated, cte_type cte, expression_type expression) :
                 recursiveIndicated{recursiveIndicated}, cte{std::move(cte)}, expression{std::move(expression)} {
-                this->expression.highest_level = true;
+                if constexpr(is_select_v<expression_type>) {
+                    this->expression.highest_level = true;
+                }
             }
         };
 #endif
@@ -21615,10 +21617,11 @@ namespace sqlite_orm {
             using storage_base::table_exists;  // now that it is in storage_base make it into overload set
 
 #ifdef SQLITE_ORM_WITH_CTE
-            template<class... CTEs, class T, class... Args>
-            prepared_statement_t<with_t<select_t<T, Args...>, CTEs...>>
-            prepare(with_t<select_t<T, Args...>, CTEs...> sel) {
-                return prepare_impl<with_t<select_t<T, Args...>, CTEs...>>(std::move(sel));
+            template<class... CTEs,
+                     class E,
+                     std::enable_if_t<polyfill::disjunction_v<is_select<E>, is_insert_raw<E>>, bool> = true>
+            prepared_statement_t<with_t<E, CTEs...>> prepare(with_t<E, CTEs...> sel) {
+                return prepare_impl<with_t<E, CTEs...>>(std::move(sel));
             }
 #endif
 
@@ -21737,14 +21740,23 @@ namespace sqlite_orm {
             template<class... Args>
             void execute(const prepared_statement_t<replace_raw_t<Args...>>& statement) {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
-                iterate_ast(statement.expression.args, conditional_binder{statement.stmt});
+                iterate_ast(statement.expression, conditional_binder{stmt});
                 perform_step(stmt);
             }
+
+#ifdef SQLITE_ORM_WITH_CTE
+            template<class... CTEs, class E, satisfies<is_insert_raw, E> = true>
+            void execute(const prepared_statement_t<with_t<E, CTEs...>>& statement) {
+                sqlite3_stmt* stmt = reset_stmt(statement.stmt);
+                iterate_ast(statement.expression, conditional_binder{stmt});
+                perform_step(stmt);
+            }
+#endif
 
             template<class... Args>
             void execute(const prepared_statement_t<insert_raw_t<Args...>>& statement) {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
-                iterate_ast(statement.expression.args, conditional_binder{stmt});
+                iterate_ast(statement.expression, conditional_binder{stmt});
                 perform_step(stmt);
             }
 
