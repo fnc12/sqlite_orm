@@ -18,6 +18,12 @@
 #define SQLITE_ORM_INLINE_VAR
 #endif
 
+#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
+#define SQLITE_ORM_CONSTEXPR_IF constexpr
+#else
+#define SQLITE_ORM_CONSTEXPR_IF
+#endif
+
 #if __cpp_lib_constexpr_functional >= 201907L
 #define SQLITE_ORM_CONSTEXPR_CPP20 constexpr
 #else

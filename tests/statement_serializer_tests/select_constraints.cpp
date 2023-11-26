@@ -149,7 +149,7 @@ TEST_CASE("statement_serializer select constraints") {
         };
         auto expression = func<Func>(&User::id);
         value = serialize(expression, context);
-        expected = R"(EVEN("id"))";
+        expected = R"("EVEN"("id"))";
     }
     SECTION("exists") {
         // EXISTS must use parentheses in a new context

@@ -18,28 +18,52 @@ struct SqrtFunction {
 
 int SqrtFunction::callsCount = 0;
 
-struct HasPrefixFunction {
+struct StatelessHasPrefixFunction {
     static int callsCount;
     static int objectsCount;
 
-    HasPrefixFunction() {
+    StatelessHasPrefixFunction() {
         ++objectsCount;
     }
 
-    HasPrefixFunction(const HasPrefixFunction&) {
-        ++objectsCount;
-    }
+    StatelessHasPrefixFunction(const StatelessHasPrefixFunction&) = delete;
 
-    HasPrefixFunction(HasPrefixFunction&&) {
-        ++objectsCount;
-    }
-
-    ~HasPrefixFunction() {
+    ~StatelessHasPrefixFunction() {
         --objectsCount;
     }
 
     bool operator()(const std::string& str, const std::string& prefix) {
         ++callsCount;
+        return str.compare(0, prefix.size(), prefix) == 0;
+    }
+
+    static std::string name() {
+        return "STATELESS_HAS_PREFIX";
+    }
+};
+
+int StatelessHasPrefixFunction::callsCount = 0;
+int StatelessHasPrefixFunction::objectsCount = 0;
+
+struct HasPrefixFunction {
+    static int callsCount;
+    static int objectsCount;
+
+    int& staticCallsCount;
+    int& staticObjectsCount;
+
+    HasPrefixFunction() : staticCallsCount{callsCount}, staticObjectsCount{objectsCount} {
+        ++staticObjectsCount;
+    }
+
+    HasPrefixFunction(const HasPrefixFunction&) = delete;
+
+    ~HasPrefixFunction() {
+        --staticObjectsCount;
+    }
+
+    bool operator()(const std::string& str, const std::string& prefix) {
+        ++staticCallsCount;
         return str.compare(0, prefix.size(), prefix) == 0;
     }
 
@@ -61,13 +85,7 @@ struct MeanFunction {
         ++objectsCount;
     }
 
-    MeanFunction(const MeanFunction&) {
-        ++objectsCount;
-    }
-
-    MeanFunction(MeanFunction&&) {
-        ++objectsCount;
-    }
+    MeanFunction(const MeanFunction&) = delete;
 
     ~MeanFunction() {
         --objectsCount;
@@ -93,24 +111,21 @@ struct FirstFunction {
     static int objectsCount;
     static int callsCount;
 
-    FirstFunction() {
-        ++objectsCount;
+    int& staticObjectsCount;
+    int& staticCallsCount;
+
+    FirstFunction() : staticObjectsCount{objectsCount}, staticCallsCount{callsCount} {
+        ++staticObjectsCount;
     }
 
-    FirstFunction(const MeanFunction&) {
-        ++objectsCount;
-    }
-
-    FirstFunction(MeanFunction&&) {
-        ++objectsCount;
-    }
+    FirstFunction(const FirstFunction&) = delete;
 
     ~FirstFunction() {
-        --objectsCount;
+        --staticObjectsCount;
     }
 
     std::string operator()(const arg_values& args) const {
-        ++callsCount;
+        ++staticCallsCount;
         std::string res;
         res.reserve(args.size());
         for(auto value: args) {
@@ -232,6 +247,7 @@ TEST_CASE("custom functions") {
     using Catch::Matchers::ContainsSubstring;
 
     SqrtFunction::callsCount = 0;
+    StatelessHasPrefixFunction::callsCount = 0;
     HasPrefixFunction::callsCount = 0;
     FirstFunction::callsCount = 0;
 
@@ -278,33 +294,68 @@ TEST_CASE("custom functions") {
         REQUIRE(rows == expected);
     }
 
-    //  create function
-    REQUIRE(HasPrefixFunction::callsCount == 0);
-    REQUIRE(HasPrefixFunction::objectsCount == 0);
-    storage.create_scalar_function<HasPrefixFunction>();
-    REQUIRE(HasPrefixFunction::callsCount == 0);
-    REQUIRE(HasPrefixFunction::objectsCount == 0);
-
-    //  call after creation
     {
-        auto rows = storage.select(func<HasPrefixFunction>("one", "o"));
-        decltype(rows) expected;
-        expected.push_back(true);
-        REQUIRE(rows == expected);
-    }
-    REQUIRE(HasPrefixFunction::callsCount == 1);
-    REQUIRE(HasPrefixFunction::objectsCount == 0);
-    {
-        auto rows = storage.select(func<HasPrefixFunction>("two", "b"));
-        decltype(rows) expected;
-        expected.push_back(false);
-        REQUIRE(rows == expected);
-    }
-    REQUIRE(HasPrefixFunction::callsCount == 2);
-    REQUIRE(HasPrefixFunction::objectsCount == 0);
+        //  create function
+        REQUIRE(StatelessHasPrefixFunction::callsCount == 0);
+        REQUIRE(StatelessHasPrefixFunction::objectsCount == 0);
+        storage.create_scalar_function<StatelessHasPrefixFunction>();
+        REQUIRE(StatelessHasPrefixFunction::callsCount == 0);
+        // function object created
+        REQUIRE(StatelessHasPrefixFunction::objectsCount == 1);
 
-    //  delete function
-    storage.delete_scalar_function<HasPrefixFunction>();
+        //  call after creation
+        {
+            auto rows = storage.select(func<StatelessHasPrefixFunction>("one", "o"));
+            decltype(rows) expected;
+            expected.push_back(true);
+            REQUIRE(rows == expected);
+        }
+        REQUIRE(StatelessHasPrefixFunction::callsCount == 1);
+        REQUIRE(StatelessHasPrefixFunction::objectsCount == 1);
+        {
+            auto rows = storage.select(func<StatelessHasPrefixFunction>("two", "b"));
+            decltype(rows) expected;
+            expected.push_back(false);
+            REQUIRE(rows == expected);
+        }
+        REQUIRE(StatelessHasPrefixFunction::callsCount == 2);
+        REQUIRE(StatelessHasPrefixFunction::objectsCount == 1);
+
+        //  delete function
+        storage.delete_scalar_function<StatelessHasPrefixFunction>();
+        // function object destroyed
+        REQUIRE(StatelessHasPrefixFunction::objectsCount == 0);
+    }
+
+    {
+        //  create function
+        REQUIRE(HasPrefixFunction::callsCount == 0);
+        REQUIRE(HasPrefixFunction::objectsCount == 0);
+        storage.create_scalar_function<HasPrefixFunction>();
+        REQUIRE(HasPrefixFunction::callsCount == 0);
+        REQUIRE(HasPrefixFunction::objectsCount == 0);
+
+        //  call after creation
+        {
+            auto rows = storage.select(func<HasPrefixFunction>("one", "o"));
+            decltype(rows) expected;
+            expected.push_back(true);
+            REQUIRE(rows == expected);
+        }
+        REQUIRE(HasPrefixFunction::callsCount == 1);
+        REQUIRE(HasPrefixFunction::objectsCount == 0);
+        {
+            auto rows = storage.select(func<HasPrefixFunction>("two", "b"));
+            decltype(rows) expected;
+            expected.push_back(false);
+            REQUIRE(rows == expected);
+        }
+        REQUIRE(HasPrefixFunction::callsCount == 2);
+        REQUIRE(HasPrefixFunction::objectsCount == 0);
+
+        //  delete function
+        storage.delete_scalar_function<HasPrefixFunction>();
+    }
 
     //  delete function
     storage.delete_scalar_function<SqrtFunction>();
@@ -530,6 +581,16 @@ TEST_CASE("generalized scalar udf") {
             REQUIRE(rows == expected);
         }
         storage.delete_scalar_function<offset0_f>();
+    }
+    SECTION("escaped function identifier") {
+        constexpr auto clamp_f = R"("clamp int")"_scalar.quote(std::clamp<int>);
+        storage.create_scalar_function<clamp_f>();
+        {
+            auto rows = storage.select(clamp_f(0, 1, 1));
+            decltype(rows) expected{1};
+            REQUIRE(rows == expected);
+        }
+        storage.delete_scalar_function<clamp_f>();
     }
 }
 #endif

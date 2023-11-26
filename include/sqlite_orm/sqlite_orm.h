@@ -82,6 +82,10 @@ using std::nullptr_t;
 #else
 #endif
 
+#if __cpp_init_captures >= 201803L
+#define SQLITE_ORM_PACK_EXPANSION_IN_INIT_CAPTURE_SUPPORTED
+#endif
+
 #if __cpp_consteval >= 201811L
 #define SQLITE_ORM_CONSTEVAL_SUPPORTED
 #endif
@@ -181,6 +185,12 @@ using std::nullptr_t;
 #define SQLITE_ORM_INLINE_VAR inline
 #else
 #define SQLITE_ORM_INLINE_VAR
+#endif
+
+#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
+#define SQLITE_ORM_CONSTEXPR_IF constexpr
+#else
+#define SQLITE_ORM_CONSTEXPR_IF
 #endif
 
 #if __cpp_lib_constexpr_functional >= 201907L
@@ -7134,11 +7144,7 @@ namespace sqlite_orm {
 
         template<bool reversed = false, class Tpl, size_t I, size_t... Idx, class L>
         void iterate_tuple(Tpl& tpl, std::index_sequence<I, Idx...>, L&& lambda) {
-#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
-            if constexpr(reversed) {
-#else
-            if(reversed) {
-#endif
+            if SQLITE_ORM_CONSTEXPR_IF(reversed) {
                 iterate_tuple<reversed>(tpl, std::index_sequence<Idx...>{}, std::forward<L>(lambda));
                 lambda(std::get<I>(tpl));
             } else {
@@ -15213,6 +15219,7 @@ namespace sqlite_orm {
 // #include "udf_proxy.h"
 
 #include <sqlite3.h>
+#include <cassert>  //  assert
 #include <memory>  //  std::allocator, std::allocator_traits, std::unique_ptr
 #include <string>  //  std::string
 #include <functional>  //  std::function
@@ -15249,10 +15256,7 @@ namespace sqlite_orm {
          *  As such, it also serves as a context for aggregation operations instead of using `sqlite3_aggregate_context()`.
          */
         struct udf_proxy {
-            using func_call_fn_t = void (*)(void* udfHandle,
-                                            sqlite3_context* context,
-                                            int argsCount,
-                                            sqlite3_value** values);
+            using sqlite_func_t = void (*)(sqlite3_context* context, int argsCount, sqlite3_value** values);
             using final_call_fn_t = void (*)(void* udfHandle, sqlite3_context* context);
             using memory_space = std::pair<void* /*udfHandle*/, xdestroy_fn_t /*deallocate*/>;
 
@@ -15269,7 +15273,7 @@ namespace sqlite_orm {
             int argumentsCount;
             std::function<void(void* location)> constructAt;
             xdestroy_fn_t destroy;
-            func_call_fn_t func;
+            sqlite_func_t func;
             final_call_fn_t finalAggregateCall;
 
             // flag whether the UDF has been constructed at `udfHandle`;
@@ -15282,7 +15286,7 @@ namespace sqlite_orm {
                       int argumentsCount,
                       std::function<void(void* location)> constructAt,
                       xdestroy_fn_t destroy,
-                      func_call_fn_t func,
+                      sqlite_func_t func,
                       final_call_fn_t finalAggregateCall,
                       memory_space udfMemory) :
                 name{std::move(name)},
@@ -15290,6 +15294,9 @@ namespace sqlite_orm {
                 finalAggregateCall{finalAggregateCall}, udfConstructed{false}, udfMemory{udfMemory} {}
 
             ~udf_proxy() {
+                if(/*bool constructedOnce = */ !constructAt && destroy) {
+                    destroy(udfMemory.first);
+                }
                 if(udfMemory.second) {
                     udfMemory.second(udfMemory.first);
                 }
@@ -15303,14 +15310,20 @@ namespace sqlite_orm {
             udf_proxy& operator=(const udf_proxy&) = delete;
         };
 
-        inline void check_args_count(const udf_proxy* proxy, int argsCount) {
-            if(proxy->argumentsCount != -1) {
-                if(proxy->argumentsCount != argsCount &&
-                   /*check fin call*/ argsCount != -1)
-                    SQLITE_ORM_CPP_UNLIKELY {
-                        throw std::system_error{orm_error_code::arguments_count_does_not_match};
-                    }
-            }
+        // safety net of doing a triple check at runtime
+        inline void assert_args_count(const udf_proxy* proxy, int argsCount) {
+            assert((proxy->argumentsCount == -1) || (proxy->argumentsCount == argsCount ||
+                                                     /*check fin call*/ argsCount == -1));
+            (void)proxy;
+            (void)argsCount;
+        }
+
+        // safety net of doing a triple check at runtime
+        inline void proxy_assert_args_count(sqlite3_context* context, int argsCount) {
+            udf_proxy* proxy;
+            assert((proxy = static_cast<udf_proxy*>(sqlite3_user_data(context))) != nullptr);
+            assert_args_count(proxy, argsCount);
+            (void)context;
         }
 
         inline void ensure_udf(udf_proxy* proxy, int argsCount) {
@@ -15318,7 +15331,7 @@ namespace sqlite_orm {
                 SQLITE_ORM_CPP_LIKELY {
                     return;
                 }
-            check_args_count(proxy, argsCount);
+            assert_args_count(proxy, argsCount);
             // Note on the use of the `udfHandle` pointer after the object construction:
             // since we only ever cast between void* and UDF* pointer types and
             // only use the memory space for one type during the entire lifetime of a proxy,
@@ -15332,31 +15345,35 @@ namespace sqlite_orm {
             proxy->destroy(udfHandle(proxy));
         }
 
-        inline void scalar_function_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
+        inline auto new_scalar_udf_handle(sqlite3_context* context, int argsCount) {
+            proxy_assert_args_count(context, argsCount);
             udf_proxy* proxy = static_cast<udf_proxy*>(sqlite3_user_data(context));
-            check_args_count(proxy, argsCount);
-            // 1. Thread-safe with regard to the construction/destruction of the function object in the same memory space.
-            //    The `udf_proxy` is one instance per database connection,
-            //    and SQLite internally locks access to the database object during the generation of a result row with `sqlite3_step()`.
-            // 2. Note on the use of the `udfHandle` pointer after the object construction:
-            //    since we only ever cast between void* and UDF* pointer types and
-            //    only use the memory space for one type during the entire lifetime of a proxy,
-            //    we can use `udfHandle` interconvertibly without laundering its provenance.
+            // Note on the use of the `udfHandle` pointer after the object construction:
+            // since we only ever cast between void* and UDF* pointer types and
+            // only use the memory space for one type during the entire lifetime of a proxy,
+            // we can use `udfHandle` interconvertibly without laundering its provenance.
             proxy->constructAt(udfHandle(proxy));
-            const std::unique_ptr<void, xdestroy_fn_t> udfGuard{udfHandle(proxy), proxy->destroy};
-            proxy->func(udfHandle(proxy), context, argsCount, values);
+            return std::unique_ptr<void, xdestroy_fn_t>{udfHandle(proxy), proxy->destroy};
         }
 
-        inline void quoted_scalar_function_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
+        template<class UDF>
+        inline UDF* proxy_get_scalar_udf(std::true_type /*is_stateless*/, sqlite3_context* context, int argsCount) {
+            proxy_assert_args_count(context, argsCount);
             udf_proxy* proxy = static_cast<udf_proxy*>(sqlite3_user_data(context));
-            check_args_count(proxy, argsCount);
-            proxy->func(udfHandle(proxy), context, argsCount, values);
+            return static_cast<UDF*>(udfHandle(proxy));
         }
 
-        inline void aggregate_function_step_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
+        template<class UDF>
+        inline auto proxy_get_scalar_udf(std::false_type /*is_stateless*/, sqlite3_context* context, int argsCount) {
+            std::unique_ptr<void, xdestroy_fn_t> p = new_scalar_udf_handle(context, argsCount);
+            return std::unique_ptr<UDF, xdestroy_fn_t>{static_cast<UDF*>(p.release()), p.get_deleter()};
+        }
+
+        template<class UDF>
+        inline UDF* proxy_get_aggregate_step_udf(sqlite3_context* context, int argsCount) {
             udf_proxy* proxy = static_cast<udf_proxy*>(sqlite3_user_data(context));
             ensure_udf(proxy, argsCount);
-            proxy->func(udfHandle(proxy), context, argsCount, values);
+            return static_cast<UDF*>(udfHandle(proxy));
         }
 
         inline void aggregate_function_final_callback(sqlite3_context* context) {
@@ -15582,7 +15599,8 @@ namespace sqlite_orm {
              * 
              * Note: `create_scalar_function()` merely creates a closure to generate an instance of the scalar function object,
              * together with a copy of the passed initialization arguments.
-             * An instance of the function object is repeatedly recreated for each result row,
+             * If `F` is a stateless function object, an instance of the function object is created once, otherwise
+             * an instance of the function object is repeatedly recreated for each result row,
              * ensuring that the calculations always start with freshly initialized values.
              * 
              * T - function class. T must have operator() overload and static name function like this:
@@ -15598,19 +15616,23 @@ namespace sqlite_orm {
              *      }
              *  };
              * ```
-             * 
-             * Attention: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
              */
             template<class F, class... Args>
             void create_scalar_function(Args&&... constructorArgs) {
                 static_assert(is_scalar_udf_v<F>, "F must be a scalar function");
 
-                this->create_scalar_function_impl(udf_holder<F>{},
-                                                  /* constructAt */ [constructorArgs...](void* location) {
-                                                      std::allocator<F> allocator;
-                                                      using traits = std::allocator_traits<decltype(allocator)>;
-                                                      traits::construct(allocator, (F*)location, constructorArgs...);
-                                                  });
+                this->create_scalar_function_impl(
+                    udf_holder<F>{},
+#ifdef SQLITE_ORM_PACK_EXPANSION_IN_INIT_CAPTURE_SUPPORTED
+                    /* constructAt */ [... constructorArgs = std::move(constructorArgs)](void* location) {
+#else
+                    /* constructAt */
+                    [constructorArgs...](void* location) {
+#endif
+                        std::allocator<F> allocator;
+                        using traits = std::allocator_traits<decltype(allocator)>;
+                        traits::construct(allocator, (F*)location, constructorArgs...);
+                    });
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -15620,10 +15642,9 @@ namespace sqlite_orm {
              * 
              * Note: `create_scalar_function()` merely creates a closure to generate an instance of the scalar function object,
              * together with a copy of the passed initialization arguments.
-             * An instance of the function object is repeatedly recreated for each result row,
+             * If `F` is a stateless function object, an instance of the function object is created once, otherwise
+             * an instance of the function object is repeatedly recreated for each result row,
              * ensuring that the calculations always start with freshly initialized values.
-             * 
-             * Attention: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
              */
             template<orm_scalar_function auto f, std::copy_constructible... Args>
             void create_scalar_function(Args&&... constructorArgs) {
@@ -15637,8 +15658,6 @@ namespace sqlite_orm {
              * If `quotedF` contains a freestanding function, stateless lambda or stateless function object,
              * `quoted_scalar_function::callable()` uses the original function object, assuming it is free of side effects;
              * otherwise, it repeatedly uses a copy of the contained function object, assuming possible side effects.
-             * 
-             * Attention: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
              */
             template<orm_quoted_scalar_function auto quotedF>
             void create_scalar_function() {
@@ -15656,7 +15675,8 @@ namespace sqlite_orm {
                     /* destroy = */
                     nullptr,
                     /* call = */
-                    [](void* /*udfHandle*/, sqlite3_context* context, int argsCount, sqlite3_value** values) {
+                    [](sqlite3_context* context, int argsCount, sqlite3_value** values) {
+                        proxy_assert_args_count(context, argsCount);
                         args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
                         auto result = polyfill::apply(quotedF.callable(), std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
@@ -15701,19 +15721,23 @@ namespace sqlite_orm {
              *       }
              *   };
              * ```
-             * 
-             * Attention: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
              */
             template<class F, class... Args>
             void create_aggregate_function(Args&&... constructorArgs) {
                 static_assert(is_aggregate_udf_v<F>, "F must be an aggregate function");
 
-                this->create_aggregate_function_impl(udf_holder<F>{}, /* constructAt = */
-                                                     [constructorArgs...](void* location) {
-                                                         std::allocator<F> allocator;
-                                                         using traits = std::allocator_traits<decltype(allocator)>;
-                                                         traits::construct(allocator, (F*)location, constructorArgs...);
-                                                     });
+                this->create_aggregate_function_impl(
+                    udf_holder<F>{}, /* constructAt = */
+#ifdef SQLITE_ORM_PACK_EXPANSION_IN_INIT_CAPTURE_SUPPORTED
+                    /* constructAt */ [... constructorArgs = std::move(constructorArgs)](void* location) {
+#else
+                    /* constructAt */
+                    [constructorArgs...](void* location) {
+#endif
+                        std::allocator<F> allocator;
+                        using traits = std::allocator_traits<decltype(allocator)>;
+                        traits::construct(allocator, (F*)location, constructorArgs...);
+                    });
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -15725,8 +15749,6 @@ namespace sqlite_orm {
              * together with a copy of the passed initialization arguments.
              * An instance of the function object is repeatedly recreated for each result row,
              * ensuring that the calculations always start with freshly initialized values.
-             * 
-             * Attention: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
              */
             template<orm_aggregate_function auto f, std::copy_constructible... Args>
             void create_aggregate_function(Args&&... constructorArgs) {
@@ -16049,22 +16071,27 @@ namespace sqlite_orm {
                 constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
                                                ? -1
                                                : int(std::tuple_size<args_tuple>::value);
+                using is_stateless = std::is_empty<F>;
+                auto udfStorage = allocate_udf_storage<F>();
+                if SQLITE_ORM_CONSTEXPR_IF(is_stateless::value) {
+                    constructAt(udfStorage.first);
+                }
                 this->scalarFunctions.emplace_back(
                     udfName(),
                     argsCount,
-                    std::move(constructAt),
+                    is_stateless::value ? nullptr : std::move(constructAt),
                     /* destroy = */
                     obtain_xdestroy_for<F>(udf_proxy::destruct_only_deleter{}),
                     /* call = */
-                    [](void* udfHandle, sqlite3_context* context, int argsCount, sqlite3_value** values) {
-                        F& udf = *static_cast<F*>(udfHandle);
+                    [](sqlite3_context* context, int argsCount, sqlite3_value** values) {
+                        auto udfPointer = proxy_get_scalar_udf<F>(is_stateless{}, context, argsCount);
                         args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
-                        auto result = polyfill::apply(udf, std::move(argsTuple));
+                        auto result = polyfill::apply(*udfPointer, std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
                     },
                     /* finalCall = */
                     nullptr,
-                    allocate_udf_storage<F>());
+                    udfStorage);
 
                 if(this->connection->retain_count() > 0) {
                     sqlite3* db = this->connection->get();
@@ -16087,8 +16114,8 @@ namespace sqlite_orm {
                     /* destroy = */
                     obtain_xdestroy_for<F>(udf_proxy::destruct_only_deleter{}),
                     /* step = */
-                    [](void* udfHandle, sqlite3_context*, int argsCount, sqlite3_value** values) {
-                        F& udf = *static_cast<F*>(udfHandle);
+                    [](sqlite3_context* context, int argsCount, sqlite3_value** values) {
+                        F& udf = *proxy_get_aggregate_step_udf<F>(context, argsCount);
                         args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
 #if __cpp_lib_bind_front >= 201907L
                         std::apply(std::bind_front(&F::step, &udf), std::move(argsTuple));
@@ -16150,8 +16177,7 @@ namespace sqlite_orm {
                                                     udfProxy.argumentsCount,
                                                     SQLITE_UTF8,
                                                     &udfProxy,
-                                                    udfProxy.constructAt ? scalar_function_callback
-                                                                         : quoted_scalar_function_callback,
+                                                    udfProxy.func,
                                                     nullptr,
                                                     nullptr,
                                                     nullptr);
@@ -16167,7 +16193,7 @@ namespace sqlite_orm {
                                                  SQLITE_UTF8,
                                                  &udfProxy,
                                                  nullptr,
-                                                 aggregate_function_step_callback,
+                                                 udfProxy.func,
                                                  aggregate_function_final_callback);
                 if(rc != SQLITE_OK) {
                     throw_translated_sqlite_error(rc);
@@ -17026,7 +17052,8 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
-                ss << statement.name() << "(" << streaming_expressions_tuple(statement.callArgs, context) << ")";
+                stream_identifier(ss, "", statement.name(), "");
+                ss << "(" << streaming_expressions_tuple(statement.callArgs, context) << ")";
                 return ss.str();
             }
         };
