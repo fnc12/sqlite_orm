@@ -149,7 +149,18 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string serialize(const statement_type& statement, const Ctx& context, const std::string& tableName) {
                 std::stringstream ss;
-                ss << "CREATE TABLE " << streaming_identifier(tableName) << " ( "
+                ss << "CREATE ";
+                switch(statement.tempOption) {
+                    case basic_table::temp_option::not_specifiyed:
+                        break;
+                    case basic_table::temp_option::temp:
+                        ss << "TEMP ";
+                        break;
+                    case basic_table::temp_option::temporary:
+                        ss << "TEMPORARY ";
+                        break;
+                }
+                ss << "TABLE " << streaming_identifier(tableName) << " ( "
                    << streaming_expressions_tuple(statement.elements, context) << ")";
                 if(statement_type::is_without_rowid_v) {
                     ss << " WITHOUT ROWID";

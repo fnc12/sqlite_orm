@@ -10047,11 +10047,18 @@ namespace sqlite_orm {
     namespace internal {
 
         struct basic_table {
+            enum class temp_option {
+                not_specifiyed,
+                temp,
+                temporary,
+            };
 
             /**
              *  Table name.
              */
             std::string name;
+
+            temp_option tempOption;
         };
 
         /**
@@ -10069,12 +10076,12 @@ namespace sqlite_orm {
             elements_type elements;
 
 #ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            table_t(std::string name_, elements_type elements_) :
-                basic_table{std::move(name_)}, elements{std::move(elements_)} {}
+            table_t(std::string name, elements_type elements, temp_option tempOption) :
+                basic_table{std::move(name), tempOption}, elements{std::move(elements)} {}
 #endif
 
             table_t<O, true, Cs...> without_rowid() const {
-                return {this->name, this->elements};
+                return {this->name, this->elements, this->tempOption};
             }
 
             /*
@@ -10412,8 +10419,33 @@ namespace sqlite_orm {
      */
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::table_t<T, false, Cs...> make_table(std::string name, Cs... args) {
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name),
+                                                         std::make_tuple<Cs...>(std::forward<Cs>(args)...),
+                                                         internal::basic_table::temp_option::not_specifiyed});
+    }
+
+    /**
+     *  Factory function for a table definition.
+     *  
+     *  The mapped object type is determined implicitly from the first column definition.
+     */
+    template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
+    internal::table_t<T, false, Cs...> make_temp_table(std::string name, Cs... args) {
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name),
+                                                         std::make_tuple<Cs...>(std::forward<Cs>(args)...),
+                                                         internal::basic_table::temp_option::temp});
+    }
+
+    /**
+     *  Factory function for a table definition.
+     *  
+     *  The mapped object type is determined implicitly from the first column definition.
+     */
+    template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
+    internal::table_t<T, false, Cs...> make_temporary_table(std::string name, Cs... args) {
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name),
+                                                         std::make_tuple<Cs...>(std::forward<Cs>(args)...),
+                                                         internal::basic_table::temp_option::temporary});
     }
 
     /**
@@ -10423,8 +10455,33 @@ namespace sqlite_orm {
      */
     template<class T, class... Cs>
     internal::table_t<T, false, Cs...> make_table(std::string name, Cs... args) {
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name),
+                                                         std::make_tuple<Cs...>(std::forward<Cs>(args)...),
+                                                         internal::basic_table::temp_option::not_specifiyed});
+    }
+
+    /**
+     *  Factory function for a table definition.
+     *  
+     *  The mapped object type is explicitly specified.
+     */
+    template<class T, class... Cs>
+    internal::table_t<T, false, Cs...> make_temp_table(std::string name, Cs... args) {
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name),
+                                                         std::make_tuple<Cs...>(std::forward<Cs>(args)...),
+                                                         internal::basic_table::temp_option::temp});
+    }
+
+    /**
+     *  Factory function for a table definition.
+     *  
+     *  The mapped object type is explicitly specified.
+     */
+    template<class T, class... Cs>
+    internal::table_t<T, false, Cs...> make_temporary_table(std::string name, Cs... args) {
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name),
+                                                         std::make_tuple<Cs...>(std::forward<Cs>(args)...),
+                                                         internal::basic_table::temp_option::temporary});
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -10435,7 +10492,33 @@ namespace sqlite_orm {
      */
     template<orm_table_reference auto table, class... Cs>
     auto make_table(std::string name, Cs... args) {
-        return make_table<internal::decay_table_reference_t<table>>(std::move(name), std::forward<Cs>(args)...);
+        return make_table<internal::decay_table_reference_t<table>>(std::move(name),
+                                                                    std::forward<Cs>(args)...,
+                                                                    internal::basic_table::temp_option::not_specifiyed);
+    }
+
+    /**
+     *  Factory function for a table definition.
+     *  
+     *  The mapped object type is explicitly specified.
+     */
+    template<orm_table_reference auto table, class... Cs>
+    auto make_temp_table(std::string name, Cs... args) {
+        return make_table<internal::decay_table_reference_t<table>>(std::move(name),
+                                                                    std::forward<Cs>(args)...,
+                                                                    internal::basic_table::temp_option::temp);
+    }
+
+    /**
+     *  Factory function for a table definition.
+     *  
+     *  The mapped object type is explicitly specified.
+     */
+    template<orm_table_reference auto table, class... Cs>
+    auto make_temporary_table(std::string name, Cs... args) {
+        return make_table<internal::decay_table_reference_t<table>>(std::move(name),
+                                                                    std::forward<Cs>(args)...,
+                                                                    internal::basic_table::temp_option::temporary);
     }
 #endif
 
@@ -16519,7 +16602,18 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string serialize(const statement_type& statement, const Ctx& context, const std::string& tableName) {
                 std::stringstream ss;
-                ss << "CREATE TABLE " << streaming_identifier(tableName) << " ( "
+                ss << "CREATE ";
+                switch(statement.tempOption) {
+                    case basic_table::temp_option::not_specifiyed:
+                        break;
+                    case basic_table::temp_option::temp:
+                        ss << "TEMP ";
+                        break;
+                    case basic_table::temp_option::temporary:
+                        ss << "TEMPORARY ";
+                        break;
+                }
+                ss << "TABLE " << streaming_identifier(tableName) << " ( "
                    << streaming_expressions_tuple(statement.elements, context) << ")";
                 if(statement_type::is_without_rowid_v) {
                     ss << " WITHOUT ROWID";
