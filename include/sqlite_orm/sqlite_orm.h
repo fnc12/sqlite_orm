@@ -10058,7 +10058,7 @@ namespace sqlite_orm {
              */
             std::string name;
 
-            temp_option tempOption;
+            temp_option tempOption = temp_option::not_specifiyed;
         };
 
         /**
