@@ -10048,7 +10048,7 @@ namespace sqlite_orm {
 
         struct basic_table {
             enum class temp_option {
-                not_specifiyed,
+                unspecified,
                 temp,
                 temporary,
             };
@@ -10058,7 +10058,7 @@ namespace sqlite_orm {
              */
             std::string name;
 
-            temp_option tempOption = temp_option::not_specifiyed;
+            temp_option tempOption = temp_option::unspecified;
         };
 
         /**
@@ -10076,12 +10076,12 @@ namespace sqlite_orm {
             elements_type elements;
 
 #ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            table_t(std::string name, elements_type elements, temp_option tempOption) :
+            table_t(std::string name, temp_option tempOption, elements_type elements) :
                 basic_table{std::move(name), tempOption}, elements{std::move(elements)} {}
 #endif
 
             table_t<O, true, Cs...> without_rowid() const {
-                return {this->name, this->elements, this->tempOption};
+                return {this->name, this->tempOption, this->elements};
             }
 
             /*
@@ -10420,8 +10420,8 @@ namespace sqlite_orm {
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::table_t<T, false, Cs...> make_table(std::string name, Cs... args) {
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name),
-                                                         std::make_tuple<Cs...>(std::forward<Cs>(args)...),
-                                                         internal::basic_table::temp_option::not_specifiyed});
+                                                         internal::basic_table::temp_option::unspecified,
+                                                         std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
     }
 
     /**
@@ -10432,8 +10432,8 @@ namespace sqlite_orm {
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::table_t<T, false, Cs...> make_temp_table(std::string name, Cs... args) {
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name),
-                                                         std::make_tuple<Cs...>(std::forward<Cs>(args)...),
-                                                         internal::basic_table::temp_option::temp});
+                                                         internal::basic_table::temp_option::temp,
+                                                         std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
     }
 
     /**
@@ -10444,8 +10444,8 @@ namespace sqlite_orm {
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::table_t<T, false, Cs...> make_temporary_table(std::string name, Cs... args) {
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name),
-                                                         std::make_tuple<Cs...>(std::forward<Cs>(args)...),
-                                                         internal::basic_table::temp_option::temporary});
+                                                         internal::basic_table::temp_option::temporary,
+                                                         std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
     }
 
     /**
@@ -10456,8 +10456,8 @@ namespace sqlite_orm {
     template<class T, class... Cs>
     internal::table_t<T, false, Cs...> make_table(std::string name, Cs... args) {
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name),
-                                                         std::make_tuple<Cs...>(std::forward<Cs>(args)...),
-                                                         internal::basic_table::temp_option::not_specifiyed});
+                                                         internal::basic_table::temp_option::unspecified,
+                                                         std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
     }
 
     /**
@@ -10468,8 +10468,8 @@ namespace sqlite_orm {
     template<class T, class... Cs>
     internal::table_t<T, false, Cs...> make_temp_table(std::string name, Cs... args) {
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name),
-                                                         std::make_tuple<Cs...>(std::forward<Cs>(args)...),
-                                                         internal::basic_table::temp_option::temp});
+                                                         internal::basic_table::temp_option::temp,
+                                                         std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
     }
 
     /**
@@ -10480,8 +10480,8 @@ namespace sqlite_orm {
     template<class T, class... Cs>
     internal::table_t<T, false, Cs...> make_temporary_table(std::string name, Cs... args) {
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name),
-                                                         std::make_tuple<Cs...>(std::forward<Cs>(args)...),
-                                                         internal::basic_table::temp_option::temporary});
+                                                         internal::basic_table::temp_option::temporary,
+                                                         std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -10493,8 +10493,8 @@ namespace sqlite_orm {
     template<orm_table_reference auto table, class... Cs>
     auto make_table(std::string name, Cs... args) {
         return make_table<internal::decay_table_reference_t<table>>(std::move(name),
-                                                                    std::forward<Cs>(args)...,
-                                                                    internal::basic_table::temp_option::not_specifiyed);
+                                                                    internal::basic_table::temp_option::unspecified,
+                                                                    std::forward<Cs>(args)...);
     }
 
     /**
@@ -10505,8 +10505,8 @@ namespace sqlite_orm {
     template<orm_table_reference auto table, class... Cs>
     auto make_temp_table(std::string name, Cs... args) {
         return make_table<internal::decay_table_reference_t<table>>(std::move(name),
-                                                                    std::forward<Cs>(args)...,
-                                                                    internal::basic_table::temp_option::temp);
+                                                                    internal::basic_table::temp_option::temp,
+                                                                    std::forward<Cs>(args)...);
     }
 
     /**
@@ -10517,8 +10517,8 @@ namespace sqlite_orm {
     template<orm_table_reference auto table, class... Cs>
     auto make_temporary_table(std::string name, Cs... args) {
         return make_table<internal::decay_table_reference_t<table>>(std::move(name),
-                                                                    std::forward<Cs>(args)...,
-                                                                    internal::basic_table::temp_option::temporary);
+                                                                    internal::basic_table::temp_option::temporary,
+                                                                    std::forward<Cs>(args)...);
     }
 #endif
 
@@ -16604,7 +16604,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "CREATE ";
                 switch(statement.tempOption) {
-                    case basic_table::temp_option::not_specifiyed:
+                    case basic_table::temp_option::unspecified:
                         break;
                     case basic_table::temp_option::temp:
                         ss << "TEMP ";

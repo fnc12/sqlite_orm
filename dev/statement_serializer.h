@@ -151,7 +151,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "CREATE ";
                 switch(statement.tempOption) {
-                    case basic_table::temp_option::not_specifiyed:
+                    case basic_table::temp_option::unspecified:
                         break;
                     case basic_table::temp_option::temp:
                         ss << "TEMP ";
