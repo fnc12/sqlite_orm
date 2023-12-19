@@ -3375,12 +3375,16 @@ namespace sqlite_orm {
         return column<internal::auto_type_t<table>>(field);
     }
 
-    /**
-     *  Explicitly refer to a column.
-     */
-    template<orm_table_reference R, class O, class F>
-    constexpr auto operator->*(const R& /*table*/, F O::*field) {
-        return column<typename R::type>(field);
+    // Intentionally place pointer-to-member operator for table references in the internal namespace
+    // to facilitate ADL (Argument Dependent Lookup)
+    namespace internal {
+        /**
+         *  Explicitly refer to a column.
+         */
+        template<orm_table_reference R, class O, class F>
+        constexpr auto operator->*(const R& /*table*/, F O::*field) {
+            return column<typename R::type>(field);
+        }
     }
 
     /**
@@ -5043,14 +5047,17 @@ namespace sqlite_orm {
     }
 
     /**
-     *  Create a column reference to an aliased table column.
-     *  
-     *  @note An object member pointer can be from a derived class without explicitly forming a column pointer.
-     *  
-     *  Example:
-     *  constexpr auto als = "u"_alias.for_<User>();
-     *  select(als->*&User::id)
-     */
+        *  Create a column reference to an aliased table column.
+        *  
+        *  @note An object member pointer can be from a derived class without explicitly forming a column pointer.
+        *  
+        *  @note (internal) Intentionally not placed in the internal namespace for ADL (Argument Dependent Lookup)
+        *  because recordset aliases are derived from `sqlite_orm::alias_tag`
+        *  
+        *  Example:
+        *  constexpr auto als = "u"_alias.for_<User>();
+        *  select(als->*&User::id)
+        */
     template<orm_table_alias A, class F>
         requires(!orm_cte_moniker<internal::type_t<A>>)
     constexpr auto operator->*(const A& /*tableAlias*/, F field) {
@@ -5225,23 +5232,26 @@ namespace sqlite_orm {
     template<char A, char... X>
     inline constexpr internal::recordset_alias_builder<A, X...> alias{};
 
-    /** @short Create a table alias.
-     *
-     *  Examples:
-     *  constexpr auto z_alias = "z"_alias.for_<User>();
-     */
-    template<internal::cstring_literal name>
-    [[nodiscard]] consteval auto operator"" _alias() {
-        return internal::explode_into<internal::recordset_alias_builder, name>(std::make_index_sequence<name.size()>{});
-    }
+    inline namespace literals {
+        /** @short Create a table alias.
+         *
+         *  Examples:
+         *  constexpr auto z_alias = "z"_alias.for_<User>();
+         */
+        template<internal::cstring_literal name>
+        [[nodiscard]] consteval auto operator"" _alias() {
+            return internal::explode_into<internal::recordset_alias_builder, name>(
+                std::make_index_sequence<name.size()>{});
+        }
 
-    /** @short Create a column alias.
-     *  column_alias<'a'[, ...]> from a string literal.
-     *  E.g. "a"_col, "b"_col
-     */
-    template<internal::cstring_literal name>
-    [[nodiscard]] consteval auto operator"" _col() {
-        return internal::explode_into<internal::column_alias, name>(std::make_index_sequence<name.size()>{});
+        /** @short Create a column alias.
+         *  column_alias<'a'[, ...]> from a string literal.
+         *  E.g. "a"_col, "b"_col
+         */
+        template<internal::cstring_literal name>
+        [[nodiscard]] consteval auto operator"" _col() {
+            return internal::explode_into<internal::column_alias, name>(std::make_index_sequence<name.size()>{});
+        }
     }
 #endif
 
@@ -12368,41 +12378,43 @@ namespace sqlite_orm {
     SQLITE_ORM_INLINE_VAR constexpr internal::function<UDF> func{};
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /*  @short Create a scalar function from a freestanding function, stateless lambda or function object,
-     *  and call such a user-defined function.
-     *  
-     *  If you need to pick a function or method from an overload set, or pick a template function you can
-     *  specify an explicit function signature in the call to `from()`.
-     *  
-     *  Examples:
-     *  // freestanding function from a library
-     *  constexpr auto clamp_int_f = "clamp_int"_scalar.quote(std::clamp<int>);
-     *  // stateless lambda
-     *  constexpr auto is_fatal_error_f = "IS_FATAL_ERROR"_scalar.quote([](unsigned long errcode) {
-     *      return errcode != 0;
-     *  });
-     *  // function object instance
-     *  constexpr auto equal_to_int_f = "equal_to"_scalar.quote(std::equal_to<int>{});
-     *  // function object
-     *  constexpr auto equal_to_int_2_f = "equal_to"_scalar.quote<std::equal_to<int>>();
-     *  // pick function object's template call operator
-     *  constexpr auto equal_to_int_3_f = "equal_to"_scalar.quote<bool(const int&, const int&) const>(std::equal_to<void>{});
-     *
-     *  storage.create_scalar_function<clamp_int_f>();
-     *  storage.create_scalar_function<is_fatal_error_f>();
-     *  storage.create_scalar_function<equal_to_int_f>();
-     *  storage.create_scalar_function<equal_to_int_2_f>();
-     *  storage.create_scalar_function<equal_to_int_3_f>();
-     *
-     *  auto rows = storage.select(clamp_int_f(0, 1, 1));
-     *  auto rows = storage.select(is_fatal_error_f(1));
-     *  auto rows = storage.select(equal_to_int_f(1, 1));
-     *  auto rows = storage.select(equal_to_int_2_f(1, 1));
-     *  auto rows = storage.select(equal_to_int_3_f(1, 1));
-     */
-    template<internal::quoted_function_builder builder>
-    [[nodiscard]] consteval auto operator"" _scalar() {
-        return builder;
+    inline namespace literals {
+        /*  @short Create a scalar function from a freestanding function, stateless lambda or function object,
+         *  and call such a user-defined function.
+         *  
+         *  If you need to pick a function or method from an overload set, or pick a template function you can
+         *  specify an explicit function signature in the call to `from()`.
+         *  
+         *  Examples:
+         *  // freestanding function from a library
+         *  constexpr auto clamp_int_f = "clamp_int"_scalar.quote(std::clamp<int>);
+         *  // stateless lambda
+         *  constexpr auto is_fatal_error_f = "IS_FATAL_ERROR"_scalar.quote([](unsigned long errcode) {
+         *      return errcode != 0;
+         *  });
+         *  // function object instance
+         *  constexpr auto equal_to_int_f = "equal_to"_scalar.quote(std::equal_to<int>{});
+         *  // function object
+         *  constexpr auto equal_to_int_2_f = "equal_to"_scalar.quote<std::equal_to<int>>();
+         *  // pick function object's template call operator
+         *  constexpr auto equal_to_int_3_f = "equal_to"_scalar.quote<bool(const int&, const int&) const>(std::equal_to<void>{});
+         *
+         *  storage.create_scalar_function<clamp_int_f>();
+         *  storage.create_scalar_function<is_fatal_error_f>();
+         *  storage.create_scalar_function<equal_to_int_f>();
+         *  storage.create_scalar_function<equal_to_int_2_f>();
+         *  storage.create_scalar_function<equal_to_int_3_f>();
+         *
+         *  auto rows = storage.select(clamp_int_f(0, 1, 1));
+         *  auto rows = storage.select(is_fatal_error_f(1));
+         *  auto rows = storage.select(equal_to_int_f(1, 1));
+         *  auto rows = storage.select(equal_to_int_2_f(1, 1));
+         *  auto rows = storage.select(equal_to_int_3_f(1, 1));
+         */
+        template<internal::quoted_function_builder builder>
+        [[nodiscard]] consteval auto operator"" _scalar() {
+            return builder;
+        }
     }
 #endif
 }

@@ -262,14 +262,17 @@ namespace sqlite_orm {
     }
 
     /**
-     *  Create a column reference to an aliased table column.
-     *  
-     *  @note An object member pointer can be from a derived class without explicitly forming a column pointer.
-     *  
-     *  Example:
-     *  constexpr auto als = "u"_alias.for_<User>();
-     *  select(als->*&User::id)
-     */
+        *  Create a column reference to an aliased table column.
+        *  
+        *  @note An object member pointer can be from a derived class without explicitly forming a column pointer.
+        *  
+        *  @note (internal) Intentionally not placed in the internal namespace for ADL (Argument Dependent Lookup)
+        *  because recordset aliases are derived from `sqlite_orm::alias_tag`
+        *  
+        *  Example:
+        *  constexpr auto als = "u"_alias.for_<User>();
+        *  select(als->*&User::id)
+        */
     template<orm_table_alias A, class F>
         requires(!orm_cte_moniker<internal::type_t<A>>)
     constexpr auto operator->*(const A& /*tableAlias*/, F field) {
@@ -444,23 +447,26 @@ namespace sqlite_orm {
     template<char A, char... X>
     inline constexpr internal::recordset_alias_builder<A, X...> alias{};
 
-    /** @short Create a table alias.
-     *
-     *  Examples:
-     *  constexpr auto z_alias = "z"_alias.for_<User>();
-     */
-    template<internal::cstring_literal name>
-    [[nodiscard]] consteval auto operator"" _alias() {
-        return internal::explode_into<internal::recordset_alias_builder, name>(std::make_index_sequence<name.size()>{});
-    }
+    inline namespace literals {
+        /** @short Create a table alias.
+         *
+         *  Examples:
+         *  constexpr auto z_alias = "z"_alias.for_<User>();
+         */
+        template<internal::cstring_literal name>
+        [[nodiscard]] consteval auto operator"" _alias() {
+            return internal::explode_into<internal::recordset_alias_builder, name>(
+                std::make_index_sequence<name.size()>{});
+        }
 
-    /** @short Create a column alias.
-     *  column_alias<'a'[, ...]> from a string literal.
-     *  E.g. "a"_col, "b"_col
-     */
-    template<internal::cstring_literal name>
-    [[nodiscard]] consteval auto operator"" _col() {
-        return internal::explode_into<internal::column_alias, name>(std::make_index_sequence<name.size()>{});
+        /** @short Create a column alias.
+         *  column_alias<'a'[, ...]> from a string literal.
+         *  E.g. "a"_col, "b"_col
+         */
+        template<internal::cstring_literal name>
+        [[nodiscard]] consteval auto operator"" _col() {
+            return internal::explode_into<internal::column_alias, name>(std::make_index_sequence<name.size()>{});
+        }
     }
 #endif
 

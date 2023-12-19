@@ -62,12 +62,16 @@ namespace sqlite_orm {
         return column<internal::auto_type_t<table>>(field);
     }
 
-    /**
-     *  Explicitly refer to a column.
-     */
-    template<orm_table_reference R, class O, class F>
-    constexpr auto operator->*(const R& /*table*/, F O::*field) {
-        return column<typename R::type>(field);
+    // Intentionally place pointer-to-member operator for table references in the internal namespace
+    // to facilitate ADL (Argument Dependent Lookup)
+    namespace internal {
+        /**
+         *  Explicitly refer to a column.
+         */
+        template<orm_table_reference R, class O, class F>
+        constexpr auto operator->*(const R& /*table*/, F O::*field) {
+            return column<typename R::type>(field);
+        }
     }
 
     /**
