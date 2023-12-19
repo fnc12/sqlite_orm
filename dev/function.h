@@ -483,41 +483,43 @@ namespace sqlite_orm {
     SQLITE_ORM_INLINE_VAR constexpr internal::function<UDF> func{};
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /*  @short Create a scalar function from a freestanding function, stateless lambda or function object,
-     *  and call such a user-defined function.
-     *  
-     *  If you need to pick a function or method from an overload set, or pick a template function you can
-     *  specify an explicit function signature in the call to `from()`.
-     *  
-     *  Examples:
-     *  // freestanding function from a library
-     *  constexpr auto clamp_int_f = "clamp_int"_scalar.quote(std::clamp<int>);
-     *  // stateless lambda
-     *  constexpr auto is_fatal_error_f = "IS_FATAL_ERROR"_scalar.quote([](unsigned long errcode) {
-     *      return errcode != 0;
-     *  });
-     *  // function object instance
-     *  constexpr auto equal_to_int_f = "equal_to"_scalar.quote(std::equal_to<int>{});
-     *  // function object
-     *  constexpr auto equal_to_int_2_f = "equal_to"_scalar.quote<std::equal_to<int>>();
-     *  // pick function object's template call operator
-     *  constexpr auto equal_to_int_3_f = "equal_to"_scalar.quote<bool(const int&, const int&) const>(std::equal_to<void>{});
-     *
-     *  storage.create_scalar_function<clamp_int_f>();
-     *  storage.create_scalar_function<is_fatal_error_f>();
-     *  storage.create_scalar_function<equal_to_int_f>();
-     *  storage.create_scalar_function<equal_to_int_2_f>();
-     *  storage.create_scalar_function<equal_to_int_3_f>();
-     *
-     *  auto rows = storage.select(clamp_int_f(0, 1, 1));
-     *  auto rows = storage.select(is_fatal_error_f(1));
-     *  auto rows = storage.select(equal_to_int_f(1, 1));
-     *  auto rows = storage.select(equal_to_int_2_f(1, 1));
-     *  auto rows = storage.select(equal_to_int_3_f(1, 1));
-     */
-    template<internal::quoted_function_builder builder>
-    [[nodiscard]] consteval auto operator"" _scalar() {
-        return builder;
+    inline namespace literals {
+        /*  @short Create a scalar function from a freestanding function, stateless lambda or function object,
+         *  and call such a user-defined function.
+         *  
+         *  If you need to pick a function or method from an overload set, or pick a template function you can
+         *  specify an explicit function signature in the call to `from()`.
+         *  
+         *  Examples:
+         *  // freestanding function from a library
+         *  constexpr auto clamp_int_f = "clamp_int"_scalar.quote(std::clamp<int>);
+         *  // stateless lambda
+         *  constexpr auto is_fatal_error_f = "IS_FATAL_ERROR"_scalar.quote([](unsigned long errcode) {
+         *      return errcode != 0;
+         *  });
+         *  // function object instance
+         *  constexpr auto equal_to_int_f = "equal_to"_scalar.quote(std::equal_to<int>{});
+         *  // function object
+         *  constexpr auto equal_to_int_2_f = "equal_to"_scalar.quote<std::equal_to<int>>();
+         *  // pick function object's template call operator
+         *  constexpr auto equal_to_int_3_f = "equal_to"_scalar.quote<bool(const int&, const int&) const>(std::equal_to<void>{});
+         *
+         *  storage.create_scalar_function<clamp_int_f>();
+         *  storage.create_scalar_function<is_fatal_error_f>();
+         *  storage.create_scalar_function<equal_to_int_f>();
+         *  storage.create_scalar_function<equal_to_int_2_f>();
+         *  storage.create_scalar_function<equal_to_int_3_f>();
+         *
+         *  auto rows = storage.select(clamp_int_f(0, 1, 1));
+         *  auto rows = storage.select(is_fatal_error_f(1));
+         *  auto rows = storage.select(equal_to_int_f(1, 1));
+         *  auto rows = storage.select(equal_to_int_2_f(1, 1));
+         *  auto rows = storage.select(equal_to_int_3_f(1, 1));
+         */
+        template<internal::quoted_function_builder builder>
+        [[nodiscard]] consteval auto operator"" _scalar() {
+            return builder;
+        }
     }
 #endif
 }

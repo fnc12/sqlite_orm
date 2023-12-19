@@ -2,8 +2,7 @@
 #include <catch2/catch_all.hpp>
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-using sqlite_orm::operator"" _alias;
-using sqlite_orm::operator"" _col;
+using namespace sqlite_orm::literals;
 #endif
 using sqlite_orm::alias_a;
 using sqlite_orm::alias_column;
@@ -106,6 +105,12 @@ void runTests(E expression) {
 }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+TEST_CASE("inline namespace literals expressions") {
+    constexpr auto u_alias_builder = "u"_alias;
+    constexpr auto c_alias = "c"_col;
+    constexpr auto f_scalar_builder = "f"_scalar;
+}
+
 TEST_CASE("ADL and pointer-to-member expressions") {
     struct User {
         int id;
