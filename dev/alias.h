@@ -262,17 +262,17 @@ namespace sqlite_orm {
     }
 
     /**
-        *  Create a column reference to an aliased table column.
-        *  
-        *  @note An object member pointer can be from a derived class without explicitly forming a column pointer.
-        *  
-        *  @note (internal) Intentionally not placed in the internal namespace for ADL (Argument Dependent Lookup)
-        *  because recordset aliases are derived from `sqlite_orm::alias_tag`
-        *  
-        *  Example:
-        *  constexpr auto als = "u"_alias.for_<User>();
-        *  select(als->*&User::id)
-        */
+     *  Create a column reference to an aliased table column.
+     *  
+     *  @note An object member pointer can be from a derived class without explicitly forming a column pointer.
+     *  
+     *  @note (internal) Intentionally not placed in the internal namespace for ADL (Argument Dependent Lookup)
+     *  because recordset aliases are derived from `sqlite_orm::alias_tag`
+     *  
+     *  Example:
+     *  constexpr auto als = "u"_alias.for_<User>();
+     *  select(als->*&User::id)
+     */
     template<orm_table_alias A, class F>
         requires(!orm_cte_moniker<internal::type_t<A>>)
     constexpr auto operator->*(const A& /*tableAlias*/, F field) {
@@ -306,6 +306,9 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
      *  Create a column reference to an aliased CTE column.
+     *  
+     *  @note (internal) Intentionally not placed in the internal namespace for ADL (Argument Dependent Lookup)
+     *  because recordset aliases are derived from `sqlite_orm::alias_tag`
      */
     template<orm_table_alias A, class C>
         requires(orm_cte_moniker<internal::type_t<A>>)

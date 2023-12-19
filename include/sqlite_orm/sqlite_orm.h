@@ -3453,6 +3453,9 @@ namespace sqlite_orm {
 
     /**
      *  Explicitly refer to a column mapped into a CTE or subquery.
+     *  
+     *  @note (internal) Intentionally not placed in the internal namespace for ADL (Argument Dependent Lookup)
+     *  because recordset aliases are derived from `sqlite_orm::alias_tag`
      *
      *  Example:
      *  struct Object { ... };
@@ -5047,17 +5050,17 @@ namespace sqlite_orm {
     }
 
     /**
-        *  Create a column reference to an aliased table column.
-        *  
-        *  @note An object member pointer can be from a derived class without explicitly forming a column pointer.
-        *  
-        *  @note (internal) Intentionally not placed in the internal namespace for ADL (Argument Dependent Lookup)
-        *  because recordset aliases are derived from `sqlite_orm::alias_tag`
-        *  
-        *  Example:
-        *  constexpr auto als = "u"_alias.for_<User>();
-        *  select(als->*&User::id)
-        */
+     *  Create a column reference to an aliased table column.
+     *  
+     *  @note An object member pointer can be from a derived class without explicitly forming a column pointer.
+     *  
+     *  @note (internal) Intentionally not placed in the internal namespace for ADL (Argument Dependent Lookup)
+     *  because recordset aliases are derived from `sqlite_orm::alias_tag`
+     *  
+     *  Example:
+     *  constexpr auto als = "u"_alias.for_<User>();
+     *  select(als->*&User::id)
+     */
     template<orm_table_alias A, class F>
         requires(!orm_cte_moniker<internal::type_t<A>>)
     constexpr auto operator->*(const A& /*tableAlias*/, F field) {
@@ -5091,6 +5094,9 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
      *  Create a column reference to an aliased CTE column.
+     *  
+     *  @note (internal) Intentionally not placed in the internal namespace for ADL (Argument Dependent Lookup)
+     *  because recordset aliases are derived from `sqlite_orm::alias_tag`
      */
     template<orm_table_alias A, class C>
         requires(orm_cte_moniker<internal::type_t<A>>)
@@ -7825,24 +7831,26 @@ namespace sqlite_orm {
         };
     }
 
-    /**
-     *  cte_moniker<'n'> from a numeric literal.
-     *  E.g. 1_ctealias, 2_ctealias
-     */
-    template<char... Chars>
-    [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator"" _ctealias() {
-        return internal::cte_moniker<Chars...>{};
-    }
+    inline namespace literals {
+        /**
+         *  cte_moniker<'n'> from a numeric literal.
+         *  E.g. 1_ctealias, 2_ctealias
+         */
+        template<char... Chars>
+        [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator"" _ctealias() {
+            return internal::cte_moniker<Chars...>{};
+        }
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /**
-     *  cte_moniker<'1'[, ...]> from a string literal.
-     *  E.g. "1"_cte, "2"_cte
-     */
-    template<internal::cstring_literal moniker>
-    [[nodiscard]] consteval auto operator"" _cte() {
-        return internal::explode_into<internal::cte_moniker, moniker>(std::make_index_sequence<moniker.size()>{});
-    }
+        /**
+         *  cte_moniker<'1'[, ...]> from a string literal.
+         *  E.g. "1"_cte, "2"_cte
+         */
+        template<internal::cstring_literal moniker>
+        [[nodiscard]] consteval auto operator"" _cte() {
+            return internal::explode_into<internal::cte_moniker, moniker>(std::make_index_sequence<moniker.size()>{});
+        }
 #endif
+    }
 }
 #endif
 
