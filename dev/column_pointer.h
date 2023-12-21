@@ -141,7 +141,7 @@ namespace sqlite_orm {
     /**
      *  Explicitly refer to a column mapped into a CTE or subquery.
      *  
-     *  @note (internal) Intentionally not placed in the internal namespace for ADL (Argument Dependent Lookup)
+     *  @note (internal) Intentionally place in the sqlite_orm namespace for ADL (Argument Dependent Lookup)
      *  because recordset aliases are derived from `sqlite_orm::alias_tag`
      *
      *  Example:
