@@ -25,7 +25,7 @@ TEST_CASE("statement_serializer comparison operators") {
         SECTION("operator") {
             value = serialize(c(4) < 5, context);
         }
-        expected = "(4 < 5)";
+        expected = "4 < 5";
     }
     SECTION("less_or_equal") {
         SECTION("func") {
@@ -37,7 +37,7 @@ TEST_CASE("statement_serializer comparison operators") {
         SECTION("operator") {
             value = serialize(c(10) <= 15, context);
         }
-        expected = "(10 <= 15)";
+        expected = "10 <= 15";
     }
     SECTION("greater_than") {
         SECTION("func") {
@@ -49,7 +49,7 @@ TEST_CASE("statement_serializer comparison operators") {
         SECTION("operator") {
             value = serialize(c(1) > 0.5, context);
         }
-        expected = "(1 > 0.5)";
+        expected = "1 > 0.5";
     }
     SECTION("greater_or_equal") {
         SECTION("func") {
@@ -61,7 +61,7 @@ TEST_CASE("statement_serializer comparison operators") {
         SECTION("operator") {
             value = serialize(c(10) >= -5, context);
         }
-        expected = "(10 >= -5)";
+        expected = "10 >= -5";
     }
     SECTION("is_equal") {
         SECTION("func") {
@@ -73,7 +73,7 @@ TEST_CASE("statement_serializer comparison operators") {
         SECTION("operator") {
             value = serialize(c("ototo") == "Hey", context);
         }
-        expected = "('ototo' = 'Hey')";
+        expected = "'ototo' = 'Hey'";
     }
     SECTION("is_not_equal") {
         SECTION("func") {
@@ -85,7 +85,7 @@ TEST_CASE("statement_serializer comparison operators") {
         SECTION("operator") {
             value = serialize(c("lala") != 7, context);
         }
-        expected = "('lala' != 7)";
+        expected = "'lala' != 7";
     }
     SECTION("is_equal_with_table_t") {
         value = serialize(is_equal<User>("Tom Gregory"), context);
@@ -95,6 +95,16 @@ TEST_CASE("statement_serializer comparison operators") {
         context.use_parentheses = false;
         value = serialize(greater_than(&User::id, select(avg(&User::id))), context);
         expected = R"("id" > (SELECT AVG("users"."id") FROM "users"))";
+    }
+    SECTION("parentheses keeping order of precedence") {
+        SECTION("1") {
+            value = serialize(c(true) == c(5) > 3, context);
+            expected = "1 = (5 > 3)";
+        }
+        SECTION("2") {
+            value = serialize(c(5) > 3 == c(true), context);
+            expected = "(5 > 3) = 1";
+        }
     }
     REQUIRE(value == expected);
 }

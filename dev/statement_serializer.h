@@ -526,15 +526,30 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
-                auto lhs = serialize(statement.lhs, context);
-                auto rhs = serialize(statement.rhs, context);
+                // subqueries should always use parentheses in binary expressions
+                auto subCtx = context;
+                subCtx.use_parentheses = true;
+                // parentheses for sub-trees to ensure the order of precedence
+                constexpr bool parenthesizeLeft = is_binary_condition_v<typename statement_type::left_type> ||
+                                                  is_binary_operator_v<typename statement_type::left_type>;
+                constexpr bool parenthesizeRight = is_binary_condition_v<typename statement_type::right_type> ||
+                                                   is_binary_operator_v<typename statement_type::right_type>;
+
                 std::stringstream ss;
-                if(context.use_parentheses) {
-                    ss << '(';
+                if SQLITE_ORM_CONSTEXPR_IF(parenthesizeLeft) {
+                    ss << "(";
                 }
-                ss << lhs << " " << statement.serialize() << " " << rhs;
-                if(context.use_parentheses) {
-                    ss << ')';
+                ss << serialize(statement.lhs, subCtx);
+                if SQLITE_ORM_CONSTEXPR_IF(parenthesizeLeft) {
+                    ss << ")";
+                }
+                ss << " " << statement.serialize() << " ";
+                if SQLITE_ORM_CONSTEXPR_IF(parenthesizeRight) {
+                    ss << "(";
+                }
+                ss << serialize(statement.rhs, subCtx);
+                if SQLITE_ORM_CONSTEXPR_IF(parenthesizeRight) {
+                    ss << ")";
                 }
                 return ss.str();
             }
@@ -695,16 +710,29 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& c, const Ctx& context) const {
-                // subqueries should always use parentheses in binary conditions
+                // subqueries should always use parentheses in binary expressions
                 auto subCtx = context;
                 subCtx.use_parentheses = true;
+                // parentheses for sub-trees to ensure the order of precedence
+                constexpr bool parenthesizeLeft = is_binary_condition_v<typename statement_type::left_type> ||
+                                                  is_binary_operator_v<typename statement_type::left_type>;
+                constexpr bool parenthesizeRight = is_binary_condition_v<typename statement_type::right_type> ||
+                                                   is_binary_operator_v<typename statement_type::right_type>;
 
                 std::stringstream ss;
-                if(context.use_parentheses) {
+                if SQLITE_ORM_CONSTEXPR_IF(parenthesizeLeft) {
                     ss << "(";
                 }
-                ss << serialize(c.l, subCtx) << " " << static_cast<std::string>(c) << " " << serialize(c.r, subCtx);
-                if(context.use_parentheses) {
+                ss << serialize(c.l, subCtx);
+                if SQLITE_ORM_CONSTEXPR_IF(parenthesizeLeft) {
+                    ss << ")";
+                }
+                ss << " " << static_cast<std::string>(c) << " ";
+                if SQLITE_ORM_CONSTEXPR_IF(parenthesizeRight) {
+                    ss << "(";
+                }
+                ss << serialize(c.r, subCtx);
+                if SQLITE_ORM_CONSTEXPR_IF(parenthesizeRight) {
                     ss << ")";
                 }
                 return ss.str();

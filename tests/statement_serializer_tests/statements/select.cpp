@@ -48,12 +48,12 @@ TEST_CASE("statement_serializer select_t") {
         SECTION("!highest_level") {
             statement.highest_level = false;
             stringValue = serialize(statement, context);
-            expected = "(SELECT ((1, 2, 3) = (4, 5, 6)))";
+            expected = "(SELECT (1, 2, 3) = (4, 5, 6))";
         }
         SECTION("highest_level") {
             statement.highest_level = true;
             stringValue = serialize(statement, context);
-            expected = "SELECT ((1, 2, 3) = (4, 5, 6))";
+            expected = "SELECT (1, 2, 3) = (4, 5, 6)";
         }
     }
     SECTION("compound operators") {
@@ -212,7 +212,7 @@ TEST_CASE("statement_serializer select_t") {
                 context.skip_table_name = false;
                 stringValue = serialize(expression, context);
                 expected =
-                    R"(SELECT "d".* FROM "Dept" "d" LEFT JOIN "Emp" "e" ON ("d"."deptno" = "e"."deptno")  WHERE ("e"."deptno" IS NULL))";
+                    R"(SELECT "d".* FROM "Dept" "d" LEFT JOIN "Emp" "e" ON "d"."deptno" = "e"."deptno"  WHERE ("e"."deptno" IS NULL))";
             }
         }
     }

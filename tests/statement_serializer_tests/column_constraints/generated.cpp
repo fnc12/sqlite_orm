@@ -44,32 +44,32 @@ TEST_CASE("statement_serializer generated") {
     SECTION("full") {
         auto constraint = generated_always_as(&Type::a * sqlite_orm::abs(&Type::b));
         value = serialize(constraint, context);
-        expected = R"(GENERATED ALWAYS AS (("a" * ABS("b"))))";
+        expected = R"(GENERATED ALWAYS AS ("a" * ABS("b")))";
     }
     SECTION("full virtual") {
         auto constraint = generated_always_as(&Type::a * sqlite_orm::abs(&Type::b)).virtual_();
         value = serialize(constraint, context);
-        expected = R"(GENERATED ALWAYS AS (("a" * ABS("b"))) VIRTUAL)";
+        expected = R"(GENERATED ALWAYS AS ("a" * ABS("b")) VIRTUAL)";
     }
     SECTION("full stored") {
         auto constraint = generated_always_as(&Type::a * sqlite_orm::abs(&Type::b)).stored();
         value = serialize(constraint, context);
-        expected = R"(GENERATED ALWAYS AS (("a" * ABS("b"))) STORED)";
+        expected = R"(GENERATED ALWAYS AS ("a" * ABS("b")) STORED)";
     }
     SECTION("not full") {
         auto constraint = as(&Type::a * sqlite_orm::abs(&Type::b));
         value = serialize(constraint, context);
-        expected = R"(AS (("a" * ABS("b"))))";
+        expected = R"(AS ("a" * ABS("b")))";
     }
     SECTION("not full virtual") {
         auto constraint = as(&Type::a * sqlite_orm::abs(&Type::b)).virtual_();
         value = serialize(constraint, context);
-        expected = R"(AS (("a" * ABS("b"))) VIRTUAL)";
+        expected = R"(AS ("a" * ABS("b")) VIRTUAL)";
     }
     SECTION("not full stored") {
         auto constraint = as(&Type::a * sqlite_orm::abs(&Type::b)).stored();
         value = serialize(constraint, context);
-        expected = R"(AS (("a" * ABS("b"))) STORED)";
+        expected = R"(AS ("a" * ABS("b")) STORED)";
     }
     SECTION("length") {
         auto constraint = generated_always_as(length(&Type::a));
