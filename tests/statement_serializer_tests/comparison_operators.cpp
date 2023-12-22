@@ -89,7 +89,12 @@ TEST_CASE("statement_serializer comparison operators") {
     }
     SECTION("is_equal_with_table_t") {
         value = serialize(is_equal<User>("Tom Gregory"), context);
-        expected = "\"users\" = 'Tom Gregory'";
+        expected = R"("users" = 'Tom Gregory')";
+    }
+    SECTION("subquery") {
+        context.use_parentheses = false;
+        value = serialize(greater_than(&User::id, select(avg(&User::id))), context);
+        expected = R"("id" > (SELECT (AVG("users"."id")) FROM "users"))";
     }
     REQUIRE(value == expected);
 }

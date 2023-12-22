@@ -701,13 +701,15 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& c, const Ctx& context) const {
-                auto leftString = serialize(c.l, context);
-                auto rightString = serialize(c.r, context);
+                // subqueries should always use parentheses in binary conditions
+                auto subCtx = context;
+                subCtx.use_parentheses = true;
+
                 std::stringstream ss;
                 if(context.use_parentheses) {
                     ss << "(";
                 }
-                ss << leftString << " " << static_cast<std::string>(c) << " " << rightString;
+                ss << serialize(c.l, subCtx) << " " << static_cast<std::string>(c) << " " << serialize(c.r, subCtx);
                 if(context.use_parentheses) {
                     ss << ")";
                 }
