@@ -60,6 +60,7 @@ inline auto initStorage(const std::string& path) {
 int main(int, char**) {
 
     auto storage = initStorage("chinook.db");
+    storage.sync_schema();
 
     using namespace sqlite_orm;
 
