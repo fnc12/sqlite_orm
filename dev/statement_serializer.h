@@ -348,13 +348,7 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
-                if(context.use_parentheses) {
-                    ss << '(';
-                }
                 ss << statement.serialize() << "(" << streaming_expressions_tuple(statement.args, context) << ")";
-                if(context.use_parentheses) {
-                    ss << ')';
-                }
                 return ss.str();
             }
         };

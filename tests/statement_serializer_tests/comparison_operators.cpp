@@ -94,7 +94,7 @@ TEST_CASE("statement_serializer comparison operators") {
     SECTION("subquery") {
         context.use_parentheses = false;
         value = serialize(greater_than(&User::id, select(avg(&User::id))), context);
-        expected = R"("id" > (SELECT (AVG("users"."id")) FROM "users"))";
+        expected = R"("id" > (SELECT AVG("users"."id") FROM "users"))";
     }
     REQUIRE(value == expected);
 }
