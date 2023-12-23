@@ -4181,6 +4181,8 @@ namespace sqlite_orm {
                  class R,
                  std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
                                                           std::is_base_of<arithmetic_t, R>,
+                                                          std::is_base_of<condition_t, L>,
+                                                          std::is_base_of<condition_t, R>,
                                                           is_operator_argument<L>,
                                                           is_operator_argument<R>>,
                                   bool> = true>
@@ -4192,6 +4194,8 @@ namespace sqlite_orm {
                  class R,
                  std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
                                                           std::is_base_of<arithmetic_t, R>,
+                                                          std::is_base_of<condition_t, L>,
+                                                          std::is_base_of<condition_t, R>,
                                                           is_operator_argument<L>,
                                                           is_operator_argument<R>>,
                                   bool> = true>

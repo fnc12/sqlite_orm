@@ -98,11 +98,11 @@ TEST_CASE("statement_serializer comparison operators") {
     }
     SECTION("parentheses keeping order of precedence") {
         SECTION("1") {
-            value = serialize(c(true) == c(5) > 3, context);
+            value = serialize(true == c(5) > 3, context);
             expected = "1 = (5 > 3)";
         }
         SECTION("2") {
-            value = serialize(c(5) > 3 == c(true), context);
+            value = serialize(c(5) > 3 == true, context);
             expected = "(5 > 3) = 1";
         }
     }
