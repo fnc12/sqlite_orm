@@ -15,6 +15,7 @@
 #include "constraints.h"
 #include "optional_container.h"
 #include "serializer_context.h"
+#include "serialize_result_type.h"
 #include "tags.h"
 #include "alias_traits.h"
 #include "expression.h"
@@ -127,12 +128,12 @@ namespace sqlite_orm {
             using right_type = R;
             using result_type = Res;
 
-            left_type l;
-            right_type r;
+            left_type lhs;
+            right_type rhs;
 
             binary_condition() = default;
 
-            binary_condition(left_type l_, right_type r_) : l(std::move(l_)), r(std::move(r_)) {}
+            binary_condition(left_type l_, right_type r_) : lhs(std::move(l_)), rhs(std::move(r_)) {}
         };
 
         template<class T>
@@ -142,7 +143,7 @@ namespace sqlite_orm {
         using is_binary_condition = polyfill::bool_constant<is_binary_condition_v<T>>;
 
         struct and_condition_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "AND";
             }
         };
@@ -158,7 +159,7 @@ namespace sqlite_orm {
         };
 
         struct or_condition_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "OR";
             }
         };
@@ -174,7 +175,7 @@ namespace sqlite_orm {
         };
 
         struct is_equal_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "=";
             }
         };
@@ -223,7 +224,7 @@ namespace sqlite_orm {
         };
 
         struct is_not_equal_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "!=";
             }
         };
@@ -251,7 +252,7 @@ namespace sqlite_orm {
         };
 
         struct greater_than_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return ">";
             }
         };
@@ -279,7 +280,7 @@ namespace sqlite_orm {
         };
 
         struct greater_or_equal_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return ">=";
             }
         };
@@ -307,7 +308,7 @@ namespace sqlite_orm {
         };
 
         struct less_than_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "<";
             }
         };
@@ -335,7 +336,7 @@ namespace sqlite_orm {
         };
 
         struct less_or_equal_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "<=";
             }
         };

@@ -150,22 +150,12 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<T, match_if<is_binary_condition, T>> {
+        struct ast_iterator<T,
+                            std::enable_if_t<polyfill::disjunction_v<is_binary_condition<T>, is_binary_operator<T>>>> {
             using node_type = T;
 
             template<class L>
-            void operator()(const node_type& binaryCondition, L& lambda) const {
-                iterate_ast(binaryCondition.l, lambda);
-                iterate_ast(binaryCondition.r, lambda);
-            }
-        };
-
-        template<class T>
-        struct ast_iterator<T, match_if<is_binary_operator, T>> {
-            using node_type = T;
-
-            template<class C>
-            void operator()(const node_type& node, C& lambda) const {
+            void operator()(const node_type& node, L& lambda) const {
                 iterate_ast(node.lhs, lambda);
                 iterate_ast(node.rhs, lambda);
             }

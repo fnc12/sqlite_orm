@@ -2970,6 +2970,8 @@ namespace sqlite_orm {
 
 }
 
+// #include "serialize_result_type.h"
+
 // #include "tags.h"
 
 // #include "alias_traits.h"
@@ -3410,12 +3412,12 @@ namespace sqlite_orm {
             using right_type = R;
             using result_type = Res;
 
-            left_type l;
-            right_type r;
+            left_type lhs;
+            right_type rhs;
 
             binary_condition() = default;
 
-            binary_condition(left_type l_, right_type r_) : l(std::move(l_)), r(std::move(r_)) {}
+            binary_condition(left_type l_, right_type r_) : lhs(std::move(l_)), rhs(std::move(r_)) {}
         };
 
         template<class T>
@@ -3425,7 +3427,7 @@ namespace sqlite_orm {
         using is_binary_condition = polyfill::bool_constant<is_binary_condition_v<T>>;
 
         struct and_condition_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "AND";
             }
         };
@@ -3441,7 +3443,7 @@ namespace sqlite_orm {
         };
 
         struct or_condition_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "OR";
             }
         };
@@ -3457,7 +3459,7 @@ namespace sqlite_orm {
         };
 
         struct is_equal_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "=";
             }
         };
@@ -3506,7 +3508,7 @@ namespace sqlite_orm {
         };
 
         struct is_not_equal_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "!=";
             }
         };
@@ -3534,7 +3536,7 @@ namespace sqlite_orm {
         };
 
         struct greater_than_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return ">";
             }
         };
@@ -3562,7 +3564,7 @@ namespace sqlite_orm {
         };
 
         struct greater_or_equal_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return ">=";
             }
         };
@@ -3590,7 +3592,7 @@ namespace sqlite_orm {
         };
 
         struct less_than_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "<";
             }
         };
@@ -3618,7 +3620,7 @@ namespace sqlite_orm {
         };
 
         struct less_or_equal_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "<=";
             }
         };
@@ -13405,22 +13407,12 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<T, match_if<is_binary_condition, T>> {
+        struct ast_iterator<T,
+                            std::enable_if_t<polyfill::disjunction_v<is_binary_condition<T>, is_binary_operator<T>>>> {
             using node_type = T;
 
             template<class L>
-            void operator()(const node_type& binaryCondition, L& lambda) const {
-                iterate_ast(binaryCondition.l, lambda);
-                iterate_ast(binaryCondition.r, lambda);
-            }
-        };
-
-        template<class T>
-        struct ast_iterator<T, match_if<is_binary_operator, T>> {
-            using node_type = T;
-
-            template<class C>
-            void operator()(const node_type& node, C& lambda) const {
+            void operator()(const node_type& node, L& lambda) const {
                 iterate_ast(node.lhs, lambda);
                 iterate_ast(node.rhs, lambda);
             }
@@ -17218,41 +17210,6 @@ namespace sqlite_orm {
             }
         };
 
-        template<class L, class R, class... Ds>
-        struct statement_serializer<binary_operator<L, R, Ds...>, void> {
-            using statement_type = binary_operator<L, R, Ds...>;
-
-            template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
-                // subqueries should always use parentheses in binary expressions
-                auto subCtx = context;
-                subCtx.use_parentheses = true;
-                // parentheses for sub-trees to ensure the order of precedence
-                constexpr bool parenthesizeLeft = is_binary_condition_v<typename statement_type::left_type> ||
-                                                  is_binary_operator_v<typename statement_type::left_type>;
-                constexpr bool parenthesizeRight = is_binary_condition_v<typename statement_type::right_type> ||
-                                                   is_binary_operator_v<typename statement_type::right_type>;
-
-                std::stringstream ss;
-                if SQLITE_ORM_CONSTEXPR_IF(parenthesizeLeft) {
-                    ss << "(";
-                }
-                ss << serialize(statement.lhs, subCtx);
-                if SQLITE_ORM_CONSTEXPR_IF(parenthesizeLeft) {
-                    ss << ")";
-                }
-                ss << " " << statement.serialize() << " ";
-                if SQLITE_ORM_CONSTEXPR_IF(parenthesizeRight) {
-                    ss << "(";
-                }
-                ss << serialize(statement.rhs, subCtx);
-                if SQLITE_ORM_CONSTEXPR_IF(parenthesizeRight) {
-                    ss << ")";
-                }
-                return ss.str();
-            }
-        };
-
         template<class T>
         struct statement_serializer<count_asterisk_t<T>, void> {
             using statement_type = count_asterisk_t<T>;
@@ -17403,11 +17360,13 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializer<T, match_if<is_binary_condition, T>> {
+        struct statement_serializer<
+            T,
+            std::enable_if_t<polyfill::disjunction_v<is_binary_condition<T>, is_binary_operator<T>>>> {
             using statement_type = T;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
                 // subqueries should always use parentheses in binary expressions
                 auto subCtx = context;
                 subCtx.use_parentheses = true;
@@ -17421,15 +17380,15 @@ namespace sqlite_orm {
                 if SQLITE_ORM_CONSTEXPR_IF(parenthesizeLeft) {
                     ss << "(";
                 }
-                ss << serialize(c.l, subCtx);
+                ss << serialize(statement.lhs, subCtx);
                 if SQLITE_ORM_CONSTEXPR_IF(parenthesizeLeft) {
                     ss << ")";
                 }
-                ss << " " << static_cast<std::string>(c) << " ";
+                ss << " " << statement.serialize() << " ";
                 if SQLITE_ORM_CONSTEXPR_IF(parenthesizeRight) {
                     ss << "(";
                 }
-                ss << serialize(c.r, subCtx);
+                ss << serialize(statement.rhs, subCtx);
                 if SQLITE_ORM_CONSTEXPR_IF(parenthesizeRight) {
                     ss << ")";
                 }
