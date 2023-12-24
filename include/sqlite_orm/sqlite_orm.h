@@ -17371,10 +17371,10 @@ namespace sqlite_orm {
                 auto subCtx = context;
                 subCtx.use_parentheses = true;
                 // parentheses for sub-trees to ensure the order of precedence
-                constexpr bool parenthesizeLeft = is_binary_condition_v<typename statement_type::left_type> ||
-                                                  is_binary_operator_v<typename statement_type::left_type>;
-                constexpr bool parenthesizeRight = is_binary_condition_v<typename statement_type::right_type> ||
-                                                   is_binary_operator_v<typename statement_type::right_type>;
+                constexpr bool parenthesizeLeft = is_binary_condition_v<left_type_t<statement_type>> ||
+                                                  is_binary_operator_v<left_type_t<statement_type>>;
+                constexpr bool parenthesizeRight = is_binary_condition_v<right_type_t<statement_type>> ||
+                                                   is_binary_operator_v<right_type_t<statement_type>>;
 
                 std::stringstream ss;
                 if SQLITE_ORM_CONSTEXPR_IF(parenthesizeLeft) {

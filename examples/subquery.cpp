@@ -1306,8 +1306,8 @@ int main(int, char**) {
         }
     }
     {
-        //  SELECT employee_id,first_name,last_name,salary,avg(salary),salary>avg(salary)
-        //  FROM employees;
+        //  SELECT employee_id, first_name, last_name, salary, (SELECT AVG(salary) FROM employees), salary > (SELECT AVG(salary) FROM employees)
+        //  FROM "employees";
         auto rows = storage.select(columns(&Employee::id,
                                            &Employee::firstName,
                                            &Employee::lastName,
