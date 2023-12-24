@@ -18022,12 +18022,15 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
+                // subqueries should always use parentheses in column names
+                auto subCtx = context;
+                subCtx.use_parentheses = true;
+
                 std::stringstream ss;
                 if(context.use_parentheses) {
                     ss << '(';
                 }
-                // note: pass `statement` itself
-                ss << streaming_serialized(get_column_names(statement, context));
+                ss << streaming_serialized(get_column_names(statement, subCtx));
                 if(context.use_parentheses) {
                     ss << ')';
                 }
@@ -18295,6 +18298,9 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& sel, Ctx context) const {
                 context.skip_table_name = false;
+                // subqueries should always use parentheses in column names
+                auto subCtx = context;
+                subCtx.use_parentheses = true;
 
                 std::stringstream ss;
                 if(!is_compound_operator_v<T>) {
@@ -18306,7 +18312,7 @@ namespace sqlite_orm {
                 if(get_distinct(sel.col)) {
                     ss << static_cast<std::string>(distinct(0)) << " ";
                 }
-                ss << streaming_serialized(get_column_names(sel.col, context));
+                ss << streaming_serialized(get_column_names(sel.col, subCtx));
                 using conditions_tuple = typename statement_type::conditions_type;
                 constexpr bool hasExplicitFrom = tuple_has<is_from, conditions_tuple>::value;
                 if(!hasExplicitFrom) {

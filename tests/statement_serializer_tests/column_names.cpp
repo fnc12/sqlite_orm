@@ -116,6 +116,14 @@ TEST_CASE("statement_serializer column names") {
             REQUIRE(value == expected);
         }
     }
+    SECTION("subquery") {
+        internal::db_objects_tuple<> dbObjects;
+        using context_t = internal::serializer_context<internal::db_objects_tuple<>>;
+        context_t context{dbObjects};
+        context.use_parentheses = false;
+        std::string value = serialize(select(select(1)), context);
+        REQUIRE(value == "SELECT (SELECT 1)");
+    }
     // note: here we test whether the serializer serializes the correct column
     //       even if the object in question isn't the first in the table definition
     SECTION("by explicit column pointer") {
