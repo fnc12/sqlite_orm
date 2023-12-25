@@ -1,10 +1,12 @@
 #pragma once
 
-#include <type_traits>  //  std::is_same, std::decay, std::remove_reference
+#include <type_traits>  //  std::is_same, std::remove_reference, std::remove_cvref
 #include <tuple>  //  std::get
 
 #include "functional/cxx_universal.h"  //  ::size_t
+#include "functional/cxx_type_traits_polyfill.h"
 #include "functional/static_magic.h"
+#include "type_traits.h"
 #include "prepared_statement.h"
 #include "ast_iterator.h"
 #include "node_tuple.h"
@@ -124,14 +126,14 @@ namespace sqlite_orm {
 
     template<int N, class T>
     const auto& get(const internal::prepared_statement_t<T>& statement) {
-        using statement_type = std::decay_t<decltype(statement)>;
-        using expression_type = typename statement_type::expression_type;
+        using statement_type = polyfill::remove_cvref_t<decltype(statement)>;
+        using expression_type = internal::expression_type_t<statement_type>;
         using node_tuple = internal::node_tuple_t<expression_type>;
         using bind_tuple = internal::bindable_filter_t<node_tuple>;
         using result_type = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
         const result_type* result = nullptr;
         internal::iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
-            using node_type = std::decay_t<decltype(node)>;
+            using node_type = polyfill::remove_cvref_t<decltype(node)>;
             if(internal::is_bindable_v<node_type>) {
                 ++index;
             }
@@ -149,15 +151,15 @@ namespace sqlite_orm {
 
     template<int N, class T>
     auto& get(internal::prepared_statement_t<T>& statement) {
-        using statement_type = std::decay_t<decltype(statement)>;
-        using expression_type = typename statement_type::expression_type;
+        using statement_type = std::remove_reference_t<decltype(statement)>;
+        using expression_type = internal::expression_type_t<statement_type>;
         using node_tuple = internal::node_tuple_t<expression_type>;
         using bind_tuple = internal::bindable_filter_t<node_tuple>;
         using result_type = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
         result_type* result = nullptr;
 
         internal::iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
-            using node_type = std::decay_t<decltype(node)>;
+            using node_type = polyfill::remove_cvref_t<decltype(node)>;
             if(internal::is_bindable_v<node_type>) {
                 ++index;
             }

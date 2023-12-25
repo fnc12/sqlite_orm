@@ -1102,8 +1102,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
-                using expression_type = std::decay_t<decltype(statement)>;
-                using object_type = typename expression_object_type<expression_type>::type;
+                using object_type = expression_object_type_t<statement_type>;
                 auto& table = pick_table<object_type>(context.db_objects);
                 std::stringstream ss;
                 ss << "REPLACE INTO " << streaming_identifier(table.name) << " ("
@@ -1126,8 +1125,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& ins, const Ctx& context) const {
                 constexpr size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
                 static_assert(colsCount > 0, "Use insert or replace with 1 argument instead");
-                using expression_type = std::decay_t<decltype(ins)>;
-                using object_type = typename expression_object_type<expression_type>::type;
+                using object_type = expression_object_type_t<statement_type>;
                 auto& table = pick_table<object_type>(context.db_objects);
                 std::stringstream ss;
                 ss << "INSERT INTO " << streaming_identifier(table.name) << " ";
@@ -1154,8 +1152,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
-                using expression_type = std::decay_t<decltype(statement)>;
-                using object_type = typename expression_object_type<expression_type>::type;
+                using object_type = expression_object_type_t<statement_type>;
                 auto& table = pick_table<object_type>(context.db_objects);
 
                 std::stringstream ss;
@@ -1270,7 +1267,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
-                using object_type = typename expression_object_type<statement_type>::type;
+                using object_type = expression_object_type_t<statement_type>;
                 auto& table = pick_table<object_type>(context.db_objects);
                 using is_without_rowid = typename std::decay_t<decltype(table)>::is_without_rowid;
 
@@ -1415,8 +1412,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& rep, const Ctx& context) const {
-                using expression_type = std::decay_t<decltype(rep)>;
-                using object_type = typename expression_object_type<expression_type>::type;
+                using object_type = expression_object_type_t<statement_type>;
                 auto& table = pick_table<object_type>(context.db_objects);
 
                 std::stringstream ss;
@@ -1435,7 +1431,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
-                using object_type = typename expression_object_type<statement_type>::type;
+                using object_type = expression_object_type_t<statement_type>;
                 auto& table = pick_table<object_type>(context.db_objects);
                 using is_without_rowid = typename std::decay_t<decltype(table)>::is_without_rowid;
 
