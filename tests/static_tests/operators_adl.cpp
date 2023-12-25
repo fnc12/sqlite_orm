@@ -46,10 +46,14 @@ void runTests(E expression) {
     STATIC_REQUIRE(is_specialization_of_v<decltype(expression == 42), is_equal_t>);
     STATIC_REQUIRE(is_specialization_of_v<decltype(42 == expression), is_equal_t>);
     STATIC_REQUIRE(is_specialization_of_v<decltype(expression == expression), is_equal_t>);
+    STATIC_REQUIRE(is_specialization_of_v<decltype(expression == 42 == 1), is_equal_t>);
+    STATIC_REQUIRE(is_specialization_of_v<decltype(1 == (42 == expression)), is_equal_t>);
 
     STATIC_REQUIRE(is_specialization_of_v<decltype(expression != 42), is_not_equal_t>);
     STATIC_REQUIRE(is_specialization_of_v<decltype(42 != expression), is_not_equal_t>);
     STATIC_REQUIRE(is_specialization_of_v<decltype(expression != expression), is_not_equal_t>);
+    STATIC_REQUIRE(is_specialization_of_v<decltype(expression != 42 != 0), is_not_equal_t>);
+    STATIC_REQUIRE(is_specialization_of_v<decltype(0 != (42 != expression)), is_not_equal_t>);
 
     STATIC_REQUIRE(is_specialization_of_v<decltype(expression || 42), binary_operator>);
     STATIC_REQUIRE(is_specialization_of_v<decltype(42 || expression), binary_operator>);

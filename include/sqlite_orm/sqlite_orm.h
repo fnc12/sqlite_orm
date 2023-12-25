@@ -235,6 +235,11 @@ using std::nullptr_t;
 #pragma once
 
 #include <type_traits>  //  std::enable_if, std::is_same, std::is_empty
+#if __cpp_lib_unwrap_ref >= 201811L
+#include <utility>  //  std::reference_wrapper
+#else
+#include <functional>  //  std::reference_wrapper
+#endif
 
 // #include "functional/cxx_core_features.h"
 
@@ -390,6 +395,15 @@ namespace sqlite_orm {
     namespace internal {
         template<class T, class... Types>
         using is_any_of = polyfill::disjunction<std::is_same<T, Types>...>;
+
+        template<class T>
+        struct value_unref_type : polyfill::remove_cvref<T> {};
+
+        template<class T>
+        struct value_unref_type<std::reference_wrapper<T>> : std::remove_const<T> {};
+
+        template<class T>
+        using value_unref_type_t = typename value_unref_type<T>::type;
 
         // enable_if for types
         template<template<typename...> class Op, class... Args>
@@ -3057,6 +3071,8 @@ namespace sqlite_orm {
 
 }
 
+// #include "serialize_result_type.h"
+
 // #include "tags.h"
 
 // #include "alias_traits.h"
@@ -3596,12 +3612,12 @@ namespace sqlite_orm {
             using right_type = R;
             using result_type = Res;
 
-            left_type l;
-            right_type r;
+            left_type lhs;
+            right_type rhs;
 
             binary_condition() = default;
 
-            binary_condition(left_type l_, right_type r_) : l(std::move(l_)), r(std::move(r_)) {}
+            binary_condition(left_type l_, right_type r_) : lhs(std::move(l_)), rhs(std::move(r_)) {}
         };
 
         template<class T>
@@ -3611,7 +3627,7 @@ namespace sqlite_orm {
         using is_binary_condition = polyfill::bool_constant<is_binary_condition_v<T>>;
 
         struct and_condition_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "AND";
             }
         };
@@ -3627,7 +3643,7 @@ namespace sqlite_orm {
         };
 
         struct or_condition_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "OR";
             }
         };
@@ -3643,7 +3659,7 @@ namespace sqlite_orm {
         };
 
         struct is_equal_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "=";
             }
         };
@@ -3692,7 +3708,7 @@ namespace sqlite_orm {
         };
 
         struct is_not_equal_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "!=";
             }
         };
@@ -3720,7 +3736,7 @@ namespace sqlite_orm {
         };
 
         struct greater_than_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return ">";
             }
         };
@@ -3748,7 +3764,7 @@ namespace sqlite_orm {
         };
 
         struct greater_or_equal_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return ">=";
             }
         };
@@ -3776,7 +3792,7 @@ namespace sqlite_orm {
         };
 
         struct less_than_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "<";
             }
         };
@@ -3804,7 +3820,7 @@ namespace sqlite_orm {
         };
 
         struct less_or_equal_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "<=";
             }
         };
@@ -4367,6 +4383,8 @@ namespace sqlite_orm {
                  class R,
                  std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
                                                           std::is_base_of<arithmetic_t, R>,
+                                                          std::is_base_of<condition_t, L>,
+                                                          std::is_base_of<condition_t, R>,
                                                           is_operator_argument<L>,
                                                           is_operator_argument<R>>,
                                   bool> = true>
@@ -4378,6 +4396,8 @@ namespace sqlite_orm {
                  class R,
                  std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
                                                           std::is_base_of<arithmetic_t, R>,
+                                                          std::is_base_of<condition_t, L>,
+                                                          std::is_base_of<condition_t, R>,
                                                           is_operator_argument<L>,
                                                           is_operator_argument<R>>,
                                   bool> = true>
@@ -14319,22 +14339,12 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<T, match_if<is_binary_condition, T>> {
+        struct ast_iterator<T,
+                            std::enable_if_t<polyfill::disjunction_v<is_binary_condition<T>, is_binary_operator<T>>>> {
             using node_type = T;
 
             template<class L>
-            void operator()(const node_type& binaryCondition, L& lambda) const {
-                iterate_ast(binaryCondition.l, lambda);
-                iterate_ast(binaryCondition.r, lambda);
-            }
-        };
-
-        template<class T>
-        struct ast_iterator<T, match_if<is_binary_operator, T>> {
-            using node_type = T;
-
-            template<class C>
-            void operator()(const node_type& node, C& lambda) const {
+            void operator()(const node_type& node, L& lambda) const {
                 iterate_ast(node.lhs, lambda);
                 iterate_ast(node.rhs, lambda);
             }
@@ -17265,8 +17275,10 @@ namespace sqlite_orm {
 
 // #include "expression_object_type.h"
 
-#include <type_traits>  //  std::decay
+#include <type_traits>  //  std::decay, std::remove_reference
 #include <functional>  //  std::reference_wrapper
+
+// #include "type_traits.h"
 
 // #include "prepared_statement.h"
 
@@ -17278,58 +17290,35 @@ namespace sqlite_orm {
         struct expression_object_type;
 
         template<class T>
-        struct expression_object_type<update_t<T>> : std::decay<T> {};
+        using expression_object_type_t = typename expression_object_type<T>::type;
+
+        template<typename S>
+        using statement_object_type_t = expression_object_type_t<expression_type_t<std::remove_reference_t<S>>>;
 
         template<class T>
-        struct expression_object_type<update_t<std::reference_wrapper<T>>> : std::decay<T> {};
+        struct expression_object_type<update_t<T>, void> : value_unref_type<T> {};
 
         template<class T>
-        struct expression_object_type<replace_t<T>> : std::decay<T> {};
+        struct expression_object_type<replace_t<T>, void> : value_unref_type<T> {};
 
         template<class T>
-        struct expression_object_type<replace_t<std::reference_wrapper<T>>> : std::decay<T> {};
-
-        template<class It, class L, class O>
-        struct expression_object_type<replace_range_t<It, L, O>> {
-            using type = typename replace_range_t<It, L, O>::object_type;
-        };
-
-        template<class It, class L, class O>
-        struct expression_object_type<replace_range_t<std::reference_wrapper<It>, L, O>> {
-            using type = typename replace_range_t<std::reference_wrapper<It>, L, O>::object_type;
+        struct expression_object_type<T, match_if<is_replace_range, T>> {
+            using type = object_type_t<T>;
         };
 
         template<class T, class... Ids>
-        struct expression_object_type<remove_t<T, Ids...>> {
-            using type = T;
-        };
-
-        template<class T, class... Ids>
-        struct expression_object_type<remove_t<std::reference_wrapper<T>, Ids...>> {
-            using type = T;
-        };
+        struct expression_object_type<remove_t<T, Ids...>, void> : value_unref_type<T> {};
 
         template<class T>
-        struct expression_object_type<insert_t<T>> : std::decay<T> {};
+        struct expression_object_type<insert_t<T>, void> : value_unref_type<T> {};
 
         template<class T>
-        struct expression_object_type<insert_t<std::reference_wrapper<T>>> : std::decay<T> {};
-
-        template<class It, class L, class O>
-        struct expression_object_type<insert_range_t<It, L, O>> {
-            using type = typename insert_range_t<It, L, O>::object_type;
-        };
-
-        template<class It, class L, class O>
-        struct expression_object_type<insert_range_t<std::reference_wrapper<It>, L, O>> {
-            using type = typename insert_range_t<std::reference_wrapper<It>, L, O>::object_type;
+        struct expression_object_type<T, match_if<is_insert_range, T>> {
+            using type = object_type_t<T>;
         };
 
         template<class T, class... Cols>
-        struct expression_object_type<insert_explicit<T, Cols...>> : std::decay<T> {};
-
-        template<class T, class... Cols>
-        struct expression_object_type<insert_explicit<std::reference_wrapper<T>, Cols...>> : std::decay<T> {};
+        struct expression_object_type<insert_explicit<T, Cols...>, void> : value_unref_type<T> {};
 
         template<class T>
         struct get_ref_t {
@@ -17557,9 +17546,9 @@ namespace sqlite_orm {
                 if(columnExpression.empty()) {
                     throw std::system_error{orm_error_code::column_not_found};
                 }
-                collectedExpressions.reserve(collectedExpressions.size() + 1);
-                collectedExpressions.push_back(std::move(columnExpression));
-                return collectedExpressions;
+                this->collectedExpressions.reserve(this->collectedExpressions.size() + 1);
+                this->collectedExpressions.push_back(std::move(columnExpression));
+                return this->collectedExpressions;
             }
 
             template<class T, class Ctx>
@@ -17569,27 +17558,27 @@ namespace sqlite_orm {
 
             template<class T, class Ctx>
             std::vector<std::string>& operator()(const asterisk_t<T>& expression, const Ctx& context) {
-                return collect_table_column_names<T>(collectedExpressions, expression.defined_order, context);
+                return collect_table_column_names<T>(this->collectedExpressions, expression.defined_order, context);
             }
 
             template<class T, class Ctx>
             std::vector<std::string>& operator()(const object_t<T>& expression, const Ctx& context) {
-                return collect_table_column_names<T>(collectedExpressions, expression.defined_order, context);
+                return collect_table_column_names<T>(this->collectedExpressions, expression.defined_order, context);
             }
 
             template<class... Args, class Ctx>
             std::vector<std::string>& operator()(const columns_t<Args...>& cols, const Ctx& context) {
-                collectedExpressions.reserve(collectedExpressions.size() + cols.count);
+                this->collectedExpressions.reserve(this->collectedExpressions.size() + cols.count);
                 iterate_tuple(cols.columns, [this, &context](auto& colExpr) {
                     (*this)(colExpr, context);
                 });
                 // note: `capacity() > size()` can occur in case `asterisk_t<>` does spell out the columns in defined order
                 if(mpl::invoke_t<check_if_tuple_has_template<asterisk_t>,
                                  typename columns_t<Args...>::columns_type>::value &&
-                   collectedExpressions.capacity() > collectedExpressions.size()) {
-                    collectedExpressions.shrink_to_fit();
+                   this->collectedExpressions.capacity() > this->collectedExpressions.size()) {
+                    this->collectedExpressions.shrink_to_fit();
                 }
-                return collectedExpressions;
+                return this->collectedExpressions;
             }
 
             std::vector<std::string> collectedExpressions;
@@ -18209,13 +18198,7 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
-                if(context.use_parentheses) {
-                    ss << '(';
-                }
                 ss << statement.serialize() << "(" << streaming_expressions_tuple(statement.args, context) << ")";
-                if(context.use_parentheses) {
-                    ss << ')';
-                }
                 return ss.str();
             }
         };
@@ -18383,26 +18366,6 @@ namespace sqlite_orm {
                 ss << streaming_identifier(tableName);
                 ss << " = ";
                 ss << serialize(statement.rhs, context);
-                return ss.str();
-            }
-        };
-
-        template<class L, class R, class... Ds>
-        struct statement_serializer<binary_operator<L, R, Ds...>, void> {
-            using statement_type = binary_operator<L, R, Ds...>;
-
-            template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
-                auto lhs = serialize(statement.lhs, context);
-                auto rhs = serialize(statement.rhs, context);
-                std::stringstream ss;
-                if(context.use_parentheses) {
-                    ss << '(';
-                }
-                ss << lhs << " " << statement.serialize() << " " << rhs;
-                if(context.use_parentheses) {
-                    ss << ')';
-                }
                 return ss.str();
             }
         };
@@ -18625,19 +18588,36 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializer<T, match_if<is_binary_condition, T>> {
+        struct statement_serializer<
+            T,
+            std::enable_if_t<polyfill::disjunction_v<is_binary_condition<T>, is_binary_operator<T>>>> {
             using statement_type = T;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
-                auto leftString = serialize(c.l, context);
-                auto rightString = serialize(c.r, context);
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                // subqueries should always use parentheses in binary expressions
+                auto subCtx = context;
+                subCtx.use_parentheses = true;
+                // parentheses for sub-trees to ensure the order of precedence
+                constexpr bool parenthesizeLeft = is_binary_condition_v<left_type_t<statement_type>> ||
+                                                  is_binary_operator_v<left_type_t<statement_type>>;
+                constexpr bool parenthesizeRight = is_binary_condition_v<right_type_t<statement_type>> ||
+                                                   is_binary_operator_v<right_type_t<statement_type>>;
+
                 std::stringstream ss;
-                if(context.use_parentheses) {
+                if SQLITE_ORM_CONSTEXPR_IF(parenthesizeLeft) {
                     ss << "(";
                 }
-                ss << leftString << " " << static_cast<std::string>(c) << " " << rightString;
-                if(context.use_parentheses) {
+                ss << serialize(statement.lhs, subCtx);
+                if SQLITE_ORM_CONSTEXPR_IF(parenthesizeLeft) {
+                    ss << ")";
+                }
+                ss << " " << statement.serialize() << " ";
+                if SQLITE_ORM_CONSTEXPR_IF(parenthesizeRight) {
+                    ss << "(";
+                }
+                ss << serialize(statement.rhs, subCtx);
+                if SQLITE_ORM_CONSTEXPR_IF(parenthesizeRight) {
                     ss << ")";
                 }
                 return ss.str();
@@ -19039,8 +19019,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
-                using expression_type = std::decay_t<decltype(statement)>;
-                using object_type = typename expression_object_type<expression_type>::type;
+                using object_type = expression_object_type_t<statement_type>;
                 auto& table = pick_table<object_type>(context.db_objects);
                 std::stringstream ss;
                 ss << "REPLACE INTO " << streaming_identifier(table.name) << " ("
@@ -19063,8 +19042,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& ins, const Ctx& context) const {
                 constexpr size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
                 static_assert(colsCount > 0, "Use insert or replace with 1 argument instead");
-                using expression_type = std::decay_t<decltype(ins)>;
-                using object_type = typename expression_object_type<expression_type>::type;
+                using object_type = expression_object_type_t<statement_type>;
                 auto& table = pick_table<object_type>(context.db_objects);
                 std::stringstream ss;
                 ss << "INSERT INTO " << streaming_identifier(table.name) << " ";
@@ -19091,8 +19069,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
-                using expression_type = std::decay_t<decltype(statement)>;
-                using object_type = typename expression_object_type<expression_type>::type;
+                using object_type = expression_object_type_t<statement_type>;
                 auto& table = pick_table<object_type>(context.db_objects);
 
                 std::stringstream ss;
@@ -19207,7 +19184,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
-                using object_type = typename expression_object_type<statement_type>::type;
+                using object_type = expression_object_type_t<statement_type>;
                 auto& table = pick_table<object_type>(context.db_objects);
                 using is_without_rowid = typename std::decay_t<decltype(table)>::is_without_rowid;
 
@@ -19269,12 +19246,15 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
+                // subqueries should always use parentheses in column names
+                auto subCtx = context;
+                subCtx.use_parentheses = true;
+
                 std::stringstream ss;
                 if(context.use_parentheses) {
                     ss << '(';
                 }
-                // note: pass `statement` itself
-                ss << streaming_serialized(get_column_names(statement, context));
+                ss << streaming_serialized(get_column_names(statement, subCtx));
                 if(context.use_parentheses) {
                     ss << ')';
                 }
@@ -19349,8 +19329,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& rep, const Ctx& context) const {
-                using expression_type = std::decay_t<decltype(rep)>;
-                using object_type = typename expression_object_type<expression_type>::type;
+                using object_type = expression_object_type_t<statement_type>;
                 auto& table = pick_table<object_type>(context.db_objects);
 
                 std::stringstream ss;
@@ -19369,7 +19348,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
-                using object_type = typename expression_object_type<statement_type>::type;
+                using object_type = expression_object_type_t<statement_type>;
                 auto& table = pick_table<object_type>(context.db_objects);
                 using is_without_rowid = typename std::decay_t<decltype(table)>::is_without_rowid;
 
@@ -19542,6 +19521,9 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& sel, Ctx context) const {
                 context.skip_table_name = false;
+                // subqueries should always use parentheses in column names
+                auto subCtx = context;
+                subCtx.use_parentheses = true;
 
                 std::stringstream ss;
                 if(!is_compound_operator_v<T>) {
@@ -19553,7 +19535,7 @@ namespace sqlite_orm {
                 if(get_distinct(sel.col)) {
                     ss << static_cast<std::string>(distinct(0)) << " ";
                 }
-                ss << streaming_serialized(get_column_names(sel.col, context));
+                ss << streaming_serialized(get_column_names(sel.col, subCtx));
                 using conditions_tuple = typename statement_type::conditions_type;
                 constexpr bool hasExplicitFrom = tuple_has<is_from, conditions_tuple>::value;
                 if(!hasExplicitFrom) {
@@ -21646,115 +21628,116 @@ namespace sqlite_orm {
 #endif
 
             template<class T, class... Args>
-            prepared_statement_t<select_t<T, Args...>> prepare(select_t<T, Args...> sel) {
-                sel.highest_level = true;
-                return prepare_impl<select_t<T, Args...>>(std::move(sel));
+            prepared_statement_t<select_t<T, Args...>> prepare(select_t<T, Args...> statement) {
+                statement.highest_level = true;
+                return this->prepare_impl(std::move(statement));
             }
 
             template<class T, class... Args>
-            prepared_statement_t<get_all_t<T, Args...>> prepare(get_all_t<T, Args...> get_) {
-                return prepare_impl<get_all_t<T, Args...>>(std::move(get_));
+            prepared_statement_t<get_all_t<T, Args...>> prepare(get_all_t<T, Args...> statement) {
+                return this->prepare_impl(std::move(statement));
             }
 
             template<class T, class... Args>
-            prepared_statement_t<get_all_pointer_t<T, Args...>> prepare(get_all_pointer_t<T, Args...> get_) {
-                return prepare_impl<get_all_pointer_t<T, Args...>>(std::move(get_));
+            prepared_statement_t<get_all_pointer_t<T, Args...>> prepare(get_all_pointer_t<T, Args...> statement) {
+                return this->prepare_impl(std::move(statement));
             }
 
             template<class... Args>
-            prepared_statement_t<replace_raw_t<Args...>> prepare(replace_raw_t<Args...> ins) {
-                return prepare_impl<replace_raw_t<Args...>>(std::move(ins));
+            prepared_statement_t<replace_raw_t<Args...>> prepare(replace_raw_t<Args...> statement) {
+                return this->prepare_impl(std::move(statement));
             }
 
             template<class... Args>
-            prepared_statement_t<insert_raw_t<Args...>> prepare(insert_raw_t<Args...> ins) {
-                return prepare_impl<insert_raw_t<Args...>>(std::move(ins));
+            prepared_statement_t<insert_raw_t<Args...>> prepare(insert_raw_t<Args...> statement) {
+                return this->prepare_impl(std::move(statement));
             }
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
             template<class T, class R, class... Args>
-            prepared_statement_t<get_all_optional_t<T, R, Args...>> prepare(get_all_optional_t<T, R, Args...> get_) {
-                return prepare_impl<get_all_optional_t<T, R, Args...>>(std::move(get_));
+            prepared_statement_t<get_all_optional_t<T, R, Args...>>
+            prepare(get_all_optional_t<T, R, Args...> statement) {
+                return this->prepare_impl(std::move(statement));
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
             template<class S, class... Wargs>
-            prepared_statement_t<update_all_t<S, Wargs...>> prepare(update_all_t<S, Wargs...> upd) {
-                return prepare_impl<update_all_t<S, Wargs...>>(std::move(upd));
+            prepared_statement_t<update_all_t<S, Wargs...>> prepare(update_all_t<S, Wargs...> statement) {
+                return this->prepare_impl(std::move(statement));
             }
 
             template<class T, class... Args>
-            prepared_statement_t<remove_all_t<T, Args...>> prepare(remove_all_t<T, Args...> rem) {
-                return prepare_impl<remove_all_t<T, Args...>>(std::move(rem));
+            prepared_statement_t<remove_all_t<T, Args...>> prepare(remove_all_t<T, Args...> statement) {
+                return this->prepare_impl(std::move(statement));
             }
 
             template<class T, class... Ids>
-            prepared_statement_t<get_t<T, Ids...>> prepare(get_t<T, Ids...> get_) {
-                return prepare_impl<get_t<T, Ids...>>(std::move(get_));
+            prepared_statement_t<get_t<T, Ids...>> prepare(get_t<T, Ids...> statement) {
+                return this->prepare_impl(std::move(statement));
             }
 
             template<class T, class... Ids>
-            prepared_statement_t<get_pointer_t<T, Ids...>> prepare(get_pointer_t<T, Ids...> get_) {
-                return prepare_impl<get_pointer_t<T, Ids...>>(std::move(get_));
+            prepared_statement_t<get_pointer_t<T, Ids...>> prepare(get_pointer_t<T, Ids...> statement) {
+                return this->prepare_impl(std::move(statement));
             }
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
             template<class T, class... Ids>
-            prepared_statement_t<get_optional_t<T, Ids...>> prepare(get_optional_t<T, Ids...> get_) {
-                return prepare_impl<get_optional_t<T, Ids...>>(std::move(get_));
+            prepared_statement_t<get_optional_t<T, Ids...>> prepare(get_optional_t<T, Ids...> statement) {
+                return this->prepare_impl(std::move(statement));
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
             template<class T>
             prepared_statement_t<update_t<T>> prepare(update_t<T> statement) {
-                using object_type = typename expression_object_type<decltype(statement)>::type;
+                using object_type = expression_object_type_t<decltype(statement)>;
                 this->assert_mapped_type<object_type>();
                 this->assert_updatable_type<object_type>();
-                return prepare_impl<update_t<T>>(std::move(statement));
+                return this->prepare_impl(std::move(statement));
             }
 
             template<class T, class... Ids>
             prepared_statement_t<remove_t<T, Ids...>> prepare(remove_t<T, Ids...> statement) {
-                using object_type = typename expression_object_type<decltype(statement)>::type;
+                using object_type = expression_object_type_t<decltype(statement)>;
                 this->assert_mapped_type<object_type>();
-                return this->prepare_impl<remove_t<T, Ids...>>(std::move(statement));
+                return this->prepare_impl(std::move(statement));
             }
 
             template<class T>
             prepared_statement_t<insert_t<T>> prepare(insert_t<T> statement) {
-                using object_type = typename expression_object_type<decltype(statement)>::type;
+                using object_type = expression_object_type_t<decltype(statement)>;
                 this->assert_mapped_type<object_type>();
                 this->assert_insertable_type<object_type>();
-                return this->prepare_impl<insert_t<T>>(std::move(statement));
+                return this->prepare_impl(std::move(statement));
             }
 
             template<class T>
-            prepared_statement_t<replace_t<T>> prepare(replace_t<T> rep) {
-                using object_type = typename expression_object_type<decltype(rep)>::type;
+            prepared_statement_t<replace_t<T>> prepare(replace_t<T> statement) {
+                using object_type = expression_object_type_t<decltype(statement)>;
                 this->assert_mapped_type<object_type>();
-                return this->prepare_impl<replace_t<T>>(std::move(rep));
+                return this->prepare_impl(std::move(statement));
             }
 
-            template<class It, class L, class O>
-            prepared_statement_t<insert_range_t<It, L, O>> prepare(insert_range_t<It, L, O> statement) {
-                using object_type = typename expression_object_type<decltype(statement)>::type;
+            template<class E, satisfies<is_insert_range, E> = true>
+            prepared_statement_t<E> prepare(E statement) {
+                using object_type = expression_object_type_t<decltype(statement)>;
                 this->assert_mapped_type<object_type>();
                 this->assert_insertable_type<object_type>();
-                return this->prepare_impl<insert_range_t<It, L, O>>(std::move(statement));
+                return this->prepare_impl(std::move(statement));
             }
 
-            template<class It, class L, class O>
-            prepared_statement_t<replace_range_t<It, L, O>> prepare(replace_range_t<It, L, O> statement) {
-                using object_type = typename expression_object_type<decltype(statement)>::type;
+            template<class E, satisfies<is_replace_range, E> = true>
+            prepared_statement_t<E> prepare(E statement) {
+                using object_type = expression_object_type_t<decltype(statement)>;
                 this->assert_mapped_type<object_type>();
-                return this->prepare_impl<replace_range_t<It, L, O>>(std::move(statement));
+                return this->prepare_impl(std::move(statement));
             }
 
             template<class T, class... Cols>
-            prepared_statement_t<insert_explicit<T, Cols...>> prepare(insert_explicit<T, Cols...> ins) {
-                using object_type = typename expression_object_type<decltype(ins)>::type;
+            prepared_statement_t<insert_explicit<T, Cols...>> prepare(insert_explicit<T, Cols...> statement) {
+                using object_type = expression_object_type_t<decltype(statement)>;
                 this->assert_mapped_type<object_type>();
-                return this->prepare_impl<insert_explicit<T, Cols...>>(std::move(ins));
+                return this->prepare_impl(std::move(statement));
             }
 
             template<class... Args>
@@ -21782,9 +21765,7 @@ namespace sqlite_orm {
 
             template<class T, class... Cols>
             int64 execute(const prepared_statement_t<insert_explicit<T, Cols...>>& statement) {
-                using statement_type = std::decay_t<decltype(statement)>;
-                using expression_type = typename statement_type::expression_type;
-                using object_type = typename expression_object_type<expression_type>::type;
+                using object_type = statement_object_type_t<decltype(statement)>;
 
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
@@ -21800,9 +21781,7 @@ namespace sqlite_orm {
             template<class T,
                      std::enable_if_t<polyfill::disjunction_v<is_replace<T>, is_replace_range<T>>, bool> = true>
             void execute(const prepared_statement_t<T>& statement) {
-                using statement_type = std::decay_t<decltype(statement)>;
-                using expression_type = typename statement_type::expression_type;
-                using object_type = typename expression_object_type<expression_type>::type;
+                using object_type = statement_object_type_t<decltype(statement)>;
 
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
@@ -21841,9 +21820,7 @@ namespace sqlite_orm {
 
             template<class T, std::enable_if_t<polyfill::disjunction_v<is_insert<T>, is_insert_range<T>>, bool> = true>
             int64 execute(const prepared_statement_t<T>& statement) {
-                using statement_type = std::decay_t<decltype(statement)>;
-                using expression_type = typename statement_type::expression_type;
-                using object_type = typename expression_object_type<expression_type>::type;
+                using object_type = statement_object_type_t<decltype(statement)>;
 
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
@@ -21895,9 +21872,7 @@ namespace sqlite_orm {
 
             template<class T>
             void execute(const prepared_statement_t<update_t<T>>& statement) {
-                using statement_type = std::decay_t<decltype(statement)>;
-                using expression_type = typename statement_type::expression_type;
-                using object_type = typename expression_object_type<expression_type>::type;
+                using object_type = statement_object_type_t<decltype(statement)>;
 
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
                 auto& table = this->get_table<object_type>();
@@ -22135,12 +22110,16 @@ namespace sqlite_orm {
 }
 #pragma once
 
-#include <type_traits>  //  std::is_same, std::decay, std::remove_reference
+#include <type_traits>  //  std::is_same, std::remove_reference, std::remove_cvref
 #include <tuple>  //  std::get
 
 // #include "functional/cxx_universal.h"
 //  ::size_t
+// #include "functional/cxx_type_traits_polyfill.h"
+
 // #include "functional/static_magic.h"
+
+// #include "type_traits.h"
 
 // #include "prepared_statement.h"
 
@@ -22525,14 +22504,14 @@ namespace sqlite_orm {
 
     template<int N, class T>
     const auto& get(const internal::prepared_statement_t<T>& statement) {
-        using statement_type = std::decay_t<decltype(statement)>;
-        using expression_type = typename statement_type::expression_type;
+        using statement_type = polyfill::remove_cvref_t<decltype(statement)>;
+        using expression_type = internal::expression_type_t<statement_type>;
         using node_tuple = internal::node_tuple_t<expression_type>;
         using bind_tuple = internal::bindable_filter_t<node_tuple>;
         using result_type = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
         const result_type* result = nullptr;
         internal::iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
-            using node_type = std::decay_t<decltype(node)>;
+            using node_type = polyfill::remove_cvref_t<decltype(node)>;
             if(internal::is_bindable_v<node_type>) {
                 ++index;
             }
@@ -22550,15 +22529,15 @@ namespace sqlite_orm {
 
     template<int N, class T>
     auto& get(internal::prepared_statement_t<T>& statement) {
-        using statement_type = std::decay_t<decltype(statement)>;
-        using expression_type = typename statement_type::expression_type;
+        using statement_type = std::remove_reference_t<decltype(statement)>;
+        using expression_type = internal::expression_type_t<statement_type>;
         using node_tuple = internal::node_tuple_t<expression_type>;
         using bind_tuple = internal::bindable_filter_t<node_tuple>;
         using result_type = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
         result_type* result = nullptr;
 
         internal::iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
-            using node_type = std::decay_t<decltype(node)>;
+            using node_type = polyfill::remove_cvref_t<decltype(node)>;
             if(internal::is_bindable_v<node_type>) {
                 ++index;
             }

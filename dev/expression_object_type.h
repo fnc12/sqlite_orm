@@ -1,8 +1,9 @@
 #pragma once
 
-#include <type_traits>  //  std::decay
+#include <type_traits>  //  std::decay, std::remove_reference
 #include <functional>  //  std::reference_wrapper
 
+#include "type_traits.h"
 #include "prepared_statement.h"
 
 namespace sqlite_orm {
@@ -13,58 +14,35 @@ namespace sqlite_orm {
         struct expression_object_type;
 
         template<class T>
-        struct expression_object_type<update_t<T>> : std::decay<T> {};
+        using expression_object_type_t = typename expression_object_type<T>::type;
+
+        template<typename S>
+        using statement_object_type_t = expression_object_type_t<expression_type_t<std::remove_reference_t<S>>>;
 
         template<class T>
-        struct expression_object_type<update_t<std::reference_wrapper<T>>> : std::decay<T> {};
+        struct expression_object_type<update_t<T>, void> : value_unref_type<T> {};
 
         template<class T>
-        struct expression_object_type<replace_t<T>> : std::decay<T> {};
+        struct expression_object_type<replace_t<T>, void> : value_unref_type<T> {};
 
         template<class T>
-        struct expression_object_type<replace_t<std::reference_wrapper<T>>> : std::decay<T> {};
-
-        template<class It, class L, class O>
-        struct expression_object_type<replace_range_t<It, L, O>> {
-            using type = typename replace_range_t<It, L, O>::object_type;
-        };
-
-        template<class It, class L, class O>
-        struct expression_object_type<replace_range_t<std::reference_wrapper<It>, L, O>> {
-            using type = typename replace_range_t<std::reference_wrapper<It>, L, O>::object_type;
+        struct expression_object_type<T, match_if<is_replace_range, T>> {
+            using type = object_type_t<T>;
         };
 
         template<class T, class... Ids>
-        struct expression_object_type<remove_t<T, Ids...>> {
-            using type = T;
-        };
-
-        template<class T, class... Ids>
-        struct expression_object_type<remove_t<std::reference_wrapper<T>, Ids...>> {
-            using type = T;
-        };
+        struct expression_object_type<remove_t<T, Ids...>, void> : value_unref_type<T> {};
 
         template<class T>
-        struct expression_object_type<insert_t<T>> : std::decay<T> {};
+        struct expression_object_type<insert_t<T>, void> : value_unref_type<T> {};
 
         template<class T>
-        struct expression_object_type<insert_t<std::reference_wrapper<T>>> : std::decay<T> {};
-
-        template<class It, class L, class O>
-        struct expression_object_type<insert_range_t<It, L, O>> {
-            using type = typename insert_range_t<It, L, O>::object_type;
-        };
-
-        template<class It, class L, class O>
-        struct expression_object_type<insert_range_t<std::reference_wrapper<It>, L, O>> {
-            using type = typename insert_range_t<std::reference_wrapper<It>, L, O>::object_type;
+        struct expression_object_type<T, match_if<is_insert_range, T>> {
+            using type = object_type_t<T>;
         };
 
         template<class T, class... Cols>
-        struct expression_object_type<insert_explicit<T, Cols...>> : std::decay<T> {};
-
-        template<class T, class... Cols>
-        struct expression_object_type<insert_explicit<std::reference_wrapper<T>, Cols...>> : std::decay<T> {};
+        struct expression_object_type<insert_explicit<T, Cols...>, void> : value_unref_type<T> {};
 
         template<class T>
         struct get_ref_t {
