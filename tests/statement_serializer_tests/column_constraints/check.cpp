@@ -25,12 +25,12 @@ TEST_CASE("statement_serializer check") {
         context_t context{dbObjects};
         std::string value;
         std::string expected;
-        SECTION("with parentheses") {
+        SECTION("use_parentheses") {
             context.use_parentheses = true;
             value = serialize(ch, context);
-            expected = R"(CHECK (("col3" > 0)))";
+            expected = R"(CHECK ("col3" > 0))";
         }
-        SECTION("without parentheses") {
+        SECTION("!use_parentheses") {
             context.use_parentheses = false;
             value = serialize(ch, context);
             expected = R"(CHECK ("col3" > 0))";
@@ -59,12 +59,12 @@ TEST_CASE("statement_serializer check") {
         context_t context{dbObjects};
         std::string value;
         std::string expected;
-        SECTION("with parentheses") {
+        SECTION("use_parentheses") {
             context.use_parentheses = true;
             value = serialize(ch, context);
-            expected = R"(CHECK ((0 < "PRICE")))";
+            expected = R"(CHECK (0 < "PRICE"))";
         }
-        SECTION("without parentheses") {
+        SECTION("!use_parentheses") {
             context.use_parentheses = false;
             value = serialize(ch, context);
             expected = R"(CHECK (0 < "PRICE"))";

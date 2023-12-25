@@ -1306,6 +1306,22 @@ int main(int, char**) {
         }
     }
     {
+        //  SELECT employee_id, first_name, last_name, salary, (SELECT AVG(salary) FROM employees), salary > (SELECT AVG(salary) FROM employees)
+        //  FROM "employees";
+        auto rows = storage.select(columns(&Employee::id,
+                                           &Employee::firstName,
+                                           &Employee::lastName,
+                                           &Employee::salary,
+                                           select(avg(&Employee::salary)),
+                                           greater_than(&Employee::salary, select(avg(&Employee::salary)))));
+        cout << "employee_id  first_name  last_name   salary      avg_salary  salary>avg" << endl;
+        cout << "-----------  ----------  ----------  ----------  ----------  ----------" << endl;
+        for(auto& row: rows) {
+            cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row)
+                 << '\t' << std::get<4>(row) << '\t' << std::get<5>(row) << endl;
+        }
+    }
+    {
         //  SELECT first_name, last_name, department_id
         //  FROM employees
         //  WHERE department_id IN
