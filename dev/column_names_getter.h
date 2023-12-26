@@ -71,9 +71,9 @@ namespace sqlite_orm {
                 if(columnExpression.empty()) {
                     throw std::system_error{orm_error_code::column_not_found};
                 }
-                collectedExpressions.reserve(collectedExpressions.size() + 1);
-                collectedExpressions.push_back(std::move(columnExpression));
-                return collectedExpressions;
+                this->collectedExpressions.reserve(this->collectedExpressions.size() + 1);
+                this->collectedExpressions.push_back(std::move(columnExpression));
+                return this->collectedExpressions;
             }
 
             template<class T, class Ctx>
@@ -83,27 +83,27 @@ namespace sqlite_orm {
 
             template<class T, class Ctx>
             std::vector<std::string>& operator()(const asterisk_t<T>& expression, const Ctx& context) {
-                return collect_table_column_names<T>(collectedExpressions, expression.defined_order, context);
+                return collect_table_column_names<T>(this->collectedExpressions, expression.defined_order, context);
             }
 
             template<class T, class Ctx>
             std::vector<std::string>& operator()(const object_t<T>& expression, const Ctx& context) {
-                return collect_table_column_names<T>(collectedExpressions, expression.defined_order, context);
+                return collect_table_column_names<T>(this->collectedExpressions, expression.defined_order, context);
             }
 
             template<class... Args, class Ctx>
             std::vector<std::string>& operator()(const columns_t<Args...>& cols, const Ctx& context) {
-                collectedExpressions.reserve(collectedExpressions.size() + cols.count);
+                this->collectedExpressions.reserve(this->collectedExpressions.size() + cols.count);
                 iterate_tuple(cols.columns, [this, &context](auto& colExpr) {
                     (*this)(colExpr, context);
                 });
                 // note: `capacity() > size()` can occur in case `asterisk_t<>` does spell out the columns in defined order
                 if(mpl::invoke_t<check_if_tuple_has_template<asterisk_t>,
                                  typename columns_t<Args...>::columns_type>::value &&
-                   collectedExpressions.capacity() > collectedExpressions.size()) {
-                    collectedExpressions.shrink_to_fit();
+                   this->collectedExpressions.capacity() > this->collectedExpressions.size()) {
+                    this->collectedExpressions.shrink_to_fit();
                 }
-                return collectedExpressions;
+                return this->collectedExpressions;
             }
 
             std::vector<std::string> collectedExpressions;
