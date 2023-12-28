@@ -5,7 +5,7 @@
 #include <utility>  //  std::forward
 
 #include "../functional/cxx_universal.h"
-#include "../tuple_helper/tuple_filter.h"
+#include "../tuple_helper/tuple_traits.h"
 #include "../indexed_column.h"
 #include "../table_type_of.h"
 

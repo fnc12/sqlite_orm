@@ -1620,7 +1620,7 @@ namespace sqlite_orm {
                 }
                 ss << streaming_serialized(get_column_names(sel.col, subCtx));
                 using conditions_tuple = typename statement_type::conditions_type;
-                constexpr bool hasExplicitFrom = tuple_has<is_from, conditions_tuple>::value;
+                constexpr bool hasExplicitFrom = tuple_has<conditions_tuple, is_from>::value;
                 if(!hasExplicitFrom) {
                     auto tableNames = collect_table_names(sel, context);
                     using joins_index_sequence = filter_tuple_sequence_t<conditions_tuple, is_constrained_join>;

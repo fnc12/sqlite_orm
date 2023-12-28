@@ -98,8 +98,7 @@ namespace sqlite_orm {
                     (*this)(colExpr, context);
                 });
                 // note: `capacity() > size()` can occur in case `asterisk_t<>` does spell out the columns in defined order
-                if(mpl::invoke_t<check_if_tuple_has_template<asterisk_t>,
-                                 typename columns_t<Args...>::columns_type>::value &&
+                if(tuple_has_template<typename columns_t<Args...>::columns_type, asterisk_t>::value &&
                    this->collectedExpressions.capacity() > this->collectedExpressions.size()) {
                     this->collectedExpressions.shrink_to_fit();
                 }

@@ -6,10 +6,7 @@
 
 #include <memory>  //  std::make_unique
 
-#include "../functional/cxx_core_features.h"
 #include "../functional/static_magic.h"
-#include "../functional/index_sequence_util.h"
-#include "../tuple_helper/tuple_filter.h"
 #include "../tuple_helper/tuple_traits.h"
 #include "../default_value_extractor.h"
 #include "../schema/column.h"
@@ -19,18 +16,16 @@ namespace sqlite_orm {
 
         template<class... Op>
         std::unique_ptr<std::string> column_constraints<Op...>::default_value() const {
-            using default_op_index_sequence =
-                filter_tuple_sequence_t<constraints_type, check_if_is_template<default_t>::template fn>;
+            using default_op_index = find_tuple_template<constraints_type, default_t>;
 
             std::unique_ptr<std::string> value;
-            call_if_constexpr<default_op_index_sequence::size()>(
-                [&value](auto& constraints, auto op_index_sequence) {
-                    using default_op_index_sequence = decltype(op_index_sequence);
-                    constexpr size_t opIndex = first_index_sequence_value(default_op_index_sequence{});
-                    value = std::make_unique<std::string>(serialize_default_value(get<opIndex>(constraints)));
+            call_if_constexpr<default_op_index::value != std::tuple_size<constraints_type>::value>(
+                [&value](auto& constraints, auto /*idx*/) {
+                    constexpr size_t opIndex = default_op_index::value;
+                    value = std::make_unique<std::string>(serialize_default_value(std::get<opIndex>(constraints)));
                 },
                 this->constraints,
-                default_op_index_sequence{});
+                default_op_index{});
             return value;
         }
 
