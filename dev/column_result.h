@@ -233,15 +233,12 @@ namespace sqlite_orm {
             using table_type = storage_pick_table_t<Moniker, DBOs>;
             using cte_mapper_type = cte_mapper_type_t<table_type>;
 
-            // filter all column references being `alias_holder<>`
-            using alias_types_tuple =
-                transform_tuple_t<typename cte_mapper_type::final_colrefs_tuple, alias_holder_type_or_none_t>;
-
-            // lookup index of ColAlias in alias_types_tuple
-            static constexpr auto ColIdx = tuple_index_of_v<ColAlias, alias_types_tuple>;
-            static_assert(ColIdx != -1, "No such column mapped into the CTE.");
-
-            using type = std::tuple_element_t<ColIdx, typename cte_mapper_type::fields_type>;
+            // lookup ColAlias in the final column references
+            using colalias_index =
+                find_tuple_type<typename cte_mapper_type::final_colrefs_tuple, alias_holder<ColAlias>>;
+            static_assert(colalias_index::value < std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
+                          "No such column mapped into the CTE.");
+            using type = std::tuple_element_t<colalias_index::value, typename cte_mapper_type::fields_type>;
         };
 #endif
 

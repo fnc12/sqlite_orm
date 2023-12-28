@@ -236,9 +236,9 @@ namespace sqlite_orm {
                                    const SubselectColRefs& subselectColRefs,
                                    [[maybe_unused]] const ExplicitColRefs& explicitColRefs,
                                    std::index_sequence<Idx...>) {
-            if constexpr(std::tuple_size_v < ExplicitColRefs >> 0) {
+            if constexpr(std::tuple_size_v<ExplicitColRefs> != 0) {
                 static_assert(
-                    (!internal::is_builtin_numeric_column_alias_v<
+                    (!is_builtin_numeric_column_alias_v<
                          alias_holder_type_or_none_t<std::tuple_element_t<Idx, ExplicitColRefs>>> &&
                      ...),
                     "Numeric column aliases are reserved for referencing columns locally within a single CTE.");

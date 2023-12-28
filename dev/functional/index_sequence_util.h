@@ -2,7 +2,7 @@
 
 #include <utility>  //  std::index_sequence
 
-#include "../functional/cxx_universal.h"
+#include "../functional/cxx_universal.h"  //  ::size_t
 
 namespace sqlite_orm {
     namespace internal {

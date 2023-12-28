@@ -410,7 +410,7 @@ namespace sqlite_orm {
             });
             using constraints_tuple = decltype(column.constraints);
             constexpr bool hasExplicitNullableConstraint =
-                mpl::invoke_t<mpl::disjunction<check_if_tuple_has_type<null_t>, check_if_tuple_has_type<not_null_t>>,
+                mpl::invoke_t<mpl::disjunction<check_if_has_type<null_t>, check_if_has_type<not_null_t>>,
                               constraints_tuple>::value;
             if(!hasExplicitNullableConstraint) {
                 if(isNotNull) {

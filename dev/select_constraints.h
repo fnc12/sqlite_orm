@@ -9,10 +9,10 @@
 #include <tuple>  //  std::tuple, std::get, std::tuple_size
 #include "functional/cxx_optional.h"
 
-#include "functional/cxx_universal.h"
+#include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/cxx_type_traits_polyfill.h"
 #include "is_base_of_template.h"
-#include "tuple_helper/tuple_filter.h"
+#include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_transformer.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "optional_container.h"
@@ -533,13 +533,13 @@ namespace sqlite_orm {
                                   std::is_convertible<ExplicitCols, std::string>>...>,
                               bool> = true>
     auto cte(ExplicitCols... explicitColumns) {
-        static_assert(internal::is_cte_moniker_v<Moniker>, "Moniker must be a CTE moniker");
-        static_assert((!internal::is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
+        using namespace ::sqlite_orm::internal;
+        static_assert(is_cte_moniker_v<Moniker>, "Moniker must be a CTE moniker");
+        static_assert((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
 
-        using builder_type = internal::cte_builder<
-            Moniker,
-            internal::transform_tuple_t<std::tuple<ExplicitCols...>, internal::decay_explicit_column_t>>;
+        using builder_type =
+            cte_builder<Moniker, transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
         return builder_type{{std::move(explicitColumns)...}};
     }
 
@@ -551,12 +551,12 @@ namespace sqlite_orm {
                   std::convertible_to<ExplicitCols, std::string>) &&
                  ...)
     auto cte(ExplicitCols... explicitColumns) {
-        static_assert((!internal::is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
+        using namespace ::sqlite_orm::internal;
+        static_assert((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
 
-        using builder_type = internal::cte_builder<
-            decltype(moniker),
-            internal::transform_tuple_t<std::tuple<ExplicitCols...>, internal::decay_explicit_column_t>>;
+        using builder_type =
+            cte_builder<decltype(moniker), transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
         return builder_type{{std::move(explicitColumns)...}};
     }
 #endif

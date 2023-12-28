@@ -2,8 +2,9 @@
 
 #include <string>  //  std::string
 
-#include "functional/cxx_universal.h"  //  ::nullptr_t
+#include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/static_magic.h"
+#include "functional/index_sequence_util.h"
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_filter.h"
 #include "tuple_helper/tuple_iteration.h"
@@ -68,15 +69,15 @@ namespace sqlite_orm {
             using table_type = storage_pick_table_t<Moniker, DBOs>;
             using cte_mapper_type = cte_mapper_type_t<table_type>;
 
-            // filter all column references [`alias_holder<>`]
-            using alias_types_tuple =
-                transform_tuple_t<typename cte_mapper_type::final_colrefs_tuple, alias_holder_type_or_none_t>;
+            // lookup ColAlias in the final column references
+            using colalias_index =
+                find_tuple_type<typename cte_mapper_type::final_colrefs_tuple, alias_holder<ColAlias>>;
+            static_assert(colalias_index::value < std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
+                          "No such column mapped into the CTE.");
 
-            // lookup index in alias_types_tuple by Alias
-            constexpr auto ColIdx = tuple_index_of_v<ColAlias, alias_types_tuple>;
-            static_assert(ColIdx != -1, "No such column mapped into the CTE.");
-
-            return &aliased_field<ColAlias, std::tuple_element_t<ColIdx, typename cte_mapper_type::fields_type>>::field;
+            return &aliased_field<
+                ColAlias,
+                std::tuple_element_t<colalias_index::value, typename cte_mapper_type::fields_type>>::field;
         }
 #endif
 
@@ -101,22 +102,19 @@ namespace sqlite_orm {
                                                   const column_pointer<Moniker, alias_holder<ColAlias>>&) {
             using table_type = storage_pick_table_t<Moniker, DBOs>;
             using cte_mapper_type = cte_mapper_type_t<table_type>;
-            using elements_t = typename table_type::elements_type;
-            using column_idxs = filter_tuple_sequence_t<elements_t, is_column>;
+            using column_index_sequence = filter_tuple_sequence_t<elements_type_t<table_type>, is_column>;
 
             // note: even though the columns contain the [`aliased_field<>::*`] we perform the lookup using the column references.
-            // filter all column references [`alias_holder<>`]
-            using alias_types_tuple =
-                transform_tuple_t<typename cte_mapper_type::final_colrefs_tuple, alias_holder_type_or_none_t>;
-
-            // lookup index of ColAlias in alias_types_tuple
-            constexpr auto I = tuple_index_of_v<ColAlias, alias_types_tuple>;
-            static_assert(I != -1, "No such column mapped into the CTE.");
+            // lookup ColAlias in the final column references
+            using colalias_index =
+                find_tuple_type<typename cte_mapper_type::final_colrefs_tuple, alias_holder<ColAlias>>;
+            static_assert(colalias_index::value < std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
+                          "No such column mapped into the CTE.");
 
             // note: we could "materialize" the alias to an `aliased_field<>::*` and use the regular `table_t<>::find_column_name()` mechanism;
             //       however we have the column index already.
             // lookup column in table_t<>'s elements
-            constexpr size_t ColIdx = index_sequence_value(I, column_idxs{});
+            constexpr size_t ColIdx = index_sequence_value(colalias_index::value, column_index_sequence{});
             auto& table = pick_table<Moniker>(dboObjects);
             return &std::get<ColIdx>(table.elements).name;
         }

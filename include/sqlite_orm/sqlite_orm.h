@@ -862,9 +862,10 @@ namespace sqlite_orm {
  */
 
 #include <type_traits>  //  std::enable_if, std::is_same
+#include <initializer_list>
 
 // #include "cxx_universal.h"
-
+//  ::size_t
 // #include "cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
@@ -896,34 +897,35 @@ namespace sqlite_orm {
             /*
              *  The indirection through `defer_fn` works around the language inability
              *  to expand `Args...` into a fixed parameter list of an alias template.
-             */
-            template<template<class...> class Fn, class... Args>
-            struct defer {
-                using type = Fn<Args...>;
-            };
-
-#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
-            /*
-             *  Invoke metafunction.
-             */
-            template<template<class...> class Fn, class... Args>
-            using invoke_fn_t = Fn<Args...>;
-#else
-            /*
-             *  Invoke metafunction.
              *  
-             *  Note: legacy compilers need an extra layer of indirection, otherwise type replacement may fail
+             *  Also, legacy compilers need an extra layer of indirection, otherwise type replacement may fail
              *  if alias template `Fn` has a dependent expression in it.
              */
             template<template<class...> class Fn, class... Args>
-            using invoke_fn_t = typename defer<Fn, Args...>::type;
-#endif
+            struct defer_fn {
+                using type = Fn<Args...>;
+            };
+
+            /*
+             *  The indirection through `defer` works around the language inability
+             *  to expand `Args...` into a fixed parameter list of an alias template.
+             */
+            template<class Q, class... Args>
+            struct defer {
+                using type = typename Q::template fn<Args...>;
+            };
+
+            /*
+             *  Invoke metafunction.
+             */
+            template<template<class...> class Fn, class... Args>
+            using invoke_fn_t = typename defer_fn<Fn, Args...>::type;
 
             /*
              *  Invoke quoted metafunction by invoking its nested metafunction.
              */
             template<class Q, class... Args>
-            using invoke_t = typename Q::template fn<Args...>;
+            using invoke_t = typename defer<Q, Args...>::type;
 
             /*
              *  Turn metafunction into a quoted metafunction.
@@ -955,13 +957,18 @@ namespace sqlite_orm {
 
             template<>
             struct higherorder<0u> {
+                template<template<template<class...> class Fn, class... Args2> class HigherFn, class Q, class... Args>
+                struct defer_higher_fn {
+                    using type = HigherFn<Q::template fn, Args...>;
+                };
+
                 /*
                  *  Turn higher-order metafunction into a quoted metafunction.
                  */
                 template<template<template<class...> class Fn, class... Args2> class HigherFn>
                 struct quote_fn {
                     template<class Q, class... Args>
-                    using fn = HigherFn<Q::template fn, Args...>;
+                    using fn = typename defer_higher_fn<HigherFn, Q, Args...>::type;
                 };
             };
 
@@ -995,7 +1002,7 @@ namespace sqlite_orm {
             struct pass_result_of {
                 // invoke `Fn`, pass on their result
                 template<class... Args>
-                using fn = typename Q::template fn<typename defer<Fn, Args...>::type...>;
+                using fn = typename Q::template fn<typename defer_fn<Fn, Args...>::type...>;
             };
 
             /*
@@ -1088,6 +1095,102 @@ namespace sqlite_orm {
                      class... Bound>
             using bind_front_higherorder_fn =
                 bind_front<higherorder<0>::quote_fn<HigherFn>, quote_fn<BoundFn>, Bound...>;
+
+#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
+            constexpr size_t find_first_true_helper(std::initializer_list<bool> values) {
+                size_t i = 0;
+                for(auto first = values.begin(); first != values.end() && !*first; ++first) {
+                    ++i;
+                }
+                return i;
+            }
+
+            constexpr size_t count_true_helper(std::initializer_list<bool> values) {
+                size_t n = 0;
+                for(auto first = values.begin(); first != values.end(); ++first) {
+                    n += *first;
+                }
+                return n;
+            }
+#else
+            constexpr size_t find_first_true_helper(const bool* first, const bool* end) {
+                return first == end || *first ? 0 : 1 + find_first_true_helper(first + 1, end);
+            }
+            constexpr size_t find_first_true_helper(const std::initializer_list<bool>& values) {
+                return find_first_true_helper(values.begin(), values.end());
+            }
+
+            constexpr size_t count_true_helper(const bool* first, const bool* end) {
+                return first == end ? 0 : *first + count_true_helper(first + 1, end);
+            }
+            constexpr size_t count_true_helper(const std::initializer_list<bool>& values) {
+                return count_true_helper(values.begin(), values.end());
+            }
+#endif
+
+            /*
+             *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list,
+             *  and returns the index constant of the first element for which the predicate returns true.
+             */
+            template<class PredicateQ>
+            struct finds {
+                template<class Pack, class ProjectQ>
+                struct invoke_this_fn {
+                    static_assert(polyfill::always_false_v<Pack>,
+                                  "`finds` must be invoked with a type list as first argument.");
+                };
+
+                template<template<class...> class Pack, class... T, class ProjectQ>
+                struct invoke_this_fn<Pack<T...>, ProjectQ> {
+                    using type = polyfill::index_constant<find_first_true_helper(
+                        {PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...})>;
+                };
+
+                template<class Pack, class ProjectQ = identity>
+                using fn = typename invoke_this_fn<Pack, ProjectQ>::type;
+            };
+
+            template<template<class...> class PredicateFn>
+            using finds_fn = finds<quote_fn<PredicateFn>>;
+
+            /*
+             *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list,
+             *  and returns the index constant of the first element for which the predicate returns true.
+             */
+            template<class PredicateQ>
+            struct counts {
+                template<class Pack, class ProjectQ>
+                struct invoke_this_fn {
+                    static_assert(polyfill::always_false_v<Pack>,
+                                  "`counts` must be invoked with a type list as first argument.");
+                };
+
+                template<template<class...> class Pack, class... T, class ProjectQ>
+                struct invoke_this_fn<Pack<T...>, ProjectQ> {
+                    using type = polyfill::index_constant<count_true_helper(
+                        {PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...})>;
+                };
+
+                template<class Pack, class ProjectQ = identity>
+                using fn = typename invoke_this_fn<Pack, ProjectQ>::type;
+            };
+
+            template<template<class...> class PredicateFn>
+            using counts_fn = counts<quote_fn<PredicateFn>>;
+
+            /*
+             *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list,
+             *  and returns the index constant of the first element for which the predicate returns true.
+             */
+            template<class TraitQ>
+            struct contains {
+                template<class Pack, class ProjectQ = identity>
+                using fn =
+                    polyfill::bool_constant<static_cast<bool>(defer<counts<TraitQ>, Pack, ProjectQ>::type::value)>;
+            };
+
+            template<template<class...> class TraitFn>
+            using contains_fn = contains<quote_fn<TraitFn>>;
         }
     }
 
@@ -1108,12 +1211,10 @@ namespace sqlite_orm {
         using check_if_not = mpl::not_fn<TraitFn>;
 
         /*
-         *  Quoted trait metafunction that checks if a type (possibly projected) is the same as the specified type.
-         *  
-         *  `ProjOp` is a projection applied to `Type` and must be a metafunction.
+         *  Quoted trait metafunction that checks if a type is the same as the specified type.
          */
-        template<class Type, template<class...> class ProjOp = polyfill::type_identity_t>
-        using check_if_is_type = mpl::pass_result_of<mpl::bind_front_fn<std::is_same, Type>, ProjOp>;
+        template<class Type>
+        using check_if_is_type = mpl::bind_front_fn<std::is_same, Type>;
 
         /*
          *  Quoted trait metafunction that checks if a type's template matches the specified template
@@ -1122,6 +1223,57 @@ namespace sqlite_orm {
         template<template<class...> class Template>
         using check_if_is_template =
             mpl::pass_extracted_fn_to<mpl::bind_front_fn<std::is_same, mpl::quote_fn<Template>>>;
+
+        /*
+         *  Quoted metafunction that finds the index of the given type in a tuple.
+         */
+        template<class Type>
+        using finds_if_has_type = mpl::finds<check_if_is_type<Type>>;
+
+        /*
+         *  Quoted metafunction that finds the index of the given class template in a tuple.
+         */
+        template<template<class...> class Template>
+        using finds_if_has_template = mpl::finds<check_if_is_template<Template>>;
+
+        /*
+         *  Quoted trait metafunction that counts tuple elements having a given trait.
+         */
+        template<template<class...> class TraitFn>
+        using counts_if_has = mpl::counts_fn<TraitFn>;
+
+        /*
+         *  Quoted trait metafunction that checks whether a tuple contains a type with given trait.
+         */
+        template<template<class...> class TraitFn>
+        using check_if_has = mpl::contains_fn<TraitFn>;
+
+        /*
+         *  Quoted trait metafunction that checks whether a tuple doesn't contain a type with given trait.
+         */
+        template<template<class...> class TraitFn>
+        using check_if_has_not = mpl::not_<check_if_has<TraitFn>>;
+
+        /*
+         *  Quoted metafunction that checks whether a tuple contains given type.
+         */
+        template<class T>
+        using check_if_has_type = mpl::contains<check_if_is_type<T>>;
+
+        /*
+         *  Quoted metafunction that checks whether a tuple contains a given template.
+         *
+         *  Note: we are using 2 small tricks:
+         *  1. A template template parameter can be treated like a metafunction, so we can just "quote" a 'primary'
+         *     template into the MPL system (e.g. `std::vector`).
+         *  2. This quoted metafunction does the opposite of the trait metafunction `is_specialization`:
+         *     `is_specialization` tries to instantiate the primary template template parameter using the
+         *     template parameters of a template type, then compares both instantiated types.
+         *     Here instead, `pass_extracted_fn_to` extracts the template template parameter from a template type,
+         *     then compares the resulting template template parameters.
+         */
+        template<template<class...> class Template>
+        using check_if_has_template = mpl::contains<check_if_is_template<Template>>;
     }
 }
 
@@ -1174,82 +1326,57 @@ namespace sqlite_orm {
 
 // #include "tuple_helper/tuple_traits.h"
 
-#include <type_traits>  //  std::is_same
-#include <utility>  //  std::index_sequence, std::index_sequence_for
-#include <algorithm>  //  std::max
-#include <tuple>
-
-// #include "../functional/cxx_universal.h"
-
 // #include "../functional/cxx_type_traits_polyfill.h"
 
 // #include "../functional/mpl.h"
 
 namespace sqlite_orm {
+    // convenience metafunction algorithms
     namespace internal {
-
-#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
-        // cudos to OznOg https://stackoverflow.com/a/64606884/279251
-        template<class X, class Tuple>
-        struct tuple_index_of;
-
-        template<class X, class... T>
-        struct tuple_index_of<X, std::tuple<T...>> {
-            template<size_t... idx>
-            static constexpr ptrdiff_t find_idx(std::index_sequence<idx...>) {
-                return std::max({static_cast<ptrdiff_t>(std::is_same<X, T>::value ? idx : -1)...});
-            }
-
-            static constexpr ptrdiff_t value = find_idx(std::index_sequence_for<T...>{});
-        };
-        template<class X, class Tuple>
-        inline constexpr ptrdiff_t tuple_index_of_v = tuple_index_of<X, Tuple>::value;
-#endif
+        /*
+         *  Higher-order trait metafunction that checks whether a tuple contains a type with given trait (possibly projected).
+         */
+        template<class Pack,
+                 template<class...>
+                 class TraitFn,
+                 template<class...> class ProjOp = polyfill::type_identity_t>
+        using tuple_has = mpl::invoke_t<check_if_has<TraitFn>, Pack, mpl::quote_fn<ProjOp>>;
 
         /*
-         *  Higher-order trait metafunction that checks whether a tuple contains a type with given trait.
+         *  Higher-order trait metafunction that checks whether a tuple contains the specified class template (possibly projected).
          */
-        template<template<class...> class TraitFn, class Tuple>
-        struct tuple_has {};
-        template<template<class...> class TraitFn, class... Types>
-        struct tuple_has<TraitFn, std::tuple<Types...>> : polyfill::disjunction<mpl::invoke_fn_t<TraitFn, Types>...> {};
+        template<class Pack,
+                 template<class...>
+                 class Template,
+                 template<class...> class ProjOp = polyfill::type_identity_t>
+        using tuple_has_template = mpl::invoke_t<check_if_has_template<Template>, Pack, mpl::quote_fn<ProjOp>>;
 
         /*
-         *  Trait metafunction class that checks whether a tuple contains a type with given trait.
+         *  Higher-order metafunction returning the first index constant of the desired type in a tuple (possibly projected).
          */
-        template<template<class...> class TraitFn>
-        using check_if_tuple_has = mpl::bind_front_higherorder_fn<tuple_has, TraitFn>;
+        template<class Pack, class Type, template<class...> class ProjOp = polyfill::type_identity_t>
+        using find_tuple_type = mpl::invoke_t<finds_if_has_type<Type>, Pack, mpl::quote_fn<ProjOp>>;
 
         /*
-         *  Trait metafunction class that checks whether a tuple doesn't contain a type with given trait.
+         *  Higher-order metafunction returning the first index constant of the desired class template in a tuple (possibly projected).
          */
-        template<template<class...> class TraitFn>
-        using check_if_tuple_has_not = mpl::not_<check_if_tuple_has<TraitFn>>;
+        template<class Pack,
+                 template<class...>
+                 class Template,
+                 template<class...> class ProjOp = polyfill::type_identity_t>
+        using find_tuple_template = mpl::invoke_t<finds_if_has_template<Template>, Pack, mpl::quote_fn<ProjOp>>;
 
         /*
-         *  Metafunction class that checks whether a tuple contains given type.
+         *  Higher-order trait metafunction that counts the types having the specified trait in a tuple (possibly projected).
+         *  
+         *  `Pred` is a predicate metafunction with a nested bool member named `value`
+         *  `Proj` is a metafunction
          */
-        template<class T, template<class...> class Proj = polyfill::type_identity_t>
-        using check_if_tuple_has_type =
-            mpl::bind_front_higherorder_fn<tuple_has, check_if_is_type<T, Proj>::template fn>;
-
-        /*
-         *  Metafunction class that checks whether a tuple contains a given template.
-         *
-         *  Note: we are using 2 small tricks:
-         *  1. A template template parameter can be treated like a metafunction, so we can just "quote" a 'primary'
-         *     template into the MPL system (e.g. `std::vector`).
-         *  2. This metafunction class does the opposite of the trait function `is_specialization`:
-         *     `is_specialization` tries to instantiate the primary template template parameter using the
-         *     template parameters of a template type, then compares both instantiated types.
-         *     Here instead, `pass_extracted_fn_to` extracts the template template parameter from a template type,
-         *     then compares the resulting template template parameters.
-         */
-        template<template<class...> class Primary>
-        using check_if_tuple_has_template =
-            mpl::bind_front_higherorder_fn<tuple_has, check_if_is_template<Primary>::template fn>;
+        template<class Pack, template<class...> class Pred, template<class...> class ProjOp = polyfill::type_identity_t>
+        using count_tuple = mpl::invoke_t<counts_if_has<Pred>, Pack, mpl::quote_fn<ProjOp>>;
     }
 }
+
 // #include "tuple_helper/tuple_filter.h"
 
 #include <type_traits>  //  std::integral_constant, std::index_sequence, std::conditional, std::declval
@@ -1262,6 +1389,7 @@ namespace sqlite_orm {
 #include <utility>  //  std::index_sequence
 
 // #include "../functional/cxx_universal.h"
+//  ::size_t
 
 namespace sqlite_orm {
     namespace internal {
@@ -1380,16 +1508,6 @@ namespace sqlite_orm {
                  template<class...> class FilterProj = polyfill::type_identity_t,
                  class Seq = std::make_index_sequence<std::tuple_size<Tpl>::value>>
         using filter_tuple_t = tuple_from_index_sequence_t<Tpl, filter_tuple_sequence_t<Tpl, Pred, FilterProj, Seq>>;
-
-        /*
-         *  `Pred` is a metafunction that defines a bool member named `value`
-         *  `FilterProj` is a metafunction
-         */
-        template<class Tpl,
-                 template<class...>
-                 class Pred,
-                 template<class...> class FilterProj = polyfill::type_identity_t>
-        struct count_tuple : std::integral_constant<int, filter_tuple_sequence_t<Tpl, Pred, FilterProj>::size()> {};
 
         /*
          *  Count a tuple, picking only those elements specified in the index sequence.
@@ -1926,12 +2044,12 @@ namespace sqlite_orm {
         template<typename T>
         struct is_primary_key_insertable
             : polyfill::disjunction<
-                  mpl::invoke_t<mpl::disjunction<check_if_tuple_has_template<default_t>,
-                                                 check_if_tuple_has_template<primary_key_with_autoincrement>>,
+                  mpl::invoke_t<mpl::disjunction<check_if_has_template<default_t>,
+                                                 check_if_has_template<primary_key_with_autoincrement>>,
                                 constraints_type_t<T>>,
                   std::is_base_of<integer_printer, type_printer<field_type_t<T>>>> {
 
-            static_assert(tuple_has<is_primary_key, constraints_type_t<T>>::value, "an unexpected type was passed");
+            static_assert(tuple_has<constraints_type_t<T>, is_primary_key>::value, "an unexpected type was passed");
         };
 
         template<class T>
@@ -2695,7 +2813,7 @@ namespace sqlite_orm {
              */
             template<template<class...> class Trait>
             constexpr static bool is() {
-                return tuple_has<Trait, constraints_type>::value;
+                return tuple_has<constraints_type, Trait>::value;
             }
 
             /**
@@ -2747,13 +2865,13 @@ namespace sqlite_orm {
 
         template<class Elements, template<class...> class TraitFn>
         using col_index_sequence_with = filter_tuple_sequence_t<Elements,
-                                                                check_if_tuple_has<TraitFn>::template fn,
+                                                                check_if_has<TraitFn>::template fn,
                                                                 constraints_type_t,
                                                                 filter_tuple_sequence_t<Elements, is_column>>;
 
         template<class Elements, template<class...> class TraitFn>
         using col_index_sequence_excluding = filter_tuple_sequence_t<Elements,
-                                                                     check_if_tuple_has_not<TraitFn>::template fn,
+                                                                     check_if_has_not<TraitFn>::template fn,
                                                                      constraints_type_t,
                                                                      filter_tuple_sequence_t<Elements, is_column>>;
     }
@@ -5307,7 +5425,7 @@ namespace sqlite_orm {
 
 // #include "is_base_of_template.h"
 
-// #include "tuple_helper/tuple_filter.h"
+// #include "tuple_helper/tuple_traits.h"
 
 // #include "conditions.h"
 
@@ -7454,12 +7572,12 @@ namespace sqlite_orm {
 // #include "functional/cxx_optional.h"
 
 // #include "functional/cxx_universal.h"
-
+//  ::size_t
 // #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "is_base_of_template.h"
 
-// #include "tuple_helper/tuple_filter.h"
+// #include "tuple_helper/tuple_traits.h"
 
 // #include "tuple_helper/tuple_transformer.h"
 
@@ -8385,13 +8503,13 @@ namespace sqlite_orm {
                                   std::is_convertible<ExplicitCols, std::string>>...>,
                               bool> = true>
     auto cte(ExplicitCols... explicitColumns) {
-        static_assert(internal::is_cte_moniker_v<Moniker>, "Moniker must be a CTE moniker");
-        static_assert((!internal::is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
+        using namespace ::sqlite_orm::internal;
+        static_assert(is_cte_moniker_v<Moniker>, "Moniker must be a CTE moniker");
+        static_assert((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
 
-        using builder_type = internal::cte_builder<
-            Moniker,
-            internal::transform_tuple_t<std::tuple<ExplicitCols...>, internal::decay_explicit_column_t>>;
+        using builder_type =
+            cte_builder<Moniker, transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
         return builder_type{{std::move(explicitColumns)...}};
     }
 
@@ -8403,12 +8521,12 @@ namespace sqlite_orm {
                   std::convertible_to<ExplicitCols, std::string>) &&
                  ...)
     auto cte(ExplicitCols... explicitColumns) {
-        static_assert((!internal::is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
+        using namespace ::sqlite_orm::internal;
+        static_assert((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
 
-        using builder_type = internal::cte_builder<
-            decltype(moniker),
-            internal::transform_tuple_t<std::tuple<ExplicitCols...>, internal::decay_explicit_column_t>>;
+        using builder_type =
+            cte_builder<decltype(moniker), transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
         return builder_type{{std::move(explicitColumns)...}};
     }
 #endif
@@ -10506,7 +10624,7 @@ namespace sqlite_orm {
 
 // #include "../functional/cxx_universal.h"
 
-// #include "../tuple_helper/tuple_filter.h"
+// #include "../tuple_helper/tuple_traits.h"
 
 // #include "../indexed_column.h"
 
@@ -11257,8 +11375,10 @@ namespace sqlite_orm {
 #include <string>  //  std::string
 
 // #include "functional/cxx_universal.h"
-//  ::nullptr_t
+//  ::size_t
 // #include "functional/static_magic.h"
+
+// #include "functional/index_sequence_util.h"
 
 // #include "tuple_helper/tuple_traits.h"
 
@@ -11558,15 +11678,15 @@ namespace sqlite_orm {
             using table_type = storage_pick_table_t<Moniker, DBOs>;
             using cte_mapper_type = cte_mapper_type_t<table_type>;
 
-            // filter all column references [`alias_holder<>`]
-            using alias_types_tuple =
-                transform_tuple_t<typename cte_mapper_type::final_colrefs_tuple, alias_holder_type_or_none_t>;
+            // lookup ColAlias in the final column references
+            using colalias_index =
+                find_tuple_type<typename cte_mapper_type::final_colrefs_tuple, alias_holder<ColAlias>>;
+            static_assert(colalias_index::value < std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
+                          "No such column mapped into the CTE.");
 
-            // lookup index in alias_types_tuple by Alias
-            constexpr auto ColIdx = tuple_index_of_v<ColAlias, alias_types_tuple>;
-            static_assert(ColIdx != -1, "No such column mapped into the CTE.");
-
-            return &aliased_field<ColAlias, std::tuple_element_t<ColIdx, typename cte_mapper_type::fields_type>>::field;
+            return &aliased_field<
+                ColAlias,
+                std::tuple_element_t<colalias_index::value, typename cte_mapper_type::fields_type>>::field;
         }
 #endif
 
@@ -11591,22 +11711,19 @@ namespace sqlite_orm {
                                                   const column_pointer<Moniker, alias_holder<ColAlias>>&) {
             using table_type = storage_pick_table_t<Moniker, DBOs>;
             using cte_mapper_type = cte_mapper_type_t<table_type>;
-            using elements_t = typename table_type::elements_type;
-            using column_idxs = filter_tuple_sequence_t<elements_t, is_column>;
+            using column_index_sequence = filter_tuple_sequence_t<elements_type_t<table_type>, is_column>;
 
             // note: even though the columns contain the [`aliased_field<>::*`] we perform the lookup using the column references.
-            // filter all column references [`alias_holder<>`]
-            using alias_types_tuple =
-                transform_tuple_t<typename cte_mapper_type::final_colrefs_tuple, alias_holder_type_or_none_t>;
-
-            // lookup index of ColAlias in alias_types_tuple
-            constexpr auto I = tuple_index_of_v<ColAlias, alias_types_tuple>;
-            static_assert(I != -1, "No such column mapped into the CTE.");
+            // lookup ColAlias in the final column references
+            using colalias_index =
+                find_tuple_type<typename cte_mapper_type::final_colrefs_tuple, alias_holder<ColAlias>>;
+            static_assert(colalias_index::value < std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
+                          "No such column mapped into the CTE.");
 
             // note: we could "materialize" the alias to an `aliased_field<>::*` and use the regular `table_t<>::find_column_name()` mechanism;
             //       however we have the column index already.
             // lookup column in table_t<>'s elements
-            constexpr size_t ColIdx = index_sequence_value(I, column_idxs{});
+            constexpr size_t ColIdx = index_sequence_value(colalias_index::value, column_index_sequence{});
             auto& table = pick_table<Moniker>(dboObjects);
             return &std::get<ColIdx>(table.elements).name;
         }
@@ -12678,15 +12795,12 @@ namespace sqlite_orm {
             using table_type = storage_pick_table_t<Moniker, DBOs>;
             using cte_mapper_type = cte_mapper_type_t<table_type>;
 
-            // filter all column references being `alias_holder<>`
-            using alias_types_tuple =
-                transform_tuple_t<typename cte_mapper_type::final_colrefs_tuple, alias_holder_type_or_none_t>;
-
-            // lookup index of ColAlias in alias_types_tuple
-            static constexpr auto ColIdx = tuple_index_of_v<ColAlias, alias_types_tuple>;
-            static_assert(ColIdx != -1, "No such column mapped into the CTE.");
-
-            using type = std::tuple_element_t<ColIdx, typename cte_mapper_type::fields_type>;
+            // lookup ColAlias in the final column references
+            using colalias_index =
+                find_tuple_type<typename cte_mapper_type::final_colrefs_tuple, alias_holder<ColAlias>>;
+            static_assert(colalias_index::value < std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
+                          "No such column mapped into the CTE.");
+            using type = std::tuple_element_t<colalias_index::value, typename cte_mapper_type::fields_type>;
         };
 #endif
 
@@ -12988,7 +13102,7 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_functional_polyfill.h"
 
-// #include "tuple_helper/tuple_filter.h"
+// #include "tuple_helper/tuple_traits.h"
 
 // #include "connection_holder.h"
 
@@ -13192,6 +13306,8 @@ namespace sqlite_orm {
 #include <vector>  //  std::vector
 #include <sstream>  //  std::stringstream
 #include <type_traits>  //  std::false_type, std::true_type
+
+// #include "../tuple_helper/tuple_traits.h"
 
 // #include "../table_name_collector.h"
 
@@ -15460,7 +15576,7 @@ namespace sqlite_orm {
             });
             using constraints_tuple = decltype(column.constraints);
             constexpr bool hasExplicitNullableConstraint =
-                mpl::invoke_t<mpl::disjunction<check_if_tuple_has_type<null_t>, check_if_tuple_has_type<not_null_t>>,
+                mpl::invoke_t<mpl::disjunction<check_if_has_type<null_t>, check_if_has_type<not_null_t>>,
                               constraints_tuple>::value;
             if(!hasExplicitNullableConstraint) {
                 if(isNotNull) {
@@ -17573,8 +17689,7 @@ namespace sqlite_orm {
                     (*this)(colExpr, context);
                 });
                 // note: `capacity() > size()` can occur in case `asterisk_t<>` does spell out the columns in defined order
-                if(mpl::invoke_t<check_if_tuple_has_template<asterisk_t>,
-                                 typename columns_t<Args...>::columns_type>::value &&
+                if(tuple_has_template<typename columns_t<Args...>::columns_type, asterisk_t>::value &&
                    this->collectedExpressions.capacity() > this->collectedExpressions.size()) {
                     this->collectedExpressions.shrink_to_fit();
                 }
@@ -19537,7 +19652,7 @@ namespace sqlite_orm {
                 }
                 ss << streaming_serialized(get_column_names(sel.col, subCtx));
                 using conditions_tuple = typename statement_type::conditions_type;
-                constexpr bool hasExplicitFrom = tuple_has<is_from, conditions_tuple>::value;
+                constexpr bool hasExplicitFrom = tuple_has<conditions_tuple, is_from>::value;
                 if(!hasExplicitFrom) {
                     auto tableNames = collect_table_names(sel, context);
                     using joins_index_sequence = filter_tuple_sequence_t<conditions_tuple, is_constrained_join>;
@@ -20442,9 +20557,9 @@ namespace sqlite_orm {
                                    const SubselectColRefs& subselectColRefs,
                                    [[maybe_unused]] const ExplicitColRefs& explicitColRefs,
                                    std::index_sequence<Idx...>) {
-            if constexpr(std::tuple_size_v < ExplicitColRefs >> 0) {
+            if constexpr(std::tuple_size_v<ExplicitColRefs> != 0) {
                 static_assert(
-                    (!internal::is_builtin_numeric_column_alias_v<
+                    (!is_builtin_numeric_column_alias_v<
                          alias_holder_type_or_none_t<std::tuple_element_t<Idx, ExplicitColRefs>>> &&
                      ...),
                     "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
@@ -20659,7 +20774,7 @@ namespace sqlite_orm {
 
             template<class O>
             void assert_mapped_type() const {
-                static_assert(mpl::invoke_t<check_if_tuple_has_type<O, object_type_t>, db_objects_type>::value,
+                static_assert(mpl::invoke_t<check_if_has_type<O>, db_objects_type, mpl::quote_fn<object_type_t>>::value,
                               "type is not mapped to storage");
             }
 
@@ -22732,13 +22847,7 @@ namespace sqlite_orm {
 
 #include <memory>  //  std::make_unique
 
-// #include "../functional/cxx_core_features.h"
-
 // #include "../functional/static_magic.h"
-
-// #include "../functional/index_sequence_util.h"
-
-// #include "../tuple_helper/tuple_filter.h"
 
 // #include "../tuple_helper/tuple_traits.h"
 
@@ -22751,18 +22860,16 @@ namespace sqlite_orm {
 
         template<class... Op>
         std::unique_ptr<std::string> column_constraints<Op...>::default_value() const {
-            using default_op_index_sequence =
-                filter_tuple_sequence_t<constraints_type, check_if_is_template<default_t>::template fn>;
+            using default_op_index = find_tuple_template<constraints_type, default_t>;
 
             std::unique_ptr<std::string> value;
-            call_if_constexpr<default_op_index_sequence::size()>(
-                [&value](auto& constraints, auto op_index_sequence) {
-                    using default_op_index_sequence = decltype(op_index_sequence);
-                    constexpr size_t opIndex = first_index_sequence_value(default_op_index_sequence{});
-                    value = std::make_unique<std::string>(serialize_default_value(get<opIndex>(constraints)));
+            call_if_constexpr<default_op_index::value != std::tuple_size<constraints_type>::value>(
+                [&value](auto& constraints, auto /*idx*/) {
+                    constexpr size_t opIndex = default_op_index::value;
+                    value = std::make_unique<std::string>(serialize_default_value(std::get<opIndex>(constraints)));
                 },
                 this->constraints,
-                default_op_index_sequence{});
+                default_op_index{});
             return value;
         }
 

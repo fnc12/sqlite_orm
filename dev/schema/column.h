@@ -80,7 +80,7 @@ namespace sqlite_orm {
              */
             template<template<class...> class Trait>
             constexpr static bool is() {
-                return tuple_has<Trait, constraints_type>::value;
+                return tuple_has<constraints_type, Trait>::value;
             }
 
             /**
@@ -132,13 +132,13 @@ namespace sqlite_orm {
 
         template<class Elements, template<class...> class TraitFn>
         using col_index_sequence_with = filter_tuple_sequence_t<Elements,
-                                                                check_if_tuple_has<TraitFn>::template fn,
+                                                                check_if_has<TraitFn>::template fn,
                                                                 constraints_type_t,
                                                                 filter_tuple_sequence_t<Elements, is_column>>;
 
         template<class Elements, template<class...> class TraitFn>
         using col_index_sequence_excluding = filter_tuple_sequence_t<Elements,
-                                                                     check_if_tuple_has_not<TraitFn>::template fn,
+                                                                     check_if_has_not<TraitFn>::template fn,
                                                                      constraints_type_t,
                                                                      filter_tuple_sequence_t<Elements, is_column>>;
     }
