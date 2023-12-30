@@ -19,7 +19,7 @@ namespace sqlite_orm {
             static constexpr size_t default_op_index = find_tuple_template<constraints_type, default_t>::value;
 
             std::unique_ptr<std::string> value;
-            internal::call_if_constexpr<default_op_index != std::tuple_size<constraints_type>::value>(
+            call_if_constexpr<default_op_index != std::tuple_size<constraints_type>::value>(
                 [&value](auto& constraints) {
                     value =
                         std::make_unique<std::string>(serialize_default_value(std::get<default_op_index>(constraints)));

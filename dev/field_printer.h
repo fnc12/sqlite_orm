@@ -132,10 +132,10 @@ namespace sqlite_orm {
     };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
-    struct field_printer<
-        T,
-        std::enable_if_t<polyfill::conjunction_v<is_std_ptr<T>,
-                                                 internal::is_printable<std::remove_cv_t<typename T::element_type>>>>> {
+    struct field_printer<T,
+                         std::enable_if_t<polyfill::conjunction<
+                             is_std_ptr<T>,
+                             internal::is_printable<std::remove_cv_t<typename T::element_type>>>::value>> {
         using unqualified_type = std::remove_cv_t<typename T::element_type>;
 
         std::string operator()(const T& t) const {

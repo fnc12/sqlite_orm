@@ -90,7 +90,7 @@ namespace sqlite_orm {
 
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_prepared_statement_v =
-            polyfill::is_specialization_of_v<T, prepared_statement_t>;
+            polyfill::is_specialization_of<T, prepared_statement_t>::value;
 
         template<class T>
         struct is_prepared_statement : polyfill::bool_constant<is_prepared_statement_v<T>> {};
@@ -198,7 +198,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_v = polyfill::is_specialization_of_v<T, insert_t>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_v = polyfill::is_specialization_of<T, insert_t>::value;
 
         template<class T>
         struct is_insert : polyfill::bool_constant<is_insert_v<T>> {};
@@ -220,7 +220,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_v = polyfill::is_specialization_of_v<T, replace_t>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_v = polyfill::is_specialization_of<T, replace_t>::value;
 
         template<class T>
         struct is_replace : polyfill::bool_constant<is_replace_v<T>> {};
@@ -236,7 +236,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_range_v = polyfill::is_specialization_of_v<T, insert_range_t>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_range_v =
+            polyfill::is_specialization_of<T, insert_range_t>::value;
 
         template<class T>
         struct is_insert_range : polyfill::bool_constant<is_insert_range_v<T>> {};
@@ -252,7 +253,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_range_v = polyfill::is_specialization_of_v<T, replace_range_t>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_range_v =
+            polyfill::is_specialization_of<T, replace_range_t>::value;
 
         template<class T>
         struct is_replace_range : polyfill::bool_constant<is_replace_range_v<T>> {};
@@ -265,7 +267,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_raw_v = polyfill::is_specialization_of_v<T, insert_raw_t>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_raw_v = polyfill::is_specialization_of<T, insert_raw_t>::value;
 
         template<class T>
         struct is_insert_raw : polyfill::bool_constant<is_insert_raw_v<T>> {};
@@ -278,7 +280,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_raw_v = polyfill::is_specialization_of_v<T, replace_raw_t>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_raw_v = polyfill::is_specialization_of<T, replace_raw_t>::value;
 
         template<class T>
         struct is_replace_raw : polyfill::bool_constant<is_replace_raw_v<T>> {};

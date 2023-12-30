@@ -30,11 +30,11 @@ namespace sqlite_orm {
 
         // enable_if for types
         template<template<typename...> class Op, class... Args>
-        using match_if_not = std::enable_if_t<polyfill::negation_v<Op<Args...>>>;
+        using match_if_not = std::enable_if_t<polyfill::negation<Op<Args...>>::value>;
 
         // enable_if for types
         template<class T, template<typename...> class Primary>
-        using match_specialization_of = std::enable_if_t<polyfill::is_specialization_of_v<T, Primary>>;
+        using match_specialization_of = std::enable_if_t<polyfill::is_specialization_of<T, Primary>::value>;
 
         // enable_if for functions
         template<template<typename...> class Op, class... Args>
@@ -46,7 +46,8 @@ namespace sqlite_orm {
 
         // enable_if for functions
         template<class T, template<typename...> class Primary>
-        using satisfies_is_specialization_of = std::enable_if_t<polyfill::is_specialization_of_v<T, Primary>, bool>;
+        using satisfies_is_specialization_of =
+            std::enable_if_t<polyfill::is_specialization_of<T, Primary>::value, bool>;
     }
 
     // type name template aliases for syntactic sugar

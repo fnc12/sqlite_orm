@@ -45,7 +45,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_built_in_function_v = is_base_of_template_v<T, built_in_function_t>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_built_in_function_v =
+            is_base_of_template<T, built_in_function_t>::value;
 
         template<class T>
         struct is_built_in_function : polyfill::bool_constant<is_built_in_function_v<T>> {};
@@ -2043,10 +2044,10 @@ namespace sqlite_orm {
     namespace internal {
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
-                                                          std::is_base_of<arithmetic_t, R>,
-                                                          is_operator_argument<L>,
-                                                          is_operator_argument<R>>,
+                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
+                                                        std::is_base_of<arithmetic_t, R>,
+                                                        is_operator_argument<L>,
+                                                        is_operator_argument<R>>::value,
                                   bool> = true>
         add_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator+(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -2054,10 +2055,10 @@ namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
-                                                          std::is_base_of<arithmetic_t, R>,
-                                                          is_operator_argument<L>,
-                                                          is_operator_argument<R>>,
+                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
+                                                        std::is_base_of<arithmetic_t, R>,
+                                                        is_operator_argument<L>,
+                                                        is_operator_argument<R>>::value,
                                   bool> = true>
         sub_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator-(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -2065,10 +2066,10 @@ namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
-                                                          std::is_base_of<arithmetic_t, R>,
-                                                          is_operator_argument<L>,
-                                                          is_operator_argument<R>>,
+                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
+                                                        std::is_base_of<arithmetic_t, R>,
+                                                        is_operator_argument<L>,
+                                                        is_operator_argument<R>>::value,
                                   bool> = true>
         mul_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator*(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -2076,10 +2077,10 @@ namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
-                                                          std::is_base_of<arithmetic_t, R>,
-                                                          is_operator_argument<L>,
-                                                          is_operator_argument<R>>,
+                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
+                                                        std::is_base_of<arithmetic_t, R>,
+                                                        is_operator_argument<L>,
+                                                        is_operator_argument<R>>::value,
                                   bool> = true>
         div_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator/(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -2087,10 +2088,10 @@ namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
-                                                          std::is_base_of<arithmetic_t, R>,
-                                                          is_operator_argument<L>,
-                                                          is_operator_argument<R>>,
+                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
+                                                        std::is_base_of<arithmetic_t, R>,
+                                                        is_operator_argument<L>,
+                                                        is_operator_argument<R>>::value,
                                   bool> = true>
         mod_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator%(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};

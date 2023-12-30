@@ -427,7 +427,7 @@ namespace sqlite_orm {
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_foreign_key_v =
 #if SQLITE_VERSION_NUMBER >= 3006019
-            polyfill::is_specialization_of_v<T, foreign_key_t>;
+            polyfill::is_specialization_of<T, foreign_key_t>::value;
 #else
             false;
 #endif
@@ -444,7 +444,7 @@ namespace sqlite_orm {
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_generated_always_v =
 #if SQLITE_VERSION_NUMBER >= 3031000
-            polyfill::is_specialization_of_v<T, generated_always_t>;
+            polyfill::is_specialization_of<T, generated_always_t>::value;
 #else
             false;
 #endif

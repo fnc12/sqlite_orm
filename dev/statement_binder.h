@@ -116,13 +116,13 @@ namespace sqlite_orm {
      */
     template<class V>
     struct statement_binder<V,
-                            std::enable_if_t<polyfill::disjunction_v<std::is_base_of<std::string, V>,
-                                                                     std::is_same<V, const char*>
+                            std::enable_if_t<polyfill::disjunction<std::is_base_of<std::string, V>,
+                                                                   std::is_same<V, const char*>
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                                                                     ,
-                                                                     std::is_same<V, std::string_view>
+                                                                   ,
+                                                                   std::is_same<V, std::string_view>
 #endif
-                                                                     >>> {
+                                                                   >::value>> {
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
             auto stringData = this->string_data(value);
@@ -156,13 +156,13 @@ namespace sqlite_orm {
 #ifndef SQLITE_ORM_OMITS_CODECVT
     template<class V>
     struct statement_binder<V,
-                            std::enable_if_t<polyfill::disjunction_v<std::is_base_of<std::wstring, V>,
-                                                                     std::is_same<V, const wchar_t*>
+                            std::enable_if_t<polyfill::disjunction<std::is_base_of<std::wstring, V>,
+                                                                   std::is_same<V, const wchar_t*>
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                                                                     ,
-                                                                     std::is_same<V, std::wstring_view>
+                                                                   ,
+                                                                   std::is_same<V, std::wstring_view>
 #endif
-                                                                     >>> {
+                                                                   >::value>> {
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
             auto stringData = this->string_data(value);
@@ -226,7 +226,8 @@ namespace sqlite_orm {
     template<class V>
     struct statement_binder<
         V,
-        std::enable_if_t<is_std_ptr<V>::value && internal::is_bindable_v<std::remove_cv_t<typename V::element_type>>>> {
+        std::enable_if_t<is_std_ptr<V>::value &&
+                         internal::is_bindable<std::remove_cv_t<typename V::element_type>>::value>> {
         using unqualified_type = std::remove_cv_t<typename V::element_type>;
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {

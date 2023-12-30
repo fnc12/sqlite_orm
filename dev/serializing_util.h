@@ -82,7 +82,8 @@ namespace sqlite_orm {
             return stream_identifier(ss, std::get<Is>(tpl)...);
         }
 
-        template<typename Tpl, std::enable_if_t<polyfill::is_detected_v<type_t, std::tuple_size<Tpl>>, bool> = true>
+        template<typename Tpl,
+                 std::enable_if_t<polyfill::is_detected<type_t, std::tuple_size<Tpl>>::value, bool> = true>
         void stream_identifier(std::ostream& ss, const Tpl& tpl) {
             return stream_identifier(ss, tpl, std::make_index_sequence<std::tuple_size<Tpl>::value>{});
         }
