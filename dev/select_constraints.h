@@ -335,7 +335,7 @@ namespace sqlite_orm {
     internal::select_t<T, Args...> select(T t, Args... args) {
         using args_tuple = std::tuple<Args...>;
         internal::validate_conditions<args_tuple>();
-        return {std::move(t), std::make_tuple(std::forward<Args>(args)...)};
+        return {std::move(t), {std::forward<Args>(args)...}};
     }
 
     /**

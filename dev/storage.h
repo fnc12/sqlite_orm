@@ -46,6 +46,7 @@
 #include "prepared_statement.h"
 #include "expression_object_type.h"
 #include "statement_serializer.h"
+#include "serializer_context.h"
 #include "schema/triggers.h"
 #include "object_from_column_builder.h"
 #include "schema/table.h"
@@ -57,13 +58,21 @@
 namespace sqlite_orm {
 
     namespace internal {
+        /*
+         *  Implementation note: the technique of indirect expression testing is because
+         *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
+         */
+        template<class Binder>
+        struct indirectly_test_preparable;
 
         template<class S, class E, class SFINAE = void>
         SQLITE_ORM_INLINE_VAR constexpr bool is_preparable_v = false;
-
         template<class S, class E>
-        SQLITE_ORM_INLINE_VAR constexpr bool
-            is_preparable_v<S, E, polyfill::void_t<decltype(std::declval<S>().prepare(std::declval<E>()))>> = true;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_preparable_v<
+            S,
+            E,
+            polyfill::void_t<indirectly_test_preparable<decltype(std::declval<S>().prepare(std::declval<E>()))>>> =
+            true;
 
         /**
          *  Storage class itself. Create an instanse to use it as an interfacto to sqlite db by calling `make_storage`

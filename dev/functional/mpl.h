@@ -29,7 +29,11 @@
  */
 
 #include <type_traits>  //  std::enable_if, std::is_same
+#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
 #include <initializer_list>
+#else
+#include <array>
+#endif
 
 #include "cxx_universal.h"  //  ::size_t
 #include "cxx_type_traits_polyfill.h"
@@ -52,13 +56,8 @@ namespace sqlite_orm {
             SQLITE_ORM_INLINE_VAR constexpr bool
                 is_quoted_metafuntion_v<Q, polyfill::void_t<indirectly_test_metafunction<Q::template fn>>> = true;
 
-#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
-            template<class T>
-            using is_quoted_metafuntion = polyfill::bool_constant<is_quoted_metafuntion_v<T>>;
-#else
             template<class T>
             struct is_quoted_metafuntion : polyfill::bool_constant<is_quoted_metafuntion_v<T>> {};
-#endif
 
             /*
              *  The indirection through `defer_fn` works around the language inability
@@ -164,15 +163,22 @@ namespace sqlite_orm {
             };
 
             /*
+             *  Quoted metafunction that invokes the specified quoted metafunctions,
+             *  and passes its result on to the next quoted metafunction.
+             */
+            template<class Q, class... Qs>
+            struct pass_result_of {
+                // invoke `Fn`, pass on their result
+                template<class... Args>
+                using fn = typename Q::template fn<typename defer<Qs, Args...>::type...>;
+            };
+
+            /*
              *  Quoted metafunction that invokes the specified metafunctions,
              *  and passes its result on to the next quoted metafunction.
              */
             template<class Q, template<class...> class... Fn>
-            struct pass_result_of {
-                // invoke `Fn`, pass on their result
-                template<class... Args>
-                using fn = typename Q::template fn<typename defer_fn<Fn, Args...>::type...>;
-            };
+            using pass_result_of_fn = pass_result_of<Q, quote_fn<Fn>...>;
 
             /*
              *  Bind arguments at the front of a quoted metafunction.
@@ -211,37 +217,37 @@ namespace sqlite_orm {
              *  Quoted metafunction equivalent to `std::negation`.
              */
             template<class TraitQ>
-            using not_ = pass_result_of<quote_fn<polyfill::negation>, TraitQ::template fn>;
+            using not_ = pass_result_of<quote_fn<polyfill::negation>, TraitQ>;
 
             /*
              *  Quoted metafunction equivalent to `std::conjunction`.
              */
             template<class... TraitQ>
-            using conjunction = pass_result_of<quote_fn<polyfill::conjunction>, TraitQ::template fn...>;
+            using conjunction = pass_result_of<quote_fn<polyfill::conjunction>, TraitQ...>;
 
             /*
              *  Quoted metafunction equivalent to `std::disjunction`.
              */
             template<class... TraitQ>
-            using disjunction = pass_result_of<quote_fn<polyfill::disjunction>, TraitQ::template fn...>;
+            using disjunction = pass_result_of<quote_fn<polyfill::disjunction>, TraitQ...>;
 
             /*
              *  Metafunction equivalent to `std::conjunction`.
              */
             template<template<class...> class... TraitFn>
-            using conjunction_fn = pass_result_of<quote_fn<polyfill::conjunction>, TraitFn...>;
+            using conjunction_fn = pass_result_of_fn<quote_fn<polyfill::conjunction>, TraitFn...>;
 
             /*
              *  Metafunction equivalent to `std::disjunction`.
              */
             template<template<class...> class... TraitFn>
-            using disjunction_fn = pass_result_of<quote_fn<polyfill::disjunction>, TraitFn...>;
+            using disjunction_fn = pass_result_of_fn<quote_fn<polyfill::disjunction>, TraitFn...>;
 
             /*
              *  Metafunction equivalent to `std::negation`.
              */
             template<template<class...> class Fn>
-            using not_fn = not_<quote_fn<Fn>>;
+            using not_fn = pass_result_of_fn<quote_fn<polyfill::negation>, Fn>;
 
             /*
              *  Bind arguments at the front of a metafunction.
@@ -282,18 +288,14 @@ namespace sqlite_orm {
                 return n;
             }
 #else
-            constexpr size_t find_first_true_helper(const bool* first, const bool* end) {
-                return first == end || *first ? 0 : 1 + find_first_true_helper(first + 1, end);
-            }
-            constexpr size_t find_first_true_helper(const std::initializer_list<bool>& values) {
-                return find_first_true_helper(values.begin(), values.end());
+            template<size_t N>
+            constexpr size_t find_first_true_helper(const std::array<bool, N>& values, size_t i = 0) {
+                return i == N || values[i] ? 0 : 1 + find_first_true_helper(values, i + 1);
             }
 
-            constexpr size_t count_true_helper(const bool* first, const bool* end) {
-                return first == end ? 0 : *first + count_true_helper(first + 1, end);
-            }
-            constexpr size_t count_true_helper(const std::initializer_list<bool>& values) {
-                return count_true_helper(values.begin(), values.end());
+            template<size_t N>
+            constexpr size_t count_true_helper(const std::array<bool, N>& values, size_t i = 0) {
+                return i == N ? 0 : values[i] + count_true_helper(values, i + 1);
             }
 #endif
 
@@ -311,8 +313,13 @@ namespace sqlite_orm {
 
                 template<template<class...> class Pack, class... T, class ProjectQ>
                 struct invoke_this_fn<Pack<T...>, ProjectQ> {
-                    using type = polyfill::index_constant<find_first_true_helper(
-                        {PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...})>;
+                    // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+                    static constexpr size_t value = find_first_true_helper
+#ifndef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
+                        <sizeof...(T)>
+#endif
+                        ({PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...});
+                    using type = polyfill::index_constant<value>;
                 };
 
                 template<class Pack, class ProjectQ = identity>
@@ -336,8 +343,13 @@ namespace sqlite_orm {
 
                 template<template<class...> class Pack, class... T, class ProjectQ>
                 struct invoke_this_fn<Pack<T...>, ProjectQ> {
-                    using type = polyfill::index_constant<count_true_helper(
-                        {PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...})>;
+                    // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+                    static constexpr size_t value = count_true_helper
+#ifndef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
+                        <sizeof...(T)>
+#endif
+                        ({PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...});
+                    using type = polyfill::index_constant<value>;
                 };
 
                 template<class Pack, class ProjectQ = identity>
@@ -353,9 +365,26 @@ namespace sqlite_orm {
              */
             template<class TraitQ>
             struct contains {
+                template<class Pack, class ProjectQ>
+                struct invoke_this_fn {
+                    static_assert(polyfill::always_false_v<Pack>,
+                                  "`contains` must be invoked with a type list as first argument.");
+                };
+
+                template<template<class...> class Pack, class... T, class ProjectQ>
+                struct invoke_this_fn<Pack<T...>, ProjectQ> {
+                    // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+                    static constexpr size_t value =
+                        static_cast<bool>(count_true_helper
+#ifndef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
+                                          <sizeof...(T)>
+#endif
+                                          ({TraitQ::template fn<typename ProjectQ::template fn<T>>::value...}));
+                    using type = polyfill::index_constant<value>;
+                };
+
                 template<class Pack, class ProjectQ = identity>
-                using fn =
-                    polyfill::bool_constant<static_cast<bool>(defer<counts<TraitQ>, Pack, ProjectQ>::type::value)>;
+                using fn = typename invoke_this_fn<Pack, ProjectQ>::type;
             };
 
             template<template<class...> class TraitFn>
@@ -421,7 +450,7 @@ namespace sqlite_orm {
          *  Quoted trait metafunction that checks whether a tuple doesn't contain a type with given trait.
          */
         template<template<class...> class TraitFn>
-        using check_if_has_not = mpl::not_<check_if_has<TraitFn>>;
+        using check_if_has_not = mpl::not_<mpl::contains_fn<TraitFn>>;
 
         /*
          *  Quoted metafunction that checks whether a tuple contains given type.

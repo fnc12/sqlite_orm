@@ -52,7 +52,7 @@ TEST_CASE("mpl") {
     STATIC_REQUIRE(mpl::invoke_t<check_if_same_template, std::vector<int>>::value);
     STATIC_REQUIRE_FALSE(mpl::invoke_t<check_if_names_value_type, int>::value);
     STATIC_REQUIRE(mpl::invoke_t<check_if_names_value_type, std::true_type>::value);
-    STATIC_REQUIRE(std::is_same<mpl::invoke_t<mpl::pass_result_of<mpl::identity, transparent_of_t>, predicate_type>,
+    STATIC_REQUIRE(std::is_same<mpl::invoke_t<mpl::pass_result_of_fn<mpl::identity, transparent_of_t>, predicate_type>,
                                 predicate_type::is_transparent>::value);
 
     STATIC_REQUIRE(mpl::invoke_t<internal::check_if<std::is_same>, int, int>::value);

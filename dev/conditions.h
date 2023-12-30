@@ -140,7 +140,7 @@ namespace sqlite_orm {
         SQLITE_ORM_INLINE_VAR constexpr bool is_binary_condition_v = is_base_of_template_v<T, binary_condition>;
 
         template<class T>
-        using is_binary_condition = polyfill::bool_constant<is_binary_condition_v<T>>;
+        struct is_binary_condition : polyfill::bool_constant<is_binary_condition_v<T>> {};
 
         struct and_condition_string {
             serialize_result_type serialize() const {
@@ -568,7 +568,7 @@ namespace sqlite_orm {
                                     polyfill::is_specialization_of<T, dynamic_order_by_t>>;
 
         template<class T>
-        using is_order_by = polyfill::bool_constant<is_order_by_v<T>>;
+        struct is_order_by : polyfill::bool_constant<is_order_by_v<T>> {};
 
         struct between_string {
             operator std::string() const {

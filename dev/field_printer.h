@@ -13,6 +13,7 @@
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
 #include "is_std_ptr.h"
+#include "type_traits.h"
 
 namespace sqlite_orm {
 
@@ -24,24 +25,25 @@ namespace sqlite_orm {
     struct field_printer;
 
     namespace internal {
+        /*
+         *  Implementation note: the technique of indirect expression testing is because
+         *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
+         */
+        template<class Printer>
+        struct indirectly_test_printable;
+
         template<class T, class SFINAE = void>
         SQLITE_ORM_INLINE_VAR constexpr bool is_printable_v = false;
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_printable_v<T, polyfill::void_t<decltype(field_printer<T>{})>> = true
-            // Also see implementation note for `is_bindable_v`
-            ;
+        SQLITE_ORM_INLINE_VAR constexpr bool
+            is_printable_v<T, polyfill::void_t<indirectly_test_printable<decltype(field_printer<T>{})>>> = true;
 
-#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
-        template<class T>
-        using is_printable = polyfill::bool_constant<is_printable_v<T>>;
-#else
         template<class T>
         struct is_printable : polyfill::bool_constant<is_printable_v<T>> {};
-#endif
     }
 
     template<class T>
-    struct field_printer<T, std::enable_if_t<std::is_arithmetic<T>::value>> {
+    struct field_printer<T, internal::match_if<std::is_arithmetic, T>> {
         std::string operator()(const T& t) const {
             std::stringstream ss;
             ss << t;
@@ -86,7 +88,7 @@ namespace sqlite_orm {
     };
 
     template<class T>
-    struct field_printer<T, std::enable_if_t<std::is_base_of<std::string, T>::value>> {
+    struct field_printer<T, internal::match_if<std::is_base_of, std::string, T>> {
         std::string operator()(std::string string) const {
             return string;
         }
@@ -108,7 +110,7 @@ namespace sqlite_orm {
      *  Specialization for std::wstring (UTF-16 assumed).
      */
     template<class T>
-    struct field_printer<T, std::enable_if_t<std::is_base_of<std::wstring, T>::value>> {
+    struct field_printer<T, internal::match_if<std::is_base_of, std::wstring, T>> {
         std::string operator()(const std::wstring& wideString) const {
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
             return converter.to_bytes(wideString);

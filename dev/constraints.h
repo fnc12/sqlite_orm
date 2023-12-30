@@ -433,13 +433,13 @@ namespace sqlite_orm {
 #endif
 
         template<class T>
-        using is_foreign_key = polyfill::bool_constant<is_foreign_key_v<T>>;
+        struct is_foreign_key : polyfill::bool_constant<is_foreign_key_v<T>> {};
 
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_primary_key_v = std::is_base_of<primary_key_base, T>::value;
 
         template<class T>
-        using is_primary_key = polyfill::bool_constant<is_primary_key_v<T>>;
+        struct is_primary_key : polyfill::bool_constant<is_primary_key_v<T>> {};
 
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_generated_always_v =
@@ -450,7 +450,7 @@ namespace sqlite_orm {
 #endif
 
         template<class T>
-        using is_generated_always = polyfill::bool_constant<is_generated_always_v<T>>;
+        struct is_generated_always : polyfill::bool_constant<is_generated_always_v<T>> {};
 
         /**
          * PRIMARY KEY INSERTABLE traits.

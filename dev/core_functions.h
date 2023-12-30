@@ -48,7 +48,7 @@ namespace sqlite_orm {
         SQLITE_ORM_INLINE_VAR constexpr bool is_built_in_function_v = is_base_of_template_v<T, built_in_function_t>;
 
         template<class T>
-        using is_built_in_function = polyfill::bool_constant<is_built_in_function_v<T>>;
+        struct is_built_in_function : polyfill::bool_constant<is_built_in_function_v<T>> {};
 
         template<class F, class W>
         struct filtered_aggregate_function {

@@ -34,7 +34,7 @@ namespace sqlite_orm {
         SQLITE_ORM_INLINE_VAR constexpr bool is_where_v = polyfill::is_specialization_of_v<T, where_t>;
 
         template<class T>
-        using is_where = polyfill::bool_constant<is_where_v<T>>;
+        struct is_where : polyfill::bool_constant<is_where_v<T>> {};
     }
 
     /**
