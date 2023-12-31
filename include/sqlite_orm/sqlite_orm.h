@@ -90,6 +90,10 @@ using std::nullptr_t;
 #define SQLITE_ORM_CONSTEVAL_SUPPORTED
 #endif
 
+#if __cpp_char8_t >= 201811L
+#define SQLITE_ORM_CHAR8T_SUPPORTED
+#endif
+
 #if __cpp_aggregate_paren_init >= 201902L
 #define SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
 #endif
@@ -751,7 +755,7 @@ namespace sqlite_orm {
     struct type_printer<T,
                         std::enable_if_t<polyfill::conjunction<polyfill::negation<internal::is_any_of<T,
                                                                                                       wchar_t,
-#ifdef __cpp_char8_t
+#ifdef SQLITE_ORM_CHAR8T_SUPPORTED
                                                                                                       char8_t,
 #endif
                                                                                                       char16_t,

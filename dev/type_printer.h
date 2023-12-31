@@ -50,7 +50,7 @@ namespace sqlite_orm {
     struct type_printer<T,
                         std::enable_if_t<polyfill::conjunction<polyfill::negation<internal::is_any_of<T,
                                                                                                       wchar_t,
-#ifdef __cpp_char8_t
+#ifdef SQLITE_ORM_CHAR8T_SUPPORTED
                                                                                                       char8_t,
 #endif
                                                                                                       char16_t,
