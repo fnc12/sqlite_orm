@@ -257,8 +257,15 @@ namespace sqlite_orm {
 #if __cpp_lib_void_t >= 201411L
             using std::void_t;
 #else
+            /*
+             *  Implementation note: Conservative implementation due to CWG issue 1558 (Unused arguments in alias template specializations).
+             */
             template<class...>
-            using void_t = void;
+            struct always_void {
+                using type = void;
+            };
+            template<class... T>
+            using void_t = typename always_void<T...>::type;
 #endif
 
 #if __cpp_lib_bool_constant >= 201505L
@@ -1593,6 +1600,7 @@ namespace sqlite_orm {
         /*
          *  Implementation note: the technique of indirect expression testing is because
          *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
+         *  It must also be a type that differs from those for `is_printable_v`, `is_bindable_v`, `is_preparable_v`.
          */
         template<class FieldOf>
         struct indirectly_test_field_of;
@@ -2957,6 +2965,7 @@ namespace sqlite_orm {
         /*
          *  Implementation note: the technique of indirect expression testing is because
          *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
+         *  It must also be a type that differs from those for `is_field_of_v`, `is_preparable_v`, `is_bindable_v`.
          */
         template<class Printer>
         struct indirectly_test_printable;
@@ -8824,6 +8833,7 @@ namespace sqlite_orm {
         /*
          *  Implementation note: the technique of indirect expression testing is because
          *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
+         *  It must also be a type that differs from those for `is_field_of_v`, `is_printable_v`, `is_preparable_v`.
          */
         template<class Binder>
         struct indirectly_test_bindable;
@@ -19097,6 +19107,7 @@ namespace sqlite_orm {
         /*
          *  Implementation note: the technique of indirect expression testing is because
          *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
+         *  It must also be a type that differs from those for `is_field_of_v`, `is_printable_v`, `is_bindable_v`.
          */
         template<class Binder>
         struct indirectly_test_preparable;

@@ -56,6 +56,7 @@ namespace sqlite_orm {
         /*
          *  Implementation note: the technique of indirect expression testing is because
          *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
+         *  It must also be a type that differs from those for `is_printable_v`, `is_bindable_v`, `is_preparable_v`.
          */
         template<class FieldOf>
         struct indirectly_test_field_of;
