@@ -27,7 +27,7 @@ namespace sqlite_orm {
          */
         template<class A>
         SQLITE_ORM_INLINE_VAR constexpr bool is_column_alias_v =
-            polyfill::conjunction_v<is_alias<A>, polyfill::negation<polyfill::is_detected<type_t, A>>>;
+            polyfill::conjunction<is_alias<A>, polyfill::negation<polyfill::is_detected<type_t, A>>>::value;
 
         template<class A>
         struct is_column_alias : is_alias<A> {};
@@ -36,7 +36,7 @@ namespace sqlite_orm {
          */
         template<class A>
         SQLITE_ORM_INLINE_VAR constexpr bool is_recordset_alias_v =
-            polyfill::conjunction_v<is_alias<A>, polyfill::is_detected<type_t, A>>;
+            polyfill::conjunction<is_alias<A>, polyfill::is_detected<type_t, A>>::value;
 
         template<class A>
         struct is_recordset_alias : polyfill::bool_constant<is_recordset_alias_v<A>> {};

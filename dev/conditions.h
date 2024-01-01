@@ -563,9 +563,9 @@ namespace sqlite_orm {
 
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_order_by_v =
-            polyfill::disjunction_v<polyfill::is_specialization_of<T, order_by_t>,
-                                    polyfill::is_specialization_of<T, multi_order_by_t>,
-                                    polyfill::is_specialization_of<T, dynamic_order_by_t>>;
+            polyfill::disjunction<polyfill::is_specialization_of<T, order_by_t>,
+                                  polyfill::is_specialization_of<T, multi_order_by_t>,
+                                  polyfill::is_specialization_of<T, dynamic_order_by_t>>::value;
 
         template<class T>
         struct is_order_by : polyfill::bool_constant<is_order_by_v<T>> {};

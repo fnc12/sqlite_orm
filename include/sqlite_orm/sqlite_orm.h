@@ -3232,7 +3232,7 @@ namespace sqlite_orm {
          */
         template<class A>
         SQLITE_ORM_INLINE_VAR constexpr bool is_column_alias_v =
-            polyfill::conjunction_v<is_alias<A>, polyfill::negation<polyfill::is_detected<type_t, A>>>;
+            polyfill::conjunction<is_alias<A>, polyfill::negation<polyfill::is_detected<type_t, A>>>::value;
 
         template<class A>
         struct is_column_alias : is_alias<A> {};
@@ -3241,7 +3241,7 @@ namespace sqlite_orm {
          */
         template<class A>
         SQLITE_ORM_INLINE_VAR constexpr bool is_recordset_alias_v =
-            polyfill::conjunction_v<is_alias<A>, polyfill::is_detected<type_t, A>>;
+            polyfill::conjunction<is_alias<A>, polyfill::is_detected<type_t, A>>::value;
 
         template<class A>
         struct is_recordset_alias : polyfill::bool_constant<is_recordset_alias_v<A>> {};
@@ -4076,9 +4076,9 @@ namespace sqlite_orm {
 
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_order_by_v =
-            polyfill::disjunction_v<polyfill::is_specialization_of<T, order_by_t>,
-                                    polyfill::is_specialization_of<T, multi_order_by_t>,
-                                    polyfill::is_specialization_of<T, dynamic_order_by_t>>;
+            polyfill::disjunction<polyfill::is_specialization_of<T, order_by_t>,
+                                  polyfill::is_specialization_of<T, multi_order_by_t>,
+                                  polyfill::is_specialization_of<T, dynamic_order_by_t>>::value;
 
         template<class T>
         struct is_order_by : polyfill::bool_constant<is_order_by_v<T>> {};
