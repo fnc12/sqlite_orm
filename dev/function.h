@@ -39,6 +39,9 @@ namespace sqlite_orm {
         template<class F>
         SQLITE_ORM_INLINE_VAR constexpr bool is_scalar_udf_v<F, polyfill::void_t<scalar_call_function_t<F>>> = true;
 
+        template<class F>
+        struct is_scalar_udf : polyfill::bool_constant<is_scalar_udf_v<F>> {};
+
         template<class F, class SFINAE = void>
         SQLITE_ORM_INLINE_VAR constexpr bool is_aggregate_udf_v = false;
         template<class F>
@@ -49,6 +52,9 @@ namespace sqlite_orm {
                              std::enable_if_t<std::is_member_function_pointer<aggregate_step_function_t<F>>::value>,
                              std::enable_if_t<std::is_member_function_pointer<aggregate_fin_function_t<F>>::value>>> =
             true;
+
+        template<class F>
+        struct is_aggregate_udf : polyfill::bool_constant<is_aggregate_udf_v<F>> {};
 
         template<class UDF>
         struct function;
@@ -126,13 +132,13 @@ namespace sqlite_orm {
         struct callable_arguments_impl;
 
         template<class F>
-        struct callable_arguments_impl<F, std::enable_if_t<is_scalar_udf_v<F>>> {
+        struct callable_arguments_impl<F, match_if<is_scalar_udf, F>> {
             using args_tuple = function_arguments<scalar_call_function_t<F>, std::tuple, std::decay_t>;
             using return_type = function_return_type_t<scalar_call_function_t<F>>;
         };
 
         template<class F>
-        struct callable_arguments_impl<F, std::enable_if_t<is_aggregate_udf_v<F>>> {
+        struct callable_arguments_impl<F, match_if<is_aggregate_udf, F>> {
             using args_tuple = function_arguments<aggregate_step_function_t<F>, std::tuple, std::decay_t>;
             using return_type = function_return_type_t<aggregate_fin_function_t<F>>;
         };
@@ -183,7 +189,7 @@ namespace sqlite_orm {
             using udf_type = UDF;
 
             template<class R = decltype(UDF::name()),
-                     std::enable_if_t<polyfill::negation_v<std::is_same<R, char>>, bool> = true>
+                     std::enable_if_t<polyfill::negation<std::is_same<R, char>>::value, bool> = true>
             decltype(auto) operator()() const {
                 return UDF::name();
             }
@@ -208,7 +214,7 @@ namespace sqlite_orm {
 
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool
-            is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of_v<T, function_call>>> = true;
+            is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, function_call>::value>> = true;
 
         template<class T>
         struct unpacked_arg {

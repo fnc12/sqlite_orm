@@ -427,30 +427,30 @@ namespace sqlite_orm {
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_foreign_key_v =
 #if SQLITE_VERSION_NUMBER >= 3006019
-            polyfill::is_specialization_of_v<T, foreign_key_t>;
+            polyfill::is_specialization_of<T, foreign_key_t>::value;
 #else
             false;
 #endif
 
         template<class T>
-        using is_foreign_key = polyfill::bool_constant<is_foreign_key_v<T>>;
+        struct is_foreign_key : polyfill::bool_constant<is_foreign_key_v<T>> {};
 
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_primary_key_v = std::is_base_of<primary_key_base, T>::value;
 
         template<class T>
-        using is_primary_key = polyfill::bool_constant<is_primary_key_v<T>>;
+        struct is_primary_key : polyfill::bool_constant<is_primary_key_v<T>> {};
 
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_generated_always_v =
 #if SQLITE_VERSION_NUMBER >= 3031000
-            polyfill::is_specialization_of_v<T, generated_always_t>;
+            polyfill::is_specialization_of<T, generated_always_t>::value;
 #else
             false;
 #endif
 
         template<class T>
-        using is_generated_always = polyfill::bool_constant<is_generated_always_v<T>>;
+        struct is_generated_always : polyfill::bool_constant<is_generated_always_v<T>> {};
 
         /**
          * PRIMARY KEY INSERTABLE traits.
@@ -458,12 +458,12 @@ namespace sqlite_orm {
         template<typename T>
         struct is_primary_key_insertable
             : polyfill::disjunction<
-                  mpl::invoke_t<mpl::disjunction<check_if_tuple_has_template<default_t>,
-                                                 check_if_tuple_has_template<primary_key_with_autoincrement>>,
+                  mpl::invoke_t<mpl::disjunction<check_if_has_template<default_t>,
+                                                 check_if_has_template<primary_key_with_autoincrement>>,
                                 constraints_type_t<T>>,
                   std::is_base_of<integer_printer, type_printer<field_type_t<T>>>> {
 
-            static_assert(tuple_has<is_primary_key, constraints_type_t<T>>::value, "an unexpected type was passed");
+            static_assert(tuple_has<constraints_type_t<T>, is_primary_key>::value, "an unexpected type was passed");
         };
 
         template<class T>

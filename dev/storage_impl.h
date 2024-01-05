@@ -2,8 +2,9 @@
 
 #include <string>  //  std::string
 
-#include "functional/cxx_universal.h"  //  ::nullptr_t
+#include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/static_magic.h"
+#include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_filter.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "type_traits.h"
@@ -28,7 +29,7 @@ namespace sqlite_orm {
 
         template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs>>
         decltype(auto) lookup_table_name(const DBOs& dbObjects) {
-            return static_if<is_mapped_v<DBOs, Lookup>>(
+            return static_if<is_mapped<DBOs, Lookup>::value>(
                 [](const auto& dbObjects) -> const std::string& {
                     return pick_table<Lookup>(dbObjects).name;
                 },

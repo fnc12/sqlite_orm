@@ -1,54 +1,65 @@
 #pragma once
 
-#include <type_traits>  //  std::is_same
-#include <tuple>
-
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/mpl.h"
 
 namespace sqlite_orm {
+    // convenience metafunction algorithms
     namespace internal {
         /*
-         *  Higher-order trait metafunction that checks whether a tuple contains a type with given trait.
+         *  Higher-order trait metafunction that checks whether a tuple contains a type with given trait (possibly projected).
+         *  
+         *  `ProjOp` is a metafunction
          */
-        template<template<class...> class TraitFn, class Tuple>
-        struct tuple_has {};
-        template<template<class...> class TraitFn, class... Types>
-        struct tuple_has<TraitFn, std::tuple<Types...>> : polyfill::disjunction<mpl::invoke_fn_t<TraitFn, Types>...> {};
+        template<class Pack,
+                 template<class...>
+                 class TraitFn,
+                 template<class...> class ProjOp = polyfill::type_identity_t>
+        using tuple_has = mpl::invoke_t<check_if_has<TraitFn>, Pack, mpl::quote_fn<ProjOp>>;
 
         /*
-         *  Trait metafunction class that checks whether a tuple contains a type with given trait.
+         *  Higher-order trait metafunction that checks whether a tuple contains the specified type (possibly projected).
+         *  
+         *  `ProjOp` is a metafunction
          */
-        template<template<class...> class TraitFn>
-        using check_if_tuple_has = mpl::bind_front_higherorder_fn<tuple_has, TraitFn>;
+        template<class Pack, class Type, template<class...> class ProjOp = polyfill::type_identity_t>
+        using tuple_has_type = mpl::invoke_t<check_if_has_type<Type>, Pack, mpl::quote_fn<ProjOp>>;
 
         /*
-         *  Trait metafunction class that checks whether a tuple doesn't contain a type with given trait.
+         *  Higher-order trait metafunction that checks whether a tuple contains the specified class template (possibly projected).
+         *  
+         *  `ProjOp` is a metafunction
          */
-        template<template<class...> class TraitFn>
-        using check_if_tuple_has_not = mpl::not_<check_if_tuple_has<TraitFn>>;
+        template<class Pack,
+                 template<class...>
+                 class Template,
+                 template<class...> class ProjOp = polyfill::type_identity_t>
+        using tuple_has_template = mpl::invoke_t<check_if_has_template<Template>, Pack, mpl::quote_fn<ProjOp>>;
 
         /*
-         *  Metafunction class that checks whether a tuple contains given type.
+         *  Higher-order metafunction returning the first index constant of the desired type in a tuple (possibly projected).
          */
-        template<class T, template<class...> class Proj = polyfill::type_identity_t>
-        using check_if_tuple_has_type =
-            mpl::bind_front_higherorder_fn<tuple_has, check_if_is_type<T, Proj>::template fn>;
+        template<class Pack, class Type, template<class...> class ProjOp = polyfill::type_identity_t>
+        using find_tuple_type = mpl::invoke_t<finds_if_has_type<Type>, Pack, mpl::quote_fn<ProjOp>>;
 
         /*
-         *  Metafunction class that checks whether a tuple contains a given template.
-         *
-         *  Note: we are using 2 small tricks:
-         *  1. A template template parameter can be treated like a metafunction, so we can just "quote" a 'primary'
-         *     template into the MPL system (e.g. `std::vector`).
-         *  2. This metafunction class does the opposite of the trait function `is_specialization`:
-         *     `is_specialization` tries to instantiate the primary template template parameter using the
-         *     template parameters of a template type, then compares both instantiated types.
-         *     Here instead, `pass_extracted_fn_to` extracts the template template parameter from a template type,
-         *     then compares the resulting template template parameters.
+         *  Higher-order metafunction returning the first index constant of the desired class template in a tuple (possibly projected).
+         *  
+         *  `ProjOp` is a metafunction
          */
-        template<template<class...> class Primary>
-        using check_if_tuple_has_template =
-            mpl::bind_front_higherorder_fn<tuple_has, check_if_is_template<Primary>::template fn>;
+        template<class Pack,
+                 template<class...>
+                 class Template,
+                 template<class...> class ProjOp = polyfill::type_identity_t>
+        using find_tuple_template = mpl::invoke_t<finds_if_has_template<Template>, Pack, mpl::quote_fn<ProjOp>>;
+
+        /*
+         *  Higher-order trait metafunction that counts the types having the specified trait in a tuple (possibly projected).
+         *  
+         *  `Pred` is a predicate metafunction with a nested bool member named `value`
+         *  `ProjOp` is a metafunction
+         */
+        template<class Pack, template<class...> class Pred, template<class...> class ProjOp = polyfill::type_identity_t>
+        using count_tuple = mpl::invoke_t<counts_if_has<Pred>, Pack, mpl::quote_fn<ProjOp>>;
     }
 }

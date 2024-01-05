@@ -8,7 +8,7 @@
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "is_base_of_template.h"
-#include "tuple_helper/tuple_filter.h"
+#include "tuple_helper/tuple_traits.h"
 #include "conditions.h"
 #include "serialize_result_type.h"
 #include "operators.h"
@@ -45,10 +45,11 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_built_in_function_v = is_base_of_template_v<T, built_in_function_t>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_built_in_function_v =
+            is_base_of_template<T, built_in_function_t>::value;
 
         template<class T>
-        using is_built_in_function = polyfill::bool_constant<is_built_in_function_v<T>>;
+        struct is_built_in_function : polyfill::bool_constant<is_built_in_function_v<T>> {};
 
         template<class F, class W>
         struct filtered_aggregate_function {
@@ -2043,10 +2044,10 @@ namespace sqlite_orm {
     namespace internal {
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
-                                                          std::is_base_of<arithmetic_t, R>,
-                                                          is_operator_argument<L>,
-                                                          is_operator_argument<R>>,
+                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
+                                                        std::is_base_of<arithmetic_t, R>,
+                                                        is_operator_argument<L>,
+                                                        is_operator_argument<R>>::value,
                                   bool> = true>
         add_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator+(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -2054,10 +2055,10 @@ namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
-                                                          std::is_base_of<arithmetic_t, R>,
-                                                          is_operator_argument<L>,
-                                                          is_operator_argument<R>>,
+                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
+                                                        std::is_base_of<arithmetic_t, R>,
+                                                        is_operator_argument<L>,
+                                                        is_operator_argument<R>>::value,
                                   bool> = true>
         sub_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator-(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -2065,10 +2066,10 @@ namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
-                                                          std::is_base_of<arithmetic_t, R>,
-                                                          is_operator_argument<L>,
-                                                          is_operator_argument<R>>,
+                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
+                                                        std::is_base_of<arithmetic_t, R>,
+                                                        is_operator_argument<L>,
+                                                        is_operator_argument<R>>::value,
                                   bool> = true>
         mul_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator*(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -2076,10 +2077,10 @@ namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
-                                                          std::is_base_of<arithmetic_t, R>,
-                                                          is_operator_argument<L>,
-                                                          is_operator_argument<R>>,
+                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
+                                                        std::is_base_of<arithmetic_t, R>,
+                                                        is_operator_argument<L>,
+                                                        is_operator_argument<R>>::value,
                                   bool> = true>
         div_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator/(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -2087,10 +2088,10 @@ namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction_v<std::is_base_of<arithmetic_t, L>,
-                                                          std::is_base_of<arithmetic_t, R>,
-                                                          is_operator_argument<L>,
-                                                          is_operator_argument<R>>,
+                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
+                                                        std::is_base_of<arithmetic_t, R>,
+                                                        is_operator_argument<L>,
+                                                        is_operator_argument<R>>::value,
                                   bool> = true>
         mod_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator%(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};

@@ -150,8 +150,9 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<T,
-                            std::enable_if_t<polyfill::disjunction_v<is_binary_condition<T>, is_binary_operator<T>>>> {
+        struct ast_iterator<
+            T,
+            std::enable_if_t<polyfill::disjunction<is_binary_condition<T>, is_binary_operator<T>>::value>> {
             using node_type = T;
 
             template<class L>
@@ -533,7 +534,7 @@ namespace sqlite_orm {
         // note: not strictly necessary as there's no binding support for USING;
         // we provide it nevertheless, in line with on_t.
         template<class T>
-        struct ast_iterator<T, std::enable_if_t<polyfill::is_specialization_of_v<T, using_t>>> {
+        struct ast_iterator<T, std::enable_if_t<polyfill::is_specialization_of<T, using_t>::value>> {
             using node_type = T;
 
             template<class L>
@@ -662,9 +663,9 @@ namespace sqlite_orm {
          */
         template<class T>
         struct ast_iterator<T,
-                            std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<T, alias_holder>,
-                                                                     polyfill::is_specialization_of<T, literal_holder>,
-                                                                     is_column_alias<T>>>> {
+                            std::enable_if_t<polyfill::disjunction<polyfill::is_specialization_of<T, alias_holder>,
+                                                                   polyfill::is_specialization_of<T, literal_holder>,
+                                                                   is_column_alias<T>>::value>> {
             using node_type = T;
 
             template<class L>

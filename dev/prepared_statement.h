@@ -10,7 +10,7 @@
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/cxx_functional_polyfill.h"
-#include "tuple_helper/tuple_filter.h"
+#include "tuple_helper/tuple_traits.h"
 #include "connection_holder.h"
 #include "select_constraints.h"
 #include "values.h"
@@ -90,10 +90,10 @@ namespace sqlite_orm {
 
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_prepared_statement_v =
-            polyfill::is_specialization_of_v<T, prepared_statement_t>;
+            polyfill::is_specialization_of<T, prepared_statement_t>::value;
 
         template<class T>
-        using is_prepared_statement = polyfill::bool_constant<is_prepared_statement_v<T>>;
+        struct is_prepared_statement : polyfill::bool_constant<is_prepared_statement_v<T>> {};
 
         /**
          *  T - type of object to obtain from a database
@@ -198,10 +198,10 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_v = polyfill::is_specialization_of_v<T, insert_t>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_v = polyfill::is_specialization_of<T, insert_t>::value;
 
         template<class T>
-        using is_insert = polyfill::bool_constant<is_insert_v<T>>;
+        struct is_insert : polyfill::bool_constant<is_insert_v<T>> {};
 
         template<class T, class... Cols>
         struct insert_explicit {
@@ -220,10 +220,10 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_v = polyfill::is_specialization_of_v<T, replace_t>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_v = polyfill::is_specialization_of<T, replace_t>::value;
 
         template<class T>
-        using is_replace = polyfill::bool_constant<is_replace_v<T>>;
+        struct is_replace : polyfill::bool_constant<is_replace_v<T>> {};
 
         template<class It, class Projection, class O>
         struct insert_range_t {
@@ -236,10 +236,11 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_range_v = polyfill::is_specialization_of_v<T, insert_range_t>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_range_v =
+            polyfill::is_specialization_of<T, insert_range_t>::value;
 
         template<class T>
-        using is_insert_range = polyfill::bool_constant<is_insert_range_v<T>>;
+        struct is_insert_range : polyfill::bool_constant<is_insert_range_v<T>> {};
 
         template<class It, class Projection, class O>
         struct replace_range_t {
@@ -252,10 +253,11 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_range_v = polyfill::is_specialization_of_v<T, replace_range_t>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_range_v =
+            polyfill::is_specialization_of<T, replace_range_t>::value;
 
         template<class T>
-        using is_replace_range = polyfill::bool_constant<is_replace_range_v<T>>;
+        struct is_replace_range : polyfill::bool_constant<is_replace_range_v<T>> {};
 
         template<class... Args>
         struct insert_raw_t {
@@ -265,10 +267,10 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_raw_v = polyfill::is_specialization_of_v<T, insert_raw_t>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_raw_v = polyfill::is_specialization_of<T, insert_raw_t>::value;
 
         template<class T>
-        using is_insert_raw = polyfill::bool_constant<is_insert_raw_v<T>>;
+        struct is_insert_raw : polyfill::bool_constant<is_insert_raw_v<T>> {};
 
         template<class... Args>
         struct replace_raw_t {
@@ -278,10 +280,10 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_raw_v = polyfill::is_specialization_of_v<T, replace_raw_t>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_raw_v = polyfill::is_specialization_of<T, replace_raw_t>::value;
 
         template<class T>
-        using is_replace_raw = polyfill::bool_constant<is_replace_raw_v<T>>;
+        struct is_replace_raw : polyfill::bool_constant<is_replace_raw_v<T>> {};
 
         struct default_values_t {};
 

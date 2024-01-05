@@ -78,22 +78,12 @@ namespace sqlite_orm {
         using filter_tuple_t = tuple_from_index_sequence_t<Tpl, filter_tuple_sequence_t<Tpl, Pred, FilterProj, Seq>>;
 
         /*
-         *  `Pred` is a metafunction that defines a bool member named `value`
-         *  `FilterProj` is a metafunction
-         */
-        template<class Tpl,
-                 template<class...>
-                 class Pred,
-                 template<class...> class FilterProj = polyfill::type_identity_t>
-        struct count_tuple : std::integral_constant<int, filter_tuple_sequence_t<Tpl, Pred, FilterProj>::size()> {};
-
-        /*
          *  Count a tuple, picking only those elements specified in the index sequence.
          *  
          *  `Pred` is a metafunction that defines a bool member named `value`
          *  `FilterProj` is a metafunction
          *  
-         *  Implementation note: must be distinct from `count_tuple` because legacy compilers have problems
+         *  Implementation note: must be distinct from a `count_tuple` w/o index sequence parameter because legacy compilers have problems
          *  with a default Sequence in function template parameters [SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION].
          */
         template<class Tpl,

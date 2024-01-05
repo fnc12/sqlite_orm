@@ -134,7 +134,7 @@ namespace sqlite_orm {
         const result_type* result = nullptr;
         internal::iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
             using node_type = polyfill::remove_cvref_t<decltype(node)>;
-            if(internal::is_bindable_v<node_type>) {
+            if(internal::is_bindable<node_type>::value) {
                 ++index;
             }
             if(index == N) {
@@ -160,7 +160,7 @@ namespace sqlite_orm {
 
         internal::iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
             using node_type = polyfill::remove_cvref_t<decltype(node)>;
-            if(internal::is_bindable_v<node_type>) {
+            if(internal::is_bindable<node_type>::value) {
                 ++index;
             }
             if(index == N) {

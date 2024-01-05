@@ -29,8 +29,13 @@
  */
 
 #include <type_traits>  //  std::enable_if, std::is_same
+#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
+#include <initializer_list>
+#else
+#include <array>
+#endif
 
-#include "cxx_universal.h"
+#include "cxx_universal.h"  //  ::size_t
 #include "cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
@@ -51,45 +56,41 @@ namespace sqlite_orm {
             SQLITE_ORM_INLINE_VAR constexpr bool
                 is_quoted_metafuntion_v<Q, polyfill::void_t<indirectly_test_metafunction<Q::template fn>>> = true;
 
-#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
-            template<class T>
-            using is_quoted_metafuntion = polyfill::bool_constant<is_quoted_metafuntion_v<T>>;
-#else
             template<class T>
             struct is_quoted_metafuntion : polyfill::bool_constant<is_quoted_metafuntion_v<T>> {};
-#endif
 
             /*
              *  The indirection through `defer_fn` works around the language inability
              *  to expand `Args...` into a fixed parameter list of an alias template.
-             */
-            template<template<class...> class Fn, class... Args>
-            struct defer {
-                using type = Fn<Args...>;
-            };
-
-#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE
-            /*
-             *  Invoke metafunction.
-             */
-            template<template<class...> class Fn, class... Args>
-            using invoke_fn_t = Fn<Args...>;
-#else
-            /*
-             *  Invoke metafunction.
              *  
-             *  Note: legacy compilers need an extra layer of indirection, otherwise type replacement may fail
+             *  Also, legacy compilers need an extra layer of indirection, otherwise type replacement may fail
              *  if alias template `Fn` has a dependent expression in it.
              */
             template<template<class...> class Fn, class... Args>
-            using invoke_fn_t = typename defer<Fn, Args...>::type;
-#endif
+            struct defer_fn {
+                using type = Fn<Args...>;
+            };
+
+            /*
+             *  The indirection through `defer` works around the language inability
+             *  to expand `Args...` into a fixed parameter list of an alias template.
+             */
+            template<class Q, class... Args>
+            struct defer {
+                using type = typename Q::template fn<Args...>;
+            };
+
+            /*
+             *  Invoke metafunction.
+             */
+            template<template<class...> class Fn, class... Args>
+            using invoke_fn_t = typename defer_fn<Fn, Args...>::type;
 
             /*
              *  Invoke quoted metafunction by invoking its nested metafunction.
              */
             template<class Q, class... Args>
-            using invoke_t = typename Q::template fn<Args...>;
+            using invoke_t = typename defer<Q, Args...>::type;
 
             /*
              *  Turn metafunction into a quoted metafunction.
@@ -101,7 +102,10 @@ namespace sqlite_orm {
             template<template<class...> class Fn>
             struct quote_fn {
                 template<class InvocableTest, template<class...> class, class...>
-                struct invoke_this_fn {};
+                struct invoke_this_fn {
+                    // error N: 'type': is not a member of any direct or indirect base class of 'quote_fn<Fn>::invoke_this_fn<void,Fn,T>'
+                    // means that the metafunction cannot be called with the passed arguments.
+                };
 
                 template<template<class...> class F, class... Args>
                 struct invoke_this_fn<polyfill::void_t<F<Args...>>, F, Args...> {
@@ -121,13 +125,18 @@ namespace sqlite_orm {
 
             template<>
             struct higherorder<0u> {
+                template<template<template<class...> class Fn, class... Args2> class HigherFn, class Q, class... Args>
+                struct defer_higher_fn {
+                    using type = HigherFn<Q::template fn, Args...>;
+                };
+
                 /*
                  *  Turn higher-order metafunction into a quoted metafunction.
                  */
                 template<template<template<class...> class Fn, class... Args2> class HigherFn>
                 struct quote_fn {
                     template<class Q, class... Args>
-                    using fn = HigherFn<Q::template fn, Args...>;
+                    using fn = typename defer_higher_fn<HigherFn, Q, Args...>::type;
                 };
             };
 
@@ -154,15 +163,22 @@ namespace sqlite_orm {
             };
 
             /*
+             *  Quoted metafunction that invokes the specified quoted metafunctions,
+             *  and passes its result on to the next quoted metafunction.
+             */
+            template<class Q, class... Qs>
+            struct pass_result_of {
+                // invoke `Fn`, pass on their result
+                template<class... Args>
+                using fn = typename Q::template fn<typename defer<Qs, Args...>::type...>;
+            };
+
+            /*
              *  Quoted metafunction that invokes the specified metafunctions,
              *  and passes its result on to the next quoted metafunction.
              */
             template<class Q, template<class...> class... Fn>
-            struct pass_result_of {
-                // invoke `Fn`, pass on their result
-                template<class... Args>
-                using fn = typename Q::template fn<typename defer<Fn, Args...>::type...>;
-            };
+            using pass_result_of_fn = pass_result_of<Q, quote_fn<Fn>...>;
 
             /*
              *  Bind arguments at the front of a quoted metafunction.
@@ -201,37 +217,37 @@ namespace sqlite_orm {
              *  Quoted metafunction equivalent to `std::negation`.
              */
             template<class TraitQ>
-            using not_ = pass_result_of<quote_fn<polyfill::negation>, TraitQ::template fn>;
+            using not_ = pass_result_of<quote_fn<polyfill::negation>, TraitQ>;
 
             /*
              *  Quoted metafunction equivalent to `std::conjunction`.
              */
             template<class... TraitQ>
-            using conjunction = pass_result_of<quote_fn<polyfill::conjunction>, TraitQ::template fn...>;
+            using conjunction = pass_result_of<quote_fn<polyfill::conjunction>, TraitQ...>;
 
             /*
              *  Quoted metafunction equivalent to `std::disjunction`.
              */
             template<class... TraitQ>
-            using disjunction = pass_result_of<quote_fn<polyfill::disjunction>, TraitQ::template fn...>;
+            using disjunction = pass_result_of<quote_fn<polyfill::disjunction>, TraitQ...>;
 
             /*
              *  Metafunction equivalent to `std::conjunction`.
              */
             template<template<class...> class... TraitFn>
-            using conjunction_fn = pass_result_of<quote_fn<polyfill::conjunction>, TraitFn...>;
+            using conjunction_fn = pass_result_of_fn<quote_fn<polyfill::conjunction>, TraitFn...>;
 
             /*
              *  Metafunction equivalent to `std::disjunction`.
              */
             template<template<class...> class... TraitFn>
-            using disjunction_fn = pass_result_of<quote_fn<polyfill::disjunction>, TraitFn...>;
+            using disjunction_fn = pass_result_of_fn<quote_fn<polyfill::disjunction>, TraitFn...>;
 
             /*
              *  Metafunction equivalent to `std::negation`.
              */
             template<template<class...> class Fn>
-            using not_fn = not_<quote_fn<Fn>>;
+            using not_fn = pass_result_of_fn<quote_fn<polyfill::negation>, Fn>;
 
             /*
              *  Bind arguments at the front of a metafunction.
@@ -254,6 +270,125 @@ namespace sqlite_orm {
                      class... Bound>
             using bind_front_higherorder_fn =
                 bind_front<higherorder<0>::quote_fn<HigherFn>, quote_fn<BoundFn>, Bound...>;
+
+#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
+            constexpr size_t find_first_true_helper(std::initializer_list<bool> values) {
+                size_t i = 0;
+                for(auto first = values.begin(); first != values.end() && !*first; ++first) {
+                    ++i;
+                }
+                return i;
+            }
+
+            constexpr size_t count_true_helper(std::initializer_list<bool> values) {
+                size_t n = 0;
+                for(auto first = values.begin(); first != values.end(); ++first) {
+                    n += *first;
+                }
+                return n;
+            }
+#else
+            template<size_t N>
+            constexpr size_t find_first_true_helper(const std::array<bool, N>& values, size_t i = 0) {
+                return i == N || values[i] ? 0 : 1 + find_first_true_helper(values, i + 1);
+            }
+
+            template<size_t N>
+            constexpr size_t count_true_helper(const std::array<bool, N>& values, size_t i = 0) {
+                return i == N ? 0 : values[i] + count_true_helper(values, i + 1);
+            }
+#endif
+
+            /*
+             *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list,
+             *  and returns the index constant of the first element for which the predicate returns true.
+             */
+            template<class PredicateQ>
+            struct finds {
+                template<class Pack, class ProjectQ>
+                struct invoke_this_fn {
+                    static_assert(polyfill::always_false_v<Pack>,
+                                  "`finds` must be invoked with a type list as first argument.");
+                };
+
+                template<template<class...> class Pack, class... T, class ProjectQ>
+                struct invoke_this_fn<Pack<T...>, ProjectQ> {
+                    // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+                    static constexpr size_t value = find_first_true_helper
+#ifndef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
+                        <sizeof...(T)>
+#endif
+                        ({PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...});
+                    using type = polyfill::index_constant<value>;
+                };
+
+                template<class Pack, class ProjectQ = identity>
+                using fn = typename invoke_this_fn<Pack, ProjectQ>::type;
+            };
+
+            template<template<class...> class PredicateFn>
+            using finds_fn = finds<quote_fn<PredicateFn>>;
+
+            /*
+             *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list,
+             *  and returns the index constant of the first element for which the predicate returns true.
+             */
+            template<class PredicateQ>
+            struct counts {
+                template<class Pack, class ProjectQ>
+                struct invoke_this_fn {
+                    static_assert(polyfill::always_false_v<Pack>,
+                                  "`counts` must be invoked with a type list as first argument.");
+                };
+
+                template<template<class...> class Pack, class... T, class ProjectQ>
+                struct invoke_this_fn<Pack<T...>, ProjectQ> {
+                    // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+                    static constexpr size_t value = count_true_helper
+#ifndef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
+                        <sizeof...(T)>
+#endif
+                        ({PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...});
+                    using type = polyfill::index_constant<value>;
+                };
+
+                template<class Pack, class ProjectQ = identity>
+                using fn = typename invoke_this_fn<Pack, ProjectQ>::type;
+            };
+
+            template<template<class...> class PredicateFn>
+            using counts_fn = counts<quote_fn<PredicateFn>>;
+
+            /*
+             *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list,
+             *  and returns the index constant of the first element for which the predicate returns true.
+             */
+            template<class TraitQ>
+            struct contains {
+                template<class Pack, class ProjectQ>
+                struct invoke_this_fn {
+                    static_assert(polyfill::always_false_v<Pack>,
+                                  "`contains` must be invoked with a type list as first argument.");
+                };
+
+                template<template<class...> class Pack, class... T, class ProjectQ>
+                struct invoke_this_fn<Pack<T...>, ProjectQ> {
+                    // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+                    static constexpr size_t value =
+                        static_cast<bool>(count_true_helper
+#ifndef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
+                                          <sizeof...(T)>
+#endif
+                                          ({TraitQ::template fn<typename ProjectQ::template fn<T>>::value...}));
+                    using type = polyfill::index_constant<value>;
+                };
+
+                template<class Pack, class ProjectQ = identity>
+                using fn = typename invoke_this_fn<Pack, ProjectQ>::type;
+            };
+
+            template<template<class...> class TraitFn>
+            using contains_fn = contains<quote_fn<TraitFn>>;
         }
     }
 
@@ -274,12 +409,10 @@ namespace sqlite_orm {
         using check_if_not = mpl::not_fn<TraitFn>;
 
         /*
-         *  Quoted trait metafunction that checks if a type (possibly projected) is the same as the specified type.
-         *  
-         *  `ProjOp` is a projection applied to `Type` and must be a metafunction.
+         *  Quoted trait metafunction that checks if a type is the same as the specified type.
          */
-        template<class Type, template<class...> class ProjOp = polyfill::type_identity_t>
-        using check_if_is_type = mpl::pass_result_of<mpl::bind_front_fn<std::is_same, Type>, ProjOp>;
+        template<class Type>
+        using check_if_is_type = mpl::bind_front_fn<std::is_same, Type>;
 
         /*
          *  Quoted trait metafunction that checks if a type's template matches the specified template
@@ -288,5 +421,56 @@ namespace sqlite_orm {
         template<template<class...> class Template>
         using check_if_is_template =
             mpl::pass_extracted_fn_to<mpl::bind_front_fn<std::is_same, mpl::quote_fn<Template>>>;
+
+        /*
+         *  Quoted metafunction that finds the index of the given type in a tuple.
+         */
+        template<class Type>
+        using finds_if_has_type = mpl::finds<check_if_is_type<Type>>;
+
+        /*
+         *  Quoted metafunction that finds the index of the given class template in a tuple.
+         */
+        template<template<class...> class Template>
+        using finds_if_has_template = mpl::finds<check_if_is_template<Template>>;
+
+        /*
+         *  Quoted trait metafunction that counts tuple elements having a given trait.
+         */
+        template<template<class...> class TraitFn>
+        using counts_if_has = mpl::counts_fn<TraitFn>;
+
+        /*
+         *  Quoted trait metafunction that checks whether a tuple contains a type with given trait.
+         */
+        template<template<class...> class TraitFn>
+        using check_if_has = mpl::contains_fn<TraitFn>;
+
+        /*
+         *  Quoted trait metafunction that checks whether a tuple doesn't contain a type with given trait.
+         */
+        template<template<class...> class TraitFn>
+        using check_if_has_not = mpl::not_<mpl::contains_fn<TraitFn>>;
+
+        /*
+         *  Quoted metafunction that checks whether a tuple contains given type.
+         */
+        template<class T>
+        using check_if_has_type = mpl::contains<check_if_is_type<T>>;
+
+        /*
+         *  Quoted metafunction that checks whether a tuple contains a given template.
+         *
+         *  Note: we are using 2 small tricks:
+         *  1. A template template parameter can be treated like a metafunction, so we can just "quote" a 'primary'
+         *     template into the MPL system (e.g. `std::vector`).
+         *  2. This quoted metafunction does the opposite of the trait metafunction `is_specialization`:
+         *     `is_specialization` tries to instantiate the primary template template parameter using the
+         *     template parameters of a template type, then compares both instantiated types.
+         *     Here instead, `pass_extracted_fn_to` extracts the template template parameter from a template type,
+         *     then compares the resulting template template parameters.
+         */
+        template<template<class...> class Template>
+        using check_if_has_template = mpl::contains<check_if_is_template<Template>>;
     }
 }

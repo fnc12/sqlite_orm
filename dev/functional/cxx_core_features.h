@@ -62,6 +62,10 @@
 #define SQLITE_ORM_CONSTEVAL_SUPPORTED
 #endif
 
+#if __cpp_char8_t >= 201811L
+#define SQLITE_ORM_CHAR8T_SUPPORTED
+#endif
+
 #if __cpp_aggregate_paren_init >= 201902L
 #define SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
 #endif

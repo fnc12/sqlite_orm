@@ -6,6 +6,7 @@
 
 #include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/cxx_functional_polyfill.h"
+#include "type_traits.h"
 #include "row_extractor.h"
 #include "arg_values.h"
 
@@ -15,13 +16,12 @@ namespace sqlite_orm {
 
         template<class Tpl>
         struct tuple_from_values {
-            template<class R = Tpl,
-                     std::enable_if_t<polyfill::negation_v<std::is_same<R, std::tuple<arg_values>>>, bool> = true>
+            template<class R = Tpl, satisfies_not<std::is_same, R, std::tuple<arg_values>> = true>
             R operator()(sqlite3_value** values, int /*argsCount*/) const {
                 return this->create_from(values, std::make_index_sequence<std::tuple_size<Tpl>::value>{});
             }
 
-            template<class R = Tpl, std::enable_if_t<std::is_same<R, std::tuple<arg_values>>::value, bool> = true>
+            template<class R = Tpl, satisfies<std::is_same, R, std::tuple<arg_values>> = true>
             R operator()(sqlite3_value** values, int argsCount) const {
                 return {arg_values(argsCount, values)};
             }
