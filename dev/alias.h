@@ -52,7 +52,8 @@ namespace sqlite_orm {
 
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool
-            is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of_v<T, alias_column_t>>> = true;
+            is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, alias_column_t>::value>> =
+                true;
 
         struct basic_table;
 
@@ -149,7 +150,7 @@ namespace sqlite_orm {
 
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool
-            is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of_v<T, alias_holder>>> = true;
+            is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, alias_holder>::value>> = true;
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         template<char A, char... X>
@@ -192,12 +193,12 @@ namespace sqlite_orm {
      *  using als = alias_u<User>;
      *  select(alias_column<als>(column<User>(&User::id)))
      */
-    template<
-        class A,
-        class C,
-        std::enable_if_t<polyfill::conjunction_v<internal::is_table_alias<A>,
-                                                 polyfill::negation<internal::is_cte_moniker<internal::type_t<A>>>>,
-                         bool> = true>
+    template<class A,
+             class C,
+             std::enable_if_t<
+                 polyfill::conjunction<internal::is_table_alias<A>,
+                                       polyfill::negation<internal::is_cte_moniker<internal::type_t<A>>>>::value,
+                 bool> = true>
     constexpr auto alias_column(C field) {
         using namespace ::sqlite_orm::internal;
         using aliased_type = type_t<A>;
@@ -215,13 +216,13 @@ namespace sqlite_orm {
      *  using als = alias_u<User>;
      *  select(alias_column<als>(&User::id))
      */
-    template<
-        class A,
-        class F,
-        class O,
-        std::enable_if_t<polyfill::conjunction_v<internal::is_table_alias<A>,
-                                                 polyfill::negation<internal::is_cte_moniker<internal::type_t<A>>>>,
-                         bool> = true>
+    template<class A,
+             class F,
+             class O,
+             std::enable_if_t<
+                 polyfill::conjunction<internal::is_table_alias<A>,
+                                       polyfill::negation<internal::is_cte_moniker<internal::type_t<A>>>>::value,
+                 bool> = true>
     constexpr auto alias_column(F O::*field) {
         using namespace ::sqlite_orm::internal;
         using aliased_type = type_t<A>;

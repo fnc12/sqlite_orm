@@ -16,16 +16,15 @@ namespace sqlite_orm {
 
         template<class... Op>
         std::unique_ptr<std::string> column_constraints<Op...>::default_value() const {
-            using default_op_index = find_tuple_template<constraints_type, default_t>;
+            static constexpr size_t default_op_index = find_tuple_template<constraints_type, default_t>::value;
 
             std::unique_ptr<std::string> value;
-            call_if_constexpr<default_op_index::value != std::tuple_size<constraints_type>::value>(
-                [&value](auto& constraints, auto /*idx*/) {
-                    constexpr size_t opIndex = default_op_index::value;
-                    value = std::make_unique<std::string>(serialize_default_value(std::get<opIndex>(constraints)));
+            call_if_constexpr<default_op_index != std::tuple_size<constraints_type>::value>(
+                [&value](auto& constraints) {
+                    value =
+                        std::make_unique<std::string>(serialize_default_value(std::get<default_op_index>(constraints)));
                 },
-                this->constraints,
-                default_op_index{});
+                this->constraints);
             return value;
         }
 

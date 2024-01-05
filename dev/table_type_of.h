@@ -54,11 +54,21 @@ namespace sqlite_orm {
         SQLITE_ORM_INLINE_VAR constexpr bool is_field_of_v = false;
 
         /*
+         *  Implementation note: the technique of indirect expression testing is because
+         *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
+         *  It must also be a type that differs from those for `is_printable_v`, `is_bindable_v`, `is_preparable_v`.
+         */
+        template<class FieldOf>
+        struct indirectly_test_field_of;
+
+        /*
          *  `true` if a pointer-to-member operator is a valid expression for an object of type `T` and a member pointer of type `F O::*`.
          */
         template<class F, class O, class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool
-            is_field_of_v<F O::*, T, polyfill::void_t<decltype(std::declval<T>().*std::declval<F O::*>())>> = true;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_field_of_v<
+            F O::*,
+            T,
+            polyfill::void_t<indirectly_test_field_of<decltype(std::declval<T>().*std::declval<F O::*>())>>> = true;
 
         template<class F, class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_field_of_v<column_pointer<T, F>, T, void> = true;

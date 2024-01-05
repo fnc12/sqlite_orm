@@ -83,7 +83,7 @@ namespace sqlite_orm {
          *  `Pred` is a metafunction that defines a bool member named `value`
          *  `FilterProj` is a metafunction
          *  
-         *  Implementation note: must be distinct from `count_tuple` because legacy compilers have problems
+         *  Implementation note: must be distinct from a `count_tuple` w/o index sequence parameter because legacy compilers have problems
          *  with a default Sequence in function template parameters [SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION].
          */
         template<class Tpl,

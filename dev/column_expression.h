@@ -60,10 +60,10 @@ namespace sqlite_orm {
          *  asterisk_t<O> -> tuple<ColExpr...>
          */
         template<class DBOs, class E>
-        struct column_expression_type<
-            DBOs,
-            asterisk_t<E>,
-            std::enable_if_t<polyfill::disjunction_v<polyfill::negation<is_recordset_alias<E>>, is_cte_moniker<E>>>>
+        struct column_expression_type<DBOs,
+                                      asterisk_t<E>,
+                                      std::enable_if_t<polyfill::disjunction<polyfill::negation<is_recordset_alias<E>>,
+                                                                             is_cte_moniker<E>>::value>>
             : storage_traits::storage_mapped_column_expressions<DBOs, E> {};
 
         template<class A>

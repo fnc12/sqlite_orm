@@ -59,9 +59,9 @@ namespace sqlite_orm {
             template<class Callable,
                      class Object,
                      class... Args,
-                     std::enable_if_t<polyfill::negation_v<polyfill::is_specialization_of<
+                     std::enable_if_t<polyfill::negation<polyfill::is_specialization_of<
                                           member_object_type_t<std::remove_reference_t<Callable>>,
-                                          std::reference_wrapper>>,
+                                          std::reference_wrapper>>::value,
                                       bool> = true>
             decltype(auto) invoke(Callable&& callable, std::reference_wrapper<Object> wrapper, Args&&... args) {
                 return invoke(std::forward<Callable>(callable), wrapper.get(), std::forward<Args>(args)...);
