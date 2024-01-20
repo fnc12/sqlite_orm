@@ -39,6 +39,7 @@
 #include "literal.h"
 #include "table_name_collector.h"
 #include "column_names_getter.h"
+#include "cte_column_names_collector.h"
 #include "order_by_serializer.h"
 #include "serializing_util.h"
 #include "statement_binder.h"
@@ -582,6 +583,74 @@ namespace sqlite_orm {
             }
         };
 
+#ifdef SQLITE_ORM_WITH_CTE
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        template<>
+        struct statement_serializer<materialized_t, void> {
+            using statement_type = materialized_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) {
+                return "MATERIALIZED";
+            }
+        };
+        template<>
+        struct statement_serializer<not_materialized_t, void> {
+            using statement_type = not_materialized_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) {
+                return "NOT MATERIALIZED";
+            }
+        };
+#endif
+
+        template<class CTE>
+        struct statement_serializer<CTE, match_specialization_of<CTE, common_table_expression>> {
+            using statement_type = CTE;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& cte, const Ctx& context) const {
+                // A CTE always starts a new 'highest level' context
+                Ctx cteContext = context;
+                cteContext.use_parentheses = false;
+
+                std::stringstream ss;
+                ss << streaming_identifier(alias_extractor<cte_moniker_type_t<CTE>>::extract());
+                {
+                    std::vector<std::string> columnNames =
+                        collect_cte_column_names(get_cte_driving_subselect(cte.subselect),
+                                                 cte.explicitColumns,
+                                                 context);
+                    ss << '(' << streaming_identifiers(columnNames) << ')';
+                }
+                ss << " AS" << streaming_constraints_tuple(cte.hints, context) << " ("
+                   << serialize(cte.subselect, cteContext) << ')';
+                return ss.str();
+            }
+        };
+
+        template<class With>
+        struct statement_serializer<With, match_specialization_of<With, with_t>> {
+            using statement_type = With;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& c, const Ctx& context) const {
+                Ctx tupleContext = context;
+                tupleContext.use_parentheses = false;
+
+                std::stringstream ss;
+                ss << "WITH";
+                if(c.recursiveIndicated) {
+                    ss << " RECURSIVE";
+                }
+                ss << " " << serialize(c.cte, tupleContext);
+                ss << " " << serialize(c.expression, context);
+                return ss.str();
+            }
+        };
+#endif
+
         template<class T>
         struct statement_serializer<T, match_if<is_compound_operator, T>> {
             using statement_type = T;
@@ -1071,11 +1140,10 @@ namespace sqlite_orm {
                 ss << streaming_identifier(column.name);
                 if(!context.skip_types_and_constraints) {
                     ss << " " << type_printer<field_type_t<column_type>>().print();
-                    ss << " "
-                       << streaming_column_constraints(
-                              call_as_template_base<column_constraints>(polyfill::identity{})(column),
-                              column.is_not_null(),
-                              context);
+                    ss << streaming_column_constraints(
+                        call_as_template_base<column_constraints>(polyfill::identity{})(column),
+                        column.is_not_null(),
+                        context);
                 }
                 return ss.str();
             }

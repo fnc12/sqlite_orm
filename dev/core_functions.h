@@ -1838,7 +1838,7 @@ namespace sqlite_orm {
     }
 
     /**
-     *  COUNT(*) with FROM function. Specified type T will be serializeed as
+     *  COUNT(*) with FROM function. Specified type T will be serialized as
      *  a from argument.
      */
     template<class T>

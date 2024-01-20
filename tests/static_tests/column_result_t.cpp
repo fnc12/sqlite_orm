@@ -122,4 +122,28 @@ TEST_CASE("column_result_of_t") {
     runTest<db_objects_t, User>(object<User>());
     runTest<db_objects_t, int>(union_all(select(1), select(2)));
     runTest<db_objects_t, int64>(union_all(select(1ll), select(2)));
+#ifdef SQLITE_ORM_WITH_CTE
+    using cte_1 = decltype(1_ctealias);
+    // note: even though used with the CTE, &User::id doesn't need to be mapped into the CTE to make column results work;
+    //       this is because the result type is taken from the member pointer just because we can't look it up in the storage definition
+    auto dbObjects2 =
+        internal::db_objects_cat(dbObjects, internal::make_cte_table(dbObjects, cte<cte_1>().as(select(1))));
+    using db_objects2_t = decltype(dbObjects2);
+    runTest<db_objects_t, int>(column<cte_1>(&User::id));
+    runTest<db_objects2_t, int>(column<cte_1>(1_colalias));
+    runTest<db_objects2_t, int>(column<cte_1>(get<internal::column_alias<'1'>>()));
+    runTest<db_objects_t, int>(alias_column<alias_a<cte_1>>(&User::id));
+    runTest<db_objects2_t, int>(alias_column<alias_a<cte_1>>(1_colalias));
+    runTest<db_objects2_t, std::tuple<int>>(asterisk<cte_1>());
+    runTest<db_objects2_t, std::tuple<int>>(asterisk<alias_a<cte_1>>());
+    runTest<db_objects_t, int>(count<cte_1>());
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    constexpr auto cte1 = 1_ctealias;
+    runTest<db_objects_t, int>(column<cte1>(&User::id));
+    runTest<db_objects2_t, int>(column<cte1>(1_colalias));
+    runTest<db_objects2_t, int>(column<cte1>(get<1_colalias>()));
+    runTest<db_objects_t, int>(cte1->*&User::id);
+    runTest<db_objects_t, int>(count<cte1>());
+#endif
+#endif
 }

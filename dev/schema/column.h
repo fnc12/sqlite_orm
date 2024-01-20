@@ -104,6 +104,19 @@ namespace sqlite_orm {
 #endif
         };
 
+        template<class T, class SFINAE = void>
+        struct column_field_expression {
+            using type = void;
+        };
+
+        template<class G, class S, class... Op>
+        struct column_field_expression<column_t<G, S, Op...>, void> {
+            using type = typename column_t<G, S, Op...>::member_pointer_t;
+        };
+
+        template<typename T>
+        using column_field_expression_t = typename column_field_expression<T>::type;
+
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_column_v = polyfill::is_specialization_of<T, column_t>::value;
 

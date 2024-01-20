@@ -68,6 +68,21 @@ TEST_CASE("aliases") {
             alias_column<d_alias>(&User::id));
         runTest<alias_column_t<alias_d<DerivedUser>, column_pointer<DerivedUser, int User::*>>>(d_alias->*&User::id);
 #endif
+#ifdef SQLITE_ORM_WITH_CTE
+        runTest<column_alias<'1'>>(1_colalias);
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        using cte_1 = decltype(1_ctealias);
+        constexpr auto c_alias = "c"_alias.for_<"1"_cte>();
+        runTest<alias_column_t<alias_c<cte_1>, column_pointer<cte_1, alias_holder<column_alias<'a'>>>>>(
+            alias_column<c_alias>("a"_col));
+        runTest<alias_column_t<alias_c<cte_1>, column_pointer<cte_1, alias_holder<column_alias<'a'>>>>>(
+            alias_column<c_alias>("1"_cte->*"a"_col));
+        runTest<alias_column_t<alias_c<cte_1>, column_pointer<cte_1, alias_holder<column_alias<'a'>>>>>(
+            c_alias->*"a"_col);
+        runTest<alias_column_t<alias_c<cte_1>, column_pointer<cte_1, alias_holder<column_alias<'a'>>>>>(
+            c_alias->*("1"_cte->*"a"_col));
+#endif
+#endif
     }
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     SECTION("table alias expressions") {

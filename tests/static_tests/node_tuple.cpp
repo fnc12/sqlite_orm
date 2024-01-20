@@ -3,6 +3,8 @@
 #include <type_traits>  //  std::is_same
 
 using namespace sqlite_orm;
+using internal::alias_holder;
+using internal::column_alias;
 using internal::column_pointer;
 
 template<class T>
@@ -248,6 +250,24 @@ TEST_CASE("Node tuple") {
             using Expected = tuple<decltype(node)>;
             static_assert(is_same<Tuple, Expected>::value, "count(*)");
         }
+#ifdef SQLITE_ORM_WITH_CTE
+        SECTION("count(*) cte") {
+            auto node = count<decltype(1_ctealias)>();
+            using Node = decltype(node);
+            using Tuple = node_tuple_t<Node>;
+            using Expected = tuple<Node>;
+            static_assert(is_same<Tuple, Expected>::value, "count(*) cte");
+        }
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        SECTION("count(*) cte 2") {
+            auto node = count<1_ctealias>();
+            using Node = decltype(node);
+            using Tuple = node_tuple_t<Node>;
+            using Expected = tuple<Node>;
+            static_assert(is_same<Tuple, Expected>::value, "count(*) cte 2");
+        }
+#endif
+#endif
         SECTION("count(*) filter") {
             auto node = count<User>().filter(where(length(&User::name) > 5));
             using Node = decltype(node);
@@ -956,4 +976,50 @@ TEST_CASE("Node tuple") {
         using ExpectedTuple = tuple<decltype(&User::name), decltype(&User::name), const char*>;
         STATIC_REQUIRE(std::is_same<Tuple, ExpectedTuple>::value);
     }
+#ifdef SQLITE_ORM_WITH_CTE
+    SECTION("with ordinary") {
+        using cte_1 = decltype(1_ctealias);
+        auto expression = with(1_ctealias().as(select(1)), select(column<cte_1>(1_colalias)));
+        using Tuple = node_tuple_t<decltype(expression)>;
+        using ExpectedTuple = tuple<int, column_pointer<cte_1, alias_holder<column_alias<'1'>>>>;
+        STATIC_REQUIRE(std::is_same_v<Tuple, ExpectedTuple>);
+    }
+    SECTION("with not enforced recursive") {
+        using cte_1 = decltype(1_ctealias);
+        auto expression = with(1_ctealias().as(select(1)), select(column<cte_1>(1_colalias)));
+        using Tuple = node_tuple_t<decltype(expression)>;
+        using ExpectedTuple = tuple<int, column_pointer<cte_1, alias_holder<column_alias<'1'>>>>;
+        STATIC_REQUIRE(std::is_same_v<Tuple, ExpectedTuple>);
+    }
+    SECTION("with optional recursive") {
+        using cte_1 = decltype(1_ctealias);
+        auto expression = with_recursive(
+            1_ctealias().as(
+                union_all(select(1), select(column<cte_1>(1_colalias) + 1, where(column<cte_1>(1_colalias) < 10)))),
+            select(column<cte_1>(1_colalias)));
+        using Tuple = node_tuple_t<decltype(expression)>;
+        using ExpectedTuple = tuple<int,
+                                    column_pointer<cte_1, alias_holder<column_alias<'1'>>>,
+                                    int,
+                                    column_pointer<cte_1, alias_holder<column_alias<'1'>>>,
+                                    int,
+                                    column_pointer<cte_1, alias_holder<column_alias<'1'>>>>;
+        STATIC_REQUIRE(std::is_same_v<Tuple, ExpectedTuple>);
+    }
+    SECTION("with recursive") {
+        using cte_1 = decltype(1_ctealias);
+        auto expression = with_recursive(
+            1_ctealias().as(
+                union_all(select(1), select(column<cte_1>(1_colalias) + 1, where(column<cte_1>(1_colalias) < 10)))),
+            select(column<cte_1>(1_colalias)));
+        using Tuple = node_tuple_t<decltype(expression)>;
+        using ExpectedTuple = tuple<int,
+                                    column_pointer<cte_1, alias_holder<column_alias<'1'>>>,
+                                    int,
+                                    column_pointer<cte_1, alias_holder<column_alias<'1'>>>,
+                                    int,
+                                    column_pointer<cte_1, alias_holder<column_alias<'1'>>>>;
+        STATIC_REQUIRE(std::is_same_v<Tuple, ExpectedTuple>);
+    }
+#endif
 }
