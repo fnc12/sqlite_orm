@@ -14,7 +14,8 @@ namespace sqlite_orm {
             if constexpr(reversed) {
                 // nifty fold expression trick: make use of guaranteed right-to-left evaluation order when folding over operator=
                 int sink;
-                ((lambda(std::get<Idx>(tpl)), sink) = ... = 0);
+                // note: `(void)` cast silences warning 'expression result unused'
+                (void)((lambda(std::get<Idx>(tpl)), sink) = ... = 0);
             } else {
                 (lambda(std::get<Idx>(tpl)), ...);
             }

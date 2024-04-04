@@ -27,7 +27,8 @@ namespace sqlite_orm {
             size_t result = 0;
 #endif
             size_t i = 0;
-            ((result = Idx, i++ == pos) || ...);
+            // note: `(void)` cast silences warning 'expression result unused'
+            (void)((result = Idx, i++ == pos) || ...);
             return result;
         }
 #endif
