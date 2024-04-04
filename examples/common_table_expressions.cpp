@@ -14,6 +14,9 @@
 #include <tuple>
 #include <iostream>
 #include <iomanip>
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+#include <ctime>
+#endif
 
 using std::cout;
 using std::endl;
@@ -910,7 +913,7 @@ void neevek_issue_222() {
     struct user_activity {
         int64 id;
         int64 uid;
-        __time64_t timestamp;
+        time_t timestamp;
     };
 
     auto storage = make_storage("",
@@ -920,7 +923,7 @@ void neevek_issue_222() {
                                            make_column("timestamp", &user_activity::timestamp)));
     storage.sync_schema();
     storage.transaction([&storage]() {
-        __time64_t now = _time64(nullptr);
+        time_t now = std::time(nullptr);
         auto values = {user_activity{0, 1, now - 86400 * 3},
                        user_activity{0, 1, now - 86400 * 2},
                        user_activity{0, 1, now},
@@ -988,7 +991,7 @@ void greatest_n_per_group() {
     struct some_result {
         int64 result_id;
         int64 item_id;
-        __time64_t timestamp;
+        time_t timestamp;
         bool flag;
     };
 
@@ -1001,7 +1004,7 @@ void greatest_n_per_group() {
                                 make_column("flag", &some_result::flag)));
     storage.sync_schema();
     storage.transaction([&storage]() {
-        __time64_t now = _time64(nullptr);
+        time_t now = std::time(nullptr);
         auto values = std::initializer_list<some_result>{{-1, 1, now - 86400 * 3, false},
                                                          {-1, 1, now - 86400 * 2, true},
                                                          {-1, 1, now, true},
