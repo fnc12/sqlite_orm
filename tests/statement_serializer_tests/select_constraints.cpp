@@ -60,7 +60,7 @@ TEST_CASE("statement_serializer select constraints") {
             expected = "OR ROLLBACK";
         }
     }
-    SECTION("from") {
+    SECTION("from table") {
         SECTION("without alias") {
             auto expression = from<User>();
             value = serialize(expression, context);
@@ -92,6 +92,122 @@ TEST_CASE("statement_serializer select constraints") {
         }
 #endif
     }
+#ifdef SQLITE_ORM_WITH_CTE
+    SECTION("from CTE") {
+        using cte_1 = decltype(1_ctealias);
+        auto dbObjects2 =
+            internal::db_objects_cat(dbObjects, internal::make_cte_table(dbObjects, cte<cte_1>().as(select(1))));
+        using context_t = internal::serializer_context<decltype(dbObjects2)>;
+        context_t context{dbObjects2};
+        SECTION("without alias 1") {
+            auto expression = from<cte_1>();
+            value = serialize(expression, context);
+            expected = R"(FROM "1")";
+        }
+        SECTION("with alias 1") {
+            auto expression = from<alias_z<cte_1>>();
+            value = serialize(expression, context);
+            expected = R"(FROM "1" "z")";
+        }
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        SECTION("without alias 2") {
+            auto expression = from<1_ctealias>();
+            value = serialize(expression, context);
+            expected = R"(FROM "1")";
+        }
+        SECTION("with alias 2") {
+            constexpr auto z_alias = "z"_alias.for_<1_ctealias>();
+            auto expression = from<z_alias>();
+            value = serialize(expression, context);
+            expected = R"(FROM "1" "z")";
+        }
+        SECTION("as") {
+            auto expression = cte<cte_1>().as(select(1));
+            value = serialize(expression, context);
+            expected = R"("1"("1") AS (SELECT 1))";
+        }
+        SECTION("as materialized") {
+            auto expression = cte<cte_1>().as<materialized()>(select(1));
+            value = serialize(expression, context);
+            expected = R"("1"("1") AS MATERIALIZED (SELECT 1))";
+        }
+        SECTION("as not materialized") {
+            auto expression = cte<cte_1>().as<not_materialized()>(select(1));
+            value = serialize(expression, context);
+            expected = R"("1"("1") AS NOT MATERIALIZED (SELECT 1))";
+        }
+#endif
+        SECTION("with ordinary") {
+            auto expression = with(cte<cte_1>().as(select(1)), select(column<cte_1>(1_colalias)));
+            value = serialize(expression, context);
+            expected = R"(WITH "1"("1") AS (SELECT 1) SELECT "1"."1" FROM "1")";
+        }
+        SECTION("with ordinary, compound") {
+            auto expression = with(cte<cte_1>().as(select(1)),
+                                   union_all(select(column<cte_1>(1_colalias)), select(column<cte_1>(1_colalias))));
+            value = serialize(expression, context);
+            expected = R"(WITH "1"("1") AS (SELECT 1) SELECT "1"."1" FROM "1" UNION ALL SELECT "1"."1" FROM "1")";
+        }
+        SECTION("with not enforced recursive") {
+            auto expression = with_recursive(cte<cte_1>().as(select(1)), select(column<cte_1>(1_colalias)));
+            value = serialize(expression, context);
+            expected = R"(WITH RECURSIVE "1"("1") AS (SELECT 1) SELECT "1"."1" FROM "1")";
+        }
+        SECTION("with not enforced recursive, compound") {
+            auto expression =
+                with_recursive(cte<cte_1>().as(select(1)),
+                               union_all(select(column<cte_1>(1_colalias)), select(column<cte_1>(1_colalias))));
+            value = serialize(expression, context);
+            expected =
+                R"(WITH RECURSIVE "1"("1") AS (SELECT 1) SELECT "1"."1" FROM "1" UNION ALL SELECT "1"."1" FROM "1")";
+        }
+        SECTION("with ordinary, multiple") {
+            auto expression = with(std::make_tuple(cte<cte_1>().as(select(1)), cte<cte_1>().as(select(1))),
+                                   select(column<cte_1>(1_colalias)));
+            value = serialize(expression, context);
+            expected = R"(WITH "1"("1") AS (SELECT 1), "1"("1") AS (SELECT 1) SELECT "1"."1" FROM "1")";
+        }
+        SECTION("with ordinary, multiple, compound") {
+            auto expression = with(std::make_tuple(cte<cte_1>().as(select(1)), cte<cte_1>().as(select(1))),
+                                   union_all(select(column<cte_1>(1_colalias)), select(column<cte_1>(1_colalias))));
+            value = serialize(expression, context);
+            expected =
+                R"(WITH "1"("1") AS (SELECT 1), "1"("1") AS (SELECT 1) SELECT "1"."1" FROM "1" UNION ALL SELECT "1"."1" FROM "1")";
+        }
+        SECTION("with not enforced recursive, multiple") {
+            auto expression = with_recursive(std::make_tuple(cte<cte_1>().as(select(1)), cte<cte_1>().as(select(1))),
+                                             select(column<cte_1>(1_colalias)));
+            value = serialize(expression, context);
+            expected = R"(WITH RECURSIVE "1"("1") AS (SELECT 1), "1"("1") AS (SELECT 1) SELECT "1"."1" FROM "1")";
+        }
+        SECTION("with not enforced recursive, multiple, compound") {
+            auto expression =
+                with_recursive(std::make_tuple(cte<cte_1>().as(select(1)), cte<cte_1>().as(select(1))),
+                               union_all(select(column<cte_1>(1_colalias)), select(column<cte_1>(1_colalias))));
+            value = serialize(expression, context);
+            expected =
+                R"(WITH RECURSIVE "1"("1") AS (SELECT 1), "1"("1") AS (SELECT 1) SELECT "1"."1" FROM "1" UNION ALL SELECT "1"."1" FROM "1")";
+        }
+        SECTION("with optional recursive") {
+            auto expression = with(
+                cte<cte_1>().as(
+                    union_all(select(1), select(column<cte_1>(1_colalias) + 1, where(column<cte_1>(1_colalias) < 10)))),
+                select(column<cte_1>(1_colalias)));
+            value = serialize(expression, context);
+            expected =
+                R"(WITH "1"("1") AS (SELECT 1 UNION ALL SELECT "1"."1" + 1 FROM "1" WHERE ("1"."1" < 10)) SELECT "1"."1" FROM "1")";
+        }
+        SECTION("with recursive") {
+            auto expression = with_recursive(
+                cte<cte_1>().as(
+                    union_all(select(1), select(column<cte_1>(1_colalias) + 1, where(column<cte_1>(1_colalias) < 10)))),
+                select(column<cte_1>(1_colalias)));
+            value = serialize(expression, context);
+            expected =
+                R"(WITH RECURSIVE "1"("1") AS (SELECT 1 UNION ALL SELECT "1"."1" + 1 FROM "1" WHERE ("1"."1" < 10)) SELECT "1"."1" FROM "1")";
+        }
+    }
+#endif
     // tests whether the statement serializer for a select with joins
     // properly deduplicates the table names when no explicit from is used
     SECTION("deduplicated table names") {

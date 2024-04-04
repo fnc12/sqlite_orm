@@ -122,6 +122,16 @@ namespace sqlite_orm {
         template<class T>
         struct node_tuple<T, match_if<is_compound_operator, T>> : node_tuple<typename T::expressions_tuple> {};
 
+#ifdef SQLITE_ORM_WITH_CTE
+        template<class CTE>
+        struct node_tuple<CTE, match_specialization_of<CTE, common_table_expression>>
+            : node_tuple<typename CTE::expression_type> {};
+
+        template<class With>
+        struct node_tuple<With, match_specialization_of<With, with_t>>
+            : node_tuple_for<typename With::cte_type, typename With::expression_type> {};
+#endif
+
         template<class T, class... Args>
         struct node_tuple<select_t<T, Args...>, void> : node_tuple_for<T, Args...> {};
 

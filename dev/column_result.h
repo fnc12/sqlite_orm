@@ -19,6 +19,7 @@
 #include "operators.h"
 #include "rowid.h"
 #include "alias.h"
+#include "cte_types.h"
 #include "storage_traits.h"
 #include "function.h"
 #include "ast/special_keywords.h"
@@ -225,6 +226,21 @@ namespace sqlite_orm {
 
         template<class DBOs, class T, class F>
         struct column_result_t<DBOs, column_pointer<T, F>, void> : column_result_t<DBOs, F> {};
+
+#ifdef SQLITE_ORM_WITH_CTE
+        template<class DBOs, class Moniker, class ColAlias>
+        struct column_result_t<DBOs, column_pointer<Moniker, alias_holder<ColAlias>>, void> {
+            using table_type = storage_pick_table_t<Moniker, DBOs>;
+            using cte_mapper_type = cte_mapper_type_t<table_type>;
+
+            // lookup ColAlias in the final column references
+            using colalias_index =
+                find_tuple_type<typename cte_mapper_type::final_colrefs_tuple, alias_holder<ColAlias>>;
+            static_assert(colalias_index::value < std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
+                          "No such column mapped into the CTE.");
+            using type = std::tuple_element_t<colalias_index::value, typename cte_mapper_type::fields_type>;
+        };
+#endif
 
         template<class DBOs, class... Args>
         struct column_result_t<DBOs, columns_t<Args...>, void>

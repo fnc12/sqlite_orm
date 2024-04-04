@@ -113,6 +113,8 @@ TEST_CASE("inline namespace literals expressions") {
     constexpr auto u_alias_builder = "u"_alias;
     constexpr auto c_alias = "c"_col;
     constexpr auto f_scalar_builder = "f"_scalar;
+    constexpr auto numeric_cte_alias_builder = 1_ctealias;
+    constexpr auto cte_alias_builder = "1"_cte;
 }
 
 TEST_CASE("ADL and pointer-to-member expressions") {
@@ -121,9 +123,11 @@ TEST_CASE("ADL and pointer-to-member expressions") {
     };
     constexpr auto user_table = c<User>();
     constexpr auto u_alias = "u"_alias.for_<User>();
+    constexpr auto cte = "1"_cte;
 
     user_table->*&User::id;
     u_alias->*&User::id;
+    cte->*&User::id;
 }
 #endif
 

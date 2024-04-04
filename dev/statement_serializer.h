@@ -39,8 +39,10 @@
 #include "literal.h"
 #include "table_name_collector.h"
 #include "column_names_getter.h"
+#include "cte_column_names_collector.h"
 #include "order_by_serializer.h"
 #include "serializing_util.h"
+#include "serialize_result_type.h"
 #include "statement_binder.h"
 #include "values.h"
 #include "schema/triggers.h"
@@ -57,7 +59,7 @@ namespace sqlite_orm {
         struct statement_serializer;
 
         template<class T, class C>
-        std::string serialize(const T& t, const C& context) {
+        auto serialize(const T& t, const C& context) {
             statement_serializer<T> serializer;
             return serializer(t, context);
         }
@@ -147,7 +149,7 @@ namespace sqlite_orm {
             }
 
             template<class Ctx>
-            std::string serialize(const statement_type& statement, const Ctx& context, const std::string& tableName) {
+            auto serialize(const statement_type& statement, const Ctx& context, const std::string& tableName) {
                 std::stringstream ss;
                 ss << "CREATE TABLE " << streaming_identifier(tableName) << " ( "
                    << streaming_expressions_tuple(statement.elements, context) << ")";
@@ -425,7 +427,7 @@ namespace sqlite_orm {
             using statement_type = rank_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& /*statement*/, const Ctx&) const {
+            serialize_result_type operator()(const statement_type& /*statement*/, const Ctx&) const {
                 return "rank";
             }
         };
@@ -581,6 +583,75 @@ namespace sqlite_orm {
                 return ss.str();
             }
         };
+
+#ifdef SQLITE_ORM_WITH_CTE
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        template<>
+        struct statement_serializer<materialized_t, void> {
+            using statement_type = materialized_t;
+
+            template<class Ctx>
+            std::string_view operator()(const statement_type& /*statement*/, const Ctx& /*context*/) const {
+                return "MATERIALIZED";
+            }
+        };
+
+        template<>
+        struct statement_serializer<not_materialized_t, void> {
+            using statement_type = not_materialized_t;
+
+            template<class Ctx>
+            std::string_view operator()(const statement_type& /*statement*/, const Ctx& /*context*/) const {
+                return "NOT MATERIALIZED";
+            }
+        };
+#endif
+
+        template<class CTE>
+        struct statement_serializer<CTE, match_specialization_of<CTE, common_table_expression>> {
+            using statement_type = CTE;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& cte, const Ctx& context) const {
+                // A CTE always starts a new 'highest level' context
+                Ctx cteContext = context;
+                cteContext.use_parentheses = false;
+
+                std::stringstream ss;
+                ss << streaming_identifier(alias_extractor<cte_moniker_type_t<CTE>>::extract());
+                {
+                    std::vector<std::string> columnNames =
+                        collect_cte_column_names(get_cte_driving_subselect(cte.subselect),
+                                                 cte.explicitColumns,
+                                                 context);
+                    ss << '(' << streaming_identifiers(columnNames) << ')';
+                }
+                ss << " AS" << streaming_constraints_tuple(cte.hints, context) << " ("
+                   << serialize(cte.subselect, cteContext) << ')';
+                return ss.str();
+            }
+        };
+
+        template<class With>
+        struct statement_serializer<With, match_specialization_of<With, with_t>> {
+            using statement_type = With;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& c, const Ctx& context) const {
+                Ctx tupleContext = context;
+                tupleContext.use_parentheses = false;
+
+                std::stringstream ss;
+                ss << "WITH";
+                if(c.recursiveIndicated) {
+                    ss << " RECURSIVE";
+                }
+                ss << " " << serialize(c.cte, tupleContext);
+                ss << " " << serialize(c.expression, context);
+                return ss.str();
+            }
+        };
+#endif
 
         template<class T>
         struct statement_serializer<T, match_if<is_compound_operator, T>> {
@@ -880,7 +951,7 @@ namespace sqlite_orm {
             using statement_type = conflict_clause_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx&) const {
+            serialize_result_type operator()(const statement_type& statement, const Ctx&) const {
                 switch(statement) {
                     case conflict_clause_t::rollback:
                         return "ROLLBACK";
@@ -912,7 +983,7 @@ namespace sqlite_orm {
             using statement_type = null_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) const {
+            serialize_result_type operator()(const statement_type& /*statement*/, const Ctx& /*context*/) const {
                 return "NULL";
             }
         };
@@ -922,7 +993,7 @@ namespace sqlite_orm {
             using statement_type = not_null_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) const {
+            serialize_result_type operator()(const statement_type& /*statement*/, const Ctx& /*context*/) const {
                 return "NOT NULL";
             }
         };
@@ -1071,11 +1142,10 @@ namespace sqlite_orm {
                 ss << streaming_identifier(column.name);
                 if(!context.skip_types_and_constraints) {
                     ss << " " << type_printer<field_type_t<column_type>>().print();
-                    ss << " "
-                       << streaming_column_constraints(
-                              call_as_template_base<column_constraints>(polyfill::identity{})(column),
-                              column.is_not_null(),
-                              context);
+                    ss << streaming_column_constraints(
+                        call_as_template_base<column_constraints>(polyfill::identity{})(column),
+                        column.is_not_null(),
+                        context);
                 }
                 return ss.str();
             }
@@ -1561,7 +1631,7 @@ namespace sqlite_orm {
             using statement_type = conflict_action;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx&) const {
+            serialize_result_type operator()(const statement_type& statement, const Ctx&) const {
                 switch(statement) {
                     case conflict_action::replace:
                         return "REPLACE";
@@ -1584,7 +1654,10 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
-                return "OR " + serialize(statement.action, context);
+                std::stringstream ss;
+
+                ss << "OR " << serialize(statement.action, context);
+                return ss.str();
             }
         };
 
@@ -1819,7 +1892,7 @@ namespace sqlite_orm {
             using statement_type = trigger_timing;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx&) const {
+            serialize_result_type operator()(const statement_type& statement, const Ctx&) const {
                 switch(statement) {
                     case trigger_timing::trigger_before:
                         return "BEFORE";
@@ -1837,7 +1910,7 @@ namespace sqlite_orm {
             using statement_type = trigger_type;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx&) const {
+            serialize_result_type operator()(const statement_type& statement, const Ctx&) const {
                 switch(statement) {
                     case trigger_type::trigger_delete:
                         return "DELETE";
@@ -2088,7 +2161,7 @@ namespace sqlite_orm {
             using statement_type = default_values_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type&, const Ctx&) const {
+            serialize_result_type operator()(const statement_type&, const Ctx&) const {
                 return "DEFAULT VALUES";
             }
         };

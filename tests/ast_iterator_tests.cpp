@@ -5,6 +5,8 @@
 
 using namespace sqlite_orm;
 using internal::alias_column_t;
+using internal::alias_holder;
+using internal::column_alias;
 using internal::column_pointer;
 using internal::iterate_ast;
 
@@ -327,6 +329,69 @@ TEST_CASE("ast_iterator") {
         expected.push_back(typeid(alias_column_t<alias_z<User>, column_pointer<User, decltype(&User::id)>>));
         iterate_ast(expression, lambda);
     }
+#endif
+#ifdef SQLITE_ORM_WITH_CTE
+    SECTION("with ordinary") {
+        using cte_1 = decltype(1_ctealias);
+        auto expression = with(cte<cte_1>().as(select(1)), select(column<cte_1>(1_colalias)));
+        expected.insert(expected.cend(), {typeid(int), typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>)});
+        iterate_ast(expression, lambda);
+    }
+    SECTION("with not enforced recursive") {
+        using cte_1 = decltype(1_ctealias);
+        auto expression = with_recursive(cte<cte_1>().as(select(1)), select(column<cte_1>(1_colalias)));
+        expected.insert(expected.cend(), {typeid(int), typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>)});
+        iterate_ast(expression, lambda);
+    }
+    SECTION("with optional recursive") {
+        using cte_1 = decltype(1_ctealias);
+        auto expression = with(
+            cte<cte_1>().as(
+                union_all(select(1), select(column<cte_1>(1_colalias) + 1, where(column<cte_1>(1_colalias) < 10)))),
+            select(column<cte_1>(1_colalias)));
+        expected.insert(expected.cend(),
+                        {typeid(int),
+                         typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>),
+                         typeid(int),
+                         typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>),
+                         typeid(int),
+                         typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>)});
+        iterate_ast(expression, lambda);
+    }
+    SECTION("with recursive") {
+        using cte_1 = decltype(1_ctealias);
+        auto expression = with_recursive(
+            cte<cte_1>().as(
+                union_all(select(1), select(column<cte_1>(1_colalias) + 1, where(column<cte_1>(1_colalias) < 10)))),
+            select(column<cte_1>(1_colalias)));
+        expected.insert(expected.cend(),
+                        {typeid(int),
+                         typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>),
+                         typeid(int),
+                         typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>),
+                         typeid(int),
+                         typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>)});
+        iterate_ast(expression, lambda);
+    }
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    SECTION("aliased CTE column pointer") {
+        constexpr auto c = "1"_cte;
+        using cte_1 = decltype("1"_cte);
+        constexpr auto z_alias = "z"_alias.for_<c>();
+        auto expression = z_alias->*&User::id;
+        expected.push_back(typeid(alias_column_t<alias_z<cte_1>, column_pointer<cte_1, decltype(&User::id)>>));
+        iterate_ast(expression, lambda);
+    }
+    SECTION("aliased CTE column alias") {
+        constexpr auto c = "1"_cte;
+        using cte_1 = decltype("1"_cte);
+        constexpr auto z_alias = "z"_alias.for_<c>();
+        auto expression = z_alias->*1_colalias;
+        expected.push_back(
+            typeid(alias_column_t<alias_z<cte_1>, column_pointer<cte_1, alias_holder<column_alias<'1'>>>>));
+        iterate_ast(expression, lambda);
+    }
+#endif
 #endif
     SECTION("highlight") {
         auto expression = highlight<User>(0, std::string("<b>"), std::string("</b>"));

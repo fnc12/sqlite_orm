@@ -226,6 +226,29 @@ namespace sqlite_orm {
             }
         };
 
+#ifdef SQLITE_ORM_WITH_CTE
+        template<class CTE>
+        struct ast_iterator<CTE, match_specialization_of<CTE, common_table_expression>> {
+            using node_type = CTE;
+
+            template<class L>
+            void operator()(const node_type& c, L& lambda) const {
+                iterate_ast(c.subselect, lambda);
+            }
+        };
+
+        template<class With>
+        struct ast_iterator<With, match_specialization_of<With, with_t>> {
+            using node_type = With;
+
+            template<class L>
+            void operator()(const node_type& c, L& lambda) const {
+                iterate_ast(c.cte, lambda);
+                iterate_ast(c.expression, lambda);
+            }
+        };
+#endif
+
         template<class T>
         struct ast_iterator<T, match_if<is_compound_operator, T>> {
             using node_type = T;

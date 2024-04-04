@@ -237,17 +237,17 @@ namespace {
         using ID = std::uint64_t;
         using TimeMs = std::uint64_t;
 
-        inline ID id() const noexcept {
+        ID id() const noexcept {
             return m_id;
-        };
-        inline void setId(ID val) noexcept {
+        }
+        void setId(ID val) noexcept {
             m_id = val;
         }
 
-        inline TimeMs time() const noexcept {
+        TimeMs time() const noexcept {
             return m_time;
         }
-        inline void setTime(const TimeMs& val) noexcept {
+        void setTime(const TimeMs& val) noexcept {
             m_time = val;
         }
 

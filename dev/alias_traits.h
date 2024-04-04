@@ -44,9 +44,9 @@ namespace sqlite_orm {
         /** @short Alias of a concrete table, see `orm_table_alias`.
          */
         template<class A>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_table_alias_v = polyfill::conjunction_v<
+        SQLITE_ORM_INLINE_VAR constexpr bool is_table_alias_v = polyfill::conjunction<
             is_recordset_alias<A>,
-            polyfill::negation<std::is_same<polyfill::detected_t<type_t, A>, std::remove_const_t<A>>>>;
+            polyfill::negation<std::is_same<polyfill::detected_t<type_t, A>, std::remove_const_t<A>>>>::value;
 
         template<class A>
         struct is_table_alias : polyfill::bool_constant<is_table_alias_v<A>> {};
@@ -68,6 +68,20 @@ namespace sqlite_orm {
         template<auto recordset>
         using decay_table_reference_t = typename decay_table_reference<decltype(recordset)>::type;
 #endif
+
+        /** @short Moniker of a CTE, see `orm_cte_moniker`.
+         */
+        template<class A>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_cte_moniker_v =
+#ifdef SQLITE_ORM_WITH_CTE
+            polyfill::conjunction_v<is_recordset_alias<A>,
+                                    std::is_same<polyfill::detected_t<type_t, A>, std::remove_const_t<A>>>;
+#else
+            false;
+#endif
+
+        template<class A>
+        using is_cte_moniker = polyfill::bool_constant<is_cte_moniker_v<A>>;
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -109,6 +123,15 @@ namespace sqlite_orm {
     template<class R>
     concept orm_table_reference = polyfill::is_specialization_of_v<std::remove_const_t<R>, internal::table_reference>;
 
+    /** @short Moniker of a CTE.
+     *
+     *  A CTE moniker has the following traits:
+     *  - is derived from `alias_tag`.
+     *  - has a `type` typename, which refers to itself.
+     */
+    template<class A>
+    concept orm_cte_moniker = (orm_recordset_alias<A> && std::same_as<typename A::type, std::remove_const_t<A>>);
+
     /** @short Specifies that a type refers to a mapped table (possibly aliased).
      */
     template<class T>
@@ -122,6 +145,6 @@ namespace sqlite_orm {
     /** @short Specifies that a type is a mapped recordset (table reference).
      */
     template<class T>
-    concept orm_mapped_recordset = (orm_table_reference<T>);
+    concept orm_mapped_recordset = (orm_table_reference<T> || orm_cte_moniker<T>);
 #endif
 }
