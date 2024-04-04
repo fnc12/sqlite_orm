@@ -4,7 +4,6 @@
 #include <utility>  //  std::make_index_sequence, std::move
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
-#include <string>  //  std::string
 #ifdef SQLITE_ORM_WITH_CTE
 #include <array>
 #endif

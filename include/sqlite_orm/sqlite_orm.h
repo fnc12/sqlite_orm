@@ -4971,7 +4971,6 @@ namespace sqlite_orm {
 #include <utility>  //  std::make_index_sequence, std::move
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
-#include <string>  //  std::string
 #ifdef SQLITE_ORM_WITH_CTE
 #include <array>
 #endif
@@ -8296,6 +8295,7 @@ namespace sqlite_orm {
                 this->subselect.highest_level = true;
             }
         };
+
         template<class... CTEs>
         using common_table_expressions = std::tuple<CTEs...>;
 
@@ -18651,16 +18651,17 @@ namespace sqlite_orm {
             using statement_type = materialized_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) {
+            std::string_view operator()(const statement_type& /*statement*/, const Ctx& /*context*/) const {
                 return "MATERIALIZED";
             }
         };
+
         template<>
         struct statement_serializer<not_materialized_t, void> {
             using statement_type = not_materialized_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) {
+            std::string_view operator()(const statement_type& /*statement*/, const Ctx& /*context*/) const {
                 return "NOT MATERIALIZED";
             }
         };

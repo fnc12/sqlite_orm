@@ -243,6 +243,7 @@ namespace sqlite_orm {
                 this->subselect.highest_level = true;
             }
         };
+
         template<class... CTEs>
         using common_table_expressions = std::tuple<CTEs...>;
 

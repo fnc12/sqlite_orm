@@ -542,7 +542,17 @@ void select_from_subselect() {
         return true;
     });
 
+    // alternative way of writing a subselect by using a CTE.
+    //
+    // original select from subquery:
     // SELECT * FROM (SELECT salary, comm AS commmission FROM emp) WHERE salary < 5000
+    //
+    // with CTE:
+    // WITH
+    //     sub AS(
+    //         SELECT salary, comm AS commmission FROM emp) WHERE salary < 5000
+    //     )
+    //  SELECT * from sub;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     constexpr auto sub = "sub"_cte;
     auto expression = with(sub().as(select(columns(&Employee::m_salary, &Employee::m_commission))),
@@ -776,7 +786,7 @@ void show_optimization_fence() {
 
 void show_mapping_and_backreferencing() {
     struct Object {
-        int64 id;
+        int64 id = 0;
     };
 
     // column alias
@@ -790,7 +800,8 @@ void show_mapping_and_backreferencing() {
     auto storage = make_storage("", make_table("object", make_column("id", &Object::id)));
     storage.sync_schema();
 
-    // back-reference via `column_pointer<cte_1, F O::*>`
+    // back-reference via `column_pointer<cte_1, F O::*>`;
+    // WITH "1"("id") AS (SELECT "object"."id" FROM "object") SELECT "1"."id" FROM "1"
     {
         auto ast = with(cte<cte_1>().as(select(&Object::id)), select(column<cte_1>(&Object::id)));
 
@@ -799,7 +810,8 @@ void show_mapping_and_backreferencing() {
     }
 
     // map column via alias_holder into cte,
-    // back-reference via `column_pointer<cte_1, alias_holder>`
+    // back-reference via `column_pointer<cte_1, alias_holder>`;
+    // WITH "1"("x") AS (SELECT 1 AS "counter" UNION ALL SELECT "1"."x" + 1 FROM "1" LIMIT 10) SELECT "1"."x" FROM "1"
     {
         auto ast =
             with(cte<cte_1>("x").as(union_all(select(as<cnt>(1)), select(column<cte_1>(get<cnt>()) + 1, limit(10)))),
@@ -809,7 +821,8 @@ void show_mapping_and_backreferencing() {
         auto stmt = storage.prepare(ast);
     }
     // map column via alias_holder into cte,
-    // back-reference via `column_pointer<cte_1, alias_holder>`
+    // back-reference via `column_pointer<cte_1, alias_holder>`;
+    // WITH "1"("x") AS (SELECT 1 AS "counter" UNION ALL SELECT "1"."x" + 1 FROM "1" LIMIT 10) SELECT "1"."x" FROM "1"
     {
         auto ast = with(cte<cte_1>("x").as(union_all(select(as<cnt>(1)), select(column<cte_1>(cnt{}) + 1, limit(10)))),
                         select(column<cte_1>(cnt{})));
@@ -818,7 +831,8 @@ void show_mapping_and_backreferencing() {
         auto stmt = storage.prepare(ast);
     }
 
-    // implicitly remap column into cte
+    // implicitly remap column into cte;
+    // WITH "1"("id") AS (SELECT "object"."id" FROM "object") SELECT "1"."id" FROM "1"
     {
         auto ast = with(cte<cte_1>(std::ignore).as(select(&Object::id)), select(column<cte_1>(&Object::id)));
 
@@ -826,7 +840,8 @@ void show_mapping_and_backreferencing() {
         auto stmt = storage.prepare(ast);
     }
 
-    // explicitly remap column into cte (independent of subselect)
+    // explicitly remap column into cte (independent of subselect);
+    // WITH "1"("id") AS (SELECT "object"."id" FROM "object") SELECT "1"."id" FROM "1"
     {
         auto ast = with(cte<cte_1>(&Object::id).as(select(&Object::id)), select(column<cte_1>(&Object::id)));
 
@@ -834,7 +849,8 @@ void show_mapping_and_backreferencing() {
         auto stmt = storage.prepare(ast);
     }
 
-    // explicitly remap column as an alias into cte (independent of subselect)
+    // explicitly remap column as an alias into cte (independent of subselect);
+    // WITH "1"("counter") AS (SELECT "object"."id" FROM "object") SELECT "1"."counter" FROM "1"
     {
         auto ast = with(cte<cte_1>(cnt{}).as(select(&Object::id)), select(column<cte_1>(get<cnt>())));
 
@@ -842,7 +858,8 @@ void show_mapping_and_backreferencing() {
         auto stmt = storage.prepare(ast);
     }
 
-    // explicitly state that column name should be taken from subselect
+    // explicitly state that column name should be taken from subselect;
+    // WITH "CTEObj"("xyz") AS (SELECT "object"."id" FROM "object") SELECT "CTEObj"."xyz" FROM "CTEObj"
     {
         struct CTEObject : alias_tag {
             // a CTE object is its own table alias
@@ -852,7 +869,7 @@ void show_mapping_and_backreferencing() {
                 return "CTEObj";
             }
 
-            int64 xyz;
+            int64 xyz = 0;
         };
         auto ast =
             with(cte<CTEObject>(make_column("xyz", &CTEObject::xyz)).as(select(&Object::id)), select(&CTEObject::xyz));
@@ -964,7 +981,7 @@ void greatest_n_per_group() {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     // Having a table consisting of multiple results for items,
     // I want to select a single result row per item, based on a condition like an aggregated value.
-    // This is possible using a (self) join and filtering by aggregated value (in case it is unique), or using window functions.
+    // This is possible using a (self) join and filtering by aggregated value (in case it is unique) or using window functions.
     //
     // In this example, we select the most recent (successful) result per item
 

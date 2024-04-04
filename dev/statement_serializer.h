@@ -590,16 +590,17 @@ namespace sqlite_orm {
             using statement_type = materialized_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) {
+            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) const {
                 return "MATERIALIZED";
             }
         };
+
         template<>
         struct statement_serializer<not_materialized_t, void> {
             using statement_type = not_materialized_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) {
+            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) const {
                 return "NOT MATERIALIZED";
             }
         };
