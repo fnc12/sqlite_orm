@@ -229,7 +229,7 @@ namespace sqlite_orm {
 
         using C1 =
             std::conditional_t<std::is_same<O, aliased_type>::value, F O::*, column_pointer<aliased_type, F O::*>>;
-        return alias_column_t<A, C1>{{field}};
+        return alias_column_t<A, C1>{C1{field}};
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
