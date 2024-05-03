@@ -171,6 +171,24 @@ TEST_CASE("statement_serializer select_t") {
                 stringValue = serialize(expression, context);
                 expected = R"(SELECT "users"."id", "users"."name" FROM "users")";
             }
+            SECTION("multi object, defined select order") {
+                auto expression = select(columns(object<User>(true), object<User>(true)));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT "users"."id", "users"."name", "users"."id", "users"."name" FROM "users")";
+            }
+            SECTION("struct") {
+                auto expression = select(struct_<User>(asterisk<User>()));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT "users".* FROM "users")";
+            }
+            SECTION("multi struct") {
+                auto expression = select(columns(struct_<User>(asterisk<User>()), struct_<User>(asterisk<User>())));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT "users".*, "users".* FROM "users")";
+            }
             // issue #1106
             SECTION("multi") {
                 auto expression = columns(asterisk<User>(), asterisk<User>(true));

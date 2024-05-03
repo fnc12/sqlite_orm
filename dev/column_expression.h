@@ -90,6 +90,15 @@ namespace sqlite_orm {
         };
 
         /**
+         *  Resolve multiple columns.
+         *  struct_t<T, C...> -> tuple<ColExpr...>
+         */
+        template<class DBOs, class T, class... Args>
+        struct column_expression_type<DBOs, struct_t<T, Args...>, void> {
+            using type = std::tuple<column_expression_of_t<DBOs, std::decay_t<Args>>...>;
+        };
+
+        /**
          *  Resolve column(s) of subselect.
          *  select_t<E, Args...> -> ColExpr, tuple<ColExpr....>
          */

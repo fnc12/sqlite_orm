@@ -105,6 +105,20 @@ namespace sqlite_orm {
                 return this->collectedExpressions;
             }
 
+            template<class T, class... Args, class Ctx>
+            std::vector<std::string>& operator()(const struct_t<T, Args...>& cols, const Ctx& context) {
+                this->collectedExpressions.reserve(this->collectedExpressions.size() + cols.count);
+                iterate_tuple(cols.columns, [this, &context](auto& colExpr) {
+                    (*this)(colExpr, context);
+                });
+                // note: `capacity() > size()` can occur in case `asterisk_t<>` does spell out the columns in defined order
+                if(tuple_has_template<typename struct_t<T, Args...>::columns_type, asterisk_t>::value &&
+                   this->collectedExpressions.capacity() > this->collectedExpressions.size()) {
+                    this->collectedExpressions.shrink_to_fit();
+                }
+                return this->collectedExpressions;
+            }
+
             std::vector<std::string> collectedExpressions;
         };
 

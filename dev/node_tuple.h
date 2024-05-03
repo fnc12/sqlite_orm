@@ -113,6 +113,9 @@ namespace sqlite_orm {
         template<class... Args>
         struct node_tuple<columns_t<Args...>, void> : node_tuple_for<Args...> {};
 
+        template<class T, class... Args>
+        struct node_tuple<struct_t<T, Args...>, void> : node_tuple_for<Args...> {};
+
         template<class L, class A>
         struct node_tuple<dynamic_in_t<L, A>, void> : node_tuple_for<L, A> {};
 

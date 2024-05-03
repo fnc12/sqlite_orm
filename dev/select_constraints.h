@@ -88,6 +88,31 @@ namespace sqlite_orm {
         template<class T>
         using is_columns = polyfill::bool_constant<is_columns_v<T>>;
 
+        /*
+         *  Captures the type of an aggregate/structure/object and column expressions, such that
+         *  `T` can be constructed in-place as part of a result row.
+         *  `T` must be constructible using direct-list-initialization.
+         */
+        template<class T, class... Args>
+        struct struct_t {
+            using columns_type = std::tuple<Args...>;
+
+            columns_type columns;
+            bool distinct = false;
+
+            static constexpr int count = std::tuple_size<columns_type>::value;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            struct_t(columns_type columns) : columns{std::move(columns)} {}
+#endif
+        };
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_struct_v = polyfill::is_specialization_of<T, struct_t>::value;
+
+        template<class T>
+        using is_struct = polyfill::bool_constant<is_struct_v<T>>;
+
         /**
          *  Subselect object type.
          */
@@ -309,6 +334,11 @@ namespace sqlite_orm {
             return cols.distinct;
         }
 
+        template<class T, class... Args>
+        bool get_distinct(const struct_t<T, Args...>& cols) {
+            return cols.distinct;
+        }
+
         template<class T>
         struct asterisk_t {
             using type = T;
@@ -432,8 +462,20 @@ namespace sqlite_orm {
         return cols;
     }
 
+    /*
+     *  Combine multiple columns in a tuple.
+     */
     template<class... Args>
-    internal::columns_t<Args...> columns(Args... args) {
+    constexpr internal::columns_t<Args...> columns(Args... args) {
+        return {std::make_tuple<Args...>(std::forward<Args>(args)...)};
+    }
+
+    /*
+     *  Construct an unmapped structure ad-hoc from multiple columns.
+     *  `T` must be constructible from the column results using direct-list-initialization.
+     */
+    template<class T, class... Args>
+    constexpr internal::struct_t<T, Args...> struct_(Args... args) {
         return {std::make_tuple<Args...>(std::forward<Args>(args)...)};
     }
 
@@ -732,7 +774,7 @@ namespace sqlite_orm {
      */
     template<orm_refers_to_recordset auto recordset>
     auto asterisk(bool definedOrder = false) {
-        return asterisk<internal::decay_table_reference_t<recordset>>(definedOrder);
+        return asterisk<internal::auto_decay_table_ref_t<recordset>>(definedOrder);
     }
 #endif
 
@@ -755,7 +797,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<orm_refers_to_table auto als>
     auto object(bool definedOrder = false) {
-        return object<internal::decay_table_reference_t<als>>(definedOrder);
+        return object<internal::auto_decay_table_ref_t<als>>(definedOrder);
     }
 #endif
 }

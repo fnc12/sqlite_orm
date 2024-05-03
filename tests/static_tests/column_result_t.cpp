@@ -2,7 +2,10 @@
 #include <catch2/catch_all.hpp>
 #include <type_traits>  //  std::is_same
 
+using std::tuple;
 using namespace sqlite_orm;
+using internal::structure;
+using internal::table_reference;
 
 template<class Type, class E>
 void do_assert() {
@@ -113,13 +116,18 @@ TEST_CASE("column_result_of_t") {
     runTest<db_objects_t, int64>(rowid<User>());
     runTest<db_objects_t, int64>(oid<User>());
     runTest<db_objects_t, int64>(_rowid_<User>());
-    runTest<db_objects_t, std::tuple<int, std::string>>(columns(&User::id, &User::name));
-    runTest<db_objects_t, std::tuple<int, std::string>>(asterisk<User>());
-    runTest<db_objects_t, std::tuple<int, std::string>>(asterisk<alias_a<User>>());
-    runTest<db_objects_t, std::tuple<int, std::string, int, std::string>>(columns(asterisk<User>(), asterisk<User>()));
+    runTest<db_objects_t, tuple<int, std::string>>(columns(&User::id, &User::name));
+    runTest<db_objects_t, tuple<int, std::string>>(asterisk<User>());
+    runTest<db_objects_t, tuple<int, std::string>>(asterisk<alias_a<User>>());
+    runTest<db_objects_t, tuple<int, std::string, int, std::string>>(columns(asterisk<User>(), asterisk<User>()));
     runTest<db_objects_t, int>(column<User>(&User::id));
     runTest<db_objects_t, int>(alias_column<alias_a<User>>(&User::id));
-    runTest<db_objects_t, User>(object<User>());
+    runTest<db_objects_t, table_reference<User>>(object<User>());
+    runTest<db_objects_t, tuple<table_reference<User>, table_reference<User>>>(columns(object<User>(), object<User>()));
+    runTest<db_objects_t, structure<User, tuple<int, std::string>>>(struct_<User>(&User::id, &User::name));
+    runTest<db_objects_t, structure<User, tuple<int, std::string>>>(struct_<User>(asterisk<User>()));
+    runTest<db_objects_t, tuple<structure<User, tuple<int, std::string>>, structure<User, tuple<int, std::string>>>>(
+        columns(struct_<User>(asterisk<User>()), struct_<User>(asterisk<User>())));
     runTest<db_objects_t, int>(union_all(select(1), select(2)));
     runTest<db_objects_t, int64>(union_all(select(1ll), select(2)));
 #ifdef SQLITE_ORM_WITH_CTE
@@ -134,8 +142,8 @@ TEST_CASE("column_result_of_t") {
     runTest<db_objects2_t, int>(column<cte_1>(get<internal::column_alias<'1'>>()));
     runTest<db_objects_t, int>(alias_column<alias_a<cte_1>>(&User::id));
     runTest<db_objects2_t, int>(alias_column<alias_a<cte_1>>(1_colalias));
-    runTest<db_objects2_t, std::tuple<int>>(asterisk<cte_1>());
-    runTest<db_objects2_t, std::tuple<int>>(asterisk<alias_a<cte_1>>());
+    runTest<db_objects2_t, tuple<int>>(asterisk<cte_1>());
+    runTest<db_objects2_t, tuple<int>>(asterisk<alias_a<cte_1>>());
     runTest<db_objects_t, int>(count<cte_1>());
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     constexpr auto cte1 = 1_ctealias;

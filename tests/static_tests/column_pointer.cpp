@@ -72,7 +72,7 @@ TEST_CASE("column pointers") {
         STATIC_REQUIRE_FALSE(orm_table_alias<decltype(derived_user)>);
         STATIC_REQUIRE_FALSE(orm_recordset_alias<decltype(derived_user)>);
         runTest<table_reference<DerivedUser>>(derived_user);
-        runTest<DerivedUser>(internal::decay_table_reference_t<derived_user>{});
+        runTest<DerivedUser>(internal::auto_decay_table_ref_t<derived_user>{});
 #endif
     }
     SECTION("column pointer expressions") {

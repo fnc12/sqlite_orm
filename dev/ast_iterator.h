@@ -172,9 +172,9 @@ namespace sqlite_orm {
             }
         };
 
-        template<class... Args>
-        struct ast_iterator<columns_t<Args...>, void> {
-            using node_type = columns_t<Args...>;
+        template<class C>
+        struct ast_iterator<C, std::enable_if_t<polyfill::disjunction<is_columns<C>, is_struct<C>>::value>> {
+            using node_type = C;
 
             template<class L>
             void operator()(const node_type& cols, L& lambda) const {
