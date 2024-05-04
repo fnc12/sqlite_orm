@@ -151,7 +151,7 @@ namespace sqlite_orm {
             template<class Ctx>
             auto serialize(const statement_type& statement, const Ctx& context, const std::string& tableName) {
                 std::stringstream ss;
-                ss << "CREATE TABLE " << streaming_identifier(tableName) << " ( "
+                ss << "CREATE TABLE " << streaming_identifier(tableName) << " ("
                    << streaming_expressions_tuple(statement.elements, context) << ")";
                 if(statement_type::is_without_rowid_v) {
                     ss << " WITHOUT ROWID";
@@ -1046,6 +1046,16 @@ namespace sqlite_orm {
         };
 
         template<>
+        struct statement_serializer<unindexed_t, void> {
+            using statement_type = unindexed_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& c, const Ctx& context) const {
+                return "UNINDEXED";
+            }
+        };
+
+        template<>
         struct statement_serializer<collate_constraint_t, void> {
             using statement_type = collate_constraint_t;
 
@@ -1140,12 +1150,17 @@ namespace sqlite_orm {
 
                 std::stringstream ss;
                 ss << streaming_identifier(column.name);
-                if(!context.skip_types_and_constraints) {
+                if(!context.skip_types_and_constraints_except_unindexed) {
                     ss << " " << type_printer<field_type_t<column_type>>().print();
                     ss << streaming_column_constraints(
                         call_as_template_base<column_constraints>(polyfill::identity{})(column),
                         column.is_not_null(),
                         context);
+                } else {
+                    using constraints_tuple = typename column_type::constraints_type;
+                    if(tuple_has_type<constraints_tuple, unindexed_t>::value) {
+                        ss << " UNINDEXED";
+                    }
                 }
                 return ss.str();
             }
@@ -1758,7 +1773,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "USING FTS5(";
                 auto subContext = context;
-                subContext.skip_types_and_constraints = true;
+                subContext.skip_types_and_constraints_except_unindexed = true;
                 ss << streaming_expressions_tuple(statement.columns, subContext) << ")";
                 return ss.str();
             }

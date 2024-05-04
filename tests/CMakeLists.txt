@@ -41,7 +41,6 @@ add_executable(unit_tests
     xdestroy_handling.cpp
     sync_schema_tests.cpp
     tests.cpp
-    tests2.cpp
     tests3.cpp
     tests4.cpp
     tests5.cpp
@@ -96,6 +95,7 @@ add_executable(unit_tests
     statement_serializer_tests/column_constraints/check.cpp
     statement_serializer_tests/column_constraints/null.cpp
     statement_serializer_tests/column_constraints/not_null.cpp
+    statement_serializer_tests/column_constraints/unindexed.cpp
     statement_serializer_tests/bindables.cpp
     statement_serializer_tests/ast/upsert_clause.cpp
     statement_serializer_tests/ast/excluded.cpp

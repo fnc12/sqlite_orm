@@ -14,7 +14,7 @@ TEST_CASE("statement_serializer column") {
     std::string value;
     std::string expected;
     SECTION("with types and constraints") {
-        context.skip_types_and_constraints = false;
+        context.skip_types_and_constraints_except_unindexed = false;
         SECTION("id INTEGER (implicit) NOT NULL") {
             auto column = make_column("id", &User::id);
             value = serialize(column, context);
@@ -82,7 +82,7 @@ TEST_CASE("statement_serializer column") {
         }
     }
     SECTION("without types and constraints") {
-        context.skip_types_and_constraints = true;
+        context.skip_types_and_constraints_except_unindexed = true;
         SECTION("id INTEGER NOT NULL") {
             auto column = make_column("id", &User::id);
             value = serialize(column, context);
