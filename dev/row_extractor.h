@@ -366,7 +366,7 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<>
-    struct row_extractor<nullptr_t> {
+    struct row_extractor<nullptr_t, void> {
         nullptr_t extract(const char* /*columnText*/) const {
             return nullptr;
         }
@@ -383,7 +383,7 @@ namespace sqlite_orm {
      *  Specialization for std::vector<char>.
      */
     template<>
-    struct row_extractor<std::vector<char>> {
+    struct row_extractor<std::vector<char>, void> {
         std::vector<char> extract(const char* columnText) const {
             return {columnText, columnText + (columnText ? ::strlen(columnText) : 0)};
         }
@@ -470,6 +470,7 @@ namespace sqlite_orm {
 
             std::tuple<Args...> extract(const char* columnText) const = delete;
 
+            // note: expects to be called only from the top level, and therefore discards the index
             std::tuple<column_result_proxy_t<Args>...> extract(sqlite3_stmt* stmt,
                                                                int&& /*nextColumnIndex*/ = 0) const {
                 int columnIndex = -1;
@@ -493,6 +494,7 @@ namespace sqlite_orm {
 
             O extract(const char* columnText) const = delete;
 
+            // note: expects to be called only from the top level, and therefore discards the index
             O extract(sqlite3_stmt* stmt, int&& /*nextColumnIndex*/ = 0) const {
                 int columnIndex = -1;
                 return O{make_row_extractor<Args>(this->db_objects).extract(stmt, ++columnIndex)...};

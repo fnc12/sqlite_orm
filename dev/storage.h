@@ -49,6 +49,7 @@
 #include "serializer_context.h"
 #include "schema/triggers.h"
 #include "object_from_column_builder.h"
+#include "row_extractor.h"
 #include "schema/table.h"
 #include "schema/column.h"
 #include "schema/index.h"

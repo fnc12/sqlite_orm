@@ -60,7 +60,8 @@ namespace sqlite_orm {
 
             O extract(const char* columnText) const = delete;
 
-            O extract(sqlite3_stmt* stmt, int&& /*nextColumnIndex*/) const {
+            // note: expects to be called only from the top level, and therefore discards the index
+            O extract(sqlite3_stmt* stmt, int&& /*nextColumnIndex*/ = 0) const {
                 int columnIndex = 0;
                 return this->extract(stmt, columnIndex);
             }
