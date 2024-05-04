@@ -435,6 +435,10 @@ namespace sqlite_orm {
         struct struct_extractor;
 
 #ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
+        /*  
+         *  Returns a value-based row extractor for an unmapped type,
+         *  returns a structure extractor for a table reference, tuple or named struct.
+         */
         template<class R, class DBOs>
         auto make_row_extractor([[maybe_unused]] const DBOs& dbObjects) {
             if constexpr(polyfill::is_specialization_of_v<R, std::tuple> ||
