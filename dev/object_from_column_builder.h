@@ -2,11 +2,13 @@
 
 #include <sqlite3.h>
 #include <type_traits>  //  std::is_member_object_pointer
+#include <utility>  //  std::move
 
 #include "functional/static_magic.h"
-#include "type_traits.h"
+#include "member_traits/member_traits.h"
 #include "table_reference.h"
 #include "row_extractor.h"
+#include "schema/column.h"
 #include "storage_lookup.h"
 
 namespace sqlite_orm {
