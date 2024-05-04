@@ -434,16 +434,27 @@ namespace sqlite_orm {
         template<class R, class DBOs>
         struct struct_extractor;
 
+#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
+        template<class R, class DBOs>
+        auto make_row_extractor([[maybe_unused]] const DBOs& dbObjects) {
+            if constexpr(polyfill::is_specialization_of_v<R, std::tuple> ||
+                         polyfill::is_specialization_of_v<R, structure> || is_table_reference_v<R>) {
+                return struct_extractor<R, DBOs>{dbObjects};
+            } else {
+                return row_value_extractor<R>();
+            }
+        }
+#else
         /*  
          *  Overload for an unmapped type returns a common row extractor.
          */
-        template<class R,
-                 class DBOs,
-                 std::enable_if_t<
-                     polyfill::negation<polyfill::disjunction<is_table_reference<R>,
-                                                              polyfill::is_specialization_of<R, std::tuple>,
-                                                              polyfill::is_specialization_of<R, structure>>>::value,
-                     bool> = true>
+        template<
+            class R,
+            class DBOs,
+            std::enable_if_t<polyfill::negation<polyfill::disjunction<polyfill::is_specialization_of<R, std::tuple>,
+                                                                      polyfill::is_specialization_of<R, structure>,
+                                                                      is_table_reference<R>>>::value,
+                             bool> = true>
         auto make_row_extractor(const DBOs& /*dbObjects*/) {
             return row_value_extractor<R>();
         }
@@ -453,13 +464,14 @@ namespace sqlite_orm {
          */
         template<class R,
                  class DBOs,
-                 std::enable_if_t<polyfill::disjunction<is_table_reference<R>,
-                                                        polyfill::is_specialization_of<R, std::tuple>,
-                                                        polyfill::is_specialization_of<R, structure>>::value,
+                 std::enable_if_t<polyfill::disjunction<polyfill::is_specialization_of<R, std::tuple>,
+                                                        polyfill::is_specialization_of<R, structure>,
+                                                        is_table_reference<R>>::value,
                                   bool> = true>
         struct_extractor<R, DBOs> make_row_extractor(const DBOs& dbObjects) {
             return {dbObjects};
         }
+#endif
 
         /**
          *  Specialization for a tuple of top-level column results.
