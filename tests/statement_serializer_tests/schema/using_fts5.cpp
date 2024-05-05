@@ -8,9 +8,19 @@ TEST_CASE("statement_serializer using_fts5") {
         std::string title;
         std::string body;
     };
+    std::string value;
+    std::string expected;
     internal::db_objects_tuple<> storage;
     internal::serializer_context<internal::db_objects_tuple<>> context{storage};
-    auto node = using_fts5(make_column("title", &Post::title), make_column("body", &Post::body));
-    auto value = serialize(node, context);
-    REQUIRE(value == "USING FTS5(\"title\", \"body\")");
+    SECTION("simple") {
+        auto node = using_fts5(make_column("title", &Post::title), make_column("body", &Post::body));
+        value = serialize(node, context);
+        expected = R"(USING FTS5("title", "body"))";
+    }
+    SECTION("unindexed") {
+        auto node = using_fts5(make_column("title", &Post::title), make_column("body", &Post::body, unindexed()));
+        value = serialize(node, context);
+        expected = R"(USING FTS5("title", "body" UNINDEXED))";
+    }
+    REQUIRE(value == expected);
 }

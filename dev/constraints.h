@@ -140,6 +140,8 @@ namespace sqlite_orm {
             unique_t(columns_tuple columns_) : columns(std::move(columns_)) {}
         };
 
+        struct unindexed_t {};
+
         /**
          *  DEFAULT constraint class.
          *  T is a value type.
@@ -471,6 +473,7 @@ namespace sqlite_orm {
                                                              check_if<is_foreign_key>,
                                                              check_if_is_type<null_t>,
                                                              check_if_is_type<not_null_t>,
+                                                             check_if_is_type<unindexed_t>,
                                                              check_if_is_template<unique_t>,
                                                              check_if_is_template<default_t>,
                                                              check_if_is_template<check_t>,
@@ -512,6 +515,13 @@ namespace sqlite_orm {
 
     inline internal::unique_t<> unique() {
         return {{}};
+    }
+
+    /**
+     *  UNINDEXED constraint builder function. Used in FTS virtual tables.
+     */
+    inline internal::unindexed_t unindexed() {
+        return {};
     }
 
     template<class... Cs>

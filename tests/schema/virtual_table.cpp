@@ -30,8 +30,6 @@ TEST_CASE("virtual table") {
         Post{"SQLite Tutorial", "Help you learn SQLite quickly and effectively"},
     };
 
-    //    storage.remove_all<Post>();
-
     /// INSERT INTO posts(title,body)
     /// VALUES('Learn SQlite FTS5','This tutorial teaches you how to perform full-text search in SQLite using FTS5'),
     /// ('Advanced SQlite Full-text Search','Show you some advanced techniques in SQLite full-text searching'),

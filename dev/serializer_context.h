@@ -8,7 +8,7 @@ namespace sqlite_orm {
             bool replace_bindable_with_question = false;
             bool skip_table_name = true;
             bool use_parentheses = true;
-            bool skip_types_and_constraints = false;
+            bool fts5_columns = false;
         };
 
         template<class DBOs>

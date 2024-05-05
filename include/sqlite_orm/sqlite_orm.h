@@ -1800,6 +1800,8 @@ namespace sqlite_orm {
             unique_t(columns_tuple columns_) : columns(std::move(columns_)) {}
         };
 
+        struct unindexed_t {};
+
         /**
          *  DEFAULT constraint class.
          *  T is a value type.
@@ -2131,6 +2133,7 @@ namespace sqlite_orm {
                                                              check_if<is_foreign_key>,
                                                              check_if_is_type<null_t>,
                                                              check_if_is_type<not_null_t>,
+                                                             check_if_is_type<unindexed_t>,
                                                              check_if_is_template<unique_t>,
                                                              check_if_is_template<default_t>,
                                                              check_if_is_template<check_t>,
@@ -2172,6 +2175,13 @@ namespace sqlite_orm {
 
     inline internal::unique_t<> unique() {
         return {{}};
+    }
+
+    /**
+     *  UNINDEXED constraint builder function. Used in FTS virtual tables.
+     */
+    inline internal::unindexed_t unindexed() {
+        return {};
     }
 
     template<class... Cs>
@@ -3238,7 +3248,7 @@ namespace sqlite_orm {
             bool replace_bindable_with_question = false;
             bool skip_table_name = true;
             bool use_parentheses = true;
-            bool skip_types_and_constraints = false;
+            bool fts5_columns = false;
         };
 
         template<class DBOs>
@@ -15913,18 +15923,26 @@ namespace sqlite_orm {
             const bool& isNotNull = std::get<2>(tpl);
             auto& context = std::get<3>(tpl);
 
-            iterate_tuple(column.constraints, [&ss, &context](auto& constraint) {
-                ss << ' ' << serialize(constraint, context);
-            });
             using constraints_tuple = decltype(column.constraints);
-            constexpr bool hasExplicitNullableConstraint =
-                mpl::invoke_t<mpl::disjunction<check_if_has_type<null_t>, check_if_has_type<not_null_t>>,
-                              constraints_tuple>::value;
-            if(!hasExplicitNullableConstraint) {
-                if(isNotNull) {
-                    ss << " NOT NULL";
-                } else {
-                    ss << " NULL";
+            if(!context.fts5_columns) {
+                iterate_tuple(column.constraints, [&ss, &context](auto& constraint) {
+                    ss << ' ' << serialize(constraint, context);
+                });
+                constexpr bool hasExplicitNullableConstraint =
+                    mpl::invoke_t<mpl::disjunction<check_if_has_type<null_t>, check_if_has_type<not_null_t>>,
+                                  constraints_tuple>::value;
+                if SQLITE_ORM_CONSTEXPR_IF(!hasExplicitNullableConstraint) {
+                    if(isNotNull) {
+                        ss << " NOT NULL";
+                    } else {
+                        ss << " NULL";
+                    }
+                }
+            } else {
+                constexpr bool hasUnindexedOption =
+                    mpl::invoke_t<check_if_has_type<unindexed_t>, constraints_tuple>::value;
+                if SQLITE_ORM_CONSTEXPR_IF(hasUnindexedOption) {
+                    ss << " UNINDEXED";
                 }
             }
 
@@ -18479,7 +18497,7 @@ namespace sqlite_orm {
             template<class Ctx>
             auto serialize(const statement_type& statement, const Ctx& context, const std::string& tableName) {
                 std::stringstream ss;
-                ss << "CREATE TABLE " << streaming_identifier(tableName) << " ( "
+                ss << "CREATE TABLE " << streaming_identifier(tableName) << " ("
                    << streaming_expressions_tuple(statement.elements, context) << ")";
                 if(statement_type::is_without_rowid_v) {
                     ss << " WITHOUT ROWID";
@@ -19374,6 +19392,16 @@ namespace sqlite_orm {
         };
 
         template<>
+        struct statement_serializer<unindexed_t, void> {
+            using statement_type = unindexed_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& c, const Ctx& context) const {
+                return "UNINDEXED";
+            }
+        };
+
+        template<>
         struct statement_serializer<collate_constraint_t, void> {
             using statement_type = collate_constraint_t;
 
@@ -19464,17 +19492,15 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& column, const Ctx& context) const {
-                using column_type = statement_type;
-
                 std::stringstream ss;
                 ss << streaming_identifier(column.name);
-                if(!context.skip_types_and_constraints) {
-                    ss << " " << type_printer<field_type_t<column_type>>().print();
-                    ss << streaming_column_constraints(
-                        call_as_template_base<column_constraints>(polyfill::identity{})(column),
-                        column.is_not_null(),
-                        context);
+                if(!context.fts5_columns) {
+                    ss << " " << type_printer<field_type_t<column_field<G, S>>>().print();
                 }
+                ss << streaming_column_constraints(
+                    call_as_template_base<column_constraints>(polyfill::identity{})(column),
+                    column.is_not_null(),
+                    context);
                 return ss.str();
             }
         };
@@ -20086,7 +20112,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "USING FTS5(";
                 auto subContext = context;
-                subContext.skip_types_and_constraints = true;
+                subContext.fts5_columns = true;
                 ss << streaming_expressions_tuple(statement.columns, subContext) << ")";
                 return ss.str();
             }
