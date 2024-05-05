@@ -1796,11 +1796,23 @@ namespace sqlite_orm {
             using columns_tuple = std::tuple<Args...>;
 
             columns_tuple columns;
-
+#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
             unique_t(columns_tuple columns_) : columns(std::move(columns_)) {}
+#endif
         };
 
         struct unindexed_t {};
+
+        template<class T>
+        struct prefix_t {
+            using value_type = T;
+
+            value_type value;
+
+#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
+            prefix_t(value_type value) : value(std::move(value)) {}
+#endif
+        };
 
         /**
          *  DEFAULT constraint class.
@@ -2093,6 +2105,8 @@ namespace sqlite_orm {
 #else
             false;
 #endif
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_prefix_v = polyfill::is_specialization_of<T, prefix_t>::value;
 
         template<class T>
         struct is_foreign_key : polyfill::bool_constant<is_foreign_key_v<T>> {};
@@ -2134,6 +2148,7 @@ namespace sqlite_orm {
                                                              check_if_is_type<null_t>,
                                                              check_if_is_type<not_null_t>,
                                                              check_if_is_type<unindexed_t>,
+                                                             check_if_is_template<prefix_t>,
                                                              check_if_is_template<unique_t>,
                                                              check_if_is_template<default_t>,
                                                              check_if_is_template<check_t>,
@@ -2179,9 +2194,21 @@ namespace sqlite_orm {
 
     /**
      *  UNINDEXED constraint builder function. Used in FTS virtual tables.
+     * 
+     *  https://www.sqlite.org/fts5.html#the_unindexed_column_option
      */
     inline internal::unindexed_t unindexed() {
         return {};
+    }
+
+    /**
+     *  prefix=N constraint builder function. Used in FTS virtual tables.
+     * 
+     *  https://www.sqlite.org/fts5.html#prefix_indexes
+     */
+    template<class T>
+    internal::prefix_t<T> prefix(T value) {
+        return {std::move(value)};
     }
 
     template<class... Cs>
@@ -15939,11 +15966,15 @@ namespace sqlite_orm {
                     }
                 }
             } else {
-                constexpr bool hasUnindexedOption =
-                    mpl::invoke_t<check_if_has_type<unindexed_t>, constraints_tuple>::value;
-                if SQLITE_ORM_CONSTEXPR_IF(hasUnindexedOption) {
-                    ss << " UNINDEXED";
-                }
+                iterate_tuple(column.constraints, [&ss, &context](auto& constraint) {
+                    using constraint_type = typename std::decay<decltype(constraint)>::type;
+
+                    if SQLITE_ORM_CONSTEXPR_IF(std::is_same<constraint_type, unindexed_t>::value) {
+                        ss << " " << serialize(constraint, context);
+                    } else if SQLITE_ORM_CONSTEXPR_IF(is_prefix_v<constraint_type>) {
+                        ss << " " << serialize(constraint, context);
+                    }
+                });
             }
 
             return ss;
@@ -19396,8 +19427,22 @@ namespace sqlite_orm {
             using statement_type = unindexed_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
+            serialize_result_type operator()(const statement_type&, const Ctx& context) const {
                 return "UNINDEXED";
+            }
+        };
+
+        template<class T>
+        struct statement_serializer<prefix_t<T>, void> {
+            using statement_type = prefix_t<T>;
+
+            template<class Ctx>
+            serialize_result_type operator()(const statement_type& statement, const Ctx& context) const {
+                std::stringstream ss;
+                ss << "prefix=";
+                auto valueString = serialize(statement.value, context);
+                ss << valueString;
+                return ss.str();
             }
         };
 

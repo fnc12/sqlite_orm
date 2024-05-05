@@ -136,11 +136,23 @@ namespace sqlite_orm {
             using columns_tuple = std::tuple<Args...>;
 
             columns_tuple columns;
-
+#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
             unique_t(columns_tuple columns_) : columns(std::move(columns_)) {}
+#endif
         };
 
         struct unindexed_t {};
+
+        template<class T>
+        struct prefix_t {
+            using value_type = T;
+
+            value_type value;
+
+#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
+            prefix_t(value_type value) : value(std::move(value)) {}
+#endif
+        };
 
         /**
          *  DEFAULT constraint class.
@@ -433,6 +445,8 @@ namespace sqlite_orm {
 #else
             false;
 #endif
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_prefix_v = polyfill::is_specialization_of<T, prefix_t>::value;
 
         template<class T>
         struct is_foreign_key : polyfill::bool_constant<is_foreign_key_v<T>> {};
@@ -474,6 +488,7 @@ namespace sqlite_orm {
                                                              check_if_is_type<null_t>,
                                                              check_if_is_type<not_null_t>,
                                                              check_if_is_type<unindexed_t>,
+                                                             check_if_is_template<prefix_t>,
                                                              check_if_is_template<unique_t>,
                                                              check_if_is_template<default_t>,
                                                              check_if_is_template<check_t>,
@@ -519,9 +534,21 @@ namespace sqlite_orm {
 
     /**
      *  UNINDEXED constraint builder function. Used in FTS virtual tables.
+     * 
+     *  https://www.sqlite.org/fts5.html#the_unindexed_column_option
      */
     inline internal::unindexed_t unindexed() {
         return {};
+    }
+
+    /**
+     *  prefix=N constraint builder function. Used in FTS virtual tables.
+     * 
+     *  https://www.sqlite.org/fts5.html#prefix_indexes
+     */
+    template<class T>
+    internal::prefix_t<T> prefix(T value) {
+        return {std::move(value)};
     }
 
     template<class... Cs>

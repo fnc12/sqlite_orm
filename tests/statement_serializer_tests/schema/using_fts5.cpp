@@ -22,5 +22,10 @@ TEST_CASE("statement_serializer using_fts5") {
         value = serialize(node, context);
         expected = R"(USING FTS5("title", "body" UNINDEXED))";
     }
+    SECTION("prefix=2") {
+        auto node = using_fts5(make_column("title", &Post::title), make_column("body", &Post::body, prefix(2)));
+        value = serialize(node, context);
+        expected = R"(USING FTS5("title", "body" prefix=2))";
+    }
     REQUIRE(value == expected);
 }

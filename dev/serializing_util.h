@@ -422,11 +422,15 @@ namespace sqlite_orm {
                     }
                 }
             } else {
-                constexpr bool hasUnindexedOption =
-                    mpl::invoke_t<check_if_has_type<unindexed_t>, constraints_tuple>::value;
-                if SQLITE_ORM_CONSTEXPR_IF(hasUnindexedOption) {
-                    ss << " UNINDEXED";
-                }
+                iterate_tuple(column.constraints, [&ss, &context](auto& constraint) {
+                    using constraint_type = typename std::decay<decltype(constraint)>::type;
+
+                    if SQLITE_ORM_CONSTEXPR_IF(std::is_same<constraint_type, unindexed_t>::value) {
+                        ss << " " << serialize(constraint, context);
+                    } else if SQLITE_ORM_CONSTEXPR_IF(is_prefix_v<constraint_type>) {
+                        ss << " " << serialize(constraint, context);
+                    }
+                });
             }
 
             return ss;

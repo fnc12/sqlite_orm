@@ -96,6 +96,7 @@ add_executable(unit_tests
     statement_serializer_tests/column_constraints/null.cpp
     statement_serializer_tests/column_constraints/not_null.cpp
     statement_serializer_tests/column_constraints/unindexed.cpp
+    statement_serializer_tests/column_constraints/prefix.cpp
     statement_serializer_tests/bindables.cpp
     statement_serializer_tests/ast/upsert_clause.cpp
     statement_serializer_tests/ast/excluded.cpp
