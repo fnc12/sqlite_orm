@@ -148,10 +148,6 @@ namespace sqlite_orm {
             using value_type = T;
 
             value_type value;
-
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            prefix_t(value_type value) : value(std::move(value)) {}
-#endif
         };
 
         /**
@@ -445,8 +441,6 @@ namespace sqlite_orm {
 #else
             false;
 #endif
-        template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_prefix_v = polyfill::is_specialization_of<T, prefix_t>::value;
 
         template<class T>
         struct is_foreign_key : polyfill::bool_constant<is_foreign_key_v<T>> {};

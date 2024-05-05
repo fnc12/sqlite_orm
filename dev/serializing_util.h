@@ -9,6 +9,7 @@
 
 #include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/cxx_type_traits_polyfill.h"
+#include "tuple_helper/tuple_filter.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "error_code.h"
 #include "serializer_context.h"
@@ -422,14 +423,11 @@ namespace sqlite_orm {
                     }
                 }
             } else {
-                iterate_tuple(column.constraints, [&ss, &context](auto& constraint) {
-                    using constraint_type = typename std::decay<decltype(constraint)>::type;
-
-                    if SQLITE_ORM_CONSTEXPR_IF(std::is_same<constraint_type, unindexed_t>::value) {
-                        ss << " " << serialize(constraint, context);
-                    } else if SQLITE_ORM_CONSTEXPR_IF(is_prefix_v<constraint_type>) {
-                        ss << " " << serialize(constraint, context);
-                    }
+                using fts5_index_sequence = filter_tuple_sequence_t<
+                    constraints_tuple,
+                    mpl::disjunction<check_if_is_type<unindexed_t>, check_if_is_template<prefix_t>>::template fn>;
+                iterate_tuple(column.constraints, fts5_index_sequence{}, [&ss, &context](auto& constraint) {
+                    ss << ' ' << serialize(constraint, context);
                 });
             }
 
