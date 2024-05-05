@@ -2,6 +2,7 @@
 #include <type_traits>
 
 #include "cxx_universal.h"
+#include "mpl/conditional.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -40,7 +41,7 @@ namespace sqlite_orm {
             template<typename B1>
             struct conjunction<B1> : B1 {};
             template<typename B1, typename... Bn>
-            struct conjunction<B1, Bn...> : std::conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
+            struct conjunction<B1, Bn...> : mpl::conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
             template<typename... Bs>
             SQLITE_ORM_INLINE_VAR constexpr bool conjunction_v = conjunction<Bs...>::value;
 
@@ -49,7 +50,7 @@ namespace sqlite_orm {
             template<typename B1>
             struct disjunction<B1> : B1 {};
             template<typename B1, typename... Bn>
-            struct disjunction<B1, Bn...> : std::conditional_t<bool(B1::value), B1, disjunction<Bn...>> {};
+            struct disjunction<B1, Bn...> : mpl::conditional_t<bool(B1::value), B1, disjunction<Bn...>> {};
             template<typename... Bs>
             SQLITE_ORM_INLINE_VAR constexpr bool disjunction_v = disjunction<Bs...>::value;
 

@@ -1,5 +1,7 @@
 #pragma once
-#include <type_traits>
+#include <type_traits>  // std::is_integral
+
+#include "functional/mpl/conditional.h"
 
 namespace sqlite_orm {
 
@@ -12,9 +14,9 @@ namespace sqlite_orm {
 
     template<class V>
     using arithmetic_tag_t =
-        std::conditional_t<std::is_integral<V>::value,
+        mpl::conditional_t<std::is_integral<V>::value,
                            // Integer class
-                           std::conditional_t<sizeof(V) <= sizeof(int), int_or_smaller_tag, bigint_tag>,
+                           mpl::conditional_t<sizeof(V) <= sizeof(int), int_or_smaller_tag, bigint_tag>,
                            // Floating-point class
                            real_tag>;
 }

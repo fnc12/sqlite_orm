@@ -9,6 +9,7 @@
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
+#include "functional/mpl/conditional.h"
 #include "functional/cstring_literal.h"
 #include "type_traits.h"
 #include "alias_traits.h"
@@ -228,7 +229,7 @@ namespace sqlite_orm {
         static_assert(is_field_of_v<F O::*, aliased_type>, "Column must be from aliased table");
 
         using C1 =
-            std::conditional_t<std::is_same<O, aliased_type>::value, F O::*, column_pointer<aliased_type, F O::*>>;
+            mpl::conditional_t<std::is_same<O, aliased_type>::value, F O::*, column_pointer<aliased_type, F O::*>>;
         return alias_column_t<A, C1>{C1{field}};
     }
 

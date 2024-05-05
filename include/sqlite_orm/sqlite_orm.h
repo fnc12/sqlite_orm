@@ -257,6 +257,41 @@ using std::nullptr_t;
 
 // #include "cxx_universal.h"
 
+// #include "mpl/conditional.h"
+
+namespace sqlite_orm {
+    namespace internal {
+        namespace mpl {
+
+            /*
+             *  Binary quoted metafunction equivalent to `std::conditional`,
+             *  using an improved implementation in respect to memoization.
+             *  
+             *  Because `conditional` is only typed on a single bool non-type template parameter,
+             *  the compiler only ever needs to memoize 2 instances of this class template.
+             *  The type selection is a nested cheap alias template.
+             */
+            template<bool>
+            struct conditional {
+                template<typename A, typename>
+                using fn = A;
+            };
+
+            template<>
+            struct conditional<false> {
+                template<typename, typename B>
+                using fn = B;
+            };
+
+            // directly invoke `conditional`
+            template<bool v, typename A, typename B>
+            using conditional_t = typename conditional<v>::template fn<A, B>;
+        }
+    }
+
+    namespace mpl = internal::mpl;
+}
+
 namespace sqlite_orm {
     namespace internal {
         namespace polyfill {
@@ -294,7 +329,7 @@ namespace sqlite_orm {
             template<typename B1>
             struct conjunction<B1> : B1 {};
             template<typename B1, typename... Bn>
-            struct conjunction<B1, Bn...> : std::conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
+            struct conjunction<B1, Bn...> : mpl::conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
             template<typename... Bs>
             SQLITE_ORM_INLINE_VAR constexpr bool conjunction_v = conjunction<Bs...>::value;
 
@@ -303,7 +338,7 @@ namespace sqlite_orm {
             template<typename B1>
             struct disjunction<B1> : B1 {};
             template<typename B1, typename... Bn>
-            struct disjunction<B1, Bn...> : std::conditional_t<bool(B1::value), B1, disjunction<Bn...>> {};
+            struct disjunction<B1, Bn...> : mpl::conditional_t<bool(B1::value), B1, disjunction<Bn...>> {};
             template<typename... Bs>
             SQLITE_ORM_INLINE_VAR constexpr bool disjunction_v = disjunction<Bs...>::value;
 
@@ -889,6 +924,8 @@ namespace sqlite_orm {
 //  ::size_t
 // #include "cxx_type_traits_polyfill.h"
 
+// #include "mpl/conditional.h"
+
 namespace sqlite_orm {
     namespace internal {
         namespace mpl {
@@ -1447,6 +1484,8 @@ namespace sqlite_orm {
 
 // #include "../functional/cxx_universal.h"
 //  ::size_t
+// #include "../functional/mpl/conditional.h"
+
 // #include "../functional/index_sequence_util.h"
 
 #include <utility>  //  std::index_sequence
@@ -1530,7 +1569,7 @@ namespace sqlite_orm {
 #ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
         template<class Tpl, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
         struct filter_tuple_sequence<Tpl, Pred, Proj, std::index_sequence<Idx...>>
-            : flatten_idxseq<std::conditional_t<Pred<mpl::invoke_fn_t<Proj, std::tuple_element_t<Idx, Tpl>>>::value,
+            : flatten_idxseq<mpl::conditional_t<Pred<mpl::invoke_fn_t<Proj, std::tuple_element_t<Idx, Tpl>>>::value,
                                                 std::index_sequence<Idx>,
                                                 std::index_sequence<>>...> {};
 #else
@@ -5016,6 +5055,8 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
+// #include "functional/mpl/conditional.h"
+
 // #include "functional/cstring_literal.h"
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -5274,7 +5315,7 @@ namespace sqlite_orm {
         static_assert(is_field_of_v<F O::*, aliased_type>, "Column must be from aliased table");
 
         using C1 =
-            std::conditional_t<std::is_same<O, aliased_type>::value, F O::*, column_pointer<aliased_type, F O::*>>;
+            mpl::conditional_t<std::is_same<O, aliased_type>::value, F O::*, column_pointer<aliased_type, F O::*>>;
         return alias_column_t<A, C1>{C1{field}};
     }
 
@@ -5542,6 +5583,8 @@ namespace sqlite_orm {
 #include <vector>  //  std::vector
 
 // #include "functional/cxx_type_traits_polyfill.h"
+
+// #include "functional/mpl/conditional.h"
 
 // #include "is_base_of_template.h"
 
@@ -7235,7 +7278,7 @@ namespace sqlite_orm {
      */
     template<class R = void, class... Args>
     auto coalesce(Args... args)
-        -> internal::built_in_function_t<typename std::conditional_t<  //  choose R or common type
+        -> internal::built_in_function_t<typename mpl::conditional_t<  //  choose R or common type
                                              std::is_void<R>::value,
                                              std::common_type<internal::field_type_or_type_t<Args>...>,
                                              polyfill::type_identity<R>>::type,
@@ -7249,7 +7292,7 @@ namespace sqlite_orm {
      */
     template<class R = void, class X, class Y>
     auto ifnull(X x, Y y) -> internal::built_in_function_t<
-        typename std::conditional_t<  //  choose R or common type
+        typename mpl::conditional_t<  //  choose R or common type
             std::is_void<R>::value,
             std::common_type<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>,
             polyfill::type_identity<R>>::type,
@@ -9252,7 +9295,9 @@ namespace sqlite_orm {
         std::unique_ptr<sqlite3_stmt, std::integral_constant<decltype(&sqlite3_finalize), sqlite3_finalize>>;
 }
 #pragma once
-#include <type_traits>
+#include <type_traits>  // std::is_integral
+
+// #include "functional/mpl/conditional.h"
 
 namespace sqlite_orm {
 
@@ -9265,9 +9310,9 @@ namespace sqlite_orm {
 
     template<class V>
     using arithmetic_tag_t =
-        std::conditional_t<std::is_integral<V>::value,
+        mpl::conditional_t<std::is_integral<V>::value,
                            // Integer class
-                           std::conditional_t<sizeof(V) <= sizeof(int), int_or_smaller_tag, bigint_tag>,
+                           mpl::conditional_t<sizeof(V) <= sizeof(int), int_or_smaller_tag, bigint_tag>,
                            // Floating-point class
                            real_tag>;
 }
@@ -12258,6 +12303,8 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
+// #include "functional/mpl/conditional.h"
+
 // #include "functional/cstring_literal.h"
 
 // #include "functional/function_traits.h"
@@ -12603,12 +12650,12 @@ namespace sqlite_orm {
 #endif
 
         template<size_t I, class FnArg, class CallArg>
-        SQLITE_ORM_CONSTEVAL bool validate_pointer_value_type(std::false_type) {
+        SQLITE_ORM_CONSTEVAL bool validate_pointer_value_type(polyfill::bool_constant<false>) {
             return true;
         }
 
         template<size_t I, class FnArg, class CallArg>
-        SQLITE_ORM_CONSTEVAL bool validate_pointer_value_type(std::true_type) {
+        SQLITE_ORM_CONSTEVAL bool validate_pointer_value_type(polyfill::bool_constant<true>) {
             return is_same_pvt_v<I, FnArg, CallArg>;
         }
 
@@ -19396,7 +19443,7 @@ namespace sqlite_orm {
             using statement_type = unindexed_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
+            serialize_result_type operator()(const statement_type& c, const Ctx& context) const {
                 return "UNINDEXED";
             }
         };
