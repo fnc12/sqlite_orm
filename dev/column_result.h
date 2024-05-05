@@ -18,6 +18,7 @@
 #include "select_constraints.h"
 #include "operators.h"
 #include "rowid.h"
+#include "column_result_proxy.h"
 #include "alias.h"
 #include "cte_types.h"
 #include "storage_traits.h"
@@ -247,6 +248,11 @@ namespace sqlite_orm {
             : conc_tuple<tuplify_t<column_result_of_t<DBOs, std::decay_t<Args>>>...> {};
 
         template<class DBOs, class T, class... Args>
+        struct column_result_t<DBOs, struct_t<T, Args...>, void> {
+            using type = structure<T, tuple_cat_t<tuplify_t<column_result_of_t<DBOs, std::decay_t<Args>>>...>>;
+        };
+
+        template<class DBOs, class T, class... Args>
         struct column_result_t<DBOs, select_t<T, Args...>> : column_result_t<DBOs, T> {};
 
         template<class DBOs, class T>
@@ -297,7 +303,7 @@ namespace sqlite_orm {
 
         template<class DBOs, class T>
         struct column_result_t<DBOs, object_t<T>, void> {
-            using type = T;
+            using type = table_reference<T>;
         };
 
         template<class DBOs, class T, class E>

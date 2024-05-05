@@ -17,6 +17,7 @@
 #include "serializer_context.h"
 #include "serialize_result_type.h"
 #include "tags.h"
+#include "table_reference.h"
 #include "alias_traits.h"
 #include "expression.h"
 #include "column_pointer.h"
@@ -837,7 +838,7 @@ namespace sqlite_orm {
      */
     template<orm_refers_to_recordset auto... recordsets>
     auto from() {
-        return from<internal::decay_table_reference_t<recordsets>...>();
+        return from<internal::auto_decay_table_ref_t<recordsets>...>();
     }
 #endif
 
@@ -991,7 +992,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<orm_refers_to_recordset auto alias, class On>
     auto left_join(On on) {
-        return left_join<internal::decay_table_reference_t<alias>, On>(std::move(on));
+        return left_join<internal::auto_decay_table_ref_t<alias>, On>(std::move(on));
     }
 #endif
 
@@ -1003,7 +1004,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<orm_refers_to_recordset auto alias, class On>
     auto join(On on) {
-        return join<internal::decay_table_reference_t<alias>, On>(std::move(on));
+        return join<internal::auto_decay_table_ref_t<alias>, On>(std::move(on));
     }
 #endif
 
@@ -1015,7 +1016,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<orm_refers_to_recordset auto alias, class On>
     auto left_outer_join(On on) {
-        return left_outer_join<internal::decay_table_reference_t<alias>, On>(std::move(on));
+        return left_outer_join<internal::auto_decay_table_ref_t<alias>, On>(std::move(on));
     }
 #endif
 
@@ -1027,7 +1028,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<orm_refers_to_recordset auto alias, class On>
     auto inner_join(On on) {
-        return inner_join<internal::decay_table_reference_t<alias>, On>(std::move(on));
+        return inner_join<internal::auto_decay_table_ref_t<alias>, On>(std::move(on));
     }
 #endif
 

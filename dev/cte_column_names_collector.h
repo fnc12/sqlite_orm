@@ -116,6 +116,12 @@ namespace sqlite_orm {
             static_assert(polyfill::always_false_v<Object>, "Selecting an object in a subselect is not allowed.");
         };
 
+        // No CTE for object expressions.
+        template<class Object>
+        struct cte_column_names_collector<Object, match_if<is_struct, Object>> {
+            static_assert(polyfill::always_false_v<Object>, "Repacking columns in a subselect is not allowed.");
+        };
+
         template<class Columns>
         struct cte_column_names_collector<Columns, match_specialization_of<Columns, columns_t>> {
             using expression_type = Columns;

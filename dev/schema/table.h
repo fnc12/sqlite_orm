@@ -440,7 +440,7 @@ namespace sqlite_orm {
      */
     template<orm_table_reference auto table, class... Cs>
     auto make_table(std::string name, Cs... args) {
-        return make_table<internal::decay_table_reference_t<table>>(std::move(name), std::forward<Cs>(args)...);
+        return make_table<internal::auto_decay_table_ref_t<table>>(std::move(name), std::forward<Cs>(args)...);
     }
 #endif
 

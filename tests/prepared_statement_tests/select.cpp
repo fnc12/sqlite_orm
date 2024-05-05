@@ -303,6 +303,90 @@ TEST_CASE("Prepared select") {
             }
         }
     }
+    SECTION("object") {
+        auto statement = storage.prepare(select(object<User>(true)));
+        auto str = storage.dump(statement);
+        testSerializing(statement);
+        SECTION("nothing") {
+            //..
+        }
+        SECTION("execute") {
+            auto rows = storage.execute(statement);
+            std::vector<User> expected;
+            expected.push_back(User{1, "Team BS"});
+            expected.push_back(User{2, "Shy'm"});
+            expected.push_back(User{3, "Maître Gims"});
+            REQUIRE_THAT(rows, UnorderedEquals(expected));
+        }
+    }
+    SECTION("multi object") {
+        auto statement = storage.prepare(select(columns(object<User>(true), object<User>(true))));
+        auto str = storage.dump(statement);
+        testSerializing(statement);
+        SECTION("nothing") {
+            //..
+        }
+        SECTION("execute") {
+            auto rows = storage.execute(statement);
+            std::vector<std::tuple<User, User>> expected;
+            expected.push_back({User{1, "Team BS"}, User{1, "Team BS"}});
+            expected.push_back({User{2, "Shy'm"}, User{2, "Shy'm"}});
+            expected.push_back({User{3, "Maître Gims"}, User{3, "Maître Gims"}});
+            REQUIRE_THAT(rows, UnorderedEquals(expected));
+        }
+    }
+    SECTION("multi object 2") {
+        auto statement = storage.prepare(select(columns(object<User>(true), asterisk<User>(true), object<User>(true))));
+        auto str = storage.dump(statement);
+        testSerializing(statement);
+        SECTION("nothing") {
+            //..
+        }
+        SECTION("execute") {
+            auto rows = storage.execute(statement);
+            std::vector<std::tuple<User, int, std::string, User>> expected;
+            expected.push_back({User{1, "Team BS"}, 1, "Team BS", User{1, "Team BS"}});
+            expected.push_back({User{2, "Shy'm"}, 2, "Shy'm", User{2, "Shy'm"}});
+            expected.push_back({User{3, "Maître Gims"}, 3, "Maître Gims", User{3, "Maître Gims"}});
+            REQUIRE_THAT(rows, UnorderedEquals(expected));
+        }
+    }
+    SECTION("struct") {
+        using Z = User;  // for the unit test it is fine to just reuse `User` as an unmapped struct
+        constexpr auto z_struct = struct_<Z>(&User::id, &User::name);
+        auto statement = storage.prepare(select(z_struct));
+        auto str = storage.dump(statement);
+        testSerializing(statement);
+        SECTION("nothing") {
+            //..
+        }
+        SECTION("execute") {
+            auto rows = storage.execute(statement);
+            std::vector<Z> expected;
+            expected.push_back(Z{1, "Team BS"});
+            expected.push_back(Z{2, "Shy'm"});
+            expected.push_back(Z{3, "Maître Gims"});
+            REQUIRE_THAT(rows, UnorderedEquals(expected));
+        }
+    }
+    SECTION("multi struct") {
+        using Z = User;  // for the unit test it is fine to just reuse `User` as an unmapped struct
+        constexpr auto z_struct = struct_<Z>(&User::id, &User::name);
+        auto statement = storage.prepare(select(columns(z_struct, z_struct)));
+        auto str = storage.dump(statement);
+        testSerializing(statement);
+        SECTION("nothing") {
+            //..
+        }
+        SECTION("execute") {
+            auto rows = storage.execute(statement);
+            std::vector<std::tuple<Z, Z>> expected;
+            expected.push_back({Z{1, "Team BS"}, Z{1, "Team BS"}});
+            expected.push_back({Z{2, "Shy'm"}, Z{2, "Shy'm"}});
+            expected.push_back({Z{3, "Maître Gims"}, Z{3, "Maître Gims"}});
+            REQUIRE_THAT(rows, UnorderedEquals(expected));
+        }
+    }
 }
 
 TEST_CASE("dumping") {

@@ -13,6 +13,7 @@
 #include "serialize_result_type.h"
 #include "operators.h"
 #include "tags.h"
+#include "table_reference.h"
 #include "ast/into.h"
 
 namespace sqlite_orm {
@@ -1853,7 +1854,7 @@ namespace sqlite_orm {
      */
     template<orm_refers_to_recordset auto mapped>
     auto count() {
-        return count<internal::decay_table_reference_t<mapped>>();
+        return count<internal::auto_decay_table_ref_t<mapped>>();
     }
 #endif
 

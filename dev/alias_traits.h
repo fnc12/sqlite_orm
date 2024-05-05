@@ -1,6 +1,6 @@
 #pragma once
 
-#include <type_traits>  //  std::remove_const, std::is_base_of, std::is_same, std::type_identity
+#include <type_traits>  //  std::is_base_of, std::is_same
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <concepts>
 #endif
@@ -8,6 +8,7 @@
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"
+#include "table_reference.h"
 
 namespace sqlite_orm {
 
@@ -50,24 +51,6 @@ namespace sqlite_orm {
 
         template<class A>
         struct is_table_alias : polyfill::bool_constant<is_table_alias_v<A>> {};
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        /*
-         *  Identity wrapper around a mapped object, facilitating uniform column pointer expressions.
-         */
-        template<class O>
-        struct table_reference : std::type_identity<O> {};
-
-        template<class RecordSet>
-        struct decay_table_reference : std::remove_const<RecordSet> {};
-        template<class O>
-        struct decay_table_reference<table_reference<O>> : std::type_identity<O> {};
-        template<class O>
-        struct decay_table_reference<const table_reference<O>> : std::type_identity<O> {};
-
-        template<auto recordset>
-        using decay_table_reference_t = typename decay_table_reference<decltype(recordset)>::type;
-#endif
 
         /** @short Moniker of a CTE, see `orm_cte_moniker`.
          */
@@ -114,14 +97,6 @@ namespace sqlite_orm {
      */
     template<class A>
     concept orm_table_alias = (orm_recordset_alias<A> && !std::same_as<typename A::type, std::remove_const_t<A>>);
-
-    /** @short Specifies that a type is a reference of a concrete table, especially of a derived class.
-     *
-     *  A concrete table reference has the following traits:
-     *  - specialization of `table_reference`, whose `type` typename references a mapped object.
-     */
-    template<class R>
-    concept orm_table_reference = polyfill::is_specialization_of_v<std::remove_const_t<R>, internal::table_reference>;
 
     /** @short Moniker of a CTE.
      *

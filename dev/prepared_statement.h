@@ -14,6 +14,7 @@
 #include "connection_holder.h"
 #include "select_constraints.h"
 #include "values.h"
+#include "table_reference.h"
 #include "mapped_type_proxy.h"
 #include "ast/upsert_clause.h"
 #include "ast/set.h"
@@ -692,7 +693,7 @@ namespace sqlite_orm {
              class R = std::vector<internal::mapped_type_proxy_t<decltype(als)>>,
              class... Args>
     auto get_all(Args&&... conditions) {
-        return get_all<internal::decay_table_reference_t<als>, R>(std::forward<Args>(conditions)...);
+        return get_all<internal::auto_decay_table_ref_t<als>, R>(std::forward<Args>(conditions)...);
     }
 #endif
 

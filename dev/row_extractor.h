@@ -19,6 +19,9 @@
 #endif
 
 #include "functional/cxx_universal.h"
+#include "functional/cxx_functional_polyfill.h"
+#include "functional/static_magic.h"
+#include "column_result_proxy.h"
 #include "arithmetic_tag.h"
 #include "pointer_value.h"
 #include "journal_mode.h"
@@ -363,7 +366,7 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<>
-    struct row_extractor<nullptr_t> {
+    struct row_extractor<nullptr_t, void> {
         nullptr_t extract(const char* /*columnText*/) const {
             return nullptr;
         }
@@ -380,7 +383,7 @@ namespace sqlite_orm {
      *  Specialization for std::vector<char>.
      */
     template<>
-    struct row_extractor<std::vector<char>> {
+    struct row_extractor<std::vector<char>, void> {
         std::vector<char> extract(const char* columnText) const {
             return {columnText, columnText + (columnText ? ::strlen(columnText) : 0)};
         }
@@ -395,32 +398,6 @@ namespace sqlite_orm {
             auto bytes = static_cast<const char*>(sqlite3_value_blob(value));
             auto len = static_cast<size_t>(sqlite3_value_bytes(value));
             return {bytes, bytes + len};
-        }
-    };
-
-    /**
-     *  Specialization for a tuple.
-     */
-    template<class... Args>
-    struct row_extractor<std::tuple<Args...>> {
-
-        std::tuple<Args...> extract(char** argv) const {
-            return this->extract(argv, std::make_index_sequence<sizeof...(Args)>{});
-        }
-
-        std::tuple<Args...> extract(sqlite3_stmt* stmt, int /*columnIndex*/) const {
-            return this->extract(stmt, std::make_index_sequence<sizeof...(Args)>{});
-        }
-
-      protected:
-        template<size_t... Idx>
-        std::tuple<Args...> extract(sqlite3_stmt* stmt, std::index_sequence<Idx...>) const {
-            return {row_extractor<Args>{}.extract(stmt, Idx)...};
-        }
-
-        template<size_t... Idx>
-        std::tuple<Args...> extract(char** argv, std::index_sequence<Idx...>) const {
-            return {row_extractor<Args>{}.extract(argv[Idx])...};
         }
     };
 
@@ -445,5 +422,106 @@ namespace sqlite_orm {
             auto cStr = (const char*)sqlite3_column_text(stmt, columnIndex);
             return this->extract(cStr);
         }
+
+        journal_mode extract(sqlite3_value* value) const = delete;
     };
+
+    namespace internal {
+
+        /*
+         *  Helper to extract a structure from a rowset.
+         */
+        template<class R, class DBOs>
+        struct struct_extractor;
+
+#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
+        /*  
+         *  Returns a value-based row extractor for an unmapped type,
+         *  returns a structure extractor for a table reference, tuple or named struct.
+         */
+        template<class R, class DBOs>
+        auto make_row_extractor([[maybe_unused]] const DBOs& dbObjects) {
+            if constexpr(polyfill::is_specialization_of_v<R, std::tuple> ||
+                         polyfill::is_specialization_of_v<R, structure> || is_table_reference_v<R>) {
+                return struct_extractor<R, DBOs>{dbObjects};
+            } else {
+                return row_value_extractor<R>();
+            }
+        }
+#else
+        /*  
+         *  Overload for an unmapped type returns a common row extractor.
+         */
+        template<
+            class R,
+            class DBOs,
+            std::enable_if_t<polyfill::negation<polyfill::disjunction<polyfill::is_specialization_of<R, std::tuple>,
+                                                                      polyfill::is_specialization_of<R, structure>,
+                                                                      is_table_reference<R>>>::value,
+                             bool> = true>
+        auto make_row_extractor(const DBOs& /*dbObjects*/) {
+            return row_value_extractor<R>();
+        }
+
+        /*  
+         *  Overload for a table reference, tuple or aggregate of column results returns a structure extractor.
+         */
+        template<class R,
+                 class DBOs,
+                 std::enable_if_t<polyfill::disjunction<polyfill::is_specialization_of<R, std::tuple>,
+                                                        polyfill::is_specialization_of<R, structure>,
+                                                        is_table_reference<R>>::value,
+                                  bool> = true>
+        struct_extractor<R, DBOs> make_row_extractor(const DBOs& dbObjects) {
+            return {dbObjects};
+        }
+#endif
+
+        /**
+         *  Specialization for a tuple of top-level column results.
+         */
+        template<class DBOs, class... Args>
+        struct struct_extractor<std::tuple<Args...>, DBOs> {
+            const DBOs& db_objects;
+
+            std::tuple<Args...> extract(const char* columnText) const = delete;
+
+            // note: expects to be called only from the top level, and therefore discards the index
+            std::tuple<column_result_proxy_t<Args>...> extract(sqlite3_stmt* stmt,
+                                                               int&& /*nextColumnIndex*/ = 0) const {
+                int columnIndex = -1;
+                return {make_row_extractor<Args>(this->db_objects).extract(stmt, ++columnIndex)...};
+            }
+
+            // unused to date
+            std::tuple<column_result_proxy_t<Args>...> extract(sqlite3_stmt* stmt, int& columnIndex) const = delete;
+
+            std::tuple<Args...> extract(sqlite3_value* value) const = delete;
+        };
+
+        /**
+         *  Specialization for an unmapped structure to be constructed ad-hoc from column results.
+         *  
+         *  This plays together with `column_result_of_t`, which returns `struct_t<O>` as `structure<O>`
+         */
+        template<class O, class... Args, class DBOs>
+        struct struct_extractor<structure<O, std::tuple<Args...>>, DBOs> {
+            const DBOs& db_objects;
+
+            O extract(const char* columnText) const = delete;
+
+            // note: expects to be called only from the top level, and therefore discards the index
+            O extract(sqlite3_stmt* stmt, int&& /*nextColumnIndex*/ = 0) const {
+                int columnIndex = -1;
+                return O{make_row_extractor<Args>(this->db_objects).extract(stmt, ++columnIndex)...};
+            }
+
+            O extract(sqlite3_stmt* stmt, int& columnIndex) const {
+                --columnIndex;
+                return O{make_row_extractor<Args>(this->db_objects).extract(stmt, ++columnIndex)...};
+            }
+
+            O extract(sqlite3_value* value) const = delete;
+        };
+    }
 }

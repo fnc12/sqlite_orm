@@ -3,6 +3,7 @@
 #include <type_traits>  //  std::remove_const
 
 #include "type_traits.h"
+#include "table_reference.h"
 #include "alias_traits.h"
 
 namespace sqlite_orm {

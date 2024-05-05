@@ -1393,9 +1393,9 @@ namespace sqlite_orm {
             }
         };
 
-        template<class... Args>
-        struct statement_serializer<columns_t<Args...>, void> {
-            using statement_type = columns_t<Args...>;
+        template<class C>
+        struct statement_serializer<C, std::enable_if_t<polyfill::disjunction<is_columns<C>, is_struct<C>>::value>> {
+            using statement_type = C;
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
