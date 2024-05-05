@@ -17,7 +17,7 @@ TEST_CASE("statement_serializer table_t") {
         using context_t = internal::serializer_context<db_objects_t>;
         context_t context{dbObjects};
         value = internal::serialize(table, context);
-        expected = "CREATE TABLE \"users\" (\"id\" INTEGER NOT NULL, \"name\" TEXT NOT NULL)";
+        expected = R"(CREATE TABLE "users" ("id" INTEGER NOT NULL, "name" TEXT NOT NULL))";
     }
     SECTION("without_rowid") {
         auto table =
@@ -27,7 +27,7 @@ TEST_CASE("statement_serializer table_t") {
         using context_t = internal::serializer_context<db_objects_t>;
         context_t context{dbObjects};
         value = internal::serialize(table, context);
-        expected = "CREATE TABLE \"users\" (\"id\" INTEGER NOT NULL, \"name\" TEXT NOT NULL) WITHOUT ROWID";
+        expected = R"(CREATE TABLE "users" ("id" INTEGER NOT NULL, "name" TEXT NOT NULL) WITHOUT ROWID)";
     }
     REQUIRE(value == expected);
 }

@@ -1050,7 +1050,7 @@ namespace sqlite_orm {
             using statement_type = unindexed_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
+            serialize_result_type operator()(const statement_type& c, const Ctx& context) const {
                 return "UNINDEXED";
             }
         };

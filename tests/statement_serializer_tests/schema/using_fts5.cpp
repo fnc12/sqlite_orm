@@ -15,12 +15,12 @@ TEST_CASE("statement_serializer using_fts5") {
     SECTION("simple") {
         auto node = using_fts5(make_column("title", &Post::title), make_column("body", &Post::body));
         value = serialize(node, context);
-        expected = "USING FTS5(\"title\", \"body\")";
+        expected = R"(USING FTS5("title", "body"))";
     }
     SECTION("unindexed") {
         auto node = using_fts5(make_column("title", &Post::title), make_column("body", &Post::body, unindexed()));
         value = serialize(node, context);
-        expected = "USING FTS5(\"title\", \"body\" UNINDEXED)";
+        expected = R"(USING FTS5("title", "body" UNINDEXED))";
     }
     REQUIRE(value == expected);
 }
