@@ -1146,22 +1146,15 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& column, const Ctx& context) const {
-                using column_type = statement_type;
-
                 std::stringstream ss;
                 ss << streaming_identifier(column.name);
-                if(!context.skip_types_and_constraints_except_unindexed) {
-                    ss << " " << type_printer<field_type_t<column_type>>().print();
-                    ss << streaming_column_constraints(
-                        call_as_template_base<column_constraints>(polyfill::identity{})(column),
-                        column.is_not_null(),
-                        context);
-                } else {
-                    using constraints_tuple = typename column_type::constraints_type;
-                    if(tuple_has_type<constraints_tuple, unindexed_t>::value) {
-                        ss << " UNINDEXED";
-                    }
+                if(!context.fts5_columns) {
+                    ss << " " << type_printer<field_type_t<column_field<G, S>>>().print();
                 }
+                ss << streaming_column_constraints(
+                    call_as_template_base<column_constraints>(polyfill::identity{})(column),
+                    column.is_not_null(),
+                    context);
                 return ss.str();
             }
         };
@@ -1773,7 +1766,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "USING FTS5(";
                 auto subContext = context;
-                subContext.skip_types_and_constraints_except_unindexed = true;
+                subContext.fts5_columns = true;
                 ss << streaming_expressions_tuple(statement.columns, subContext) << ")";
                 return ss.str();
             }

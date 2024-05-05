@@ -3248,7 +3248,7 @@ namespace sqlite_orm {
             bool replace_bindable_with_question = false;
             bool skip_table_name = true;
             bool use_parentheses = true;
-            bool skip_types_and_constraints_except_unindexed = false;
+            bool fts5_columns = false;
         };
 
         template<class DBOs>
@@ -15679,18 +15679,26 @@ namespace sqlite_orm {
             const bool& isNotNull = std::get<2>(tpl);
             auto& context = std::get<3>(tpl);
 
-            iterate_tuple(column.constraints, [&ss, &context](auto& constraint) {
-                ss << ' ' << serialize(constraint, context);
-            });
             using constraints_tuple = decltype(column.constraints);
-            constexpr bool hasExplicitNullableConstraint =
-                mpl::invoke_t<mpl::disjunction<check_if_has_type<null_t>, check_if_has_type<not_null_t>>,
-                              constraints_tuple>::value;
-            if(!hasExplicitNullableConstraint) {
-                if(isNotNull) {
-                    ss << " NOT NULL";
-                } else {
-                    ss << " NULL";
+            if(!context.fts5_columns) {
+                iterate_tuple(column.constraints, [&ss, &context](auto& constraint) {
+                    ss << ' ' << serialize(constraint, context);
+                });
+                constexpr bool hasExplicitNullableConstraint =
+                    mpl::invoke_t<mpl::disjunction<check_if_has_type<null_t>, check_if_has_type<not_null_t>>,
+                                  constraints_tuple>::value;
+                if SQLITE_ORM_CONSTEXPR_IF(!hasExplicitNullableConstraint) {
+                    if(isNotNull) {
+                        ss << " NOT NULL";
+                    } else {
+                        ss << " NULL";
+                    }
+                }
+            } else {
+                constexpr bool hasUnindexedOption =
+                    mpl::invoke_t<check_if_has_type<unindexed_t>, constraints_tuple>::value;
+                if SQLITE_ORM_CONSTEXPR_IF(hasUnindexedOption) {
+                    ss << " UNINDEXED";
                 }
             }
 
@@ -19220,22 +19228,15 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& column, const Ctx& context) const {
-                using column_type = statement_type;
-
                 std::stringstream ss;
                 ss << streaming_identifier(column.name);
-                if(!context.skip_types_and_constraints_except_unindexed) {
-                    ss << " " << type_printer<field_type_t<column_type>>().print();
-                    ss << streaming_column_constraints(
-                        call_as_template_base<column_constraints>(polyfill::identity{})(column),
-                        column.is_not_null(),
-                        context);
-                } else {
-                    using constraints_tuple = typename column_type::constraints_type;
-                    if(tuple_has_type<constraints_tuple, unindexed_t>::value) {
-                        ss << " UNINDEXED";
-                    }
+                if(!context.fts5_columns) {
+                    ss << " " << type_printer<field_type_t<column_field<G, S>>>().print();
                 }
+                ss << streaming_column_constraints(
+                    call_as_template_base<column_constraints>(polyfill::identity{})(column),
+                    column.is_not_null(),
+                    context);
                 return ss.str();
             }
         };
@@ -19847,7 +19848,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "USING FTS5(";
                 auto subContext = context;
-                subContext.skip_types_and_constraints_except_unindexed = true;
+                subContext.fts5_columns = true;
                 ss << streaming_expressions_tuple(statement.columns, subContext) << ")";
                 return ss.str();
             }

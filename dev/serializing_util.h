@@ -406,18 +406,26 @@ namespace sqlite_orm {
             const bool& isNotNull = std::get<2>(tpl);
             auto& context = std::get<3>(tpl);
 
-            iterate_tuple(column.constraints, [&ss, &context](auto& constraint) {
-                ss << ' ' << serialize(constraint, context);
-            });
             using constraints_tuple = decltype(column.constraints);
-            constexpr bool hasExplicitNullableConstraint =
-                mpl::invoke_t<mpl::disjunction<check_if_has_type<null_t>, check_if_has_type<not_null_t>>,
-                              constraints_tuple>::value;
-            if(!hasExplicitNullableConstraint) {
-                if(isNotNull) {
-                    ss << " NOT NULL";
-                } else {
-                    ss << " NULL";
+            if(!context.fts5_columns) {
+                iterate_tuple(column.constraints, [&ss, &context](auto& constraint) {
+                    ss << ' ' << serialize(constraint, context);
+                });
+                constexpr bool hasExplicitNullableConstraint =
+                    mpl::invoke_t<mpl::disjunction<check_if_has_type<null_t>, check_if_has_type<not_null_t>>,
+                                  constraints_tuple>::value;
+                if SQLITE_ORM_CONSTEXPR_IF(!hasExplicitNullableConstraint) {
+                    if(isNotNull) {
+                        ss << " NOT NULL";
+                    } else {
+                        ss << " NULL";
+                    }
+                }
+            } else {
+                constexpr bool hasUnindexedOption =
+                    mpl::invoke_t<check_if_has_type<unindexed_t>, constraints_tuple>::value;
+                if SQLITE_ORM_CONSTEXPR_IF(hasUnindexedOption) {
+                    ss << " UNINDEXED";
                 }
             }
 
