@@ -15542,8 +15542,6 @@ namespace sqlite_orm {
 //  ::size_t
 // #include "functional/cxx_type_traits_polyfill.h"
 
-// #include "tuple_helper/tuple_filter.h"
-
 // #include "tuple_helper/tuple_iteration.h"
 
 // #include "error_code.h"
@@ -15946,10 +15944,11 @@ namespace sqlite_orm {
             auto& context = std::get<3>(tpl);
 
             using constraints_tuple = decltype(column.constraints);
+            iterate_tuple(column.constraints, [&ss, &context](auto& constraint) {
+                ss << ' ' << serialize(constraint, context);
+            });
+            // add implicit null constraint
             if(!context.fts5_columns) {
-                iterate_tuple(column.constraints, [&ss, &context](auto& constraint) {
-                    ss << ' ' << serialize(constraint, context);
-                });
                 constexpr bool hasExplicitNullableConstraint =
                     mpl::invoke_t<mpl::disjunction<check_if_has_type<null_t>, check_if_has_type<not_null_t>>,
                                   constraints_tuple>::value;
@@ -15960,13 +15959,6 @@ namespace sqlite_orm {
                         ss << " NULL";
                     }
                 }
-            } else {
-                using fts5_index_sequence = filter_tuple_sequence_t<
-                    constraints_tuple,
-                    mpl::disjunction<check_if_is_type<unindexed_t>, check_if_is_template<prefix_t>>::template fn>;
-                iterate_tuple(column.constraints, fts5_index_sequence{}, [&ss, &context](auto& constraint) {
-                    ss << ' ' << serialize(constraint, context);
-                });
             }
 
             return ss;
@@ -19419,7 +19411,7 @@ namespace sqlite_orm {
             using statement_type = unindexed_t;
 
             template<class Ctx>
-            serialize_result_type operator()(const statement_type&, const Ctx& context) const {
+            serialize_result_type operator()(const statement_type& /*statement*/, const Ctx& /*context*/) const {
                 return "UNINDEXED";
             }
         };
