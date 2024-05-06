@@ -1802,6 +1802,13 @@ namespace sqlite_orm {
 
         struct unindexed_t {};
 
+        template<class T>
+        struct prefix_t {
+            using value_type = T;
+
+            value_type value;
+        };
+
         /**
          *  DEFAULT constraint class.
          *  T is a value type.
@@ -2134,6 +2141,7 @@ namespace sqlite_orm {
                                                              check_if_is_type<null_t>,
                                                              check_if_is_type<not_null_t>,
                                                              check_if_is_type<unindexed_t>,
+                                                             check_if_is_template<prefix_t>,
                                                              check_if_is_template<unique_t>,
                                                              check_if_is_template<default_t>,
                                                              check_if_is_template<check_t>,
@@ -2170,7 +2178,7 @@ namespace sqlite_orm {
      */
     template<class... Args>
     internal::unique_t<Args...> unique(Args... args) {
-        return {std::make_tuple(std::forward<Args>(args)...)};
+        return {{std::forward<Args>(args)...}};
     }
 
     inline internal::unique_t<> unique() {
@@ -2179,9 +2187,21 @@ namespace sqlite_orm {
 
     /**
      *  UNINDEXED constraint builder function. Used in FTS virtual tables.
+     * 
+     *  https://www.sqlite.org/fts5.html#the_unindexed_column_option
      */
     inline internal::unindexed_t unindexed() {
         return {};
+    }
+
+    /**
+     *  prefix=N constraint builder function. Used in FTS virtual tables.
+     * 
+     *  https://www.sqlite.org/fts5.html#prefix_indexes
+     */
+    template<class T>
+    internal::prefix_t<T> prefix(T value) {
+        return {std::move(value)};
     }
 
     template<class... Cs>
@@ -15924,10 +15944,11 @@ namespace sqlite_orm {
             auto& context = std::get<3>(tpl);
 
             using constraints_tuple = decltype(column.constraints);
+            iterate_tuple(column.constraints, [&ss, &context](auto& constraint) {
+                ss << ' ' << serialize(constraint, context);
+            });
+            // add implicit null constraint
             if(!context.fts5_columns) {
-                iterate_tuple(column.constraints, [&ss, &context](auto& constraint) {
-                    ss << ' ' << serialize(constraint, context);
-                });
                 constexpr bool hasExplicitNullableConstraint =
                     mpl::invoke_t<mpl::disjunction<check_if_has_type<null_t>, check_if_has_type<not_null_t>>,
                                   constraints_tuple>::value;
@@ -15937,12 +15958,6 @@ namespace sqlite_orm {
                     } else {
                         ss << " NULL";
                     }
-                }
-            } else {
-                constexpr bool hasUnindexedOption =
-                    mpl::invoke_t<check_if_has_type<unindexed_t>, constraints_tuple>::value;
-                if SQLITE_ORM_CONSTEXPR_IF(hasUnindexedOption) {
-                    ss << " UNINDEXED";
                 }
             }
 
@@ -19396,8 +19411,20 @@ namespace sqlite_orm {
             using statement_type = unindexed_t;
 
             template<class Ctx>
-            serialize_result_type operator()(const statement_type& c, const Ctx& context) const {
+            serialize_result_type operator()(const statement_type& /*statement*/, const Ctx& /*context*/) const {
                 return "UNINDEXED";
+            }
+        };
+
+        template<class T>
+        struct statement_serializer<prefix_t<T>, void> {
+            using statement_type = prefix_t<T>;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                std::stringstream ss;
+                ss << "prefix=" << serialize(statement.value, context);
+                return ss.str();
             }
         };
 

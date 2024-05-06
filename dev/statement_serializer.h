@@ -1050,8 +1050,20 @@ namespace sqlite_orm {
             using statement_type = unindexed_t;
 
             template<class Ctx>
-            serialize_result_type operator()(const statement_type& c, const Ctx& context) const {
+            serialize_result_type operator()(const statement_type& /*statement*/, const Ctx& /*context*/) const {
                 return "UNINDEXED";
+            }
+        };
+
+        template<class T>
+        struct statement_serializer<prefix_t<T>, void> {
+            using statement_type = prefix_t<T>;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                std::stringstream ss;
+                ss << "prefix=" << serialize(statement.value, context);
+                return ss.str();
             }
         };
 

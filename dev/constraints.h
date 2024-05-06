@@ -142,6 +142,13 @@ namespace sqlite_orm {
 
         struct unindexed_t {};
 
+        template<class T>
+        struct prefix_t {
+            using value_type = T;
+
+            value_type value;
+        };
+
         /**
          *  DEFAULT constraint class.
          *  T is a value type.
@@ -474,6 +481,7 @@ namespace sqlite_orm {
                                                              check_if_is_type<null_t>,
                                                              check_if_is_type<not_null_t>,
                                                              check_if_is_type<unindexed_t>,
+                                                             check_if_is_template<prefix_t>,
                                                              check_if_is_template<unique_t>,
                                                              check_if_is_template<default_t>,
                                                              check_if_is_template<check_t>,
@@ -510,7 +518,7 @@ namespace sqlite_orm {
      */
     template<class... Args>
     internal::unique_t<Args...> unique(Args... args) {
-        return {std::make_tuple(std::forward<Args>(args)...)};
+        return {{std::forward<Args>(args)...}};
     }
 
     inline internal::unique_t<> unique() {
@@ -519,9 +527,21 @@ namespace sqlite_orm {
 
     /**
      *  UNINDEXED constraint builder function. Used in FTS virtual tables.
+     * 
+     *  https://www.sqlite.org/fts5.html#the_unindexed_column_option
      */
     inline internal::unindexed_t unindexed() {
         return {};
+    }
+
+    /**
+     *  prefix=N constraint builder function. Used in FTS virtual tables.
+     * 
+     *  https://www.sqlite.org/fts5.html#prefix_indexes
+     */
+    template<class T>
+    internal::prefix_t<T> prefix(T value) {
+        return {std::move(value)};
     }
 
     template<class... Cs>
