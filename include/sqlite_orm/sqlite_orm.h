@@ -21977,6 +21977,11 @@ namespace sqlite_orm {
             }
 
           protected:
+            template<class T, class... S>
+            sync_schema_result schema_status(const trigger_t<T, S...>&, sqlite3*, bool, bool*) {
+                return sync_schema_result::already_in_sync;
+            }
+
             template<class... Cols>
             sync_schema_result schema_status(const index_t<Cols...>&, sqlite3*, bool, bool*) {
                 return sync_schema_result::already_in_sync;

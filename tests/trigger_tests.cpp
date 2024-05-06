@@ -118,3 +118,15 @@ TEST_CASE("triggers_basics") {
         REQUIRE(storage.count<TestDelete>() == 2);
     }
 }
+
+TEST_CASE("issue1280") {
+    struct X {
+        int test = 0;
+    };
+    auto storage = make_storage(
+        "",
+        make_trigger("table_insert_InsertTest", after().insert().on<X>().begin(update_all(set(c(&X::test) = 5))).end()),
+        make_table("x", make_column("test", &X::test)));
+    storage.sync_schema();
+    storage.sync_schema_simulate();
+}
