@@ -19396,7 +19396,7 @@ namespace sqlite_orm {
             using statement_type = unindexed_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
+            serialize_result_type operator()(const statement_type& c, const Ctx& context) const {
                 return "UNINDEXED";
             }
         };
@@ -21948,6 +21948,11 @@ namespace sqlite_orm {
             }
 
           protected:
+            template<class T, class... S>
+            sync_schema_result schema_status(const trigger_t<T, S...>&, sqlite3*, bool, bool*) {
+                return sync_schema_result::already_in_sync;
+            }
+
             template<class... Cols>
             sync_schema_result schema_status(const index_t<Cols...>&, sqlite3*, bool, bool*) {
                 return sync_schema_result::already_in_sync;
