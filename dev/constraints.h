@@ -136,9 +136,8 @@ namespace sqlite_orm {
             using columns_tuple = std::tuple<Args...>;
 
             columns_tuple columns;
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
+
             unique_t(columns_tuple columns_) : columns(std::move(columns_)) {}
-#endif
         };
 
         struct unindexed_t {};
@@ -519,7 +518,7 @@ namespace sqlite_orm {
      */
     template<class... Args>
     internal::unique_t<Args...> unique(Args... args) {
-        return {std::make_tuple(std::forward<Args>(args)...)};
+        return {{std::forward<Args>(args)...}};
     }
 
     inline internal::unique_t<> unique() {
