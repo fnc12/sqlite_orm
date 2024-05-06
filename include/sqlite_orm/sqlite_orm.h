@@ -19421,11 +19421,9 @@ namespace sqlite_orm {
             using statement_type = prefix_t<T>;
 
             template<class Ctx>
-            serialize_result_type operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
-                ss << "prefix=";
-                auto valueString = serialize(statement.value, context);
-                ss << valueString;
+                ss << "prefix=" << serialize(statement.value, context);
                 return ss.str();
             }
         };
