@@ -22,6 +22,7 @@ TEST_CASE("virtual table") {
         make_virtual_table("posts", using_fts5(make_column("title", &Post::title), make_column("body", &Post::body))));
 
     storage.sync_schema();
+    storage.sync_schema_simulate();
     REQUIRE(storage.table_exists("posts"));
 
     const std::vector<Post> postsToInsert = {
