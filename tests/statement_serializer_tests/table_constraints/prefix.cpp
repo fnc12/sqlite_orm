@@ -16,7 +16,7 @@ TEST_CASE("statement_serializer prefix") {
     SECTION("3") {
         auto node = prefix(3);
         value = serialize(node, context);
-        expected = "prefix=3"; 
+        expected = "prefix=3";
     }
     SECTION("2 3") {
         auto node = prefix("2 3");
