@@ -115,6 +115,10 @@ namespace sqlite_orm {
                 return this->get_pragma<std::vector<std::string>>(ss.str());
             }
 
+            std::vector<std::string> quick_check() {
+                return this->get_pragma<std::vector<std::string>>("quick_check");
+            }
+
             // will include generated columns in response as opposed to table_info
             std::vector<sqlite_orm::table_xinfo> table_xinfo(const std::string& tableName) const {
                 auto connection = this->get_connection();
