@@ -2141,7 +2141,6 @@ namespace sqlite_orm {
                                                              check_if_is_type<null_t>,
                                                              check_if_is_type<not_null_t>,
                                                              check_if_is_type<unindexed_t>,
-                                                             check_if_is_template<prefix_t>,
                                                              check_if_is_template<unique_t>,
                                                              check_if_is_template<default_t>,
                                                              check_if_is_template<check_t>,
