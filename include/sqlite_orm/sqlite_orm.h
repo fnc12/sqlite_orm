@@ -1268,7 +1268,7 @@ namespace sqlite_orm {
                                           <sizeof...(T)>
 #endif
                                           ({TraitQ::template fn<typename ProjectQ::template fn<T>>::value...}));
-                    using type = polyfill::index_constant<value>;
+                    using type = polyfill::bool_constant<value>;
                 };
 
                 template<class Pack, class ProjectQ = identity>
