@@ -876,7 +876,7 @@ namespace sqlite_orm {
 #include <system_error>  //  std::system_error
 #include <ostream>  //  std::ostream
 #include <string>  //  std::string
-#include <tuple>  //  std::tuple, std::make_tuple
+#include <tuple>  //  std::tuple
 #include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
 
 // #include "functional/cxx_universal.h"
@@ -1841,6 +1841,13 @@ namespace sqlite_orm {
 
         struct unindexed_t {};
 
+        template<class T>
+        struct prefix_t {
+            using value_type = T;
+
+            value_type value;
+        };
+
         /**
          *  DEFAULT constraint class.
          *  T is a value type.
@@ -2048,7 +2055,7 @@ namespace sqlite_orm {
 
             template<class... Rs>
             foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> references(Rs... refs) {
-                return {std::move(this->columns), std::make_tuple(std::forward<Rs>(refs)...)};
+                return {std::move(this->columns), {std::forward<Rs>(refs)...}};
             }
         };
 #endif
@@ -2168,17 +2175,16 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        using is_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_primary_key>,
-                                                             check_if<is_foreign_key>,
-                                                             check_if_is_type<null_t>,
-                                                             check_if_is_type<not_null_t>,
-                                                             check_if_is_type<unindexed_t>,
-                                                             check_if_is_template<unique_t>,
-                                                             check_if_is_template<default_t>,
-                                                             check_if_is_template<check_t>,
-                                                             check_if_is_type<collate_constraint_t>,
-                                                             check_if<is_generated_always>>,
-                                            T>;
+        using is_column_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_primary_key>,
+                                                                    check_if_is_type<null_t>,
+                                                                    check_if_is_type<not_null_t>,
+                                                                    check_if_is_template<unique_t>,
+                                                                    check_if_is_template<default_t>,
+                                                                    check_if_is_template<check_t>,
+                                                                    check_if_is_type<collate_constraint_t>,
+                                                                    check_if<is_generated_always>,
+                                                                    check_if_is_type<unindexed_t>>,
+                                                   T>;
     }
 
 #if SQLITE_VERSION_NUMBER >= 3031000
@@ -2192,42 +2198,63 @@ namespace sqlite_orm {
         return {std::move(expression), false, internal::basic_generated_always::storage_type::not_specified};
     }
 #endif
-#if SQLITE_VERSION_NUMBER >= 3006019
 
+#if SQLITE_VERSION_NUMBER >= 3006019
     /**
      *  FOREIGN KEY constraint construction function that takes member pointer as argument
      *  Available in SQLite 3.6.19 or higher
      */
     template<class... Cs>
     internal::foreign_key_intermediate_t<Cs...> foreign_key(Cs... columns) {
-        return {std::make_tuple(std::forward<Cs>(columns)...)};
+        return {{std::forward<Cs>(columns)...}};
     }
 #endif
 
     /**
-     *  UNIQUE constraint builder function.
+     *  UNIQUE table constraint builder function.
      */
     template<class... Args>
     internal::unique_t<Args...> unique(Args... args) {
-        return {std::make_tuple(std::forward<Args>(args)...)};
+        return {{std::forward<Args>(args)...}};
     }
 
+    /**
+     *  UNIQUE column constraint builder function.
+     */
     inline internal::unique_t<> unique() {
         return {{}};
     }
 
     /**
-     *  UNINDEXED constraint builder function. Used in FTS virtual tables.
+     *  UNINDEXED column constraint builder function. Used in FTS virtual tables.
+     * 
+     *  https://www.sqlite.org/fts5.html#the_unindexed_column_option
      */
     inline internal::unindexed_t unindexed() {
         return {};
     }
 
-    template<class... Cs>
-    internal::primary_key_t<Cs...> primary_key(Cs... cs) {
-        return {std::make_tuple(std::forward<Cs>(cs)...)};
+    /**
+     *  prefix=N table constraint builder function. Used in FTS virtual tables.
+     * 
+     *  https://www.sqlite.org/fts5.html#prefix_indexes
+     */
+    template<class T>
+    internal::prefix_t<T> prefix(T value) {
+        return {std::move(value)};
     }
 
+    /**
+     *  PRIMARY KEY table constraint builder function.
+     */
+    template<class... Cs>
+    internal::primary_key_t<Cs...> primary_key(Cs... cs) {
+        return {{std::forward<Cs>(cs)...}};
+    }
+
+    /**
+     *  PRIMARY KEY column constraint builder function.
+     */
     inline internal::primary_key_t<> primary_key() {
         return {{}};
     }
@@ -3005,7 +3032,7 @@ namespace sqlite_orm {
     template<class M, class... Op, internal::satisfies<std::is_member_object_pointer, M> = true>
     internal::column_t<M, internal::empty_setter, Op...>
     make_column(std::string name, M memberPointer, Op... constraints) {
-        static_assert(polyfill::conjunction_v<internal::is_constraint<Op>...>, "Incorrect constraints pack");
+        static_assert(polyfill::conjunction_v<internal::is_column_constraint<Op>...>, "Incorrect constraints pack");
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
         // as this will lead to UB with Clang on MinGW!
@@ -3024,7 +3051,7 @@ namespace sqlite_orm {
     internal::column_t<G, S, Op...> make_column(std::string name, S setter, G getter, Op... constraints) {
         static_assert(std::is_same<internal::setter_field_type_t<S>, internal::getter_field_type_t<G>>::value,
                       "Getter and setter must get and set same data type");
-        static_assert(polyfill::conjunction_v<internal::is_constraint<Op>...>, "Incorrect constraints pack");
+        static_assert(polyfill::conjunction_v<internal::is_column_constraint<Op>...>, "Incorrect constraints pack");
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
         // as this will lead to UB with Clang on MinGW!
@@ -3043,7 +3070,7 @@ namespace sqlite_orm {
     internal::column_t<G, S, Op...> make_column(std::string name, G getter, S setter, Op... constraints) {
         static_assert(std::is_same<internal::setter_field_type_t<S>, internal::getter_field_type_t<G>>::value,
                       "Getter and setter must get and set same data type");
-        static_assert(polyfill::conjunction_v<internal::is_constraint<Op>...>, "Incorrect constraints pack");
+        static_assert(polyfill::conjunction_v<internal::is_column_constraint<Op>...>, "Incorrect constraints pack");
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
         // as this will lead to UB with Clang on MinGW!
@@ -11286,6 +11313,16 @@ namespace sqlite_orm {
 
     namespace internal {
 
+        template<class T>
+        using is_table_element_or_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_column>,
+                                                                              check_if<is_primary_key>,
+                                                                              check_if<is_foreign_key>,
+                                                                              check_if_is_template<index_t>,
+                                                                              check_if_is_template<unique_t>,
+                                                                              check_if_is_template<check_t>,
+                                                                              check_if_is_template<prefix_t>>,
+                                                             T>;
+
 #ifdef SQLITE_ORM_WITH_CTE
         /**
          *  A subselect mapper's CTE moniker, void otherwise.
@@ -11660,11 +11697,17 @@ namespace sqlite_orm {
 
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::using_fts5_t<T, Cs...> using_fts5(Cs... columns) {
+        static_assert(polyfill::conjunction_v<internal::is_table_element_or_constraint<Cs>...>,
+                      "Incorrect table elements or constraints");
+
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(columns)...)});
     }
 
     template<class T, class... Cs>
     internal::using_fts5_t<T, Cs...> using_fts5(Cs... columns) {
+        static_assert(polyfill::conjunction_v<internal::is_table_element_or_constraint<Cs>...>,
+                      "Incorrect table elements or constraints");
+
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(columns)...)});
     }
 
@@ -11675,6 +11718,9 @@ namespace sqlite_orm {
      */
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::table_t<T, false, Cs...> make_table(std::string name, Cs... args) {
+        static_assert(polyfill::conjunction_v<internal::is_table_element_or_constraint<Cs>...>,
+                      "Incorrect table elements or constraints");
+
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
             return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
     }
@@ -11686,6 +11732,9 @@ namespace sqlite_orm {
      */
     template<class T, class... Cs>
     internal::table_t<T, false, Cs...> make_table(std::string name, Cs... args) {
+        static_assert(polyfill::conjunction_v<internal::is_table_element_or_constraint<Cs>...>,
+                      "Incorrect table elements or constraints");
+
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
             return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
     }
@@ -15971,10 +16020,11 @@ namespace sqlite_orm {
             auto& context = std::get<3>(tpl);
 
             using constraints_tuple = decltype(column.constraints);
+            iterate_tuple(column.constraints, [&ss, &context](auto& constraint) {
+                ss << ' ' << serialize(constraint, context);
+            });
+            // add implicit null constraint
             if(!context.fts5_columns) {
-                iterate_tuple(column.constraints, [&ss, &context](auto& constraint) {
-                    ss << ' ' << serialize(constraint, context);
-                });
                 constexpr bool hasExplicitNullableConstraint =
                     mpl::invoke_t<mpl::disjunction<check_if_has_type<null_t>, check_if_has_type<not_null_t>>,
                                   constraints_tuple>::value;
@@ -15984,12 +16034,6 @@ namespace sqlite_orm {
                     } else {
                         ss << " NULL";
                     }
-                }
-            } else {
-                constexpr bool hasUnindexedOption =
-                    mpl::invoke_t<check_if_has_type<unindexed_t>, constraints_tuple>::value;
-                if SQLITE_ORM_CONSTEXPR_IF(hasUnindexedOption) {
-                    ss << " UNINDEXED";
                 }
             }
 
@@ -19443,8 +19487,20 @@ namespace sqlite_orm {
             using statement_type = unindexed_t;
 
             template<class Ctx>
-            serialize_result_type operator()(const statement_type& c, const Ctx& context) const {
+            serialize_result_type operator()(const statement_type& /*statement*/, const Ctx& /*context*/) const {
                 return "UNINDEXED";
+            }
+        };
+
+        template<class T>
+        struct statement_serializer<prefix_t<T>, void> {
+            using statement_type = prefix_t<T>;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                std::stringstream ss;
+                ss << "prefix=" << serialize(statement.value, context);
+                return ss.str();
             }
         };
 
@@ -21995,6 +22051,16 @@ namespace sqlite_orm {
             }
 
           protected:
+            template<class M>
+            sync_schema_result schema_status(const virtual_table_t<M>&, sqlite3*, bool, bool*) {
+                return sync_schema_result::already_in_sync;
+            }
+
+            template<class T, class... S>
+            sync_schema_result schema_status(const trigger_t<T, S...>&, sqlite3*, bool, bool*) {
+                return sync_schema_result::already_in_sync;
+            }
+
             template<class... Cols>
             sync_schema_result schema_status(const index_t<Cols...>&, sqlite3*, bool, bool*) {
                 return sync_schema_result::already_in_sync;

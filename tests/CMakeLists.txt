@@ -96,6 +96,8 @@ add_executable(unit_tests
     statement_serializer_tests/column_constraints/null.cpp
     statement_serializer_tests/column_constraints/not_null.cpp
     statement_serializer_tests/column_constraints/unindexed.cpp
+    statement_serializer_tests/table_constraints/prefix.cpp
+    statement_serializer_tests/table_constraints/foreign_key.cpp
     statement_serializer_tests/bindables.cpp
     statement_serializer_tests/ast/upsert_clause.cpp
     statement_serializer_tests/ast/excluded.cpp
@@ -109,7 +111,6 @@ add_executable(unit_tests
     statement_serializer_tests/core_functions.cpp
     statement_serializer_tests/rowid.cpp
     statement_serializer_tests/column_names.cpp
-    statement_serializer_tests/foreign_key.cpp
     statement_serializer_tests/schema/index.cpp
     statement_serializer_tests/schema/trigger.cpp
     statement_serializer_tests/schema/new_old.cpp

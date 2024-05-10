@@ -3,7 +3,7 @@
 
 #include <type_traits>  //  std::is_same
 
-#include "../static_tests/static_tests_storage_traits.h"
+#include "../../static_tests/static_tests_storage_traits.h"
 
 using namespace sqlite_orm;
 
