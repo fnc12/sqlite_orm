@@ -28,6 +28,16 @@ namespace sqlite_orm {
 
     namespace internal {
 
+        template<class T>
+        using is_table_element_or_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_column>,
+                                                                              check_if<is_primary_key>,
+                                                                              check_if<is_foreign_key>,
+                                                                              check_if_is_template<index_t>,
+                                                                              check_if_is_template<unique_t>,
+                                                                              check_if_is_template<check_t>,
+                                                                              check_if_is_template<prefix_t>>,
+                                                             T>;
+
 #ifdef SQLITE_ORM_WITH_CTE
         /**
          *  A subselect mapper's CTE moniker, void otherwise.
@@ -402,11 +412,17 @@ namespace sqlite_orm {
 
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::using_fts5_t<T, Cs...> using_fts5(Cs... columns) {
+        static_assert(polyfill::conjunction_v<internal::is_table_element_or_constraint<Cs>...>,
+                      "Incorrect table elements or constraints");
+
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(columns)...)});
     }
 
     template<class T, class... Cs>
     internal::using_fts5_t<T, Cs...> using_fts5(Cs... columns) {
+        static_assert(polyfill::conjunction_v<internal::is_table_element_or_constraint<Cs>...>,
+                      "Incorrect table elements or constraints");
+
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(columns)...)});
     }
 
@@ -417,6 +433,9 @@ namespace sqlite_orm {
      */
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::table_t<T, false, Cs...> make_table(std::string name, Cs... args) {
+        static_assert(polyfill::conjunction_v<internal::is_table_element_or_constraint<Cs>...>,
+                      "Incorrect table elements or constraints");
+
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
             return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
     }
@@ -428,6 +447,9 @@ namespace sqlite_orm {
      */
     template<class T, class... Cs>
     internal::table_t<T, false, Cs...> make_table(std::string name, Cs... args) {
+        static_assert(polyfill::conjunction_v<internal::is_table_element_or_constraint<Cs>...>,
+                      "Incorrect table elements or constraints");
+
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
             return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
     }
