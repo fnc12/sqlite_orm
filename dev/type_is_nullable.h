@@ -27,15 +27,14 @@ namespace sqlite_orm {
      */
     template<class T>
     struct type_is_nullable<T,
-                            std::enable_if_t<polyfill::disjunction_v<
+                            std::enable_if_t<polyfill::disjunction<
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                                 polyfill::is_specialization_of<T, std::optional>,
 #endif
                                 polyfill::is_specialization_of<T, std::unique_ptr>,
-                                polyfill::is_specialization_of<T, std::shared_ptr>>>> : std::true_type {
+                                polyfill::is_specialization_of<T, std::shared_ptr>>::value>> : std::true_type {
         bool operator()(const T& t) const {
             return static_cast<bool>(t);
         }
     };
-
 }

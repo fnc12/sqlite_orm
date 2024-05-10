@@ -98,22 +98,19 @@ namespace sqlite_orm {
      *  This is a reverse operation: here we have to specify a way to transform string received from
      *  database to our sysdays object. Here we call `sysDaysFromString` and throw `std::runtime_error` if it returns null.
      *  Every `row_extractor` specialization must have `extract(const char*)`, `extract(sqlite3_stmt *stmt, int columnIndex)`
-     *	and `extract(sqlite3_value* value)`
-     *  functions which return a mapped type value.
+     *	and `extract(sqlite3_value* value)` functions which cast to a typed value.
      */
     template<>
     struct row_extractor<std::chrono::sys_days> {
-        std::chrono::sys_days extract(const char* row_value) const {
-            if(row_value) {
-                auto sd = sysDaysFromString(row_value);
-                if(sd) {
-                    return sd.value();
-                } else {
-                    throw std::runtime_error("incorrect date string (" + std::string(row_value) + ")");
-                }
-            } else {
-                // ! row_value
+        std::chrono::sys_days extract(const char* columnText) const {
+            if(!columnText) {
                 throw std::runtime_error("incorrect date string (nullptr)");
+            }
+
+            if(auto sd = sysDaysFromString(columnText)) {
+                return sd.value();
+            } else {
+                throw std::runtime_error("incorrect date string (" + std::string(columnText) + ")");
             }
         }
 
@@ -121,8 +118,8 @@ namespace sqlite_orm {
             auto str = sqlite3_column_text(stmt, columnIndex);
             return this->extract((const char*)str);
         }
-        std::chrono::sys_days extract(sqlite3_value* row_value) const {
-            auto characters = (const char*)(sqlite3_value_text(row_value));
+        std::chrono::sys_days extract(sqlite3_value* value) const {
+            auto characters = (const char*)(sqlite3_value_text(value));
             return extract(characters);
         }
     };

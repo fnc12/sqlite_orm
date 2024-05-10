@@ -24,7 +24,7 @@ TEST_CASE("statement_serializer aggregate functions") {
                 auto expression = avg(&User::id);
                 SECTION("use_parentheses") {
                     context.use_parentheses = true;
-                    expected = R"((AVG("id")))";
+                    expected = R"(AVG("id"))";
                 }
                 SECTION("!use_parentheses") {
                     context.use_parentheses = false;
@@ -33,10 +33,10 @@ TEST_CASE("statement_serializer aggregate functions") {
                 value = serialize(expression, context);
             }
             SECTION("without filter") {
-                auto expression = avg(&User::id).filter(where(lesser_than(&User::id, 10)));
+                auto expression = avg(&User::id).filter(where(less_than(&User::id, 10)));
                 SECTION("use_parentheses") {
                     context.use_parentheses = true;
-                    expected = R"((AVG("id")) FILTER (WHERE ("id" < 10)))";
+                    expected = R"(AVG("id") FILTER (WHERE "id" < 10))";
                 }
                 SECTION("!use_parentheses") {
                     context.use_parentheses = false;
@@ -52,7 +52,7 @@ TEST_CASE("statement_serializer aggregate functions") {
                 auto expression = count(&User::id);
                 SECTION("use_parentheses") {
                     context.use_parentheses = true;
-                    expected = R"((COUNT("id")))";
+                    expected = R"(COUNT("id"))";
                 }
                 SECTION("!use_parentheses") {
                     context.use_parentheses = false;
@@ -61,10 +61,10 @@ TEST_CASE("statement_serializer aggregate functions") {
                 value = serialize(expression, context);
             }
             SECTION("without filter") {
-                auto expression = count(&User::id).filter(where(lesser_than(&User::id, 10)));
+                auto expression = count(&User::id).filter(where(less_than(&User::id, 10)));
                 SECTION("use_parentheses") {
                     context.use_parentheses = true;
-                    expected = R"((COUNT("id")) FILTER (WHERE ("id" < 10)))";
+                    expected = R"(COUNT("id") FILTER (WHERE "id" < 10))";
                 }
                 SECTION("!use_parentheses") {
                     context.use_parentheses = false;
@@ -76,16 +76,33 @@ TEST_CASE("statement_serializer aggregate functions") {
     }
     SECTION("count(*)") {
         SECTION("simple") {
-            SECTION("with filter") {
+            SECTION("without filter") {
                 auto expression = count<User>();
                 value = serialize(expression, context);
                 expected = R"(COUNT(*))";
             }
-            SECTION("without filter") {
-                auto expression = count<User>().filter(where(lesser_than(&User::id, 10)));
+            SECTION("with filter") {
+                auto expression = count<User>().filter(where(less_than(&User::id, 10)));
                 value = serialize(expression, context);
-                expected = R"(COUNT(*) FILTER (WHERE ("id" < 10)))";
+                expected = R"(COUNT(*) FILTER (WHERE "id" < 10))";
             }
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            SECTION("with table reference") {
+                constexpr auto user = c<User>();
+                auto expression = count<user>();
+                value = serialize(expression, context);
+                expected = R"(COUNT(*))";
+            }
+#endif
+#ifdef SQLITE_ORM_WITH_CTE
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            SECTION("with CTE") {
+                auto expression = count<1_ctealias>();
+                value = serialize(expression, context);
+                expected = R"(COUNT(*))";
+            }
+#endif
+#endif
         }
     }
     SECTION("group_concat(X)") {
@@ -94,7 +111,7 @@ TEST_CASE("statement_serializer aggregate functions") {
                 auto expression = group_concat(&User::id);
                 SECTION("use_parentheses") {
                     context.use_parentheses = true;
-                    expected = R"((GROUP_CONCAT("id")))";
+                    expected = R"(GROUP_CONCAT("id"))";
                 }
                 SECTION("!use_parentheses") {
                     context.use_parentheses = false;
@@ -103,10 +120,10 @@ TEST_CASE("statement_serializer aggregate functions") {
                 value = serialize(expression, context);
             }
             SECTION("without filter") {
-                auto expression = group_concat(&User::id).filter(where(lesser_than(&User::id, 10)));
+                auto expression = group_concat(&User::id).filter(where(less_than(&User::id, 10)));
                 SECTION("use_parentheses") {
                     context.use_parentheses = true;
-                    expected = R"((GROUP_CONCAT("id")) FILTER (WHERE ("id" < 10)))";
+                    expected = R"(GROUP_CONCAT("id") FILTER (WHERE "id" < 10))";
                 }
                 SECTION("!use_parentheses") {
                     context.use_parentheses = false;
@@ -122,7 +139,7 @@ TEST_CASE("statement_serializer aggregate functions") {
                 auto expression = group_concat(&User::id, "-");
                 SECTION("use_parentheses") {
                     context.use_parentheses = true;
-                    expected = R"((GROUP_CONCAT("id", '-')))";
+                    expected = R"(GROUP_CONCAT("id", '-'))";
                 }
                 SECTION("!use_parentheses") {
                     context.use_parentheses = false;
@@ -131,10 +148,10 @@ TEST_CASE("statement_serializer aggregate functions") {
                 value = serialize(expression, context);
             }
             SECTION("without filter") {
-                auto expression = group_concat(&User::id, "-").filter(where(lesser_than(&User::id, 10)));
+                auto expression = group_concat(&User::id, "-").filter(where(less_than(&User::id, 10)));
                 SECTION("use_parentheses") {
                     context.use_parentheses = true;
-                    expected = R"((GROUP_CONCAT("id", '-')) FILTER (WHERE ("id" < 10)))";
+                    expected = R"(GROUP_CONCAT("id", '-') FILTER (WHERE "id" < 10))";
                 }
                 SECTION("!use_parentheses") {
                     context.use_parentheses = false;
@@ -150,7 +167,7 @@ TEST_CASE("statement_serializer aggregate functions") {
                 auto expression = max(&User::id);
                 SECTION("use_parentheses") {
                     context.use_parentheses = true;
-                    expected = R"((MAX("id")))";
+                    expected = R"(MAX("id"))";
                 }
                 SECTION("!use_parentheses") {
                     context.use_parentheses = false;
@@ -159,10 +176,10 @@ TEST_CASE("statement_serializer aggregate functions") {
                 value = serialize(expression, context);
             }
             SECTION("without filter") {
-                auto expression = max(&User::id).filter(where(lesser_than(&User::id, 10)));
+                auto expression = max(&User::id).filter(where(less_than(&User::id, 10)));
                 SECTION("use_parentheses") {
                     context.use_parentheses = true;
-                    expected = R"((MAX("id")) FILTER (WHERE ("id" < 10)))";
+                    expected = R"(MAX("id") FILTER (WHERE "id" < 10))";
                 }
                 SECTION("!use_parentheses") {
                     context.use_parentheses = false;
@@ -178,7 +195,7 @@ TEST_CASE("statement_serializer aggregate functions") {
                 auto expression = min(&User::id);
                 SECTION("use_parentheses") {
                     context.use_parentheses = true;
-                    expected = R"((MIN("id")))";
+                    expected = R"(MIN("id"))";
                 }
                 SECTION("!use_parentheses") {
                     context.use_parentheses = false;
@@ -187,10 +204,10 @@ TEST_CASE("statement_serializer aggregate functions") {
                 value = serialize(expression, context);
             }
             SECTION("without filter") {
-                auto expression = min(&User::id).filter(where(lesser_than(&User::id, 10)));
+                auto expression = min(&User::id).filter(where(less_than(&User::id, 10)));
                 SECTION("use_parentheses") {
                     context.use_parentheses = true;
-                    expected = R"((MIN("id")) FILTER (WHERE ("id" < 10)))";
+                    expected = R"(MIN("id") FILTER (WHERE "id" < 10))";
                 }
                 SECTION("!use_parentheses") {
                     context.use_parentheses = false;
@@ -206,7 +223,7 @@ TEST_CASE("statement_serializer aggregate functions") {
                 auto expression = sum(&User::id);
                 SECTION("use_parentheses") {
                     context.use_parentheses = true;
-                    expected = R"((SUM("id")))";
+                    expected = R"(SUM("id"))";
                 }
                 SECTION("!use_parentheses") {
                     context.use_parentheses = false;
@@ -215,10 +232,10 @@ TEST_CASE("statement_serializer aggregate functions") {
                 value = serialize(expression, context);
             }
             SECTION("without filter") {
-                auto expression = sum(&User::id).filter(where(lesser_than(&User::id, 10)));
+                auto expression = sum(&User::id).filter(where(less_than(&User::id, 10)));
                 SECTION("use_parentheses") {
                     context.use_parentheses = true;
-                    expected = R"((SUM("id")) FILTER (WHERE ("id" < 10)))";
+                    expected = R"(SUM("id") FILTER (WHERE "id" < 10))";
                 }
                 SECTION("!use_parentheses") {
                     context.use_parentheses = false;
@@ -234,7 +251,7 @@ TEST_CASE("statement_serializer aggregate functions") {
                 auto expression = total(&User::id);
                 SECTION("use_parentheses") {
                     context.use_parentheses = true;
-                    expected = R"((TOTAL("id")))";
+                    expected = R"(TOTAL("id"))";
                 }
                 SECTION("!use_parentheses") {
                     context.use_parentheses = false;
@@ -243,10 +260,10 @@ TEST_CASE("statement_serializer aggregate functions") {
                 value = serialize(expression, context);
             }
             SECTION("without filter") {
-                auto expression = total(&User::id).filter(where(lesser_than(&User::id, 10)));
+                auto expression = total(&User::id).filter(where(less_than(&User::id, 10)));
                 SECTION("use_parentheses") {
                     context.use_parentheses = true;
-                    expected = R"((TOTAL("id")) FILTER (WHERE ("id" < 10)))";
+                    expected = R"(TOTAL("id") FILTER (WHERE "id" < 10))";
                 }
                 SECTION("!use_parentheses") {
                     context.use_parentheses = false;

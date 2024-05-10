@@ -1,8 +1,29 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 #include <type_traits>  //  std::is_same
+#include <array>
 
 using namespace sqlite_orm;
+using internal::create_from_tuple;
+using internal::field_type_t;
+using internal::literal_holder;
+using internal::transform_tuple_t;
+#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
+using internal::nested_tuple_size_for_t;
+using internal::recombine_tuple;
+#endif
+
+template<class T>
+using make_literal_holder = literal_holder<T>;
+
+#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && (__cpp_lib_constexpr_functional >= 201907L)
+struct tuple_maker {
+    template<class... Types>
+    constexpr auto operator()(Types&&... types) const {
+        return std::make_tuple(std::forward<Types>(types)...);
+    }
+};
+#endif
 
 TEST_CASE("tuple_helper static") {
     SECTION("tuple_transformer") {
@@ -12,18 +33,31 @@ TEST_CASE("tuple_helper static") {
             std::string b;
             std::string c;
         };
-        auto column1 = make_column("id", &Table::id);
-        auto column2 = make_column("a", &Table::a);
-        auto column3 = make_column("b", &Table::b);
-        auto column4 = make_column("c", &Table::c);
 
-        using Column1 = decltype(column1);
-        using Column2 = decltype(column2);
-        using Column3 = decltype(column3);
-        using Column4 = decltype(column4);
-        using ColumnsTuple = std::tuple<Column1, Column2, Column3, Column4>;
-        using ColumnsMappedTypes = internal::transform_tuple_t<ColumnsTuple, internal::field_type_t>;
+        auto columnsTuple = std::make_tuple(make_column("id", &Table::id),
+                                            make_column("a", &Table::a),
+                                            make_column("b", &Table::b),
+                                            make_column("c", &Table::c));
+        using ColumnsTuple = decltype(columnsTuple);
+        using ColumnsMappedTypes = transform_tuple_t<ColumnsTuple, field_type_t>;
         using Expected = std::tuple<int64_t, std::string, std::string, std::string>;
         STATIC_REQUIRE(std::is_same<ColumnsMappedTypes, Expected>::value);
+
+        STATIC_REQUIRE(std::is_same<transform_tuple_t<std::tuple<bool, int>, make_literal_holder>,
+                                    std::tuple<literal_holder<bool>, literal_holder<int>>>::value);
+
+#if __cpp_lib_constexpr_algorithms >= 201806L
+        STATIC_REQUIRE(create_from_tuple<std::array<int, 2>>(std::make_tuple(1, 2), polyfill::identity{}) ==
+                       std::array<int, 2>{1, 2});
+#endif
+#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && (__cpp_lib_constexpr_functional >= 201907L)
+        STATIC_REQUIRE(recombine_tuple(tuple_maker{}, std::make_tuple(1, 2), polyfill::identity{}, 3) ==
+                       std::make_tuple(3, 1, 2));
+
+        // make tuples out of tuple elements, and sump up the size of the first 2 of 3 resulting tuples
+        STATIC_REQUIRE(
+            std::is_same<nested_tuple_size_for_t<std::tuple, std::tuple<int, int, int>, std::make_index_sequence<2>>,
+                         std::integral_constant<size_t, 2>>::value);
+#endif
     }
 }

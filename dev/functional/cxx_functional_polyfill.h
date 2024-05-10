@@ -5,9 +5,7 @@
 #endif
 #include <utility>  //  std::forward
 
-#if __cpp_lib_invoke < 201411L
 #include "cxx_type_traits_polyfill.h"
-#endif
 #include "../member_traits/member_traits.h"
 
 namespace sqlite_orm {
@@ -21,7 +19,7 @@ namespace sqlite_orm {
             //
             // Another way of detection would be the constrained algorithms feature macro __cpp_lib_ranges
 #if(__cplusplus >= 202002L) &&                                                                                         \
-    ((!_LIBCPP_VERSION || _LIBCPP_VERSION >= 13) && (!_GLIBCXX_RELEASE || _GLIBCXX_RELEASE >= 10))
+    ((!_LIBCPP_VERSION || _LIBCPP_VERSION >= 13000) && (!_GLIBCXX_RELEASE || _GLIBCXX_RELEASE >= 10))
             using std::identity;
 #else
             struct identity {
@@ -61,9 +59,9 @@ namespace sqlite_orm {
             template<class Callable,
                      class Object,
                      class... Args,
-                     std::enable_if_t<polyfill::negation_v<polyfill::is_specialization_of<
+                     std::enable_if_t<polyfill::negation<polyfill::is_specialization_of<
                                           member_object_type_t<std::remove_reference_t<Callable>>,
-                                          std::reference_wrapper>>,
+                                          std::reference_wrapper>>::value,
                                       bool> = true>
             decltype(auto) invoke(Callable&& callable, std::reference_wrapper<Object> wrapper, Args&&... args) {
                 return invoke(std::forward<Callable>(callable), wrapper.get(), std::forward<Args>(args)...);

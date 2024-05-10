@@ -12,7 +12,7 @@ namespace {
 
         void operator()(int64* p) const {
             // must not double-delete
-            REQUIRE(!deleted);
+            REQUIRE_FALSE(deleted);
 
             lastSelectedId = *p;
             delete p;

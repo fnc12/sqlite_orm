@@ -4,7 +4,7 @@
 #include <tuple>
 #include <utility>  //  std::index_sequence, std::make_index_sequence
 
-#include "functional/cxx_universal.h"
+#include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"
 
@@ -16,6 +16,10 @@ namespace sqlite_orm {
 
         template<class... DBO>
         using db_objects_tuple = std::tuple<DBO...>;
+
+        struct basic_table;
+        struct index_base;
+        struct base_trigger;
 
         template<class T>
         struct is_storage : std::false_type {};
@@ -34,7 +38,7 @@ namespace sqlite_orm {
         struct is_db_objects<const db_objects_tuple<DBO...>> : std::true_type {};
 
         /**
-         *  std::true_type if given object is mapped, std::false_type otherwise.
+         *  `std::true_type` if given object is mapped, `std::false_type` otherwise.
          * 
          *  Note: unlike table_t<>, index_t<>::object_type and trigger_t<>::object_type is always void.
          */
@@ -43,10 +47,10 @@ namespace sqlite_orm {
                                                            std::is_same<Lookup, object_type_t<DBO>>> {};
 
         /**
-         *  std::true_type if given lookup type (object) is mapped, std::false_type otherwise.
+         *  `std::true_type` if given lookup type (object or moniker) is mapped, `std::false_type` otherwise.
          */
         template<typename DBO, typename Lookup>
-        struct lookup_type_matches : polyfill::disjunction<object_type_matches<DBO, Lookup>> {};
+        using lookup_type_matches = object_type_matches<DBO, Lookup>;
     }
 
     // pick/lookup metafunctions
@@ -91,7 +95,7 @@ namespace sqlite_orm {
          *  Lookup - mapped data type
          */
         template<class Lookup, class DBOs>
-        struct storage_find_table : polyfill::detected_or<polyfill::nonesuch, storage_pick_table_t, Lookup, DBOs> {};
+        struct storage_find_table : polyfill::detected<storage_pick_table_t, Lookup, DBOs> {};
 
         /**
          *  Find a table definition (`table_t`) from a tuple of database objects;
@@ -133,9 +137,6 @@ namespace sqlite_orm {
             using table_type = storage_pick_table_t<Lookup, DBOs>;
             return std::get<table_type>(dbObjects);
         }
-
-        template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs> = true>
-        auto lookup_table(const DBOs& dbObjects);
 
         template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs> = true>
         decltype(auto) lookup_table_name(const DBOs& dbObjects);

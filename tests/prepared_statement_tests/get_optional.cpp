@@ -94,7 +94,7 @@ TEST_CASE("Prepared get optional") {
         }
         SECTION("execute") {
             auto user = storage.execute(statement);
-            REQUIRE(!user.has_value());
+            REQUIRE_FALSE(user.has_value());
         }
     }
     {

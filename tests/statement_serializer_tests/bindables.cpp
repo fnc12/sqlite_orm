@@ -75,7 +75,7 @@ array<string, N> single_value_array(const char* s) {
 }
 
 template<class T>
-using wrap_in_literal = internal::literal_holder<T>;
+using make_literal_holder = internal::literal_holder<T>;
 
 inline void require_string(const string& value, const string& expected) {
     REQUIRE(value == expected);
@@ -192,7 +192,7 @@ TEST_CASE("bindables") {
         }
         SECTION("non-bindable literals") {
             context.replace_bindable_with_question = true;
-            constexpr auto t = make_default_tuple<internal::transform_tuple_t<Tuple, wrap_in_literal>>();
+            constexpr auto t = make_default_tuple<internal::transform_tuple_t<Tuple, make_literal_holder>>();
             test_tuple(t, context, e);
         }
     }
@@ -254,7 +254,7 @@ TEST_CASE("bindables") {
         }
         SECTION("non-bindable literals") {
             context.replace_bindable_with_question = true;
-            auto t = make_default_tuple<internal::transform_tuple_t<Tuple, wrap_in_literal>>();
+            auto t = make_default_tuple<internal::transform_tuple_t<Tuple, make_literal_holder>>();
             test_tuple(t, context, e);
         }
     }
@@ -283,12 +283,12 @@ TEST_CASE("bindables") {
         SECTION("null as function argument") {
             auto ast = func<remember_fn>(1, statically_bindable_pointer<carray_pvt, nullptr_t>(nullptr));
             value = serialize(ast, context);
-            expected = "remember(1, null)";
+            expected = R"("remember"(1, null))";
         }
         SECTION("null as function argument 2") {
             auto ast = func<remember_fn>(1, nullptr);
             value = serialize(ast, context);
-            expected = "remember(1, null)";
+            expected = R"("remember"(1, null))";
         }
 
         REQUIRE(value == expected);

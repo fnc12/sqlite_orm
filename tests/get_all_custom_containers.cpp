@@ -120,6 +120,19 @@ TEST_CASE("get_all deque") {
     //  get_all_optional
     {
         using UserP = std::optional<User>;
+        tester.testContainer<std::vector<UserP>>(storage.get_all_optional<User>());
+        {
+            using Container = std::vector<UserP>;
+            tester.testContainer<Container>(storage.get_all_optional<User, Container>());
+        }
+        {
+            using Container = std::deque<UserP>;
+            tester.testContainer<Container>(storage.get_all_optional<User, Container>());
+        }
+        {
+            using Container = std::list<UserP>;
+            tester.testContainer<Container>(storage.get_all_optional<User, Container>());
+        }
         tester.testPreparedStatement<std::vector<UserP>>(storage, storage.prepare(get_all_optional<User>()));
         {
             using Container = std::vector<UserP>;

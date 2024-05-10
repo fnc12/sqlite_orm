@@ -104,7 +104,7 @@ namespace sqlite_orm {
     template<>
     struct row_extractor<Rect> {
 
-        Rect extract(sqlite3_stmt* stmt, int columnIndex) {
+        Rect extract(sqlite3_stmt* stmt, int columnIndex) const {
             auto blobPointer = sqlite3_column_blob(stmt, columnIndex);
             auto charPointer = (const char*)blobPointer;
             Rect value;

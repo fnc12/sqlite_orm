@@ -4,6 +4,12 @@
 
 using namespace sqlite_orm;
 
+TEST_CASE("module_list") {
+    auto storage = make_storage({});
+
+    std::ignore = storage.pragma.module_list();
+}
+
 TEST_CASE("Journal mode") {
     auto filename = "journal_mode.sqlite";
     ::remove(filename);

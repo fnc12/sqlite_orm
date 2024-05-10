@@ -3,10 +3,10 @@
 
 using namespace sqlite_orm;
 
-TEST_CASE("statement_serializer autoincrement") {
+TEST_CASE("statement_serializer null") {
     internal::db_objects_tuple<> storage;
     internal::serializer_context<internal::db_objects_tuple<>> context{storage};
-    auto autoinc = autoincrement();
-    auto value = serialize(autoinc, context);
-    REQUIRE(value == "AUTOINCREMENT");
+    auto statement = null();
+    auto value = serialize(statement, context);
+    REQUIRE(value == "NULL");
 }

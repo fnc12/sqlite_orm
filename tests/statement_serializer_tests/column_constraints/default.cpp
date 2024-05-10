@@ -22,7 +22,7 @@ TEST_CASE("statement_serializer default") {
         auto def = default_value(datetime("now"));
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "DEFAULT ((DATETIME('now')))";
+            expected = "DEFAULT (DATETIME('now'))";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;

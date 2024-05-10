@@ -10,8 +10,8 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        template<class T, class DBOs>
-        std::string serialize(const T&, const serializer_context<DBOs>&);
+        template<class T, class C>
+        auto serialize(const T& t, const C& context);
 
         /**
          *  Serialize default value of a column's default valu

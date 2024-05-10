@@ -1,15 +1,20 @@
 #pragma once
 
 #include <tuple>
-#include <utility>  //  std::move, std::forward
+#include <type_traits>  //  std::enable_if
+#include <utility>  //  std::move, std::forward, std::declval
 #include "functional/cxx_optional.h"
 
 #include "functional/cxx_universal.h"
-#include "operators.h"
+#include "functional/cxx_type_traits_polyfill.h"
+#include "tags.h"
 
 namespace sqlite_orm {
 
     namespace internal {
+
+        template<class L, class... Args>
+        struct in_t;
 
         template<class L, class R>
         struct and_condition_t;
@@ -18,13 +23,11 @@ namespace sqlite_orm {
         struct or_condition_t;
 
         /**
-         *  Is not an operator but a result of c(...) function. Has operator= overloaded which returns assign_t
+         *  Result of c(...) function. Has operator= overloaded which returns assign_t
          */
         template<class T>
-        struct expression_t : condition_t {
+        struct expression_t {
             T value;
-
-            expression_t(T value_) : value(std::move(value_)) {}
 
             template<class R>
             assign_t<T, R> operator=(R r) const {
@@ -41,12 +44,12 @@ namespace sqlite_orm {
 #endif
             template<class... Args>
             in_t<T, Args...> in(Args... args) const {
-                return {this->value, std::make_tuple(std::forward<Args>(args)...), false};
+                return {this->value, {std::forward<Args>(args)...}, false};
             }
 
             template<class... Args>
             in_t<T, Args...> not_in(Args... args) const {
-                return {this->value, std::make_tuple(std::forward<Args>(args)...), true};
+                return {this->value, {std::forward<Args>(args)...}, true};
             }
 
             template<class R>
@@ -61,6 +64,10 @@ namespace sqlite_orm {
         };
 
         template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool
+            is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, expression_t>::value>> = true;
+
+        template<class T>
         T get_from_expression(T value) {
             return std::move(value);
         }
@@ -69,6 +76,9 @@ namespace sqlite_orm {
         T get_from_expression(expression_t<T> expression) {
             return std::move(expression.value);
         }
+
+        template<class T>
+        using unwrap_expression_t = decltype(get_from_expression(std::declval<T>()));
     }
 
     /**

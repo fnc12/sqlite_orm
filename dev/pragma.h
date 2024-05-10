@@ -28,8 +28,9 @@ namespace sqlite_orm {
         inline int getPragmaCallback<std::vector<std::string>>(void* data, int argc, char** argv, char**) {
             auto& res = *(std::vector<std::string>*)data;
             res.reserve(argc);
-            for(decltype(argc) i = 0; i < argc; ++i) {
-                auto rowString = row_extractor<std::string>().extract(argv[i]);
+            const auto rowExtractor = column_text_extractor<std::string>();
+            for(int i = 0; i < argc; ++i) {
+                auto rowString = rowExtractor.extract(argv[i]);
                 res.push_back(std::move(rowString));
             }
             return 0;
@@ -39,6 +40,10 @@ namespace sqlite_orm {
             using get_connection_t = std::function<internal::connection_ref()>;
 
             pragma_t(get_connection_t get_connection_) : get_connection(std::move(get_connection_)) {}
+
+            std::vector<std::string> module_list() {
+                return this->get_pragma<std::vector<std::string>>("module_list");
+            }
 
             void busy_timeout(int value) {
                 this->set_pragma("busy_timeout", value);

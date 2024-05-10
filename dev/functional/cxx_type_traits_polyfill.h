@@ -9,8 +9,15 @@ namespace sqlite_orm {
 #if __cpp_lib_void_t >= 201411L
             using std::void_t;
 #else
+            /*
+             *  Implementation note: Conservative implementation due to CWG issue 1558 (Unused arguments in alias template specializations).
+             */
             template<class...>
-            using void_t = void;
+            struct always_void {
+                using type = void;
+            };
+            template<class... T>
+            using void_t = typename always_void<T...>::type;
 #endif
 
 #if __cpp_lib_bool_constant >= 201505L

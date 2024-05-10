@@ -20,6 +20,7 @@
 #include "ast/group_by.h"
 #include "ast/exists.h"
 #include "ast/set.h"
+#include "ast/match.h"
 
 namespace sqlite_orm {
 
@@ -85,6 +86,16 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T, class X>
+        struct ast_iterator<match_t<T, X>, void> {
+            using node_type = match_t<T, X>;
+
+            template<class L>
+            void operator()(const node_type& node, L& lambda) const {
+                iterate_ast(node.argument, lambda);
+            }
+        };
+
         template<class... Args>
         struct ast_iterator<group_by_t<Args...>, void> {
             using node_type = group_by_t<Args...>;
@@ -92,6 +103,19 @@ namespace sqlite_orm {
             template<class L>
             void operator()(const node_type& expression, L& lambda) const {
                 iterate_ast(expression.args, lambda);
+            }
+        };
+
+        template<class T, class X, class Y, class Z>
+        struct ast_iterator<highlight_t<T, X, Y, Z>, void> {
+            using node_type = highlight_t<T, X, Y, Z>;
+
+            template<class L>
+            void operator()(const node_type& expression, L& lambda) const {
+                lambda(expression);
+                iterate_ast(expression.argument0, lambda);
+                iterate_ast(expression.argument1, lambda);
+                iterate_ast(expression.argument2, lambda);
             }
         };
 
@@ -126,30 +150,31 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<T, match_if<is_binary_condition, T>> {
+        struct ast_iterator<
+            T,
+            std::enable_if_t<polyfill::disjunction<is_binary_condition<T>, is_binary_operator<T>>::value>> {
             using node_type = T;
 
             template<class L>
-            void operator()(const node_type& binaryCondition, L& lambda) const {
-                iterate_ast(binaryCondition.l, lambda);
-                iterate_ast(binaryCondition.r, lambda);
+            void operator()(const node_type& node, L& lambda) const {
+                iterate_ast(node.lhs, lambda);
+                iterate_ast(node.rhs, lambda);
             }
         };
 
-        template<class L, class R, class... Ds>
-        struct ast_iterator<binary_operator<L, R, Ds...>, void> {
-            using node_type = binary_operator<L, R, Ds...>;
+        template<class L, class R>
+        struct ast_iterator<is_equal_with_table_t<L, R>, void> {
+            using node_type = is_equal_with_table_t<L, R>;
 
             template<class C>
-            void operator()(const node_type& binaryOperator, C& lambda) const {
-                iterate_ast(binaryOperator.lhs, lambda);
-                iterate_ast(binaryOperator.rhs, lambda);
+            void operator()(const node_type& node, C& lambda) const {
+                iterate_ast(node.rhs, lambda);
             }
         };
 
-        template<class... Args>
-        struct ast_iterator<columns_t<Args...>, void> {
-            using node_type = columns_t<Args...>;
+        template<class C>
+        struct ast_iterator<C, std::enable_if_t<polyfill::disjunction<is_columns<C>, is_struct<C>>::value>> {
+            using node_type = C;
 
             template<class L>
             void operator()(const node_type& cols, L& lambda) const {
@@ -201,14 +226,36 @@ namespace sqlite_orm {
             }
         };
 
+#ifdef SQLITE_ORM_WITH_CTE
+        template<class CTE>
+        struct ast_iterator<CTE, match_specialization_of<CTE, common_table_expression>> {
+            using node_type = CTE;
+
+            template<class L>
+            void operator()(const node_type& c, L& lambda) const {
+                iterate_ast(c.subselect, lambda);
+            }
+        };
+
+        template<class With>
+        struct ast_iterator<With, match_specialization_of<With, with_t>> {
+            using node_type = With;
+
+            template<class L>
+            void operator()(const node_type& c, L& lambda) const {
+                iterate_ast(c.cte, lambda);
+                iterate_ast(c.expression, lambda);
+            }
+        };
+#endif
+
         template<class T>
         struct ast_iterator<T, match_if<is_compound_operator, T>> {
             using node_type = T;
 
             template<class L>
             void operator()(const node_type& c, L& lambda) const {
-                iterate_ast(c.left, lambda);
-                iterate_ast(c.right, lambda);
+                iterate_ast(c.compound, lambda);
             }
         };
 
@@ -349,16 +396,6 @@ namespace sqlite_orm {
             }
         };
 
-        template<class T>
-        struct ast_iterator<having_t<T>, void> {
-            using node_type = having_t<T>;
-
-            template<class L>
-            void operator()(const node_type& node, L& lambda) const {
-                iterate_ast(node.expression, lambda);
-            }
-        };
-
         template<class T, class E>
         struct ast_iterator<cast_t<T, E>, void> {
             using node_type = cast_t<T, E>;
@@ -456,13 +493,13 @@ namespace sqlite_orm {
             }
         };
 
-        template<class F, class... Args>
-        struct ast_iterator<function_call<F, Args...>, void> {
-            using node_type = function_call<F, Args...>;
+        template<class F, class... CallArgs>
+        struct ast_iterator<function_call<F, CallArgs...>, void> {
+            using node_type = function_call<F, CallArgs...>;
 
             template<class L>
             void operator()(const node_type& f, L& lambda) const {
-                iterate_ast(f.args, lambda);
+                iterate_ast(f.callArgs, lambda);
             }
         };
 
@@ -520,7 +557,7 @@ namespace sqlite_orm {
         // note: not strictly necessary as there's no binding support for USING;
         // we provide it nevertheless, in line with on_t.
         template<class T>
-        struct ast_iterator<T, std::enable_if_t<polyfill::is_specialization_of_v<T, using_t>>> {
+        struct ast_iterator<T, std::enable_if_t<polyfill::is_specialization_of<T, using_t>::value>> {
             using node_type = T;
 
             template<class L>
@@ -649,9 +686,9 @@ namespace sqlite_orm {
          */
         template<class T>
         struct ast_iterator<T,
-                            std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<T, alias_holder>,
-                                                                     polyfill::is_specialization_of<T, literal_holder>,
-                                                                     is_column_alias<T>>>> {
+                            std::enable_if_t<polyfill::disjunction<polyfill::is_specialization_of<T, alias_holder>,
+                                                                   polyfill::is_specialization_of<T, literal_holder>,
+                                                                   is_column_alias<T>>::value>> {
             using node_type = T;
 
             template<class L>

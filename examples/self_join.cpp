@@ -199,15 +199,26 @@ int main() {
         //  FROM employees
         //  INNER JOIN employees m
         //  ON m.ReportsTo = employees.EmployeeId
-        using als = alias_m<Employee>;
-        auto firstNames = storage.select(
-            columns(alias_column<als>(&Employee::firstName) || c(" ") || alias_column<als>(&Employee::lastName),
-                    &Employee::firstName || c(" ") || &Employee::lastName),
-            inner_join<als>(on(alias_column<als>(&Employee::reportsTo) == c(&Employee::employeeId))));
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        constexpr auto m = "m"_alias.for_<Employee>();
+        auto firstNames = storage.select(columns(m->*&Employee::firstName || " " || m->*&Employee::lastName,
+                                                 &Employee::firstName || " " || &Employee::lastName),
+                                         inner_join<m>(on(m->*&Employee::reportsTo == &Employee::employeeId)));
         cout << "firstNames count = " << firstNames.size() << endl;
         for(auto& row: firstNames) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << endl;
         }
+#else
+        using als = alias_m<Employee>;
+        auto firstNames = storage.select(
+            columns(alias_column<als>(&Employee::firstName) || " " || alias_column<als>(&Employee::lastName),
+                    &Employee::firstName || " " || &Employee::lastName),
+            inner_join<als>(on(alias_column<als>(&Employee::reportsTo) == &Employee::employeeId)));
+        cout << "firstNames count = " << firstNames.size() << endl;
+        for(auto& row: firstNames) {
+            cout << std::get<0>(row) << '\t' << std::get<1>(row) << endl;
+        }
+#endif
 
         assert(storage.count<Employee>() == storage.count<alias_a<Employee>>());
     }
@@ -219,15 +230,27 @@ int main() {
         //  FROM employees
         //  INNER JOIN employees emp
         //  ON emp.ReportsTo = employees.EmployeeId
-        using als = custom_alias<Employee>;
-        auto firstNames = storage.select(
-            columns(alias_column<als>(&Employee::firstName) || c(" ") || alias_column<als>(&Employee::lastName),
-                    &Employee::firstName || c(" ") || &Employee::lastName),
-            inner_join<als>(on(alias_column<als>(&Employee::reportsTo) == c(&Employee::employeeId))));
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        static_assert(std::is_empty_v<custom_alias<Employee>>);
+        constexpr auto emp = custom_alias<Employee>{};
+        auto firstNames = storage.select(columns(emp->*&Employee::firstName || " " || emp->*&Employee::lastName,
+                                                 &Employee::firstName || " " || &Employee::lastName),
+                                         inner_join<emp>(on(emp->*&Employee::reportsTo == &Employee::employeeId)));
         cout << "firstNames count = " << firstNames.size() << endl;
         for(auto& row: firstNames) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << endl;
         }
+#else
+        using als = custom_alias<Employee>;
+        auto firstNames = storage.select(
+            columns(alias_column<als>(&Employee::firstName) || " " || alias_column<als>(&Employee::lastName),
+                    &Employee::firstName || " " || &Employee::lastName),
+            inner_join<als>(on(alias_column<als>(&Employee::reportsTo) == &Employee::employeeId)));
+        cout << "firstNames count = " << firstNames.size() << endl;
+        for(auto& row: firstNames) {
+            cout << std::get<0>(row) << '\t' << std::get<1>(row) << endl;
+        }
+#endif
     }
 
     return 0;

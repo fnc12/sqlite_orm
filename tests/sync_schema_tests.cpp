@@ -1,5 +1,4 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <iostream>
 #include <catch2/catch_all.hpp>
 
 using namespace sqlite_orm;
@@ -262,7 +261,7 @@ TEST_CASE("issue521") {
 
             REQUIRE(pocoFromDb.id == oldPoco.id);
             REQUIRE(pocoFromDb.name == oldPoco.name);
-            REQUIRE(!(pocoFromDb.beta < 1));
+            REQUIRE_FALSE((pocoFromDb.beta < 1));
         }
     }
 }
@@ -357,7 +356,7 @@ TEST_CASE("sync_schema") {
             REQUIRE(syncSchemaRes == expected);
             auto users = storage.get_all<User>();
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
-            REQUIRE(!users.empty());
+            REQUIRE_FALSE(users.empty());
 #else
             REQUIRE(users.empty());
 #endif
@@ -419,7 +418,7 @@ TEST_CASE("sync_schema") {
             REQUIRE(syncSchemaRes == expected);
             auto users = storage.get_all<User>();
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
-            REQUIRE(!users.empty());
+            REQUIRE_FALSE(users.empty());
 #else
             REQUIRE(users.empty());
 #endif
@@ -466,7 +465,7 @@ TEST_CASE("sync_schema") {
             REQUIRE(syncSchemaRes == expected);
             auto users = storage.get_all<User>();
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
-            REQUIRE(!users.empty());
+            REQUIRE_FALSE(users.empty());
 #else
             REQUIRE(users.empty());
 #endif

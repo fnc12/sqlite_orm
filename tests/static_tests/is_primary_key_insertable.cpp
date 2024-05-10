@@ -1,6 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
-#include <type_traits>  //  std::std::decay
+#include <type_traits>  //  std::decay
 
 using namespace sqlite_orm;
 
@@ -27,6 +27,6 @@ TEST_CASE("is_primary_key_insertable") {
     });
 
     iterate_tuple(noninsertable, [](auto& v) {
-        STATIC_REQUIRE(!internal::is_primary_key_insertable<std::decay_t<decltype(v)>>::value);
+        STATIC_REQUIRE_FALSE(internal::is_primary_key_insertable<std::decay_t<decltype(v)>>::value);
     });
 }

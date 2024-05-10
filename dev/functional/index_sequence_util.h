@@ -1,8 +1,8 @@
 #pragma once
 
-#include <utility>  //  std::index_sequence, std::make_index_sequence
+#include <utility>  //  std::index_sequence
 
-#include "../functional/cxx_universal.h"
+#include "../functional/cxx_universal.h"  //  ::size_t
 
 namespace sqlite_orm {
     namespace internal {
@@ -13,6 +13,25 @@ namespace sqlite_orm {
         SQLITE_ORM_CONSTEVAL size_t first_index_sequence_value(std::index_sequence<I, Idx...>) {
             return I;
         }
+
+#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
+        /**
+         *  Get the value of an index_sequence at a specific position.
+         */
+        template<size_t... Idx>
+        SQLITE_ORM_CONSTEVAL size_t index_sequence_value(size_t pos, std::index_sequence<Idx...>) {
+            static_assert(sizeof...(Idx) > 0);
+#ifdef SQLITE_ORM_CONSTEVAL_SUPPORTED
+            size_t result;
+#else
+            size_t result = 0;
+#endif
+            size_t i = 0;
+            // note: `(void)` cast silences warning 'expression result unused'
+            (void)((result = Idx, i++ == pos) || ...);
+            return result;
+        }
+#endif
 
         template<class... Seq>
         struct flatten_idxseq {

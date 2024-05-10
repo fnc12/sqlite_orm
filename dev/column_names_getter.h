@@ -21,8 +21,8 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        template<class T, class DBOs>
-        std::string serialize(const T&, const serializer_context<DBOs>&);
+        template<class T, class C>
+        auto serialize(const T& t, const C& context);
 
         template<class T, class Ctx>
         std::vector<std::string>& collect_table_column_names(std::vector<std::string>& collectedExpressions,
@@ -30,11 +30,11 @@ namespace sqlite_orm {
                                                              const Ctx& context) {
             if(definedOrder) {
                 auto& table = pick_table<mapped_type_proxy_t<T>>(context.db_objects);
-                collectedExpressions.reserve(collectedExpressions.size() + table.count_columns_amount());
+                collectedExpressions.reserve(collectedExpressions.size() + table.template count_of<is_column>());
                 table.for_each_column([qualified = !context.skip_table_name,
                                        &tableName = table.name,
                                        &collectedExpressions](const column_identifier& column) {
-                    if(is_alias_v<T>) {
+                    if(is_alias<T>::value) {
                         collectedExpressions.push_back(quote_identifier(alias_extractor<T>::extract()) + "." +
                                                        quote_identifier(column.name));
                     } else if(qualified) {
@@ -46,7 +46,7 @@ namespace sqlite_orm {
                 });
             } else {
                 collectedExpressions.reserve(collectedExpressions.size() + 1);
-                if(is_alias_v<T>) {
+                if(is_alias<T>::value) {
                     collectedExpressions.push_back(quote_identifier(alias_extractor<T>::extract()) + ".*");
                 } else if(!context.skip_table_name) {
                     const basic_table& table = pick_table<mapped_type_proxy_t<T>>(context.db_objects);
@@ -71,9 +71,9 @@ namespace sqlite_orm {
                 if(columnExpression.empty()) {
                     throw std::system_error{orm_error_code::column_not_found};
                 }
-                collectedExpressions.reserve(collectedExpressions.size() + 1);
-                collectedExpressions.push_back(std::move(columnExpression));
-                return collectedExpressions;
+                this->collectedExpressions.reserve(this->collectedExpressions.size() + 1);
+                this->collectedExpressions.push_back(std::move(columnExpression));
+                return this->collectedExpressions;
             }
 
             template<class T, class Ctx>
@@ -83,27 +83,40 @@ namespace sqlite_orm {
 
             template<class T, class Ctx>
             std::vector<std::string>& operator()(const asterisk_t<T>& expression, const Ctx& context) {
-                return collect_table_column_names<T>(collectedExpressions, expression.defined_order, context);
+                return collect_table_column_names<T>(this->collectedExpressions, expression.defined_order, context);
             }
 
             template<class T, class Ctx>
             std::vector<std::string>& operator()(const object_t<T>& expression, const Ctx& context) {
-                return collect_table_column_names<T>(collectedExpressions, expression.defined_order, context);
+                return collect_table_column_names<T>(this->collectedExpressions, expression.defined_order, context);
             }
 
             template<class... Args, class Ctx>
             std::vector<std::string>& operator()(const columns_t<Args...>& cols, const Ctx& context) {
-                collectedExpressions.reserve(collectedExpressions.size() + cols.count);
+                this->collectedExpressions.reserve(this->collectedExpressions.size() + cols.count);
                 iterate_tuple(cols.columns, [this, &context](auto& colExpr) {
                     (*this)(colExpr, context);
                 });
                 // note: `capacity() > size()` can occur in case `asterisk_t<>` does spell out the columns in defined order
-                if(mpl::instantiate<check_if_tuple_has_template<asterisk_t>,
-                                    typename columns_t<Args...>::columns_type>::value &&
-                   collectedExpressions.capacity() > collectedExpressions.size()) {
-                    collectedExpressions.shrink_to_fit();
+                if(tuple_has_template<typename columns_t<Args...>::columns_type, asterisk_t>::value &&
+                   this->collectedExpressions.capacity() > this->collectedExpressions.size()) {
+                    this->collectedExpressions.shrink_to_fit();
                 }
-                return collectedExpressions;
+                return this->collectedExpressions;
+            }
+
+            template<class T, class... Args, class Ctx>
+            std::vector<std::string>& operator()(const struct_t<T, Args...>& cols, const Ctx& context) {
+                this->collectedExpressions.reserve(this->collectedExpressions.size() + cols.count);
+                iterate_tuple(cols.columns, [this, &context](auto& colExpr) {
+                    (*this)(colExpr, context);
+                });
+                // note: `capacity() > size()` can occur in case `asterisk_t<>` does spell out the columns in defined order
+                if(tuple_has_template<typename struct_t<T, Args...>::columns_type, asterisk_t>::value &&
+                   this->collectedExpressions.capacity() > this->collectedExpressions.size()) {
+                    this->collectedExpressions.shrink_to_fit();
+                }
+                return this->collectedExpressions;
             }
 
             std::vector<std::string> collectedExpressions;
