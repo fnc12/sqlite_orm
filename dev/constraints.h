@@ -3,7 +3,7 @@
 #include <system_error>  //  std::system_error
 #include <ostream>  //  std::ostream
 #include <string>  //  std::string
-#include <tuple>  //  std::tuple, std::make_tuple
+#include <tuple>  //  std::tuple
 #include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
 
 #include "functional/cxx_universal.h"
@@ -356,7 +356,7 @@ namespace sqlite_orm {
 
             template<class... Rs>
             foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> references(Rs... refs) {
-                return {std::move(this->columns), std::make_tuple(std::forward<Rs>(refs)...)};
+                return {std::move(this->columns), {std::forward<Rs>(refs)...}};
             }
         };
 #endif
@@ -476,18 +476,16 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        using is_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_primary_key>,
-                                                             check_if<is_foreign_key>,
-                                                             check_if_is_type<null_t>,
-                                                             check_if_is_type<not_null_t>,
-                                                             check_if_is_type<unindexed_t>,
-                                                             check_if_is_template<prefix_t>,
-                                                             check_if_is_template<unique_t>,
-                                                             check_if_is_template<default_t>,
-                                                             check_if_is_template<check_t>,
-                                                             check_if_is_type<collate_constraint_t>,
-                                                             check_if<is_generated_always>>,
-                                            T>;
+        using is_column_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_primary_key>,
+                                                                    check_if_is_type<null_t>,
+                                                                    check_if_is_type<not_null_t>,
+                                                                    check_if_is_template<unique_t>,
+                                                                    check_if_is_template<default_t>,
+                                                                    check_if_is_template<check_t>,
+                                                                    check_if_is_type<collate_constraint_t>,
+                                                                    check_if<is_generated_always>,
+                                                                    check_if_is_type<unindexed_t>>,
+                                                   T>;
     }
 
 #if SQLITE_VERSION_NUMBER >= 3031000
@@ -501,32 +499,35 @@ namespace sqlite_orm {
         return {std::move(expression), false, internal::basic_generated_always::storage_type::not_specified};
     }
 #endif
-#if SQLITE_VERSION_NUMBER >= 3006019
 
+#if SQLITE_VERSION_NUMBER >= 3006019
     /**
      *  FOREIGN KEY constraint construction function that takes member pointer as argument
      *  Available in SQLite 3.6.19 or higher
      */
     template<class... Cs>
     internal::foreign_key_intermediate_t<Cs...> foreign_key(Cs... columns) {
-        return {std::make_tuple(std::forward<Cs>(columns)...)};
+        return {{std::forward<Cs>(columns)...}};
     }
 #endif
 
     /**
-     *  UNIQUE constraint builder function.
+     *  UNIQUE table constraint builder function.
      */
     template<class... Args>
     internal::unique_t<Args...> unique(Args... args) {
         return {{std::forward<Args>(args)...}};
     }
 
+    /**
+     *  UNIQUE column constraint builder function.
+     */
     inline internal::unique_t<> unique() {
         return {{}};
     }
 
     /**
-     *  UNINDEXED constraint builder function. Used in FTS virtual tables.
+     *  UNINDEXED column constraint builder function. Used in FTS virtual tables.
      * 
      *  https://www.sqlite.org/fts5.html#the_unindexed_column_option
      */
@@ -535,7 +536,7 @@ namespace sqlite_orm {
     }
 
     /**
-     *  prefix=N constraint builder function. Used in FTS virtual tables.
+     *  prefix=N table constraint builder function. Used in FTS virtual tables.
      * 
      *  https://www.sqlite.org/fts5.html#prefix_indexes
      */
@@ -544,11 +545,17 @@ namespace sqlite_orm {
         return {std::move(value)};
     }
 
+    /**
+     *  PRIMARY KEY table constraint builder function.
+     */
     template<class... Cs>
     internal::primary_key_t<Cs...> primary_key(Cs... cs) {
-        return {std::make_tuple(std::forward<Cs>(cs)...)};
+        return {{std::forward<Cs>(cs)...}};
     }
 
+    /**
+     *  PRIMARY KEY column constraint builder function.
+     */
     inline internal::primary_key_t<> primary_key() {
         return {{}};
     }
