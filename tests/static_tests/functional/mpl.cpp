@@ -75,6 +75,7 @@ TEST_CASE("mpl") {
 
     STATIC_REQUIRE(mpl::invoke_t<internal::check_if<std::is_same>, int, int>::value);
     STATIC_REQUIRE_FALSE(mpl::invoke_t<internal::check_if_not<std::is_same>, int, int>::value);
+    STATIC_REQUIRE(mpl::invoke_t<internal::check_if<std::is_same, predicate_type>, predicate_type>::value);
     STATIC_REQUIRE(mpl::invoke_t<internal::check_if_is_type<predicate_type>, predicate_type>::value);
     STATIC_REQUIRE(mpl::invoke_t<internal::check_if_is_template<std::vector>, std::vector<int>>::value);
 

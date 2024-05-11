@@ -28,7 +28,7 @@
  *  - "higher order" denotes a metafunction that operates on another metafunction (i.e. takes it as an argument).
  */
 
-#include <type_traits>  //  std::enable_if, std::is_same
+#include <type_traits>  //  std::true_type, std::false_type, std::is_same, std::negation, std::conjunction, std::disjunction
 #ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
 #include <initializer_list>
 #else
@@ -60,6 +60,9 @@ namespace sqlite_orm {
             template<class T>
             struct is_quoted_metafuntion : polyfill::bool_constant<is_quoted_metafuntion_v<T>> {};
 
+            /*  
+             *  Type pack.
+             */
             template<class...>
             struct pack {};
 
@@ -235,11 +238,12 @@ namespace sqlite_orm {
             template<class FirstQ, class... TraitQ>
             struct conjunction<FirstQ, TraitQ...> {
                 // match last or `std::false_type`
-                template<class ArgPack, class R, class...>
+                template<class ArgPack, class ResultTrait, class...>
                 struct invoke_this_fn {
-                    static_assert(std::is_same<R, std::true_type>::value || std::is_same<R, std::false_type>::value,
-                                  "Trait result must be a std::bool_constant");
-                    using type = R;
+                    static_assert(std::is_same<ResultTrait, std::true_type>::value ||
+                                      std::is_same<ResultTrait, std::false_type>::value,
+                                  "Resulting trait must be a std::bool_constant");
+                    using type = ResultTrait;
                 };
 
                 // match `std::true_type` and one or more remaining
@@ -270,11 +274,12 @@ namespace sqlite_orm {
             template<class FirstQ, class... TraitQ>
             struct disjunction<FirstQ, TraitQ...> {
                 // match last or `std::true_type`
-                template<class ArgPack, class R, class...>
+                template<class ArgPack, class ResultTrait, class...>
                 struct invoke_this_fn {
-                    static_assert(std::is_same<R, std::true_type>::value || std::is_same<R, std::false_type>::value,
-                                  "Trait result must be a std::bool_constant");
-                    using type = R;
+                    static_assert(std::is_same<ResultTrait, std::true_type>::value ||
+                                      std::is_same<ResultTrait, std::false_type>::value,
+                                  "Resulting trait must be a std::bool_constant");
+                    using type = ResultTrait;
                 };
 
                 // match `std::false_type` and one or more remaining
@@ -461,8 +466,9 @@ namespace sqlite_orm {
         /*
          *  Quoted trait metafunction that checks if a type has the specified trait.
          */
-        template<template<class...> class TraitFn>
-        using check_if = mpl::quote_fn<TraitFn>;
+        template<template<class...> class TraitFn, class... Bound>
+        using check_if =
+            mpl::conditional_t<sizeof...(Bound) == 0, mpl::quote_fn<TraitFn>, mpl::bind_front_fn<TraitFn, Bound...>>;
 
         /*
          *  Quoted trait metafunction that checks if a type doesn't have the specified trait.
@@ -472,16 +478,10 @@ namespace sqlite_orm {
 
         /*
          *  Quoted trait metafunction that checks if a type is the same as the specified type.
+         *  Commonly used named abbreviation for `check_if<std::is_same, Type>`.
          */
         template<class Type>
         using check_if_is_type = mpl::bind_front_fn<std::is_same, Type>;
-
-        /*
-         *  Quoted trait metafunction that checks if a nested type is the same as the specified type.
-         *  The 'nested' type is returned by the passed metafunction.
-         */
-        template<class Type, template<class...> class Fn>
-        using check_if_nested_is_type = mpl::pass_result_of_fn<check_if_is_type<Type>, Fn>;
 
         /*
          *  Quoted trait metafunction that checks if a type's template matches the specified template

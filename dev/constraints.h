@@ -477,19 +477,16 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        using is_column_constraint =
-            mpl::invoke_t<mpl::disjunction<mpl::conjunction<check_if<is_primary_key>,
-                                                            check_if_nested_is_type<std::tuple<>, columns_tuple_t>>,
-                                           check_if_is_type<null_t>,
-                                           check_if_is_type<not_null_t>,
-                                           mpl::conjunction<check_if_is_template<unique_t>,
-                                                            check_if_nested_is_type<std::tuple<>, columns_tuple_t>>,
-                                           check_if_is_template<default_t>,
-                                           check_if_is_template<check_t>,
-                                           check_if_is_type<collate_constraint_t>,
-                                           check_if<is_generated_always>,
-                                           check_if_is_type<unindexed_t>>,
-                          T>;
+        using is_column_constraint = mpl::invoke_t<mpl::disjunction<check_if<std::is_base_of, primary_key_t<>>,
+                                                                    check_if_is_type<null_t>,
+                                                                    check_if_is_type<not_null_t>,
+                                                                    check_if_is_type<unique_t<>>,
+                                                                    check_if_is_template<default_t>,
+                                                                    check_if_is_template<check_t>,
+                                                                    check_if_is_type<collate_constraint_t>,
+                                                                    check_if<is_generated_always>,
+                                                                    check_if_is_type<unindexed_t>>,
+                                                   T>;
     }
 
 #if SQLITE_VERSION_NUMBER >= 3031000
