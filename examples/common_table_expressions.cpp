@@ -99,12 +99,12 @@ void all_integers_between(int from, int end) {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         constexpr auto cnt = "cnt"_cte;
         constexpr auto x = "x"_col;
-        auto ast = with(cnt(x).as(union_all(select(from), select(cnt->*x + 1, limit(end)))), select(cnt->*x));
+        auto ast = with_recursive(cnt(x).as(union_all(select(from), select(cnt->*x + 1, limit(end)))), select(cnt->*x));
 #else
         using cnt = decltype(1_ctealias);
         constexpr auto x = colalias_i{};
-        auto ast = with(cte<cnt>(x).as(union_all(select(from), select(column<cnt>(x) + 1, limit(end)))),
-                        select(column<cnt>(x)));
+        auto ast = with_recursive(cte<cnt>(x).as(union_all(select(from), select(column<cnt>(x) + 1, limit(end)))),
+                                  select(column<cnt>(x)));
 #endif
 
         string sql = storage.dump(ast);
