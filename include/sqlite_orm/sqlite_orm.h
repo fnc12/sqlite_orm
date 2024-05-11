@@ -12421,8 +12421,6 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
-// #include "functional/mpl/conditional.h"
-
 // #include "functional/cstring_literal.h"
 
 // #include "functional/function_traits.h"
@@ -12768,12 +12766,12 @@ namespace sqlite_orm {
 #endif
 
         template<size_t I, class FnArg, class CallArg>
-        SQLITE_ORM_CONSTEVAL bool validate_pointer_value_type(polyfill::bool_constant<false>) {
+        SQLITE_ORM_CONSTEVAL bool validate_pointer_value_type(std::false_type) {
             return true;
         }
 
         template<size_t I, class FnArg, class CallArg>
-        SQLITE_ORM_CONSTEVAL bool validate_pointer_value_type(polyfill::bool_constant<true>) {
+        SQLITE_ORM_CONSTEVAL bool validate_pointer_value_type(std::true_type) {
             return is_same_pvt_v<I, FnArg, CallArg>;
         }
 
