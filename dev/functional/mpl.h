@@ -60,6 +60,9 @@ namespace sqlite_orm {
             template<class T>
             struct is_quoted_metafuntion : polyfill::bool_constant<is_quoted_metafuntion_v<T>> {};
 
+            template<class...>
+            struct pack {};
+
             /*
              *  The indirection through `defer_fn` works around the language inability
              *  to expand `Args...` into a fixed parameter list of an alias template.
@@ -165,7 +168,7 @@ namespace sqlite_orm {
 
             /*
              *  Quoted metafunction that invokes the specified quoted metafunctions,
-             *  and passes its result on to the next quoted metafunction.
+             *  and passes their results on to the next quoted metafunction.
              */
             template<class Q, class... Qs>
             struct pass_result_of {
@@ -176,7 +179,7 @@ namespace sqlite_orm {
 
             /*
              *  Quoted metafunction that invokes the specified metafunctions,
-             *  and passes its result on to the next quoted metafunction.
+             *  and passes their results on to the next quoted metafunction.
              */
             template<class Q, template<class...> class... Fn>
             using pass_result_of_fn = pass_result_of<Q, quote_fn<Fn>...>;
@@ -224,13 +227,71 @@ namespace sqlite_orm {
              *  Quoted metafunction equivalent to `std::conjunction`.
              */
             template<class... TraitQ>
-            using conjunction = pass_result_of<quote_fn<polyfill::conjunction>, TraitQ...>;
+            struct conjunction {
+                template<class... Args>
+                using fn = std::true_type;
+            };
+
+            template<class FirstQ, class... TraitQ>
+            struct conjunction<FirstQ, TraitQ...> {
+                // match last or `std::false_type`
+                template<class ArgPack, class R, class...>
+                struct invoke_this_fn {
+                    static_assert(std::is_same<R, std::true_type>::value || std::is_same<R, std::false_type>::value,
+                                  "Trait result must be a std::bool_constant");
+                    using type = R;
+                };
+
+                // match `std::true_type` and one or more remaining
+                template<class... Args, class NextQ, class... RestQ>
+                struct invoke_this_fn<pack<Args...>, std::true_type, NextQ, RestQ...> {
+                    using type = typename invoke_this_fn<pack<Args...>,
+                                                         // access resulting trait::type
+                                                         typename defer<NextQ, Args...>::type::type,
+                                                         RestQ...>::type;
+                };
+
+                template<class... Args>
+                using fn = typename invoke_this_fn<pack<Args...>,
+                                                   // access resulting trait::type
+                                                   typename defer<FirstQ, Args...>::type::type,
+                                                   TraitQ...>::type;
+            };
 
             /*
              *  Quoted metafunction equivalent to `std::disjunction`.
              */
             template<class... TraitQ>
-            using disjunction = pass_result_of<quote_fn<polyfill::disjunction>, TraitQ...>;
+            struct disjunction {
+                template<class... Args>
+                using fn = std::false_type;
+            };
+
+            template<class FirstQ, class... TraitQ>
+            struct disjunction<FirstQ, TraitQ...> {
+                // match last or `std::true_type`
+                template<class ArgPack, class R, class...>
+                struct invoke_this_fn {
+                    static_assert(std::is_same<R, std::true_type>::value || std::is_same<R, std::false_type>::value,
+                                  "Trait result must be a std::bool_constant");
+                    using type = R;
+                };
+
+                // match `std::false_type` and one or more remaining
+                template<class... Args, class NextQ, class... RestQ>
+                struct invoke_this_fn<pack<Args...>, std::false_type, NextQ, RestQ...> {
+                    using type = typename invoke_this_fn<pack<Args...>,
+                                                         // access resulting trait::type
+                                                         typename defer<NextQ, Args...>::type::type,
+                                                         RestQ...>::type;
+                };
+
+                template<class... Args>
+                using fn = typename invoke_this_fn<pack<Args...>,
+                                                   // access resulting trait::type
+                                                   typename defer<FirstQ, Args...>::type::type,
+                                                   TraitQ...>::type;
+            };
 
             /*
              *  Metafunction equivalent to `std::conjunction`.
@@ -414,6 +475,13 @@ namespace sqlite_orm {
          */
         template<class Type>
         using check_if_is_type = mpl::bind_front_fn<std::is_same, Type>;
+
+        /*
+         *  Quoted trait metafunction that checks if a nested type is the same as the specified type.
+         *  The 'nested' type is returned by the passed metafunction.
+         */
+        template<class Type, template<class...> class Fn>
+        using check_if_nested_is_type = mpl::pass_result_of_fn<check_if_is_type<Type>, Fn>;
 
         /*
          *  Quoted trait metafunction that checks if a type's template matches the specified template

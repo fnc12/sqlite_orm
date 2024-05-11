@@ -1531,9 +1531,9 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CTE
             template<class... CTEs, class T, class... Args>
             auto execute(const prepared_statement_t<with_t<select_t<T, Args...>, CTEs...>>& statement) {
-                using ExprDBOs =
-                    decltype(db_objects_for_expression(this->db_objects,
-                                                       std::declval<with_t<select_t<T, Args...>, CTEs...>>()));
+                using ExprDBOs = decltype(db_objects_for_expression(this->db_objects, statement.expression));
+                // note: it is enough to only use the 'expression DBOs' at compile-time to determine the column results;
+                // because we cannot select objects/structs from a CTE, the permanently defined DBOs are enough.
                 using ColResult = column_result_of_t<ExprDBOs, T>;
                 return _execute_select<ColResult>(statement);
             }

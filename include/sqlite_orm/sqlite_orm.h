@@ -947,6 +947,9 @@ namespace sqlite_orm {
             template<class T>
             struct is_quoted_metafuntion : polyfill::bool_constant<is_quoted_metafuntion_v<T>> {};
 
+            template<class...>
+            struct pack {};
+
             /*
              *  The indirection through `defer_fn` works around the language inability
              *  to expand `Args...` into a fixed parameter list of an alias template.
@@ -1052,7 +1055,7 @@ namespace sqlite_orm {
 
             /*
              *  Quoted metafunction that invokes the specified quoted metafunctions,
-             *  and passes its result on to the next quoted metafunction.
+             *  and passes their results on to the next quoted metafunction.
              */
             template<class Q, class... Qs>
             struct pass_result_of {
@@ -1063,7 +1066,7 @@ namespace sqlite_orm {
 
             /*
              *  Quoted metafunction that invokes the specified metafunctions,
-             *  and passes its result on to the next quoted metafunction.
+             *  and passes their results on to the next quoted metafunction.
              */
             template<class Q, template<class...> class... Fn>
             using pass_result_of_fn = pass_result_of<Q, quote_fn<Fn>...>;
@@ -1111,13 +1114,71 @@ namespace sqlite_orm {
              *  Quoted metafunction equivalent to `std::conjunction`.
              */
             template<class... TraitQ>
-            using conjunction = pass_result_of<quote_fn<polyfill::conjunction>, TraitQ...>;
+            struct conjunction {
+                template<class... Args>
+                using fn = std::true_type;
+            };
+
+            template<class FirstQ, class... TraitQ>
+            struct conjunction<FirstQ, TraitQ...> {
+                // match last or `std::false_type`
+                template<class ArgPack, class R, class...>
+                struct invoke_this_fn {
+                    static_assert(std::is_same<R, std::true_type>::value || std::is_same<R, std::false_type>::value,
+                                  "Trait result must be a std::bool_constant");
+                    using type = R;
+                };
+
+                // match `std::true_type` and one or more remaining
+                template<class... Args, class NextQ, class... RestQ>
+                struct invoke_this_fn<pack<Args...>, std::true_type, NextQ, RestQ...> {
+                    using type = typename invoke_this_fn<pack<Args...>,
+                                                         // access resulting trait::type
+                                                         typename defer<NextQ, Args...>::type::type,
+                                                         RestQ...>::type;
+                };
+
+                template<class... Args>
+                using fn = typename invoke_this_fn<pack<Args...>,
+                                                   // access resulting trait::type
+                                                   typename defer<FirstQ, Args...>::type::type,
+                                                   TraitQ...>::type;
+            };
 
             /*
              *  Quoted metafunction equivalent to `std::disjunction`.
              */
             template<class... TraitQ>
-            using disjunction = pass_result_of<quote_fn<polyfill::disjunction>, TraitQ...>;
+            struct disjunction {
+                template<class... Args>
+                using fn = std::false_type;
+            };
+
+            template<class FirstQ, class... TraitQ>
+            struct disjunction<FirstQ, TraitQ...> {
+                // match last or `std::true_type`
+                template<class ArgPack, class R, class...>
+                struct invoke_this_fn {
+                    static_assert(std::is_same<R, std::true_type>::value || std::is_same<R, std::false_type>::value,
+                                  "Trait result must be a std::bool_constant");
+                    using type = R;
+                };
+
+                // match `std::false_type` and one or more remaining
+                template<class... Args, class NextQ, class... RestQ>
+                struct invoke_this_fn<pack<Args...>, std::false_type, NextQ, RestQ...> {
+                    using type = typename invoke_this_fn<pack<Args...>,
+                                                         // access resulting trait::type
+                                                         typename defer<NextQ, Args...>::type::type,
+                                                         RestQ...>::type;
+                };
+
+                template<class... Args>
+                using fn = typename invoke_this_fn<pack<Args...>,
+                                                   // access resulting trait::type
+                                                   typename defer<FirstQ, Args...>::type::type,
+                                                   TraitQ...>::type;
+            };
 
             /*
              *  Metafunction equivalent to `std::conjunction`.
@@ -1301,6 +1362,13 @@ namespace sqlite_orm {
          */
         template<class Type>
         using check_if_is_type = mpl::bind_front_fn<std::is_same, Type>;
+
+        /*
+         *  Quoted trait metafunction that checks if a nested type is the same as the specified type.
+         *  The 'nested' type is returned by the passed metafunction.
+         */
+        template<class Type, template<class...> class Fn>
+        using check_if_nested_is_type = mpl::pass_result_of_fn<check_if_is_type<Type>, Fn>;
 
         /*
          *  Quoted trait metafunction that checks if a type's template matches the specified template
@@ -2163,28 +2231,32 @@ namespace sqlite_orm {
         /**
          * PRIMARY KEY INSERTABLE traits.
          */
-        template<typename T>
+        template<typename Column>
         struct is_primary_key_insertable
             : polyfill::disjunction<
-                  mpl::invoke_t<mpl::disjunction<check_if_has_template<default_t>,
-                                                 check_if_has_template<primary_key_with_autoincrement>>,
-                                constraints_type_t<T>>,
-                  std::is_base_of<integer_printer, type_printer<field_type_t<T>>>> {
+                  mpl::invoke_t<mpl::disjunction<check_if_has_template<primary_key_with_autoincrement>,
+                                                 check_if_has_template<default_t>>,
+                                constraints_type_t<Column>>,
+                  std::is_base_of<integer_printer, type_printer<field_type_t<Column>>>> {
 
-            static_assert(tuple_has<constraints_type_t<T>, is_primary_key>::value, "an unexpected type was passed");
+            static_assert(tuple_has<constraints_type_t<Column>, is_primary_key>::value,
+                          "an unexpected type was passed");
         };
 
         template<class T>
-        using is_column_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_primary_key>,
-                                                                    check_if_is_type<null_t>,
-                                                                    check_if_is_type<not_null_t>,
-                                                                    check_if_is_template<unique_t>,
-                                                                    check_if_is_template<default_t>,
-                                                                    check_if_is_template<check_t>,
-                                                                    check_if_is_type<collate_constraint_t>,
-                                                                    check_if<is_generated_always>,
-                                                                    check_if_is_type<unindexed_t>>,
-                                                   T>;
+        using is_column_constraint =
+            mpl::invoke_t<mpl::disjunction<mpl::conjunction<check_if<is_primary_key>,
+                                                            check_if_nested_is_type<std::tuple<>, columns_tuple_t>>,
+                                           check_if_is_type<null_t>,
+                                           check_if_is_type<not_null_t>,
+                                           mpl::conjunction<check_if_is_template<unique_t>,
+                                                            check_if_nested_is_type<std::tuple<>, columns_tuple_t>>,
+                                           check_if_is_template<default_t>,
+                                           check_if_is_template<check_t>,
+                                           check_if_is_type<collate_constraint_t>,
+                                           check_if<is_generated_always>,
+                                           check_if_is_type<unindexed_t>>,
+                          T>;
     }
 
 #if SQLITE_VERSION_NUMBER >= 3031000
@@ -22645,9 +22717,9 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CTE
             template<class... CTEs, class T, class... Args>
             auto execute(const prepared_statement_t<with_t<select_t<T, Args...>, CTEs...>>& statement) {
-                using ExprDBOs =
-                    decltype(db_objects_for_expression(this->db_objects,
-                                                       std::declval<with_t<select_t<T, Args...>, CTEs...>>()));
+                using ExprDBOs = decltype(db_objects_for_expression(this->db_objects, statement.expression));
+                // note: it is enough to only use the 'expression DBOs' at compile-time to determine the column results;
+                // because we cannot select objects/structs from a CTE, the permanently defined DBOs are enough.
                 using ColResult = column_result_of_t<ExprDBOs, T>;
                 return _execute_select<ColResult>(statement);
             }
