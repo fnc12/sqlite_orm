@@ -151,6 +151,29 @@ TEST_CASE("Integrity Check") {
     REQUIRE(storage.pragma.integrity_check(tablename) == std::vector<std::string>{"ok"});
 }
 
+TEST_CASE("Quick Check") {
+    struct User {
+        int id;
+        std::string name;
+        int age;
+        std::string email;
+    };
+
+    auto filename = "quick_check.sqlite";
+    ::remove(filename);
+
+    std::string tablename = "users";
+    auto storage = make_storage(filename,
+                                make_table(tablename,
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name),
+                                           make_column("age", &User::age),
+                                           make_column("email", &User::email, default_value("dummy@email.com"))));
+    storage.sync_schema();
+
+    REQUIRE(storage.pragma.quick_check() == std::vector<std::string>{"ok"});
+}
+
 TEST_CASE("application_id") {
     auto filename = "application_id.sqlite";
     ::remove(filename);
