@@ -248,12 +248,11 @@ namespace sqlite_orm {
 
                 // match `std::true_type` and one or more remaining
                 template<class... Args, class NextQ, class... RestQ>
-                struct invoke_this_fn<pack<Args...>, std::true_type, NextQ, RestQ...> {
-                    using type = typename invoke_this_fn<pack<Args...>,
-                                                         // access resulting trait::type
-                                                         typename defer<NextQ, Args...>::type::type,
-                                                         RestQ...>::type;
-                };
+                struct invoke_this_fn<pack<Args...>, std::true_type, NextQ, RestQ...>
+                    : invoke_this_fn<pack<Args...>,
+                                     // access resulting trait::type
+                                     typename defer<NextQ, Args...>::type::type,
+                                     RestQ...> {};
 
                 template<class... Args>
                 using fn = typename invoke_this_fn<pack<Args...>,
@@ -284,12 +283,11 @@ namespace sqlite_orm {
 
                 // match `std::false_type` and one or more remaining
                 template<class... Args, class NextQ, class... RestQ>
-                struct invoke_this_fn<pack<Args...>, std::false_type, NextQ, RestQ...> {
-                    using type = typename invoke_this_fn<pack<Args...>,
-                                                         // access resulting trait::type
-                                                         typename defer<NextQ, Args...>::type::type,
-                                                         RestQ...>::type;
-                };
+                struct invoke_this_fn<pack<Args...>, std::false_type, NextQ, RestQ...>
+                    : invoke_this_fn<pack<Args...>,
+                                     // access resulting trait::type
+                                     typename defer<NextQ, Args...>::type::type,
+                                     RestQ...> {};
 
                 template<class... Args>
                 using fn = typename invoke_this_fn<pack<Args...>,
