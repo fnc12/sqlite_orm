@@ -16,11 +16,14 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
         /**
-         *  Get the value of an index_sequence at a specific position.
+         *  Get the index value of an index_sequence at a specific position.
          */
         template<size_t... Idx>
         SQLITE_ORM_CONSTEVAL size_t index_sequence_value(size_t pos, std::index_sequence<Idx...>) {
             static_assert(sizeof...(Idx) > 0);
+#ifdef SQLITE_ORM_PACK_INDEXING_SUPPORTED
+            return Idx...[pos];
+#else
 #ifdef SQLITE_ORM_CONSTEVAL_SUPPORTED
             size_t result;
 #else
@@ -30,6 +33,7 @@ namespace sqlite_orm {
             // note: `(void)` cast silences warning 'expression result unused'
             (void)((result = Idx, i++ == pos) || ...);
             return result;
+#endif
         }
 #endif
 
