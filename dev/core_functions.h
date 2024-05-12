@@ -7,6 +7,7 @@
 #include <vector>  //  std::vector
 
 #include "functional/cxx_type_traits_polyfill.h"
+#include "functional/mpl/conditional.h"
 #include "is_base_of_template.h"
 #include "tuple_helper/tuple_traits.h"
 #include "conditions.h"
@@ -1672,7 +1673,7 @@ namespace sqlite_orm {
      */
     template<class R = void, class... Args>
     auto coalesce(Args... args)
-        -> internal::built_in_function_t<typename std::conditional_t<  //  choose R or common type
+        -> internal::built_in_function_t<typename mpl::conditional_t<  //  choose R or common type
                                              std::is_void<R>::value,
                                              std::common_type<internal::field_type_or_type_t<Args>...>,
                                              polyfill::type_identity<R>>::type,
@@ -1686,7 +1687,7 @@ namespace sqlite_orm {
      */
     template<class R = void, class X, class Y>
     auto ifnull(X x, Y y) -> internal::built_in_function_t<
-        typename std::conditional_t<  //  choose R or common type
+        typename mpl::conditional_t<  //  choose R or common type
             std::is_void<R>::value,
             std::common_type<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>,
             polyfill::type_identity<R>>::type,

@@ -17,9 +17,11 @@ using make_literal_holder = literal_holder<T>;
 template<class T>
 using value_type_t = typename T::value_type;
 
+template<class T>
+using check_if_same_type = mpl::bind_front_fn<std::is_same, T>;
+
 TEST_CASE("mpl") {
     using mpl_is_same = mpl::quote_fn<std::is_same>;
-    using check_if_same_type = mpl::bind_front_fn<std::is_same, int>;
     using check_if_same_template =
         mpl::pass_extracted_fn_to<mpl::bind_front_fn<std::is_same, mpl::quote_fn<std::vector>>>;
     using check_if_names_value_type = mpl::bind_front_higherorder_fn<polyfill::is_detected, value_type_t>;
@@ -39,8 +41,37 @@ TEST_CASE("mpl") {
     STATIC_REQUIRE(mpl::invoke_t<mpl::conjunction_fn<>>::value);
     STATIC_REQUIRE_FALSE(mpl::invoke_t<mpl::disjunction_fn<>>::value);
     STATIC_REQUIRE(mpl::invoke_t<mpl::conjunction_fn<std::is_same, std::is_convertible>, int, int>::value);
+    STATIC_REQUIRE(mpl::invoke_t<mpl::disjunction_fn<std::is_same, std::is_convertible>, int, long>::value);
+    STATIC_REQUIRE(mpl::invoke_t<mpl::conjunction<>>::value);
+    STATIC_REQUIRE(mpl::invoke_t<mpl::conjunction<check_if_same_type<int>>, int>::value);
+    STATIC_REQUIRE(mpl::invoke_t<mpl::conjunction<check_if_same_type<std::index_sequence<>>, check_if_names_value_type>,
+                                 std::index_sequence<>>::value);
+    STATIC_REQUIRE_FALSE(mpl::invoke_t<mpl::conjunction<check_if_same_type<int>, check_if_names_value_type>,
+                                       std::index_sequence<>>::value);
+    STATIC_REQUIRE_FALSE(mpl::invoke_t<mpl::conjunction<check_if_names_value_type, check_if_same_type<int>>,
+                                       std::index_sequence<>>::value);
     STATIC_REQUIRE_FALSE(
-        mpl::invoke_t<mpl::not_<mpl::disjunction_fn<std::is_same, std::is_convertible>>, int, int>::value);
+        mpl::invoke_t<mpl::conjunction<check_if_names_value_type, check_if_same_type<int>>, int>::value);
+    // test short-circuited evaluation: `int` doesn't have a nested `value_type` typename
+    STATIC_REQUIRE_FALSE(
+        mpl::invoke_t<
+            mpl::conjunction<check_if_same_type<long>, mpl::pass_result_of_fn<check_if_same_type<int>, value_type_t>>,
+            int>::value);
+    STATIC_REQUIRE_FALSE(mpl::invoke_t<mpl::disjunction<>>::value);
+    STATIC_REQUIRE(mpl::invoke_t<mpl::disjunction<check_if_same_type<int>>, int>::value);
+    STATIC_REQUIRE(mpl::invoke_t<mpl::disjunction<check_if_same_template, check_if_names_value_type>,
+                                 std::index_sequence<>>::value);
+    STATIC_REQUIRE(mpl::invoke_t<mpl::disjunction<check_if_same_type<int>, check_if_names_value_type>, int>::value);
+    STATIC_REQUIRE(mpl::invoke_t<mpl::disjunction<check_if_names_value_type, check_if_same_type<int>>, int>::value);
+    STATIC_REQUIRE(mpl::invoke_t<mpl::disjunction<check_if_names_value_type, check_if_same_type<int>>,
+                                 std::index_sequence<>>::value);
+    STATIC_REQUIRE(mpl::invoke_t<mpl::disjunction<check_if_same_type<int>, check_if_names_value_type>,
+                                 std::index_sequence<>>::value);
+    // test short-circuited evaluation: `int` doesn't have a nested `value_type` typename
+    STATIC_REQUIRE(
+        mpl::invoke_t<
+            mpl::disjunction<check_if_same_type<int>, mpl::pass_result_of_fn<check_if_same_type<int>, value_type_t>>,
+            int>::value);
     STATIC_REQUIRE(mpl::invoke_t<mpl::identity, std::true_type>::value);
     STATIC_REQUIRE(mpl::invoke_t<mpl::always<std::true_type>>::value);
     STATIC_REQUIRE(std::is_same<mpl::invoke_t<mpl::pass_extracted_fn_to<mpl::identity>, std::is_void<int>>,
@@ -48,7 +79,7 @@ TEST_CASE("mpl") {
     STATIC_REQUIRE(mpl::invoke_t<mpl::pass_extracted_fn_to<mpl_is_same>,
                                  mpl::quote_fn<std::is_void>,
                                  mpl::quote_fn<std::is_void>>::value);
-    STATIC_REQUIRE(mpl::invoke_t<check_if_same_type, int>::value);
+    STATIC_REQUIRE(mpl::invoke_t<check_if_same_type<int>, int>::value);
     STATIC_REQUIRE(mpl::invoke_t<check_if_same_template, std::vector<int>>::value);
     STATIC_REQUIRE_FALSE(mpl::invoke_t<check_if_names_value_type, int>::value);
     STATIC_REQUIRE(mpl::invoke_t<check_if_names_value_type, std::true_type>::value);
@@ -57,6 +88,7 @@ TEST_CASE("mpl") {
 
     STATIC_REQUIRE(mpl::invoke_t<internal::check_if<std::is_same>, int, int>::value);
     STATIC_REQUIRE_FALSE(mpl::invoke_t<internal::check_if_not<std::is_same>, int, int>::value);
+    STATIC_REQUIRE(mpl::invoke_t<internal::check_if<std::is_same, predicate_type>, predicate_type>::value);
     STATIC_REQUIRE(mpl::invoke_t<internal::check_if_is_type<predicate_type>, predicate_type>::value);
     STATIC_REQUIRE(mpl::invoke_t<internal::check_if_is_template<std::vector>, std::vector<int>>::value);
 

@@ -257,6 +257,41 @@ using std::nullptr_t;
 
 // #include "cxx_universal.h"
 
+// #include "mpl/conditional.h"
+
+namespace sqlite_orm {
+    namespace internal {
+        namespace mpl {
+
+            /*
+             *  Binary quoted metafunction equivalent to `std::conditional`,
+             *  using an improved implementation in respect to memoization.
+             *  
+             *  Because `conditional` is only typed on a single bool non-type template parameter,
+             *  the compiler only ever needs to memoize 2 instances of this class template.
+             *  The type selection is a nested cheap alias template.
+             */
+            template<bool>
+            struct conditional {
+                template<typename A, typename>
+                using fn = A;
+            };
+
+            template<>
+            struct conditional<false> {
+                template<typename, typename B>
+                using fn = B;
+            };
+
+            // directly invoke `conditional`
+            template<bool v, typename A, typename B>
+            using conditional_t = typename conditional<v>::template fn<A, B>;
+        }
+    }
+
+    namespace mpl = internal::mpl;
+}
+
 namespace sqlite_orm {
     namespace internal {
         namespace polyfill {
@@ -294,7 +329,7 @@ namespace sqlite_orm {
             template<typename B1>
             struct conjunction<B1> : B1 {};
             template<typename B1, typename... Bn>
-            struct conjunction<B1, Bn...> : std::conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
+            struct conjunction<B1, Bn...> : mpl::conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
             template<typename... Bs>
             SQLITE_ORM_INLINE_VAR constexpr bool conjunction_v = conjunction<Bs...>::value;
 
@@ -303,7 +338,7 @@ namespace sqlite_orm {
             template<typename B1>
             struct disjunction<B1> : B1 {};
             template<typename B1, typename... Bn>
-            struct disjunction<B1, Bn...> : std::conditional_t<bool(B1::value), B1, disjunction<Bn...>> {};
+            struct disjunction<B1, Bn...> : mpl::conditional_t<bool(B1::value), B1, disjunction<Bn...>> {};
             template<typename... Bs>
             SQLITE_ORM_INLINE_VAR constexpr bool disjunction_v = disjunction<Bs...>::value;
 
@@ -878,7 +913,7 @@ namespace sqlite_orm {
  *  - "higher order" denotes a metafunction that operates on another metafunction (i.e. takes it as an argument).
  */
 
-#include <type_traits>  //  std::enable_if, std::is_same
+#include <type_traits>  //  std::true_type, std::false_type, std::is_same, std::negation, std::conjunction, std::disjunction
 #ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
 #include <initializer_list>
 #else
@@ -888,6 +923,8 @@ namespace sqlite_orm {
 // #include "cxx_universal.h"
 //  ::size_t
 // #include "cxx_type_traits_polyfill.h"
+
+// #include "mpl/conditional.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -909,6 +946,12 @@ namespace sqlite_orm {
 
             template<class T>
             struct is_quoted_metafuntion : polyfill::bool_constant<is_quoted_metafuntion_v<T>> {};
+
+            /*  
+             *  Type pack.
+             */
+            template<class...>
+            struct pack {};
 
             /*
              *  The indirection through `defer_fn` works around the language inability
@@ -1015,7 +1058,7 @@ namespace sqlite_orm {
 
             /*
              *  Quoted metafunction that invokes the specified quoted metafunctions,
-             *  and passes its result on to the next quoted metafunction.
+             *  and passes their results on to the next quoted metafunction.
              */
             template<class Q, class... Qs>
             struct pass_result_of {
@@ -1026,7 +1069,7 @@ namespace sqlite_orm {
 
             /*
              *  Quoted metafunction that invokes the specified metafunctions,
-             *  and passes its result on to the next quoted metafunction.
+             *  and passes their results on to the next quoted metafunction.
              */
             template<class Q, template<class...> class... Fn>
             using pass_result_of_fn = pass_result_of<Q, quote_fn<Fn>...>;
@@ -1074,13 +1117,71 @@ namespace sqlite_orm {
              *  Quoted metafunction equivalent to `std::conjunction`.
              */
             template<class... TraitQ>
-            using conjunction = pass_result_of<quote_fn<polyfill::conjunction>, TraitQ...>;
+            struct conjunction {
+                template<class... Args>
+                using fn = std::true_type;
+            };
+
+            template<class FirstQ, class... TraitQ>
+            struct conjunction<FirstQ, TraitQ...> {
+                // match last or `std::false_type`
+                template<class ArgPack, class ResultTrait, class...>
+                struct invoke_this_fn {
+                    static_assert(std::is_same<ResultTrait, std::true_type>::value ||
+                                      std::is_same<ResultTrait, std::false_type>::value,
+                                  "Resulting trait must be a std::bool_constant");
+                    using type = ResultTrait;
+                };
+
+                // match `std::true_type` and one or more remaining
+                template<class... Args, class NextQ, class... RestQ>
+                struct invoke_this_fn<pack<Args...>, std::true_type, NextQ, RestQ...>
+                    : invoke_this_fn<pack<Args...>,
+                                     // access resulting trait::type
+                                     typename defer<NextQ, Args...>::type::type,
+                                     RestQ...> {};
+
+                template<class... Args>
+                using fn = typename invoke_this_fn<pack<Args...>,
+                                                   // access resulting trait::type
+                                                   typename defer<FirstQ, Args...>::type::type,
+                                                   TraitQ...>::type;
+            };
 
             /*
              *  Quoted metafunction equivalent to `std::disjunction`.
              */
             template<class... TraitQ>
-            using disjunction = pass_result_of<quote_fn<polyfill::disjunction>, TraitQ...>;
+            struct disjunction {
+                template<class... Args>
+                using fn = std::false_type;
+            };
+
+            template<class FirstQ, class... TraitQ>
+            struct disjunction<FirstQ, TraitQ...> {
+                // match last or `std::true_type`
+                template<class ArgPack, class ResultTrait, class...>
+                struct invoke_this_fn {
+                    static_assert(std::is_same<ResultTrait, std::true_type>::value ||
+                                      std::is_same<ResultTrait, std::false_type>::value,
+                                  "Resulting trait must be a std::bool_constant");
+                    using type = ResultTrait;
+                };
+
+                // match `std::false_type` and one or more remaining
+                template<class... Args, class NextQ, class... RestQ>
+                struct invoke_this_fn<pack<Args...>, std::false_type, NextQ, RestQ...>
+                    : invoke_this_fn<pack<Args...>,
+                                     // access resulting trait::type
+                                     typename defer<NextQ, Args...>::type::type,
+                                     RestQ...> {};
+
+                template<class... Args>
+                using fn = typename invoke_this_fn<pack<Args...>,
+                                                   // access resulting trait::type
+                                                   typename defer<FirstQ, Args...>::type::type,
+                                                   TraitQ...>::type;
+            };
 
             /*
              *  Metafunction equivalent to `std::conjunction`.
@@ -1231,7 +1332,7 @@ namespace sqlite_orm {
                                           <sizeof...(T)>
 #endif
                                           ({TraitQ::template fn<typename ProjectQ::template fn<T>>::value...}));
-                    using type = polyfill::index_constant<value>;
+                    using type = polyfill::bool_constant<value>;
                 };
 
                 template<class Pack, class ProjectQ = identity>
@@ -1250,8 +1351,9 @@ namespace sqlite_orm {
         /*
          *  Quoted trait metafunction that checks if a type has the specified trait.
          */
-        template<template<class...> class TraitFn>
-        using check_if = mpl::quote_fn<TraitFn>;
+        template<template<class...> class TraitFn, class... Bound>
+        using check_if =
+            mpl::conditional_t<sizeof...(Bound) == 0, mpl::quote_fn<TraitFn>, mpl::bind_front_fn<TraitFn, Bound...>>;
 
         /*
          *  Quoted trait metafunction that checks if a type doesn't have the specified trait.
@@ -1261,6 +1363,7 @@ namespace sqlite_orm {
 
         /*
          *  Quoted trait metafunction that checks if a type is the same as the specified type.
+         *  Commonly used named abbreviation for `check_if<std::is_same, Type>`.
          */
         template<class Type>
         using check_if_is_type = mpl::bind_front_fn<std::is_same, Type>;
@@ -1447,6 +1550,8 @@ namespace sqlite_orm {
 
 // #include "../functional/cxx_universal.h"
 //  ::size_t
+// #include "../functional/mpl/conditional.h"
+
 // #include "../functional/index_sequence_util.h"
 
 #include <utility>  //  std::index_sequence
@@ -1530,7 +1635,7 @@ namespace sqlite_orm {
 #ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
         template<class Tpl, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
         struct filter_tuple_sequence<Tpl, Pred, Proj, std::index_sequence<Idx...>>
-            : flatten_idxseq<std::conditional_t<Pred<mpl::invoke_fn_t<Proj, std::tuple_element_t<Idx, Tpl>>>::value,
+            : flatten_idxseq<mpl::conditional_t<Pred<mpl::invoke_fn_t<Proj, std::tuple_element_t<Idx, Tpl>>>::value,
                                                 std::index_sequence<Idx>,
                                                 std::index_sequence<>>...> {};
 #else
@@ -2124,22 +2229,23 @@ namespace sqlite_orm {
         /**
          * PRIMARY KEY INSERTABLE traits.
          */
-        template<typename T>
+        template<typename Column>
         struct is_primary_key_insertable
             : polyfill::disjunction<
-                  mpl::invoke_t<mpl::disjunction<check_if_has_template<default_t>,
-                                                 check_if_has_template<primary_key_with_autoincrement>>,
-                                constraints_type_t<T>>,
-                  std::is_base_of<integer_printer, type_printer<field_type_t<T>>>> {
+                  mpl::invoke_t<mpl::disjunction<check_if_has_template<primary_key_with_autoincrement>,
+                                                 check_if_has_template<default_t>>,
+                                constraints_type_t<Column>>,
+                  std::is_base_of<integer_printer, type_printer<field_type_t<Column>>>> {
 
-            static_assert(tuple_has<constraints_type_t<T>, is_primary_key>::value, "an unexpected type was passed");
+            static_assert(tuple_has<constraints_type_t<Column>, is_primary_key>::value,
+                          "an unexpected type was passed");
         };
 
         template<class T>
-        using is_column_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_primary_key>,
+        using is_column_constraint = mpl::invoke_t<mpl::disjunction<check_if<std::is_base_of, primary_key_t<>>,
                                                                     check_if_is_type<null_t>,
                                                                     check_if_is_type<not_null_t>,
-                                                                    check_if_is_template<unique_t>,
+                                                                    check_if_is_type<unique_t<>>,
                                                                     check_if_is_template<default_t>,
                                                                     check_if_is_template<check_t>,
                                                                     check_if_is_type<collate_constraint_t>,
@@ -5043,6 +5149,8 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
+// #include "functional/mpl/conditional.h"
+
 // #include "functional/cstring_literal.h"
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -5301,7 +5409,7 @@ namespace sqlite_orm {
         static_assert(is_field_of_v<F O::*, aliased_type>, "Column must be from aliased table");
 
         using C1 =
-            std::conditional_t<std::is_same<O, aliased_type>::value, F O::*, column_pointer<aliased_type, F O::*>>;
+            mpl::conditional_t<std::is_same<O, aliased_type>::value, F O::*, column_pointer<aliased_type, F O::*>>;
         return alias_column_t<A, C1>{C1{field}};
     }
 
@@ -5569,6 +5677,8 @@ namespace sqlite_orm {
 #include <vector>  //  std::vector
 
 // #include "functional/cxx_type_traits_polyfill.h"
+
+// #include "functional/mpl/conditional.h"
 
 // #include "is_base_of_template.h"
 
@@ -7262,7 +7372,7 @@ namespace sqlite_orm {
      */
     template<class R = void, class... Args>
     auto coalesce(Args... args)
-        -> internal::built_in_function_t<typename std::conditional_t<  //  choose R or common type
+        -> internal::built_in_function_t<typename mpl::conditional_t<  //  choose R or common type
                                              std::is_void<R>::value,
                                              std::common_type<internal::field_type_or_type_t<Args>...>,
                                              polyfill::type_identity<R>>::type,
@@ -7276,7 +7386,7 @@ namespace sqlite_orm {
      */
     template<class R = void, class X, class Y>
     auto ifnull(X x, Y y) -> internal::built_in_function_t<
-        typename std::conditional_t<  //  choose R or common type
+        typename mpl::conditional_t<  //  choose R or common type
             std::is_void<R>::value,
             std::common_type<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>,
             polyfill::type_identity<R>>::type,
@@ -9279,7 +9389,9 @@ namespace sqlite_orm {
         std::unique_ptr<sqlite3_stmt, std::integral_constant<decltype(&sqlite3_finalize), sqlite3_finalize>>;
 }
 #pragma once
-#include <type_traits>
+#include <type_traits>  // std::is_integral
+
+// #include "functional/mpl/conditional.h"
 
 namespace sqlite_orm {
 
@@ -9292,9 +9404,9 @@ namespace sqlite_orm {
 
     template<class V>
     using arithmetic_tag_t =
-        std::conditional_t<std::is_integral<V>::value,
+        mpl::conditional_t<std::is_integral<V>::value,
                            // Integer class
-                           std::conditional_t<sizeof(V) <= sizeof(int), int_or_smaller_tag, bigint_tag>,
+                           mpl::conditional_t<sizeof(V) <= sizeof(int), int_or_smaller_tag, bigint_tag>,
                            // Floating-point class
                            real_tag>;
 }
@@ -16101,6 +16213,10 @@ namespace sqlite_orm {
                 return this->get_pragma<std::vector<std::string>>(ss.str());
             }
 
+            std::vector<std::string> quick_check() {
+                return this->get_pragma<std::vector<std::string>>("quick_check");
+            }
+
             // will include generated columns in response as opposed to table_info
             std::vector<sqlite_orm::table_xinfo> table_xinfo(const std::string& tableName) const {
                 auto connection = this->get_connection();
@@ -22598,9 +22714,9 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CTE
             template<class... CTEs, class T, class... Args>
             auto execute(const prepared_statement_t<with_t<select_t<T, Args...>, CTEs...>>& statement) {
-                using ExprDBOs =
-                    decltype(db_objects_for_expression(this->db_objects,
-                                                       std::declval<with_t<select_t<T, Args...>, CTEs...>>()));
+                using ExprDBOs = decltype(db_objects_for_expression(this->db_objects, statement.expression));
+                // note: it is enough to only use the 'expression DBOs' at compile-time to determine the column results;
+                // because we cannot select objects/structs from a CTE, the permanently defined DBOs are enough.
                 using ColResult = column_result_of_t<ExprDBOs, T>;
                 return _execute_select<ColResult>(statement);
             }
