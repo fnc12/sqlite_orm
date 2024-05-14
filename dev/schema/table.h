@@ -35,7 +35,8 @@ namespace sqlite_orm {
                                                                               check_if_is_template<index_t>,
                                                                               check_if_is_template<unique_t>,
                                                                               check_if_is_template<check_t>,
-                                                                              check_if_is_template<prefix_t>>,
+                                                                              check_if_is_template<prefix_t>,
+                                                                              check_if_is_template<tokenize_t>>,
                                                              T>;
 
 #ifdef SQLITE_ORM_WITH_CTE

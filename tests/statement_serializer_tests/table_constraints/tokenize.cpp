@@ -13,7 +13,7 @@ TEST_CASE("statement_serializer tokenize") {
         value = serialize(node, context);
         expected = "tokenize = 'porter ascii'";
     }
-    SECTION("porter ascii") {
+    SECTION("unicode61 remove_diacritics 1") {
         auto node = tokenize("unicode61 remove_diacritics 1");
         value = serialize(node, context);
         expected = "tokenize = 'unicode61 remove_diacritics 1'";
