@@ -158,7 +158,7 @@ namespace sqlite_orm {
                                   using generated_op_index_sequence =
                                       filter_tuple_sequence_t<std::remove_const_t<decltype(column.constraints)>,
                                                               is_generated_always>;
-                                  constexpr size_t opIndex = first_index_sequence_value(generated_op_index_sequence{});
+                                  constexpr size_t opIndex = index_sequence_value_at<0>(generated_op_index_sequence{});
                                   result = &std::get<opIndex>(column.constraints).storage;
                               });
 #else

@@ -6,24 +6,21 @@
 
 namespace sqlite_orm {
     namespace internal {
+#if defined(SQLITE_ORM_PACK_INDEXING_SUPPORTED)
         /**
-         *  Get the first value of an index_sequence.
+         *  Get the index value of an `index_sequence` at a specific position.
          */
-        template<size_t I, size_t... Idx>
-        SQLITE_ORM_CONSTEVAL size_t first_index_sequence_value(std::index_sequence<I, Idx...>) {
-            return I;
+        template<size_t Pos, size_t... Idx>
+        SQLITE_ORM_CONSTEVAL size_t index_sequence_value_at(std::index_sequence<Idx...>) {
+            return Idx...[Pos];
         }
-
-#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
+#elif defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
         /**
-         *  Get the index value of an index_sequence at a specific position.
+         *  Get the index value of an `index_sequence` at a specific position.
          */
-        template<size_t... Idx>
-        SQLITE_ORM_CONSTEVAL size_t index_sequence_value(size_t pos, std::index_sequence<Idx...>) {
-            static_assert(sizeof...(Idx) > 0);
-#ifdef SQLITE_ORM_PACK_INDEXING_SUPPORTED
-            return Idx...[pos];
-#else
+        template<size_t Pos, size_t... Idx>
+        SQLITE_ORM_CONSTEVAL size_t index_sequence_value_at(std::index_sequence<Idx...>) {
+            static_assert(Pos < sizeof...(Idx));
 #ifdef SQLITE_ORM_CONSTEVAL_SUPPORTED
             size_t result;
 #else
@@ -31,9 +28,18 @@ namespace sqlite_orm {
 #endif
             size_t i = 0;
             // note: `(void)` cast silences warning 'expression result unused'
-            (void)((result = Idx, i++ == pos) || ...);
+            (void)((result = Idx, i++ == Pos) || ...);
             return result;
-#endif
+        }
+#else
+        /**
+         *  Get the index value of an `index_sequence` at a specific position.
+         *  `Pos` must always be `0`.
+         */
+        template<size_t Pos, size_t I, size_t... Idx>
+        SQLITE_ORM_CONSTEVAL size_t index_sequence_value_at(std::index_sequence<I, Idx...>) {
+            static_assert(Pos == 0, "");
+            return I;
         }
 #endif
 

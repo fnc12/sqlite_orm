@@ -114,7 +114,7 @@ namespace sqlite_orm {
             // note: we could "materialize" the alias to an `aliased_field<>::*` and use the regular `table_t<>::find_column_name()` mechanism;
             //       however we have the column index already.
             // lookup column in table_t<>'s elements
-            constexpr size_t ColIdx = index_sequence_value(colalias_index::value, column_index_sequence{});
+            constexpr size_t ColIdx = index_sequence_value_at<colalias_index::value>(column_index_sequence{});
             auto& table = pick_table<Moniker>(dboObjects);
             return &std::get<ColIdx>(table.elements).name;
         }
