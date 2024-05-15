@@ -149,6 +149,13 @@ namespace sqlite_orm {
             value_type value;
         };
 
+        template<class T>
+        struct tokenize_t {
+            using value_type = T;
+
+            value_type value;
+        };
+
         /**
          *  DEFAULT constraint class.
          *  T is a value type.
@@ -543,6 +550,16 @@ namespace sqlite_orm {
      */
     template<class T>
     internal::prefix_t<T> prefix(T value) {
+        return {std::move(value)};
+    }
+
+    /**
+     *  tokenize='...'' table constraint builder function. Used in FTS virtual tables.
+     * 
+     *  https://www.sqlite.org/fts5.html#tokenizers
+     */
+    template<class T>
+    internal::tokenize_t<T> tokenize(T value) {
         return {std::move(value)};
     }
 

@@ -27,5 +27,21 @@ TEST_CASE("statement_serializer using_fts5") {
         value = serialize(node, context);
         expected = R"(USING FTS5("title", "body", prefix=2))";
     }
+    SECTION("tokenize") {
+        SECTION("porter ascii") {
+            auto node = using_fts5(make_column("title", &Post::title),
+                                   make_column("body", &Post::body),
+                                   tokenize("porter ascii"));
+            value = serialize(node, context);
+            expected = R"(USING FTS5("title", "body", tokenize = 'porter ascii'))";
+        }
+        SECTION("unicode61 remove_diacritics 1") {
+            auto node = using_fts5(make_column("title", &Post::title),
+                                   make_column("body", &Post::body),
+                                   tokenize("unicode61 remove_diacritics 1"));
+            value = serialize(node, context);
+            expected = R"(USING FTS5("title", "body", tokenize = 'unicode61 remove_diacritics 1'))";
+        }
+    }
     REQUIRE(value == expected);
 }
