@@ -1957,30 +1957,30 @@ namespace sqlite_orm {
     template<class X, class... Args>
     internal::built_in_function_t<std::string, internal::json_insert_string, X, Args...> json_insert(X x,
                                                                                                      Args... args) {
-        static_assert(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
-                      "number of arguments in json_insert must be odd");
+        SQLITE_ORM_STASSERT(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
+                            "number of arguments in json_insert must be odd");
         return {std::tuple<X, Args...>{std::forward<X>(x), std::forward<Args>(args)...}};
     }
 
     template<class X, class... Args>
     internal::built_in_function_t<std::string, internal::json_replace_string, X, Args...> json_replace(X x,
                                                                                                        Args... args) {
-        static_assert(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
-                      "number of arguments in json_replace must be odd");
+        SQLITE_ORM_STASSERT(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
+                            "number of arguments in json_replace must be odd");
         return {std::tuple<X, Args...>{std::forward<X>(x), std::forward<Args>(args)...}};
     }
 
     template<class X, class... Args>
     internal::built_in_function_t<std::string, internal::json_set_string, X, Args...> json_set(X x, Args... args) {
-        static_assert(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
-                      "number of arguments in json_set must be odd");
+        SQLITE_ORM_STASSERT(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
+                            "number of arguments in json_set must be odd");
         return {std::tuple<X, Args...>{std::forward<X>(x), std::forward<Args>(args)...}};
     }
 
     template<class... Args>
     internal::built_in_function_t<std::string, internal::json_object_string, Args...> json_object(Args... args) {
-        static_assert(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
-                      "number of arguments in json_object must be even");
+        SQLITE_ORM_STASSERT(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
+                            "number of arguments in json_object must be even");
         return {std::tuple<Args...>{std::forward<Args>(args)...}};
     }
 

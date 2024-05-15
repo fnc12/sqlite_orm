@@ -22,8 +22,8 @@ namespace sqlite_orm {
     template<typename P, typename T>
     struct pointer_arg {
 
-        static_assert(std::is_convertible<typename T::value_type, const char*>::value,
-                      "`std::integral_constant<>` must be convertible to `const char*`");
+        SQLITE_ORM_STASSERT(std::is_convertible<typename T::value_type, const char*>::value,
+                            "`std::integral_constant<>` must be convertible to `const char*`");
 
         using tag = T;
         P* p_;

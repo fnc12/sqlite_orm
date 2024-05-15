@@ -5,7 +5,13 @@ __pragma(push_macro("min"))
 #undef min
 __pragma(push_macro("max"))
 #undef max
-#endif  // defined(_MSC_VER)
+#endif
+
+#ifdef SQLITE_ORM_CONFIG_DISABLE_STATIC_ASSERTIONS
+#define SQLITE_ORM_STASSERT(...)
+#else
+#define SQLITE_ORM_STASSERT(...) static_assert(__VA_ARGS__)
+#endif
 #pragma once
 
 // #include "cxx_universal.h"
@@ -1131,9 +1137,9 @@ namespace sqlite_orm {
                 // match last or `std::false_type`
                 template<class ArgPack, class ResultTrait, class...>
                 struct invoke_this_fn {
-                    static_assert(std::is_same<ResultTrait, std::true_type>::value ||
-                                      std::is_same<ResultTrait, std::false_type>::value,
-                                  "Resulting trait must be a std::bool_constant");
+                    SQLITE_ORM_STASSERT(std::is_same<ResultTrait, std::true_type>::value ||
+                                            std::is_same<ResultTrait, std::false_type>::value,
+                                        "Resulting trait must be a std::bool_constant");
                     using type = ResultTrait;
                 };
 
@@ -1166,9 +1172,9 @@ namespace sqlite_orm {
                 // match last or `std::true_type`
                 template<class ArgPack, class ResultTrait, class...>
                 struct invoke_this_fn {
-                    static_assert(std::is_same<ResultTrait, std::true_type>::value ||
-                                      std::is_same<ResultTrait, std::false_type>::value,
-                                  "Resulting trait must be a std::bool_constant");
+                    SQLITE_ORM_STASSERT(std::is_same<ResultTrait, std::true_type>::value ||
+                                            std::is_same<ResultTrait, std::false_type>::value,
+                                        "Resulting trait must be a std::bool_constant");
                     using type = ResultTrait;
                 };
 
@@ -1263,8 +1269,8 @@ namespace sqlite_orm {
             struct finds {
                 template<class Pack, class ProjectQ>
                 struct invoke_this_fn {
-                    static_assert(polyfill::always_false_v<Pack>,
-                                  "`finds` must be invoked with a type list as first argument.");
+                    SQLITE_ORM_STASSERT(polyfill::always_false_v<Pack>,
+                                        "`finds` must be invoked with a type list as first argument.");
                 };
 
                 template<template<class...> class Pack, class... T, class ProjectQ>
@@ -1293,8 +1299,8 @@ namespace sqlite_orm {
             struct counts {
                 template<class Pack, class ProjectQ>
                 struct invoke_this_fn {
-                    static_assert(polyfill::always_false_v<Pack>,
-                                  "`counts` must be invoked with a type list as first argument.");
+                    SQLITE_ORM_STASSERT(polyfill::always_false_v<Pack>,
+                                        "`counts` must be invoked with a type list as first argument.");
                 };
 
                 template<template<class...> class Pack, class... T, class ProjectQ>
@@ -1323,8 +1329,8 @@ namespace sqlite_orm {
             struct contains {
                 template<class Pack, class ProjectQ>
                 struct invoke_this_fn {
-                    static_assert(polyfill::always_false_v<Pack>,
-                                  "`contains` must be invoked with a type list as first argument.");
+                    SQLITE_ORM_STASSERT(polyfill::always_false_v<Pack>,
+                                        "`contains` must be invoked with a type list as first argument.");
                 };
 
                 template<template<class...> class Pack, class... T, class ProjectQ>
@@ -1579,7 +1585,7 @@ namespace sqlite_orm {
          */
         template<size_t Pos, size_t... Idx>
         SQLITE_ORM_CONSTEVAL size_t index_sequence_value_at(std::index_sequence<Idx...>) {
-            static_assert(Pos < sizeof...(Idx));
+            SQLITE_ORM_STASSERT(Pos < sizeof...(Idx));
 #ifdef SQLITE_ORM_CONSTEVAL_SUPPORTED
             size_t result;
 #else
@@ -1597,7 +1603,7 @@ namespace sqlite_orm {
          */
         template<size_t Pos, size_t I, size_t... Idx>
         SQLITE_ORM_CONSTEVAL size_t index_sequence_value_at(std::index_sequence<I, Idx...>) {
-            static_assert(Pos == 0, "");
+            SQLITE_ORM_STASSERT(Pos == 0, "");
             return I;
         }
 #endif
@@ -2102,9 +2108,9 @@ namespace sqlite_orm {
             on_update_delete_t<self> on_update;
             on_update_delete_t<self> on_delete;
 
-            static_assert(std::tuple_size<columns_type>::value == std::tuple_size<references_type>::value,
-                          "Columns size must be equal to references tuple");
-            static_assert(!std::is_same<target_type, void>::value, "All references must have the same type");
+            SQLITE_ORM_STASSERT(std::tuple_size<columns_type>::value == std::tuple_size<references_type>::value,
+                                "Columns size must be equal to references tuple");
+            SQLITE_ORM_STASSERT(!std::is_same<target_type, void>::value, "All references must have the same type");
 
             foreign_key_t(columns_type columns_, references_type references_) :
                 columns(std::move(columns_)), references(std::move(references_)),
@@ -2258,8 +2264,8 @@ namespace sqlite_orm {
                                 constraints_type_t<Column>>,
                   std::is_base_of<integer_printer, type_printer<field_type_t<Column>>>> {
 
-            static_assert(tuple_has<constraints_type_t<Column>, is_primary_key>::value,
-                          "an unexpected type was passed");
+            SQLITE_ORM_STASSERT(tuple_has<constraints_type_t<Column>, is_primary_key>::value,
+                                "an unexpected type was passed");
         };
 
         template<class T>
@@ -3130,7 +3136,8 @@ namespace sqlite_orm {
     template<class M, class... Op, internal::satisfies<std::is_member_object_pointer, M> = true>
     internal::column_t<M, internal::empty_setter, Op...>
     make_column(std::string name, M memberPointer, Op... constraints) {
-        static_assert(polyfill::conjunction_v<internal::is_column_constraint<Op>...>, "Incorrect constraints pack");
+        SQLITE_ORM_STASSERT(polyfill::conjunction_v<internal::is_column_constraint<Op>...>,
+                            "Incorrect constraints pack");
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
         // as this will lead to UB with Clang on MinGW!
@@ -3147,9 +3154,10 @@ namespace sqlite_orm {
              internal::satisfies<internal::is_getter, G> = true,
              internal::satisfies<internal::is_setter, S> = true>
     internal::column_t<G, S, Op...> make_column(std::string name, S setter, G getter, Op... constraints) {
-        static_assert(std::is_same<internal::setter_field_type_t<S>, internal::getter_field_type_t<G>>::value,
-                      "Getter and setter must get and set same data type");
-        static_assert(polyfill::conjunction_v<internal::is_column_constraint<Op>...>, "Incorrect constraints pack");
+        SQLITE_ORM_STASSERT(std::is_same<internal::setter_field_type_t<S>, internal::getter_field_type_t<G>>::value,
+                            "Getter and setter must get and set same data type");
+        SQLITE_ORM_STASSERT(polyfill::conjunction_v<internal::is_column_constraint<Op>...>,
+                            "Incorrect constraints pack");
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
         // as this will lead to UB with Clang on MinGW!
@@ -3166,9 +3174,10 @@ namespace sqlite_orm {
              internal::satisfies<internal::is_getter, G> = true,
              internal::satisfies<internal::is_setter, S> = true>
     internal::column_t<G, S, Op...> make_column(std::string name, G getter, S setter, Op... constraints) {
-        static_assert(std::is_same<internal::setter_field_type_t<S>, internal::getter_field_type_t<G>>::value,
-                      "Getter and setter must get and set same data type");
-        static_assert(polyfill::conjunction_v<internal::is_column_constraint<Op>...>, "Incorrect constraints pack");
+        SQLITE_ORM_STASSERT(std::is_same<internal::setter_field_type_t<S>, internal::getter_field_type_t<G>>::value,
+                            "Getter and setter must get and set same data type");
+        SQLITE_ORM_STASSERT(polyfill::conjunction_v<internal::is_column_constraint<Op>...>,
+                            "Incorrect constraints pack");
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
         // as this will lead to UB with Clang on MinGW!
@@ -3778,7 +3787,7 @@ namespace sqlite_orm {
      */
     template<class Object, class F, class O, internal::satisfies_not<internal::is_recordset_alias, Object> = true>
     constexpr internal::column_pointer<Object, F O::*> column(F O::*field) {
-        static_assert(internal::is_field_of_v<F O::*, Object>, "Column must be from derived class");
+        SQLITE_ORM_STASSERT(internal::is_field_of_v<F O::*, Object>, "Column must be from derived class");
         return {field};
     }
 
@@ -3839,10 +3848,10 @@ namespace sqlite_orm {
     constexpr auto column(F field) {
         using namespace ::sqlite_orm::internal;
 
-        static_assert(is_cte_moniker_v<Moniker>, "`Moniker' must be a CTE moniker");
+        SQLITE_ORM_STASSERT(is_cte_moniker_v<Moniker>, "`Moniker' must be a CTE moniker");
 
         if constexpr(polyfill::is_specialization_of_v<F, alias_holder>) {
-            static_assert(is_column_alias_v<type_t<F>>);
+            SQLITE_ORM_STASSERT(is_column_alias_v<type_t<F>>);
             return column_pointer<Moniker, F>{{}};
         } else if constexpr(is_column_alias_v<F>) {
             return column_pointer<Moniker, alias_holder<F>>{{}};
@@ -4710,7 +4719,7 @@ namespace sqlite_orm {
      */
     template<class... Tables>
     internal::from_t<Tables...> from() {
-        static_assert(sizeof...(Tables) > 0, "");
+        SQLITE_ORM_STASSERT(sizeof...(Tables) > 0, "");
         return {};
     }
 
@@ -5412,8 +5421,10 @@ namespace sqlite_orm {
                  bool> = true>
     constexpr auto alias_column(C field) {
         using namespace ::sqlite_orm::internal;
+#ifndef SQLITE_ORM_CONFIG_DISABLE_STATIC_ASSERTIONS
         using aliased_type = type_t<A>;
-        static_assert(is_field_of_v<C, aliased_type>, "Column must be from aliased table");
+        SQLITE_ORM_STASSERT(is_field_of_v<C, aliased_type>, "Column must be from aliased table");
+#endif
 
         return alias_column_t<A, C>{std::move(field)};
     }
@@ -5437,7 +5448,7 @@ namespace sqlite_orm {
     constexpr auto alias_column(F O::*field) {
         using namespace ::sqlite_orm::internal;
         using aliased_type = type_t<A>;
-        static_assert(is_field_of_v<F O::*, aliased_type>, "Column must be from aliased table");
+        SQLITE_ORM_STASSERT(is_field_of_v<F O::*, aliased_type>, "Column must be from aliased table");
 
         using C1 =
             mpl::conditional_t<std::is_same<O, aliased_type>::value, F O::*, column_pointer<aliased_type, F O::*>>;
@@ -5460,7 +5471,7 @@ namespace sqlite_orm {
         using namespace ::sqlite_orm::internal;
         using A = decltype(als);
         using aliased_type = type_t<A>;
-        static_assert(is_field_of_v<C, aliased_type>, "Column must be from aliased table");
+        SQLITE_ORM_STASSERT(is_field_of_v<C, aliased_type>, "Column must be from aliased table");
 
         if constexpr(is_column_pointer_v<C>) {
             return alias_column_t<A, C>{std::move(field)};
@@ -5506,8 +5517,8 @@ namespace sqlite_orm {
         using cte_moniker_t = type_t<A>;
 
         if constexpr(is_column_pointer_v<C>) {
-            static_assert(std::is_same<table_type_of_t<C>, cte_moniker_t>::value,
-                          "Column pointer must match aliased CTE");
+            SQLITE_ORM_STASSERT(std::is_same<table_type_of_t<C>, cte_moniker_t>::value,
+                                "Column pointer must match aliased CTE");
             return alias_column_t<A, C>{c};
         } else {
             auto cp = column<cte_moniker_t>(c);
@@ -5579,7 +5590,7 @@ namespace sqlite_orm {
      */
     template<class T>
     internal::alias_holder<T> get() {
-        static_assert(internal::is_column_alias_v<T>, "");
+        SQLITE_ORM_STASSERT(internal::is_column_alias_v<T>, "");
         return {};
     }
 
@@ -5694,7 +5705,7 @@ namespace sqlite_orm {
     [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator"" _colalias() {
         // numeric identifiers are used for automatically assigning implicit aliases to unaliased column expressions,
         // which start at "1".
-        static_assert(std::array{Chars...}[0] > '0');
+        SQLITE_ORM_STASSERT(std::array{Chars...}[0] > '0');
         return internal::column_alias<Chars...>{};
     }
 #endif
@@ -7687,30 +7698,30 @@ namespace sqlite_orm {
     template<class X, class... Args>
     internal::built_in_function_t<std::string, internal::json_insert_string, X, Args...> json_insert(X x,
                                                                                                      Args... args) {
-        static_assert(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
-                      "number of arguments in json_insert must be odd");
+        SQLITE_ORM_STASSERT(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
+                            "number of arguments in json_insert must be odd");
         return {std::tuple<X, Args...>{std::forward<X>(x), std::forward<Args>(args)...}};
     }
 
     template<class X, class... Args>
     internal::built_in_function_t<std::string, internal::json_replace_string, X, Args...> json_replace(X x,
                                                                                                        Args... args) {
-        static_assert(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
-                      "number of arguments in json_replace must be odd");
+        SQLITE_ORM_STASSERT(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
+                            "number of arguments in json_replace must be odd");
         return {std::tuple<X, Args...>{std::forward<X>(x), std::forward<Args>(args)...}};
     }
 
     template<class X, class... Args>
     internal::built_in_function_t<std::string, internal::json_set_string, X, Args...> json_set(X x, Args... args) {
-        static_assert(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
-                      "number of arguments in json_set must be odd");
+        SQLITE_ORM_STASSERT(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
+                            "number of arguments in json_set must be odd");
         return {std::tuple<X, Args...>{std::forward<X>(x), std::forward<Args>(args)...}};
     }
 
     template<class... Args>
     internal::built_in_function_t<std::string, internal::json_object_string, Args...> json_object(Args... args) {
-        static_assert(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
-                      "number of arguments in json_object must be even");
+        SQLITE_ORM_STASSERT(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
+                            "number of arguments in json_object must be even");
         return {std::tuple<Args...>{std::forward<Args>(args)...}};
     }
 
@@ -8679,11 +8690,15 @@ namespace sqlite_orm {
 
         template<class T>
         void validate_conditions() {
-            static_assert(count_tuple<T, is_where>::value <= 1, "a single query cannot contain > 1 WHERE blocks");
-            static_assert(count_tuple<T, is_group_by>::value <= 1, "a single query cannot contain > 1 GROUP BY blocks");
-            static_assert(count_tuple<T, is_order_by>::value <= 1, "a single query cannot contain > 1 ORDER BY blocks");
-            static_assert(count_tuple<T, is_limit>::value <= 1, "a single query cannot contain > 1 LIMIT blocks");
-            static_assert(count_tuple<T, is_from>::value <= 1, "a single query cannot contain > 1 FROM blocks");
+#ifndef SQLITE_ORM_CONFIG_DISABLE_STATIC_ASSERTIONS
+            SQLITE_ORM_STASSERT(count_tuple<T, is_where>::value <= 1, "a single query cannot contain > 1 WHERE blocks");
+            SQLITE_ORM_STASSERT(count_tuple<T, is_group_by>::value <= 1,
+                                "a single query cannot contain > 1 GROUP BY blocks");
+            SQLITE_ORM_STASSERT(count_tuple<T, is_order_by>::value <= 1,
+                                "a single query cannot contain > 1 ORDER BY blocks");
+            SQLITE_ORM_STASSERT(count_tuple<T, is_limit>::value <= 1, "a single query cannot contain > 1 LIMIT blocks");
+            SQLITE_ORM_STASSERT(count_tuple<T, is_from>::value <= 1, "a single query cannot contain > 1 FROM blocks");
+#endif
         }
     }
 
@@ -8758,7 +8773,7 @@ namespace sqlite_orm {
      */
     template<class... E>
     internal::union_t<E...> union_(E... expressions) {
-        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
+        SQLITE_ORM_STASSERT(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}, false};
     }
 
@@ -8769,7 +8784,7 @@ namespace sqlite_orm {
      */
     template<class... E>
     internal::union_t<E...> union_all(E... expressions) {
-        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
+        SQLITE_ORM_STASSERT(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}, true};
     }
 
@@ -8780,13 +8795,13 @@ namespace sqlite_orm {
      */
     template<class... E>
     internal::except_t<E...> except(E... expressions) {
-        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
+        SQLITE_ORM_STASSERT(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}};
     }
 
     template<class... E>
     internal::intersect_t<E...> intersect(E... expressions) {
-        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
+        SQLITE_ORM_STASSERT(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}};
     }
 
@@ -8839,9 +8854,9 @@ namespace sqlite_orm {
                               bool> = true>
     auto cte(ExplicitCols... explicitColumns) {
         using namespace ::sqlite_orm::internal;
-        static_assert(is_cte_moniker_v<Moniker>, "Moniker must be a CTE moniker");
-        static_assert((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
-                      "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
+        SQLITE_ORM_STASSERT(is_cte_moniker_v<Moniker>, "Moniker must be a CTE moniker");
+        SQLITE_ORM_STASSERT((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
+                            "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
 
         using builder_type =
             cte_builder<Moniker, transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
@@ -8857,8 +8872,8 @@ namespace sqlite_orm {
                  ...)
     auto cte(ExplicitCols... explicitColumns) {
         using namespace ::sqlite_orm::internal;
-        static_assert((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
-                      "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
+        SQLITE_ORM_STASSERT((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
+                            "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
 
         using builder_type =
             cte_builder<decltype(moniker), transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
@@ -9637,8 +9652,8 @@ namespace sqlite_orm {
     constexpr xdestroy_fn_t obtain_xdestroy_for(D, P* = nullptr) noexcept
         requires(internal::is_unusable_for_xdestroy<D>)
     {
-        static_assert(polyfill::always_false_v<D>,
-                      "A function pointer, which is not of type xdestroy_fn_t, is prohibited.");
+        SQLITE_ORM_STASSERT(polyfill::always_false_v<D>,
+                            "A function pointer, which is not of type xdestroy_fn_t, is prohibited.");
         return nullptr;
     }
 
@@ -9684,8 +9699,8 @@ namespace sqlite_orm {
 #else
     template<typename P, typename D, std::enable_if_t<internal::is_unusable_for_xdestroy_v<D>, bool> = true>
     constexpr xdestroy_fn_t obtain_xdestroy_for(D, P* = nullptr) {
-        static_assert(polyfill::always_false_v<D>,
-                      "A function pointer, which is not of type xdestroy_fn_t, is prohibited.");
+        SQLITE_ORM_STASSERT(polyfill::always_false_v<D>,
+                            "A function pointer, which is not of type xdestroy_fn_t, is prohibited.");
         return nullptr;
     }
 
@@ -9716,8 +9731,8 @@ namespace sqlite_orm {
     template<typename P, typename T>
     struct pointer_arg {
 
-        static_assert(std::is_convertible<typename T::value_type, const char*>::value,
-                      "`std::integral_constant<>` must be convertible to `const char*`");
+        SQLITE_ORM_STASSERT(std::is_convertible<typename T::value_type, const char*>::value,
+                            "`std::integral_constant<>` must be convertible to `const char*`");
 
         using tag = T;
         P* p_;
@@ -11267,9 +11282,8 @@ namespace sqlite_orm {
     template<class T, class... Cols>
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
                                                                                                       Cols... cols) {
-        using cols_tuple = std::tuple<Cols...>;
-        static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
-                      "amount of where arguments can be 0 or 1");
+        SQLITE_ORM_STASSERT(internal::count_tuple<std::tuple<Cols...>, internal::is_where>::value <= 1,
+                            "amount of where arguments can be 0 or 1");
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
             return {std::move(name), false, std::make_tuple(internal::make_indexed_column(std::move(cols))...)});
     }
@@ -11278,9 +11292,8 @@ namespace sqlite_orm {
     internal::index_t<internal::table_type_of_t<typename std::tuple_element_t<0, std::tuple<Cols...>>>,
                       decltype(internal::make_indexed_column(std::declval<Cols>()))...>
     make_index(std::string name, Cols... cols) {
-        using cols_tuple = std::tuple<Cols...>;
-        static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
-                      "amount of where arguments can be 0 or 1");
+        SQLITE_ORM_STASSERT(internal::count_tuple<std::tuple<Cols...>, internal::is_where>::value <= 1,
+                            "amount of where arguments can be 0 or 1");
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
             return {std::move(name), false, std::make_tuple(internal::make_indexed_column(std::move(cols))...)});
     }
@@ -11289,9 +11302,8 @@ namespace sqlite_orm {
     internal::index_t<internal::table_type_of_t<typename std::tuple_element_t<0, std::tuple<Cols...>>>,
                       decltype(internal::make_indexed_column(std::declval<Cols>()))...>
     make_unique_index(std::string name, Cols... cols) {
-        using cols_tuple = std::tuple<Cols...>;
-        static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
-                      "amount of where arguments can be 0 or 1");
+        SQLITE_ORM_STASSERT(internal::count_tuple<std::tuple<Cols...>, internal::is_where>::value <= 1,
+                            "amount of where arguments can be 0 or 1");
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
             return {std::move(name), true, std::make_tuple(internal::make_indexed_column(std::move(cols))...)});
     }
@@ -11796,16 +11808,16 @@ namespace sqlite_orm {
 
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::using_fts5_t<T, Cs...> using_fts5(Cs... columns) {
-        static_assert(polyfill::conjunction_v<internal::is_table_element_or_constraint<Cs>...>,
-                      "Incorrect table elements or constraints");
+        SQLITE_ORM_STASSERT(polyfill::conjunction_v<internal::is_table_element_or_constraint<Cs>...>,
+                            "Incorrect table elements or constraints");
 
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(columns)...)});
     }
 
     template<class T, class... Cs>
     internal::using_fts5_t<T, Cs...> using_fts5(Cs... columns) {
-        static_assert(polyfill::conjunction_v<internal::is_table_element_or_constraint<Cs>...>,
-                      "Incorrect table elements or constraints");
+        SQLITE_ORM_STASSERT(polyfill::conjunction_v<internal::is_table_element_or_constraint<Cs>...>,
+                            "Incorrect table elements or constraints");
 
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(columns)...)});
     }
@@ -11817,8 +11829,8 @@ namespace sqlite_orm {
      */
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::table_t<T, false, Cs...> make_table(std::string name, Cs... args) {
-        static_assert(polyfill::conjunction_v<internal::is_table_element_or_constraint<Cs>...>,
-                      "Incorrect table elements or constraints");
+        SQLITE_ORM_STASSERT(polyfill::conjunction_v<internal::is_table_element_or_constraint<Cs>...>,
+                            "Incorrect table elements or constraints");
 
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
             return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
@@ -11831,8 +11843,8 @@ namespace sqlite_orm {
      */
     template<class T, class... Cs>
     internal::table_t<T, false, Cs...> make_table(std::string name, Cs... args) {
-        static_assert(polyfill::conjunction_v<internal::is_table_element_or_constraint<Cs>...>,
-                      "Incorrect table elements or constraints");
+        SQLITE_ORM_STASSERT(polyfill::conjunction_v<internal::is_table_element_or_constraint<Cs>...>,
+                            "Incorrect table elements or constraints");
 
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
             return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
@@ -12166,8 +12178,9 @@ namespace sqlite_orm {
             // lookup ColAlias in the final column references
             using colalias_index =
                 find_tuple_type<typename cte_mapper_type::final_colrefs_tuple, alias_holder<ColAlias>>;
-            static_assert(colalias_index::value < std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
-                          "No such column mapped into the CTE.");
+            SQLITE_ORM_STASSERT(colalias_index::value <
+                                    std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
+                                "No such column mapped into the CTE.");
 
             return &aliased_field<
                 ColAlias,
@@ -12202,8 +12215,9 @@ namespace sqlite_orm {
             // lookup ColAlias in the final column references
             using colalias_index =
                 find_tuple_type<typename cte_mapper_type::final_colrefs_tuple, alias_holder<ColAlias>>;
-            static_assert(colalias_index::value < std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
-                          "No such column mapped into the CTE.");
+            SQLITE_ORM_STASSERT(colalias_index::value <
+                                    std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
+                                "No such column mapped into the CTE.");
 
             // note: we could "materialize" the alias to an `aliased_field<>::*` and use the regular `table_t<>::find_column_name()` mechanism;
             //       however we have the column index already.
@@ -12758,7 +12772,7 @@ namespace sqlite_orm {
 
         template<size_t I, class FnArg, class CallArg>
         SQLITE_ORM_CONSTEVAL bool expected_pointer_value() {
-            static_assert(polyfill::always_false_v<FnArg, CallArg>, "Expected a pointer value for I-th argument");
+            SQLITE_ORM_STASSERT(polyfill::always_false_v<FnArg, CallArg>, "Expected a pointer value for I-th argument");
             return false;
         }
 
@@ -12773,7 +12787,7 @@ namespace sqlite_orm {
         template<size_t I, const char* PointerArg, const char* Binding>
         SQLITE_ORM_CONSTEVAL bool assert_same_pointer_type() {
             constexpr bool valid = Binding == PointerArg;
-            static_assert(valid, "Pointer value types of I-th argument do not match");
+            SQLITE_ORM_STASSERT(valid, "Pointer value types of I-th argument do not match");
             return valid;
         }
 
@@ -12785,7 +12799,7 @@ namespace sqlite_orm {
         template<size_t I, class PointerArg, class Binding>
         SQLITE_ORM_CONSTEVAL bool assert_same_pointer_type() {
             constexpr bool valid = Binding::value == PointerArg::value;
-            static_assert(valid, "Pointer value types of I-th argument do not match");
+            SQLITE_ORM_STASSERT(valid, "Pointer value types of I-th argument do not match");
             return valid;
         }
 
@@ -12838,16 +12852,18 @@ namespace sqlite_orm {
 #endif
             void
             check_function_call() {
+#ifndef SQLITE_ORM_CONFIG_DISABLE_STATIC_ASSERTIONS
             using args_tuple = std::tuple<CallArgs...>;
             using function_args_tuple = typename callable_arguments<UDF>::args_tuple;
             constexpr size_t argsCount = std::tuple_size<args_tuple>::value;
             constexpr size_t functionArgsCount = std::tuple_size<function_args_tuple>::value;
-            static_assert((argsCount == functionArgsCount &&
-                           !std::is_same<function_args_tuple, std::tuple<arg_values>>::value &&
-                           validate_pointer_value_types<function_args_tuple, args_tuple>(
-                               polyfill::index_constant<std::min(functionArgsCount, argsCount) - 1>{})) ||
-                              std::is_same<function_args_tuple, std::tuple<arg_values>>::value,
-                          "The number of arguments does not match");
+            SQLITE_ORM_STASSERT((argsCount == functionArgsCount &&
+                                 !std::is_same<function_args_tuple, std::tuple<arg_values>>::value &&
+                                 validate_pointer_value_types<function_args_tuple, args_tuple>(
+                                     polyfill::index_constant<std::min(functionArgsCount, argsCount) - 1>{})) ||
+                                    std::is_same<function_args_tuple, std::tuple<arg_values>>::value,
+                                "The number of arguments does not match");
+#endif
         }
 
         /*
@@ -13293,8 +13309,9 @@ namespace sqlite_orm {
             // lookup ColAlias in the final column references
             using colalias_index =
                 find_tuple_type<typename cte_mapper_type::final_colrefs_tuple, alias_holder<ColAlias>>;
-            static_assert(colalias_index::value < std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
-                          "No such column mapped into the CTE.");
+            SQLITE_ORM_STASSERT(colalias_index::value <
+                                    std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
+                                "No such column mapped into the CTE.");
             using type = std::tuple_element_t<colalias_index::value, typename cte_mapper_type::fields_type>;
         };
 #endif
@@ -13315,8 +13332,8 @@ namespace sqlite_orm {
         struct column_result_t<DBOs, T, match_if<is_compound_operator, T>> {
             using type =
                 polyfill::detected_t<common_type_of_t, column_result_for_tuple_t<DBOs, typename T::expressions_tuple>>;
-            static_assert(!std::is_same<type, polyfill::nonesuch>::value,
-                          "Compound select statements must return a common type");
+            SQLITE_ORM_STASSERT(!std::is_same<type, polyfill::nonesuch>::value,
+                                "Compound select statements must return a common type");
         };
 
         template<class DBOs, class T>
@@ -14042,10 +14059,12 @@ namespace sqlite_orm {
      */
     template<class... Args>
     internal::set_t<Args...> set(Args... args) {
+#ifndef SQLITE_ORM_CONFIG_DISABLE_STATIC_ASSERTIONS
         using arg_tuple = std::tuple<Args...>;
-        static_assert(std::tuple_size<arg_tuple>::value ==
-                          internal::count_tuple<arg_tuple, internal::is_assign_t>::value,
-                      "set function accepts assign operators only");
+        SQLITE_ORM_STASSERT(std::tuple_size<arg_tuple>::value ==
+                                internal::count_tuple<arg_tuple, internal::is_assign_t>::value,
+                            "set function accepts assign operators only");
+#endif
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
@@ -14176,7 +14195,7 @@ namespace sqlite_orm {
             using set_type = S;
             using conditions_type = std::tuple<Wargs...>;
 
-            static_assert(is_set<S>::value, "update_all_t must have set or dynamic set as the first argument");
+            SQLITE_ORM_STASSERT(is_set<S>::value, "update_all_t must have set or dynamic set as the first argument");
 
             set_type set;
             conditions_type conditions;
@@ -14422,6 +14441,7 @@ namespace sqlite_orm {
      */
     template<class... Args>
     internal::insert_raw_t<Args...> insert(Args... args) {
+#ifndef SQLITE_ORM_CONFIG_DISABLE_STATIC_ASSERTIONS
         using args_tuple = std::tuple<Args...>;
         using internal::count_tuple;
         using internal::is_columns;
@@ -14432,31 +14452,32 @@ namespace sqlite_orm {
         using internal::is_values;
 
         constexpr int orArgsCount = count_tuple<args_tuple, is_insert_constraint>::value;
-        static_assert(orArgsCount < 2, "Raw insert must have only one OR... argument");
+        SQLITE_ORM_STASSERT(orArgsCount < 2, "Raw insert must have only one OR... argument");
 
         constexpr int intoArgsCount = count_tuple<args_tuple, is_into>::value;
-        static_assert(intoArgsCount != 0, "Raw insert must have into<T> argument");
-        static_assert(intoArgsCount < 2, "Raw insert must have only one into<T> argument");
+        SQLITE_ORM_STASSERT(intoArgsCount != 0, "Raw insert must have into<T> argument");
+        SQLITE_ORM_STASSERT(intoArgsCount < 2, "Raw insert must have only one into<T> argument");
 
         constexpr int columnsArgsCount = count_tuple<args_tuple, is_columns>::value;
-        static_assert(columnsArgsCount < 2, "Raw insert must have only one columns(...) argument");
+        SQLITE_ORM_STASSERT(columnsArgsCount < 2, "Raw insert must have only one columns(...) argument");
 
         constexpr int valuesArgsCount = count_tuple<args_tuple, is_values>::value;
-        static_assert(valuesArgsCount < 2, "Raw insert must have only one values(...) argument");
+        SQLITE_ORM_STASSERT(valuesArgsCount < 2, "Raw insert must have only one values(...) argument");
 
         constexpr int defaultValuesCount = count_tuple<args_tuple, internal::is_default_values>::value;
-        static_assert(defaultValuesCount < 2, "Raw insert must have only one default_values() argument");
+        SQLITE_ORM_STASSERT(defaultValuesCount < 2, "Raw insert must have only one default_values() argument");
 
         constexpr int selectsArgsCount = count_tuple<args_tuple, is_select>::value;
-        static_assert(selectsArgsCount < 2, "Raw insert must have only one select(...) argument");
+        SQLITE_ORM_STASSERT(selectsArgsCount < 2, "Raw insert must have only one select(...) argument");
 
         constexpr int upsertClausesCount = count_tuple<args_tuple, is_upsert_clause>::value;
-        static_assert(upsertClausesCount <= 2, "Raw insert can contain 2 instances of upsert clause maximum");
+        SQLITE_ORM_STASSERT(upsertClausesCount <= 2, "Raw insert can contain 2 instances of upsert clause maximum");
 
         constexpr int argsCount = int(std::tuple_size<args_tuple>::value);
-        static_assert(argsCount == intoArgsCount + columnsArgsCount + valuesArgsCount + defaultValuesCount +
-                                       selectsArgsCount + orArgsCount + upsertClausesCount,
-                      "Raw insert has invalid arguments");
+        SQLITE_ORM_STASSERT(argsCount == intoArgsCount + columnsArgsCount + valuesArgsCount + defaultValuesCount +
+                                             selectsArgsCount + orArgsCount + upsertClausesCount,
+                            "Raw insert has invalid arguments");
+#endif
 
         return {{std::forward<Args>(args)...}};
     }
@@ -14494,6 +14515,7 @@ namespace sqlite_orm {
      */
     template<class... Args>
     internal::replace_raw_t<Args...> replace(Args... args) {
+#ifndef SQLITE_ORM_CONFIG_DISABLE_STATIC_ASSERTIONS
         using args_tuple = std::tuple<Args...>;
         using internal::count_tuple;
         using internal::is_columns;
@@ -14501,25 +14523,26 @@ namespace sqlite_orm {
         using internal::is_values;
 
         constexpr int intoArgsCount = count_tuple<args_tuple, is_into>::value;
-        static_assert(intoArgsCount != 0, "Raw replace must have into<T> argument");
-        static_assert(intoArgsCount < 2, "Raw replace must have only one into<T> argument");
+        SQLITE_ORM_STASSERT(intoArgsCount != 0, "Raw replace must have into<T> argument");
+        SQLITE_ORM_STASSERT(intoArgsCount < 2, "Raw replace must have only one into<T> argument");
 
         constexpr int columnsArgsCount = count_tuple<args_tuple, is_columns>::value;
-        static_assert(columnsArgsCount < 2, "Raw replace must have only one columns(...) argument");
+        SQLITE_ORM_STASSERT(columnsArgsCount < 2, "Raw replace must have only one columns(...) argument");
 
         constexpr int valuesArgsCount = count_tuple<args_tuple, is_values>::value;
-        static_assert(valuesArgsCount < 2, "Raw replace must have only one values(...) argument");
+        SQLITE_ORM_STASSERT(valuesArgsCount < 2, "Raw replace must have only one values(...) argument");
 
         constexpr int defaultValuesCount = count_tuple<args_tuple, internal::is_default_values>::value;
-        static_assert(defaultValuesCount < 2, "Raw replace must have only one default_values() argument");
+        SQLITE_ORM_STASSERT(defaultValuesCount < 2, "Raw replace must have only one default_values() argument");
 
         constexpr int selectsArgsCount = count_tuple<args_tuple, internal::is_select>::value;
-        static_assert(selectsArgsCount < 2, "Raw replace must have only one select(...) argument");
+        SQLITE_ORM_STASSERT(selectsArgsCount < 2, "Raw replace must have only one select(...) argument");
 
         constexpr int argsCount = int(std::tuple_size<args_tuple>::value);
-        static_assert(argsCount ==
-                          intoArgsCount + columnsArgsCount + valuesArgsCount + defaultValuesCount + selectsArgsCount,
-                      "Raw replace has invalid arguments");
+        SQLITE_ORM_STASSERT(argsCount == intoArgsCount + columnsArgsCount + valuesArgsCount + defaultValuesCount +
+                                             selectsArgsCount,
+                            "Raw replace has invalid arguments");
+#endif
 
         return {{std::forward<Args>(args)...}};
     }
@@ -14743,7 +14766,8 @@ namespace sqlite_orm {
      */
     template<class S, class... Wargs>
     internal::update_all_t<S, Wargs...> update_all(S set, Wargs... wh) {
-        static_assert(internal::is_set<S>::value, "first argument in update_all can be either set or dynamic_set");
+        SQLITE_ORM_STASSERT(internal::is_set<S>::value,
+                            "first argument in update_all can be either set or dynamic_set");
         using args_tuple = std::tuple<Wargs...>;
         internal::validate_conditions<args_tuple>();
         args_tuple conditions{std::forward<Wargs>(wh)...};
@@ -15788,7 +15812,7 @@ namespace sqlite_orm {
 
         template<typename Tpl, size_t... Is>
         void stream_identifier(std::ostream& ss, const Tpl& tpl, std::index_sequence<Is...>) {
-            static_assert(sizeof...(Is) > 0 && sizeof...(Is) <= 3, "");
+            SQLITE_ORM_STASSERT(sizeof...(Is) > 0 && sizeof...(Is) <= 3, "");
             return stream_identifier(ss, std::get<Is>(tpl)...);
         }
 
@@ -17265,7 +17289,7 @@ namespace sqlite_orm {
              */
             template<class F, class... Args>
             void create_scalar_function(Args&&... constructorArgs) {
-                static_assert(is_scalar_udf_v<F>, "F must be a scalar function");
+                SQLITE_ORM_STASSERT(is_scalar_udf_v<F>, "F must be a scalar function");
 
                 this->create_scalar_function_impl(
                     udf_holder<F>{},
@@ -17370,7 +17394,7 @@ namespace sqlite_orm {
              */
             template<class F, class... Args>
             void create_aggregate_function(Args&&... constructorArgs) {
-                static_assert(is_aggregate_udf_v<F>, "F must be an aggregate function");
+                SQLITE_ORM_STASSERT(is_aggregate_udf_v<F>, "F must be an aggregate function");
 
                 this->create_aggregate_function_impl(
                     udf_holder<F>{}, /* constructAt = */
@@ -17408,7 +17432,7 @@ namespace sqlite_orm {
              */
             template<class F>
             void delete_scalar_function() {
-                static_assert(is_scalar_udf_v<F>, "F must be a scalar function");
+                SQLITE_ORM_STASSERT(is_scalar_udf_v<F>, "F must be a scalar function");
                 udf_holder<F> udfName;
                 this->delete_function_impl(udfName(), this->scalarFunctions);
             }
@@ -17439,7 +17463,7 @@ namespace sqlite_orm {
              */
             template<class F>
             void delete_aggregate_function() {
-                static_assert(is_aggregate_udf_v<F>, "F must be an aggregate function");
+                SQLITE_ORM_STASSERT(is_aggregate_udf_v<F>, "F must be an aggregate function");
                 udf_holder<F> udfName;
                 this->delete_function_impl(udfName(), this->aggregateFunctions);
             }
@@ -18333,7 +18357,7 @@ namespace sqlite_orm {
             using expression_type = T;
 
             // Compound statements are never passed in by db_objects_for_expression()
-            static_assert(!is_compound_operator_v<T>);
+            SQLITE_ORM_STASSERT(!is_compound_operator_v<T>);
 
             template<class Ctx>
             std::vector<std::string> operator()(const expression_type& t, const Ctx& context) const {
@@ -18396,13 +18420,13 @@ namespace sqlite_orm {
         // No CTE for object expressions.
         template<class Object>
         struct cte_column_names_collector<Object, match_specialization_of<Object, object_t>> {
-            static_assert(polyfill::always_false_v<Object>, "Selecting an object in a subselect is not allowed.");
+            SQLITE_ORM_STASSERT(polyfill::always_false_v<Object>, "Selecting an object in a subselect is not allowed.");
         };
 
         // No CTE for object expressions.
         template<class Object>
         struct cte_column_names_collector<Object, match_if<is_struct, Object>> {
-            static_assert(polyfill::always_false_v<Object>, "Repacking columns in a subselect is not allowed.");
+            SQLITE_ORM_STASSERT(polyfill::always_false_v<Object>, "Repacking columns in a subselect is not allowed.");
         };
 
         template<class Columns>
@@ -18471,7 +18495,8 @@ namespace sqlite_orm {
                             columnNames[idx] = std::to_string(idx + 1);
                         }
                     } else {
-                        static_assert(polyfill::always_false_v<ColRef>, "Invalid explicit column reference specified");
+                        SQLITE_ORM_STASSERT(polyfill::always_false_v<ColRef>,
+                                            "Invalid explicit column reference specified");
                     }
                     ++idx;
                 });
@@ -18627,7 +18652,7 @@ namespace sqlite_orm {
                                       ,
                                       bool> = true>
             std::string do_serialize(const X& c) const {
-                static_assert(std::is_same<X, T>::value, "");
+                SQLITE_ORM_STASSERT(std::is_same<X, T>::value, "");
 
                 // implementation detail: utilizing field_printer
                 return field_printer<X>{}(c);
@@ -18753,7 +18778,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& literal, const Ctx& context) const {
-                static_assert(is_bindable_v<type_t<statement_type>>, "A literal value must be also bindable");
+                SQLITE_ORM_STASSERT(is_bindable_v<type_t<statement_type>>, "A literal value must be also bindable");
 
                 Ctx literalCtx = context;
                 literalCtx.replace_bindable_with_question = false;
@@ -19763,8 +19788,10 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& ins, const Ctx& context) const {
+#ifndef SQLITE_ORM_CONFIG_DISABLE_STATIC_ASSERTIONS
                 constexpr size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
-                static_assert(colsCount > 0, "Use insert or replace with 1 argument instead");
+                SQLITE_ORM_STASSERT(colsCount > 0, "Use insert or replace with 1 argument instead");
+#endif
                 using object_type = expression_object_type_t<statement_type>;
                 auto& table = pick_table<object_type>(context.db_objects);
                 std::stringstream ss;
@@ -19773,9 +19800,11 @@ namespace sqlite_orm {
                    << "VALUES (";
                 iterate_tuple(ins.columns.columns,
                               [&ss, &context, &object = get_ref(ins.obj), first = true](auto& memberPointer) mutable {
+#ifndef SQLITE_ORM_CONFIG_DISABLE_STATIC_ASSERTIONS
                                   using member_pointer_type = std::decay_t<decltype(memberPointer)>;
-                                  static_assert(!is_setter_v<member_pointer_type>,
-                                                "Unable to use setter within insert explicit");
+                                  SQLITE_ORM_STASSERT(!is_setter_v<member_pointer_type>,
+                                                      "Unable to use setter within insert explicit");
+#endif
 
                                   constexpr std::array<const char*, 2> sep = {", ", ""};
                                   ss << sep[std::exchange(first, false)]
@@ -20909,7 +20938,7 @@ namespace sqlite_orm {
         // No CTE for object expression.
         template<class DBOs, class E>
         struct column_expression_type<DBOs, object_t<E>, void> {
-            static_assert(polyfill::always_false_v<E>, "Selecting an object in a subselect is not allowed.");
+            SQLITE_ORM_STASSERT(polyfill::always_false_v<E>, "Selecting an object in a subselect is not allowed.");
         };
 
         /**
@@ -21174,7 +21203,8 @@ namespace sqlite_orm {
             } else if constexpr(std::is_same_v<ExplicitColRef, polyfill::remove_cvref_t<decltype(std::ignore)>>) {
                 return subselectColRef;
             } else {
-                static_assert(polyfill::always_false_v<ExplicitColRef>, "Invalid explicit column reference specified");
+                SQLITE_ORM_STASSERT(polyfill::always_false_v<ExplicitColRef>,
+                                    "Invalid explicit column reference specified");
             }
         }
 
@@ -21184,7 +21214,7 @@ namespace sqlite_orm {
                                    [[maybe_unused]] const ExplicitColRefs& explicitColRefs,
                                    std::index_sequence<Idx...>) {
             if constexpr(std::tuple_size_v<ExplicitColRefs> != 0) {
-                static_assert(
+                SQLITE_ORM_STASSERT(
                     (!is_builtin_numeric_column_alias_v<
                          alias_holder_type_or_none_t<std::tuple_element_t<Idx, ExplicitColRefs>>> &&
                      ...),
@@ -21218,10 +21248,10 @@ namespace sqlite_orm {
             using subselect_type = decltype(subSelect);
             using column_results = column_result_of_t<DBOs, subselect_type>;
             using index_sequence = std::make_index_sequence<std::tuple_size_v<tuplify_t<column_results>>>;
-            static_assert(cte_type::explicit_colref_count == 0 ||
-                              cte_type::explicit_colref_count == index_sequence::size(),
-                          "Number of explicit columns of common table expression doesn't match the number of columns "
-                          "in the subselect.");
+            SQLITE_ORM_STASSERT(
+                cte_type::explicit_colref_count == 0 || cte_type::explicit_colref_count == index_sequence::size(),
+                "Number of explicit columns of common table expression doesn't match the number of columns "
+                "in the subselect.");
 
             std::string tableName = alias_extractor<cte_moniker_type_t<cte_type>>::extract();
             auto subselectColRefs = extract_colref_expressions(dbObjects, subSelect.col);
@@ -21409,12 +21439,13 @@ namespace sqlite_orm {
 
             template<class O>
             void assert_mapped_type() const {
-                static_assert(tuple_has_type<db_objects_type, O, object_type_t>::value,
-                              "type is not mapped to storage");
+                SQLITE_ORM_STASSERT(tuple_has_type<db_objects_type, O, object_type_t>::value,
+                                    "type is not mapped to storage");
             }
 
             template<class O>
             void assert_updatable_type() const {
+#ifndef SQLITE_ORM_CONFIG_DISABLE_STATIC_ASSERTIONS
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
                 using Table = storage_pick_table_t<O, db_objects_type>;
                 using elements_type = elements_type_t<Table>;
@@ -21427,10 +21458,11 @@ namespace sqlite_orm {
                 constexpr size_t primaryKeyColumnsCount =
                     dedicatedPrimaryKeyColumnsCount + pkcol_index_sequence::size();
                 constexpr ptrdiff_t nonPrimaryKeysColumnsCount = col_index_sequence::size() - primaryKeyColumnsCount;
-                static_assert(primaryKeyColumnsCount > 0, "A table without primary keys cannot be updated");
-                static_assert(
+                SQLITE_ORM_STASSERT(primaryKeyColumnsCount > 0, "A table without primary keys cannot be updated");
+                SQLITE_ORM_STASSERT(
                     nonPrimaryKeysColumnsCount > 0,
                     "A table with only primary keys cannot be updated. You need at least 1 non-primary key column");
+#endif
 #endif
             }
 
@@ -21443,19 +21475,22 @@ namespace sqlite_orm {
                      class Table = storage_pick_table_t<O, db_objects_type>,
                      std::enable_if_t<!Table::is_without_rowid::value, bool> = true>
             void assert_insertable_type() const {
+#ifndef SQLITE_ORM_CONFIG_DISABLE_STATIC_ASSERTIONS
                 using elements_type = elements_type_t<Table>;
                 using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
-                static_assert(
+                SQLITE_ORM_STASSERT(
                     count_filtered_tuple<elements_type, is_primary_key_insertable, pkcol_index_sequence>::value <= 1,
                     "Attempting to execute 'insert' request into an noninsertable table was detected. "
                     "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
                     "'insert', or you can use 'insert' with explicit column listing.");
-                static_assert(count_filtered_tuple<elements_type,
-                                                   check_if_not<is_primary_key_insertable>::template fn,
-                                                   pkcol_index_sequence>::value == 0,
-                              "Attempting to execute 'insert' request into an noninsertable table was detected. "
-                              "Insertable table cannot contain non-standard primary keys. Please use 'replace' instead "
-                              "of 'insert', or you can use 'insert' with explicit column listing.");
+                SQLITE_ORM_STASSERT(
+                    count_filtered_tuple<elements_type,
+                                         check_if_not<is_primary_key_insertable>::template fn,
+                                         pkcol_index_sequence>::value == 0,
+                    "Attempting to execute 'insert' request into an noninsertable table was detected. "
+                    "Insertable table cannot contain non-standard primary keys. Please use 'replace' instead "
+                    "of 'insert', or you can use 'insert' with explicit column listing.");
+#endif
             }
 
             template<class O>
@@ -21518,8 +21553,8 @@ namespace sqlite_orm {
 
             template<class S, class... Wargs>
             void update_all(S set, Wargs... wh) {
-                static_assert(internal::is_set<S>::value,
-                              "first argument in update_all can be either set or dynamic_set");
+                SQLITE_ORM_STASSERT(internal::is_set<S>::value,
+                                    "first argument in update_all can be either set or dynamic_set");
                 auto statement = this->prepare(sqlite_orm::update_all(std::move(set), std::forward<Wargs>(wh)...));
                 this->execute(statement);
             }
@@ -21876,8 +21911,8 @@ namespace sqlite_orm {
              */
             template<class T, class... Args>
             auto select(T m, Args... args) {
-                static_assert(!is_compound_operator_v<T> || sizeof...(Args) == 0,
-                              "Cannot use args with a compound operator");
+                SQLITE_ORM_STASSERT(!is_compound_operator_v<T> || sizeof...(Args) == 0,
+                                    "Cannot use args with a compound operator");
                 auto statement = this->prepare(sqlite_orm::select(std::move(m), std::forward<Args>(args)...));
                 return this->execute(statement);
             }
@@ -21930,7 +21965,7 @@ namespace sqlite_orm {
                      std::enable_if_t<!is_prepared_statement<Ex>::value && !is_mapped<db_objects_type, Ex>::value,
                                       bool> = true>
             std::string dump(E&& expression, bool parametrized = false) const {
-                static_assert(is_preparable_v<self, Ex>, "Expression must be a high-level statement");
+                SQLITE_ORM_STASSERT(is_preparable_v<self, Ex>, "Expression must be a high-level statement");
 
                 decltype(auto) e2 = static_if<is_select<Ex>::value>(
                     [](auto expression) -> auto {
@@ -22010,7 +22045,7 @@ namespace sqlite_orm {
 
             template<class O, class... Cols>
             int insert(const O& o, columns_t<Cols...> cols) {
-                static_assert(cols.count > 0, "Use insert or replace with 1 argument instead");
+                SQLITE_ORM_STASSERT(cols.count > 0, "Use insert or replace with 1 argument instead");
                 this->assert_mapped_type<O>();
                 auto statement = this->prepare(sqlite_orm::insert(std::ref(o), std::move(cols)));
                 return int(this->execute(statement));
@@ -23205,49 +23240,49 @@ namespace sqlite_orm {
 
     template<int N, class T>
     auto& get(internal::prepared_statement_t<internal::update_t<T>>& statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for update statement");
+        SQLITE_ORM_STASSERT(N == 0, "get<> works only with 0 argument for update statement");
         return internal::get_ref(statement.expression.object);
     }
 
     template<int N, class T>
     const auto& get(const internal::prepared_statement_t<internal::update_t<T>>& statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for update statement");
+        SQLITE_ORM_STASSERT(N == 0, "get<> works only with 0 argument for update statement");
         return internal::get_ref(statement.expression.object);
     }
 
     template<int N, class T, class... Cols>
     auto& get(internal::prepared_statement_t<internal::insert_explicit<T, Cols...>>& statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
+        SQLITE_ORM_STASSERT(N == 0, "get<> works only with 0 argument for insert statement");
         return internal::get_ref(statement.expression.obj);
     }
 
     template<int N, class T, class... Cols>
     const auto& get(const internal::prepared_statement_t<internal::insert_explicit<T, Cols...>>& statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
+        SQLITE_ORM_STASSERT(N == 0, "get<> works only with 0 argument for insert statement");
         return internal::get_ref(statement.expression.obj);
     }
 
     template<int N, class T>
     auto& get(internal::prepared_statement_t<internal::replace_t<T>>& statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for replace statement");
+        SQLITE_ORM_STASSERT(N == 0, "get<> works only with 0 argument for replace statement");
         return internal::get_ref(statement.expression.object);
     }
 
     template<int N, class T>
     const auto& get(const internal::prepared_statement_t<internal::replace_t<T>>& statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for replace statement");
+        SQLITE_ORM_STASSERT(N == 0, "get<> works only with 0 argument for replace statement");
         return internal::get_ref(statement.expression.object);
     }
 
     template<int N, class T>
     auto& get(internal::prepared_statement_t<internal::insert_t<T>>& statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
+        SQLITE_ORM_STASSERT(N == 0, "get<> works only with 0 argument for insert statement");
         return internal::get_ref(statement.expression.object);
     }
 
     template<int N, class T>
     const auto& get(const internal::prepared_statement_t<internal::insert_t<T>>& statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
+        SQLITE_ORM_STASSERT(N == 0, "get<> works only with 0 argument for insert statement");
         return internal::get_ref(statement.expression.object);
     }
 
@@ -23725,7 +23760,11 @@ namespace sqlite_orm {
 
 #pragma once
 
+#ifdef SQLITE_ORM_CONFIG_DISABLE_STATIC_ASSERTIONS
+#undef SQLITE_ORM_STASSERT
+#endif
+
 #if defined(_MSC_VER)
 __pragma(pop_macro("max"))
 __pragma(pop_macro("min"))
-#endif  // defined(_MSC_VER)
+#endif

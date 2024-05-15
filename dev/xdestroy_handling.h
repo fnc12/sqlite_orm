@@ -185,8 +185,8 @@ namespace sqlite_orm {
     constexpr xdestroy_fn_t obtain_xdestroy_for(D, P* = nullptr) noexcept
         requires(internal::is_unusable_for_xdestroy<D>)
     {
-        static_assert(polyfill::always_false_v<D>,
-                      "A function pointer, which is not of type xdestroy_fn_t, is prohibited.");
+        SQLITE_ORM_STASSERT(polyfill::always_false_v<D>,
+                            "A function pointer, which is not of type xdestroy_fn_t, is prohibited.");
         return nullptr;
     }
 
@@ -232,8 +232,8 @@ namespace sqlite_orm {
 #else
     template<typename P, typename D, std::enable_if_t<internal::is_unusable_for_xdestroy_v<D>, bool> = true>
     constexpr xdestroy_fn_t obtain_xdestroy_for(D, P* = nullptr) {
-        static_assert(polyfill::always_false_v<D>,
-                      "A function pointer, which is not of type xdestroy_fn_t, is prohibited.");
+        SQLITE_ORM_STASSERT(polyfill::always_false_v<D>,
+                            "A function pointer, which is not of type xdestroy_fn_t, is prohibited.");
         return nullptr;
     }
 

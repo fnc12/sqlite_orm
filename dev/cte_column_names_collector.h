@@ -50,7 +50,7 @@ namespace sqlite_orm {
             using expression_type = T;
 
             // Compound statements are never passed in by db_objects_for_expression()
-            static_assert(!is_compound_operator_v<T>);
+            SQLITE_ORM_STASSERT(!is_compound_operator_v<T>);
 
             template<class Ctx>
             std::vector<std::string> operator()(const expression_type& t, const Ctx& context) const {
@@ -113,13 +113,13 @@ namespace sqlite_orm {
         // No CTE for object expressions.
         template<class Object>
         struct cte_column_names_collector<Object, match_specialization_of<Object, object_t>> {
-            static_assert(polyfill::always_false_v<Object>, "Selecting an object in a subselect is not allowed.");
+            SQLITE_ORM_STASSERT(polyfill::always_false_v<Object>, "Selecting an object in a subselect is not allowed.");
         };
 
         // No CTE for object expressions.
         template<class Object>
         struct cte_column_names_collector<Object, match_if<is_struct, Object>> {
-            static_assert(polyfill::always_false_v<Object>, "Repacking columns in a subselect is not allowed.");
+            SQLITE_ORM_STASSERT(polyfill::always_false_v<Object>, "Repacking columns in a subselect is not allowed.");
         };
 
         template<class Columns>
@@ -188,7 +188,8 @@ namespace sqlite_orm {
                             columnNames[idx] = std::to_string(idx + 1);
                         }
                     } else {
-                        static_assert(polyfill::always_false_v<ColRef>, "Invalid explicit column reference specified");
+                        SQLITE_ORM_STASSERT(polyfill::always_false_v<ColRef>,
+                                            "Invalid explicit column reference specified");
                     }
                     ++idx;
                 });

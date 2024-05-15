@@ -237,8 +237,9 @@ namespace sqlite_orm {
             // lookup ColAlias in the final column references
             using colalias_index =
                 find_tuple_type<typename cte_mapper_type::final_colrefs_tuple, alias_holder<ColAlias>>;
-            static_assert(colalias_index::value < std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
-                          "No such column mapped into the CTE.");
+            SQLITE_ORM_STASSERT(colalias_index::value <
+                                    std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
+                                "No such column mapped into the CTE.");
             using type = std::tuple_element_t<colalias_index::value, typename cte_mapper_type::fields_type>;
         };
 #endif
@@ -259,8 +260,8 @@ namespace sqlite_orm {
         struct column_result_t<DBOs, T, match_if<is_compound_operator, T>> {
             using type =
                 polyfill::detected_t<common_type_of_t, column_result_for_tuple_t<DBOs, typename T::expressions_tuple>>;
-            static_assert(!std::is_same<type, polyfill::nonesuch>::value,
-                          "Compound select statements must return a common type");
+            SQLITE_ORM_STASSERT(!std::is_same<type, polyfill::nonesuch>::value,
+                                "Compound select statements must return a common type");
         };
 
         template<class DBOs, class T>

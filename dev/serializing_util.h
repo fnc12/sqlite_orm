@@ -78,7 +78,7 @@ namespace sqlite_orm {
 
         template<typename Tpl, size_t... Is>
         void stream_identifier(std::ostream& ss, const Tpl& tpl, std::index_sequence<Is...>) {
-            static_assert(sizeof...(Is) > 0 && sizeof...(Is) <= 3, "");
+            SQLITE_ORM_STASSERT(sizeof...(Is) > 0 && sizeof...(Is) <= 3, "");
             return stream_identifier(ss, std::get<Is>(tpl)...);
         }
 

@@ -417,11 +417,15 @@ namespace sqlite_orm {
 
         template<class T>
         void validate_conditions() {
-            static_assert(count_tuple<T, is_where>::value <= 1, "a single query cannot contain > 1 WHERE blocks");
-            static_assert(count_tuple<T, is_group_by>::value <= 1, "a single query cannot contain > 1 GROUP BY blocks");
-            static_assert(count_tuple<T, is_order_by>::value <= 1, "a single query cannot contain > 1 ORDER BY blocks");
-            static_assert(count_tuple<T, is_limit>::value <= 1, "a single query cannot contain > 1 LIMIT blocks");
-            static_assert(count_tuple<T, is_from>::value <= 1, "a single query cannot contain > 1 FROM blocks");
+#ifndef SQLITE_ORM_CONFIG_DISABLE_STATIC_ASSERTIONS
+            SQLITE_ORM_STASSERT(count_tuple<T, is_where>::value <= 1, "a single query cannot contain > 1 WHERE blocks");
+            SQLITE_ORM_STASSERT(count_tuple<T, is_group_by>::value <= 1,
+                                "a single query cannot contain > 1 GROUP BY blocks");
+            SQLITE_ORM_STASSERT(count_tuple<T, is_order_by>::value <= 1,
+                                "a single query cannot contain > 1 ORDER BY blocks");
+            SQLITE_ORM_STASSERT(count_tuple<T, is_limit>::value <= 1, "a single query cannot contain > 1 LIMIT blocks");
+            SQLITE_ORM_STASSERT(count_tuple<T, is_from>::value <= 1, "a single query cannot contain > 1 FROM blocks");
+#endif
         }
     }
 
@@ -496,7 +500,7 @@ namespace sqlite_orm {
      */
     template<class... E>
     internal::union_t<E...> union_(E... expressions) {
-        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
+        SQLITE_ORM_STASSERT(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}, false};
     }
 
@@ -507,7 +511,7 @@ namespace sqlite_orm {
      */
     template<class... E>
     internal::union_t<E...> union_all(E... expressions) {
-        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
+        SQLITE_ORM_STASSERT(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}, true};
     }
 
@@ -518,13 +522,13 @@ namespace sqlite_orm {
      */
     template<class... E>
     internal::except_t<E...> except(E... expressions) {
-        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
+        SQLITE_ORM_STASSERT(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}};
     }
 
     template<class... E>
     internal::intersect_t<E...> intersect(E... expressions) {
-        static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
+        SQLITE_ORM_STASSERT(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}};
     }
 
@@ -577,9 +581,9 @@ namespace sqlite_orm {
                               bool> = true>
     auto cte(ExplicitCols... explicitColumns) {
         using namespace ::sqlite_orm::internal;
-        static_assert(is_cte_moniker_v<Moniker>, "Moniker must be a CTE moniker");
-        static_assert((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
-                      "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
+        SQLITE_ORM_STASSERT(is_cte_moniker_v<Moniker>, "Moniker must be a CTE moniker");
+        SQLITE_ORM_STASSERT((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
+                            "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
 
         using builder_type =
             cte_builder<Moniker, transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
@@ -595,8 +599,8 @@ namespace sqlite_orm {
                  ...)
     auto cte(ExplicitCols... explicitColumns) {
         using namespace ::sqlite_orm::internal;
-        static_assert((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
-                      "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
+        SQLITE_ORM_STASSERT((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
+                            "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
 
         using builder_type =
             cte_builder<decltype(moniker), transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;

@@ -91,10 +91,12 @@ namespace sqlite_orm {
      */
     template<class... Args>
     internal::set_t<Args...> set(Args... args) {
+#ifndef SQLITE_ORM_CONFIG_DISABLE_STATIC_ASSERTIONS
         using arg_tuple = std::tuple<Args...>;
-        static_assert(std::tuple_size<arg_tuple>::value ==
-                          internal::count_tuple<arg_tuple, internal::is_assign_t>::value,
-                      "set function accepts assign operators only");
+        SQLITE_ORM_STASSERT(std::tuple_size<arg_tuple>::value ==
+                                internal::count_tuple<arg_tuple, internal::is_assign_t>::value,
+                            "set function accepts assign operators only");
+#endif
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 

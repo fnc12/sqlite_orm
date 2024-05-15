@@ -182,12 +182,13 @@ namespace sqlite_orm {
 
             template<class O>
             void assert_mapped_type() const {
-                static_assert(tuple_has_type<db_objects_type, O, object_type_t>::value,
-                              "type is not mapped to storage");
+                SQLITE_ORM_STASSERT(tuple_has_type<db_objects_type, O, object_type_t>::value,
+                                    "type is not mapped to storage");
             }
 
             template<class O>
             void assert_updatable_type() const {
+#ifndef SQLITE_ORM_CONFIG_DISABLE_STATIC_ASSERTIONS
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
                 using Table = storage_pick_table_t<O, db_objects_type>;
                 using elements_type = elements_type_t<Table>;
@@ -200,10 +201,11 @@ namespace sqlite_orm {
                 constexpr size_t primaryKeyColumnsCount =
                     dedicatedPrimaryKeyColumnsCount + pkcol_index_sequence::size();
                 constexpr ptrdiff_t nonPrimaryKeysColumnsCount = col_index_sequence::size() - primaryKeyColumnsCount;
-                static_assert(primaryKeyColumnsCount > 0, "A table without primary keys cannot be updated");
-                static_assert(
+                SQLITE_ORM_STASSERT(primaryKeyColumnsCount > 0, "A table without primary keys cannot be updated");
+                SQLITE_ORM_STASSERT(
                     nonPrimaryKeysColumnsCount > 0,
                     "A table with only primary keys cannot be updated. You need at least 1 non-primary key column");
+#endif
 #endif
             }
 
@@ -216,19 +218,22 @@ namespace sqlite_orm {
                      class Table = storage_pick_table_t<O, db_objects_type>,
                      std::enable_if_t<!Table::is_without_rowid::value, bool> = true>
             void assert_insertable_type() const {
+#ifndef SQLITE_ORM_CONFIG_DISABLE_STATIC_ASSERTIONS
                 using elements_type = elements_type_t<Table>;
                 using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
-                static_assert(
+                SQLITE_ORM_STASSERT(
                     count_filtered_tuple<elements_type, is_primary_key_insertable, pkcol_index_sequence>::value <= 1,
                     "Attempting to execute 'insert' request into an noninsertable table was detected. "
                     "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
                     "'insert', or you can use 'insert' with explicit column listing.");
-                static_assert(count_filtered_tuple<elements_type,
-                                                   check_if_not<is_primary_key_insertable>::template fn,
-                                                   pkcol_index_sequence>::value == 0,
-                              "Attempting to execute 'insert' request into an noninsertable table was detected. "
-                              "Insertable table cannot contain non-standard primary keys. Please use 'replace' instead "
-                              "of 'insert', or you can use 'insert' with explicit column listing.");
+                SQLITE_ORM_STASSERT(
+                    count_filtered_tuple<elements_type,
+                                         check_if_not<is_primary_key_insertable>::template fn,
+                                         pkcol_index_sequence>::value == 0,
+                    "Attempting to execute 'insert' request into an noninsertable table was detected. "
+                    "Insertable table cannot contain non-standard primary keys. Please use 'replace' instead "
+                    "of 'insert', or you can use 'insert' with explicit column listing.");
+#endif
             }
 
             template<class O>
@@ -291,8 +296,8 @@ namespace sqlite_orm {
 
             template<class S, class... Wargs>
             void update_all(S set, Wargs... wh) {
-                static_assert(internal::is_set<S>::value,
-                              "first argument in update_all can be either set or dynamic_set");
+                SQLITE_ORM_STASSERT(internal::is_set<S>::value,
+                                    "first argument in update_all can be either set or dynamic_set");
                 auto statement = this->prepare(sqlite_orm::update_all(std::move(set), std::forward<Wargs>(wh)...));
                 this->execute(statement);
             }
@@ -649,8 +654,8 @@ namespace sqlite_orm {
              */
             template<class T, class... Args>
             auto select(T m, Args... args) {
-                static_assert(!is_compound_operator_v<T> || sizeof...(Args) == 0,
-                              "Cannot use args with a compound operator");
+                SQLITE_ORM_STASSERT(!is_compound_operator_v<T> || sizeof...(Args) == 0,
+                                    "Cannot use args with a compound operator");
                 auto statement = this->prepare(sqlite_orm::select(std::move(m), std::forward<Args>(args)...));
                 return this->execute(statement);
             }
@@ -703,7 +708,7 @@ namespace sqlite_orm {
                      std::enable_if_t<!is_prepared_statement<Ex>::value && !is_mapped<db_objects_type, Ex>::value,
                                       bool> = true>
             std::string dump(E&& expression, bool parametrized = false) const {
-                static_assert(is_preparable_v<self, Ex>, "Expression must be a high-level statement");
+                SQLITE_ORM_STASSERT(is_preparable_v<self, Ex>, "Expression must be a high-level statement");
 
                 decltype(auto) e2 = static_if<is_select<Ex>::value>(
                     [](auto expression) -> auto {
@@ -783,7 +788,7 @@ namespace sqlite_orm {
 
             template<class O, class... Cols>
             int insert(const O& o, columns_t<Cols...> cols) {
-                static_assert(cols.count > 0, "Use insert or replace with 1 argument instead");
+                SQLITE_ORM_STASSERT(cols.count > 0, "Use insert or replace with 1 argument instead");
                 this->assert_mapped_type<O>();
                 auto statement = this->prepare(sqlite_orm::insert(std::ref(o), std::move(cols)));
                 return int(this->execute(statement));

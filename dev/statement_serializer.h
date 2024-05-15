@@ -89,7 +89,7 @@ namespace sqlite_orm {
                                       ,
                                       bool> = true>
             std::string do_serialize(const X& c) const {
-                static_assert(std::is_same<X, T>::value, "");
+                SQLITE_ORM_STASSERT(std::is_same<X, T>::value, "");
 
                 // implementation detail: utilizing field_printer
                 return field_printer<X>{}(c);
@@ -215,7 +215,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& literal, const Ctx& context) const {
-                static_assert(is_bindable_v<type_t<statement_type>>, "A literal value must be also bindable");
+                SQLITE_ORM_STASSERT(is_bindable_v<type_t<statement_type>>, "A literal value must be also bindable");
 
                 Ctx literalCtx = context;
                 literalCtx.replace_bindable_with_question = false;
@@ -1225,8 +1225,10 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& ins, const Ctx& context) const {
+#ifndef SQLITE_ORM_CONFIG_DISABLE_STATIC_ASSERTIONS
                 constexpr size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
-                static_assert(colsCount > 0, "Use insert or replace with 1 argument instead");
+                SQLITE_ORM_STASSERT(colsCount > 0, "Use insert or replace with 1 argument instead");
+#endif
                 using object_type = expression_object_type_t<statement_type>;
                 auto& table = pick_table<object_type>(context.db_objects);
                 std::stringstream ss;
@@ -1235,9 +1237,11 @@ namespace sqlite_orm {
                    << "VALUES (";
                 iterate_tuple(ins.columns.columns,
                               [&ss, &context, &object = get_ref(ins.obj), first = true](auto& memberPointer) mutable {
+#ifndef SQLITE_ORM_CONFIG_DISABLE_STATIC_ASSERTIONS
                                   using member_pointer_type = std::decay_t<decltype(memberPointer)>;
-                                  static_assert(!is_setter_v<member_pointer_type>,
-                                                "Unable to use setter within insert explicit");
+                                  SQLITE_ORM_STASSERT(!is_setter_v<member_pointer_type>,
+                                                      "Unable to use setter within insert explicit");
+#endif
 
                                   constexpr std::array<const char*, 2> sep = {", ", ""};
                                   ss << sep[std::exchange(first, false)]

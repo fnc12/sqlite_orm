@@ -201,8 +201,10 @@ namespace sqlite_orm {
                  bool> = true>
     constexpr auto alias_column(C field) {
         using namespace ::sqlite_orm::internal;
+#ifndef SQLITE_ORM_CONFIG_DISABLE_STATIC_ASSERTIONS
         using aliased_type = type_t<A>;
-        static_assert(is_field_of_v<C, aliased_type>, "Column must be from aliased table");
+        SQLITE_ORM_STASSERT(is_field_of_v<C, aliased_type>, "Column must be from aliased table");
+#endif
 
         return alias_column_t<A, C>{std::move(field)};
     }
@@ -226,7 +228,7 @@ namespace sqlite_orm {
     constexpr auto alias_column(F O::*field) {
         using namespace ::sqlite_orm::internal;
         using aliased_type = type_t<A>;
-        static_assert(is_field_of_v<F O::*, aliased_type>, "Column must be from aliased table");
+        SQLITE_ORM_STASSERT(is_field_of_v<F O::*, aliased_type>, "Column must be from aliased table");
 
         using C1 =
             mpl::conditional_t<std::is_same<O, aliased_type>::value, F O::*, column_pointer<aliased_type, F O::*>>;
@@ -249,7 +251,7 @@ namespace sqlite_orm {
         using namespace ::sqlite_orm::internal;
         using A = decltype(als);
         using aliased_type = type_t<A>;
-        static_assert(is_field_of_v<C, aliased_type>, "Column must be from aliased table");
+        SQLITE_ORM_STASSERT(is_field_of_v<C, aliased_type>, "Column must be from aliased table");
 
         if constexpr(is_column_pointer_v<C>) {
             return alias_column_t<A, C>{std::move(field)};
@@ -295,8 +297,8 @@ namespace sqlite_orm {
         using cte_moniker_t = type_t<A>;
 
         if constexpr(is_column_pointer_v<C>) {
-            static_assert(std::is_same<table_type_of_t<C>, cte_moniker_t>::value,
-                          "Column pointer must match aliased CTE");
+            SQLITE_ORM_STASSERT(std::is_same<table_type_of_t<C>, cte_moniker_t>::value,
+                                "Column pointer must match aliased CTE");
             return alias_column_t<A, C>{c};
         } else {
             auto cp = column<cte_moniker_t>(c);
@@ -368,7 +370,7 @@ namespace sqlite_orm {
      */
     template<class T>
     internal::alias_holder<T> get() {
-        static_assert(internal::is_column_alias_v<T>, "");
+        SQLITE_ORM_STASSERT(internal::is_column_alias_v<T>, "");
         return {};
     }
 
@@ -483,7 +485,7 @@ namespace sqlite_orm {
     [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator"" _colalias() {
         // numeric identifiers are used for automatically assigning implicit aliases to unaliased column expressions,
         // which start at "1".
-        static_assert(std::array{Chars...}[0] > '0');
+        SQLITE_ORM_STASSERT(std::array{Chars...}[0] > '0');
         return internal::column_alias<Chars...>{};
     }
 #endif

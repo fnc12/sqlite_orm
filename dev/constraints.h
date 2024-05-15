@@ -323,9 +323,9 @@ namespace sqlite_orm {
             on_update_delete_t<self> on_update;
             on_update_delete_t<self> on_delete;
 
-            static_assert(std::tuple_size<columns_type>::value == std::tuple_size<references_type>::value,
-                          "Columns size must be equal to references tuple");
-            static_assert(!std::is_same<target_type, void>::value, "All references must have the same type");
+            SQLITE_ORM_STASSERT(std::tuple_size<columns_type>::value == std::tuple_size<references_type>::value,
+                                "Columns size must be equal to references tuple");
+            SQLITE_ORM_STASSERT(!std::is_same<target_type, void>::value, "All references must have the same type");
 
             foreign_key_t(columns_type columns_, references_type references_) :
                 columns(std::move(columns_)), references(std::move(references_)),
@@ -479,8 +479,8 @@ namespace sqlite_orm {
                                 constraints_type_t<Column>>,
                   std::is_base_of<integer_printer, type_printer<field_type_t<Column>>>> {
 
-            static_assert(tuple_has<constraints_type_t<Column>, is_primary_key>::value,
-                          "an unexpected type was passed");
+            SQLITE_ORM_STASSERT(tuple_has<constraints_type_t<Column>, is_primary_key>::value,
+                                "an unexpected type was passed");
         };
 
         template<class T>

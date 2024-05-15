@@ -827,7 +827,7 @@ namespace sqlite_orm {
      */
     template<class... Tables>
     internal::from_t<Tables...> from() {
-        static_assert(sizeof...(Tables) > 0, "");
+        SQLITE_ORM_STASSERT(sizeof...(Tables) > 0, "");
         return {};
     }
 

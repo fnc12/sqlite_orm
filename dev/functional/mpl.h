@@ -240,9 +240,9 @@ namespace sqlite_orm {
                 // match last or `std::false_type`
                 template<class ArgPack, class ResultTrait, class...>
                 struct invoke_this_fn {
-                    static_assert(std::is_same<ResultTrait, std::true_type>::value ||
-                                      std::is_same<ResultTrait, std::false_type>::value,
-                                  "Resulting trait must be a std::bool_constant");
+                    SQLITE_ORM_STASSERT(std::is_same<ResultTrait, std::true_type>::value ||
+                                            std::is_same<ResultTrait, std::false_type>::value,
+                                        "Resulting trait must be a std::bool_constant");
                     using type = ResultTrait;
                 };
 
@@ -275,9 +275,9 @@ namespace sqlite_orm {
                 // match last or `std::true_type`
                 template<class ArgPack, class ResultTrait, class...>
                 struct invoke_this_fn {
-                    static_assert(std::is_same<ResultTrait, std::true_type>::value ||
-                                      std::is_same<ResultTrait, std::false_type>::value,
-                                  "Resulting trait must be a std::bool_constant");
+                    SQLITE_ORM_STASSERT(std::is_same<ResultTrait, std::true_type>::value ||
+                                            std::is_same<ResultTrait, std::false_type>::value,
+                                        "Resulting trait must be a std::bool_constant");
                     using type = ResultTrait;
                 };
 
@@ -372,8 +372,8 @@ namespace sqlite_orm {
             struct finds {
                 template<class Pack, class ProjectQ>
                 struct invoke_this_fn {
-                    static_assert(polyfill::always_false_v<Pack>,
-                                  "`finds` must be invoked with a type list as first argument.");
+                    SQLITE_ORM_STASSERT(polyfill::always_false_v<Pack>,
+                                        "`finds` must be invoked with a type list as first argument.");
                 };
 
                 template<template<class...> class Pack, class... T, class ProjectQ>
@@ -402,8 +402,8 @@ namespace sqlite_orm {
             struct counts {
                 template<class Pack, class ProjectQ>
                 struct invoke_this_fn {
-                    static_assert(polyfill::always_false_v<Pack>,
-                                  "`counts` must be invoked with a type list as first argument.");
+                    SQLITE_ORM_STASSERT(polyfill::always_false_v<Pack>,
+                                        "`counts` must be invoked with a type list as first argument.");
                 };
 
                 template<template<class...> class Pack, class... T, class ProjectQ>
@@ -432,8 +432,8 @@ namespace sqlite_orm {
             struct contains {
                 template<class Pack, class ProjectQ>
                 struct invoke_this_fn {
-                    static_assert(polyfill::always_false_v<Pack>,
-                                  "`contains` must be invoked with a type list as first argument.");
+                    SQLITE_ORM_STASSERT(polyfill::always_false_v<Pack>,
+                                        "`contains` must be invoked with a type list as first argument.");
                 };
 
                 template<template<class...> class Pack, class... T, class ProjectQ>

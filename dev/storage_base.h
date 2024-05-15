@@ -262,7 +262,7 @@ namespace sqlite_orm {
              */
             template<class F, class... Args>
             void create_scalar_function(Args&&... constructorArgs) {
-                static_assert(is_scalar_udf_v<F>, "F must be a scalar function");
+                SQLITE_ORM_STASSERT(is_scalar_udf_v<F>, "F must be a scalar function");
 
                 this->create_scalar_function_impl(
                     udf_holder<F>{},
@@ -367,7 +367,7 @@ namespace sqlite_orm {
              */
             template<class F, class... Args>
             void create_aggregate_function(Args&&... constructorArgs) {
-                static_assert(is_aggregate_udf_v<F>, "F must be an aggregate function");
+                SQLITE_ORM_STASSERT(is_aggregate_udf_v<F>, "F must be an aggregate function");
 
                 this->create_aggregate_function_impl(
                     udf_holder<F>{}, /* constructAt = */
@@ -405,7 +405,7 @@ namespace sqlite_orm {
              */
             template<class F>
             void delete_scalar_function() {
-                static_assert(is_scalar_udf_v<F>, "F must be a scalar function");
+                SQLITE_ORM_STASSERT(is_scalar_udf_v<F>, "F must be a scalar function");
                 udf_holder<F> udfName;
                 this->delete_function_impl(udfName(), this->scalarFunctions);
             }
@@ -436,7 +436,7 @@ namespace sqlite_orm {
              */
             template<class F>
             void delete_aggregate_function() {
-                static_assert(is_aggregate_udf_v<F>, "F must be an aggregate function");
+                SQLITE_ORM_STASSERT(is_aggregate_udf_v<F>, "F must be an aggregate function");
                 udf_holder<F> udfName;
                 this->delete_function_impl(udfName(), this->aggregateFunctions);
             }

@@ -52,7 +52,7 @@ namespace sqlite_orm {
      */
     template<class Object, class F, class O, internal::satisfies_not<internal::is_recordset_alias, Object> = true>
     constexpr internal::column_pointer<Object, F O::*> column(F O::*field) {
-        static_assert(internal::is_field_of_v<F O::*, Object>, "Column must be from derived class");
+        SQLITE_ORM_STASSERT(internal::is_field_of_v<F O::*, Object>, "Column must be from derived class");
         return {field};
     }
 
@@ -113,10 +113,10 @@ namespace sqlite_orm {
     constexpr auto column(F field) {
         using namespace ::sqlite_orm::internal;
 
-        static_assert(is_cte_moniker_v<Moniker>, "`Moniker' must be a CTE moniker");
+        SQLITE_ORM_STASSERT(is_cte_moniker_v<Moniker>, "`Moniker' must be a CTE moniker");
 
         if constexpr(polyfill::is_specialization_of_v<F, alias_holder>) {
-            static_assert(is_column_alias_v<type_t<F>>);
+            SQLITE_ORM_STASSERT(is_column_alias_v<type_t<F>>);
             return column_pointer<Moniker, F>{{}};
         } else if constexpr(is_column_alias_v<F>) {
             return column_pointer<Moniker, alias_holder<F>>{{}};

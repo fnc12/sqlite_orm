@@ -227,7 +227,8 @@ namespace sqlite_orm {
             } else if constexpr(std::is_same_v<ExplicitColRef, polyfill::remove_cvref_t<decltype(std::ignore)>>) {
                 return subselectColRef;
             } else {
-                static_assert(polyfill::always_false_v<ExplicitColRef>, "Invalid explicit column reference specified");
+                SQLITE_ORM_STASSERT(polyfill::always_false_v<ExplicitColRef>,
+                                    "Invalid explicit column reference specified");
             }
         }
 
@@ -237,7 +238,7 @@ namespace sqlite_orm {
                                    [[maybe_unused]] const ExplicitColRefs& explicitColRefs,
                                    std::index_sequence<Idx...>) {
             if constexpr(std::tuple_size_v<ExplicitColRefs> != 0) {
-                static_assert(
+                SQLITE_ORM_STASSERT(
                     (!is_builtin_numeric_column_alias_v<
                          alias_holder_type_or_none_t<std::tuple_element_t<Idx, ExplicitColRefs>>> &&
                      ...),
@@ -271,10 +272,10 @@ namespace sqlite_orm {
             using subselect_type = decltype(subSelect);
             using column_results = column_result_of_t<DBOs, subselect_type>;
             using index_sequence = std::make_index_sequence<std::tuple_size_v<tuplify_t<column_results>>>;
-            static_assert(cte_type::explicit_colref_count == 0 ||
-                              cte_type::explicit_colref_count == index_sequence::size(),
-                          "Number of explicit columns of common table expression doesn't match the number of columns "
-                          "in the subselect.");
+            SQLITE_ORM_STASSERT(
+                cte_type::explicit_colref_count == 0 || cte_type::explicit_colref_count == index_sequence::size(),
+                "Number of explicit columns of common table expression doesn't match the number of columns "
+                "in the subselect.");
 
             std::string tableName = alias_extractor<cte_moniker_type_t<cte_type>>::extract();
             auto subselectColRefs = extract_colref_expressions(dbObjects, subSelect.col);

@@ -229,7 +229,7 @@ namespace sqlite_orm {
 
         template<size_t I, class FnArg, class CallArg>
         SQLITE_ORM_CONSTEVAL bool expected_pointer_value() {
-            static_assert(polyfill::always_false_v<FnArg, CallArg>, "Expected a pointer value for I-th argument");
+            SQLITE_ORM_STASSERT(polyfill::always_false_v<FnArg, CallArg>, "Expected a pointer value for I-th argument");
             return false;
         }
 
@@ -244,7 +244,7 @@ namespace sqlite_orm {
         template<size_t I, const char* PointerArg, const char* Binding>
         SQLITE_ORM_CONSTEVAL bool assert_same_pointer_type() {
             constexpr bool valid = Binding == PointerArg;
-            static_assert(valid, "Pointer value types of I-th argument do not match");
+            SQLITE_ORM_STASSERT(valid, "Pointer value types of I-th argument do not match");
             return valid;
         }
 
@@ -256,7 +256,7 @@ namespace sqlite_orm {
         template<size_t I, class PointerArg, class Binding>
         SQLITE_ORM_CONSTEVAL bool assert_same_pointer_type() {
             constexpr bool valid = Binding::value == PointerArg::value;
-            static_assert(valid, "Pointer value types of I-th argument do not match");
+            SQLITE_ORM_STASSERT(valid, "Pointer value types of I-th argument do not match");
             return valid;
         }
 
@@ -309,16 +309,18 @@ namespace sqlite_orm {
 #endif
             void
             check_function_call() {
+#ifndef SQLITE_ORM_CONFIG_DISABLE_STATIC_ASSERTIONS
             using args_tuple = std::tuple<CallArgs...>;
             using function_args_tuple = typename callable_arguments<UDF>::args_tuple;
             constexpr size_t argsCount = std::tuple_size<args_tuple>::value;
             constexpr size_t functionArgsCount = std::tuple_size<function_args_tuple>::value;
-            static_assert((argsCount == functionArgsCount &&
-                           !std::is_same<function_args_tuple, std::tuple<arg_values>>::value &&
-                           validate_pointer_value_types<function_args_tuple, args_tuple>(
-                               polyfill::index_constant<std::min(functionArgsCount, argsCount) - 1>{})) ||
-                              std::is_same<function_args_tuple, std::tuple<arg_values>>::value,
-                          "The number of arguments does not match");
+            SQLITE_ORM_STASSERT((argsCount == functionArgsCount &&
+                                 !std::is_same<function_args_tuple, std::tuple<arg_values>>::value &&
+                                 validate_pointer_value_types<function_args_tuple, args_tuple>(
+                                     polyfill::index_constant<std::min(functionArgsCount, argsCount) - 1>{})) ||
+                                    std::is_same<function_args_tuple, std::tuple<arg_values>>::value,
+                                "The number of arguments does not match");
+#endif
         }
 
         /*

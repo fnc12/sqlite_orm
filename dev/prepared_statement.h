@@ -136,7 +136,7 @@ namespace sqlite_orm {
             using set_type = S;
             using conditions_type = std::tuple<Wargs...>;
 
-            static_assert(is_set<S>::value, "update_all_t must have set or dynamic set as the first argument");
+            SQLITE_ORM_STASSERT(is_set<S>::value, "update_all_t must have set or dynamic set as the first argument");
 
             set_type set;
             conditions_type conditions;
@@ -382,6 +382,7 @@ namespace sqlite_orm {
      */
     template<class... Args>
     internal::insert_raw_t<Args...> insert(Args... args) {
+#ifndef SQLITE_ORM_CONFIG_DISABLE_STATIC_ASSERTIONS
         using args_tuple = std::tuple<Args...>;
         using internal::count_tuple;
         using internal::is_columns;
@@ -392,31 +393,32 @@ namespace sqlite_orm {
         using internal::is_values;
 
         constexpr int orArgsCount = count_tuple<args_tuple, is_insert_constraint>::value;
-        static_assert(orArgsCount < 2, "Raw insert must have only one OR... argument");
+        SQLITE_ORM_STASSERT(orArgsCount < 2, "Raw insert must have only one OR... argument");
 
         constexpr int intoArgsCount = count_tuple<args_tuple, is_into>::value;
-        static_assert(intoArgsCount != 0, "Raw insert must have into<T> argument");
-        static_assert(intoArgsCount < 2, "Raw insert must have only one into<T> argument");
+        SQLITE_ORM_STASSERT(intoArgsCount != 0, "Raw insert must have into<T> argument");
+        SQLITE_ORM_STASSERT(intoArgsCount < 2, "Raw insert must have only one into<T> argument");
 
         constexpr int columnsArgsCount = count_tuple<args_tuple, is_columns>::value;
-        static_assert(columnsArgsCount < 2, "Raw insert must have only one columns(...) argument");
+        SQLITE_ORM_STASSERT(columnsArgsCount < 2, "Raw insert must have only one columns(...) argument");
 
         constexpr int valuesArgsCount = count_tuple<args_tuple, is_values>::value;
-        static_assert(valuesArgsCount < 2, "Raw insert must have only one values(...) argument");
+        SQLITE_ORM_STASSERT(valuesArgsCount < 2, "Raw insert must have only one values(...) argument");
 
         constexpr int defaultValuesCount = count_tuple<args_tuple, internal::is_default_values>::value;
-        static_assert(defaultValuesCount < 2, "Raw insert must have only one default_values() argument");
+        SQLITE_ORM_STASSERT(defaultValuesCount < 2, "Raw insert must have only one default_values() argument");
 
         constexpr int selectsArgsCount = count_tuple<args_tuple, is_select>::value;
-        static_assert(selectsArgsCount < 2, "Raw insert must have only one select(...) argument");
+        SQLITE_ORM_STASSERT(selectsArgsCount < 2, "Raw insert must have only one select(...) argument");
 
         constexpr int upsertClausesCount = count_tuple<args_tuple, is_upsert_clause>::value;
-        static_assert(upsertClausesCount <= 2, "Raw insert can contain 2 instances of upsert clause maximum");
+        SQLITE_ORM_STASSERT(upsertClausesCount <= 2, "Raw insert can contain 2 instances of upsert clause maximum");
 
         constexpr int argsCount = int(std::tuple_size<args_tuple>::value);
-        static_assert(argsCount == intoArgsCount + columnsArgsCount + valuesArgsCount + defaultValuesCount +
-                                       selectsArgsCount + orArgsCount + upsertClausesCount,
-                      "Raw insert has invalid arguments");
+        SQLITE_ORM_STASSERT(argsCount == intoArgsCount + columnsArgsCount + valuesArgsCount + defaultValuesCount +
+                                             selectsArgsCount + orArgsCount + upsertClausesCount,
+                            "Raw insert has invalid arguments");
+#endif
 
         return {{std::forward<Args>(args)...}};
     }
@@ -454,6 +456,7 @@ namespace sqlite_orm {
      */
     template<class... Args>
     internal::replace_raw_t<Args...> replace(Args... args) {
+#ifndef SQLITE_ORM_CONFIG_DISABLE_STATIC_ASSERTIONS
         using args_tuple = std::tuple<Args...>;
         using internal::count_tuple;
         using internal::is_columns;
@@ -461,25 +464,26 @@ namespace sqlite_orm {
         using internal::is_values;
 
         constexpr int intoArgsCount = count_tuple<args_tuple, is_into>::value;
-        static_assert(intoArgsCount != 0, "Raw replace must have into<T> argument");
-        static_assert(intoArgsCount < 2, "Raw replace must have only one into<T> argument");
+        SQLITE_ORM_STASSERT(intoArgsCount != 0, "Raw replace must have into<T> argument");
+        SQLITE_ORM_STASSERT(intoArgsCount < 2, "Raw replace must have only one into<T> argument");
 
         constexpr int columnsArgsCount = count_tuple<args_tuple, is_columns>::value;
-        static_assert(columnsArgsCount < 2, "Raw replace must have only one columns(...) argument");
+        SQLITE_ORM_STASSERT(columnsArgsCount < 2, "Raw replace must have only one columns(...) argument");
 
         constexpr int valuesArgsCount = count_tuple<args_tuple, is_values>::value;
-        static_assert(valuesArgsCount < 2, "Raw replace must have only one values(...) argument");
+        SQLITE_ORM_STASSERT(valuesArgsCount < 2, "Raw replace must have only one values(...) argument");
 
         constexpr int defaultValuesCount = count_tuple<args_tuple, internal::is_default_values>::value;
-        static_assert(defaultValuesCount < 2, "Raw replace must have only one default_values() argument");
+        SQLITE_ORM_STASSERT(defaultValuesCount < 2, "Raw replace must have only one default_values() argument");
 
         constexpr int selectsArgsCount = count_tuple<args_tuple, internal::is_select>::value;
-        static_assert(selectsArgsCount < 2, "Raw replace must have only one select(...) argument");
+        SQLITE_ORM_STASSERT(selectsArgsCount < 2, "Raw replace must have only one select(...) argument");
 
         constexpr int argsCount = int(std::tuple_size<args_tuple>::value);
-        static_assert(argsCount ==
-                          intoArgsCount + columnsArgsCount + valuesArgsCount + defaultValuesCount + selectsArgsCount,
-                      "Raw replace has invalid arguments");
+        SQLITE_ORM_STASSERT(argsCount == intoArgsCount + columnsArgsCount + valuesArgsCount + defaultValuesCount +
+                                             selectsArgsCount,
+                            "Raw replace has invalid arguments");
+#endif
 
         return {{std::forward<Args>(args)...}};
     }
@@ -703,7 +707,8 @@ namespace sqlite_orm {
      */
     template<class S, class... Wargs>
     internal::update_all_t<S, Wargs...> update_all(S set, Wargs... wh) {
-        static_assert(internal::is_set<S>::value, "first argument in update_all can be either set or dynamic_set");
+        SQLITE_ORM_STASSERT(internal::is_set<S>::value,
+                            "first argument in update_all can be either set or dynamic_set");
         using args_tuple = std::tuple<Wargs...>;
         internal::validate_conditions<args_tuple>();
         args_tuple conditions{std::forward<Wargs>(wh)...};

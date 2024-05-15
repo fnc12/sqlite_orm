@@ -72,8 +72,9 @@ namespace sqlite_orm {
             // lookup ColAlias in the final column references
             using colalias_index =
                 find_tuple_type<typename cte_mapper_type::final_colrefs_tuple, alias_holder<ColAlias>>;
-            static_assert(colalias_index::value < std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
-                          "No such column mapped into the CTE.");
+            SQLITE_ORM_STASSERT(colalias_index::value <
+                                    std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
+                                "No such column mapped into the CTE.");
 
             return &aliased_field<
                 ColAlias,
@@ -108,8 +109,9 @@ namespace sqlite_orm {
             // lookup ColAlias in the final column references
             using colalias_index =
                 find_tuple_type<typename cte_mapper_type::final_colrefs_tuple, alias_holder<ColAlias>>;
-            static_assert(colalias_index::value < std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
-                          "No such column mapped into the CTE.");
+            SQLITE_ORM_STASSERT(colalias_index::value <
+                                    std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
+                                "No such column mapped into the CTE.");
 
             // note: we could "materialize" the alias to an `aliased_field<>::*` and use the regular `table_t<>::find_column_name()` mechanism;
             //       however we have the column index already.

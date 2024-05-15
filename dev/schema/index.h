@@ -40,9 +40,8 @@ namespace sqlite_orm {
     template<class T, class... Cols>
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
                                                                                                       Cols... cols) {
-        using cols_tuple = std::tuple<Cols...>;
-        static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
-                      "amount of where arguments can be 0 or 1");
+        SQLITE_ORM_STASSERT(internal::count_tuple<std::tuple<Cols...>, internal::is_where>::value <= 1,
+                            "amount of where arguments can be 0 or 1");
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
             return {std::move(name), false, std::make_tuple(internal::make_indexed_column(std::move(cols))...)});
     }
@@ -51,9 +50,8 @@ namespace sqlite_orm {
     internal::index_t<internal::table_type_of_t<typename std::tuple_element_t<0, std::tuple<Cols...>>>,
                       decltype(internal::make_indexed_column(std::declval<Cols>()))...>
     make_index(std::string name, Cols... cols) {
-        using cols_tuple = std::tuple<Cols...>;
-        static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
-                      "amount of where arguments can be 0 or 1");
+        SQLITE_ORM_STASSERT(internal::count_tuple<std::tuple<Cols...>, internal::is_where>::value <= 1,
+                            "amount of where arguments can be 0 or 1");
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
             return {std::move(name), false, std::make_tuple(internal::make_indexed_column(std::move(cols))...)});
     }
@@ -62,9 +60,8 @@ namespace sqlite_orm {
     internal::index_t<internal::table_type_of_t<typename std::tuple_element_t<0, std::tuple<Cols...>>>,
                       decltype(internal::make_indexed_column(std::declval<Cols>()))...>
     make_unique_index(std::string name, Cols... cols) {
-        using cols_tuple = std::tuple<Cols...>;
-        static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
-                      "amount of where arguments can be 0 or 1");
+        SQLITE_ORM_STASSERT(internal::count_tuple<std::tuple<Cols...>, internal::is_where>::value <= 1,
+                            "amount of where arguments can be 0 or 1");
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
             return {std::move(name), true, std::make_tuple(internal::make_indexed_column(std::move(cols))...)});
     }
