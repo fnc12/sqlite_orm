@@ -98,6 +98,7 @@ add_executable(unit_tests
     statement_serializer_tests/column_constraints/unindexed.cpp
     statement_serializer_tests/table_constraints/prefix.cpp
     statement_serializer_tests/table_constraints/foreign_key.cpp
+    statement_serializer_tests/table_constraints/tokenize.cpp
     statement_serializer_tests/bindables.cpp
     statement_serializer_tests/ast/upsert_clause.cpp
     statement_serializer_tests/ast/excluded.cpp
