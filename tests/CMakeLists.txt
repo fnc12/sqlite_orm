@@ -156,6 +156,9 @@ add_executable(unit_tests
     row_extractor.cpp
 )
 
+# only for testing build times
+target_compile_definitions(unit_tests PRIVATE SQLITE_ORM_CONFIG_DISABLE_STATIC_ASSERTIONS=1)
+
 if(SQLITE_ORM_OMITS_CODECVT)
     message(STATUS "SQLITE_ORM_OMITS_CODECVT is enabled")
     target_compile_definitions(unit_tests PRIVATE SQLITE_ORM_OMITS_CODECVT=1)
