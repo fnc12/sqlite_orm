@@ -9,6 +9,7 @@ add_executable(unit_tests
     static_tests/functional/static_if_tests.cpp
     static_tests/functional/mpl.cpp
     static_tests/functional/same_or_void.cpp
+    static_tests/functional/index_sequence_util.cpp
     static_tests/functional/tuple_conc.cpp
     static_tests/functional/tuple_filter.cpp
     static_tests/functional/tuple_traits.cpp
