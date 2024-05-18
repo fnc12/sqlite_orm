@@ -105,6 +105,7 @@ for:
       if "%platform%"=="x86" (set architecture=-A Win32)
       if "%appveyor_build_worker_image%"=="Visual Studio 2022" (set generator="Visual Studio 17 2022" %architecture%)
       if "%appveyor_build_worker_image%"=="Visual Studio 2017" (set generator="Visual Studio 15 2017" %architecture%)
+  # using custom vcpkg triplets for building and linking dynamic dependent libraries
   install:
     - |-
       cd C:\Tools\vcpkg
@@ -113,7 +114,7 @@ for:
       C:\Tools\vcpkg\bootstrap-vcpkg.bat -disableMetrics
       C:\Tools\vcpkg\vcpkg integrate install
       set VCPKG_DEFAULT_TRIPLET=%platform%-windows
-      vcpkg install sqlite3[core,dbstat,math,json1,fts5,soundex]
+      vcpkg install sqlite3[core,dbstat,math,json1,fts5,soundex] --overlay-triplets=vcpkg/triplets
       rem The Visual Studio 2017 build worker image comes with CMake 3.16 only, and sqlite_orm will build the Catch2 dependency from source
       if not "%appveyor_build_worker_image%"=="Visual Studio 2017" (vcpkg install catch2)
   before_build:
