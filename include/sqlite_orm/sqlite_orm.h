@@ -110,7 +110,11 @@ using std::nullptr_t;
 #define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
 #endif
 
-#if(__cplusplus >= 202002L)
+#if __cpp_pack_indexing >= 202311L
+#define SQLITE_ORM_PACK_INDEXING_SUPPORTED
+#endif
+
+#if __cplusplus >= 202002L
 #define SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
 #endif
 
@@ -1561,21 +1565,21 @@ namespace sqlite_orm {
 
 namespace sqlite_orm {
     namespace internal {
+#if defined(SQLITE_ORM_PACK_INDEXING_SUPPORTED)
         /**
-         *  Get the first value of an index_sequence.
+         *  Get the index value of an `index_sequence` at a specific position.
          */
-        template<size_t I, size_t... Idx>
-        SQLITE_ORM_CONSTEVAL size_t first_index_sequence_value(std::index_sequence<I, Idx...>) {
-            return I;
+        template<size_t Pos, size_t... Idx>
+        SQLITE_ORM_CONSTEVAL size_t index_sequence_value_at(std::index_sequence<Idx...>) {
+            return Idx...[Pos];
         }
-
-#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
+#elif defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
         /**
-         *  Get the value of an index_sequence at a specific position.
+         *  Get the index value of an `index_sequence` at a specific position.
          */
-        template<size_t... Idx>
-        SQLITE_ORM_CONSTEVAL size_t index_sequence_value(size_t pos, std::index_sequence<Idx...>) {
-            static_assert(sizeof...(Idx) > 0);
+        template<size_t Pos, size_t... Idx>
+        SQLITE_ORM_CONSTEVAL size_t index_sequence_value_at(std::index_sequence<Idx...>) {
+            static_assert(Pos < sizeof...(Idx));
 #ifdef SQLITE_ORM_CONSTEVAL_SUPPORTED
             size_t result;
 #else
@@ -1583,8 +1587,18 @@ namespace sqlite_orm {
 #endif
             size_t i = 0;
             // note: `(void)` cast silences warning 'expression result unused'
-            (void)((result = Idx, i++ == pos) || ...);
+            (void)((result = Idx, i++ == Pos) || ...);
             return result;
+        }
+#else
+        /**
+         *  Get the index value of an `index_sequence` at a specific position.
+         *  `Pos` must always be `0`.
+         */
+        template<size_t Pos, size_t I, size_t... Idx>
+        SQLITE_ORM_CONSTEVAL size_t index_sequence_value_at(std::index_sequence<I, Idx...>) {
+            static_assert(Pos == 0, "");
+            return I;
         }
 #endif
 
@@ -11528,7 +11542,7 @@ namespace sqlite_orm {
                                   using generated_op_index_sequence =
                                       filter_tuple_sequence_t<std::remove_const_t<decltype(column.constraints)>,
                                                               is_generated_always>;
-                                  constexpr size_t opIndex = first_index_sequence_value(generated_op_index_sequence{});
+                                  constexpr size_t opIndex = index_sequence_value_at<0>(generated_op_index_sequence{});
                                   result = &std::get<opIndex>(column.constraints).storage;
                               });
 #else
@@ -12194,7 +12208,7 @@ namespace sqlite_orm {
             // note: we could "materialize" the alias to an `aliased_field<>::*` and use the regular `table_t<>::find_column_name()` mechanism;
             //       however we have the column index already.
             // lookup column in table_t<>'s elements
-            constexpr size_t ColIdx = index_sequence_value(colalias_index::value, column_index_sequence{});
+            constexpr size_t ColIdx = index_sequence_value_at<colalias_index::value>(column_index_sequence{});
             auto& table = pick_table<Moniker>(dboObjects);
             return &std::get<ColIdx>(table.elements).name;
         }
