@@ -13773,6 +13773,7 @@ namespace sqlite_orm {
 
 // #include "ast/upsert_clause.h"
 
+#include <sqlite3.h>
 #if SQLITE_VERSION_NUMBER >= 3024000
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::forward, std::move
@@ -13811,13 +13812,18 @@ namespace sqlite_orm {
 
             actions_tuple actions;
         };
+#endif
 
         template<class T>
-        using is_upsert_clause = polyfill::is_specialization_of<T, upsert_clause>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_upsert_clause_v =
+#if SQLITE_VERSION_NUMBER >= 3024000
+            polyfill::is_specialization_of<T, upsert_clause>::value;
 #else
-        template<class T>
-        struct is_upsert_clause : polyfill::bool_constant<false> {};
+            false;
 #endif
+
+        template<class T>
+        using is_upsert_clause = polyfill::bool_constant<is_upsert_clause_v<T>>;
     }
 
 #if SQLITE_VERSION_NUMBER >= 3024000
@@ -13835,7 +13841,7 @@ namespace sqlite_orm {
      */
     template<class... Args>
     internal::conflict_target<Args...> on_conflict(Args... args) {
-        return {std::tuple<Args...>(std::forward<Args>(args)...)};
+        return {{std::forward<Args>(args)...}};
     }
 #endif
 }
@@ -22950,8 +22956,10 @@ namespace sqlite_orm {
         template<class T, class... Args>
         struct node_tuple<group_by_with_having<T, Args...>, void> : node_tuple_for<Args..., T> {};
 
+#if SQLITE_VERSION_NUMBER >= 3024000
         template<class Targets, class Actions>
         struct node_tuple<upsert_clause<Targets, Actions>, void> : node_tuple<Actions> {};
+#endif
 
         template<class... Args>
         struct node_tuple<set_t<Args...>, void> : node_tuple_for<Args...> {};

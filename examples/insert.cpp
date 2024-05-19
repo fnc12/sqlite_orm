@@ -110,6 +110,7 @@ int main(int, char**) {
         cout << storage.dump(employee) << endl;
     }
 
+#if SQLITE_VERSION_NUMBER >= 3024000
     //  INSERT INTO COMPANY(ID, NAME, AGE, ADDRESS, SALARY)
     //  VALUES (3, 'Sofia', 26, 'Madrid', 15000.0)
     //         (4, 'Doja', 26, 'LA', 25000.0)
@@ -127,6 +128,7 @@ int main(int, char**) {
                            c(&Employee::age) = excluded(&Employee::age),
                            c(&Employee::address) = excluded(&Employee::address),
                            c(&Employee::salary) = excluded(&Employee::salary))));
+#endif
 
     return 0;
 }
