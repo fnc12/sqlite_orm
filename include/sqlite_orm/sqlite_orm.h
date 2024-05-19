@@ -1935,6 +1935,13 @@ namespace sqlite_orm {
             value_type value;
         };
 
+        template<class T>
+        struct content_t {
+            using value_type = T;
+
+            value_type value;
+        };
+
         /**
          *  DEFAULT constraint class.
          *  T is a value type.
@@ -2339,6 +2346,16 @@ namespace sqlite_orm {
      */
     template<class T>
     internal::tokenize_t<T> tokenize(T value) {
+        return {std::move(value)};
+    }
+
+    /**
+     *  content='' table constraint builder function. Used in FTS virtual tables.
+     * 
+     *  https://www.sqlite.org/fts5.html#contentless_tables
+     */
+    template<class T>
+    internal::content_t<T> content(T value) {
         return {std::move(value)};
     }
 
@@ -11419,7 +11436,8 @@ namespace sqlite_orm {
                                                                               check_if_is_template<unique_t>,
                                                                               check_if_is_template<check_t>,
                                                                               check_if_is_template<prefix_t>,
-                                                                              check_if_is_template<tokenize_t>>,
+                                                                              check_if_is_template<tokenize_t>,
+                                                                              check_if_is_template<content_t>>,
                                                              T>;
 
 #ifdef SQLITE_ORM_WITH_CTE
@@ -19617,6 +19635,18 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T>
+        struct statement_serializer<content_t<T>, void> {
+            using statement_type = content_t<T>;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                std::stringstream ss;
+                ss << "content=" << serialize(statement.value, context);
+                return ss.str();
+            }
+        };
+
         template<>
         struct statement_serializer<collate_constraint_t, void> {
             using statement_type = collate_constraint_t;
@@ -19632,8 +19662,8 @@ namespace sqlite_orm {
             using statement_type = default_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
-                return static_cast<std::string>(c) + " (" + serialize(c.value, context) + ")";
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                return static_cast<std::string>(statement) + " (" + serialize(statement.value, context) + ")";
             }
         };
 
