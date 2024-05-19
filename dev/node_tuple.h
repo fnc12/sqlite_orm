@@ -62,8 +62,10 @@ namespace sqlite_orm {
         template<class T, class... Args>
         struct node_tuple<group_by_with_having<T, Args...>, void> : node_tuple_for<Args..., T> {};
 
+#if SQLITE_VERSION_NUMBER >= 3024000
         template<class Targets, class Actions>
         struct node_tuple<upsert_clause<Targets, Actions>, void> : node_tuple<Actions> {};
+#endif
 
         template<class... Args>
         struct node_tuple<set_t<Args...>, void> : node_tuple_for<Args...> {};
