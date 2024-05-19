@@ -145,7 +145,7 @@ for:
       git fetch origin tag 2024.04.26 && git checkout 2024.04.26
       popd
       $HOME/vcpkg/bootstrap-vcpkg.sh -disableMetrics
-      set VCPKG_DEFAULT_TRIPLET=$platform-linux-$configuration
+      export VCPKG_DEFAULT_TRIPLET=$platform-linux-$configuration
       $HOME/vcpkg/vcpkg integrate install --overlay-triplets=vcpkg/triplets
       vcpkg install sqlite3[core,dbstat,math,json1,fts5,soundex] catch2 --overlay-triplets=vcpkg/triplets
   before_build:
@@ -173,7 +173,7 @@ for:
     - |-
       git clone --depth 1 --branch 2024.04.26 https://github.com/microsoft/vcpkg.git $HOME/vcpkg
       $HOME/vcpkg/bootstrap-vcpkg.sh -disableMetrics
-      set VCPKG_DEFAULT_TRIPLET=$platform-osx-$configuration
+      export VCPKG_DEFAULT_TRIPLET=$platform-osx-$configuration
       $HOME/vcpkg/vcpkg integrate install --overlay-triplets=vcpkg/triplets
       vcpkg install sqlite3[core,dbstat,math,json1,fts5,soundex] catch2 --overlay-triplets=vcpkg/triplets
   before_build:
