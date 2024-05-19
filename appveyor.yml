@@ -113,7 +113,7 @@ for:
       cd %APPVEYOR_BUILD_FOLDER%
       C:\Tools\vcpkg\bootstrap-vcpkg.bat -disableMetrics
       C:\Tools\vcpkg\vcpkg integrate install
-      set VCPKG_DEFAULT_TRIPLET=%platform%-windows
+      set VCPKG_DEFAULT_TRIPLET=%platform%-windows-%configuration%
       vcpkg install sqlite3[core,dbstat,math,json1,fts5,soundex] --overlay-triplets=vcpkg/triplets
       rem The Visual Studio 2017 build worker image comes with CMake 3.16 only, and sqlite_orm will build the Catch2 dependency from source
       if not "%appveyor_build_worker_image%"=="Visual Studio 2017" (vcpkg install catch2)
@@ -121,7 +121,7 @@ for:
     - |-
       mkdir compile
       cd compile
-      cmake %SQLITE_ORM_CXX_STANDARD% -G %generator% -DCMAKE_TOOLCHAIN_FILE=C:/Tools/vcpkg/scripts/buildsystems/vcpkg.cmake ..
+      cmake %SQLITE_ORM_CXX_STANDARD% -G %generator% -DCMAKE_BUILD_TYPE=%configuration% -DCMAKE_TOOLCHAIN_FILE=C:/Tools/vcpkg/scripts/buildsystems/vcpkg.cmake ..
   # build examples, and run tests (ie make & make test)
   build_script:
     - |-
@@ -145,18 +145,19 @@ for:
       git fetch origin tag 2024.04.26 && git checkout 2024.04.26
       popd
       $HOME/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+      set VCPKG_DEFAULT_TRIPLET=$platform-linux-$configuration
       $HOME/vcpkg/vcpkg integrate install --overlay-triplets=vcpkg/triplets
       vcpkg install sqlite3[core,dbstat,math,json1,fts5,soundex] catch2 --overlay-triplets=vcpkg/triplets
   before_build:
     - |-
       mkdir compile
       cd compile
-      cmake $SQLITE_ORM_CXX_STANDARD $cmake_build_examples --toolchain $HOME/vcpkg/scripts/buildsystems/vcpkg.cmake ..
+      cmake $SQLITE_ORM_CXX_STANDARD $cmake_build_examples -DCMAKE_BUILD_TYPE=$configuration --toolchain $HOME/vcpkg/scripts/buildsystems/vcpkg.cmake ..
   # build examples, and run tests (ie make & make test)
   build_script:
     - |-
-      cmake --build . $cmake_build_parallel
-      ctest --verbose --output-on-failure
+      cmake --build . --config $configuration $cmake_build_parallel
+      ctest --verbose --output-on-failure --build-config $configuration
 -
   # macOS
   matrix:
@@ -172,15 +173,16 @@ for:
     - |-
       git clone --depth 1 --branch 2024.04.26 https://github.com/microsoft/vcpkg.git $HOME/vcpkg
       $HOME/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+      set VCPKG_DEFAULT_TRIPLET=$platform-osx-$configuration
       $HOME/vcpkg/vcpkg integrate install --overlay-triplets=vcpkg/triplets
       vcpkg install sqlite3[core,dbstat,math,json1,fts5,soundex] catch2 --overlay-triplets=vcpkg/triplets
   before_build:
     - |-
       mkdir compile
       cd compile
-      cmake $SQLITE_ORM_CXX_STANDARD --toolchain $HOME/vcpkg/scripts/buildsystems/vcpkg.cmake ..
+      cmake $SQLITE_ORM_CXX_STANDARD -DCMAKE_BUILD_TYPE=$configuration --toolchain $HOME/vcpkg/scripts/buildsystems/vcpkg.cmake ..
   # build examples, and run tests (ie make & make test)
   build_script:
     - |-
-      cmake --build . --parallel
-      ctest --verbose --output-on-failure
+      cmake --build . --config $configuration --parallel
+      ctest --verbose --output-on-failure --build-config $configuration
