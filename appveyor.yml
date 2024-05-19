@@ -38,7 +38,7 @@ environment:
     # Representative for C++14
     - job_name: Visual Studio 2017, x64, C++14
       appveyor_build_worker_image: Visual Studio 2017
-      platform: x64
+      platformtarget: x64
       SQLITE_ORM_CXX_STANDARD: ""
 
     - job_name: clang, C++17
@@ -74,17 +74,17 @@ environment:
 
     - job_name: Visual Studio 2022, x64, C++17
       appveyor_build_worker_image: Visual Studio 2022
-      platform: x64
+      platformtarget: x64
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
 
     - job_name: Visual Studio 2022, x64, C++20
       appveyor_build_worker_image: Visual Studio 2022
-      platform: x64
+      platformtarget: x64
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
 
     - job_name: Visual Studio 2022, x86, C++20
       appveyor_build_worker_image: Visual Studio 2022
-      platform: x86
+      platformtarget: x86
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
 
 matrix:
@@ -99,10 +99,10 @@ for:
       - appveyor_build_worker_image: Visual Studio 2022
   init:
     - |-
-      echo %appveyor_build_worker_image% - %platform% - %configuration%
+      echo %appveyor_build_worker_image% - %platformtarget% - %configuration%
       cmake --version
-      if "%platform%"=="x64" (set architecture=-A x64)
-      if "%platform%"=="x86" (set architecture=-A Win32)
+      if "%platformtarget%"=="x64" (set architecture=-A x64)
+      if "%platformtarget%"=="x86" (set architecture=-A Win32)
       if "%appveyor_build_worker_image%"=="Visual Studio 2022" (set generator="Visual Studio 17 2022" %architecture%)
       if "%appveyor_build_worker_image%"=="Visual Studio 2017" (set generator="Visual Studio 15 2017" %architecture%)
   # using custom vcpkg triplets for building and linking dynamic dependent libraries
@@ -113,7 +113,7 @@ for:
       cd %APPVEYOR_BUILD_FOLDER%
       C:\Tools\vcpkg\bootstrap-vcpkg.bat -disableMetrics
       C:\Tools\vcpkg\vcpkg integrate install
-      set VCPKG_DEFAULT_TRIPLET=%platform%-windows-%configuration%
+      set VCPKG_DEFAULT_TRIPLET=%platformtarget%-windows-%configuration%
       vcpkg install sqlite3[core,dbstat,math,json1,fts5,soundex] --overlay-triplets=vcpkg/triplets
       rem The Visual Studio 2017 build worker image comes with CMake 3.16 only, and sqlite_orm will build the Catch2 dependency from source
       if not "%appveyor_build_worker_image%"=="Visual Studio 2017" (vcpkg install catch2)
@@ -135,6 +135,7 @@ for:
       - appveyor_build_worker_image: Ubuntu
   init:
     - |-
+      platformtarget=$(uname -m); case $platformtarget in x86_64) platformtarget=x64;; amd64) platformtarget=x64;; esac; export platformtarget
       echo $appveyor_build_worker_image
       $CXX --version
       cmake --version
@@ -145,19 +146,19 @@ for:
       git fetch origin tag 2024.04.26 && git checkout 2024.04.26
       popd
       $HOME/vcpkg/bootstrap-vcpkg.sh -disableMetrics
-      export VCPKG_DEFAULT_TRIPLET=$platform-linux-$configuration
+      export VCPKG_DEFAULT_TRIPLET=$platformtarget-linux-$CONFIGURATION
       $HOME/vcpkg/vcpkg integrate install --overlay-triplets=vcpkg/triplets
       vcpkg install sqlite3[core,dbstat,math,json1,fts5,soundex] catch2 --overlay-triplets=vcpkg/triplets
   before_build:
     - |-
       mkdir compile
       cd compile
-      cmake $SQLITE_ORM_CXX_STANDARD $cmake_build_examples -DCMAKE_BUILD_TYPE=$configuration --toolchain $HOME/vcpkg/scripts/buildsystems/vcpkg.cmake ..
+      cmake $SQLITE_ORM_CXX_STANDARD $cmake_build_examples -DCMAKE_BUILD_TYPE=$CONFIGURATION --toolchain $HOME/vcpkg/scripts/buildsystems/vcpkg.cmake ..
   # build examples, and run tests (ie make & make test)
   build_script:
     - |-
-      cmake --build . --config $configuration $cmake_build_parallel
-      ctest --verbose --output-on-failure --build-config $configuration
+      cmake --build . --config $CONFIGURATION $cmake_build_parallel
+      ctest --verbose --output-on-failure --build-config $CONFIGURATION
 -
   # macOS
   matrix:
@@ -165,6 +166,7 @@ for:
       - appveyor_build_worker_image: macOS
   init:
     - |-
+      platformtarget=$(uname -m); case $platformtarget in x86_64) platformtarget=x64;; amd64) platformtarget=x64;; esac; export platformtarget
       echo $appveyor_build_worker_image
       $CXX --version
       cmake --version
@@ -173,16 +175,16 @@ for:
     - |-
       git clone --depth 1 --branch 2024.04.26 https://github.com/microsoft/vcpkg.git $HOME/vcpkg
       $HOME/vcpkg/bootstrap-vcpkg.sh -disableMetrics
-      export VCPKG_DEFAULT_TRIPLET=$platform-osx-$configuration
+      export VCPKG_DEFAULT_TRIPLET=$platformtarget-osx-$CONFIGURATION
       $HOME/vcpkg/vcpkg integrate install --overlay-triplets=vcpkg/triplets
       vcpkg install sqlite3[core,dbstat,math,json1,fts5,soundex] catch2 --overlay-triplets=vcpkg/triplets
   before_build:
     - |-
       mkdir compile
       cd compile
-      cmake $SQLITE_ORM_CXX_STANDARD -DCMAKE_BUILD_TYPE=$configuration --toolchain $HOME/vcpkg/scripts/buildsystems/vcpkg.cmake ..
+      cmake $SQLITE_ORM_CXX_STANDARD -DCMAKE_BUILD_TYPE=$CONFIGURATION --toolchain $HOME/vcpkg/scripts/buildsystems/vcpkg.cmake ..
   # build examples, and run tests (ie make & make test)
   build_script:
     - |-
-      cmake --build . --config $configuration --parallel
-      ctest --verbose --output-on-failure --build-config $configuration
+      cmake --build . --config $CONFIGURATION --parallel
+      ctest --verbose --output-on-failure --build-config $CONFIGURATION
