@@ -45,6 +45,14 @@ namespace sqlite_orm {
                 return this->get_pragma<std::vector<std::string>>("module_list");
             }
 
+            bool recursive_triggers() {
+                return bool(this->get_pragma<int>("recursive_triggers"));
+            }
+
+            void recursive_triggers(bool value) {
+                this->set_pragma("recursive_triggers", int(value));
+            }
+
             void busy_timeout(int value) {
                 this->set_pragma("busy_timeout", value);
             }
