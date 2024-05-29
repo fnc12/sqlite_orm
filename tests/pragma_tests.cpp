@@ -10,6 +10,16 @@ TEST_CASE("module_list") {
     std::ignore = storage.pragma.module_list();
 }
 
+TEST_CASE("recursive_triggers") {
+    auto filename = "recursive_triggers.sqlite";
+    ::remove(filename);
+    auto storage = make_storage(filename);
+    storage.open_forever();
+    storage.pragma.recursive_triggers(true);
+    const auto result = storage.pragma.recursive_triggers();
+    REQUIRE(result);
+}
+
 TEST_CASE("Journal mode") {
     auto filename = "journal_mode.sqlite";
     ::remove(filename);
