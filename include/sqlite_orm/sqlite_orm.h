@@ -10276,13 +10276,17 @@ namespace sqlite_orm {
     //  https://stackoverflow.com/questions/37617677/implementing-a-compile-time-static-if-logic-for-different-string-types-in-a-co
     namespace internal {
 
-        template<class R = void>
-        decltype(auto) empty_callable() {
-            static auto res = [](auto&&...) -> R {
+        // note: this is a class template accompanied with a variable template because older compilers (e.g. VC 2017)
+        // cannot handle a static lambda variable inside a template function
+        template<class R>
+        struct empty_callable_t {
+            template<class... Args>
+            R operator()(Args&&...) const {
                 return R();
-            };
-            return (res);
-        }
+            }
+        };
+        template<class R = void>
+        constexpr empty_callable_t<R> empty_callable{};
 
 #ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
         template<bool B, typename T, typename F>
@@ -10299,7 +10303,7 @@ namespace sqlite_orm {
             if constexpr(B) {
                 return std::forward<T>(trueFn);
             } else {
-                return empty_callable();
+                return empty_callable<>;
             }
         }
 
@@ -10327,7 +10331,7 @@ namespace sqlite_orm {
 
         template<bool B, typename T>
         decltype(auto) static_if(T&& trueFn) {
-            return static_if(std::integral_constant<bool, B>{}, std::forward<T>(trueFn), empty_callable());
+            return static_if(std::integral_constant<bool, B>{}, std::forward<T>(trueFn), empty_callable<>);
         }
 
         template<bool B, typename L, typename... Args>
@@ -11996,9 +12000,11 @@ namespace sqlite_orm {
         struct is_db_objects : std::false_type {};
 
         template<class... DBO>
-        struct is_db_objects<db_objects_tuple<DBO...>> : std::true_type {};
+        struct is_db_objects<std::tuple<DBO...>> : std::true_type {};
+        // note: cannot use `db_objects_tuple` alias template because older compilers have problems
+        // to match `const db_objects_tuple`.
         template<class... DBO>
-        struct is_db_objects<const db_objects_tuple<DBO...>> : std::true_type {};
+        struct is_db_objects<const std::tuple<DBO...>> : std::true_type {};
 
         /**
          *  `std::true_type` if given object is mapped, `std::false_type` otherwise.
@@ -12129,7 +12135,7 @@ namespace sqlite_orm {
                 [](const auto& dbObjects) -> const std::string& {
                     return pick_table<Lookup>(dbObjects).name;
                 },
-                empty_callable<std::string>())(dbObjects);
+                empty_callable<std::string>)(dbObjects);
         }
 
         /**
@@ -19749,7 +19755,7 @@ namespace sqlite_orm {
                    << streaming_non_generated_column_names(table) << ")"
                    << " VALUES ("
                    << streaming_field_values_excluding(check_if<is_generated_always>{},
-                                                       empty_callable<std::false_type>(),  //  don't exclude
+                                                       empty_callable<std::false_type>,  //  don't exclude
                                                        context,
                                                        get_ref(statement.object))
                    << ")";

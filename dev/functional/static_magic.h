@@ -11,13 +11,17 @@ namespace sqlite_orm {
     //  https://stackoverflow.com/questions/37617677/implementing-a-compile-time-static-if-logic-for-different-string-types-in-a-co
     namespace internal {
 
-        template<class R = void>
-        decltype(auto) empty_callable() {
-            static auto res = [](auto&&...) -> R {
+        // note: this is a class template accompanied with a variable template because older compilers (e.g. VC 2017)
+        // cannot handle a static lambda variable inside a template function
+        template<class R>
+        struct empty_callable_t {
+            template<class... Args>
+            R operator()(Args&&...) const {
                 return R();
-            };
-            return (res);
-        }
+            }
+        };
+        template<class R = void>
+        constexpr empty_callable_t<R> empty_callable{};
 
 #ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
         template<bool B, typename T, typename F>
@@ -34,7 +38,7 @@ namespace sqlite_orm {
             if constexpr(B) {
                 return std::forward<T>(trueFn);
             } else {
-                return empty_callable();
+                return empty_callable<>;
             }
         }
 
@@ -62,7 +66,7 @@ namespace sqlite_orm {
 
         template<bool B, typename T>
         decltype(auto) static_if(T&& trueFn) {
-            return static_if(std::integral_constant<bool, B>{}, std::forward<T>(trueFn), empty_callable());
+            return static_if(std::integral_constant<bool, B>{}, std::forward<T>(trueFn), empty_callable<>);
         }
 
         template<bool B, typename L, typename... Args>
