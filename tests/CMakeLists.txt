@@ -100,6 +100,7 @@ add_executable(unit_tests
     statement_serializer_tests/table_constraints/prefix.cpp
     statement_serializer_tests/table_constraints/foreign_key.cpp
     statement_serializer_tests/table_constraints/tokenize.cpp
+    statement_serializer_tests/table_constraints/content.cpp
     statement_serializer_tests/bindables.cpp
     statement_serializer_tests/ast/upsert_clause.cpp
     statement_serializer_tests/ast/excluded.cpp
@@ -181,6 +182,11 @@ if (MSVC)
             /wd4456
             # C4458: declaration of 'symbol' hides class member
             /wd4458)
+    endif()
+    if (CMAKE_CXX_FLAGS MATCHES "/D_UNICODE")
+        # explicitly set the entry point of the executable file,
+        # otherwise for some reason the linker will not pick up `wmain`, which is provided by the static Catch2 library
+        target_link_options(unit_tests PRIVATE "/ENTRY:wmainCRTStartup")
     endif()
 endif()
 

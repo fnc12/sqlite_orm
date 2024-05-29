@@ -156,6 +156,13 @@ namespace sqlite_orm {
             value_type value;
         };
 
+        template<class T>
+        struct content_t {
+            using value_type = T;
+
+            value_type value;
+        };
+
         /**
          *  DEFAULT constraint class.
          *  T is a value type.
@@ -560,6 +567,16 @@ namespace sqlite_orm {
      */
     template<class T>
     internal::tokenize_t<T> tokenize(T value) {
+        return {std::move(value)};
+    }
+
+    /**
+     *  content='' table constraint builder function. Used in FTS virtual tables.
+     * 
+     *  https://www.sqlite.org/fts5.html#contentless_tables
+     */
+    template<class T>
+    internal::content_t<T> content(T value) {
         return {std::move(value)};
     }
 

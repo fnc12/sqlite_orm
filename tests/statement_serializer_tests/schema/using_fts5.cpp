@@ -43,5 +43,10 @@ TEST_CASE("statement_serializer using_fts5") {
             expected = R"(USING FTS5("title", "body", tokenize = 'unicode61 remove_diacritics 1'))";
         }
     }
+    SECTION("content") {
+        auto node = using_fts5(make_column("title", &Post::title), make_column("body", &Post::body), content(""));
+        value = serialize(node, context);
+        expected = R"(USING FTS5("title", "body", content=''))";
+    }
     REQUIRE(value == expected);
 }

@@ -1935,6 +1935,13 @@ namespace sqlite_orm {
             value_type value;
         };
 
+        template<class T>
+        struct content_t {
+            using value_type = T;
+
+            value_type value;
+        };
+
         /**
          *  DEFAULT constraint class.
          *  T is a value type.
@@ -2339,6 +2346,16 @@ namespace sqlite_orm {
      */
     template<class T>
     internal::tokenize_t<T> tokenize(T value) {
+        return {std::move(value)};
+    }
+
+    /**
+     *  content='' table constraint builder function. Used in FTS virtual tables.
+     * 
+     *  https://www.sqlite.org/fts5.html#contentless_tables
+     */
+    template<class T>
+    internal::content_t<T> content(T value) {
         return {std::move(value)};
     }
 
@@ -11423,7 +11440,8 @@ namespace sqlite_orm {
                                                                               check_if_is_template<unique_t>,
                                                                               check_if_is_template<check_t>,
                                                                               check_if_is_template<prefix_t>,
-                                                                              check_if_is_template<tokenize_t>>,
+                                                                              check_if_is_template<tokenize_t>,
+                                                                              check_if_is_template<content_t>>,
                                                              T>;
 
 #ifdef SQLITE_ORM_WITH_CTE
@@ -13779,6 +13797,7 @@ namespace sqlite_orm {
 
 // #include "ast/upsert_clause.h"
 
+#include <sqlite3.h>
 #if SQLITE_VERSION_NUMBER >= 3024000
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::forward, std::move
@@ -13817,13 +13836,18 @@ namespace sqlite_orm {
 
             actions_tuple actions;
         };
+#endif
 
         template<class T>
-        using is_upsert_clause = polyfill::is_specialization_of<T, upsert_clause>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_upsert_clause_v =
+#if SQLITE_VERSION_NUMBER >= 3024000
+            polyfill::is_specialization_of<T, upsert_clause>::value;
 #else
-        template<class T>
-        struct is_upsert_clause : polyfill::bool_constant<false> {};
+            false;
 #endif
+
+        template<class T>
+        using is_upsert_clause = polyfill::bool_constant<is_upsert_clause_v<T>>;
     }
 
 #if SQLITE_VERSION_NUMBER >= 3024000
@@ -13841,7 +13865,7 @@ namespace sqlite_orm {
      */
     template<class... Args>
     internal::conflict_target<Args...> on_conflict(Args... args) {
-        return {std::tuple<Args...>(std::forward<Args>(args)...)};
+        return {{std::forward<Args>(args)...}};
     }
 #endif
 }
@@ -19623,6 +19647,18 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T>
+        struct statement_serializer<content_t<T>, void> {
+            using statement_type = content_t<T>;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                std::stringstream ss;
+                ss << "content=" << serialize(statement.value, context);
+                return ss.str();
+            }
+        };
+
         template<>
         struct statement_serializer<collate_constraint_t, void> {
             using statement_type = collate_constraint_t;
@@ -19638,8 +19674,8 @@ namespace sqlite_orm {
             using statement_type = default_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
-                return static_cast<std::string>(c) + " (" + serialize(c.value, context) + ")";
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                return static_cast<std::string>(statement) + " (" + serialize(statement.value, context) + ")";
             }
         };
 
@@ -22956,8 +22992,10 @@ namespace sqlite_orm {
         template<class T, class... Args>
         struct node_tuple<group_by_with_having<T, Args...>, void> : node_tuple_for<Args..., T> {};
 
+#if SQLITE_VERSION_NUMBER >= 3024000
         template<class Targets, class Actions>
         struct node_tuple<upsert_clause<Targets, Actions>, void> : node_tuple<Actions> {};
+#endif
 
         template<class... Args>
         struct node_tuple<set_t<Args...>, void> : node_tuple_for<Args...> {};
