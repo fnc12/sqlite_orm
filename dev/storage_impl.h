@@ -35,7 +35,7 @@ namespace sqlite_orm {
                 [](const auto& dbObjects) -> const std::string& {
                     return pick_table<Lookup>(dbObjects).name;
                 },
-                empty_callable<std::string>())(dbObjects);
+                empty_callable<std::string>)(dbObjects);
         }
 
         /**

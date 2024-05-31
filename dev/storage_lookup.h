@@ -33,9 +33,11 @@ namespace sqlite_orm {
         struct is_db_objects : std::false_type {};
 
         template<class... DBO>
-        struct is_db_objects<db_objects_tuple<DBO...>> : std::true_type {};
+        struct is_db_objects<std::tuple<DBO...>> : std::true_type {};
+        // note: cannot use `db_objects_tuple` alias template because older compilers have problems
+        // to match `const db_objects_tuple`.
         template<class... DBO>
-        struct is_db_objects<const db_objects_tuple<DBO...>> : std::true_type {};
+        struct is_db_objects<const std::tuple<DBO...>> : std::true_type {};
 
         /**
          *  `std::true_type` if given object is mapped, `std::false_type` otherwise.
