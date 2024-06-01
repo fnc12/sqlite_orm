@@ -1091,6 +1091,22 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T>
+        struct statement_serializer<table_content_t<T>, void> {
+            using statement_type = table_content_t<T>;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                using mapped_type = typename statement_type::mapped_type;
+
+                auto& table = pick_table<mapped_type>(context.db_objects);
+
+                std::stringstream ss;
+                ss << "content=" << streaming_identifier(table.name);
+                return ss.str();
+            }
+        };
+
         template<>
         struct statement_serializer<collate_constraint_t, void> {
             using statement_type = collate_constraint_t;

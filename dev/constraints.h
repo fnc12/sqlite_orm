@@ -163,6 +163,11 @@ namespace sqlite_orm {
             value_type value;
         };
 
+        template<class T>
+        struct table_content_t {
+            using mapped_type = T;
+        };
+
         /**
          *  DEFAULT constraint class.
          *  T is a value type.
@@ -578,6 +583,16 @@ namespace sqlite_orm {
     template<class T>
     internal::content_t<T> content(T value) {
         return {std::move(value)};
+    }
+
+    /**
+     *  content='table' table constraint builder function. Used in FTS virtual tables.
+     * 
+     *  https://www.sqlite.org/fts5.html#external_content_tables
+     */
+    template<class T>
+    internal::table_content_t<T> content() {
+        return {};
     }
 
     /**
