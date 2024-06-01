@@ -1942,6 +1942,11 @@ namespace sqlite_orm {
             value_type value;
         };
 
+        template<class T>
+        struct table_content_t {
+            using mapped_type = T;
+        };
+
         /**
          *  DEFAULT constraint class.
          *  T is a value type.
@@ -2357,6 +2362,16 @@ namespace sqlite_orm {
     template<class T>
     internal::content_t<T> content(T value) {
         return {std::move(value)};
+    }
+
+    /**
+     *  content='table' table constraint builder function. Used in FTS virtual tables.
+     * 
+     *  https://www.sqlite.org/fts5.html#external_content_tables
+     */
+    template<class T>
+    internal::table_content_t<T> content() {
+        return {};
     }
 
     /**
@@ -11441,7 +11456,8 @@ namespace sqlite_orm {
                                                                               check_if_is_template<check_t>,
                                                                               check_if_is_template<prefix_t>,
                                                                               check_if_is_template<tokenize_t>,
-                                                                              check_if_is_template<content_t>>,
+                                                                              check_if_is_template<content_t>,
+                                                                              check_if_is_template<table_content_t>>,
                                                              T>;
 
 #ifdef SQLITE_ORM_WITH_CTE
@@ -19663,6 +19679,22 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
                 ss << "content=" << serialize(statement.value, context);
+                return ss.str();
+            }
+        };
+
+        template<class T>
+        struct statement_serializer<table_content_t<T>, void> {
+            using statement_type = table_content_t<T>;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
+                using mapped_type = typename statement_type::mapped_type;
+
+                auto& table = pick_table<T>(context.db_objects);
+
+                std::stringstream ss;
+                ss << "content=" << streaming_identifier(table.name);
                 return ss.str();
             }
         };
