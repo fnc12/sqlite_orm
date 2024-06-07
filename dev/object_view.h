@@ -27,16 +27,16 @@ namespace sqlite_orm {
          *  All these functions are not right const cause all of them may open SQLite connections.
          */
         template<class T, class S, class... Args>
-        struct view_t {
+        struct object_view {
             using mapped_type = T;
             using storage_type = S;
-            using self = view_t<T, S, Args...>;
+            using self = object_view<T, S, Args...>;
 
             storage_type& storage;
             connection_ref connection;
             get_all_t<T, std::vector<T>, Args...> args;
 
-            view_t(storage_type& stor, decltype(connection) conn, Args&&... args_) :
+            object_view(storage_type& stor, decltype(connection) conn, Args&&... args_) :
                 storage(stor), connection(std::move(conn)), args{std::make_tuple(std::forward<Args>(args_)...)} {}
 
             size_t size() const {

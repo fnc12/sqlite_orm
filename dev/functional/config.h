@@ -63,3 +63,10 @@
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
 #define SQLITE_ORM_WITH_CTE
 #endif
+
+// note: PFR depends on `SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED` for field name determination
+#if(defined(SQLITE_ORM_AGGREGATE_BASES_SUPPORTED) && defined(SQLITE_ORM_CONSTEVAL_SUPPORTED) &&                        \
+    defined(SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED)) &&                                                          \
+    (__cpp_lib_byte >= 201603L && __cpp_lib_remove_cvref >= 201711L)
+#define SQLITE_ORM_WITH_VIEW
+#endif

@@ -4,7 +4,7 @@
  */
 #pragma once
 #include <type_traits>  //  std::is_same
-#include <sstream>
+#include <sstream>  // std::stringstream
 #include <functional>  //  std::reference_wrapper, std::cref
 #include <algorithm>  //  std::find_if, std::ranges::find
 

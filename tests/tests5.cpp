@@ -31,11 +31,11 @@ TEST_CASE("Iterate blob") {
     TestComparator testComparator;
     for(auto& obj: db.iterate<Test>()) {
         REQUIRE(testComparator(obj, v));
-    }  //  test that view_t and iterator_t compile
+    }  //  test that object_view and iterator_t compile
 
     for(const auto& obj: db.iterate<Test>()) {
         REQUIRE(testComparator(obj, v));
-    }  //  test that view_t and iterator_t compile
+    }  //  test that object_view and iterator_t compile
 
     {
         auto keysCount = db.count<Test>(where(c(&Test::key) == key));

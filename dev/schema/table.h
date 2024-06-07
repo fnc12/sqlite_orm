@@ -22,6 +22,7 @@
 #include "../alias_traits.h"
 #include "../constraints.h"
 #include "../table_info.h"
+#include "mapped_object.h"
 #include "column.h"
 
 namespace sqlite_orm {
@@ -54,14 +55,6 @@ namespace sqlite_orm {
         template<typename O>
         using mapped_object_type_for_t = polyfill::detected_or_t<O, cte_moniker_type_t, O>;
 #endif
-
-        struct basic_table {
-
-            /**
-             *  Table name.
-             */
-            std::string name;
-        };
 
         /**
          *  Table definition.

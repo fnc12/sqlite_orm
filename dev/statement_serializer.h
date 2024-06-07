@@ -49,6 +49,7 @@
 #include "table_type_of.h"
 #include "schema/index.h"
 #include "schema/table.h"
+#include "schema/view.h"
 #include "util.h"
 
 namespace sqlite_orm {
@@ -159,6 +160,26 @@ namespace sqlite_orm {
                 return ss.str();
             }
         };
+
+#ifdef SQLITE_ORM_WITH_VIEW
+        template<class O, class... Cs>
+        struct statement_serializer<view_t<O, Cs...>, void> {
+            using statement_type = view_t<O, Cs...>;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& statement, const Ctx& context) {
+                auto subContext = context;
+                subContext.fts5_columns = true;
+                std::stringstream ss;
+                ss << "CREATE VIEW " << streaming_identifier(statement.name) << " ("
+                   << streaming_expressions_tuple(statement.elements, subContext)
+                   << ")"
+                      " AS "
+                   << serialize(statement.select, context);
+                return ss.str();
+            }
+        };
+#endif
 
         template<>
         struct statement_serializer<current_time_t, void> {

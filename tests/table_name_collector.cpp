@@ -46,6 +46,22 @@ TEST_CASE("table name collector") {
             expected.emplace(table.name, "");
             iterate_ast(expression, collector);
         }
+        SECTION("asterisk") {
+            auto expression = asterisk<User>();
+            expected.emplace(table.name, "");
+            iterate_ast(expression, collector);
+        }
+        SECTION("object") {
+            auto expression = object<User>();
+            expected.emplace(table.name, "");
+            iterate_ast(expression, collector);
+        }
+        SECTION("aliased asterisk") {
+            using als = alias_z<User>;
+            auto expression = asterisk<als>();
+            expected.emplace(table.name, "z");
+            iterate_ast(expression, collector);
+        }
         REQUIRE(collector.table_names == expected);
     }
 

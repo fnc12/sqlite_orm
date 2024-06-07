@@ -40,7 +40,7 @@
 #include "table_info.h"
 #include "storage_impl.h"
 #include "journal_mode.h"
-#include "view.h"
+#include "object_view.h"
 #include "ast_iterator.h"
 #include "storage_base.h"
 #include "prepared_statement.h"
@@ -243,7 +243,7 @@ namespace sqlite_orm {
 
           public:
             template<class T, class... Args>
-            view_t<T, self, Args...> iterate(Args&&... args) {
+            object_view<T, self, Args...> iterate(Args&&... args) {
                 this->assert_mapped_type<T>();
 
                 auto con = this->get_connection();

@@ -74,7 +74,7 @@ namespace sqlite_orm {
             using object_type = table_type_of_t<ColRef>;
             using column_type = column_t<ColRef, empty_setter>;
 
-            return column_type{std::move(name), finalColRef, empty_setter{}};
+            return column_type{std::move(name), finalColRef, empty_setter{}, std::tuple<>{}};
         }
 
         /**

@@ -3,9 +3,13 @@
 #include <sqlite3.h>
 #include <type_traits>  //  std::is_member_object_pointer
 #include <utility>  //  std::move
+#ifdef SQLITE_ORM_WITH_VIEW
+#include <cstddef>  //  std::byte
+#endif
 
 #include "functional/static_magic.h"
 #include "member_traits/member_traits.h"
+#include "type_traits.h"
 #include "table_reference.h"
 #include "row_extractor.h"
 #include "schema/column.h"
@@ -49,12 +53,26 @@ namespace sqlite_orm {
                         (object.*column.setter)(std::move(value));
                     })(column);
             }
+
+#ifdef SQLITE_ORM_WITH_VIEW
+            template<class C>
+                requires(is_column_pointer_v<C>)
+            void operator()(const column_field<C, empty_setter>& column) {
+                using field_type = field_type_t<column_field<C, empty_setter>>;
+                const auto rowExtractor = row_value_extractor<field_type>();
+                auto value = rowExtractor.extract(this->stmt, ++this->columnIndex);
+                // calculate absolute address of member from relative address
+                field_type* field = reinterpret_cast<field_type*>(reinterpret_cast<std::byte*>(&object) +
+                                                                  reinterpret_cast<std::byte*>(column.member_pointer));
+                *field = std::move(value);
+            }
+#endif
         };
 
         /**
          *  Specialization for a table reference.
          *  
-         *  This plays together with `column_result_of_t`, which returns `object_t<O>` as `table_referenece<O>`
+         *  This plays together with `column_result_of_t`, which returns `object_t<O>` as `table_reference<O>`
          */
         template<class O, class DBOs>
         struct struct_extractor<table_reference<O>, DBOs> {
