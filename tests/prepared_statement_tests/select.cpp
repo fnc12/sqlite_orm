@@ -312,10 +312,7 @@ TEST_CASE("Prepared select") {
         }
         SECTION("execute") {
             auto rows = storage.execute(statement);
-            std::vector<User> expected;
-            expected.push_back(User{1, "Team BS"});
-            expected.push_back(User{2, "Shy'm"});
-            expected.push_back(User{3, "Maître Gims"});
+            std::vector<User> expected{{1, "Team BS"}, {2, "Shy'm"}, {3, "Maître Gims"}};
             REQUIRE_THAT(rows, UnorderedEquals(expected));
         }
     }
@@ -362,12 +359,30 @@ TEST_CASE("Prepared select") {
         }
         SECTION("execute") {
             auto rows = storage.execute(statement);
-            std::vector<Z> expected;
-            expected.push_back(Z{1, "Team BS"});
-            expected.push_back(Z{2, "Shy'm"});
-            expected.push_back(Z{3, "Maître Gims"});
+            std::vector<Z> expected{{1, "Team BS"}, {2, "Shy'm"}, {3, "Maître Gims"}};
             REQUIRE_THAT(rows, UnorderedEquals(expected));
         }
+    }
+    SECTION("non-aggregate struct") {
+        // testing `struct_extractor` with a non-aggregate type,
+        // which is expected to extract sql result values in the order of arguments.
+        // This was not the case with msvc, which would extract the name before the id.
+
+        struct Z {
+            decltype(User::id) id = 0;
+            decltype(User::name) name;
+
+            Z(decltype(id) id, decltype(name) name) : id{id}, name{std::move(name)} {}
+
+            bool operator==(const Z& z) const {
+                return this->id == z.id && this->name == z.name;
+            }
+        };
+        constexpr auto z_struct = struct_<Z>(&User::id, &User::name);
+        auto statement = storage.prepare(select(z_struct));
+        auto rows = storage.execute(statement);
+        std::vector<Z> expected{{1, "Team BS"}, {2, "Shy'm"}, {3, "Maître Gims"}};
+        REQUIRE_THAT(rows, UnorderedEquals(expected));
     }
     SECTION("multi struct") {
         using Z = User;  // for the unit test it is fine to just reuse `User` as an unmapped struct
