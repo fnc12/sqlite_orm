@@ -17106,6 +17106,27 @@ namespace sqlite_orm {
                         std::bind(&storage_base::rollback, this)};
             }
 
+            transaction_guard_t deferred_transaction_guard() {
+                this->begin_deferred_transaction();
+                return {this->get_connection(),
+                        std::bind(&storage_base::commit, this),
+                        std::bind(&storage_base::rollback, this)};
+            }
+
+            transaction_guard_t immediate_transaction_guard() {
+                this->begin_immediate_transaction();
+                return {this->get_connection(),
+                        std::bind(&storage_base::commit, this),
+                        std::bind(&storage_base::rollback, this)};
+            }
+
+            transaction_guard_t exclusive_transaction_guard() {
+                this->begin_exclusive_transaction();
+                return {this->get_connection(),
+                        std::bind(&storage_base::commit, this),
+                        std::bind(&storage_base::rollback, this)};
+            }
+
             void drop_index(const std::string& indexName) {
                 std::stringstream ss;
                 ss << "DROP INDEX " << quote_identifier(indexName) << std::flush;
