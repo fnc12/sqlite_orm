@@ -1,6 +1,6 @@
 #pragma once
 
-#include <type_traits>  //  std::enable_if
+#include <type_traits>  //  std::enable_if, std::is_convertible
 #include <utility>  // std::move
 
 #include "functional/cxx_core_features.h"
@@ -50,9 +50,9 @@ namespace sqlite_orm {
      *  struct MyType : BaseType { ... };
      *  storage.select(column<MyType>(&BaseType::id));
      */
-    template<class Object, class F, class O, internal::satisfies_not<internal::is_recordset_alias, Object> = true>
-    constexpr internal::column_pointer<Object, F O::*> column(F O::*field) {
-        static_assert(internal::is_field_of_v<F O::*, Object>, "Column must be from derived class");
+    template<class O, class Base, class F, internal::satisfies_not<internal::is_recordset_alias, O> = true>
+    constexpr internal::column_pointer<O, F Base::*> column(F Base::*field) {
+        static_assert(std::is_convertible<F Base::*, F O::*>::value, "Field must be from derived class");
         return {field};
     }
 
