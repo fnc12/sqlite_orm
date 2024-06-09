@@ -1,6 +1,6 @@
 #pragma once
 
-#include <type_traits>  //  std::enable_if, std::is_same, std::is_empty
+#include <type_traits>  //  std::enable_if, std::is_same, std::is_empty, std::is_aggregate
 #if __cpp_lib_unwrap_ref >= 201811L
 #include <utility>  //  std::reference_wrapper
 #else
@@ -24,6 +24,14 @@ namespace sqlite_orm {
 
         template<class T>
         using value_unref_type_t = typename value_unref_type<T>::type;
+
+        template<class T>
+        using is_eval_order_garanteed =
+#if __cpp_lib_is_aggregate >= 201703L
+            std::is_aggregate<T>;
+#else
+            std::is_pod<T>;
+#endif
 
         // enable_if for types
         template<template<typename...> class Op, class... Args>

@@ -21,12 +21,14 @@
 #include "functional/cxx_universal.h"
 #include "functional/cxx_functional_polyfill.h"
 #include "functional/static_magic.h"
+#include "tuple_helper/tuple_transformer.h"
 #include "column_result_proxy.h"
 #include "arithmetic_tag.h"
 #include "pointer_value.h"
 #include "journal_mode.h"
 #include "error_code.h"
 #include "is_std_ptr.h"
+#include "type_traits.h"
 
 namespace sqlite_orm {
 
@@ -510,15 +512,37 @@ namespace sqlite_orm {
 
             O extract(const char* columnText) const = delete;
 
-            // note: expects to be called only from the top level, and therefore discards the index
+            // note: expects to be called only from the top level, and therefore discards the index;
+            // note: brace-init-list initialization guarantees order of evaluation, but only for aggregates and variadic constructors it seems.
+            //       see unit test tests/prepared_statement_tests/select.cpp/TEST_CASE("Prepared select")/SECTION("non-aggregate struct")
+            template<class Ox = O, satisfies<is_eval_order_garanteed, Ox> = true>
             O extract(sqlite3_stmt* stmt, int&& /*nextColumnIndex*/ = 0) const {
                 int columnIndex = -1;
                 return O{make_row_extractor<Args>(this->db_objects).extract(stmt, ++columnIndex)...};
             }
 
+            template<class Ox = O, satisfies_not<is_eval_order_garanteed, Ox> = true>
+            O extract(sqlite3_stmt* stmt, int&& /*nextColumnIndex*/ = 0) const {
+                int columnIndex = -1;
+                // note: brace-init-list initialization guarantees order of evaluation, but only for aggregates and variadic constructors it seems.
+                std::tuple<Args...> t{make_row_extractor<Args>(this->db_objects).extract(stmt, ++columnIndex)...};
+                return create_from_tuple<O>(std::move(t), std::index_sequence_for<Args...>{});
+            }
+
+            // note: brace-init-list initialization guarantees order of evaluation, but only for aggregates and variadic constructors it seems.
+            //       see unit test tests/prepared_statement_tests/select.cpp/TEST_CASE("Prepared select")/SECTION("non-aggregate struct")
+            template<class Ox = O, satisfies<is_eval_order_garanteed, Ox> = true>
             O extract(sqlite3_stmt* stmt, int& columnIndex) const {
                 --columnIndex;
                 return O{make_row_extractor<Args>(this->db_objects).extract(stmt, ++columnIndex)...};
+            }
+
+            template<class Ox = O, satisfies_not<is_eval_order_garanteed, Ox> = true>
+            O extract(sqlite3_stmt* stmt, int& columnIndex) const {
+                --columnIndex;
+                // note: brace-init-list initialization guarantees order of evaluation, but only for aggregates and variadic constructors it seems.
+                std::tuple<Args...> t{make_row_extractor<Args>(this->db_objects).extract(stmt, ++columnIndex)...};
+                return create_from_tuple<O>(std::move(t), std::index_sequence_for<Args...>{});
             }
 
             O extract(sqlite3_value* value) const = delete;
