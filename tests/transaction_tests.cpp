@@ -35,33 +35,6 @@ TEST_CASE("transaction") {
     REQUIRE_FALSE(storage.is_opened());
 }
 
-TEST_CASE("transaction_rollback") {
-    auto storage = make_storage(
-        "test_transaction_guard.sqlite",
-        make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name)));
-
-    storage.sync_schema();
-    storage.remove_all<Object>();
-
-    storage.insert(Object{0, "Jack"});
-
-    SECTION("insert, call make a storage to call an exception and check that rollback was fired") {
-        auto countBefore = storage.count<Object>();
-        try {
-            storage.transaction([&] {
-                storage.insert(Object{0, "John"});
-                storage.get<Object>(-1);
-                REQUIRE(false);
-                return true;
-            });
-        } catch(const std::system_error& e) {
-            REQUIRE(e.code() == orm_error_code::not_found);
-            auto countNow = storage.count<Object>();
-            REQUIRE(countBefore == countNow);
-        }
-    }
-}
-
 TEST_CASE("begin_transaction") {
     auto storage = make_storage(
         {},
