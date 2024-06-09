@@ -22,6 +22,14 @@ TEST_CASE("builtin tables") {
 
         STATIC_REQUIRE(std::is_same_v<decltype(masterRows), decltype(schemaRows2)>);
         REQUIRE_THAT(schemaRows2, Equals(masterRows));
+
+#if __cpp_lib_containers_ranges >= 202202L
+        std::vector<sqlite_master> schemaRows3{std::from_range, storage.iterate<schema>()};
+#else
+        auto view = storage.iterate<schema>();
+        std::vector<sqlite_master> schemaRows3{view.begin(), view.end()};
+#endif
+        REQUIRE_THAT(schemaRows2, Equals(masterRows));
 #endif
     }
 

@@ -21582,6 +21582,13 @@ namespace sqlite_orm {
                 return {*this, std::move(con), std::forward<Args>(args)...};
             }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            template<orm_refers_to_table auto table, class... Args>
+            auto iterate(Args&&... args) {
+                return this->iterate<auto_decay_table_ref_t<table>>(std::forward<Args>(args)...);
+            }
+#endif
+
             /**
              * Delete from routine.
              * O is an object's type. Must be specified explicitly.
