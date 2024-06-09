@@ -103,8 +103,7 @@ TEST_CASE("Transaction guard") {
     struct ExceptionMatcher : Catch::Matchers::MatcherGenericBase {
         std::error_code errorCode;
 
-        ExceptionMatcher(std::error_code errorCode) :
-            errorCode(std::move(errorCode)) {}
+        ExceptionMatcher(std::error_code errorCode) : errorCode(std::move(errorCode)) {}
 
         bool match(const std::system_error& systemError) const {
             return systemError.code() == this->errorCode;
@@ -113,7 +112,8 @@ TEST_CASE("Transaction guard") {
         std::string describe() const override {
             std::stringstream ss;
             const std::string message = get_orm_error_category().message(this->errorCode.value());
-            ss << "Exception with code: " << message;;
+            ss << "Exception with code: " << message;
+            ;
             return ss.str();
         }
     };
