@@ -46,7 +46,7 @@ namespace sqlite_orm {
             }
 
             size_t size() const {
-                return this->storage->template count<T>();
+                return this->storage.template count<T>();
             }
 
             bool empty() const {
