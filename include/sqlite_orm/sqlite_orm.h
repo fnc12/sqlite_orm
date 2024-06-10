@@ -13468,9 +13468,7 @@ namespace sqlite_orm {
 // #include "view.h"
 
 #include <sqlite3.h>
-#include <string>  //  std::string
 #include <utility>  //  std::forward, std::move
-#include <tuple>  //  std::tuple, std::make_tuple
 
 // #include "row_extractor.h"
 
@@ -13479,6 +13477,7 @@ namespace sqlite_orm {
 // #include "iterator.h"
 
 #include <sqlite3.h>
+#include <cassert>  //  assert
 #include <memory>  //  std::shared_ptr, std::make_shared
 #include <utility>  //  std::move
 #include <iterator>  //  std::input_iterator_tag
@@ -13585,23 +13584,25 @@ namespace sqlite_orm {
 // #include "util.h"
 
 namespace sqlite_orm {
-
     namespace internal {
 
-        template<class V>
+        template<class O, class DBOs>
         struct iterator_t {
-            using view_type = V;
-            using value_type = typename view_type::mapped_type;
+            using value_type = O;
+            using db_objects_type = DBOs;
 
-          protected:
+          private:
+            /**
+                pointer to the view's db objects member variable.
+                only null for the default constructed iterator.
+             */
+            const db_objects_type** db_objects = nullptr;
+
             /**
              *  shared_ptr is used over unique_ptr here
              *  so that the iterator can be copyable.
              */
             std::shared_ptr<sqlite3_stmt> stmt;
-
-            // only null for the default constructed iterator
-            view_type* view = nullptr;
 
             /**
              *  shared_ptr is used over unique_ptr here
@@ -13609,21 +13610,23 @@ namespace sqlite_orm {
              */
             std::shared_ptr<value_type> current;
 
-            void extract_value() {
-                auto& dbObjects = obtain_db_objects(this->view->storage);
+            void extract_object() {
                 this->current = std::make_shared<value_type>();
                 object_from_column_builder<value_type> builder{*this->current, this->stmt.get()};
-                pick_table<value_type>(dbObjects).for_each_column(builder);
+                assert(*this->db_objects);
+                pick_table<value_type>(**this->db_objects).for_each_column(builder);
+            }
+
+            void step() {
+                perform_step(this->stmt.get(), std::bind(&iterator_t::extract_object, this));
+                if(!this->current) {
+                    this->stmt.reset();
+                }
             }
 
             void next() {
                 this->current.reset();
-                if(sqlite3_stmt* stmt = this->stmt.get()) {
-                    perform_step(stmt, std::bind(&iterator_t::extract_value, this));
-                    if(!this->current) {
-                        this->stmt.reset();
-                    }
-                }
+                this->step();
             }
 
           public:
@@ -13634,12 +13637,13 @@ namespace sqlite_orm {
 
             iterator_t() = default;
 
-            iterator_t(statement_finalizer stmt_, view_type& view_) : stmt{std::move(stmt_)}, view{&view_} {
-                next();
+            iterator_t(const db_objects_type*& dbObjects, statement_finalizer stmt) :
+                db_objects{&dbObjects}, stmt{std::move(stmt)} {
+                this->step();
             }
 
             value_type& operator*() const {
-                if(!this->stmt || !this->current) {
+                if(!this->stmt) {
                     throw std::system_error{orm_error_code::trying_to_dereference_null_iterator};
                 }
                 return *this->current;
@@ -13649,13 +13653,15 @@ namespace sqlite_orm {
                 return &(this->operator*());
             }
 
-            iterator_t<V>& operator++() {
+            iterator_t& operator++() {
                 next();
                 return *this;
             }
 
-            void operator++(int) {
+            iterator_t operator++(int) {
+                auto tmp = *this;
                 this->operator++();
+                return tmp;
             }
 
             friend bool operator==(const iterator_t& lhs, const iterator_t& rhs) {
@@ -15659,35 +15665,43 @@ namespace sqlite_orm {
         struct view_t {
             using mapped_type = T;
             using storage_type = S;
-            using self = view_t<T, S, Args...>;
+            using db_objects_type = typename S::db_objects_type;
 
             storage_type& storage;
+            // Note: This is deliberately a pointer, so that an iterator's reference to this pointer is null if the view goes out of scope,
+            // and no dangling reference is accessed if an iterator accidentally outlives the view [lifetime]
+            const db_objects_type* db_objects;
             connection_ref connection;
-            get_all_t<T, std::vector<T>, Args...> args;
+            get_all_t<T, void, Args...> expression;
 
-            view_t(storage_type& stor, decltype(connection) conn, Args&&... args_) :
-                storage(stor), connection(std::move(conn)), args{std::make_tuple(std::forward<Args>(args_)...)} {}
+            view_t(storage_type& storage, connection_ref conn, Args&&... args) :
+                storage(storage), db_objects(&obtain_db_objects(storage)), connection(std::move(conn)),
+                expression{std::forward<Args>(args)...} {}
+
+            ~view_t() {
+                this->db_objects = nullptr;
+            }
 
             size_t size() const {
-                return this->storage.template count<T>();
+                return this->storage->template count<T>();
             }
 
             bool empty() const {
                 return !this->size();
             }
 
-            iterator_t<self> begin() {
-                using context_t = serializer_context<typename storage_type::db_objects_type>;
-                context_t context{obtain_db_objects(this->storage)};
+            iterator_t<T, db_objects_type> begin() {
+                using context_t = serializer_context<db_objects_type>;
+                context_t context{*this->db_objects};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
 
-                statement_finalizer stmt{prepare_stmt(this->connection.get(), serialize(this->args, context))};
-                iterate_ast(this->args.conditions, conditional_binder{stmt.get()});
-                return {std::move(stmt), *this};
+                statement_finalizer stmt{prepare_stmt(this->connection.get(), serialize(this->expression, context))};
+                iterate_ast(this->expression.conditions, conditional_binder{stmt.get()});
+                return {this->db_objects, std::move(stmt)};
             }
 
-            iterator_t<self> end() {
+            iterator_t<T, db_objects_type> end() {
                 return {};
             }
         };
