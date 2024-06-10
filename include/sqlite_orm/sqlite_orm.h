@@ -13479,8 +13479,7 @@ namespace sqlite_orm {
 // #include "iterator.h"
 
 #include <sqlite3.h>
-#include <memory>  //  std::shared_ptr, std::unique_ptr, std::make_shared
-#include <type_traits>  //  std::decay
+#include <memory>  //  std::shared_ptr, std::make_shared
 #include <utility>  //  std::move
 #include <iterator>  //  std::input_iterator_tag
 #include <system_error>  //  std::system_error
@@ -13633,7 +13632,7 @@ namespace sqlite_orm {
             using reference = value_type&;
             using iterator_category = std::input_iterator_tag;
 
-            iterator_t(){};
+            iterator_t() = default;
 
             iterator_t(statement_finalizer stmt_, view_type& view_) : stmt{std::move(stmt_)}, view{&view_} {
                 next();
@@ -13659,13 +13658,15 @@ namespace sqlite_orm {
                 this->operator++();
             }
 
-            bool operator==(const iterator_t& other) const {
-                return this->current == other.current;
+            friend bool operator==(const iterator_t& lhs, const iterator_t& rhs) {
+                return lhs.current == rhs.current;
             }
 
-            bool operator!=(const iterator_t& other) const {
-                return !(*this == other);
+#ifndef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+            friend bool operator!=(const iterator_t& lhs, const iterator_t& rhs) {
+                return !(lhs == rhs);
             }
+#endif
         };
     }
 }
