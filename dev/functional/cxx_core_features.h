@@ -41,12 +41,20 @@
 #define SQLITE_ORM_CONSTEXPR_LAMBDAS_SUPPORTED
 #endif
 
+#if __cpp_range_based_for >= 201603L
+#define SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED
+#endif
+
 #if __cpp_if_constexpr >= 201606L
 #define SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
 #endif
 
 #if __cpp_inline_variables >= 201606L
 #define SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
+#endif
+
+#if __cpp_structured_bindings >= 201606L
+#define SQLITE_ORM_STRUCTURED_BINDINGS_SUPPORTED
 #endif
 
 #if __cpp_generic_lambdas >= 201707L

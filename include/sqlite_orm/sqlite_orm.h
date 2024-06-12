@@ -69,12 +69,20 @@ using std::nullptr_t;
 #define SQLITE_ORM_CONSTEXPR_LAMBDAS_SUPPORTED
 #endif
 
+#if __cpp_range_based_for >= 201603L
+#define SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED
+#endif
+
 #if __cpp_if_constexpr >= 201606L
 #define SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
 #endif
 
 #if __cpp_inline_variables >= 201606L
 #define SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
+#endif
+
+#if __cpp_structured_bindings >= 201606L
+#define SQLITE_ORM_STRUCTURED_BINDINGS_SUPPORTED
 #endif
 
 #if __cpp_generic_lambdas >= 201707L
@@ -233,6 +241,22 @@ using std::nullptr_t;
 
 #if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && __cpp_lib_concepts >= 202002L
 #define SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#endif
+
+#if __cpp_lib_ranges >= 201911L
+#define SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#endif
+
+// C++20 or later (unfortunately there's no feature test macro).
+// Stupidly, clang says C++20, but `std::default_sentinel_t` was only implemented in libc++ 13 and libstd++-v3 10
+// (the latter is used on Linux).
+// gcc got it right and reports C++20 only starting with v10.
+// The check here doesn't care and checks the library versions in use.
+//
+// Another way of detection might be the feature-test macro __cpp_lib_concepts
+#if(__cplusplus >= 202002L) &&                                                                                         \
+    ((!_LIBCPP_VERSION || _LIBCPP_VERSION >= 13000) && (!_GLIBCXX_RELEASE || _GLIBCXX_RELEASE >= 10))
+#define SQLITE_ORM_STL_HAS_DEFAULT_SENTINEL
 #endif
 
 #if(defined(SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED) && defined(SQLITE_ORM_INLINE_VARIABLES_SUPPORTED) &&         \
@@ -2618,7 +2642,7 @@ namespace sqlite_orm {
             // gcc got it right and reports C++20 only starting with v10.
             // The check here doesn't care and checks the library versions in use.
             //
-            // Another way of detection would be the constrained algorithms feature macro __cpp_lib_ranges
+            // Another way of detection would be the constrained algorithms feature-test macro __cpp_lib_ranges
 #if(__cplusplus >= 202002L) &&                                                                                         \
     ((!_LIBCPP_VERSION || _LIBCPP_VERSION >= 13000) && (!_GLIBCXX_RELEASE || _GLIBCXX_RELEASE >= 10))
             using std::identity;
@@ -10407,7 +10431,7 @@ namespace sqlite_orm {
         struct column_result_proxy<P, match_if<is_table_reference, P>> : decay_table_ref<P> {};
 
         /*
-         *  Unwrap `structure`
+         *  Pass through `structure`
          */
         template<class P>
         struct column_result_proxy<P, match_specialization_of<P, structure>> : P {};
@@ -12164,9 +12188,16 @@ namespace sqlite_orm {
             return std::get<table_type>(dbObjects);
         }
 
+        /**
+         *  Return passed in DBOs.
+         */
+        template<class DBOs, class E, satisfies<is_db_objects, DBOs> = true>
+        decltype(auto) db_objects_for_expression(DBOs& dbObjects, const E&) {
+            return dbObjects;
+        }
+
         template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs> = true>
         decltype(auto) lookup_table_name(const DBOs& dbObjects);
-
     }
 }
 
@@ -13161,7 +13192,15 @@ namespace sqlite_orm {
          *  SFINAE - sfinae argument
          */
         template<class DBOs, class T, class SFINAE = void>
-        struct column_result_t;
+        struct column_result_t {
+#ifdef __FUNCTION__
+            // produce an error message that reveals `T` and `DBOs`
+            static constexpr bool reveal() {
+                static_assert(polyfill::always_false_v<T>, "T not found in DBOs - " __FUNCTION__);
+            }
+            static constexpr bool trigger = reveal();
+#endif
+        };
 
         template<class DBOs, class T>
         using column_result_of_t = typename column_result_t<DBOs, T>::type;
@@ -13472,8 +13511,6 @@ namespace sqlite_orm {
 
 // #include "row_extractor.h"
 
-// #include "error_code.h"
-
 // #include "iterator.h"
 
 #include <sqlite3.h>
@@ -13485,7 +13522,7 @@ namespace sqlite_orm {
 #include <functional>  //  std::bind
 
 // #include "functional/cxx_universal.h"
-
+//  ::ptrdiff_t
 // #include "statement_finalizer.h"
 
 // #include "error_code.h"
@@ -13586,6 +13623,9 @@ namespace sqlite_orm {
 namespace sqlite_orm {
     namespace internal {
 
+        /*  
+         *  (Legacy) Input iterator over a result set for a mapped object.
+         */
         template<class O, class DBOs>
         struct iterator_t {
             using value_type = O;
@@ -13614,7 +13654,8 @@ namespace sqlite_orm {
                 this->current = std::make_shared<value_type>();
                 object_from_column_builder<value_type> builder{*this->current, this->stmt.get()};
                 assert(*this->db_objects);
-                pick_table<value_type>(**this->db_objects).for_each_column(builder);
+                auto& table = pick_table<value_type>(**this->db_objects);
+                table.for_each_column(builder);
             }
 
             void step() {
@@ -13643,12 +13684,14 @@ namespace sqlite_orm {
             }
 
             value_type& operator*() const {
-                if(!this->stmt) {
-                    throw std::system_error{orm_error_code::trying_to_dereference_null_iterator};
-                }
+                if(!this->stmt)
+                    SQLITE_ORM_CPP_UNLIKELY {
+                        throw std::system_error{orm_error_code::trying_to_dereference_null_iterator};
+                    }
                 return *this->current;
             }
 
+            // note: should actually be only present for contiguous iterators
             value_type* operator->() const {
                 return &(this->operator*());
             }
@@ -13660,7 +13703,7 @@ namespace sqlite_orm {
 
             iterator_t operator++(int) {
                 auto tmp = *this;
-                this->operator++();
+                ++*this;
                 return tmp;
             }
 
@@ -13763,28 +13806,33 @@ namespace sqlite_orm {
         };
 
         struct connection_ref {
-            connection_ref(connection_holder& holder_) : holder(holder_) {
-                this->holder.retain();
+            connection_ref(connection_holder& holder) : holder(&holder) {
+                this->holder->retain();
             }
 
             connection_ref(const connection_ref& other) : holder(other.holder) {
-                this->holder.retain();
+                this->holder->retain();
             }
 
-            connection_ref(connection_ref&& other) : holder(other.holder) {
-                this->holder.retain();
+            // rebind connection reference
+            connection_ref operator=(const connection_ref& other) {
+                if(other.holder != this->holder) {
+                    this->holder->release();
+                    this->holder = other.holder;
+                    this->holder->retain();
+                }
             }
 
             ~connection_ref() {
-                this->holder.release();
+                this->holder->release();
             }
 
             sqlite3* get() const {
-                return this->holder.get();
+                return this->holder->get();
             }
 
-          protected:
-            connection_holder& holder;
+          private:
+            connection_holder* holder = nullptr;
         };
     }
 }
@@ -15653,16 +15701,19 @@ namespace sqlite_orm {
     namespace internal {
 
         /**
-         * This class does not related to SQL view. This is a container like class which is returned by
-         * by storage_t::iterate function. This class contains STL functions:
+         * A C++ view-like class which is returned
+         * by `storage_t::iterate()` function. This class contains STL functions:
          *  -   size_t size()
          *  -   bool empty()
          *  -   iterator end()
          *  -   iterator begin()
          *  All these functions are not right const cause all of them may open SQLite connections.
+         *  
+         *  `mapped_view_t` is also a 'borrowed range',
+         *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
          */
         template<class T, class S, class... Args>
-        struct view_t {
+        struct mapped_view_t {
             using mapped_type = T;
             using storage_type = S;
             using db_objects_type = typename S::db_objects_type;
@@ -15674,11 +15725,11 @@ namespace sqlite_orm {
             connection_ref connection;
             get_all_t<T, void, Args...> expression;
 
-            view_t(storage_type& storage, connection_ref conn, Args&&... args) :
+            mapped_view_t(storage_type& storage, connection_ref conn, Args&&... args) :
                 storage(storage), db_objects(&obtain_db_objects(storage)), connection(std::move(conn)),
                 expression{std::forward<Args>(args)...} {}
 
-            ~view_t() {
+            ~mapped_view_t() {
                 this->db_objects = nullptr;
             }
 
@@ -15707,6 +15758,191 @@ namespace sqlite_orm {
         };
     }
 }
+
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+template<class T, class S, class... Args>
+inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::mapped_view_t<T, S, Args...>> = true;
+#endif
+
+// #include "result_set_view.h"
+
+#include <sqlite3.h>
+#include <utility>  //  std::move, std::remove_cvref
+#include <functional>  //  std::reference_wrapper
+#if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED) &&           \
+    defined(SQLITE_ORM_CPP20_RANGES_SUPPORTED)
+#include <ranges>  //  std::ranges::view_interface
+#endif
+
+// #include "functional/cxx_type_traits_polyfill.h"
+
+// #include "row_extractor.h"
+
+// #include "result_set_iterator.h"
+
+#include <sqlite3.h>
+#include <utility>  //  std::move
+#include <iterator>  //  std::input_iterator_tag, std::default_sentinel_t
+#include <functional>  //  std::reference_wrapper
+
+// #include "functional/cxx_universal.h"
+//  ::ptrdiff_t
+// #include "statement_finalizer.h"
+
+// #include "row_extractor.h"
+
+// #include "column_result_proxy.h"
+
+// #include "util.h"
+
+#if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)
+namespace sqlite_orm::internal {
+
+    template<class ColResult, class DBOs>
+    class result_set_iterator;
+
+#ifdef SQLITE_ORM_STL_HAS_DEFAULT_SENTINEL
+    using result_set_sentinel_t = std::default_sentinel_t;
+#else
+    // sentinel
+    template<>
+    class result_set_iterator<void, void> {};
+
+    using result_set_sentinel_t = result_set_iterator<void, void>;
+#endif
+
+    /*  
+     *  Input iterator over a result set for a select statement.
+     */
+    template<class ColResult, class DBOs>
+    class result_set_iterator {
+      public:
+        using db_objects_type = DBOs;
+
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+        using iterator_concept = std::input_iterator_tag;
+#else
+        using iterator_category = std::input_iterator_tag;
+#endif
+        using difference_type = ptrdiff_t;
+        using value_type = column_result_proxy_t<ColResult>;
+
+      public:
+        result_set_iterator(const db_objects_type& dbObjects, statement_finalizer stmt) :
+            db_objects{dbObjects}, stmt{std::move(stmt)} {
+            this->step();
+        }
+        result_set_iterator(result_set_iterator&&) = default;
+        result_set_iterator& operator=(result_set_iterator&&) = default;
+        result_set_iterator(const result_set_iterator&) = delete;
+        result_set_iterator& operator=(const result_set_iterator&) = delete;
+
+        /** @pre `*this != std::default_sentinel` */
+        value_type operator*() const {
+            return this->extract();
+        }
+
+        result_set_iterator& operator++() {
+            this->step();
+            return *this;
+        }
+
+        void operator++(int) {
+            ++*this;
+        }
+
+        friend bool operator==(const result_set_iterator& it, const result_set_sentinel_t&) noexcept {
+            return sqlite3_data_count(it.stmt.get()) == 0;
+        }
+
+      private:
+        void step() {
+            perform_step(this->stmt.get(), [](sqlite3_stmt*) {});
+        }
+
+        value_type extract() const {
+            const auto rowExtractor = make_row_extractor<ColResult>(this->db_objects.get());
+            return rowExtractor.extract(this->stmt.get(), 0);
+        }
+
+      private:
+        std::reference_wrapper<const db_objects_type> db_objects;
+        statement_finalizer stmt;
+    };
+}
+#endif
+
+// #include "ast_iterator.h"
+
+// #include "connection_holder.h"
+
+// #include "util.h"
+
+// #include "type_traits.h"
+
+// #include "storage_lookup.h"
+
+#if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)
+namespace sqlite_orm::internal {
+    /*  
+     *  A C++ view over a result set of a select statement, returned by `storage_t::iterate()`.
+     *  
+     *  `result_set_view` is also a 'borrowed range',
+     *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
+     */
+    template<class Select, class DBOs>
+    struct result_set_view
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+        : std::ranges::view_interface<result_set_view<Select, DBOs>>
+#endif
+    {
+        using db_objects_type = DBOs;
+        using expression_type = Select;
+
+        result_set_view(const db_objects_type& dbObjects, connection_ref conn, Select expression) :
+            db_objects{dbObjects}, connection{std::move(conn)}, expression{std::move(expression)} {}
+
+        result_set_view(result_set_view&&) = default;
+        result_set_view& operator=(result_set_view&&) = default;
+        result_set_view(const result_set_view&) = default;
+        result_set_view& operator=(const result_set_view&) = default;
+
+        auto begin() {
+            const auto& exprDBOs = db_objects_for_expression(this->db_objects.get(), this->expression);
+            using ExprDBOs = std::remove_cvref_t<decltype(exprDBOs)>;
+            // note: Select can be `select_t` or `with_t`
+            using select_type = polyfill::detected_or_t<expression_type, expression_type_t, expression_type>;
+            using column_result_type = column_result_of_t<ExprDBOs, select_type>;
+            using context_t = serializer_context<ExprDBOs>;
+            context_t context{exprDBOs};
+            context.skip_table_name = false;
+            context.replace_bindable_with_question = true;
+
+            statement_finalizer stmt{prepare_stmt(this->connection.get(), serialize(this->expression, context))};
+            iterate_ast(this->expression, conditional_binder{stmt.get()});
+
+            // note: it is enough to only use the 'expression DBOs' at compile-time to determine the column results;
+            // because we cannot select objects/structs from a CTE, passing the permanently defined DBOs are enough.
+            using iterator_type = result_set_iterator<column_result_type, db_objects_type>;
+            return iterator_type{this->db_objects, std::move(stmt)};
+        }
+
+        result_set_sentinel_t end() {
+            return {};
+        }
+
+      private:
+        std::reference_wrapper<const db_objects_type> db_objects;
+        connection_ref connection;
+        expression_type expression;
+    };
+}
+
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+template<class Select, class DBOs>
+inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_set_view<Select, DBOs>> = true;
+#endif
+#endif
 
 // #include "ast_iterator.h"
 
@@ -15824,10 +16060,11 @@ namespace sqlite_orm {
             for(size_t offset = 0, next; true; offset = next + 1) {
                 next = str.find(char2Escape, offset);
 
-                if(next == str.npos) {
-                    os.write(str.data() + offset, str.size() - offset);
-                    break;
-                }
+                if(next == str.npos)
+                    SQLITE_ORM_CPP_LIKELY {
+                        os.write(str.data() + offset, str.size() - offset);
+                        break;
+                    }
 
                 os.write(str.data() + offset, next - offset + 1);
                 os.write(&char2Escape, 1);
@@ -19747,7 +19984,7 @@ namespace sqlite_orm {
             using statement_type = table_content_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type& /*statement*/, const Ctx& context) const {
                 using mapped_type = typename statement_type::mapped_type;
 
                 auto& table = pick_table<mapped_type>(context.db_objects);
@@ -21410,14 +21647,6 @@ namespace sqlite_orm {
             return make_recursive_cte_db_objects(dbObjects, e.cte, std::index_sequence_for<CTEs...>{});
         }
 #endif
-
-        /**
-         *  Return passed in DBOs.
-         */
-        template<class DBOs, class E, satisfies<is_db_objects, DBOs> = true>
-        decltype(auto) db_objects_for_expression(DBOs& dbObjects, const E&) {
-            return dbObjects;
-        }
     }
 }
 
@@ -21489,8 +21718,8 @@ namespace sqlite_orm {
 
                 context_t context{this->db_objects};
                 statement_serializer<Table, void> serializer;
-                const std::string sql = serializer.serialize(table, context, tableName);
-                perform_void_exec(db, sql);
+                std::string sql = serializer.serialize(table, context, tableName);
+                perform_void_exec(db, std::move(sql));
             }
 
             /**
@@ -21611,7 +21840,7 @@ namespace sqlite_orm {
 
           public:
             template<class T, class... Args>
-            view_t<T, self, Args...> iterate(Args&&... args) {
+            mapped_view_t<T, self, Args...> iterate(Args&&... args) {
                 this->assert_mapped_type<T>();
 
                 auto con = this->get_connection();
@@ -21623,6 +21852,25 @@ namespace sqlite_orm {
             auto iterate(Args&&... args) {
                 return this->iterate<auto_decay_table_ref_t<table>>(std::forward<Args>(args)...);
             }
+#endif
+
+#if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)
+            template<class Select>
+                requires(is_select_v<Select>)
+            result_set_view<Select, db_objects_type> iterate(Select expression) {
+                expression.highest_level = true;
+                auto con = this->get_connection();
+                return {this->db_objects, std::move(con), std::move(expression)};
+            }
+
+#ifdef SQLITE_ORM_WITH_CTE
+            template<class... CTEs, class E>
+                requires(is_select_v<E>)
+            result_set_view<with_t<E, CTEs...>, db_objects_type> iterate(with_t<E, CTEs...> expression) {
+                auto con = this->get_connection();
+                return {this->db_objects, std::move(con), std::move(expression)};
+            }
+#endif
 #endif
 
             /**
@@ -22467,8 +22715,8 @@ namespace sqlite_orm {
                 context.replace_bindable_with_question = true;
 
                 auto con = this->get_connection();
-                const std::string sql = serialize(statement, context);
-                sqlite3_stmt* stmt = prepare_stmt(con.get(), sql);
+                std::string sql = serialize(statement, context);
+                sqlite3_stmt* stmt = prepare_stmt(con.get(), std::move(sql));
                 return prepared_statement_t<S>{std::forward<S>(statement), stmt, con};
             }
 
@@ -22908,7 +23156,7 @@ namespace sqlite_orm {
             auto execute(const prepared_statement_t<with_t<select_t<T, Args...>, CTEs...>>& statement) {
                 using ExprDBOs = decltype(db_objects_for_expression(this->db_objects, statement.expression));
                 // note: it is enough to only use the 'expression DBOs' at compile-time to determine the column results;
-                // because we cannot select objects/structs from a CTE, the permanently defined DBOs are enough.
+                // because we cannot select objects/structs from a CTE, passing the permanently defined DBOs are enough.
                 using ColResult = column_result_of_t<ExprDBOs, T>;
                 return _execute_select<ColResult>(statement);
             }

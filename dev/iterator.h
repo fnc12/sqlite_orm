@@ -8,7 +8,7 @@
 #include <system_error>  //  std::system_error
 #include <functional>  //  std::bind
 
-#include "functional/cxx_universal.h"
+#include "functional/cxx_universal.h"  //  ::ptrdiff_t
 #include "statement_finalizer.h"
 #include "error_code.h"
 #include "object_from_column_builder.h"
@@ -18,6 +18,9 @@
 namespace sqlite_orm {
     namespace internal {
 
+        /*  
+         *  (Legacy) Input iterator over a result set for a mapped object.
+         */
         template<class O, class DBOs>
         struct iterator_t {
             using value_type = O;
@@ -46,7 +49,8 @@ namespace sqlite_orm {
                 this->current = std::make_shared<value_type>();
                 object_from_column_builder<value_type> builder{*this->current, this->stmt.get()};
                 assert(*this->db_objects);
-                pick_table<value_type>(**this->db_objects).for_each_column(builder);
+                auto& table = pick_table<value_type>(**this->db_objects);
+                table.for_each_column(builder);
             }
 
             void step() {
@@ -75,12 +79,14 @@ namespace sqlite_orm {
             }
 
             value_type& operator*() const {
-                if(!this->stmt) {
-                    throw std::system_error{orm_error_code::trying_to_dereference_null_iterator};
-                }
+                if(!this->stmt)
+                    SQLITE_ORM_CPP_UNLIKELY {
+                        throw std::system_error{orm_error_code::trying_to_dereference_null_iterator};
+                    }
                 return *this->current;
             }
 
+            // note: should actually be only present for contiguous iterators
             value_type* operator->() const {
                 return &(this->operator*());
             }
@@ -92,7 +98,7 @@ namespace sqlite_orm {
 
             iterator_t operator++(int) {
                 auto tmp = *this;
-                this->operator++();
+                ++*this;
                 return tmp;
             }
 

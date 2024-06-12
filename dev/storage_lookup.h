@@ -140,8 +140,15 @@ namespace sqlite_orm {
             return std::get<table_type>(dbObjects);
         }
 
+        /**
+         *  Return passed in DBOs.
+         */
+        template<class DBOs, class E, satisfies<is_db_objects, DBOs> = true>
+        decltype(auto) db_objects_for_expression(DBOs& dbObjects, const E&) {
+            return dbObjects;
+        }
+
         template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs> = true>
         decltype(auto) lookup_table_name(const DBOs& dbObjects);
-
     }
 }

@@ -41,6 +41,7 @@
 #include "storage_impl.h"
 #include "journal_mode.h"
 #include "view.h"
+#include "result_set_view.h"
 #include "ast_iterator.h"
 #include "storage_base.h"
 #include "prepared_statement.h"
@@ -121,8 +122,8 @@ namespace sqlite_orm {
 
                 context_t context{this->db_objects};
                 statement_serializer<Table, void> serializer;
-                const std::string sql = serializer.serialize(table, context, tableName);
-                perform_void_exec(db, sql);
+                std::string sql = serializer.serialize(table, context, tableName);
+                perform_void_exec(db, std::move(sql));
             }
 
             /**
@@ -243,7 +244,7 @@ namespace sqlite_orm {
 
           public:
             template<class T, class... Args>
-            view_t<T, self, Args...> iterate(Args&&... args) {
+            mapped_view_t<T, self, Args...> iterate(Args&&... args) {
                 this->assert_mapped_type<T>();
 
                 auto con = this->get_connection();
@@ -255,6 +256,25 @@ namespace sqlite_orm {
             auto iterate(Args&&... args) {
                 return this->iterate<auto_decay_table_ref_t<table>>(std::forward<Args>(args)...);
             }
+#endif
+
+#if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)
+            template<class Select>
+                requires(is_select_v<Select>)
+            result_set_view<Select, db_objects_type> iterate(Select expression) {
+                expression.highest_level = true;
+                auto con = this->get_connection();
+                return {this->db_objects, std::move(con), std::move(expression)};
+            }
+
+#ifdef SQLITE_ORM_WITH_CTE
+            template<class... CTEs, class E>
+                requires(is_select_v<E>)
+            result_set_view<with_t<E, CTEs...>, db_objects_type> iterate(with_t<E, CTEs...> expression) {
+                auto con = this->get_connection();
+                return {this->db_objects, std::move(con), std::move(expression)};
+            }
+#endif
 #endif
 
             /**
@@ -1099,8 +1119,8 @@ namespace sqlite_orm {
                 context.replace_bindable_with_question = true;
 
                 auto con = this->get_connection();
-                const std::string sql = serialize(statement, context);
-                sqlite3_stmt* stmt = prepare_stmt(con.get(), sql);
+                std::string sql = serialize(statement, context);
+                sqlite3_stmt* stmt = prepare_stmt(con.get(), std::move(sql));
                 return prepared_statement_t<S>{std::forward<S>(statement), stmt, con};
             }
 
@@ -1540,7 +1560,7 @@ namespace sqlite_orm {
             auto execute(const prepared_statement_t<with_t<select_t<T, Args...>, CTEs...>>& statement) {
                 using ExprDBOs = decltype(db_objects_for_expression(this->db_objects, statement.expression));
                 // note: it is enough to only use the 'expression DBOs' at compile-time to determine the column results;
-                // because we cannot select objects/structs from a CTE, the permanently defined DBOs are enough.
+                // because we cannot select objects/structs from a CTE, passing the permanently defined DBOs are enough.
                 using ColResult = column_result_of_t<ExprDBOs, T>;
                 return _execute_select<ColResult>(statement);
             }
