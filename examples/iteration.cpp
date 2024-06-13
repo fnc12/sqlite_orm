@@ -64,5 +64,12 @@ int main(int, char**) {
     }
     cout << "heroesByAlgorithm.size = " << heroesByAlgorithm.size() << endl;
 
+    cout << "====" << endl;
+
+    cout << "Distinct hero names:" << endl;
+    for(std::string name: storage.iterate(select(distinct(&MarvelHero::name)))) {
+        cout << name << endl;
+    }
+
     return 0;
 }
