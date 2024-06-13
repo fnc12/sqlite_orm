@@ -127,9 +127,9 @@ namespace sqlite_orm {
             }
 
             /**
-			*  Copies sourceTableName to another table with name: destinationTableName
-			*  Performs INSERT INTO %destinationTableName% () SELECT %table.column_names% FROM %sourceTableName%
-			*/
+             *  Copies sourceTableName to another table with name: destinationTableName
+             *  Performs INSERT INTO %destinationTableName% () SELECT %table.column_names% FROM %sourceTableName%
+             */
             template<class Table>
             void copy_table(sqlite3* db,
                             const std::string& sourceTableName,
