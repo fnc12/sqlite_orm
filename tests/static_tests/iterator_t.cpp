@@ -9,10 +9,14 @@
 using namespace sqlite_orm;
 using internal::iterator_t;
 using internal::mapped_view_t;
+using internal::structure;
 #if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)
 using internal::result_set_iterator;
 using internal::result_set_sentinel_t;
 using internal::result_set_view;
+#endif
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+using internal::table_reference;
 #endif
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
@@ -51,7 +55,9 @@ concept LegacyInputIterator =
 template<class Iter, class Value>
 concept can_iterate_mapped = requires(Iter it) {
     requires LegacyInputIterator<Iter>;
-    requires std::is_default_constructible_v<Iter>;
+    // explicit check of the sentinel role, since `std::ranges::borrowed_range` in `can_view_mapped`
+    // would not tell us why exactly the end iterator cannot be a sentinel
+    requires std::sentinel_for<Iter, Iter>;
     { *it } -> std::same_as<Value&>;
     // note: should actually be only present for contiguous iterators
     { it.operator->() } -> std::same_as<Value*>;
@@ -76,6 +82,8 @@ concept storage_iterate_mapped = requires(S& storage_type) {
 template<class Iter, class Value>
 concept can_iterate_result_set = requires(Iter it) {
     requires std::input_iterator<Iter>;
+    // explicit check of the sentinel role, since `std::ranges::borrowed_range` in `can_view_mapped`
+    // would not tell us why exactly the end iterator cannot be a sentinel
     requires std::sentinel_for<result_set_sentinel_t, Iter>;
 #ifdef SQLITE_ORM_STL_HAS_DEFAULT_SENTINEL
     requires std::same_as<result_set_sentinel_t, std::default_sentinel_t>;
@@ -104,11 +112,14 @@ namespace {
 
 TEST_CASE("can view and iterate mapped") {
     using storage_type = decltype(make_storage("", make_table<Object>("")));
-    using iter = decltype(std::declval<storage_type>().iterate<Object>().begin());
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    using iter = iterator_t<Object, storage_type::db_objects_type>;
     STATIC_REQUIRE(can_iterate_mapped<iter, Object>);
+    // check default initializability at runtime
+    [[maybe_unused]] const iter end;
 #else
+    using iter = decltype(std::declval<storage_type>().iterate<Object>().begin());
     iter it;
     const iter end;
 
@@ -119,7 +130,7 @@ TEST_CASE("can view and iterate mapped") {
             STATIC_REQUIRE(std::is_same<decltype(*it), Object&>::value);
             STATIC_REQUIRE(std::is_same<decltype(++it), iter&>::value);
             STATIC_REQUIRE(std::is_same<decltype(*it++), Object&>::value);
-            // copyable
+            // copyable (partially, as it is a rather extensive concept)
             { STATIC_REQUIRE(std::is_copy_constructible<iter>::value); }
         }
         // equality_comparable (sentinel)
@@ -131,7 +142,8 @@ TEST_CASE("can view and iterate mapped") {
         STATIC_REQUIRE(std::is_same<std::iterator_traits<iter>::value_type, Object>::value);
         STATIC_REQUIRE(std::is_same<std::iterator_traits<iter>::difference_type, ptrdiff_t>::value);
     }
-    STATIC_REQUIRE(std::is_default_constructible<iter>::value);
+    // semiregular (actually sentinel_for, but the other concepts were verified above)
+    { STATIC_REQUIRE(std::is_default_constructible<iter>::value); }
     STATIC_REQUIRE(std::is_same<std::iterator_traits<iter>::pointer, Object*>::value);
     // note: should actually be only present for contiguous iterators
     STATIC_REQUIRE(std::is_same<decltype(it.operator->()), Object*>::value);
@@ -147,19 +159,18 @@ TEST_CASE("can view and iterate mapped") {
 TEST_CASE("can view and iterate result set") {
     struct Object {};
     using empty_storage_type = decltype(make_storage(""));
-    using empty_db_objects_type = typename empty_storage_type::db_objects_type;
+    using empty_db_objects_type = empty_storage_type::db_objects_type;
     using storage_type = decltype(make_storage("", make_table<Object>("")));
-    using db_objects_type = typename storage_type::db_objects_type;
+    using db_objects_type = storage_type::db_objects_type;
 
     STATIC_REQUIRE(can_iterate_result_set<result_set_iterator<int, empty_db_objects_type>, int>);
     STATIC_REQUIRE(
         can_iterate_result_set<result_set_iterator<std::tuple<int, int>, empty_db_objects_type>, std::tuple<int, int>>);
-    STATIC_REQUIRE(can_iterate_result_set<
-                   result_set_iterator<internal::structure<Object, empty_db_objects_type>, empty_db_objects_type>,
-                   Object>);
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     STATIC_REQUIRE(
-        can_iterate_result_set<result_set_iterator<internal::table_reference<Object>, db_objects_type>, Object>);
+        can_iterate_result_set<result_set_iterator<structure<Object, empty_db_objects_type>, empty_db_objects_type>,
+                               Object>);
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    STATIC_REQUIRE(can_iterate_result_set<result_set_iterator<table_reference<Object>, db_objects_type>, Object>);
 #endif
 
     STATIC_REQUIRE(storage_iterate_result_set<empty_storage_type, decltype(select(42)), int>);
@@ -167,11 +178,10 @@ TEST_CASE("can view and iterate result set") {
         storage_iterate_result_set<empty_storage_type, decltype(select(columns(1, 42))), std::tuple<int, int>>);
     STATIC_REQUIRE(storage_iterate_result_set<empty_storage_type,
                                               decltype(select(struct_<Object>())),
-                                              internal::structure<Object, std::tuple<>>>);
+                                              structure<Object, std::tuple<>>>);
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    STATIC_REQUIRE(storage_iterate_result_set<storage_type,
-                                              decltype(select(object<Object>())),
-                                              internal::table_reference<Object>>);
+    STATIC_REQUIRE(
+        storage_iterate_result_set<storage_type, decltype(select(object<Object>())), table_reference<Object>>);
 #endif
 
 #ifdef SQLITE_ORM_WITH_CTE

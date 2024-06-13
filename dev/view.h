@@ -33,19 +33,11 @@ namespace sqlite_orm {
             using db_objects_type = typename S::db_objects_type;
 
             storage_type& storage;
-            // Note: This is deliberately a pointer, so that an iterator's reference to this pointer is null if the view goes out of scope,
-            // and no dangling reference is accessed if an iterator accidentally outlives the view [lifetime]
-            const db_objects_type* db_objects;
             connection_ref connection;
             get_all_t<T, void, Args...> expression;
 
             mapped_view_t(storage_type& storage, connection_ref conn, Args&&... args) :
-                storage(storage), db_objects(&obtain_db_objects(storage)), connection(std::move(conn)),
-                expression{std::forward<Args>(args)...} {}
-
-            ~mapped_view_t() {
-                this->db_objects = nullptr;
-            }
+                storage(storage), connection(std::move(conn)), expression{std::forward<Args>(args)...} {}
 
             size_t size() const {
                 return this->storage.template count<T>();
@@ -57,13 +49,14 @@ namespace sqlite_orm {
 
             iterator_t<T, db_objects_type> begin() {
                 using context_t = serializer_context<db_objects_type>;
-                context_t context{*this->db_objects};
+                auto& dbObjects = obtain_db_objects(this->storage);
+                context_t context{dbObjects};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
 
                 statement_finalizer stmt{prepare_stmt(this->connection.get(), serialize(this->expression, context))};
                 iterate_ast(this->expression.conditions, conditional_binder{stmt.get()});
-                return {this->db_objects, std::move(stmt)};
+                return {dbObjects, std::move(stmt)};
             }
 
             iterator_t<T, db_objects_type> end() {
