@@ -244,7 +244,7 @@ namespace sqlite_orm {
 
           public:
             template<class T, class... Args>
-            mapped_view_t<T, self, Args...> iterate(Args&&... args) {
+            mapped_view<T, self, Args...> iterate(Args&&... args) {
                 this->assert_mapped_type<T>();
 
                 auto con = this->get_connection();

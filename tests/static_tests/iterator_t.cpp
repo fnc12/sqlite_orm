@@ -7,8 +7,8 @@
 #endif
 
 using namespace sqlite_orm;
-using internal::iterator_t;
-using internal::mapped_view_t;
+using internal::mapped_iterator;
+using internal::mapped_view;
 using internal::structure;
 #if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)
 using internal::result_set_iterator;
@@ -66,13 +66,13 @@ concept can_iterate_mapped = requires(Iter it) {
 template<class V, class O, class DBOs>
 concept can_view_mapped = requires(V view) {
     requires std::ranges::borrowed_range<V>;
-    { view.begin() } -> std::same_as<iterator_t<O, DBOs>>;
-    { view.end() } -> std::same_as<iterator_t<O, DBOs>>;
+    { view.begin() } -> std::same_as<mapped_iterator<O, DBOs>>;
+    { view.end() } -> std::same_as<mapped_iterator<O, DBOs>>;
 };
 
 template<class S, class O, class DBOs = typename S::db_objects_type>
 concept storage_iterate_mapped = requires(S& storage_type) {
-    { storage_type.iterate<O>() } -> std::same_as<mapped_view_t<O, S>>;
+    { storage_type.iterate<O>() } -> std::same_as<mapped_view<O, S>>;
     { storage_type.iterate<O>() } -> can_view_mapped<O, DBOs>;
 };
 #endif
@@ -114,7 +114,7 @@ TEST_CASE("can view and iterate mapped") {
     using storage_type = decltype(make_storage("", make_table<Object>("")));
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-    using iter = iterator_t<Object, storage_type::db_objects_type>;
+    using iter = mapped_iterator<Object, storage_type::db_objects_type>;
     STATIC_REQUIRE(can_iterate_mapped<iter, Object>);
     // check default initializability at runtime
     [[maybe_unused]] const iter end;
