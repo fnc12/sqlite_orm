@@ -13504,14 +13504,14 @@ namespace sqlite_orm {
 
 // #include "journal_mode.h"
 
-// #include "view.h"
+// #include "mapped_view.h"
 
 #include <sqlite3.h>
 #include <utility>  //  std::forward, std::move
 
 // #include "row_extractor.h"
 
-// #include "iterator.h"
+// #include "mapped_iterator.h"
 
 #include <sqlite3.h>
 #include <memory>  //  std::shared_ptr, std::make_shared

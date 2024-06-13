@@ -40,7 +40,7 @@
 #include "table_info.h"
 #include "storage_impl.h"
 #include "journal_mode.h"
-#include "view.h"
+#include "mapped_view.h"
 #include "result_set_view.h"
 #include "ast_iterator.h"
 #include "storage_base.h"
