@@ -47,11 +47,49 @@ concept storage_field_callable = requires(S& storage, C field) {
     { storage.group_concat(field, 42) };
 };
 
-template<class S, orm_table_reference auto mapped>
-concept storage_table_reference_callable = requires(S& storage) {
-    { storage.get<mapped>(42) };
+template<orm_refers_to_recordset auto recordset>
+concept refers_to_recordset_callable = requires {
+    { count<recordset>() };
+};
+
+template<orm_refers_to_table auto mapped>
+concept refers_to_table_callable = requires {
+    { get_all<mapped>() };
+    { count<mapped>() };
+};
+
+template<orm_table_reference auto table>
+concept table_reference_callable = requires {
+    { get<table>(42) };
+    { get_pointer<table>(42) };
+    { get_optional<table>(42) };
+    { get_all<table>() };
+    { get_all_pointer<table>() };
+    { get_all_optional<table>() };
+    { remove<table>(42) };
+    { remove_all<table>() };
+    { count<table>() };
+};
+
+template<class S, orm_refers_to_table auto mapped>
+concept storage_refers_to_table_callable = requires(S& storage) {
     { storage.get_all<mapped>() };
     { storage.count<mapped>() };
+    { storage.iterate<mapped>() };
+};
+
+template<class S, orm_table_reference auto table>
+concept storage_table_reference_callable = requires(S& storage) {
+    { storage.get<table>(42) };
+    { storage.get_pointer<table>(42) };
+    { storage.get_optional<table>(42) };
+    { storage.get_all<table>() };
+    { storage.get_all_pointer<table>() };
+    { storage.get_all_optional<table>() };
+    { storage.remove<table>(42) };
+    { storage.remove_all<table>() };
+    { storage.count<table>() };
+    { storage.iterate<table>() };
 };
 #endif
 
@@ -110,11 +148,25 @@ TEST_CASE("column pointers") {
         runTest<internal::inner_join_t<DerivedUser, using_t<DerivedUser, decltype(&DerivedUser::id)>>>(
             inner_join<derived_user>(using_(derived_user->*&DerivedUser::id)));
 
+        STATIC_REQUIRE(refers_to_recordset_callable<derived_user>);
+        STATIC_REQUIRE(refers_to_table_callable<derived_user>);
+        STATIC_REQUIRE(table_reference_callable<derived_user>);
+        STATIC_REQUIRE(refers_to_recordset_callable<sqlite_master_table>);
+        STATIC_REQUIRE(refers_to_table_callable<sqlite_master_table>);
+        STATIC_REQUIRE(table_reference_callable<sqlite_master_table>);
+        STATIC_REQUIRE(refers_to_recordset_callable<sqlite_schema>);
+        STATIC_REQUIRE(refers_to_table_callable<sqlite_schema>);
+
         using storage_type = decltype(make_storage(
             "",
+            make_sqlite_schema_table(),
             make_table<DerivedUser>("derived_user", make_column("id", &DerivedUser::id, primary_key()))));
 
+        STATIC_REQUIRE(storage_refers_to_table_callable<storage_type, derived_user>);
         STATIC_REQUIRE(storage_table_reference_callable<storage_type, derived_user>);
+        STATIC_REQUIRE(storage_refers_to_table_callable<storage_type, sqlite_master_table>);
+        STATIC_REQUIRE(storage_table_reference_callable<storage_type, sqlite_master_table>);
+        STATIC_REQUIRE(storage_refers_to_table_callable<storage_type, sqlite_schema>);
     }
 #endif
 }

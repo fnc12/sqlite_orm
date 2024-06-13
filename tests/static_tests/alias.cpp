@@ -26,6 +26,7 @@ template<class S, orm_table_alias auto als>
 concept storage_table_alias_callable = requires(S& storage) {
     { storage.get_all<als>() };
     { storage.count<als>() };
+    { storage.iterate<als>() };
 };
 #endif
 
@@ -105,9 +106,11 @@ TEST_CASE("aliases") {
 
         using storage_type = decltype(make_storage(
             "",
+            make_sqlite_schema_table(),
             make_table<DerivedUser>("derived_user", make_column("id", &DerivedUser::id, primary_key()))));
 
         STATIC_REQUIRE(storage_table_alias_callable<storage_type, d_alias>);
+        STATIC_REQUIRE(storage_table_alias_callable<storage_type, sqlite_schema>);
     }
 #endif
 }

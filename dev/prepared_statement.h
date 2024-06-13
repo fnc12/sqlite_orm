@@ -5,7 +5,8 @@
 #include <iterator>  //  std::iterator_traits
 #include <string>  //  std::string
 #include <type_traits>  //  std::integral_constant, std::declval
-#include <utility>  //  std::pair
+#include <utility>  //  std::move, std::forward, std::pair
+#include <tuple>  //  std::tuple
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
@@ -596,9 +597,20 @@ namespace sqlite_orm {
      */
     template<class T, class... Ids>
     internal::remove_t<T, Ids...> remove(Ids... ids) {
-        std::tuple<Ids...> idsTuple{std::forward<Ids>(ids)...};
-        return {std::move(idsTuple)};
+        return {{std::forward<Ids>(ids)...}};
     }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Create a remove statement
+     *  `table` is an explicitly specified table reference of a mapped object to be extracted.
+     *  Usage: remove<user_table>(5);
+     */
+    template<orm_table_reference auto table, class... Ids>
+    auto remove(Ids... ids) {
+        return remove<internal::auto_decay_table_ref_t<table>>(std::forward<Ids>(ids)...);
+    }
+#endif
 
     /**
      *  Create an update statement.
@@ -625,12 +637,12 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
      *  Create a get statement.
-     *  T is an object type mapped to a storage.
-     *  Usage: get<User>(5);
+     *  `table` is an explicitly specified table reference of a mapped object to be extracted.
+     *  Usage: get<user_table>(5);
      */
-    template<orm_table_reference auto als, class... Ids>
+    template<orm_table_reference auto table, class... Ids>
     auto get(Ids... ids) {
-        return get<internal::mapped_type_proxy_t<decltype(als)>>(std::forward<Ids>(ids)...);
+        return get<internal::auto_decay_table_ref_t<table>>(std::forward<Ids>(ids)...);
     }
 #endif
 
@@ -644,6 +656,18 @@ namespace sqlite_orm {
         return {{std::forward<Ids>(ids)...}};
     }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Create a get pointer statement.
+     *  `table` is an explicitly specified table reference of a mapped object to be extracted.
+     *  Usage: get_pointer<user_table>(5);
+     */
+    template<orm_table_reference auto table, class... Ids>
+    auto get_pointer(Ids... ids) {
+        return get_pointer<internal::auto_decay_table_ref_t<table>>(std::forward<Ids>(ids)...);
+    }
+#endif
+
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     /**
      *  Create a get optional statement.
@@ -656,6 +680,18 @@ namespace sqlite_orm {
     }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Create a get optional statement.
+     *  `table` is an explicitly specified table reference of a mapped object to be extracted.
+     *  Usage: get_optional<user_table>(5);
+     */
+    template<orm_table_reference auto table, class... Ids>
+    auto get_optional(Ids... ids) {
+        return get_pointer<internal::auto_decay_table_ref_t<table>>(std::forward<Ids>(ids)...);
+    }
+#endif
+
     /**
      *  Create a remove all statement.
      *  T is an object type mapped to a storage.
@@ -665,13 +701,24 @@ namespace sqlite_orm {
     internal::remove_all_t<T, Args...> remove_all(Args... args) {
         using args_tuple = std::tuple<Args...>;
         internal::validate_conditions<args_tuple>();
-        args_tuple conditions{std::forward<Args>(args)...};
-        return {std::move(conditions)};
+        return {{std::forward<Args>(args)...}};
     }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Create a remove all statement.
+     *  `table` is an explicitly specified table reference of a mapped object to be extracted.
+     *  Usage: storage.remove_all<user_table>(...);
+     */
+    template<orm_table_reference auto table, class... Args>
+    auto remove_all(Args... args) {
+        return remove_all<internal::auto_decay_table_ref_t<table>>(std::forward<Args>(args)...);
+    }
+#endif
 
     /**
      *  Create a get all statement.
-     *  T is an object type mapped to a storage.
+     *  T is an object mapped to a storage or a table alias.
      *  R is a container type. std::vector<T> is default
      *  Usage: storage.prepare(get_all<User>(...));
      */
@@ -685,15 +732,15 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
      *  Create a get all statement.
-     *  `als` is an explicitly specified table proxy of an object to be extracted.
+     *  `mapped` is an explicitly specified table reference or alias of a mapped object to be extracted.
      *  `R` is the container return type, which must have a `R::push_back(T&&)` method, and defaults to `std::vector<T>`
      *  Usage: storage.get_all<sqlite_schema>(...);
      */
-    template<orm_refers_to_table auto als,
-             class R = std::vector<internal::mapped_type_proxy_t<decltype(als)>>,
+    template<orm_refers_to_table auto mapped,
+             class R = std::vector<internal::mapped_type_proxy_t<decltype(mapped)>>,
              class... Args>
     auto get_all(Args&&... conditions) {
-        return get_all<internal::auto_decay_table_ref_t<als>, R>(std::forward<Args>(conditions)...);
+        return get_all<internal::auto_decay_table_ref_t<mapped>, R>(std::forward<Args>(conditions)...);
     }
 #endif
 
@@ -706,8 +753,7 @@ namespace sqlite_orm {
         static_assert(internal::is_set<S>::value, "first argument in update_all can be either set or dynamic_set");
         using args_tuple = std::tuple<Wargs...>;
         internal::validate_conditions<args_tuple>();
-        args_tuple conditions{std::forward<Wargs>(wh)...};
-        return {std::move(set), std::move(conditions)};
+        return {std::move(set), {std::forward<Wargs>(wh)...}};
     }
 
     /**
@@ -715,13 +761,28 @@ namespace sqlite_orm {
      *  T is an object type mapped to a storage.
      *  R is a container return type. std::vector<std::unique_ptr<T>> is default
      *  Usage: storage.prepare(get_all_pointer<User>(...));
-    */
+     */
     template<class T, class R = std::vector<std::unique_ptr<T>>, class... Args>
     internal::get_all_pointer_t<T, R, Args...> get_all_pointer(Args... conditions) {
         using conditions_tuple = std::tuple<Args...>;
         internal::validate_conditions<conditions_tuple>();
         return {{std::forward<Args>(conditions)...}};
     }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Create a get all pointer statement.
+     *  `table` is an explicitly specified table reference of a mapped object to be extracted.
+     *  R is a container return type. std::vector<std::unique_ptr<T>> is default
+     *  Usage: storage.prepare(get_all_pointer<user_table>(...));
+     */
+    template<orm_table_reference auto table,
+             class R = std::vector<internal::auto_decay_table_ref_t<table>>,
+             class... Args>
+    auto get_all_pointer(Args... conditions) {
+        return get_all_pointer<internal::auto_decay_table_ref_t<table>, R>(std::forward<Args>(conditions)...);
+    }
+#endif
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     /**
@@ -737,4 +798,19 @@ namespace sqlite_orm {
         return {{std::forward<Args>(conditions)...}};
     }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Create a get all optional statement.
+     *  `table` is an explicitly specified table reference of a mapped object to be extracted.
+     *  R is a container return type. std::vector<std::optional<T>> is default
+     *  Usage: storage.get_all_optional<user_table>(...);
+     */
+    template<orm_table_reference auto table,
+             class R = std::vector<internal::auto_decay_table_ref_t<table>>,
+             class... Args>
+    auto get_all_optional(Args&&... conditions) {
+        return get_all_optional<internal::auto_decay_table_ref_t<table>, R>(std::forward<Args>(conditions)...);
+    }
+#endif
 }
