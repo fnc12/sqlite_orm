@@ -92,7 +92,7 @@ TEST_CASE("Iterate select statement") {
 
 #if __cpp_lib_containers_ranges >= 202202L
     SECTION("from range") {
-        std::view auto view = db.iterate(select(object<Test>()));
+        std::ranges::view auto view = db.iterate(select(object<Test>()));
         REQUIRE(std::vector<Test>{std::from_range, view} == expected_vec);
     }
 #endif
