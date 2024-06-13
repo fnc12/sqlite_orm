@@ -54,6 +54,10 @@
 #define SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #endif
 
+#if __cpp_lib_ranges >= 201911L
+#define SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#endif
+
 #if(defined(SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED) && defined(SQLITE_ORM_INLINE_VARIABLES_SUPPORTED) &&         \
     defined(SQLITE_ORM_CONSTEVAL_SUPPORTED)) &&                                                                        \
     (defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED))
