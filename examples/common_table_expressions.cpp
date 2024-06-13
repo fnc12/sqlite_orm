@@ -36,7 +36,7 @@ void all_integers_between(int from, int end) {
         //    cnt(x) AS(VALUES(1) UNION ALL SELECT x + 1 FROM cnt WHERE x < 1000000)
         //    SELECT x FROM cnt;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        constexpr auto cnt = "cnt"_cte;
+        constexpr orm_cte_moniker auto cnt = "cnt"_cte;
         auto ast = with_recursive(
             cnt().as(union_all(select(from), select(cnt->*1_colalias + 1, where(cnt->*1_colalias < end)))),
             select(cnt->*1_colalias));
@@ -71,8 +71,8 @@ void all_integers_between(int from, int end) {
         //    )
         //    SELECT x FROM cnt;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        constexpr auto cnt = "cnt"_cte;
-        constexpr auto x = "x"_col;
+        constexpr orm_cte_moniker auto cnt = "cnt"_cte;
+        constexpr orm_column_alias auto x = "x"_col;
         auto ast =
             with_recursive(cnt().as(union_all(select(from >>= x), select(cnt->*x + 1, limit(end)))), select(cnt->*x));
 #else
@@ -97,8 +97,8 @@ void all_integers_between(int from, int end) {
     // variant 3, limit-clause, explicit column spec
     {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        constexpr auto cnt = "cnt"_cte;
-        constexpr auto x = "x"_col;
+        constexpr orm_cte_moniker auto cnt = "cnt"_cte;
+        constexpr orm_column_alias auto x = "x"_col;
         auto ast = with_recursive(cnt(x).as(union_all(select(from), select(cnt->*x + 1, limit(end)))), select(cnt->*x));
 #else
         using cnt = decltype(1_ctealias);
@@ -166,8 +166,8 @@ void supervisor_chain() {
         //    )
         //    SELECT name FROM chain;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        constexpr auto chain = "chain"_cte;
-        constexpr auto parent = "parent"_alias.for_<Org>();
+        constexpr orm_cte_moniker auto chain = "chain"_cte;
+        constexpr orm_table_alias auto parent = "parent"_alias.for_<Org>();
         auto ast = with_recursive(
             chain().as(union_all(select(asterisk<Org>(), where(&Org::name == c("Fred"))),
                                  select(asterisk<parent>(), where(parent->*&Org::name == chain->*&Org::boss)))),
@@ -234,7 +234,7 @@ void works_for_alice() {
         //    SELECT avg(height) FROM org
         //    WHERE org.name IN works_for_alice;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        constexpr auto works_for_alice = "works_for_alice"_cte;
+        constexpr orm_cte_moniker auto works_for_alice = "works_for_alice"_cte;
         auto ast = with_recursive(
             works_for_alice(&Org::name)
                 .as(union_(select("Alice"), select(&Org::name, where(&Org::boss == works_for_alice->*&Org::name)))),
@@ -321,10 +321,10 @@ void family_tree() {
     //    AND died IS NULL
     //    ORDER BY born;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    constexpr auto parent_of = "parent_of"_cte;
-    constexpr auto ancestor_of_alice = "ancestor_of_alice"_cte;
-    constexpr auto parent = "parent"_col;
-    constexpr auto name = "name"_col;
+    constexpr orm_cte_moniker auto parent_of = "parent_of"_cte;
+    constexpr orm_cte_moniker auto ancestor_of_alice = "ancestor_of_alice"_cte;
+    constexpr orm_column_alias auto parent = "parent"_col;
+    constexpr orm_column_alias auto name = "name"_col;
     auto ast = with_recursive(
         make_tuple(
             parent_of(&Family::name, parent)
@@ -446,8 +446,8 @@ void depth_or_breadth_first() {
         //    )
         //    SELECT substr('..........', 1, level * 3) || name FROM under_alice;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        constexpr auto under_alice = "under_alice"_cte;
-        constexpr auto level = "level"_col;
+        constexpr orm_cte_moniker auto under_alice = "under_alice"_cte;
+        constexpr orm_column_alias auto level = "level"_col;
         auto ast =
             with_recursive(under_alice(&Org::name, level)
                                .as(union_all(select(columns("Alice", 0)),
@@ -490,8 +490,8 @@ void depth_or_breadth_first() {
         //    )
         //    SELECT substr('..........', 1, level * 3) || name FROM under_alice;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        constexpr auto under_alice = "under_alice"_cte;
-        constexpr auto level = "level"_col;
+        constexpr orm_cte_moniker auto under_alice = "under_alice"_cte;
+        constexpr orm_column_alias auto level = "level"_col;
         auto ast =
             with_recursive(under_alice(&Org::name, level)
                                .as(union_all(select(columns("Alice", 0)),
@@ -557,7 +557,7 @@ void select_from_subselect() {
     //     )
     //  SELECT * from sub;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    constexpr auto sub = "sub"_cte;
+    constexpr orm_cte_moniker auto sub = "sub"_cte;
     auto expression = with(sub().as(select(columns(&Employee::m_salary, &Employee::m_commission))),
                            select(asterisk<sub>(), where(sub->*&Employee::m_salary < 5000)));
 #else
@@ -599,17 +599,17 @@ void apfelmaennchen() {
     //    )
     //    SELECT group_concat(rtrim(t), x'0a') FROM a;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    constexpr auto xaxis = "xaxis"_cte;
-    constexpr auto yaxis = "yaxis"_cte;
-    constexpr auto m = "m"_cte;
-    constexpr auto m2 = "m2"_cte;
-    constexpr auto a = "string"_cte;
-    constexpr auto x = "x"_col;
-    constexpr auto y = "y"_col;
-    constexpr auto iter = "iter"_col;
-    constexpr auto cx = "cx"_col;
-    constexpr auto cy = "cy"_col;
-    constexpr auto t = "t"_col;
+    constexpr orm_cte_moniker auto xaxis = "xaxis"_cte;
+    constexpr orm_cte_moniker auto yaxis = "yaxis"_cte;
+    constexpr orm_cte_moniker auto m = "m"_cte;
+    constexpr orm_cte_moniker auto m2 = "m2"_cte;
+    constexpr orm_cte_moniker auto a = "string"_cte;
+    constexpr orm_column_alias auto x = "x"_col;
+    constexpr orm_column_alias auto y = "y"_col;
+    constexpr orm_column_alias auto iter = "iter"_col;
+    constexpr orm_column_alias auto cx = "cx"_col;
+    constexpr orm_column_alias auto cy = "cy"_col;
+    constexpr orm_column_alias auto t = "t"_col;
     auto ast = with_recursive(
         make_tuple(
             xaxis(x).as(union_all(select(-2.0), select(xaxis->*x + 0.05, where(xaxis->*x < 1.2)))),
@@ -712,15 +712,15 @@ void sudoku() {
     //    )
     //    SELECT s FROM x WHERE ind = 0;
 
-    constexpr auto input = "input"_cte;
-    constexpr auto digits = "digits"_cte;
-    constexpr auto z_alias = "z"_alias.for_<digits>();
-    constexpr auto x = "x"_cte;
-    constexpr auto sud = "sud"_col;
-    constexpr auto z = "z"_col;
-    constexpr auto lp = "lp"_col;
-    constexpr auto s = "s"_col;
-    constexpr auto ind = "ind"_col;
+    constexpr orm_cte_moniker auto input = "input"_cte;
+    constexpr orm_cte_moniker auto digits = "digits"_cte;
+    constexpr orm_table_alias auto z_alias = "z"_alias.for_<digits>();
+    constexpr orm_cte_moniker auto x = "x"_cte;
+    constexpr orm_column_alias auto sud = "sud"_col;
+    constexpr orm_column_alias auto z = "z"_col;
+    constexpr orm_column_alias auto lp = "lp"_col;
+    constexpr orm_column_alias auto s = "s"_col;
+    constexpr orm_column_alias auto ind = "ind"_col;
     auto ast = with_recursive(
         make_tuple(
             cte<input>(sud).as(
@@ -765,7 +765,7 @@ void show_optimization_fence() {
         //WITH
         //    cnt(x) AS MATERIALIZED(VALUES(1))
         //    SELECT x FROM cnt;
-        constexpr auto cnt = "cnt"_cte;
+        constexpr orm_cte_moniker auto cnt = "cnt"_cte;
         auto ast = with(cnt().as<materialized()>(select(1)), select(cnt->*1_colalias));
 
         [[maybe_unused]] string sql = storage.dump(ast);
@@ -777,7 +777,7 @@ void show_optimization_fence() {
         //WITH
         //    cnt(x) AS NOT MATERIALIZED(VALUES(1))
         //    SELECT x FROM cnt;
-        constexpr auto cnt = "cnt"_cte;
+        constexpr orm_cte_moniker auto cnt = "cnt"_cte;
         auto ast = with(cnt().as<not_materialized()>(select(1)), select(cnt->*1_colalias));
 
         [[maybe_unused]] string sql = storage.dump(ast);
@@ -932,11 +932,11 @@ void neevek_issue_222() {
         return true;
     });
 
-    constexpr auto register_user = "register_user"_cte;
-    constexpr auto registered_cnt = "registered_cnt"_cte;
-    constexpr auto register_date = "register_date"_col;
-    constexpr auto user_count = "user_count"_col;
-    constexpr auto ndays = "ndays"_col;
+    constexpr orm_cte_moniker auto register_user = "register_user"_cte;
+    constexpr orm_cte_moniker auto registered_cnt = "registered_cnt"_cte;
+    constexpr orm_column_alias auto register_date = "register_date"_col;
+    constexpr orm_column_alias auto user_count = "user_count"_col;
+    constexpr orm_column_alias auto ndays = "ndays"_col;
     auto expression = with(
         make_tuple(
             register_user().as(select(
@@ -1026,8 +1026,8 @@ void greatest_n_per_group() {
     //    and r.timestamp = wnd.max_date
     //    -- other conditions
     //where r.flag = 1
-    constexpr auto wnd = "wnd"_cte;
-    constexpr auto max_date = "max_date"_col;
+    constexpr orm_cte_moniker auto wnd = "wnd"_cte;
+    constexpr orm_column_alias auto max_date = "max_date"_col;
     auto expression = with(
         wnd(&some_result::item_id, max_date)
             .as(select(columns(&some_result::item_id, max(&some_result::timestamp)), group_by(&some_result::item_id))),

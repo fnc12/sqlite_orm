@@ -60,7 +60,7 @@ void marvel_hero_ordered_by_o_pos() {
     cout << endl;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     {
-        constexpr auto i = "i"_col;
+        constexpr orm_column_alias auto i = "i"_col;
         //  SELECT name, instr(abilities, 'o') i
         //  FROM marvel
         //  WHERE i > 0
@@ -94,7 +94,7 @@ void cpp20_column_pointer() {
     };
 
     struct LastResult : Result {};
-    constexpr auto last_result = c<LastResult>();
+    constexpr orm_table_reference auto last_result = c<LastResult>();
 
     auto storage = make_storage(
         "",

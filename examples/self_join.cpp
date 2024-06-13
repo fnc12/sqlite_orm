@@ -200,7 +200,7 @@ int main() {
         //  INNER JOIN employees m
         //  ON m.ReportsTo = employees.EmployeeId
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        constexpr auto m = "m"_alias.for_<Employee>();
+        constexpr orm_table_alias auto m = "m"_alias.for_<Employee>();
         auto firstNames = storage.select(columns(m->*&Employee::firstName || " " || m->*&Employee::lastName,
                                                  &Employee::firstName || " " || &Employee::lastName),
                                          inner_join<m>(on(m->*&Employee::reportsTo == &Employee::employeeId)));
@@ -232,7 +232,7 @@ int main() {
         //  ON emp.ReportsTo = employees.EmployeeId
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         static_assert(std::is_empty_v<custom_alias<Employee>>);
-        constexpr auto emp = custom_alias<Employee>{};
+        constexpr orm_table_alias auto emp = custom_alias<Employee>{};
         auto firstNames = storage.select(columns(emp->*&Employee::firstName || " " || emp->*&Employee::lastName,
                                                  &Employee::firstName || " " || &Employee::lastName),
                                          inner_join<emp>(on(emp->*&Employee::reportsTo == &Employee::employeeId)));
