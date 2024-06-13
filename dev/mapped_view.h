@@ -4,7 +4,7 @@
 #include <utility>  //  std::forward, std::move
 
 #include "row_extractor.h"
-#include "iterator.h"
+#include "mapped_iterator.h"
 #include "ast_iterator.h"
 #include "prepared_statement.h"
 #include "connection_holder.h"
