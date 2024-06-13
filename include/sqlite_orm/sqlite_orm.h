@@ -77,6 +77,10 @@ using std::nullptr_t;
 #define SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 #endif
 
+#if __cpp_structured_bindings >= 201606L
+#define SQLITE_ORM_STRUCTURED_BINDINGS_SUPPORTED
+#endif
+
 #if __cpp_generic_lambdas >= 201707L
 #define SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
 #else
@@ -233,6 +237,10 @@ using std::nullptr_t;
 
 #if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && __cpp_lib_concepts >= 202002L
 #define SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#endif
+
+#if __cpp_lib_ranges >= 201911L
+#define SQLITE_ORM_CPP20_RANGES_SUPPORTED
 #endif
 
 #if(defined(SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED) && defined(SQLITE_ORM_INLINE_VARIABLES_SUPPORTED) &&         \
@@ -13468,26 +13476,21 @@ namespace sqlite_orm {
 // #include "view.h"
 
 #include <sqlite3.h>
-#include <string>  //  std::string
 #include <utility>  //  std::forward, std::move
-#include <tuple>  //  std::tuple, std::make_tuple
 
 // #include "row_extractor.h"
-
-// #include "error_code.h"
 
 // #include "iterator.h"
 
 #include <sqlite3.h>
-#include <memory>  //  std::shared_ptr, std::unique_ptr, std::make_shared
-#include <type_traits>  //  std::decay
+#include <memory>  //  std::shared_ptr, std::make_shared
 #include <utility>  //  std::move
 #include <iterator>  //  std::input_iterator_tag
 #include <system_error>  //  std::system_error
 #include <functional>  //  std::bind
 
 // #include "functional/cxx_universal.h"
-
+//  ::ptrdiff_t
 // #include "statement_finalizer.h"
 
 // #include "error_code.h"
@@ -13586,23 +13589,34 @@ namespace sqlite_orm {
 // #include "util.h"
 
 namespace sqlite_orm {
-
     namespace internal {
 
-        template<class V>
-        struct iterator_t {
-            using view_type = V;
-            using value_type = typename view_type::mapped_type;
+        /*  
+         *  (Legacy) Input iterator over a result set for a mapped object.
+         */
+        template<class O, class DBOs>
+        class iterator_t {
+          public:
+            using db_objects_type = DBOs;
 
-          protected:
+            using iterator_category = std::input_iterator_tag;
+            using difference_type = ptrdiff_t;
+            using value_type = O;
+            using reference = O&;
+            using pointer = O*;
+
+          private:
+            /**
+                pointer to the db objects.
+                only null for the default constructed iterator.
+             */
+            const db_objects_type* db_objects = nullptr;
+
             /**
              *  shared_ptr is used over unique_ptr here
              *  so that the iterator can be copyable.
              */
             std::shared_ptr<sqlite3_stmt> stmt;
-
-            // only null for the default constructed iterator
-            view_type* view = nullptr;
 
             /**
              *  shared_ptr is used over unique_ptr here
@@ -13610,62 +13624,71 @@ namespace sqlite_orm {
              */
             std::shared_ptr<value_type> current;
 
-            void extract_value() {
-                auto& dbObjects = obtain_db_objects(this->view->storage);
+            void extract_object() {
                 this->current = std::make_shared<value_type>();
                 object_from_column_builder<value_type> builder{*this->current, this->stmt.get()};
-                pick_table<value_type>(dbObjects).for_each_column(builder);
+                auto& table = pick_table<value_type>(*this->db_objects);
+                table.for_each_column(builder);
+            }
+
+            void step() {
+                perform_step(this->stmt.get(), std::bind(&iterator_t::extract_object, this));
+                if(!this->current) {
+                    this->stmt.reset();
+                }
             }
 
             void next() {
                 this->current.reset();
-                if(sqlite3_stmt* stmt = this->stmt.get()) {
-                    perform_step(stmt, std::bind(&iterator_t::extract_value, this));
-                    if(!this->current) {
-                        this->stmt.reset();
-                    }
-                }
+                this->step();
             }
 
           public:
-            using difference_type = ptrdiff_t;
-            using pointer = value_type*;
-            using reference = value_type&;
-            using iterator_category = std::input_iterator_tag;
+            iterator_t() = default;
 
-            iterator_t(){};
-
-            iterator_t(statement_finalizer stmt_, view_type& view_) : stmt{std::move(stmt_)}, view{&view_} {
-                next();
+            iterator_t(const db_objects_type& dbObjects, statement_finalizer stmt) :
+                db_objects{&dbObjects}, stmt{std::move(stmt)} {
+                this->step();
             }
 
+            iterator_t(const iterator_t&) = default;
+            iterator_t& operator=(const iterator_t&) = default;
+            iterator_t(iterator_t&&) = default;
+            iterator_t& operator=(iterator_t&&) = default;
+
             value_type& operator*() const {
-                if(!this->stmt || !this->current) {
-                    throw std::system_error{orm_error_code::trying_to_dereference_null_iterator};
-                }
+                if(!this->stmt)
+                    SQLITE_ORM_CPP_UNLIKELY {
+                        throw std::system_error{orm_error_code::trying_to_dereference_null_iterator};
+                    }
                 return *this->current;
             }
 
+            // note: should actually be only present for contiguous iterators
             value_type* operator->() const {
                 return &(this->operator*());
             }
 
-            iterator_t<V>& operator++() {
+            iterator_t& operator++() {
                 next();
                 return *this;
             }
 
-            void operator++(int) {
-                this->operator++();
+            iterator_t operator++(int) {
+                auto tmp = *this;
+                ++*this;
+                return tmp;
             }
 
-            bool operator==(const iterator_t& other) const {
-                return this->current == other.current;
+            friend bool operator==(const iterator_t& lhs, const iterator_t& rhs) {
+                return lhs.current == rhs.current;
             }
 
-            bool operator!=(const iterator_t& other) const {
-                return !(*this == other);
+#ifndef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+            friend bool operator!=(const iterator_t& lhs, const iterator_t& rhs) {
+                return !(lhs == rhs);
             }
+#endif
         };
     }
 }
@@ -15646,26 +15669,29 @@ namespace sqlite_orm {
     namespace internal {
 
         /**
-         * This class does not related to SQL view. This is a container like class which is returned by
-         * by storage_t::iterate function. This class contains STL functions:
+         * A C++ view-like class which is returned
+         * by `storage_t::iterate()` function. This class contains STL functions:
          *  -   size_t size()
          *  -   bool empty()
          *  -   iterator end()
          *  -   iterator begin()
          *  All these functions are not right const cause all of them may open SQLite connections.
+         *  
+         *  `view_t` is also a 'borrowed range',
+         *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
          */
         template<class T, class S, class... Args>
         struct view_t {
             using mapped_type = T;
             using storage_type = S;
-            using self = view_t<T, S, Args...>;
+            using db_objects_type = typename S::db_objects_type;
 
             storage_type& storage;
             connection_ref connection;
-            get_all_t<T, std::vector<T>, Args...> args;
+            get_all_t<T, void, Args...> expression;
 
-            view_t(storage_type& stor, decltype(connection) conn, Args&&... args_) :
-                storage(stor), connection(std::move(conn)), args{std::make_tuple(std::forward<Args>(args_)...)} {}
+            view_t(storage_type& storage, connection_ref conn, Args&&... args) :
+                storage(storage), connection(std::move(conn)), expression{std::forward<Args>(args)...} {}
 
             size_t size() const {
                 return this->storage.template count<T>();
@@ -15675,23 +15701,29 @@ namespace sqlite_orm {
                 return !this->size();
             }
 
-            iterator_t<self> begin() {
-                using context_t = serializer_context<typename storage_type::db_objects_type>;
-                context_t context{obtain_db_objects(this->storage)};
+            iterator_t<T, db_objects_type> begin() {
+                using context_t = serializer_context<db_objects_type>;
+                auto& dbObjects = obtain_db_objects(this->storage);
+                context_t context{dbObjects};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
 
-                statement_finalizer stmt{prepare_stmt(this->connection.get(), serialize(this->args, context))};
-                iterate_ast(this->args.conditions, conditional_binder{stmt.get()});
-                return {std::move(stmt), *this};
+                statement_finalizer stmt{prepare_stmt(this->connection.get(), serialize(this->expression, context))};
+                iterate_ast(this->expression.conditions, conditional_binder{stmt.get()});
+                return {dbObjects, std::move(stmt)};
             }
 
-            iterator_t<self> end() {
+            iterator_t<T, db_objects_type> end() {
                 return {};
             }
         };
     }
 }
+
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+template<class T, class S, class... Args>
+inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::view_t<T, S, Args...>> = true;
+#endif
 
 // #include "ast_iterator.h"
 
@@ -21602,6 +21634,13 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 return {*this, std::move(con), std::forward<Args>(args)...};
             }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            template<orm_refers_to_table auto table, class... Args>
+            auto iterate(Args&&... args) {
+                return this->iterate<auto_decay_table_ref_t<table>>(std::forward<Args>(args)...);
+            }
+#endif
 
             /**
              * Delete from routine.

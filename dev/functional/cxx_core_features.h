@@ -49,6 +49,10 @@
 #define SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 #endif
 
+#if __cpp_structured_bindings >= 201606L
+#define SQLITE_ORM_STRUCTURED_BINDINGS_SUPPORTED
+#endif
+
 #if __cpp_generic_lambdas >= 201707L
 #define SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
 #else
