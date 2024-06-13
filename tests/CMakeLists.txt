@@ -155,6 +155,7 @@ add_executable(unit_tests
     table_name_collector.cpp
     pointer_passing_interface.cpp
     row_extractor.cpp
+    iterate.cpp
 )
 
 if(SQLITE_ORM_OMITS_CODECVT)
