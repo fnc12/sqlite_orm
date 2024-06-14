@@ -35,7 +35,7 @@ struct SignFunction {
     }
 };
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-inline constexpr auto sign = func<SignFunction>;
+inline constexpr orm_scalar_function auto sign = func<SignFunction>;
 #endif
 
 /**
@@ -81,7 +81,7 @@ struct AcceleratedSumFunction {
     }
 };
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-inline constexpr auto accelerated_sum = func<AcceleratedSumFunction>;
+inline constexpr orm_aggregate_function auto accelerated_sum = func<AcceleratedSumFunction>;
 #endif
 
 /**
@@ -112,7 +112,7 @@ struct ArithmeticMeanFunction {
     }
 };
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-inline constexpr auto arithmetic_mean = func<ArithmeticMeanFunction>;
+inline constexpr orm_scalar_function auto arithmetic_mean = func<ArithmeticMeanFunction>;
 #endif
 
 int main() {

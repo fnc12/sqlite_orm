@@ -5488,7 +5488,7 @@ namespace sqlite_orm {
      *  @note An object member pointer can be from a derived class without explicitly forming a column pointer.
      *  
      *  Example:
-     *  constexpr auto als = "u"_alias.for_<User>();
+     *  constexpr orm_table_alias auto als = "u"_alias.for_<User>();
      *  select(alias_column<als>(&User::id))
      */
     template<orm_table_alias auto als, class C>
@@ -5694,7 +5694,7 @@ namespace sqlite_orm {
     /** @short Create a table alias.
      *
      *  Examples:
-     *  constexpr auto z_alias = alias<'z'>.for_<User>();
+     *  constexpr orm_table_alias auto z_alias = alias<'z'>.for_<User>();
      */
     template<char A, char... X>
     inline constexpr internal::recordset_alias_builder<A, X...> alias{};
@@ -5703,7 +5703,7 @@ namespace sqlite_orm {
         /** @short Create a table alias.
          *
          *  Examples:
-         *  constexpr auto z_alias = "z"_alias.for_<User>();
+         *  constexpr orm_table_alias auto z_alias = "z"_alias.for_<User>();
          */
         template<internal::cstring_literal name>
         [[nodiscard]] consteval auto operator"" _alias() {
@@ -8956,7 +8956,7 @@ namespace sqlite_orm {
      *  Despite the missing `RECURSIVE` keyword, the CTE can be recursive.
      *  
      *  Example:
-     *  constexpr auto cte_1 = 1_ctealias;
+     *  constexpr orm_cte_moniker auto cte_1 = 1_ctealias;
      *  with(cte_1().as(select(&Object::id)), select(cte_1->*1_colalias));
      */
     template<class E,
@@ -8973,7 +8973,7 @@ namespace sqlite_orm {
      *  Despite the missing `RECURSIVE` keyword, the CTE can be recursive.
      *  
      *  Example:
-     *  constexpr auto cte_1 = 1_ctealias;
+     *  constexpr orm_cte_moniker auto cte_1 = 1_ctealias;
      *  with(cte_1().as(select(&Object::id)), select(cte_1->*1_colalias));
      */
     template<class Compound,
@@ -9011,7 +9011,7 @@ namespace sqlite_orm {
      *  @note The use of RECURSIVE does not force common table expressions to be recursive.
      *  
      *  Example:
-     *  constexpr auto cte_1 = 1_ctealias;
+     *  constexpr orm_cte_moniker auto cte_1 = 1_ctealias;
      *  with_recursive(cte_1().as(select(&Object::id)), select(cte_1->*1_colalias));
      */
     template<class E,
@@ -9028,7 +9028,7 @@ namespace sqlite_orm {
      *  @note The use of RECURSIVE does not force common table expressions to be recursive.
      *  
      *  Example:
-     *  constexpr auto cte_1 = 1_ctealias;
+     *  constexpr orm_cte_moniker auto cte_1 = 1_ctealias;
      *  with_recursive(cte_1().as(select(&Object::id)), select(cte_1->*1_colalias));
      */
     template<class Compound,
@@ -9067,7 +9067,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
      *  Example:
-     *  constexpr auto m = "m"_alias.for_<Employee>();
+     *  constexpr orm_table_alias auto m = "m"_alias.for_<Employee>();
      *  auto reportingTo = 
      *      storage.select(asterisk<m>(), inner_join<m>(on(m->*&Employee::reportsTo == &Employee::employeeId)));
      */
@@ -13078,7 +13078,7 @@ namespace sqlite_orm {
      *  // inline:
      *  select(func<IdFunc>(42));
      *  // As this is a variable template, you can frame the user-defined function and define a variable for syntactic sugar and legibility:
-     *  inline constexpr auto idfunc = func<IdFunc>;
+     *  inline constexpr orm_scalar_function auto idfunc = func<IdFunc>;
      *  select(idfunc(42));
      *  
      */
@@ -13098,17 +13098,17 @@ namespace sqlite_orm {
          *  
          *  Examples:
          *  // freestanding function from a library
-         *  constexpr auto clamp_int_f = "clamp_int"_scalar.quote(std::clamp<int>);
+         *  constexpr orm_quoted_scalar_function auto clamp_int_f = "clamp_int"_scalar.quote(std::clamp<int>);
          *  // stateless lambda
-         *  constexpr auto is_fatal_error_f = "IS_FATAL_ERROR"_scalar.quote([](unsigned long errcode) {
+         *  constexpr orm_quoted_scalar_function auto is_fatal_error_f = "IS_FATAL_ERROR"_scalar.quote([](unsigned long errcode) {
          *      return errcode != 0;
          *  });
          *  // function object instance
-         *  constexpr auto equal_to_int_f = "equal_to"_scalar.quote(std::equal_to<int>{});
+         *  constexpr orm_quoted_scalar_function auto equal_to_int_f = "equal_to"_scalar.quote(std::equal_to<int>{});
          *  // function object
-         *  constexpr auto equal_to_int_2_f = "equal_to"_scalar.quote<std::equal_to<int>>();
+         *  constexpr orm_quoted_scalar_function auto equal_to_int_2_f = "equal_to"_scalar.quote<std::equal_to<int>>();
          *  // pick function object's template call operator
-         *  constexpr auto equal_to_int_3_f = "equal_to"_scalar.quote<bool(const int&, const int&) const>(std::equal_to<void>{});
+         *  constexpr orm_quoted_scalar_function auto equal_to_int_3_f = "equal_to"_scalar.quote<bool(const int&, const int&) const>(std::equal_to<void>{});
          *
          *  storage.create_scalar_function<clamp_int_f>();
          *  storage.create_scalar_function<is_fatal_error_f>();
@@ -23591,7 +23591,7 @@ namespace sqlite_orm {
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    inline constexpr auto sqlite_schema = "sqlite_schema"_alias.for_<sqlite_master>();
+    inline constexpr orm_table_alias auto sqlite_schema = "sqlite_schema"_alias.for_<sqlite_master>();
 #endif
 }
 #pragma once

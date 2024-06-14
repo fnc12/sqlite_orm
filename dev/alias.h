@@ -240,7 +240,7 @@ namespace sqlite_orm {
      *  @note An object member pointer can be from a derived class without explicitly forming a column pointer.
      *  
      *  Example:
-     *  constexpr auto als = "u"_alias.for_<User>();
+     *  constexpr orm_table_alias auto als = "u"_alias.for_<User>();
      *  select(alias_column<als>(&User::id))
      */
     template<orm_table_alias auto als, class C>
@@ -446,7 +446,7 @@ namespace sqlite_orm {
     /** @short Create a table alias.
      *
      *  Examples:
-     *  constexpr auto z_alias = alias<'z'>.for_<User>();
+     *  constexpr orm_table_alias auto z_alias = alias<'z'>.for_<User>();
      */
     template<char A, char... X>
     inline constexpr internal::recordset_alias_builder<A, X...> alias{};
@@ -455,7 +455,7 @@ namespace sqlite_orm {
         /** @short Create a table alias.
          *
          *  Examples:
-         *  constexpr auto z_alias = "z"_alias.for_<User>();
+         *  constexpr orm_table_alias auto z_alias = "z"_alias.for_<User>();
          */
         template<internal::cstring_literal name>
         [[nodiscard]] consteval auto operator"" _alias() {
