@@ -265,23 +265,39 @@ TEST_CASE("bindables") {
         context.replace_bindable_with_question = false;
 
         SECTION("null by itself") {
-            auto v = statically_bindable_pointer<carray_pvt, nullptr_t>(nullptr);
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            auto v = statically_bindable_pointer<carray_pointer_tag, nullptr_t>(nullptr);
+#else
+            auto v = statically_bindable_pointer<carray_pointer_type, nullptr_t>(nullptr);
+#endif
             value = serialize(v, context);
             expected = "null";
         }
         SECTION("null by itself 2") {
-            auto v = statically_bindable_pointer<carray_pvt>(&value);
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            auto v = statically_bindable_pointer<carray_pointer_tag>(&value);
+#else
+            auto v = statically_bindable_pointer<carray_pointer_type>(&value);
+#endif
             value = serialize(v, context);
             expected = "null";
         }
         SECTION("null in select") {
-            auto ast = select(statically_bindable_pointer<carray_pvt, nullptr_t>(nullptr));
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            auto ast = select(statically_bindable_pointer<carray_pointer_tag, nullptr_t>(nullptr));
+#else
+            auto ast = select(statically_bindable_pointer<carray_pointer_type, nullptr_t>(nullptr));
+#endif
             ast.highest_level = true;
             value = serialize(ast, context);
             expected = "SELECT null";
         }
         SECTION("null as function argument") {
-            auto ast = func<remember_fn>(1, statically_bindable_pointer<carray_pvt, nullptr_t>(nullptr));
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            auto ast = func<remember_fn>(1, statically_bindable_pointer<carray_pointer_tag, nullptr_t>(nullptr));
+#else
+            auto ast = func<remember_fn>(1, statically_bindable_pointer<carray_pointer_type, nullptr_t>(nullptr));
+#endif
             value = serialize(ast, context);
             expected = R"("remember"(1, null))";
         }

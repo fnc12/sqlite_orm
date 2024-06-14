@@ -85,10 +85,15 @@ TEST_CASE("pointer-passing") {
     // test the note_value function
     SECTION("note_value, statically_bindable_pointer") {
         int64 lastUpdatedId = -1;
-        storage.update_all(set(
-            c(&Object::id) =
-                add(1ll,
-                    func<note_value_fn<int64>>(&Object::id, statically_bindable_pointer<carray_pvt>(&lastUpdatedId)))));
+        storage.update_all(set(c(&Object::id) = add(1ll,
+                                                    func<note_value_fn<int64>>(
+                                                        &Object::id,
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+                                                        statically_bindable_pointer<carray_pointer_tag>(&lastUpdatedId)
+#else
+                                                        statically_bindable_pointer<carray_pointer_type>(&lastUpdatedId)
+#endif
+                                                            ))));
         REQUIRE(lastUpdatedId == 1);
         storage.update_all(set(
             c(&Object::id) =
@@ -103,6 +108,9 @@ TEST_CASE("pointer-passing") {
             &Object::id,
             func<pass_thru_pointer_fn>(statically_bindable_carray_pointer(&lastSelectedId))));
         REQUIRE(v.back() == lastSelectedId);
+        lastSelectedId = -1;
+        v = storage.select(
+            func<note_value_fn<int64>>(&Object::id, statically_bindable_carray_pointer(&lastSelectedId)));
     }
 
     SECTION("bindable_pointer") {
@@ -112,7 +120,13 @@ TEST_CASE("pointer-passing") {
         SECTION("unbound is deleted") {
             try {
                 unique_ptr<int64, delete_int64> x{new int64(42)};
-                auto ast = select(func<fetch_from_pointer_fn>(bindable_pointer<carray_pvt>(std::move(x))));
+                auto ast = select(func<fetch_from_pointer_fn>(
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+                    bindable_pointer<carray_pointer_tag>(std::move(x))
+#else
+                    bindable_pointer<carray_pointer_type>(std::move(x))
+#endif
+                        ));
                 auto stmt = storage.prepare(std::move(ast));
                 throw std::system_error{0, std::system_category()};
             } catch(const std::system_error&) {
@@ -124,7 +138,13 @@ TEST_CASE("pointer-passing") {
         SECTION("deleted with prepared statement") {
             {
                 unique_ptr<int64, delete_int64> x{new int64(42)};
-                auto ast = select(func<fetch_from_pointer_fn>(bindable_pointer<carray_pvt>(std::move(x))));
+                auto ast = select(func<fetch_from_pointer_fn>(
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+                    bindable_pointer<carray_pointer_tag>(std::move(x))
+#else
+                    bindable_pointer<carray_pointer_type>(std::move(x))
+#endif
+                        ));
                 auto stmt = storage.prepare(std::move(ast));
 
                 storage.execute(stmt);
