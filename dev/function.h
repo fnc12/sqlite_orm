@@ -478,7 +478,7 @@ namespace sqlite_orm {
      *  // inline:
      *  select(func<IdFunc>(42));
      *  // As this is a variable template, you can frame the user-defined function and define a variable for syntactic sugar and legibility:
-     *  inline constexpr auto idfunc = func<IdFunc>;
+     *  inline constexpr orm_scalar_function auto idfunc = func<IdFunc>;
      *  select(idfunc(42));
      *  
      */
@@ -498,17 +498,17 @@ namespace sqlite_orm {
          *  
          *  Examples:
          *  // freestanding function from a library
-         *  constexpr auto clamp_int_f = "clamp_int"_scalar.quote(std::clamp<int>);
+         *  constexpr orm_quoted_scalar_function auto clamp_int_f = "clamp_int"_scalar.quote(std::clamp<int>);
          *  // stateless lambda
-         *  constexpr auto is_fatal_error_f = "IS_FATAL_ERROR"_scalar.quote([](unsigned long errcode) {
+         *  constexpr orm_quoted_scalar_function auto is_fatal_error_f = "IS_FATAL_ERROR"_scalar.quote([](unsigned long errcode) {
          *      return errcode != 0;
          *  });
          *  // function object instance
-         *  constexpr auto equal_to_int_f = "equal_to"_scalar.quote(std::equal_to<int>{});
+         *  constexpr orm_quoted_scalar_function auto equal_to_int_f = "equal_to"_scalar.quote(std::equal_to<int>{});
          *  // function object
-         *  constexpr auto equal_to_int_2_f = "equal_to"_scalar.quote<std::equal_to<int>>();
+         *  constexpr orm_quoted_scalar_function auto equal_to_int_2_f = "equal_to"_scalar.quote<std::equal_to<int>>();
          *  // pick function object's template call operator
-         *  constexpr auto equal_to_int_3_f = "equal_to"_scalar.quote<bool(const int&, const int&) const>(std::equal_to<void>{});
+         *  constexpr orm_quoted_scalar_function auto equal_to_int_3_f = "equal_to"_scalar.quote<bool(const int&, const int&) const>(std::equal_to<void>{});
          *
          *  storage.create_scalar_function<clamp_int_f>();
          *  storage.create_scalar_function<is_fatal_error_f>();

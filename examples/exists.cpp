@@ -476,8 +476,8 @@ int main(int, char**) {
         //  ORDER BY 'c'."PAYMENT_AMT"
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        constexpr auto c_als = "c"_alias.for_<Customer>();
-        constexpr auto d = "d"_alias.for_<Customer>();
+        constexpr orm_table_alias auto c_als = "c"_alias.for_<Customer>();
+        constexpr orm_table_alias auto d = "d"_alias.for_<Customer>();
 
         double amount = 2000;
         auto where_clause = select(d->*&Customer::agentCode,
