@@ -9834,16 +9834,16 @@ namespace sqlite_orm {
         D d_;
 
       protected:
-        // Constructing pointer bindings must go through bindable_pointer()
+        // Constructing pointer bindings must go through bind_pointer()
         template<class T2, class P2, class D2>
-        friend auto bindable_pointer(P2*, D2) noexcept -> pointer_binding<P2, T2, D2>;
+        friend auto bind_pointer(P2*, D2) noexcept -> pointer_binding<P2, T2, D2>;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        // Constructing pointer bindings must go through bindable_pointer()
+        // Constructing pointer bindings must go through bind_pointer()
         template<orm_pointer_type auto tag, class P2, class D2>
-        friend auto bindable_pointer(P2*, D2) noexcept -> pointer_binding<P2, decltype(tag), D2>;
+        friend auto bind_pointer(P2*, D2) noexcept -> pointer_binding<P2, decltype(tag), D2>;
 #endif
         template<class B>
-        friend B bindable_pointer(typename B::qualified_type*, typename B::deleter_type) noexcept;
+        friend B bind_pointer(typename B::qualified_type*, typename B::deleter_type) noexcept;
 
         // Construct from pointer and deleter.
         // Transfers ownership of the passed in object.
@@ -9919,18 +9919,36 @@ namespace sqlite_orm {
      *  the deleter when the statement finishes.
      */
     template<class T, class P, class D>
-    auto bindable_pointer(P* p, D d) noexcept -> pointer_binding<P, T, D> {
+    auto bind_pointer(P* p, D d) noexcept -> pointer_binding<P, T, D> {
         return {p, std::move(d)};
     }
 
     template<class T, class P, class D>
-    auto bindable_pointer(std::unique_ptr<P, D> p) noexcept -> pointer_binding<P, T, D> {
-        return bindable_pointer<T>(p.release(), p.get_deleter());
+    auto bind_pointer(std::unique_ptr<P, D> p) noexcept -> pointer_binding<P, T, D> {
+        return bind_pointer<T>(p.release(), p.get_deleter());
     }
 
     template<typename B>
-    B bindable_pointer(typename B::qualified_type* p, typename B::deleter_type d = {}) noexcept {
+    auto bind_pointer(typename B::qualified_type* p, typename B::deleter_type d = {}) noexcept -> B {
         return B{p, std::move(d)};
+    }
+
+    template<class T, class P, class D>
+    [[deprecated("Use the better named function `bind_pointer(...)`")]] pointer_binding<P, T, D>
+    bindable_pointer(P* p, D d) noexcept {
+        return bind_pointer<T>(p, std::move(d));
+    }
+
+    template<class T, class P, class D>
+    [[deprecated("Use the better named function `bind_pointer(...)`")]] pointer_binding<P, T, D>
+    bindable_pointer(std::unique_ptr<P, D> p) noexcept {
+        return bind_pointer<T>(p.release(), p.get_deleter());
+    }
+
+    template<typename B>
+    [[deprecated("Use the better named function `bind_pointer(...)`")]] B
+    bindable_pointer(typename B::qualified_type* p, typename B::deleter_type d = {}) noexcept {
+        return bind_pointer<B>(p, std::move(d));
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -9942,13 +9960,13 @@ namespace sqlite_orm {
      *  the deleter when the statement finishes.
      */
     template<orm_pointer_type auto tag, class P, class D>
-    auto bindable_pointer(P* p, D d) noexcept -> pointer_binding<P, decltype(tag), D> {
+    auto bind_pointer(P* p, D d) noexcept -> pointer_binding<P, decltype(tag), D> {
         return {p, std::move(d)};
     }
 
     template<orm_pointer_type auto tag, class P, class D>
-    auto bindable_pointer(std::unique_ptr<P, D> p) noexcept -> pointer_binding<P, decltype(tag), D> {
-        return bindable_pointer<tag>(p.release(), p.get_deleter());
+    auto bind_pointer(std::unique_ptr<P, D> p) noexcept -> pointer_binding<P, decltype(tag), D> {
+        return bind_pointer<tag>(p.release(), p.get_deleter());
     }
 #endif
 
@@ -9959,14 +9977,27 @@ namespace sqlite_orm {
      *  and sqlite assumes the object pointed to is valid throughout the lifetime of a statement.
      */
     template<class T, class P>
-    auto statically_bindable_pointer(P* p) noexcept -> static_pointer_binding<P, T> {
-        return bindable_pointer<T>(p, null_xdestroy_f);
+    auto bind_pointer_statically(P* p) noexcept -> static_pointer_binding<P, T> {
+        return bind_pointer<T>(p, null_xdestroy_f);
     }
 
     template<typename B>
-    B statically_bindable_pointer(typename B::qualified_type* p,
-                                  typename B::deleter_type* /*exposition*/ = nullptr) noexcept {
-        return bindable_pointer<B>(p);
+    B bind_pointer_statically(typename B::qualified_type* p,
+                              typename B::deleter_type* /*exposition*/ = nullptr) noexcept {
+        return bind_pointer<B>(p);
+    }
+
+    template<class T, class P>
+    [[deprecated("Use the better named function `bind_pointer_statically(...)`")]] static_pointer_binding<P, T>
+    statically_bindable_pointer(P* p) noexcept {
+        return bind_pointer<T>(p, null_xdestroy_f);
+    }
+
+    template<typename B>
+    [[deprecated("Use the better named function `bind_pointer_statically(...)`")]] B
+    statically_bindable_pointer(typename B::qualified_type* p,
+                                typename B::deleter_type* /*exposition*/ = nullptr) noexcept {
+        return bind_pointer<B>(p);
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -9977,8 +10008,8 @@ namespace sqlite_orm {
      *  and sqlite assumes the object pointed to is valid throughout the lifetime of a statement.
      */
     template<orm_pointer_type auto tag, class P>
-    auto statically_bindable_pointer(P* p) noexcept -> static_pointer_binding<P, decltype(tag)> {
-        return bindable_pointer<tag>(p, null_xdestroy_f);
+    auto bind_pointer_statically(P* p) noexcept -> static_pointer_binding<P, decltype(tag)> {
+        return bind_pointer<tag>(p, null_xdestroy_f);
     }
 #endif
 
@@ -9987,7 +10018,7 @@ namespace sqlite_orm {
      */
     template<class P, class T>
     auto rebind_statically(const pointer_arg<P, T>& pv) noexcept -> static_pointer_binding<P, T> {
-        return statically_bindable_pointer<T>(pv.ptr());
+        return bind_pointer_statically<T>(pv.ptr());
     }
 }
 #pragma once
@@ -23597,8 +23628,13 @@ namespace sqlite_orm {
      *  the deleter when the statement finishes.
      */
     template<class P, class D>
-    auto bindable_carray_pointer(P* p, D d) noexcept -> pointer_binding_t<P, carray_pointer_tag, D> {
-        return bindable_pointer<carray_pointer_tag>(p, std::move(d));
+    carray_pointer_binding<P, D> bind_carray_pointer(P* p, D d) noexcept {
+        return bind_pointer<carray_pointer_tag>(p, std::move(d));
+    }
+
+    template<class P>
+    static_carray_pointer_binding<P> bind_carray_pointer_statically(P* p) noexcept {
+        return bind_pointer_statically<carray_pointer_tag>(p);
     }
 
     /**
@@ -23607,9 +23643,17 @@ namespace sqlite_orm {
      *  Note: 'Static' means that ownership of the pointed-to-object won't be transferred
      *  and sqlite assumes the object pointed to is valid throughout the lifetime of a statement.
      */
+    template<class P, class D>
+    [[deprecated("Use the better named function `bind_carray_pointer(...)`")]] carray_pointer_binding<P, D>
+    bindable_carray_pointer(P* p, D d) noexcept {
+        return bind_pointer<carray_pointer_tag>(p, std::move(d));
+    }
+
     template<class P>
-    auto statically_bindable_carray_pointer(P* p) noexcept -> static_pointer_binding_t<P, carray_pointer_tag> {
-        return statically_bindable_pointer<carray_pointer_tag>(p);
+    [[deprecated(
+        "Use the better named function `bind_carray_pointer_statically(...)` ")]] static_carray_pointer_binding<P>
+    statically_bindable_carray_pointer(P* p) noexcept {
+        return bind_pointer_statically<carray_pointer_tag>(p);
     }
 #else
     inline constexpr const char carray_pointer_name[] = "carray";
@@ -23632,8 +23676,8 @@ namespace sqlite_orm {
      *  the deleter when the statement finishes.
      */
     template<class P, class D>
-    auto bindable_carray_pointer(P* p, D d) noexcept -> pointer_binding<P, carray_pointer_type, D> {
-        return bindable_pointer<carray_pointer_type>(p, std::move(d));
+    carray_pointer_binding<P, D> bind_carray_pointer(P* p, D d) noexcept {
+        return bind_pointer<carray_pointer_type>(p, std::move(d));
     }
 
     /**
@@ -23643,8 +23687,21 @@ namespace sqlite_orm {
      *  and sqlite assumes the object pointed to is valid throughout the lifetime of a statement.
      */
     template<class P>
-    auto statically_bindable_carray_pointer(P* p) noexcept -> static_pointer_binding<P, carray_pointer_type> {
-        return statically_bindable_pointer<carray_pointer_type>(p);
+    static_carray_pointer_binding<P> bind_carray_pointer_statically(P* p) noexcept {
+        return bind_pointer_statically<carray_pointer_type>(p);
+    }
+
+    template<class P, class D>
+    [[deprecated("Use the better named function `bind_carray_pointer(...)`")]] carray_pointer_binding<P, D>
+    bindable_carray_pointer(P* p, D d) noexcept {
+        return bind_carray_pointer(p, std::move(d));
+    }
+
+    template<class P>
+    [[deprecated(
+        "Use the better named function `bind_carray_pointer_statically(...)` ")]] static_carray_pointer_binding<P>
+    statically_bindable_carray_pointer(P* p) noexcept {
+        return bind_carray_pointer_statically(p);
     }
 #endif
 

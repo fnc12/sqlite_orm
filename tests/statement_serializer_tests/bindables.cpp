@@ -266,27 +266,27 @@ TEST_CASE("bindables") {
 
         SECTION("null by itself") {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-            auto v = statically_bindable_pointer<carray_pointer_tag, nullptr_t>(nullptr);
+            auto v = bind_pointer_statically<carray_pointer_tag, nullptr_t>(nullptr);
 #else
-            auto v = statically_bindable_pointer<carray_pointer_type, nullptr_t>(nullptr);
+            auto v = bind_pointer_statically<carray_pointer_type, nullptr_t>(nullptr);
 #endif
             value = serialize(v, context);
             expected = "null";
         }
         SECTION("null by itself 2") {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-            auto v = statically_bindable_pointer<carray_pointer_tag>(&value);
+            auto v = bind_pointer_statically<carray_pointer_tag>(&value);
 #else
-            auto v = statically_bindable_pointer<carray_pointer_type>(&value);
+            auto v = bind_pointer_statically<carray_pointer_type>(&value);
 #endif
             value = serialize(v, context);
             expected = "null";
         }
         SECTION("null in select") {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-            auto ast = select(statically_bindable_pointer<carray_pointer_tag, nullptr_t>(nullptr));
+            auto ast = select(bind_pointer_statically<carray_pointer_tag, nullptr_t>(nullptr));
 #else
-            auto ast = select(statically_bindable_pointer<carray_pointer_type, nullptr_t>(nullptr));
+            auto ast = select(bind_pointer_statically<carray_pointer_type, nullptr_t>(nullptr));
 #endif
             ast.highest_level = true;
             value = serialize(ast, context);
@@ -294,9 +294,9 @@ TEST_CASE("bindables") {
         }
         SECTION("null as function argument") {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-            auto ast = func<remember_fn>(1, statically_bindable_pointer<carray_pointer_tag, nullptr_t>(nullptr));
+            auto ast = func<remember_fn>(1, bind_pointer_statically<carray_pointer_tag, nullptr_t>(nullptr));
 #else
-            auto ast = func<remember_fn>(1, statically_bindable_pointer<carray_pointer_type, nullptr_t>(nullptr));
+            auto ast = func<remember_fn>(1, bind_pointer_statically<carray_pointer_type, nullptr_t>(nullptr));
 #endif
             value = serialize(ast, context);
             expected = R"("remember"(1, null))";
