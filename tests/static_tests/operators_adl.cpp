@@ -108,15 +108,21 @@ void runTests(E expression) {
     STATIC_REQUIRE(is_specialization_of_v<decltype(!expression || (expression && 42)), or_condition_t>);
 }
 
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 TEST_CASE("inline namespace literals expressions") {
+#ifdef SQLITE_ORM_WITH_CTE
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    constexpr auto cte_mnkr = "1"_cte;
+#endif
+#endif
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     constexpr auto u_alias_builder = "u"_alias;
-    constexpr auto c_alias = "c"_col;
+    constexpr auto c_col = "c"_col;
     constexpr auto f_scalar_builder = "f"_scalar;
-    constexpr auto numeric_cte_alias_builder = 1_ctealias;
-    constexpr auto cte_alias_builder = "1"_cte;
+    constexpr auto domain_ptr_tag = "domain"_pointer_type;
+#endif
 }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 TEST_CASE("ADL and pointer-to-member expressions") {
     struct User {
         int id;

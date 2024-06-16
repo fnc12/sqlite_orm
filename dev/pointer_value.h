@@ -43,7 +43,7 @@ namespace sqlite_orm {
      * 
      *  Template parameters:
      *    - P: The value type, possibly const-qualified.
-     *    - T: An integral constant string denoting the pointer type, e.g. `carray_pointer_type`.
+     *    - T: An integral constant string denoting the pointer type, e.g. `"carray"_pointer_type`.
      *
      */
     template<typename P, typename T>
@@ -52,7 +52,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         // note (internal): this is currently a static assertion instead of a type constraint because
         // of forward declarations in other places (e.g. function.h)
-        static_assert(orm_pointer_type<T>, "The pointer type (tag) must be convertible to `const char*`");
+        static_assert(orm_pointer_type<T>, "T must be a pointer type (tag)");
 #else
         static_assert(std::is_convertible<typename T::value_type, const char*>::value,
                       "The pointer type (tag) must be convertible to `const char*`");
