@@ -657,7 +657,7 @@ namespace sqlite_orm {
      *  Despite the missing `RECURSIVE` keyword, the CTE can be recursive.
      *  
      *  Example:
-     *  constexpr auto cte_1 = 1_ctealias;
+     *  constexpr orm_cte_moniker auto cte_1 = 1_ctealias;
      *  with(cte_1().as(select(&Object::id)), select(cte_1->*1_colalias));
      */
     template<class E,
@@ -674,7 +674,7 @@ namespace sqlite_orm {
      *  Despite the missing `RECURSIVE` keyword, the CTE can be recursive.
      *  
      *  Example:
-     *  constexpr auto cte_1 = 1_ctealias;
+     *  constexpr orm_cte_moniker auto cte_1 = 1_ctealias;
      *  with(cte_1().as(select(&Object::id)), select(cte_1->*1_colalias));
      */
     template<class Compound,
@@ -712,7 +712,7 @@ namespace sqlite_orm {
      *  @note The use of RECURSIVE does not force common table expressions to be recursive.
      *  
      *  Example:
-     *  constexpr auto cte_1 = 1_ctealias;
+     *  constexpr orm_cte_moniker auto cte_1 = 1_ctealias;
      *  with_recursive(cte_1().as(select(&Object::id)), select(cte_1->*1_colalias));
      */
     template<class E,
@@ -729,7 +729,7 @@ namespace sqlite_orm {
      *  @note The use of RECURSIVE does not force common table expressions to be recursive.
      *  
      *  Example:
-     *  constexpr auto cte_1 = 1_ctealias;
+     *  constexpr orm_cte_moniker auto cte_1 = 1_ctealias;
      *  with_recursive(cte_1().as(select(&Object::id)), select(cte_1->*1_colalias));
      */
     template<class Compound,
@@ -768,7 +768,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
      *  Example:
-     *  constexpr auto m = "m"_alias.for_<Employee>();
+     *  constexpr orm_table_alias auto m = "m"_alias.for_<Employee>();
      *  auto reportingTo = 
      *      storage.select(asterisk<m>(), inner_join<m>(on(m->*&Employee::reportsTo == &Employee::employeeId)));
      */

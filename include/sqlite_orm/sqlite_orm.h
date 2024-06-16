@@ -5504,7 +5504,7 @@ namespace sqlite_orm {
      *  @note An object member pointer can be from a derived class without explicitly forming a column pointer.
      *  
      *  Example:
-     *  constexpr auto als = "u"_alias.for_<User>();
+     *  constexpr orm_table_alias auto als = "u"_alias.for_<User>();
      *  select(alias_column<als>(&User::id))
      */
     template<orm_table_alias auto als, class C>
@@ -5710,7 +5710,7 @@ namespace sqlite_orm {
     /** @short Create a table alias.
      *
      *  Examples:
-     *  constexpr auto z_alias = alias<'z'>.for_<User>();
+     *  constexpr orm_table_alias auto z_alias = alias<'z'>.for_<User>();
      */
     template<char A, char... X>
     inline constexpr internal::recordset_alias_builder<A, X...> alias{};
@@ -5719,7 +5719,7 @@ namespace sqlite_orm {
         /** @short Create a table alias.
          *
          *  Examples:
-         *  constexpr auto z_alias = "z"_alias.for_<User>();
+         *  constexpr orm_table_alias auto z_alias = "z"_alias.for_<User>();
          */
         template<internal::cstring_literal name>
         [[nodiscard]] consteval auto operator"" _alias() {
@@ -8972,7 +8972,7 @@ namespace sqlite_orm {
      *  Despite the missing `RECURSIVE` keyword, the CTE can be recursive.
      *  
      *  Example:
-     *  constexpr auto cte_1 = 1_ctealias;
+     *  constexpr orm_cte_moniker auto cte_1 = 1_ctealias;
      *  with(cte_1().as(select(&Object::id)), select(cte_1->*1_colalias));
      */
     template<class E,
@@ -8989,7 +8989,7 @@ namespace sqlite_orm {
      *  Despite the missing `RECURSIVE` keyword, the CTE can be recursive.
      *  
      *  Example:
-     *  constexpr auto cte_1 = 1_ctealias;
+     *  constexpr orm_cte_moniker auto cte_1 = 1_ctealias;
      *  with(cte_1().as(select(&Object::id)), select(cte_1->*1_colalias));
      */
     template<class Compound,
@@ -9027,7 +9027,7 @@ namespace sqlite_orm {
      *  @note The use of RECURSIVE does not force common table expressions to be recursive.
      *  
      *  Example:
-     *  constexpr auto cte_1 = 1_ctealias;
+     *  constexpr orm_cte_moniker auto cte_1 = 1_ctealias;
      *  with_recursive(cte_1().as(select(&Object::id)), select(cte_1->*1_colalias));
      */
     template<class E,
@@ -9044,7 +9044,7 @@ namespace sqlite_orm {
      *  @note The use of RECURSIVE does not force common table expressions to be recursive.
      *  
      *  Example:
-     *  constexpr auto cte_1 = 1_ctealias;
+     *  constexpr orm_cte_moniker auto cte_1 = 1_ctealias;
      *  with_recursive(cte_1().as(select(&Object::id)), select(cte_1->*1_colalias));
      */
     template<class Compound,
@@ -9083,7 +9083,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
      *  Example:
-     *  constexpr auto m = "m"_alias.for_<Employee>();
+     *  constexpr orm_table_alias auto m = "m"_alias.for_<Employee>();
      *  auto reportingTo = 
      *      storage.select(asterisk<m>(), inner_join<m>(on(m->*&Employee::reportsTo == &Employee::employeeId)));
      */
@@ -9499,8 +9499,11 @@ namespace sqlite_orm {
 #include <type_traits>
 #include <memory>
 #include <utility>
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+#include <concepts>
+#endif
 
-// #include "functional/cxx_universal.h"
+// #include "functional/cstring_literal.h"
 
 // #include "xdestroy_handling.h"
 
@@ -9755,6 +9758,30 @@ namespace sqlite_orm {
 }
 
 namespace sqlite_orm {
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    namespace internal {
+        template<char... C>
+        struct pointer_type {
+            using value_type = const char[sizeof...(C) + 1];
+            static inline constexpr value_type value = {C..., '\0'};
+        };
+    }
+
+    inline namespace literals {
+        template<internal::cstring_literal tag>
+        [[nodiscard]] consteval auto operator"" _pointer_type() {
+            return internal::explode_into<internal::pointer_type, tag>(std::make_index_sequence<tag.size()>{});
+        }
+    }
+
+    /** @short Specifies that a type is an integral constant string usable as a pointer type.
+     */
+    template<class T>
+    concept orm_pointer_type = requires {
+        typename T::value_type;
+        { T::value } -> std::convertible_to<const char*>;
+    };
+#endif
 
     /**
      *  Wraps a pointer and tags it with a pointer type,
@@ -9763,14 +9790,20 @@ namespace sqlite_orm {
      * 
      *  Template parameters:
      *    - P: The value type, possibly const-qualified.
-     *    - T: An integral constant string denoting the pointer type, e.g. `carray_pvt_name`.
+     *    - T: An integral constant string denoting the pointer type, e.g. `carray_pointer_type`.
      *
      */
     template<typename P, typename T>
     struct pointer_arg {
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        // note (internal): this is currently a static assertion instead of a type constraint because
+        // of forward declarations in other places (e.g. function.h)
+        static_assert(orm_pointer_type<T>, "The pointer type (tag) must be convertible to `const char*`");
+#else
         static_assert(std::is_convertible<typename T::value_type, const char*>::value,
-                      "`std::integral_constant<>` must be convertible to `const char*`");
+                      "The pointer type (tag) must be convertible to `const char*`");
+#endif
 
         using tag = T;
         P* p_;
@@ -9790,6 +9823,8 @@ namespace sqlite_orm {
      *  as part of facilitating the 'pointer-passing interface'.
      * 
      *  Template parameters:
+     *    - P: The value type, possibly const-qualified.
+     *    - T: An integral constant string denoting the pointer type, e.g. `carray_pointer_type`.
      *    - D: The deleter for the pointer value;
      *         can be one of:
      *         - function pointer
@@ -9815,11 +9850,16 @@ namespace sqlite_orm {
         D d_;
 
       protected:
-        // Constructing pointer bindings must go through bindable_pointer()
+        // Constructing pointer bindings must go through bind_pointer()
         template<class T2, class P2, class D2>
-        friend auto bindable_pointer(P2*, D2) noexcept -> pointer_binding<P2, T2, D2>;
+        friend auto bind_pointer(P2*, D2) noexcept -> pointer_binding<P2, T2, D2>;
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        // Constructing pointer bindings must go through bind_pointer()
+        template<orm_pointer_type auto tag, class P2, class D2>
+        friend auto bind_pointer(P2*, D2) noexcept -> pointer_binding<P2, decltype(tag), D2>;
+#endif
         template<class B>
-        friend B bindable_pointer(typename B::qualified_type*, typename B::deleter_type) noexcept;
+        friend B bind_pointer(typename B::qualified_type*, typename B::deleter_type) noexcept;
 
         // Construct from pointer and deleter.
         // Transfers ownership of the passed in object.
@@ -9860,17 +9900,33 @@ namespace sqlite_orm {
     };
 
     /**
-     *  Template alias for a static pointer value binding.
+     *  Alias template for a static pointer value binding.
      *  'Static' means that ownership won't be transferred to sqlite,
      *  sqlite doesn't delete it, and sqlite assumes the object
      *  pointed to is valid throughout the lifetime of a statement.
      */
     template<typename P, typename T>
     using static_pointer_binding = pointer_binding<P, T, null_xdestroy_t>;
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<class P, orm_pointer_type auto tag>
+    using pointer_arg_t = pointer_arg<P, decltype(tag)>;
+
+    template<class P, orm_pointer_type auto tag, class D>
+    using pointer_binding_t = pointer_binding<P, decltype(tag), D>;
+
+    /**
+     *  Alias template for a static pointer value binding.
+     *  'Static' means that ownership won't be transferred to sqlite,
+     *  sqlite doesn't delete it, and sqlite assumes the object
+     *  pointed to is valid throughout the lifetime of a statement.
+     */
+    template<typename P, orm_pointer_type auto tag>
+    using static_pointer_binding_t = pointer_binding_t<P, tag, null_xdestroy_t>;
+#endif
 }
 
 namespace sqlite_orm {
-
     /**
      *  Wrap a pointer, its type and its deleter function for binding it to a statement.
      *  
@@ -9879,19 +9935,56 @@ namespace sqlite_orm {
      *  the deleter when the statement finishes.
      */
     template<class T, class P, class D>
-    auto bindable_pointer(P* p, D d) noexcept -> pointer_binding<P, T, D> {
+    auto bind_pointer(P* p, D d) noexcept -> pointer_binding<P, T, D> {
         return {p, std::move(d)};
     }
 
     template<class T, class P, class D>
-    auto bindable_pointer(std::unique_ptr<P, D> p) noexcept -> pointer_binding<P, T, D> {
-        return bindable_pointer<T>(p.release(), p.get_deleter());
+    auto bind_pointer(std::unique_ptr<P, D> p) noexcept -> pointer_binding<P, T, D> {
+        return bind_pointer<T>(p.release(), p.get_deleter());
     }
 
     template<typename B>
-    B bindable_pointer(typename B::qualified_type* p, typename B::deleter_type d = {}) noexcept {
+    auto bind_pointer(typename B::qualified_type* p, typename B::deleter_type d = {}) noexcept -> B {
         return B{p, std::move(d)};
     }
+
+    template<class T, class P, class D>
+    [[deprecated("Use the better named function `bind_pointer(...)`")]] pointer_binding<P, T, D>
+    bindable_pointer(P* p, D d) noexcept {
+        return bind_pointer<T>(p, std::move(d));
+    }
+
+    template<class T, class P, class D>
+    [[deprecated("Use the better named function `bind_pointer(...)`")]] pointer_binding<P, T, D>
+    bindable_pointer(std::unique_ptr<P, D> p) noexcept {
+        return bind_pointer<T>(p.release(), p.get_deleter());
+    }
+
+    template<typename B>
+    [[deprecated("Use the better named function `bind_pointer(...)`")]] B
+    bindable_pointer(typename B::qualified_type* p, typename B::deleter_type d = {}) noexcept {
+        return bind_pointer<B>(p, std::move(d));
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Wrap a pointer, its type (tag) and its deleter function for binding it to a statement.
+     *  
+     *  Unless the deleter yields a nullptr 'xDestroy' function the ownership of the pointed-to-object
+     *  is transferred to the pointer binding, which will delete it through
+     *  the deleter when the statement finishes.
+     */
+    template<orm_pointer_type auto tag, class P, class D>
+    auto bind_pointer(P* p, D d) noexcept -> pointer_binding<P, decltype(tag), D> {
+        return {p, std::move(d)};
+    }
+
+    template<orm_pointer_type auto tag, class P, class D>
+    auto bind_pointer(std::unique_ptr<P, D> p) noexcept -> pointer_binding<P, decltype(tag), D> {
+        return bind_pointer<tag>(p.release(), p.get_deleter());
+    }
+#endif
 
     /**
      *  Wrap a pointer and its type for binding it to a statement.
@@ -9900,22 +9993,48 @@ namespace sqlite_orm {
      *  and sqlite assumes the object pointed to is valid throughout the lifetime of a statement.
      */
     template<class T, class P>
-    auto statically_bindable_pointer(P* p) noexcept -> static_pointer_binding<P, T> {
-        return bindable_pointer<T>(p, null_xdestroy_f);
+    auto bind_pointer_statically(P* p) noexcept -> static_pointer_binding<P, T> {
+        return bind_pointer<T>(p, null_xdestroy_f);
     }
 
     template<typename B>
-    B statically_bindable_pointer(typename B::qualified_type* p,
-                                  typename B::deleter_type* /*exposition*/ = nullptr) noexcept {
-        return bindable_pointer<B>(p);
+    B bind_pointer_statically(typename B::qualified_type* p,
+                              typename B::deleter_type* /*exposition*/ = nullptr) noexcept {
+        return bind_pointer<B>(p);
     }
+
+    template<class T, class P>
+    [[deprecated("Use the better named function `bind_pointer_statically(...)`")]] static_pointer_binding<P, T>
+    statically_bindable_pointer(P* p) noexcept {
+        return bind_pointer<T>(p, null_xdestroy_f);
+    }
+
+    template<typename B>
+    [[deprecated("Use the better named function `bind_pointer_statically(...)`")]] B
+    statically_bindable_pointer(typename B::qualified_type* p,
+                                typename B::deleter_type* /*exposition*/ = nullptr) noexcept {
+        return bind_pointer<B>(p);
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Wrap a pointer and its type (tag) for binding it to a statement.
+     *  
+     *  Note: 'Static' means that ownership of the pointed-to-object won't be transferred
+     *  and sqlite assumes the object pointed to is valid throughout the lifetime of a statement.
+     */
+    template<orm_pointer_type auto tag, class P>
+    auto bind_pointer_statically(P* p) noexcept -> static_pointer_binding<P, decltype(tag)> {
+        return bind_pointer<tag>(p, null_xdestroy_f);
+    }
+#endif
 
     /**
      *  Forward a pointer value from an argument.
      */
     template<class P, class T>
     auto rebind_statically(const pointer_arg<P, T>& pv) noexcept -> static_pointer_binding<P, T> {
-        return statically_bindable_pointer<T>(pv.ptr());
+        return bind_pointer_statically<T>(pv.ptr());
     }
 }
 #pragma once
@@ -9980,7 +10099,7 @@ namespace sqlite_orm {
     }
 
     /**
-     *  Specialization for 'pointer-passing interface'.
+     *  Specialization for pointer bindings (part of the 'pointer-passing interface').
      */
     template<class P, class T, class D>
     struct statement_binder<pointer_binding<P, T, D>, void> {
@@ -12542,7 +12661,7 @@ namespace sqlite_orm {
 #include <utility>  //  std::move, std::forward
 
 // #include "functional/cxx_universal.h"
-
+//  ::size_t
 // #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "functional/cstring_literal.h"
@@ -12642,9 +12761,9 @@ namespace sqlite_orm {
 
     struct arg_values;
 
-    template<class T, class P>
+    template<class P, class T>
     struct pointer_arg;
-    template<class T, class P, class D>
+    template<class P, class T, class D>
     class pointer_binding;
 
     namespace internal {
@@ -13101,7 +13220,7 @@ namespace sqlite_orm {
      *  // inline:
      *  select(func<IdFunc>(42));
      *  // As this is a variable template, you can frame the user-defined function and define a variable for syntactic sugar and legibility:
-     *  inline constexpr auto idfunc = func<IdFunc>;
+     *  inline constexpr orm_scalar_function auto idfunc = func<IdFunc>;
      *  select(idfunc(42));
      *  
      */
@@ -13121,17 +13240,17 @@ namespace sqlite_orm {
          *  
          *  Examples:
          *  // freestanding function from a library
-         *  constexpr auto clamp_int_f = "clamp_int"_scalar.quote(std::clamp<int>);
+         *  constexpr orm_quoted_scalar_function auto clamp_int_f = "clamp_int"_scalar.quote(std::clamp<int>);
          *  // stateless lambda
-         *  constexpr auto is_fatal_error_f = "IS_FATAL_ERROR"_scalar.quote([](unsigned long errcode) {
+         *  constexpr orm_quoted_scalar_function auto is_fatal_error_f = "IS_FATAL_ERROR"_scalar.quote([](unsigned long errcode) {
          *      return errcode != 0;
          *  });
          *  // function object instance
-         *  constexpr auto equal_to_int_f = "equal_to"_scalar.quote(std::equal_to<int>{});
+         *  constexpr orm_quoted_scalar_function auto equal_to_int_f = "equal_to"_scalar.quote(std::equal_to<int>{});
          *  // function object
-         *  constexpr auto equal_to_int_2_f = "equal_to"_scalar.quote<std::equal_to<int>>();
+         *  constexpr orm_quoted_scalar_function auto equal_to_int_2_f = "equal_to"_scalar.quote<std::equal_to<int>>();
          *  // pick function object's template call operator
-         *  constexpr auto equal_to_int_3_f = "equal_to"_scalar.quote<bool(const int&, const int&) const>(std::equal_to<void>{});
+         *  constexpr orm_quoted_scalar_function auto equal_to_int_3_f = "equal_to"_scalar.quote<bool(const int&, const int&) const>(std::equal_to<void>{});
          *
          *  storage.create_scalar_function<clamp_int_f>();
          *  storage.create_scalar_function<is_fatal_error_f>();
@@ -23827,24 +23946,28 @@ namespace sqlite_orm {
  */
 
 #ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
-#include <type_traits>  //  std::integral_constant
 #include <utility>  //  std::move
-
-// #include "functional/cxx_universal.h"
+#ifndef SQLITE_ORM_WITH_CPP20_ALIASES
+#include <type_traits>  //  std::integral_constant
+#endif
+#endif
 
 // #include "pointer_value.h"
 
+#ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 namespace sqlite_orm {
 
-    inline constexpr const char carray_pvt_name[] = "carray";
-    using carray_pvt = std::integral_constant<const char*, carray_pvt_name>;
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    inline constexpr orm_pointer_type auto carray_pointer_tag = "carray"_pointer_type;
+    // [Deprecation notice] This type is deprecated and will be removed in v1.10. Use the inline variable `carray_pointer_tag` instead.
+    using carray_pvt [[deprecated]] = decltype("carray"_pointer_type);
 
     template<typename P>
-    using carray_pointer_arg = pointer_arg<P, carray_pvt>;
+    using carray_pointer_arg = pointer_arg_t<P, carray_pointer_tag>;
     template<typename P, typename D>
-    using carray_pointer_binding = pointer_binding<P, carray_pvt, D>;
+    using carray_pointer_binding = pointer_binding_t<P, carray_pointer_tag, D>;
     template<typename P>
-    using static_carray_pointer_binding = static_pointer_binding<P, carray_pvt>;
+    using static_carray_pointer_binding = static_pointer_binding_t<P, carray_pointer_tag>;
 
     /**
      *  Wrap a pointer of type 'carray' and its deleter function for binding it to a statement.
@@ -23854,8 +23977,56 @@ namespace sqlite_orm {
      *  the deleter when the statement finishes.
      */
     template<class P, class D>
-    auto bindable_carray_pointer(P* p, D d) noexcept -> pointer_binding<P, carray_pvt, D> {
-        return bindable_pointer<carray_pvt>(p, std::move(d));
+    carray_pointer_binding<P, D> bind_carray_pointer(P* p, D d) noexcept {
+        return bind_pointer<carray_pointer_tag>(p, std::move(d));
+    }
+
+    template<class P>
+    static_carray_pointer_binding<P> bind_carray_pointer_statically(P* p) noexcept {
+        return bind_pointer_statically<carray_pointer_tag>(p);
+    }
+
+    /**
+     *  Wrap a pointer of type 'carray' for binding it to a statement.
+     *  
+     *  Note: 'Static' means that ownership of the pointed-to-object won't be transferred
+     *  and sqlite assumes the object pointed to is valid throughout the lifetime of a statement.
+     */
+    template<class P, class D>
+    [[deprecated("Use the better named function `bind_carray_pointer(...)`")]] carray_pointer_binding<P, D>
+    bindable_carray_pointer(P* p, D d) noexcept {
+        return bind_pointer<carray_pointer_tag>(p, std::move(d));
+    }
+
+    template<class P>
+    [[deprecated(
+        "Use the better named function `bind_carray_pointer_statically(...)` ")]] static_carray_pointer_binding<P>
+    statically_bindable_carray_pointer(P* p) noexcept {
+        return bind_pointer_statically<carray_pointer_tag>(p);
+    }
+#else
+    inline constexpr const char carray_pointer_name[] = "carray";
+    using carray_pointer_type = std::integral_constant<const char*, carray_pointer_name>;
+    // [Deprecation notice] This type is deprecated and will be removed in v1.10. Use the alias type `carray_pointer_type` instead.
+    using carray_pvt [[deprecated]] = carray_pointer_type;
+
+    template<typename P>
+    using carray_pointer_arg = pointer_arg<P, carray_pointer_type>;
+    template<typename P, typename D>
+    using carray_pointer_binding = pointer_binding<P, carray_pointer_type, D>;
+    template<typename P>
+    using static_carray_pointer_binding = static_pointer_binding<P, carray_pointer_type>;
+
+    /**
+     *  Wrap a pointer of type 'carray' and its deleter function for binding it to a statement.
+     *  
+     *  Unless the deleter yields a nullptr 'xDestroy' function the ownership of the pointed-to-object
+     *  is transferred to the pointer binding, which will delete it through
+     *  the deleter when the statement finishes.
+     */
+    template<class P, class D>
+    carray_pointer_binding<P, D> bind_carray_pointer(P* p, D d) noexcept {
+        return bind_pointer<carray_pointer_type>(p, std::move(d));
     }
 
     /**
@@ -23865,9 +24036,23 @@ namespace sqlite_orm {
      *  and sqlite assumes the object pointed to is valid throughout the lifetime of a statement.
      */
     template<class P>
-    auto statically_bindable_carray_pointer(P* p) noexcept -> static_pointer_binding<P, carray_pvt> {
-        return statically_bindable_pointer<carray_pvt>(p);
+    static_carray_pointer_binding<P> bind_carray_pointer_statically(P* p) noexcept {
+        return bind_pointer_statically<carray_pointer_type>(p);
     }
+
+    template<class P, class D>
+    [[deprecated("Use the better named function `bind_carray_pointer(...)`")]] carray_pointer_binding<P, D>
+    bindable_carray_pointer(P* p, D d) noexcept {
+        return bind_carray_pointer(p, std::move(d));
+    }
+
+    template<class P>
+    [[deprecated(
+        "Use the better named function `bind_carray_pointer_statically(...)` ")]] static_carray_pointer_binding<P>
+    statically_bindable_carray_pointer(P* p) noexcept {
+        return bind_carray_pointer_statically(p);
+    }
+#endif
 
     /**
      *  Generalized form of the 'remember' SQL function that is a pass-through for values
