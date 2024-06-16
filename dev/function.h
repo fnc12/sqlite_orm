@@ -8,7 +8,7 @@
 #include <algorithm>  //  std::min, std::copy_n
 #include <utility>  //  std::move, std::forward
 
-#include "functional/cxx_universal.h"
+#include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/cstring_literal.h"
 #include "functional/function_traits.h"
@@ -19,9 +19,9 @@ namespace sqlite_orm {
 
     struct arg_values;
 
-    template<class T, class P>
+    template<class P, class T>
     struct pointer_arg;
-    template<class T, class P, class D>
+    template<class P, class T, class D>
     class pointer_binding;
 
     namespace internal {

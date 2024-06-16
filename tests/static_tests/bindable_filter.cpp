@@ -66,7 +66,11 @@ TEST_CASE("bindable_filter") {
                                  std::unique_ptr<int>,
                                  std::shared_ptr<int>,
 #ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
-                                 static_pointer_binding<std::nullptr_t, carray_pvt>,
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+                                 static_pointer_binding_t<std::nullptr_t, carray_pointer_tag>,
+#else
+                                 static_pointer_binding<std::nullptr_t, carray_pointer_type>,
+#endif
 #endif
                                  Custom,
                                  std::unique_ptr<Custom>>;

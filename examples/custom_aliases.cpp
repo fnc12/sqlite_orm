@@ -107,7 +107,7 @@ int main(int, char** argv) {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     constexpr orm_table_alias auto c_als = "c"_alias.for_<Employee>();
     constexpr orm_table_alias auto d = "d"_alias.for_<Department>();
-    static_assert(std::is_empty_v<EmployeeIdAlias>);  // note: it's
+    static_assert(std::is_empty_v<EmployeeIdAlias>);
     constexpr orm_column_alias auto empId = EmployeeIdAlias{};
     auto rowsWithTableAliases = storage.select(
         columns(c_als->*&Employee::id, c_als->*&Employee::name, c_als->*&Employee::age, d->*&Department::dept),
