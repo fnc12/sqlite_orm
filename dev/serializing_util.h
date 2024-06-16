@@ -30,10 +30,11 @@ namespace sqlite_orm {
             for(size_t offset = 0, next; true; offset = next + 1) {
                 next = str.find(char2Escape, offset);
 
-                if(next == str.npos) {
-                    os.write(str.data() + offset, str.size() - offset);
-                    break;
-                }
+                if(next == str.npos)
+                    SQLITE_ORM_CPP_LIKELY {
+                        os.write(str.data() + offset, str.size() - offset);
+                        break;
+                    }
 
                 os.write(str.data() + offset, next - offset + 1);
                 os.write(&char2Escape, 1);

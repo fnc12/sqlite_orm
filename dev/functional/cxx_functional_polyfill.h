@@ -17,7 +17,7 @@ namespace sqlite_orm {
             // gcc got it right and reports C++20 only starting with v10.
             // The check here doesn't care and checks the library versions in use.
             //
-            // Another way of detection would be the constrained algorithms feature macro __cpp_lib_ranges
+            // Another way of detection would be the constrained algorithms feature-test macro __cpp_lib_ranges
 #if(__cplusplus >= 202002L) &&                                                                                         \
     ((!_LIBCPP_VERSION || _LIBCPP_VERSION >= 13000) && (!_GLIBCXX_RELEASE || _GLIBCXX_RELEASE >= 10))
             using std::identity;

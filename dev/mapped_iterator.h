@@ -21,7 +21,7 @@ namespace sqlite_orm {
          *  (Legacy) Input iterator over a result set for a mapped object.
          */
         template<class O, class DBOs>
-        class iterator_t {
+        class mapped_iterator {
           public:
             using db_objects_type = DBOs;
 
@@ -58,7 +58,7 @@ namespace sqlite_orm {
             }
 
             void step() {
-                perform_step(this->stmt.get(), std::bind(&iterator_t::extract_object, this));
+                perform_step(this->stmt.get(), std::bind(&mapped_iterator::extract_object, this));
                 if(!this->current) {
                     this->stmt.reset();
                 }
@@ -70,17 +70,17 @@ namespace sqlite_orm {
             }
 
           public:
-            iterator_t() = default;
+            mapped_iterator() = default;
 
-            iterator_t(const db_objects_type& dbObjects, statement_finalizer stmt) :
+            mapped_iterator(const db_objects_type& dbObjects, statement_finalizer stmt) :
                 db_objects{&dbObjects}, stmt{std::move(stmt)} {
                 this->step();
             }
 
-            iterator_t(const iterator_t&) = default;
-            iterator_t& operator=(const iterator_t&) = default;
-            iterator_t(iterator_t&&) = default;
-            iterator_t& operator=(iterator_t&&) = default;
+            mapped_iterator(const mapped_iterator&) = default;
+            mapped_iterator& operator=(const mapped_iterator&) = default;
+            mapped_iterator(mapped_iterator&&) = default;
+            mapped_iterator& operator=(mapped_iterator&&) = default;
 
             value_type& operator*() const {
                 if(!this->stmt)
@@ -95,23 +95,23 @@ namespace sqlite_orm {
                 return &(this->operator*());
             }
 
-            iterator_t& operator++() {
+            mapped_iterator& operator++() {
                 next();
                 return *this;
             }
 
-            iterator_t operator++(int) {
+            mapped_iterator operator++(int) {
                 auto tmp = *this;
                 ++*this;
                 return tmp;
             }
 
-            friend bool operator==(const iterator_t& lhs, const iterator_t& rhs) {
+            friend bool operator==(const mapped_iterator& lhs, const mapped_iterator& rhs) {
                 return lhs.current == rhs.current;
             }
 
 #ifndef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
-            friend bool operator!=(const iterator_t& lhs, const iterator_t& rhs) {
+            friend bool operator!=(const mapped_iterator& lhs, const mapped_iterator& rhs) {
                 return !(lhs == rhs);
             }
 #endif

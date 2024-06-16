@@ -26,6 +26,7 @@ template<class S, orm_table_alias auto als>
 concept storage_table_alias_callable = requires(S& storage) {
     { storage.get_all<als>() };
     { storage.count<als>() };
+    { storage.iterate<als>() };
 };
 #endif
 
