@@ -50,7 +50,7 @@ namespace sqlite_orm {
     }
 
     /**
-     *  Specialization for 'pointer-passing interface'.
+     *  Specialization for pointer bindings (part of the 'pointer-passing interface').
      */
     template<class P, class T, class D>
     struct statement_binder<pointer_binding<P, T, D>, void> {
