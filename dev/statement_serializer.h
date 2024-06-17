@@ -1096,7 +1096,7 @@ namespace sqlite_orm {
             using statement_type = table_content_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type& /*statement*/, const Ctx& context) const {
                 using mapped_type = typename statement_type::mapped_type;
 
                 auto& table = pick_table<mapped_type>(context.db_objects);

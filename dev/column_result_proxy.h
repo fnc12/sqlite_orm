@@ -30,7 +30,7 @@ namespace sqlite_orm {
         struct column_result_proxy<P, match_if<is_table_reference, P>> : decay_table_ref<P> {};
 
         /*
-         *  Unwrap `structure`
+         *  Pass through `structure`
          */
         template<class P>
         struct column_result_proxy<P, match_specialization_of<P, structure>> : P {};

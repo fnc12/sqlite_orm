@@ -4,7 +4,7 @@
 #include <utility>  //  std::forward, std::move
 
 #include "row_extractor.h"
-#include "iterator.h"
+#include "mapped_iterator.h"
 #include "ast_iterator.h"
 #include "prepared_statement.h"
 #include "connection_holder.h"
@@ -23,11 +23,11 @@ namespace sqlite_orm {
          *  -   iterator begin()
          *  All these functions are not right const cause all of them may open SQLite connections.
          *  
-         *  `view_t` is also a 'borrowed range',
+         *  `mapped_view` is also a 'borrowed range',
          *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
          */
         template<class T, class S, class... Args>
-        struct view_t {
+        struct mapped_view {
             using mapped_type = T;
             using storage_type = S;
             using db_objects_type = typename S::db_objects_type;
@@ -36,7 +36,7 @@ namespace sqlite_orm {
             connection_ref connection;
             get_all_t<T, void, Args...> expression;
 
-            view_t(storage_type& storage, connection_ref conn, Args&&... args) :
+            mapped_view(storage_type& storage, connection_ref conn, Args&&... args) :
                 storage(storage), connection(std::move(conn)), expression{std::forward<Args>(args)...} {}
 
             size_t size() const {
@@ -47,7 +47,7 @@ namespace sqlite_orm {
                 return !this->size();
             }
 
-            iterator_t<T, db_objects_type> begin() {
+            mapped_iterator<T, db_objects_type> begin() {
                 using context_t = serializer_context<db_objects_type>;
                 auto& dbObjects = obtain_db_objects(this->storage);
                 context_t context{dbObjects};
@@ -59,7 +59,7 @@ namespace sqlite_orm {
                 return {dbObjects, std::move(stmt)};
             }
 
-            iterator_t<T, db_objects_type> end() {
+            mapped_iterator<T, db_objects_type> end() {
                 return {};
             }
         };
@@ -68,5 +68,5 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
 template<class T, class S, class... Args>
-inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::view_t<T, S, Args...>> = true;
+inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::mapped_view<T, S, Args...>> = true;
 #endif

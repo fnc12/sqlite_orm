@@ -7,8 +7,17 @@
 #endif
 
 using namespace sqlite_orm;
-using internal::iterator_t;
-using internal::view_t;
+using internal::mapped_iterator;
+using internal::mapped_view;
+using internal::structure;
+#if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)
+using internal::result_set_iterator;
+using internal::result_set_sentinel_t;
+using internal::result_set_view;
+#endif
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+using internal::table_reference;
+#endif
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 template<class T>
@@ -57,14 +66,43 @@ concept can_iterate_mapped = requires(Iter it) {
 template<class V, class O, class DBOs>
 concept can_view_mapped = requires(V view) {
     requires std::ranges::borrowed_range<V>;
-    { view.begin() } -> std::same_as<iterator_t<O, DBOs>>;
-    { view.end() } -> std::same_as<iterator_t<O, DBOs>>;
+    { view.begin() } -> std::same_as<mapped_iterator<O, DBOs>>;
+    { view.end() } -> std::same_as<mapped_iterator<O, DBOs>>;
 };
 
 template<class S, class O, class DBOs = typename S::db_objects_type>
 concept storage_iterate_mapped = requires(S& storage_type) {
-    { storage_type.iterate<O>() } -> std::same_as<view_t<O, S>>;
+    { storage_type.iterate<O>() } -> std::same_as<mapped_view<O, S>>;
     { storage_type.iterate<O>() } -> can_view_mapped<O, DBOs>;
+};
+#endif
+
+#if(defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)) &&          \
+    defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED)
+template<class Iter, class Value>
+concept can_iterate_result_set = requires(Iter it) {
+    requires std::input_iterator<Iter>;
+    // explicit check of the sentinel role, since `std::ranges::borrowed_range` in `can_view_mapped`
+    // would not tell us why exactly the end iterator cannot be a sentinel
+    requires std::sentinel_for<result_set_sentinel_t, Iter>;
+#ifdef SQLITE_ORM_STL_HAS_DEFAULT_SENTINEL
+    requires std::same_as<result_set_sentinel_t, std::default_sentinel_t>;
+#endif
+    { *it } -> std::same_as<Value>;
+};
+
+template<class V, class ColResult, class DBOs>
+concept can_view_result_set = requires(V view) {
+    requires std::ranges::view<V>;
+    requires std::ranges::borrowed_range<V>;
+    { view.begin() } -> std::same_as<result_set_iterator<ColResult, DBOs>>;
+    { view.end() } -> std::same_as<result_set_sentinel_t>;
+};
+
+template<class S, class Select, class ColResult, class DBOs = typename S::db_objects_type>
+concept storage_iterate_result_set = requires(S& storage_type, Select select) {
+    { storage_type.iterate(select) } -> std::same_as<result_set_view<Select, DBOs>>;
+    { storage_type.iterate(select) } -> can_view_result_set<ColResult, DBOs>;
 };
 #endif
 
@@ -76,7 +114,7 @@ TEST_CASE("can view and iterate mapped") {
     using storage_type = decltype(make_storage("", make_table<Object>("")));
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-    using iter = iterator_t<Object, storage_type::db_objects_type>;
+    using iter = mapped_iterator<Object, storage_type::db_objects_type>;
     STATIC_REQUIRE(can_iterate_mapped<iter, Object>);
     // check default initializability at runtime
     [[maybe_unused]] const iter end;
@@ -115,3 +153,43 @@ TEST_CASE("can view and iterate mapped") {
     STATIC_REQUIRE(storage_iterate_mapped<storage_type, Object>);
 #endif
 }
+
+#if(defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)) &&          \
+    defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED)
+TEST_CASE("can view and iterate result set") {
+    struct Object {};
+    using empty_storage_type = decltype(make_storage(""));
+    using empty_db_objects_type = empty_storage_type::db_objects_type;
+    using storage_type = decltype(make_storage("", make_table<Object>("")));
+    using db_objects_type = storage_type::db_objects_type;
+
+    STATIC_REQUIRE(can_iterate_result_set<result_set_iterator<int, empty_db_objects_type>, int>);
+    STATIC_REQUIRE(
+        can_iterate_result_set<result_set_iterator<std::tuple<int, int>, empty_db_objects_type>, std::tuple<int, int>>);
+    STATIC_REQUIRE(
+        can_iterate_result_set<result_set_iterator<structure<Object, empty_db_objects_type>, empty_db_objects_type>,
+                               Object>);
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    STATIC_REQUIRE(can_iterate_result_set<result_set_iterator<table_reference<Object>, db_objects_type>, Object>);
+#endif
+
+    STATIC_REQUIRE(storage_iterate_result_set<empty_storage_type, decltype(select(42)), int>);
+    STATIC_REQUIRE(
+        storage_iterate_result_set<empty_storage_type, decltype(select(columns(1, 42))), std::tuple<int, int>>);
+    STATIC_REQUIRE(storage_iterate_result_set<empty_storage_type,
+                                              decltype(select(struct_<Object>())),
+                                              structure<Object, std::tuple<>>>);
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    STATIC_REQUIRE(
+        storage_iterate_result_set<storage_type, decltype(select(object<Object>())), table_reference<Object>>);
+#endif
+
+#ifdef SQLITE_ORM_WITH_CTE
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    constexpr orm_cte_moniker auto x = "x"_cte;
+    constexpr orm_column_alias auto i = "i"_col;
+    STATIC_REQUIRE(storage_iterate_result_set<storage_type, decltype(with(x(i).as(select(1)), select(x->*i))), int>);
+#endif
+#endif
+}
+#endif

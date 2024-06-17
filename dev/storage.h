@@ -40,7 +40,8 @@
 #include "table_info.h"
 #include "storage_impl.h"
 #include "journal_mode.h"
-#include "view.h"
+#include "mapped_view.h"
+#include "result_set_view.h"
 #include "ast_iterator.h"
 #include "storage_base.h"
 #include "prepared_statement.h"
@@ -121,14 +122,14 @@ namespace sqlite_orm {
 
                 context_t context{this->db_objects};
                 statement_serializer<Table, void> serializer;
-                const std::string sql = serializer.serialize(table, context, tableName);
-                perform_void_exec(db, sql);
+                std::string sql = serializer.serialize(table, context, tableName);
+                perform_void_exec(db, std::move(sql));
             }
 
             /**
-			*  Copies sourceTableName to another table with name: destinationTableName
-			*  Performs INSERT INTO %destinationTableName% () SELECT %table.column_names% FROM %sourceTableName%
-			*/
+             *  Copies sourceTableName to another table with name: destinationTableName
+             *  Performs INSERT INTO %destinationTableName% () SELECT %table.column_names% FROM %sourceTableName%
+             */
             template<class Table>
             void copy_table(sqlite3* db,
                             const std::string& sourceTableName,
@@ -243,7 +244,7 @@ namespace sqlite_orm {
 
           public:
             template<class T, class... Args>
-            view_t<T, self, Args...> iterate(Args&&... args) {
+            mapped_view<T, self, Args...> iterate(Args&&... args) {
                 this->assert_mapped_type<T>();
 
                 auto con = this->get_connection();
@@ -251,10 +252,29 @@ namespace sqlite_orm {
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-            template<orm_refers_to_table auto table, class... Args>
+            template<orm_refers_to_table auto mapped, class... Args>
             auto iterate(Args&&... args) {
-                return this->iterate<auto_decay_table_ref_t<table>>(std::forward<Args>(args)...);
+                return this->iterate<mapped_type_proxy_t<decltype(mapped)>>(std::forward<Args>(args)...);
             }
+#endif
+
+#if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)
+            template<class Select>
+                requires(is_select_v<Select>)
+            result_set_view<Select, db_objects_type> iterate(Select expression) {
+                expression.highest_level = true;
+                auto con = this->get_connection();
+                return {this->db_objects, std::move(con), std::move(expression)};
+            }
+
+#ifdef SQLITE_ORM_WITH_CTE
+            template<class... CTEs, class E>
+                requires(is_select_v<E>)
+            result_set_view<with_t<E, CTEs...>, db_objects_type> iterate(with_t<E, CTEs...> expression) {
+                auto con = this->get_connection();
+                return {this->db_objects, std::move(con), std::move(expression)};
+            }
+#endif
 #endif
 
             /**
@@ -340,18 +360,18 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
             /**
              *  SELECT * routine.
-             *  `als` is an explicitly specified table proxy of an object to be extracted.
+             *  `mapped` is an explicitly specified table reference or alias of an object to be extracted.
              *  `R` is the container return type, which must have a `R::push_back(O&&)` method, and defaults to `std::vector<O>`
              *  @return All objects stored in database.
              *  @example: storage.get_all<sqlite_schema, std::list<sqlite_master>>(); - SELECT sqlite_schema.* FROM sqlite_master AS sqlite_schema
             */
-            template<orm_refers_to_table auto als,
-                     class R = std::vector<mapped_type_proxy_t<decltype(als)>>,
+            template<orm_refers_to_table auto mapped,
+                     class R = std::vector<mapped_type_proxy_t<decltype(mapped)>>,
                      class... Args>
             R get_all(Args&&... args) {
-                using A = decltype(als);
+                using A = decltype(mapped);
                 this->assert_mapped_type<mapped_type_proxy_t<A>>();
-                auto statement = this->prepare(sqlite_orm::get_all<als, R>(std::forward<Args>(args)...));
+                auto statement = this->prepare(sqlite_orm::get_all<mapped, R>(std::forward<Args>(args)...));
                 return this->execute(statement);
             }
 #endif
@@ -1099,8 +1119,8 @@ namespace sqlite_orm {
                 context.replace_bindable_with_question = true;
 
                 auto con = this->get_connection();
-                const std::string sql = serialize(statement, context);
-                sqlite3_stmt* stmt = prepare_stmt(con.get(), sql);
+                std::string sql = serialize(statement, context);
+                sqlite3_stmt* stmt = prepare_stmt(con.get(), std::move(sql));
                 return prepared_statement_t<S>{std::forward<S>(statement), stmt, con};
             }
 
@@ -1540,7 +1560,7 @@ namespace sqlite_orm {
             auto execute(const prepared_statement_t<with_t<select_t<T, Args...>, CTEs...>>& statement) {
                 using ExprDBOs = decltype(db_objects_for_expression(this->db_objects, statement.expression));
                 // note: it is enough to only use the 'expression DBOs' at compile-time to determine the column results;
-                // because we cannot select objects/structs from a CTE, the permanently defined DBOs are enough.
+                // because we cannot select objects/structs from a CTE, passing the permanently defined DBOs are enough.
                 using ColResult = column_result_of_t<ExprDBOs, T>;
                 return _execute_select<ColResult>(statement);
             }

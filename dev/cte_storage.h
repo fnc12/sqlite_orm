@@ -322,13 +322,5 @@ namespace sqlite_orm {
             return make_recursive_cte_db_objects(dbObjects, e.cte, std::index_sequence_for<CTEs...>{});
         }
 #endif
-
-        /**
-         *  Return passed in DBOs.
-         */
-        template<class DBOs, class E, satisfies<is_db_objects, DBOs> = true>
-        decltype(auto) db_objects_for_expression(DBOs& dbObjects, const E&) {
-            return dbObjects;
-        }
     }
 }
