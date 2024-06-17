@@ -110,6 +110,8 @@ void runTests(E expression) {
 
 TEST_CASE("inline namespace literals expressions") {
 #ifdef SQLITE_ORM_WITH_CTE
+    constexpr auto col1 = 1_colalias;
+    constexpr auto cte1 = 1_ctealias;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     constexpr auto cte_mnkr = "1"_cte;
 #endif
