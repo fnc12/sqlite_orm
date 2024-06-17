@@ -175,5 +175,13 @@ TEST_CASE("pointer-passing") {
             REQUIRE(v.back() == delete_int64::lastSelectedId);
         }
     }
+
+    SECTION("dump prepared") {
+        int64 lastSelectedId;
+        auto stmt = storage.prepare(
+            select(func<note_value_fn<int64>>(select(&Object::id), bind_carray_pointer_statically(&lastSelectedId))));
+        std::string sql = storage.dump(stmt);
+        (void)sql;
+    }
 }
 #endif

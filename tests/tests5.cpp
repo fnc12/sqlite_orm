@@ -231,7 +231,7 @@ TEST_CASE("Dump") {
     REQUIRE(allUsers.size() == 2);
 
     const std::string dumpUser1 = storage.dump(allUsers[0]);
-    REQUIRE(dumpUser1 == std::string{"{ id : '1', car_year : 'null' }"});
+    REQUIRE(dumpUser1 == std::string{"{ id : '1', car_year : 'NULL' }"});
 
     const std::string dumpUser2 = storage.dump(allUsers[1]);
     REQUIRE(dumpUser2 == std::string{"{ id : '2', car_year : '2006' }"});

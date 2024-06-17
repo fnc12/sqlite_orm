@@ -171,14 +171,14 @@ TEST_CASE("bindables") {
                                                   "0",
                                                   "0",
                                                   "''",
-                                                  "null"
+                                                  "NULL"
 #ifndef SQLITE_ORM_OMITS_CODECVT
                                                   ,
                                                   "''"
 #endif
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                                                   ,
-                                                  "null"
+                                                  "NULL"
 #endif
         };
 
@@ -227,12 +227,12 @@ TEST_CASE("bindables") {
                                                   "''",
                                                   "''",
 #endif
-                                                  "null",
-                                                  "null",
+                                                  "NULL",
+                                                  "NULL",
                                                   "x''",
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-                                                  "null",
-                                                  "null",
+                                                  "NULL",
+                                                  "NULL",
 #endif
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
                                                   "''",
@@ -242,7 +242,7 @@ TEST_CASE("bindables") {
 #endif
                                                   "''",
                                                   "custom",
-                                                  "null"};
+                                                  "NULL"};
 
         SECTION("dump") {
             context.replace_bindable_with_question = false;
@@ -271,7 +271,7 @@ TEST_CASE("bindables") {
             auto v = bind_pointer_statically<carray_pointer_type, nullptr_t>(nullptr);
 #endif
             value = serialize(v, context);
-            expected = "null";
+            expected = "NULL";
         }
         SECTION("null by itself 2") {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -280,7 +280,7 @@ TEST_CASE("bindables") {
             auto v = bind_pointer_statically<carray_pointer_type>(&value);
 #endif
             value = serialize(v, context);
-            expected = "null";
+            expected = "NULL";
         }
         SECTION("null in select") {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -290,7 +290,7 @@ TEST_CASE("bindables") {
 #endif
             ast.highest_level = true;
             value = serialize(ast, context);
-            expected = "SELECT null";
+            expected = "SELECT NULL";
         }
         SECTION("null as function argument") {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -299,12 +299,12 @@ TEST_CASE("bindables") {
             auto ast = func<remember_fn>(1, bind_pointer_statically<carray_pointer_type, nullptr_t>(nullptr));
 #endif
             value = serialize(ast, context);
-            expected = R"("remember"(1, null))";
+            expected = R"("remember"(1, NULL))";
         }
         SECTION("null as function argument 2") {
             auto ast = func<remember_fn>(1, nullptr);
             value = serialize(ast, context);
-            expected = R"("remember"(1, null))";
+            expected = R"("remember"(1, NULL))";
         }
 
         REQUIRE(value == expected);

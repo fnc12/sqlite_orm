@@ -34,12 +34,12 @@ TEST_CASE("statement_serializer select_t") {
             SECTION("!highest_level") {
                 statement.highest_level = false;
                 stringValue = serialize(statement, context);
-                expected = "(SELECT null)";
+                expected = "(SELECT NULL)";
             }
             SECTION("highest_level") {
                 statement.highest_level = true;
                 stringValue = serialize(statement, context);
-                expected = "SELECT null";
+                expected = "SELECT NULL";
             }
         }
     }
@@ -110,12 +110,12 @@ TEST_CASE("statement_serializer select_t") {
             SECTION("!highest_level") {
                 statement.highest_level = false;
                 stringValue = serialize(statement, context);
-                expected = "(SELECT null)";
+                expected = "(SELECT NULL)";
             }
             SECTION("highest_level") {
                 statement.highest_level = true;
                 stringValue = serialize(statement, context);
-                expected = "SELECT null";
+                expected = "SELECT NULL";
             }
         }
         SECTION("asterisk") {
