@@ -58,6 +58,18 @@
 #define SQLITE_ORM_CPP20_RANGES_SUPPORTED
 #endif
 
+// C++20 or later (unfortunately there's no feature test macro).
+// Stupidly, clang says C++20, but `std::default_sentinel_t` was only implemented in libc++ 13 and libstd++-v3 10
+// (the latter is used on Linux).
+// gcc got it right and reports C++20 only starting with v10.
+// The check here doesn't care and checks the library versions in use.
+//
+// Another way of detection might be the feature-test macro __cpp_lib_concepts
+#if(__cplusplus >= 202002L) &&                                                                                         \
+    ((!_LIBCPP_VERSION || _LIBCPP_VERSION >= 13000) && (!_GLIBCXX_RELEASE || _GLIBCXX_RELEASE >= 10))
+#define SQLITE_ORM_STL_HAS_DEFAULT_SENTINEL
+#endif
+
 #if(defined(SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED) && defined(SQLITE_ORM_INLINE_VARIABLES_SUPPORTED) &&         \
     defined(SQLITE_ORM_CONSTEVAL_SUPPORTED)) &&                                                                        \
     (defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED))

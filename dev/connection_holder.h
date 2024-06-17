@@ -48,28 +48,33 @@ namespace sqlite_orm {
         };
 
         struct connection_ref {
-            connection_ref(connection_holder& holder_) : holder(holder_) {
-                this->holder.retain();
+            connection_ref(connection_holder& holder) : holder(&holder) {
+                this->holder->retain();
             }
 
             connection_ref(const connection_ref& other) : holder(other.holder) {
-                this->holder.retain();
+                this->holder->retain();
             }
 
-            connection_ref(connection_ref&& other) : holder(other.holder) {
-                this->holder.retain();
+            // rebind connection reference
+            connection_ref operator=(const connection_ref& other) {
+                if(other.holder != this->holder) {
+                    this->holder->release();
+                    this->holder = other.holder;
+                    this->holder->retain();
+                }
             }
 
             ~connection_ref() {
-                this->holder.release();
+                this->holder->release();
             }
 
             sqlite3* get() const {
-                return this->holder.get();
+                return this->holder->get();
             }
 
-          protected:
-            connection_holder& holder;
+          private:
+            connection_holder* holder = nullptr;
         };
     }
 }

@@ -42,7 +42,15 @@ namespace sqlite_orm {
          *  SFINAE - sfinae argument
          */
         template<class DBOs, class T, class SFINAE = void>
-        struct column_result_t;
+        struct column_result_t {
+#ifdef __FUNCTION__
+            // produce an error message that reveals `T` and `DBOs`
+            static constexpr bool reveal() {
+                static_assert(polyfill::always_false_v<T>, "T not found in DBOs - " __FUNCTION__);
+            }
+            static constexpr bool trigger = reveal();
+#endif
+        };
 
         template<class DBOs, class T>
         using column_result_of_t = typename column_result_t<DBOs, T>::type;
