@@ -1,7 +1,7 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+#if defined(SQLITE_ORM_WITH_CPP20_ALIASES) || defined(SQLITE_ORM_WITH_CTE)
 using namespace sqlite_orm::literals;
 #endif
 using sqlite_orm::alias_a;

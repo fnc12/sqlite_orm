@@ -628,9 +628,9 @@ namespace sqlite_orm {
      *  T is an object type mapped to a storage.
      *  Usage: get<User>(5);
      */
-    template<orm_table_reference auto als, class... Ids>
+    template<orm_table_reference auto table, class... Ids>
     auto get(Ids... ids) {
-        return get<internal::mapped_type_proxy_t<decltype(als)>>(std::forward<Ids>(ids)...);
+        return get<internal::mapped_type_proxy_t<decltype(table)>>(std::forward<Ids>(ids)...);
     }
 #endif
 
@@ -685,15 +685,15 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
      *  Create a get all statement.
-     *  `als` is an explicitly specified table proxy of an object to be extracted.
+     *  `mapped` is an explicitly specified table reference or alias of an object to be extracted.
      *  `R` is the container return type, which must have a `R::push_back(T&&)` method, and defaults to `std::vector<T>`
      *  Usage: storage.get_all<sqlite_schema>(...);
      */
-    template<orm_refers_to_table auto als,
-             class R = std::vector<internal::mapped_type_proxy_t<decltype(als)>>,
+    template<orm_refers_to_table auto mapped,
+             class R = std::vector<internal::mapped_type_proxy_t<decltype(mapped)>>,
              class... Args>
     auto get_all(Args&&... conditions) {
-        return get_all<internal::auto_decay_table_ref_t<als>, R>(std::forward<Args>(conditions)...);
+        return get_all<internal::auto_decay_table_ref_t<mapped>, R>(std::forward<Args>(conditions)...);
     }
 #endif
 
