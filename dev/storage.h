@@ -767,7 +767,7 @@ namespace sqlite_orm {
 
             template<class T, satisfies<is_prepared_statement, T> = true>
             std::string dump(const T& preparedStatement, bool parametrized = true) const {
-                return this->dump(preparedStatement.expression, parametrized);
+                return this->dump_highest_level(preparedStatement.expression, parametrized);
             }
 
             template<class E,
@@ -785,13 +785,7 @@ namespace sqlite_orm {
                     [](const auto& expression) -> decltype(auto) {
                         return (expression);
                     })(std::forward<E>(expression));
-                const auto& exprDBOs = db_objects_for_expression(this->db_objects, expression);
-                using context_t = serializer_context<polyfill::remove_cvref_t<decltype(exprDBOs)>>;
-                context_t context{exprDBOs};
-                context.replace_bindable_with_question = parametrized;
-                // just like prepare_impl()
-                context.skip_table_name = false;
-                return serialize(e2, context);
+                return this->dump_highest_level(e2, parametrized);
             }
 
             /**
@@ -1155,6 +1149,34 @@ namespace sqlite_orm {
                 perform_void_exec(db, ss.str());
             }
 
+            template<class ColResult, class S>
+            auto execute_select(const S& statement) {
+                sqlite3_stmt* stmt = reset_stmt(statement.stmt);
+
+                iterate_ast(statement.expression, conditional_binder{stmt});
+
+                using R = decltype(make_row_extractor<ColResult>(this->db_objects).extract(nullptr, 0));
+                std::vector<R> res;
+                perform_steps(
+                    stmt,
+                    [rowExtractor = make_row_extractor<ColResult>(this->db_objects), &res](sqlite3_stmt* stmt) {
+                        res.push_back(rowExtractor.extract(stmt, 0));
+                    });
+                res.shrink_to_fit();
+                return res;
+            }
+
+            template<class E>
+            std::string dump_highest_level(E&& expression, bool parametrized) const {
+                const auto& exprDBOs = db_objects_for_expression(this->db_objects, expression);
+                using context_t = serializer_context<polyfill::remove_cvref_t<decltype(exprDBOs)>>;
+                context_t context{exprDBOs};
+                context.replace_bindable_with_question = parametrized;
+                // just like prepare_impl()
+                context.skip_table_name = false;
+                return serialize(expression, context);
+            }
+
             template<typename S>
             prepared_statement_t<S> prepare_impl(S statement) {
                 const auto& exprDBOs = db_objects_for_expression(this->db_objects, statement);
@@ -1229,7 +1251,7 @@ namespace sqlite_orm {
                      class E,
                      std::enable_if_t<polyfill::disjunction_v<is_select<E>, is_insert_raw<E>>, bool> = true>
             prepared_statement_t<with_t<E, CTEs...>> prepare(with_t<E, CTEs...> sel) {
-                return prepare_impl<with_t<E, CTEs...>>(std::move(sel));
+                return this->prepare_impl<with_t<E, CTEs...>>(std::move(sel));
             }
 #endif
 
@@ -1583,23 +1605,6 @@ namespace sqlite_orm {
                 perform_step(stmt);
             }
 
-            template<class ColResult, class S>
-            auto _execute_select(const S& statement) {
-                sqlite3_stmt* stmt = reset_stmt(statement.stmt);
-
-                iterate_ast(statement.expression, conditional_binder{stmt});
-
-                using R = decltype(make_row_extractor<ColResult>(this->db_objects).extract(nullptr, 0));
-                std::vector<R> res;
-                perform_steps(
-                    stmt,
-                    [rowExtractor = make_row_extractor<ColResult>(this->db_objects), &res](sqlite3_stmt* stmt) {
-                        res.push_back(rowExtractor.extract(stmt, 0));
-                    });
-                res.shrink_to_fit();
-                return res;
-            }
-
 #ifdef SQLITE_ORM_WITH_CTE
             template<class... CTEs, class T, class... Args>
             auto execute(const prepared_statement_t<with_t<select_t<T, Args...>, CTEs...>>& statement) {
@@ -1607,14 +1612,14 @@ namespace sqlite_orm {
                 // note: it is enough to only use the 'expression DBOs' at compile-time to determine the column results;
                 // because we cannot select objects/structs from a CTE, passing the permanently defined DBOs are enough.
                 using ColResult = column_result_of_t<ExprDBOs, T>;
-                return _execute_select<ColResult>(statement);
+                return this->execute_select<ColResult>(statement);
             }
 #endif
 
             template<class T, class... Args>
             auto execute(const prepared_statement_t<select_t<T, Args...>>& statement) {
                 using ColResult = column_result_of_t<db_objects_type, T>;
-                return _execute_select<ColResult>(statement);
+                return this->execute_select<ColResult>(statement);
             }
 
             template<class T, class R, class... Args, class O = mapped_type_proxy_t<T>>

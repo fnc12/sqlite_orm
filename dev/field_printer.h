@@ -121,14 +121,14 @@ namespace sqlite_orm {
     template<>
     struct field_printer<nullptr_t, void> {
         std::string operator()(const nullptr_t&) const {
-            return "null";
+            return "NULL";
         }
     };
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<>
     struct field_printer<std::nullopt_t, void> {
         std::string operator()(const std::nullopt_t&) const {
-            return "null";
+            return "NULL";
         }
     };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED

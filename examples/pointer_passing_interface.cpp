@@ -112,9 +112,9 @@ int main() {
             size_t idx = min<size_t>(errorCategory, ecat_map.size());
             const error_category* ecat = idx != ecat_map.size() ? &get<const error_category&>(ecat_map[idx]) : nullptr;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-            return statically_bindable_pointer<ecat_pointer_tag>(ecat);
+            return bind_pointer_statically<ecat_pointer_tag>(ecat);
 #else
-            return statically_bindable_pointer<ecat_pointer_type>(ecat);
+            return bind_pointer_statically<ecat_pointer_type>(ecat);
 #endif
         }
 
@@ -168,7 +168,7 @@ int main() {
             error_code* ec = idx != ecat_map.size()
                                  ? new error_code{errorValue, get<const error_category&>(ecat_map[idx])}
                                  : nullptr;
-            return bindable_pointer<ecode_binding>(ec, default_delete<error_code>{});
+            return bind_pointer<ecode_binding>(ec, default_delete<error_code>{});
         }
 
         static constexpr const char* name() {
@@ -232,9 +232,9 @@ int main() {
                                    as<str_alias<'e', 'q'>>(func<equal_error_code_fn>(
                                        func<make_error_code_fn>(&Result::errorValue, &Result::errorCategory),
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-                                       bindable_pointer<ecode_pointer_tag>(make_unique<error_code>()))),
+                                       bind_pointer<ecode_pointer_tag>(make_unique<error_code>()))),
 #else
-                                       bindable_pointer<ecode_pointer_type>(make_unique<error_code>()))),
+                                       bind_pointer<ecode_pointer_type>(make_unique<error_code>()))),
 #endif
                                    func<error_category_name_fn>(func<get_error_category_fn>(&Result::errorCategory)),
                                    func<error_category_message_fn>(func<get_error_category_fn>(&Result::errorCategory),
