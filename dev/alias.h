@@ -475,16 +475,18 @@ namespace sqlite_orm {
 #endif
 
 #ifdef SQLITE_ORM_WITH_CTE
-    /**
-     *  column_alias<'1'[, ...]> from a numeric literal.
-     *  E.g. 1_colalias, 2_colalias
-     */
-    template<char... Chars>
-    [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator"" _colalias() {
-        // numeric identifiers are used for automatically assigning implicit aliases to unaliased column expressions,
-        // which start at "1".
-        static_assert(std::array{Chars...}[0] > '0');
-        return internal::column_alias<Chars...>{};
+    inline namespace literals {
+        /**
+         *  column_alias<'1'[, ...]> from a numeric literal.
+         *  E.g. 1_colalias, 2_colalias
+         */
+        template<char... Chars>
+        [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator"" _colalias() {
+            // numeric identifiers are used for automatically assigning implicit aliases to unaliased column expressions,
+            // which start at "1".
+            static_assert(std::array{Chars...}[0] > '0');
+            return internal::column_alias<Chars...>{};
+        }
     }
 #endif
 }
