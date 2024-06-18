@@ -22050,7 +22050,9 @@ namespace sqlite_orm {
 
 #if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)
             template<class Select>
+#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
                 requires(is_select_v<Select>)
+#endif
             result_set_view<Select, db_objects_type> iterate(Select expression) {
                 expression.highest_level = true;
                 auto con = this->get_connection();
@@ -22059,7 +22061,9 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CTE
             template<class... CTEs, class E>
+#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
                 requires(is_select_v<E>)
+#endif
             result_set_view<with_t<E, CTEs...>, db_objects_type> iterate(with_t<E, CTEs...> expression) {
                 auto con = this->get_connection();
                 return {this->db_objects, std::move(con), std::move(expression)};
