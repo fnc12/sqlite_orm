@@ -268,6 +268,11 @@ using std::nullptr_t;
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
 #define SQLITE_ORM_WITH_CTE
 #endif
+
+// define the inline namespace "literals" so that it is available even if it was not introduced by a feature
+namespace sqlite_orm {
+    inline namespace literals {}
+}
 #pragma once
 
 #include <type_traits>  //  std::enable_if, std::is_same, std::is_empty, std::is_aggregate
@@ -574,7 +579,7 @@ namespace sqlite_orm {
         using auto_udf_type_t = typename decltype(a)::udf_type;
 #endif
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         template<typename T>
         using cte_moniker_type_t = typename T::cte_moniker_type;
 
@@ -3613,7 +3618,7 @@ namespace sqlite_orm {
          */
         template<class A>
         SQLITE_ORM_INLINE_VAR constexpr bool is_cte_moniker_v =
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             polyfill::conjunction_v<is_recordset_alias<A>,
                                     std::is_same<polyfill::detected_t<type_t, A>, std::remove_const_t<A>>>;
 #else
@@ -3818,7 +3823,7 @@ namespace sqlite_orm {
         SQLITE_ORM_INLINE_VAR constexpr bool is_operator_argument_v<T, std::enable_if_t<is_column_pointer<T>::value>> =
             true;
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         template<class A>
         struct alias_holder;
 #endif
@@ -3879,7 +3884,7 @@ namespace sqlite_orm {
     }
 #endif
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     /**
      *  Explicitly refer to a column alias mapped into a CTE or subquery.
      *
@@ -5231,7 +5236,7 @@ namespace sqlite_orm {
 #include <utility>  //  std::make_index_sequence, std::move
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #include <array>
 #endif
 
@@ -5369,7 +5374,7 @@ namespace sqlite_orm {
                 return alias_extractor::extract();
             }
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             // for CTE monikers -> empty
             template<class T = A, satisfies<std::is_same, polyfill::detected_t<type_t, T>, A> = true>
             static std::string as_alias() {
@@ -5436,7 +5441,7 @@ namespace sqlite_orm {
         };
 #endif
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         template<size_t n, char... C>
         SQLITE_ORM_CONSTEVAL auto n_to_colalias() {
             constexpr column_alias<'1' + n % 10, C...> colalias{};
@@ -5549,7 +5554,7 @@ namespace sqlite_orm {
     }
 #endif
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     /**
      *  Create a column reference to an aliased CTE column.
      */
@@ -5742,7 +5747,7 @@ namespace sqlite_orm {
     }
 #endif
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     inline namespace literals {
         /**
          *  column_alias<'1'[, ...]> from a numeric literal.
@@ -8251,7 +8256,7 @@ namespace sqlite_orm {
 
 // #include "cte_moniker.h"
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <concepts>
 #include <utility>  //  std::make_index_sequence
@@ -8267,7 +8272,7 @@ namespace sqlite_orm {
 
 // #include "alias.h"
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 namespace sqlite_orm {
 
     namespace internal {
@@ -8327,6 +8332,7 @@ namespace sqlite_orm {
         [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator"" _ctealias() {
             return internal::cte_moniker<Chars...>{};
         }
+
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         /**
          *  cte_moniker<'1'[, ...]> from a string literal.
@@ -8536,7 +8542,7 @@ namespace sqlite_orm {
             using super::super;
         };
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         /*
          *  Turn explicit columns for a CTE into types that the CTE backend understands
          */
@@ -8847,7 +8853,7 @@ namespace sqlite_orm {
         return {{std::forward<E>(expressions)...}};
     }
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #if SQLITE_VERSION_NUMBER >= 3035003
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /*
@@ -11640,7 +11646,7 @@ namespace sqlite_orm {
                                                                               check_if_is_template<table_content_t>>,
                                                              T>;
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         /**
          *  A subselect mapper's CTE moniker, void otherwise.
          */
@@ -11668,7 +11674,7 @@ namespace sqlite_orm {
          */
         template<class O, bool WithoutRowId, class... Cs>
         struct table_t : basic_table {
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             // this typename is used in contexts where it is known that the 'table' holds a subselect_mapper
             // instead of a regular object type
             using cte_mapper_type = O;
@@ -12099,7 +12105,7 @@ namespace sqlite_orm {
 
 // #include "cte_types.h"
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #include <type_traits>
 #include <tuple>
 #endif
@@ -12130,7 +12136,7 @@ namespace sqlite_orm {
     }
 }
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 namespace sqlite_orm {
 
     namespace internal {
@@ -12381,7 +12387,7 @@ namespace sqlite_orm {
             return cp.field;
         }
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         /**
          *  Materialize column pointer:
          *  3. by moniker and alias_holder<>.
@@ -12417,7 +12423,7 @@ namespace sqlite_orm {
             return pick_table<O>(dbObjects).find_column_name(field);
         }
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         /**
          *  Find column name by:
          *  3. by moniker and alias_holder<>.
@@ -13525,7 +13531,7 @@ namespace sqlite_orm {
         template<class DBOs, class T, class F>
         struct column_result_t<DBOs, column_pointer<T, F>, void> : column_result_t<DBOs, F> {};
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         template<class DBOs, class Moniker, class ColAlias>
         struct column_result_t<DBOs, column_pointer<Moniker, alias_holder<ColAlias>>, void> {
             using table_type = storage_pick_table_t<Moniker, DBOs>;
@@ -15341,7 +15347,7 @@ namespace sqlite_orm {
             }
         };
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         template<class CTE>
         struct ast_iterator<CTE, match_specialization_of<CTE, common_table_expression>> {
             using node_type = CTE;
@@ -18762,7 +18768,7 @@ namespace sqlite_orm {
 
 // #include "cte_column_names_collector.h"
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #include <string>
 #include <vector>
 #include <functional>  //  std::reference_wrapper
@@ -18785,7 +18791,7 @@ namespace sqlite_orm {
 
 // #include "serializer_context.h"
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 namespace sqlite_orm {
     namespace internal {
         // collecting column names utilizes the statement serializer
@@ -19610,7 +19616,7 @@ namespace sqlite_orm {
             }
         };
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #if SQLITE_VERSION_NUMBER >= 3035003
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         template<>
@@ -21347,7 +21353,7 @@ namespace sqlite_orm {
 
 // #include "cte_storage.h"
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #include <type_traits>
 #include <tuple>
 #include <string>
@@ -21491,7 +21497,7 @@ namespace sqlite_orm {
 namespace sqlite_orm {
     namespace internal {
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         // F = field_type
         template<typename Moniker,
                  typename ExplicitColRefs,
@@ -22007,7 +22013,7 @@ namespace sqlite_orm {
                 return {this->db_objects, std::move(con), std::move(expression)};
             }
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             template<class... CTEs, class E>
                 requires(is_select_v<E>)
             result_set_view<with_t<E, CTEs...>, db_objects_type> iterate(with_t<E, CTEs...> expression) {
@@ -22422,7 +22428,7 @@ namespace sqlite_orm {
                 return this->execute(statement);
             }
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             /**
              *  Using a CTE, select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
              */
@@ -22941,7 +22947,7 @@ namespace sqlite_orm {
 
             using storage_base::table_exists;  // now that it is in storage_base make it into overload set
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             template<class... CTEs,
                      class E,
                      std::enable_if_t<polyfill::disjunction_v<is_select<E>, is_insert_raw<E>>, bool> = true>
@@ -23070,7 +23076,7 @@ namespace sqlite_orm {
                 perform_step(stmt);
             }
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             template<class... CTEs, class E, satisfies<is_insert_raw, E> = true>
             void execute(const prepared_statement_t<with_t<E, CTEs...>>& statement) {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
@@ -23300,7 +23306,7 @@ namespace sqlite_orm {
                 perform_step(stmt);
             }
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             template<class... CTEs, class T, class... Args>
             auto execute(const prepared_statement_t<with_t<select_t<T, Args...>, CTEs...>>& statement) {
                 using ExprDBOs = decltype(db_objects_for_expression(this->db_objects, statement.expression));
@@ -23560,7 +23566,7 @@ namespace sqlite_orm {
         template<class T>
         struct node_tuple<T, match_if<is_compound_operator, T>> : node_tuple<typename T::expressions_tuple> {};
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         template<class CTE>
         struct node_tuple<CTE, match_specialization_of<CTE, common_table_expression>>
             : node_tuple<typename CTE::expression_type> {};

@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #include <type_traits>
 #include <tuple>
 #include <string>
@@ -22,7 +22,7 @@
 namespace sqlite_orm {
     namespace internal {
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         // F = field_type
         template<typename Moniker,
                  typename ExplicitColRefs,

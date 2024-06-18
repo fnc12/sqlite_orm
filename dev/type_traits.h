@@ -116,7 +116,7 @@ namespace sqlite_orm {
         using auto_udf_type_t = typename decltype(a)::udf_type;
 #endif
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         template<typename T>
         using cte_moniker_type_t = typename T::cte_moniker_type;
 

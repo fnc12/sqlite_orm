@@ -79,3 +79,8 @@
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
 #define SQLITE_ORM_WITH_CTE
 #endif
+
+// define the inline namespace "literals" so that it is available even if it was not introduced by a feature
+namespace sqlite_orm {
+    inline namespace literals {}
+}

@@ -109,7 +109,7 @@ void runTests(E expression) {
 }
 
 TEST_CASE("inline namespace literals expressions") {
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     constexpr auto col1 = 1_colalias;
     constexpr auto cte1 = 1_ctealias;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -133,11 +133,15 @@ TEST_CASE("ADL and pointer-to-member expressions") {
     };
     constexpr auto user_table = c<User>();
     constexpr auto u_alias = "u"_alias.for_<User>();
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     constexpr auto cte = "1"_cte;
+#endif
 
     user_table->*&User::id;
     u_alias->*&User::id;
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     cte->*&User::id;
+#endif
 }
 #endif
 
