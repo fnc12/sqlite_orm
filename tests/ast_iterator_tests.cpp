@@ -330,7 +330,7 @@ TEST_CASE("ast_iterator") {
         iterate_ast(expression, lambda);
     }
 #endif
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     SECTION("with ordinary") {
         using cte_1 = decltype(1_ctealias);
         auto expression = with(cte<cte_1>().as(select(1)), select(column<cte_1>(1_colalias)));

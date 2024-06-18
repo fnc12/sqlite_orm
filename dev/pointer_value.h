@@ -1,15 +1,18 @@
 #pragma once
 
+#if SQLITE_VERSION_NUMBER >= 3020000
 #include <type_traits>
 #include <memory>
 #include <utility>
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <concepts>
 #endif
+#endif
 
 #include "functional/cstring_literal.h"
 #include "xdestroy_handling.h"
 
+#if SQLITE_VERSION_NUMBER >= 3020000
 namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     namespace internal {
@@ -290,3 +293,4 @@ namespace sqlite_orm {
         return bind_pointer_statically<T>(pv.ptr());
     }
 }
+#endif

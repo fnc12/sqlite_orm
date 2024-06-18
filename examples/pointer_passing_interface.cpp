@@ -17,8 +17,10 @@
  *  Note: pointers are only accessible within application code, and therefore unleakable.
  */
 #include <sqlite_orm/sqlite_orm.h>
+#if SQLITE_VERSION_NUMBER >= 3020000
 #ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 #define ENABLE_THIS_EXAMPLE
+#endif
 #endif
 
 #ifdef ENABLE_THIS_EXAMPLE

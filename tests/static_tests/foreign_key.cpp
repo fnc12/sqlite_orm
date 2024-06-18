@@ -7,6 +7,7 @@
 
 #include "static_tests_storage_traits.h"
 
+#if SQLITE_VERSION_NUMBER >= 3006019
 using namespace sqlite_orm;
 
 TEST_CASE("foreign key static") {
@@ -135,3 +136,4 @@ TEST_CASE("foreign key static") {
         STATIC_REQUIRE(std::is_same<FkTuple, Expected>::value);
     }
 }
+#endif

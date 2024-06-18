@@ -168,6 +168,7 @@ TEST_CASE("Composite key column names") {
     }
 }
 
+#if SQLITE_VERSION_NUMBER >= 3006019
 TEST_CASE("for_each_foreign_key") {
     struct Location {
         int id;
@@ -207,3 +208,4 @@ TEST_CASE("for_each_foreign_key") {
     });
     REQUIRE(visitCallsCount == 1);
 }
+#endif

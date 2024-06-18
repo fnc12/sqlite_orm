@@ -197,6 +197,7 @@ TEST_CASE("statement_serializer select_t") {
                 stringValue = serialize(expression, context);
                 expected = R"("users".*, "users"."id", "users"."name")";
             }
+#if SQLITE_VERSION_NUMBER >= 3006019
             SECTION("issue #945") {
                 struct Employee {
                     int m_empno;
@@ -232,6 +233,7 @@ TEST_CASE("statement_serializer select_t") {
                 expected =
                     R"(SELECT "d".* FROM "Dept" "d" LEFT JOIN "Emp" "e" ON "d"."deptno" = "e"."deptno"  WHERE ("e"."deptno" IS NULL))";
             }
+#endif
         }
     }
     REQUIRE(stringValue == expected);

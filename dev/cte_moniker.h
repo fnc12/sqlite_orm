@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <concepts>
 #include <utility>  //  std::make_index_sequence
@@ -14,7 +14,7 @@
 #include "functional/cstring_literal.h"
 #include "alias.h"
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 namespace sqlite_orm {
 
     namespace internal {
@@ -74,6 +74,7 @@ namespace sqlite_orm {
         [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator"" _ctealias() {
             return internal::cte_moniker<Chars...>{};
         }
+
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         /**
          *  cte_moniker<'1'[, ...]> from a string literal.

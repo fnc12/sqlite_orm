@@ -3,6 +3,7 @@
 
 #include "prepared_common.h"
 
+#if SQLITE_VERSION_NUMBER >= 3006019
 using namespace sqlite_orm;
 
 TEST_CASE("Prepared replace") {
@@ -159,3 +160,4 @@ TEST_CASE("Prepared replace") {
     auto rows = storage.get_all<User>();
     REQUIRE_THAT(rows, UnorderedEquals(expected));
 }
+#endif

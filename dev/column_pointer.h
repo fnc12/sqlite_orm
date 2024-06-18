@@ -35,7 +35,7 @@ namespace sqlite_orm {
         SQLITE_ORM_INLINE_VAR constexpr bool is_operator_argument_v<T, std::enable_if_t<is_column_pointer<T>::value>> =
             true;
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         template<class A>
         struct alias_holder;
 #endif
@@ -96,7 +96,7 @@ namespace sqlite_orm {
     }
 #endif
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     /**
      *  Explicitly refer to a column alias mapped into a CTE or subquery.
      *

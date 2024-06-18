@@ -203,6 +203,7 @@ TEST_CASE("Storage copy") {
     storageCopy.remove_all<User>();
 }
 
+#if SQLITE_VERSION_NUMBER >= 3006019
 TEST_CASE("column_name") {
     struct User {
         int id = 0;
@@ -230,6 +231,7 @@ TEST_CASE("column_name") {
     REQUIRE(*storage.find_column_name(&Visit::date) == "date");
     REQUIRE(storage.find_column_name(&Visit::notUsed) == nullptr);
 }
+#endif
 
 namespace {
     class Record final {

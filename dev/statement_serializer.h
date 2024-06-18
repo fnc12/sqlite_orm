@@ -132,11 +132,13 @@ namespace sqlite_orm {
                 return quote_blob_literal(field_printer<std::vector<char>>{}(t));
             }
 
+#if SQLITE_VERSION_NUMBER >= 3020000
             template<class P, class PT, class D>
             std::string do_serialize(const pointer_binding<P, PT, D>&) const {
                 // always serialize null (security reasons)
                 return field_printer<nullptr_t>{}(nullptr);
             }
+#endif
         };
 
         template<class O, bool WithoutRowId, class... Cs>
@@ -584,7 +586,8 @@ namespace sqlite_orm {
             }
         };
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if SQLITE_VERSION_NUMBER >= 3035003
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         template<>
         struct statement_serializer<materialized_t, void> {
@@ -605,6 +608,7 @@ namespace sqlite_orm {
                 return "NOT MATERIALIZED";
             }
         };
+#endif
 #endif
 
         template<class CTE>
@@ -1045,6 +1049,7 @@ namespace sqlite_orm {
             }
         };
 
+#if SQLITE_VERSION_NUMBER >= 3009000
         template<>
         struct statement_serializer<unindexed_t, void> {
             using statement_type = unindexed_t;
@@ -1106,6 +1111,7 @@ namespace sqlite_orm {
                 return ss.str();
             }
         };
+#endif
 
         template<>
         struct statement_serializer<collate_constraint_t, void> {
@@ -1127,6 +1133,7 @@ namespace sqlite_orm {
             }
         };
 
+#if SQLITE_VERSION_NUMBER >= 3006019
         template<class... Cs, class... Rs>
         struct statement_serializer<foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>>, void> {
             using statement_type = foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>>;
@@ -1152,6 +1159,7 @@ namespace sqlite_orm {
                 return ss.str();
             }
         };
+#endif
 
         template<class T>
         struct statement_serializer<check_t<T>, void> {
@@ -1809,6 +1817,7 @@ namespace sqlite_orm {
             }
         };
 
+#if SQLITE_VERSION_NUMBER >= 3009000
         template<class... Cs>
         struct statement_serializer<using_fts5_t<Cs...>, void> {
             using statement_type = using_fts5_t<Cs...>;
@@ -1823,6 +1832,7 @@ namespace sqlite_orm {
                 return ss.str();
             }
         };
+#endif
 
         template<class M>
         struct statement_serializer<virtual_table_t<M>, void> {

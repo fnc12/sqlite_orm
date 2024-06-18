@@ -6,6 +6,11 @@
 
 #include <iostream>
 
+#if SQLITE_VERSION_NUMBER >= 3006019
+#define ENABLE_THIS_EXAMPLE
+#endif
+
+#ifdef ENABLE_THIS_EXAMPLE
 using namespace sqlite_orm;
 using std::cout;
 using std::endl;
@@ -203,9 +208,10 @@ void named_adhoc_structs() {
     }
     cout << endl;
 }
+#endif
 
 int main() {
-
+#ifdef ENABLE_THIS_EXAMPLE
     try {
         all_employees();
         all_artists();
@@ -213,6 +219,7 @@ int main() {
     } catch(const std::system_error& e) {
         cout << "[" << e.code() << "] " << e.what();
     }
+#endif
 
     return 0;
 }

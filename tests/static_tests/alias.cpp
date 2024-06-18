@@ -84,7 +84,7 @@ TEST_CASE("aliases") {
             alias_column<d_alias>(&User::id));
         runTest<alias_column_t<alias_d<DerivedUser>, column_pointer<DerivedUser, int User::*>>>(d_alias->*&User::id);
 #endif
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         runTest<column_alias<'1'>>(1_colalias);
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         using cte_1 = decltype(1_ctealias);

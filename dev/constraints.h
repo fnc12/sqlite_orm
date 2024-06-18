@@ -184,7 +184,6 @@ namespace sqlite_orm {
         };
 
 #if SQLITE_VERSION_NUMBER >= 3006019
-
         /**
          *  FOREIGN KEY constraint class.
          *  Cs are columns which has foreign key
@@ -410,7 +409,6 @@ namespace sqlite_orm {
             expression_type expression;
         };
 
-#if SQLITE_VERSION_NUMBER >= 3031000
         struct basic_generated_always {
             enum class storage_type {
                 not_specified,
@@ -418,14 +416,17 @@ namespace sqlite_orm {
                 stored,
             };
 
+#if SQLITE_VERSION_NUMBER >= 3031000
             bool full = true;
             storage_type storage = storage_type::not_specified;
+#endif
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
             basic_generated_always(bool full, storage_type storage) : full{full}, storage{storage} {}
 #endif
         };
 
+#if SQLITE_VERSION_NUMBER >= 3031000
         template<class T>
         struct generated_always_t : basic_generated_always {
             using expression_type = T;
@@ -546,6 +547,7 @@ namespace sqlite_orm {
         return {{}};
     }
 
+#if SQLITE_VERSION_NUMBER >= 3009000
     /**
      *  UNINDEXED column constraint builder function. Used in FTS virtual tables.
      * 
@@ -594,6 +596,7 @@ namespace sqlite_orm {
     internal::table_content_t<T> content() {
         return {};
     }
+#endif
 
     /**
      *  PRIMARY KEY table constraint builder function.
