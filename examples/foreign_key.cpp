@@ -9,6 +9,11 @@
 #include <cassert>
 #include <memory>
 
+#if SQLITE_VERSION_NUMBER >= 3006019
+#define ENABLE_THIS_EXAMPLE
+#endif
+
+#ifdef ENABLE_THIS_EXAMPLE
 using std::cout;
 using std::endl;
 
@@ -22,10 +27,10 @@ struct Track {
     std::string trackName;
     std::unique_ptr<int> trackArtist;  //  must map to &Artist::artistId
 };
+#endif
 
-int main(int, char** argv) {
-    cout << "path = " << argv[0] << endl;
-
+int main() {
+#ifdef ENABLE_THIS_EXAMPLE
     using namespace sqlite_orm;
     {  //  simple case with foreign key to a single column without actions
         auto storage = make_storage("foreign_key.sqlite",
@@ -228,6 +233,7 @@ int main(int, char** argv) {
         }
         cout << endl;
     }
+#endif
 
     return 0;
 }

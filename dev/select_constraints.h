@@ -217,7 +217,7 @@ namespace sqlite_orm {
             using super::super;
         };
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         /*
          *  Turn explicit columns for a CTE into types that the CTE backend understands
          */
@@ -528,7 +528,8 @@ namespace sqlite_orm {
         return {{std::forward<E>(expressions)...}};
     }
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if SQLITE_VERSION_NUMBER >= 3035003
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /*
      *  Materialization hint to instruct SQLite to materialize the select statement of a CTE into an ephemeral table as an "optimization fence".
@@ -549,6 +550,7 @@ namespace sqlite_orm {
     inline consteval internal::not_materialized_t not_materialized() {
         return {};
     }
+#endif
 #endif
 
     /**

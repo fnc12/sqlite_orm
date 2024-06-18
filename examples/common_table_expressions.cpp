@@ -3,7 +3,7 @@
  */
 
 #include <sqlite_orm/sqlite_orm.h>
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #define ENABLE_THIS_EXAMPLE
 #endif
 
@@ -758,6 +758,7 @@ void sudoku() {
 }
 
 void show_optimization_fence() {
+#if SQLITE_VERSION_NUMBER >= 3035003
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     auto storage = make_storage("");
 
@@ -784,6 +785,7 @@ void show_optimization_fence() {
 
         [[maybe_unused]] auto stmt = storage.prepare(ast);
     }
+#endif
 #endif
 }
 

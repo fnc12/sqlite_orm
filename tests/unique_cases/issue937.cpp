@@ -1,7 +1,9 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 
+#if SQLITE_VERSION_NUMBER >= 3006019
 using namespace sqlite_orm;
+
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 TEST_CASE("issue937") {
     struct Employee {
@@ -65,7 +67,9 @@ TEST_CASE("issue937") {
         select(columns(as<NamesAlias>(&Department::m_deptname), as_optional(&Department::m_deptno))),
         select(union_all(select(columns(quote("--------------------"), std::optional<int>())),
                          select(columns(as<NamesAlias>(&Employee::m_ename), as_optional(&Employee::m_depno))))))));
+#if SQLITE_VERSION_NUMBER >= 3014000
     auto sql = statement.expanded_sql();
+#endif
     auto rows = storage.execute(statement);
     {  //  issue953
         auto expression = select(
@@ -85,4 +89,5 @@ TEST_CASE("issue937") {
         REQUIRE_NOTHROW(storage.prepare(expression));
     }
 }
+#endif
 #endif

@@ -5,6 +5,7 @@
 
 using namespace sqlite_orm;
 
+#if SQLITE_VERSION_NUMBER >= 3006019
 TEST_CASE("Prepared select") {
     using namespace PreparedStatementTests;
     using Catch::Matchers::UnorderedEquals;
@@ -403,6 +404,7 @@ TEST_CASE("Prepared select") {
         }
     }
 }
+#endif
 
 TEST_CASE("dumping") {
     auto storage = make_storage("");
@@ -439,5 +441,25 @@ TEST_CASE("dumping") {
             expected = "SELECT 1";
         }
     }
+#if SQLITE_VERSION_NUMBER >= 3020000
+#ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
+    SECTION("with bound pointer") {
+        int64 lastSelectedId;
+        auto statement = storage.prepare(select(bind_carray_pointer_statically(&lastSelectedId)));
+        SECTION("default") {
+            value = storage.dump(statement);
+            expected = "SELECT ?";
+        }
+        SECTION("parametrized") {
+            value = storage.dump(statement, true);
+            expected = "SELECT ?";
+        }
+        SECTION("dump") {
+            value = storage.dump(statement, false);
+            expected = "SELECT NULL";
+        }
+    }
+#endif
+#endif
     REQUIRE(value == expected);
 }

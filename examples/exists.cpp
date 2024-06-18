@@ -518,7 +518,9 @@ int main(int, char**) {
                                    order_by(alias_column<als>(&Customer::paymentAmt))));
 #endif
 
+#if SQLITE_VERSION_NUMBER >= 3014000
         auto sql = statement.expanded_sql();
+#endif
         auto rows = storage.execute(statement);
         cout << endl;
         for(auto& row: rows) {

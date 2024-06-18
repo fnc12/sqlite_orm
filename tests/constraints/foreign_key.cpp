@@ -5,6 +5,7 @@
 
 #include "../static_tests/static_tests_storage_traits.h"
 
+#if SQLITE_VERSION_NUMBER >= 3006019
 using namespace sqlite_orm;
 
 TEST_CASE("Foreign key") {
@@ -127,3 +128,4 @@ TEST_CASE("Foreign key 2") {
 
     storage.update(t2);
 }
+#endif

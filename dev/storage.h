@@ -267,7 +267,7 @@ namespace sqlite_orm {
                 return {this->db_objects, std::move(con), std::move(expression)};
             }
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             template<class... CTEs, class E>
                 requires(is_select_v<E>)
             result_set_view<with_t<E, CTEs...>, db_objects_type> iterate(with_t<E, CTEs...> expression) {
@@ -682,7 +682,7 @@ namespace sqlite_orm {
                 return this->execute(statement);
             }
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             /**
              *  Using a CTE, select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
              */
@@ -1201,7 +1201,7 @@ namespace sqlite_orm {
 
             using storage_base::table_exists;  // now that it is in storage_base make it into overload set
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             template<class... CTEs,
                      class E,
                      std::enable_if_t<polyfill::disjunction_v<is_select<E>, is_insert_raw<E>>, bool> = true>
@@ -1330,7 +1330,7 @@ namespace sqlite_orm {
                 perform_step(stmt);
             }
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             template<class... CTEs, class E, satisfies<is_insert_raw, E> = true>
             void execute(const prepared_statement_t<with_t<E, CTEs...>>& statement) {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
@@ -1560,7 +1560,7 @@ namespace sqlite_orm {
                 perform_step(stmt);
             }
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             template<class... CTEs, class T, class... Args>
             auto execute(const prepared_statement_t<with_t<select_t<T, Args...>, CTEs...>>& statement) {
                 using ExprDBOs = decltype(db_objects_for_expression(this->db_objects, statement.expression));

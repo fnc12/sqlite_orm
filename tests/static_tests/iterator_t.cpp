@@ -184,7 +184,7 @@ TEST_CASE("can view and iterate result set") {
         storage_iterate_result_set<storage_type, decltype(select(object<Object>())), table_reference<Object>>);
 #endif
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     constexpr orm_cte_moniker auto x = "x"_cte;
     constexpr orm_column_alias auto i = "i"_col;

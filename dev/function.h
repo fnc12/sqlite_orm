@@ -19,8 +19,10 @@ namespace sqlite_orm {
 
     struct arg_values;
 
+    // note (internal): forward declare even if `SQLITE_VERSION_NUMBER < 3020000` in order to simplify coding below
     template<class P, class T>
     struct pointer_arg;
+    // note (internal): forward declare even if `SQLITE_VERSION_NUMBER < 3020000` in order to simplify coding below
     template<class P, class T, class D>
     class pointer_binding;
 

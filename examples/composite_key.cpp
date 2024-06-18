@@ -10,6 +10,11 @@
 
 #include <sqlite_orm/sqlite_orm.h>
 
+#if SQLITE_VERSION_NUMBER >= 3006019
+#define ENABLE_THIS_EXAMPLE
+#endif
+
+#ifdef ENABLE_THIS_EXAMPLE
 using std::cout;
 using std::endl;
 
@@ -24,8 +29,10 @@ struct UserVisit {
     std::string userFirstName;
     time_t time;
 };
+#endif
 
 int main() {
+#ifdef ENABLE_THIS_EXAMPLE
     using namespace sqlite_orm;
 
     auto storage = make_storage(
@@ -59,5 +66,7 @@ int main() {
     storage.replace(User{2, "The Weeknd", "Singer"});
     auto weeknd = storage.get<User>(2, "The Weeknd");
     cout << "weeknd = " << storage.dump(weeknd) << endl;
+#endif
+
     return 0;
 }

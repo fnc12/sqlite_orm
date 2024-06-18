@@ -1,6 +1,7 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 
+#if SQLITE_VERSION_NUMBER >= 3009000
 using namespace sqlite_orm;
 
 TEST_CASE("statement_serializer match") {
@@ -16,5 +17,6 @@ TEST_CASE("statement_serializer match") {
     context_t context{dbObjects};
     auto node = match<User>("Claude");
     auto value = serialize(node, context);
-    REQUIRE(value == "\"users\" MATCH 'Claude'");
+    REQUIRE(value == R"("users" MATCH 'Claude')");
 }
+#endif
