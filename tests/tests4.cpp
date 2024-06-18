@@ -144,6 +144,7 @@ TEST_CASE("join") {
     }
 }
 
+#if SQLITE_VERSION_NUMBER >= 3006019
 TEST_CASE("two joins") {
     struct Statement {
         int id_statement;
@@ -288,3 +289,4 @@ TEST_CASE("two joins") {
                                  inner_join<als_b>(on(alias_column<als_t>(&Transaccion::fkey_account_own) ==
                                                       alias_column<als_b>(&Account::id_account))));
 }
+#endif

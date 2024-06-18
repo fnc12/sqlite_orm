@@ -5,6 +5,7 @@
 
 using namespace sqlite_orm;
 
+#if SQLITE_VERSION_NUMBER >= 3006019
 TEST_CASE("Prepared select") {
     using namespace PreparedStatementTests;
     using Catch::Matchers::UnorderedEquals;
@@ -403,6 +404,7 @@ TEST_CASE("Prepared select") {
         }
     }
 }
+#endif
 
 TEST_CASE("dumping") {
     auto storage = make_storage("");

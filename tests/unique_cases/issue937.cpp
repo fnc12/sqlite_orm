@@ -1,7 +1,9 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 
+#if SQLITE_VERSION_NUMBER >= 3006019
 using namespace sqlite_orm;
+
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 TEST_CASE("issue937") {
     struct Employee {
@@ -87,4 +89,5 @@ TEST_CASE("issue937") {
         REQUIRE_NOTHROW(storage.prepare(expression));
     }
 }
+#endif
 #endif

@@ -184,7 +184,6 @@ namespace sqlite_orm {
         };
 
 #if SQLITE_VERSION_NUMBER >= 3006019
-
         /**
          *  FOREIGN KEY constraint class.
          *  Cs are columns which has foreign key

@@ -1133,6 +1133,7 @@ namespace sqlite_orm {
             }
         };
 
+#if SQLITE_VERSION_NUMBER >= 3006019
         template<class... Cs, class... Rs>
         struct statement_serializer<foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>>, void> {
             using statement_type = foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>>;
@@ -1158,6 +1159,7 @@ namespace sqlite_orm {
                 return ss.str();
             }
         };
+#endif
 
         template<class T>
         struct statement_serializer<check_t<T>, void> {

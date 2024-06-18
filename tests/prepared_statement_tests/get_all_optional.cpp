@@ -3,6 +3,7 @@
 
 #include "prepared_common.h"
 
+#if SQLITE_VERSION_NUMBER >= 3006019
 using namespace sqlite_orm;
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -133,3 +134,4 @@ TEST_CASE("Prepared get all optional") {
     }
 }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+#endif

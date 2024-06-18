@@ -3,6 +3,7 @@
 
 #include "prepared_common.h"
 
+#if SQLITE_VERSION_NUMBER >= 3006019
 using namespace sqlite_orm;
 
 TEST_CASE("Prepared get") {
@@ -136,3 +137,4 @@ TEST_CASE("Prepared get") {
         }
     }
 }
+#endif

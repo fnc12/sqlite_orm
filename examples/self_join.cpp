@@ -6,6 +6,11 @@
 #include <iostream>
 #include <cassert>
 
+#if SQLITE_VERSION_NUMBER >= 3006019
+#define ENABLE_THIS_EXAMPLE
+#endif
+
+#ifdef ENABLE_THIS_EXAMPLE
 using std::cout;
 using std::endl;
 
@@ -41,8 +46,10 @@ struct custom_alias : sqlite_orm::alias_tag {
         return res;
     }
 };
+#endif
 
 int main() {
+#ifdef ENABLE_THIS_EXAMPLE
     using namespace sqlite_orm;
     auto storage =
         make_storage("self_join.sqlite",
@@ -252,6 +259,7 @@ int main() {
         }
 #endif
     }
+#endif
 
     return 0;
 }

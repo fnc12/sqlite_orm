@@ -1,6 +1,7 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 
+#if SQLITE_VERSION_NUMBER >= 3006019
 using namespace sqlite_orm;
 
 TEST_CASE("index named table") {
@@ -77,3 +78,4 @@ TEST_CASE("index named table") {
                                 foreign_key(&pay_info::order_number).references(&OrderTable::order_number)));
     storage.sync_schema();
 }
+#endif
