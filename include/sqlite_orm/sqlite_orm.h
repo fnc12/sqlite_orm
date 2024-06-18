@@ -2348,6 +2348,7 @@ namespace sqlite_orm {
         return {{}};
     }
 
+#if SQLITE_VERSION_NUMBER >= 3009000
     /**
      *  UNINDEXED column constraint builder function. Used in FTS virtual tables.
      * 
@@ -2396,6 +2397,7 @@ namespace sqlite_orm {
     internal::table_content_t<T> content() {
         return {};
     }
+#endif
 
     /**
      *  PRIMARY KEY table constraint builder function.
@@ -11946,6 +11948,7 @@ namespace sqlite_orm {
         template<class M>
         struct is_virtual_table<virtual_table_t<M>> : std::true_type {};
 
+#if SQLITE_VERSION_NUMBER >= 3009000
         template<class T, class... Cs>
         struct using_fts5_t {
             using object_type = T;
@@ -11983,6 +11986,7 @@ namespace sqlite_orm {
                 iterate_tuple(this->columns, col_index_sequence{}, lambda);
             }
         };
+#endif
 
         template<class O, bool WithoutRowId, class... Cs, class G, class S>
         bool exists_in_composite_primary_key(const table_t<O, WithoutRowId, Cs...>& table,
@@ -12010,6 +12014,7 @@ namespace sqlite_orm {
         }
     }
 
+#if SQLITE_VERSION_NUMBER >= 3009000
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::using_fts5_t<T, Cs...> using_fts5(Cs... columns) {
         static_assert(polyfill::conjunction_v<internal::is_table_element_or_constraint<Cs>...>,
@@ -12025,6 +12030,7 @@ namespace sqlite_orm {
 
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(columns)...)});
     }
+#endif
 
     /**
      *  Factory function for a table definition.
@@ -20067,6 +20073,7 @@ namespace sqlite_orm {
             }
         };
 
+#if SQLITE_VERSION_NUMBER >= 3009000
         template<>
         struct statement_serializer<unindexed_t, void> {
             using statement_type = unindexed_t;
@@ -20128,6 +20135,7 @@ namespace sqlite_orm {
                 return ss.str();
             }
         };
+#endif
 
         template<>
         struct statement_serializer<collate_constraint_t, void> {
@@ -20831,6 +20839,7 @@ namespace sqlite_orm {
             }
         };
 
+#if SQLITE_VERSION_NUMBER >= 3009000
         template<class... Cs>
         struct statement_serializer<using_fts5_t<Cs...>, void> {
             using statement_type = using_fts5_t<Cs...>;
@@ -20845,6 +20854,7 @@ namespace sqlite_orm {
                 return ss.str();
             }
         };
+#endif
 
         template<class M>
         struct statement_serializer<virtual_table_t<M>, void> {

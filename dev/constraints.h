@@ -548,6 +548,7 @@ namespace sqlite_orm {
         return {{}};
     }
 
+#if SQLITE_VERSION_NUMBER >= 3009000
     /**
      *  UNINDEXED column constraint builder function. Used in FTS virtual tables.
      * 
@@ -596,6 +597,7 @@ namespace sqlite_orm {
     internal::table_content_t<T> content() {
         return {};
     }
+#endif
 
     /**
      *  PRIMARY KEY table constraint builder function.
