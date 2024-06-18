@@ -126,6 +126,7 @@ TEST_CASE("statement_serializer select constraints") {
             value = serialize(expression, context);
             expected = R"("1"("1") AS (SELECT 1))";
         }
+#if SQLITE_VERSION_NUMBER >= 3035000
         SECTION("as materialized") {
             auto expression = cte<cte_1>().as<materialized()>(select(1));
             value = serialize(expression, context);
@@ -136,6 +137,7 @@ TEST_CASE("statement_serializer select constraints") {
             value = serialize(expression, context);
             expected = R"("1"("1") AS NOT MATERIALIZED (SELECT 1))";
         }
+#endif
 #endif
         SECTION("with ordinary") {
             auto expression = with(cte<cte_1>().as(select(1)), select(column<cte_1>(1_colalias)));
