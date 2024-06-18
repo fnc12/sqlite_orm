@@ -65,7 +65,9 @@ TEST_CASE("issue937") {
         select(columns(as<NamesAlias>(&Department::m_deptname), as_optional(&Department::m_deptno))),
         select(union_all(select(columns(quote("--------------------"), std::optional<int>())),
                          select(columns(as<NamesAlias>(&Employee::m_ename), as_optional(&Employee::m_depno))))))));
+#if SQLITE_VERSION_NUMBER >= 3014000
     auto sql = statement.expanded_sql();
+#endif
     auto rows = storage.execute(statement);
     {  //  issue953
         auto expression = select(
