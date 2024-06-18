@@ -587,6 +587,7 @@ namespace sqlite_orm {
         };
 
 #ifdef SQLITE_ORM_WITH_CTE
+#if SQLITE_VERSION_NUMBER >= 3035003
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         template<>
         struct statement_serializer<materialized_t, void> {
@@ -607,6 +608,7 @@ namespace sqlite_orm {
                 return "NOT MATERIALIZED";
             }
         };
+#endif
 #endif
 
         template<class CTE>

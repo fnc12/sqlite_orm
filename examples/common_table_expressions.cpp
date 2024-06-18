@@ -758,6 +758,7 @@ void sudoku() {
 }
 
 void show_optimization_fence() {
+#if SQLITE_VERSION_NUMBER >= 3035003
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     auto storage = make_storage("");
 
@@ -784,6 +785,7 @@ void show_optimization_fence() {
 
         [[maybe_unused]] auto stmt = storage.prepare(ast);
     }
+#endif
 #endif
 }
 

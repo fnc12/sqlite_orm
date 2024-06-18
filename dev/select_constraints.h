@@ -529,6 +529,7 @@ namespace sqlite_orm {
     }
 
 #ifdef SQLITE_ORM_WITH_CTE
+#if SQLITE_VERSION_NUMBER >= 3035003
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /*
      *  Materialization hint to instruct SQLite to materialize the select statement of a CTE into an ephemeral table as an "optimization fence".
@@ -549,6 +550,7 @@ namespace sqlite_orm {
     inline consteval internal::not_materialized_t not_materialized() {
         return {};
     }
+#endif
 #endif
 
     /**
