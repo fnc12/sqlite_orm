@@ -1,5 +1,8 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <type_traits>  //  std::is_same
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+#include <concepts>  //  std::same_as
+#endif
 #include <catch2/catch_all.hpp>
 
 using namespace sqlite_orm;
@@ -10,6 +13,12 @@ using internal::column_alias;
 using internal::column_pointer;
 using internal::recordset_alias;
 using internal::using_t;
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+using internal::count_asterisk_t;
+using internal::get_all_t;
+using internal::mapped_view;
+using std::same_as;
+#endif
 
 template<class ColAlias, class E>
 void do_assert() {
@@ -22,11 +31,17 @@ void runTest(ColAlias /*colRef*/) {
 }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-template<class S, orm_table_alias auto als>
+template<orm_table_alias auto als, typename A = decltype(als), typename O = internal::type_t<A>>
+concept table_alias_callable = requires {
+    { get_all<als>() } -> same_as<get_all_t<A, std::vector<O>>>;
+    { count<als>() } -> same_as<count_asterisk_t<A>>;
+};
+
+template<class S, orm_table_alias auto als, typename O = internal::type_t<decltype(als)>>
 concept storage_table_alias_callable = requires(S& storage) {
-    storage.get_all<als>();
-    storage.count<als>();
-    storage.iterate<als>();
+    { storage.get_all<als>() } -> same_as<std::vector<O>>;
+    { storage.count<als>() } -> same_as<int>;
+    { storage.iterate<als>() } -> same_as<mapped_view<O, S>>;
 };
 #endif
 
@@ -103,6 +118,9 @@ TEST_CASE("aliases") {
             left_outer_join<d_alias>(using_(derived_user->*&DerivedUser::id)));
         runTest<internal::inner_join_t<d_alias_type, using_t<DerivedUser, decltype(&DerivedUser::id)>>>(
             inner_join<d_alias>(using_(derived_user->*&DerivedUser::id)));
+
+        STATIC_REQUIRE(table_alias_callable<d_alias>);
+        STATIC_REQUIRE(table_alias_callable<sqlite_schema>);
 
         using storage_type = decltype(make_storage(
             "",

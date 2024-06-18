@@ -14977,7 +14977,7 @@ namespace sqlite_orm {
      */
     template<orm_table_reference auto table, class... Ids>
     auto get_optional(Ids... ids) {
-        return get_pointer<internal::auto_decay_table_ref_t<table>>(std::forward<Ids>(ids)...);
+        return get_optional<internal::auto_decay_table_ref_t<table>>(std::forward<Ids>(ids)...);
     }
 #endif
 
@@ -15007,11 +15007,11 @@ namespace sqlite_orm {
 
     /**
      *  Create a get all statement.
-     *  T is an object mapped to a storage or a table alias.
+     *  T is an explicitly specified object mapped to a storage or a table alias.
      *  R is a container type. std::vector<T> is default
      *  Usage: storage.prepare(get_all<User>(...));
      */
-    template<class T, class R = std::vector<T>, class... Args>
+    template<class T, class R = std::vector<internal::mapped_type_proxy_t<T>>, class... Args>
     internal::get_all_t<T, R, Args...> get_all(Args... conditions) {
         using conditions_tuple = std::tuple<Args...>;
         internal::validate_conditions<conditions_tuple>();
@@ -15021,7 +15021,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
      *  Create a get all statement.
-     *  `mapped` is an explicitly specified table reference or alias of a mapped object to be extracted.
+     *  `mapped` is an explicitly specified table reference or table alias to be extracted.
      *  `R` is the container return type, which must have a `R::push_back(T&&)` method, and defaults to `std::vector<T>`
      *  Usage: storage.get_all<sqlite_schema>(...);
      */
@@ -22033,9 +22033,9 @@ namespace sqlite_orm {
             }
 
           public:
-            template<class T, class... Args>
-            mapped_view<T, self, Args...> iterate(Args&&... args) {
-                this->assert_mapped_type<T>();
+            template<class T, class O = mapped_type_proxy_t<T>, class... Args>
+            mapped_view<O, self, Args...> iterate(Args&&... args) {
+                this->assert_mapped_type<O>();
 
                 auto con = this->get_connection();
                 return {*this, std::move(con), std::forward<Args>(args)...};
@@ -22044,7 +22044,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
             template<orm_refers_to_table auto mapped, class... Args>
             auto iterate(Args&&... args) {
-                return this->iterate<mapped_type_proxy_t<decltype(mapped)>>(std::forward<Args>(args)...);
+                return this->iterate<decltype(mapped)>(std::forward<Args>(args)...);
             }
 #endif
 
@@ -22152,23 +22152,23 @@ namespace sqlite_orm {
           public:
             /**
              *  SELECT * routine.
-             *  O is an object type to be extracted. Must be specified explicitly.
+             *  T is an explicitly specified object mapped to a storage or a table alias.
              *  R is an explicit return type. This type must have `push_back(O &&)` function. Defaults to `std::vector<O>`
              *  @return All objects of type O stored in database at the moment in `R`.
              *  @example: storage.get_all<User, std::list<User>>(); - SELECT * FROM users
              *  @example: storage.get_all<User, std::list<User>>(where(like(&User::name, "N%")), order_by(&User::id)); - SELECT * FROM users WHERE name LIKE 'N%' ORDER BY id
             */
-            template<class O, class R = std::vector<O>, class... Args>
+            template<class T, class R = std::vector<mapped_type_proxy_t<T>>, class... Args>
             R get_all(Args&&... args) {
-                this->assert_mapped_type<O>();
-                auto statement = this->prepare(sqlite_orm::get_all<O, R>(std::forward<Args>(args)...));
+                this->assert_mapped_type<mapped_type_proxy_t<T>>();
+                auto statement = this->prepare(sqlite_orm::get_all<T, R>(std::forward<Args>(args)...));
                 return this->execute(statement);
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
             /**
              *  SELECT * routine.
-             *  `mapped` is an explicitly specified table reference or alias of an object to be extracted.
+             *  `mapped` is an explicitly specified table reference or table alias of an object to be extracted.
              *  `R` is the container return type, which must have a `R::push_back(O&&)` method, and defaults to `std::vector<O>`
              *  @return All objects stored in database.
              *  @example: storage.get_all<sqlite_schema, std::list<sqlite_master>>(); - SELECT sqlite_schema.* FROM sqlite_master AS sqlite_schema

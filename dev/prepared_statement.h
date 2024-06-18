@@ -688,7 +688,7 @@ namespace sqlite_orm {
      */
     template<orm_table_reference auto table, class... Ids>
     auto get_optional(Ids... ids) {
-        return get_pointer<internal::auto_decay_table_ref_t<table>>(std::forward<Ids>(ids)...);
+        return get_optional<internal::auto_decay_table_ref_t<table>>(std::forward<Ids>(ids)...);
     }
 #endif
 
@@ -718,11 +718,11 @@ namespace sqlite_orm {
 
     /**
      *  Create a get all statement.
-     *  T is an object mapped to a storage or a table alias.
+     *  T is an explicitly specified object mapped to a storage or a table alias.
      *  R is a container type. std::vector<T> is default
      *  Usage: storage.prepare(get_all<User>(...));
      */
-    template<class T, class R = std::vector<T>, class... Args>
+    template<class T, class R = std::vector<internal::mapped_type_proxy_t<T>>, class... Args>
     internal::get_all_t<T, R, Args...> get_all(Args... conditions) {
         using conditions_tuple = std::tuple<Args...>;
         internal::validate_conditions<conditions_tuple>();
@@ -732,7 +732,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
      *  Create a get all statement.
-     *  `mapped` is an explicitly specified table reference or alias of a mapped object to be extracted.
+     *  `mapped` is an explicitly specified table reference or table alias to be extracted.
      *  `R` is the container return type, which must have a `R::push_back(T&&)` method, and defaults to `std::vector<T>`
      *  Usage: storage.get_all<sqlite_schema>(...);
      */
