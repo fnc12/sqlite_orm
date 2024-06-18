@@ -7437,7 +7437,6 @@ namespace sqlite_orm {
     }
 
 #if SQLITE_VERSION_NUMBER >= 3007016
-
     /**
      *  CHAR(X1,X2,...,XN) function https://sqlite.org/lang_corefunc.html#char
      */
@@ -7452,7 +7451,6 @@ namespace sqlite_orm {
     inline internal::built_in_function_t<int, internal::random_string> random() {
         return {{}};
     }
-
 #endif
 
     /**
