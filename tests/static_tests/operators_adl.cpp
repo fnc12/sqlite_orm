@@ -120,7 +120,9 @@ TEST_CASE("inline namespace literals expressions") {
     constexpr auto u_alias_builder = "u"_alias;
     constexpr auto c_col = "c"_col;
     constexpr auto f_scalar_builder = "f"_scalar;
+#if SQLITE_VERSION_NUMBER >= 3020000
     constexpr auto domain_ptr_tag = "domain"_pointer_type;
+#endif
 #endif
 }
 

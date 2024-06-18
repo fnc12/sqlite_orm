@@ -132,11 +132,13 @@ namespace sqlite_orm {
                 return quote_blob_literal(field_printer<std::vector<char>>{}(t));
             }
 
+#if SQLITE_VERSION_NUMBER >= 3020000
             template<class P, class PT, class D>
             std::string do_serialize(const pointer_binding<P, PT, D>&) const {
                 // always serialize null (security reasons)
                 return field_printer<nullptr_t>{}(nullptr);
             }
+#endif
         };
 
         template<class O, bool WithoutRowId, class... Cs>

@@ -9498,11 +9498,13 @@ namespace sqlite_orm {
 }
 #pragma once
 
+#if SQLITE_VERSION_NUMBER >= 3020000
 #include <type_traits>
 #include <memory>
 #include <utility>
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <concepts>
+#endif
 #endif
 
 // #include "functional/cstring_literal.h"
@@ -9759,6 +9761,7 @@ namespace sqlite_orm {
 #endif
 }
 
+#if SQLITE_VERSION_NUMBER >= 3020000
 namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     namespace internal {
@@ -10039,6 +10042,7 @@ namespace sqlite_orm {
         return bind_pointer_statically<T>(pv.ptr());
     }
 }
+#endif
 #pragma once
 
 #include <sqlite3.h>
@@ -10100,6 +10104,7 @@ namespace sqlite_orm {
         struct is_bindable : polyfill::bool_constant<is_bindable_v<T>> {};
     }
 
+#if SQLITE_VERSION_NUMBER >= 3020000
     /**
      *  Specialization for pointer bindings (part of the 'pointer-passing interface').
      */
@@ -10120,6 +10125,7 @@ namespace sqlite_orm {
             sqlite3_result_pointer(context, (void*)value.take_ptr(), T::value, value.get_xdestroy());
         }
     };
+#endif
 
     /**
      *  Specialization for arithmetic types.
@@ -10743,6 +10749,7 @@ namespace sqlite_orm {
         return 0;
     }
 
+#if SQLITE_VERSION_NUMBER >= 3020000
     /**
      *  Specialization for the 'pointer-passing interface'.
      * 
@@ -10767,6 +10774,7 @@ namespace sqlite_orm {
      */
     template<class P, class T, class D>
     struct row_extractor<pointer_binding<P, T, D>, void>;
+#endif
 
     /**
      *  Specialization for arithmetic types.
@@ -12763,8 +12771,10 @@ namespace sqlite_orm {
 
     struct arg_values;
 
+    // note (internal): forward declare even if `SQLITE_VERSION_NUMBER < 3020000` in order to simplify coding below
     template<class P, class T>
     struct pointer_arg;
+    // note (internal): forward declare even if `SQLITE_VERSION_NUMBER < 3020000` in order to simplify coding below
     template<class P, class T, class D>
     class pointer_binding;
 
@@ -19138,11 +19148,13 @@ namespace sqlite_orm {
                 return quote_blob_literal(field_printer<std::vector<char>>{}(t));
             }
 
+#if SQLITE_VERSION_NUMBER >= 3020000
             template<class P, class PT, class D>
             std::string do_serialize(const pointer_binding<P, PT, D>&) const {
                 // always serialize null (security reasons)
                 return field_printer<nullptr_t>{}(nullptr);
             }
+#endif
         };
 
         template<class O, bool WithoutRowId, class... Cs>
@@ -23831,15 +23843,18 @@ namespace sqlite_orm {
  *  Hence we make it only available for compilers supporting inline variables.
  */
 
+#if SQLITE_VERSION_NUMBER >= 3020000
 #ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 #include <utility>  //  std::move
 #ifndef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <type_traits>  //  std::integral_constant
 #endif
 #endif
+#endif
 
 // #include "pointer_value.h"
 
+#if SQLITE_VERSION_NUMBER >= 3020000
 #ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 namespace sqlite_orm {
 
@@ -23968,6 +23983,7 @@ namespace sqlite_orm {
         }
     };
 }
+#endif
 #endif
 #pragma once
 

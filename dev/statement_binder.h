@@ -49,6 +49,7 @@ namespace sqlite_orm {
         struct is_bindable : polyfill::bool_constant<is_bindable_v<T>> {};
     }
 
+#if SQLITE_VERSION_NUMBER >= 3020000
     /**
      *  Specialization for pointer bindings (part of the 'pointer-passing interface').
      */
@@ -69,6 +70,7 @@ namespace sqlite_orm {
             sqlite3_result_pointer(context, (void*)value.take_ptr(), T::value, value.get_xdestroy());
         }
     };
+#endif
 
     /**
      *  Specialization for arithmetic types.

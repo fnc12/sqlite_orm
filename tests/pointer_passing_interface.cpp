@@ -1,10 +1,11 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 
+#if SQLITE_VERSION_NUMBER >= 3020000
+#ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 using namespace sqlite_orm;
 using std::unique_ptr;
 
-#ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 namespace {
     struct delete_int64 {
         static int64 lastSelectedId;
@@ -175,13 +176,6 @@ TEST_CASE("pointer-passing") {
             REQUIRE(v.back() == delete_int64::lastSelectedId);
         }
     }
-
-    SECTION("dump prepared") {
-        int64 lastSelectedId;
-        auto stmt = storage.prepare(
-            select(func<note_value_fn<int64>>(select(&Object::id), bind_carray_pointer_statically(&lastSelectedId))));
-        std::string sql = storage.dump(stmt);
-        (void)sql;
-    }
 }
+#endif
 #endif

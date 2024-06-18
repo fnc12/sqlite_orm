@@ -127,6 +127,7 @@ namespace sqlite_orm {
         return 0;
     }
 
+#if SQLITE_VERSION_NUMBER >= 3020000
     /**
      *  Specialization for the 'pointer-passing interface'.
      * 
@@ -151,6 +152,7 @@ namespace sqlite_orm {
      */
     template<class P, class T, class D>
     struct row_extractor<pointer_binding<P, T, D>, void>;
+#endif
 
     /**
      *  Specialization for arithmetic types.
