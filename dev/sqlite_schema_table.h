@@ -4,6 +4,7 @@
 
 #include "schema/column.h"
 #include "schema/table.h"
+#include "column_pointer.h"
 #include "alias.h"
 
 namespace sqlite_orm {
@@ -38,6 +39,7 @@ namespace sqlite_orm {
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    inline constexpr orm_table_reference auto sqlite_master_table = c<sqlite_master>();
     inline constexpr orm_table_alias auto sqlite_schema = "sqlite_schema"_alias.for_<sqlite_master>();
 #endif
 }

@@ -243,9 +243,9 @@ namespace sqlite_orm {
             }
 
           public:
-            template<class T, class... Args>
-            mapped_view<T, self, Args...> iterate(Args&&... args) {
-                this->assert_mapped_type<T>();
+            template<class T, class O = mapped_type_proxy_t<T>, class... Args>
+            mapped_view<O, self, Args...> iterate(Args&&... args) {
+                this->assert_mapped_type<O>();
 
                 auto con = this->get_connection();
                 return {*this, std::move(con), std::forward<Args>(args)...};
@@ -254,13 +254,15 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
             template<orm_refers_to_table auto mapped, class... Args>
             auto iterate(Args&&... args) {
-                return this->iterate<mapped_type_proxy_t<decltype(mapped)>>(std::forward<Args>(args)...);
+                return this->iterate<decltype(mapped)>(std::forward<Args>(args)...);
             }
 #endif
 
 #if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)
             template<class Select>
+#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
                 requires(is_select_v<Select>)
+#endif
             result_set_view<Select, db_objects_type> iterate(Select expression) {
                 expression.highest_level = true;
                 auto con = this->get_connection();
@@ -269,7 +271,9 @@ namespace sqlite_orm {
 
 #if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             template<class... CTEs, class E>
+#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
                 requires(is_select_v<E>)
+#endif
             result_set_view<with_t<E, CTEs...>, db_objects_type> iterate(with_t<E, CTEs...> expression) {
                 auto con = this->get_connection();
                 return {this->db_objects, std::move(con), std::move(expression)};
@@ -291,6 +295,13 @@ namespace sqlite_orm {
                 this->execute(statement);
             }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            template<orm_table_reference auto table, class... Args>
+            void remove_all(Args&&... args) {
+                return this->remove_all<auto_decay_table_ref_t<table>>(std::forward<Args>(args)...);
+            }
+#endif
+
             /**
              *  Delete routine.
              *  O is an object's type. Must be specified explicitly.
@@ -302,6 +313,13 @@ namespace sqlite_orm {
                 auto statement = this->prepare(sqlite_orm::remove<O>(std::forward<Ids>(ids)...));
                 this->execute(statement);
             }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            template<orm_table_reference auto table, class... Ids>
+            void remove(Ids... ids) {
+                return this->remove<auto_decay_table_ref_t<table>>(std::forward<Ids>(ids)...);
+            }
+#endif
 
             /**
              *  Update routine. Sets all non primary key fields where primary key is equal.
@@ -344,23 +362,23 @@ namespace sqlite_orm {
           public:
             /**
              *  SELECT * routine.
-             *  O is an object type to be extracted. Must be specified explicitly.
+             *  T is an explicitly specified object mapped to a storage or a table alias.
              *  R is an explicit return type. This type must have `push_back(O &&)` function. Defaults to `std::vector<O>`
              *  @return All objects of type O stored in database at the moment in `R`.
              *  @example: storage.get_all<User, std::list<User>>(); - SELECT * FROM users
              *  @example: storage.get_all<User, std::list<User>>(where(like(&User::name, "N%")), order_by(&User::id)); - SELECT * FROM users WHERE name LIKE 'N%' ORDER BY id
             */
-            template<class O, class R = std::vector<O>, class... Args>
+            template<class T, class R = std::vector<mapped_type_proxy_t<T>>, class... Args>
             R get_all(Args&&... args) {
-                this->assert_mapped_type<O>();
-                auto statement = this->prepare(sqlite_orm::get_all<O, R>(std::forward<Args>(args)...));
+                this->assert_mapped_type<mapped_type_proxy_t<T>>();
+                auto statement = this->prepare(sqlite_orm::get_all<T, R>(std::forward<Args>(args)...));
                 return this->execute(statement);
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
             /**
              *  SELECT * routine.
-             *  `mapped` is an explicitly specified table reference or alias of an object to be extracted.
+             *  `mapped` is an explicitly specified table reference or table alias of an object to be extracted.
              *  `R` is the container return type, which must have a `R::push_back(O&&)` method, and defaults to `std::vector<O>`
              *  @return All objects stored in database.
              *  @example: storage.get_all<sqlite_schema, std::list<sqlite_master>>(); - SELECT sqlite_schema.* FROM sqlite_master AS sqlite_schema
@@ -369,8 +387,7 @@ namespace sqlite_orm {
                      class R = std::vector<mapped_type_proxy_t<decltype(mapped)>>,
                      class... Args>
             R get_all(Args&&... args) {
-                using A = decltype(mapped);
-                this->assert_mapped_type<mapped_type_proxy_t<A>>();
+                this->assert_mapped_type<mapped_type_proxy_t<decltype(mapped)>>();
                 auto statement = this->prepare(sqlite_orm::get_all<mapped, R>(std::forward<Args>(args)...));
                 return this->execute(statement);
             }
@@ -391,6 +408,15 @@ namespace sqlite_orm {
                 return this->execute(statement);
             }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            template<orm_table_reference auto table,
+                     class R = std::vector<std::unique_ptr<auto_decay_table_ref_t<table>>>,
+                     class... Args>
+            auto get_all_pointer(Args&&... args) {
+                return this->get_all_pointer<auto_decay_table_ref_t<table>>(std::forward<Args>(args)...);
+            }
+#endif
+
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
             /**
              *  SELECT * routine.
@@ -405,6 +431,15 @@ namespace sqlite_orm {
                 this->assert_mapped_type<O>();
                 auto statement = this->prepare(sqlite_orm::get_all_optional<O, R>(std::forward<Args>(conditions)...));
                 return this->execute(statement);
+            }
+#endif
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            template<orm_table_reference auto table,
+                     class R = std::vector<std::optional<auto_decay_table_ref_t<table>>>,
+                     class... Args>
+            auto get_all_optional(Args&&... conditions) {
+                return this->get_all_optional<auto_decay_table_ref_t<table>>(std::forward<Args>(conditions)...);
             }
 #endif
 
@@ -441,6 +476,13 @@ namespace sqlite_orm {
                 return this->execute(statement);
             }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            template<orm_table_reference auto table, class... Ids>
+            auto get_pointer(Ids... ids) {
+                return this->get_pointer<auto_decay_table_ref_t<table>>(std::forward<Ids>(ids)...);
+            }
+#endif
+
             /**
              * A previous version of get_pointer() that returns a shared_ptr
              * instead of a unique_ptr. New code should prefer get_pointer()
@@ -471,6 +513,13 @@ namespace sqlite_orm {
                 return this->execute(statement);
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            template<orm_table_reference auto table, class... Ids>
+            auto get_optional(Ids... ids) {
+                return this->get_optional<auto_decay_table_ref_t<table>>(std::forward<Ids>(ids)...);
+            }
+#endif
 
             /**
              *  SELECT COUNT(*) https://www.sqlite.org/lang_aggfunc.html#count
@@ -779,7 +828,7 @@ namespace sqlite_orm {
 
             template<class It, class Projection = polyfill::identity>
             void replace_range(It from, It to, Projection project = {}) {
-                using O = std::decay_t<decltype(polyfill::invoke(std::declval<Projection>(), *std::declval<It>()))>;
+                using O = std::decay_t<decltype(polyfill::invoke(project, *from))>;
                 this->assert_mapped_type<O>();
                 if(from == to) {
                     return;
