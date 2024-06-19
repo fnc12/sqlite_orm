@@ -11,7 +11,8 @@
 #include <cwchar>  //  ::wcsncpy, ::wcslen
 #endif
 #ifndef SQLITE_ORM_OMITS_CODECVT
-#include <codecvt>  //  std::wstring_convert, std::codecvt_utf8_utf16
+#include <locale>  // std::wstring_convert
+#include <codecvt>  //  std::codecvt_utf8_utf16
 #endif
 
 #include "functional/cxx_universal.h"

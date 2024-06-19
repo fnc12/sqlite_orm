@@ -1,13 +1,13 @@
 #pragma once
 
-#include <locale>  // std::wstring_convert
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
 #include <vector>  //  std::vector
 #include <memory>  //  std::shared_ptr, std::unique_ptr
 #ifndef SQLITE_ORM_OMITS_CODECVT
+#include <locale>  // std::wstring_convert
 #include <codecvt>  //  std::codecvt_utf8_utf16
-#endif  //  SQLITE_ORM_OMITS_CODECVT
+#endif
 #include "functional/cxx_optional.h"
 
 #include "functional/cxx_universal.h"

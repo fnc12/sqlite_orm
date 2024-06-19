@@ -9296,7 +9296,8 @@ namespace sqlite_orm {
 #include <cwchar>  //  ::wcsncpy, ::wcslen
 #endif
 #ifndef SQLITE_ORM_OMITS_CODECVT
-#include <codecvt>  //  std::wstring_convert, std::codecvt_utf8_utf16
+#include <locale>  // std::wstring_convert
+#include <codecvt>  //  std::codecvt_utf8_utf16
 #endif
 
 // #include "functional/cxx_universal.h"
@@ -10237,11 +10238,11 @@ namespace sqlite_orm {
 #include <system_error>  //  std::system_error
 #include <string>  //  std::string, std::wstring
 #ifndef SQLITE_ORM_OMITS_CODECVT
-#include <codecvt>  //  std::wstring_convert, std::codecvt_utf8_utf16
-#endif  //  SQLITE_ORM_OMITS_CODECVT
+#include <locale>  // std::wstring_convert
+#include <codecvt>  //  std::codecvt_utf8_utf16
+#endif
 #include <vector>  //  std::vector
 #include <cstring>  //  strlen
-#include <locale>
 #include <algorithm>  //  std::copy
 #include <iterator>  //  std::back_inserter
 #include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
@@ -12211,14 +12212,14 @@ namespace sqlite_orm {
 
 // #include "field_printer.h"
 
-#include <locale>  // std::wstring_convert
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
 #include <vector>  //  std::vector
 #include <memory>  //  std::shared_ptr, std::unique_ptr
 #ifndef SQLITE_ORM_OMITS_CODECVT
+#include <locale>  // std::wstring_convert
 #include <codecvt>  //  std::codecvt_utf8_utf16
-#endif  //  SQLITE_ORM_OMITS_CODECVT
+#endif
 // #include "functional/cxx_optional.h"
 
 // #include "functional/cxx_universal.h"
@@ -18631,8 +18632,9 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::enable_if, std::remove_pointer
 #include <vector>  //  std::vector
 #ifndef SQLITE_ORM_OMITS_CODECVT
-#include <codecvt>  //  std::wstring_convert, std::codecvt_utf8_utf16
-#endif  //  SQLITE_ORM_OMITS_CODECVT
+#include <locale>  // std::wstring_convert
+#include <codecvt>  //  std::codecvt_utf8_utf16
+#endif
 #include <memory>
 #include <array>
 #include <list>  //  std::list
