@@ -1,27 +1,22 @@
 #pragma once
-
 #include "../../dev/functional/start_macros.h"
+// pull in the SQLite3 configuration early, such that version and feature macros are globally available in sqlite_orm
+#include "../../dev/functional/sqlite3_config.h"
 // though each header is required to include everything it needs
 // we include the configuration and all underlying c++ core features in order to make it universally available
 #include "../../dev/functional/config.h"
 #include "../../dev/type_traits.h"
-#include "../../dev/error_code.h"
-#include "../../dev/type_printer.h"
 #include "../../dev/collate_argument.h"
 #include "../../dev/constraints.h"
 #include "../../dev/type_is_nullable.h"
 #include "../../dev/operators.h"
 #include "../../dev/schema/column.h"
-#include "../../dev/field_printer.h"
 #include "../../dev/conditions.h"
 #include "../../dev/alias.h"
 #include "../../dev/core_functions.h"
 #include "../../dev/select_constraints.h"
 #include "../../dev/table_info.h"
 #include "../../dev/schema/triggers.h"
-#include "../../dev/statement_finalizer.h"
-#include "../../dev/arithmetic_tag.h"
-#include "../../dev/pointer_value.h"
 #include "../../dev/statement_binder.h"
 #include "../../dev/row_extractor.h"
 #include "../../dev/sync_schema_result.h"

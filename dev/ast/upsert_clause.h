@@ -1,6 +1,5 @@
 #pragma once
 
-#include <sqlite3.h>
 #if SQLITE_VERSION_NUMBER >= 3024000
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::forward, std::move
