@@ -7,6 +7,7 @@ __pragma(push_macro("max"))
 #undef max
 #endif  // defined(_MSC_VER)
 #pragma once
+
 #include <sqlite3.h>
 #pragma once
 
@@ -9293,6 +9294,9 @@ namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <cwchar>  //  ::wcsncpy, ::wcslen
+#endif
+#ifndef SQLITE_ORM_OMITS_CODECVT
+#include <codecvt>  //  std::wstring_convert, std::codecvt_utf8_utf16
 #endif
 
 // #include "functional/cxx_universal.h"
@@ -18624,9 +18628,8 @@ namespace sqlite_orm {
 #include <string>  //  std::string
 #include <type_traits>  //  std::enable_if, std::remove_pointer
 #include <vector>  //  std::vector
-#include <algorithm>  //  std::iter_swap
 #ifndef SQLITE_ORM_OMITS_CODECVT
-#include <codecvt>  //  std::codecvt_utf8_utf16
+#include <codecvt>  //  std::wstring_convert, std::codecvt_utf8_utf16
 #endif  //  SQLITE_ORM_OMITS_CODECVT
 #include <memory>
 #include <array>
@@ -19147,6 +19150,8 @@ namespace sqlite_orm {
 // #include "schema/table.h"
 
 // #include "util.h"
+
+// #include "error_code.h"
 
 namespace sqlite_orm {
 
