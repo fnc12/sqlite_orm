@@ -4,10 +4,10 @@
 #include <string>  //  std::string
 #include <type_traits>  //  std::enable_if, std::remove_pointer
 #include <vector>  //  std::vector
-#include <algorithm>  //  std::iter_swap
 #ifndef SQLITE_ORM_OMITS_CODECVT
+#include <locale>  // std::wstring_convert
 #include <codecvt>  //  std::codecvt_utf8_utf16
-#endif  //  SQLITE_ORM_OMITS_CODECVT
+#endif
 #include <memory>
 #include <array>
 #include <list>  //  std::list
@@ -50,6 +50,7 @@
 #include "schema/index.h"
 #include "schema/table.h"
 #include "util.h"
+#include "error_code.h"
 
 namespace sqlite_orm {
 

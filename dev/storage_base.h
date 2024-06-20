@@ -671,7 +671,6 @@ namespace sqlite_orm {
             }
 
 #if SQLITE_VERSION_NUMBER >= 3006019
-
             void foreign_keys(sqlite3* db, bool value) {
                 std::stringstream ss;
                 ss << "PRAGMA foreign_keys = " << value << std::flush;
