@@ -57,12 +57,14 @@ namespace sqlite_orm {
             }
 
             // rebind connection reference
-            connection_ref operator=(const connection_ref& other) {
+            connection_ref& operator=(const connection_ref& other) {
                 if(other.holder != this->holder) {
                     this->holder->release();
                     this->holder = other.holder;
                     this->holder->retain();
                 }
+
+                return *this;
             }
 
             ~connection_ref() {

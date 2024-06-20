@@ -186,7 +186,6 @@ namespace sqlite_orm {
         };
 
 #if SQLITE_VERSION_NUMBER >= 3007016
-
         struct char_string {
             serialize_result_type serialize() const {
                 return "CHAR";

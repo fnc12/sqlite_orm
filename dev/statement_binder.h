@@ -10,6 +10,10 @@
 #ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <cwchar>  //  ::wcsncpy, ::wcslen
 #endif
+#ifndef SQLITE_ORM_OMITS_CODECVT
+#include <locale>  // std::wstring_convert
+#include <codecvt>  //  std::codecvt_utf8_utf16
+#endif
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"

@@ -8,6 +8,9 @@ __pragma(push_macro("max"))
 #endif  // defined(_MSC_VER)
 #pragma once
 
+#include <sqlite3.h>
+#pragma once
+
 // #include "cxx_universal.h"
 
 /*
@@ -604,299 +607,6 @@ namespace sqlite_orm {
     template<class T>
     concept orm_names_type = requires { typename T::type; };
 #endif
-}
-#pragma once
-
-#include <sqlite3.h>
-#include <system_error>  // std::error_code, std::system_error
-#include <string>  //  std::string
-#include <stdexcept>
-#include <sstream>  //  std::ostringstream
-#include <type_traits>
-
-namespace sqlite_orm {
-
-    /** @short Enables classifying sqlite error codes.
-
-        @note We don't bother listing all possible values;
-        this also allows for compatibility with
-        'Construction rules for enum class values (P0138R2)'
-     */
-    enum class sqlite_errc {};
-
-    enum class orm_error_code {
-        not_found = 1,
-        type_is_not_mapped_to_storage,
-        trying_to_dereference_null_iterator,
-        too_many_tables_specified,
-        incorrect_set_fields_specified,
-        column_not_found,
-        table_has_no_primary_key_column,
-        cannot_start_a_transaction_within_a_transaction,
-        no_active_transaction,
-        incorrect_journal_mode_string,
-        invalid_collate_argument_enum,
-        failed_to_init_a_backup,
-        unknown_member_value,
-        incorrect_order,
-        cannot_use_default_value,
-        arguments_count_does_not_match,
-        function_not_found,
-        index_is_out_of_bounds,
-        value_is_null,
-        no_tables_specified,
-    };
-
-}
-
-namespace std {
-    template<>
-    struct is_error_code_enum<::sqlite_orm::sqlite_errc> : true_type {};
-
-    template<>
-    struct is_error_code_enum<::sqlite_orm::orm_error_code> : true_type {};
-}
-
-namespace sqlite_orm {
-
-    class orm_error_category : public std::error_category {
-      public:
-        const char* name() const noexcept override final {
-            return "ORM error";
-        }
-
-        std::string message(int c) const override final {
-            switch(static_cast<orm_error_code>(c)) {
-                case orm_error_code::not_found:
-                    return "Not found";
-                case orm_error_code::type_is_not_mapped_to_storage:
-                    return "Type is not mapped to storage";
-                case orm_error_code::trying_to_dereference_null_iterator:
-                    return "Trying to dereference null iterator";
-                case orm_error_code::too_many_tables_specified:
-                    return "Too many tables specified";
-                case orm_error_code::incorrect_set_fields_specified:
-                    return "Incorrect set fields specified";
-                case orm_error_code::column_not_found:
-                    return "Column not found";
-                case orm_error_code::table_has_no_primary_key_column:
-                    return "Table has no primary key column";
-                case orm_error_code::cannot_start_a_transaction_within_a_transaction:
-                    return "Cannot start a transaction within a transaction";
-                case orm_error_code::no_active_transaction:
-                    return "No active transaction";
-                case orm_error_code::invalid_collate_argument_enum:
-                    return "Invalid collate_argument enum";
-                case orm_error_code::failed_to_init_a_backup:
-                    return "Failed to init a backup";
-                case orm_error_code::unknown_member_value:
-                    return "Unknown member value";
-                case orm_error_code::incorrect_order:
-                    return "Incorrect order";
-                case orm_error_code::cannot_use_default_value:
-                    return "The statement 'INSERT INTO * DEFAULT VALUES' can be used with only one row";
-                case orm_error_code::arguments_count_does_not_match:
-                    return "Arguments count does not match";
-                case orm_error_code::function_not_found:
-                    return "Function not found";
-                case orm_error_code::index_is_out_of_bounds:
-                    return "Index is out of bounds";
-                case orm_error_code::value_is_null:
-                    return "Value is null";
-                case orm_error_code::no_tables_specified:
-                    return "No tables specified";
-                default:
-                    return "unknown error";
-            }
-        }
-    };
-
-    class sqlite_error_category : public std::error_category {
-      public:
-        const char* name() const noexcept override final {
-            return "SQLite error";
-        }
-
-        std::string message(int c) const override final {
-            return sqlite3_errstr(c);
-        }
-    };
-
-    inline const orm_error_category& get_orm_error_category() {
-        static orm_error_category res;
-        return res;
-    }
-
-    inline const sqlite_error_category& get_sqlite_error_category() {
-        static sqlite_error_category res;
-        return res;
-    }
-
-    inline std::error_code make_error_code(sqlite_errc ev) noexcept {
-        return {static_cast<int>(ev), get_sqlite_error_category()};
-    }
-
-    inline std::error_code make_error_code(orm_error_code ev) noexcept {
-        return {static_cast<int>(ev), get_orm_error_category()};
-    }
-
-    template<typename... T>
-    std::string get_error_message(sqlite3* db, T&&... args) {
-        std::ostringstream stream;
-        using unpack = int[];
-        (void)unpack{0, (stream << args, 0)...};
-        stream << sqlite3_errmsg(db);
-        return stream.str();
-    }
-
-    template<typename... T>
-    [[noreturn]] void throw_error(sqlite3* db, T&&... args) {
-        throw std::system_error{sqlite_errc(sqlite3_errcode(db)), get_error_message(db, std::forward<T>(args)...)};
-    }
-
-    inline std::system_error sqlite_to_system_error(int ev) {
-        return {sqlite_errc(ev)};
-    }
-
-    inline std::system_error sqlite_to_system_error(sqlite3* db) {
-        return {sqlite_errc(sqlite3_errcode(db)), sqlite3_errmsg(db)};
-    }
-
-    [[noreturn]] inline void throw_translated_sqlite_error(int ev) {
-        throw sqlite_to_system_error(ev);
-    }
-
-    [[noreturn]] inline void throw_translated_sqlite_error(sqlite3* db) {
-        throw sqlite_to_system_error(db);
-    }
-
-    [[noreturn]] inline void throw_translated_sqlite_error(sqlite3_stmt* stmt) {
-        throw sqlite_to_system_error(sqlite3_db_handle(stmt));
-    }
-}
-#pragma once
-
-#include <string>  //  std::string
-#include <memory>  //  std::shared_ptr, std::unique_ptr
-#include <vector>  //  std::vector
-// #include "functional/cxx_optional.h"
-
-// #include "cxx_core_features.h"
-
-#if SQLITE_ORM_HAS_INCLUDE(<optional>)
-#include <optional>
-#endif
-
-#if __cpp_lib_optional >= 201606L
-#define SQLITE_ORM_OPTIONAL_SUPPORTED
-#endif
-
-// #include "functional/cxx_type_traits_polyfill.h"
-
-// #include "type_traits.h"
-
-// #include "is_std_ptr.h"
-
-#include <type_traits>
-#include <memory>
-
-namespace sqlite_orm {
-
-    /**
-     *  Specialization for optional type (std::shared_ptr / std::unique_ptr).
-     */
-    template<typename T>
-    struct is_std_ptr : std::false_type {};
-
-    template<typename T>
-    struct is_std_ptr<std::shared_ptr<T>> : std::true_type {
-        using element_type = typename std::shared_ptr<T>::element_type;
-
-        static std::shared_ptr<T> make(std::remove_cv_t<T>&& v) {
-            return std::make_shared<T>(std::move(v));
-        }
-    };
-
-    template<typename T>
-    struct is_std_ptr<std::unique_ptr<T>> : std::true_type {
-        using element_type = typename std::unique_ptr<T>::element_type;
-
-        static auto make(std::remove_cv_t<T>&& v) {
-            return std::make_unique<T>(std::move(v));
-        }
-    };
-}
-
-namespace sqlite_orm {
-
-    /**
-     *  This class transforms a C++ type to a sqlite type name (int -> INTEGER, ...)
-     */
-    template<class T, typename Enable = void>
-    struct type_printer {};
-
-    struct integer_printer {
-        const std::string& print() const {
-            static const std::string res = "INTEGER";
-            return res;
-        }
-    };
-
-    struct text_printer {
-        const std::string& print() const {
-            static const std::string res = "TEXT";
-            return res;
-        }
-    };
-
-    struct real_printer {
-        const std::string& print() const {
-            static const std::string res = "REAL";
-            return res;
-        }
-    };
-
-    struct blob_printer {
-        const std::string& print() const {
-            static const std::string res = "BLOB";
-            return res;
-        }
-    };
-
-    // Note: char, unsigned/signed char are used for storing integer values, not char values.
-    template<class T>
-    struct type_printer<T,
-                        std::enable_if_t<polyfill::conjunction<polyfill::negation<internal::is_any_of<T,
-                                                                                                      wchar_t,
-#ifdef SQLITE_ORM_CHAR8T_SUPPORTED
-                                                                                                      char8_t,
-#endif
-                                                                                                      char16_t,
-                                                                                                      char32_t>>,
-                                                               std::is_integral<T>>::value>> : integer_printer {
-    };
-
-    template<class T>
-    struct type_printer<T, std::enable_if_t<std::is_floating_point<T>::value>> : real_printer {};
-
-    template<class T>
-    struct type_printer<T,
-                        std::enable_if_t<polyfill::disjunction<std::is_same<T, const char*>,
-                                                               std::is_base_of<std::string, T>,
-                                                               std::is_base_of<std::wstring, T>>::value>>
-        : text_printer {};
-
-    template<class T>
-    struct type_printer<T, std::enable_if_t<is_std_ptr<T>::value>> : type_printer<typename T::element_type> {};
-
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-    template<class T>
-    struct type_printer<T, std::enable_if_t<polyfill::is_specialization_of_v<T, std::optional>>>
-        : type_printer<typename T::value_type> {};
-#endif
-
-    template<>
-    struct type_printer<std::vector<char>, void> : blob_printer {};
 }
 #pragma once
 
@@ -1754,6 +1464,174 @@ namespace sqlite_orm {
 
 // #include "error_code.h"
 
+#include <sqlite3.h>
+#include <system_error>  // std::error_code, std::system_error
+#include <string>  //  std::string
+#include <stdexcept>
+#include <sstream>  //  std::ostringstream
+#include <type_traits>
+
+namespace sqlite_orm {
+
+    /** @short Enables classifying sqlite error codes.
+
+        @note We don't bother listing all possible values;
+        this also allows for compatibility with
+        'Construction rules for enum class values (P0138R2)'
+     */
+    enum class sqlite_errc {};
+
+    enum class orm_error_code {
+        not_found = 1,
+        type_is_not_mapped_to_storage,
+        trying_to_dereference_null_iterator,
+        too_many_tables_specified,
+        incorrect_set_fields_specified,
+        column_not_found,
+        table_has_no_primary_key_column,
+        cannot_start_a_transaction_within_a_transaction,
+        no_active_transaction,
+        incorrect_journal_mode_string,
+        invalid_collate_argument_enum,
+        failed_to_init_a_backup,
+        unknown_member_value,
+        incorrect_order,
+        cannot_use_default_value,
+        arguments_count_does_not_match,
+        function_not_found,
+        index_is_out_of_bounds,
+        value_is_null,
+        no_tables_specified,
+    };
+
+}
+
+namespace std {
+    template<>
+    struct is_error_code_enum<::sqlite_orm::sqlite_errc> : true_type {};
+
+    template<>
+    struct is_error_code_enum<::sqlite_orm::orm_error_code> : true_type {};
+}
+
+namespace sqlite_orm {
+
+    class orm_error_category : public std::error_category {
+      public:
+        const char* name() const noexcept override final {
+            return "ORM error";
+        }
+
+        std::string message(int c) const override final {
+            switch(static_cast<orm_error_code>(c)) {
+                case orm_error_code::not_found:
+                    return "Not found";
+                case orm_error_code::type_is_not_mapped_to_storage:
+                    return "Type is not mapped to storage";
+                case orm_error_code::trying_to_dereference_null_iterator:
+                    return "Trying to dereference null iterator";
+                case orm_error_code::too_many_tables_specified:
+                    return "Too many tables specified";
+                case orm_error_code::incorrect_set_fields_specified:
+                    return "Incorrect set fields specified";
+                case orm_error_code::column_not_found:
+                    return "Column not found";
+                case orm_error_code::table_has_no_primary_key_column:
+                    return "Table has no primary key column";
+                case orm_error_code::cannot_start_a_transaction_within_a_transaction:
+                    return "Cannot start a transaction within a transaction";
+                case orm_error_code::no_active_transaction:
+                    return "No active transaction";
+                case orm_error_code::invalid_collate_argument_enum:
+                    return "Invalid collate_argument enum";
+                case orm_error_code::failed_to_init_a_backup:
+                    return "Failed to init a backup";
+                case orm_error_code::unknown_member_value:
+                    return "Unknown member value";
+                case orm_error_code::incorrect_order:
+                    return "Incorrect order";
+                case orm_error_code::cannot_use_default_value:
+                    return "The statement 'INSERT INTO * DEFAULT VALUES' can be used with only one row";
+                case orm_error_code::arguments_count_does_not_match:
+                    return "Arguments count does not match";
+                case orm_error_code::function_not_found:
+                    return "Function not found";
+                case orm_error_code::index_is_out_of_bounds:
+                    return "Index is out of bounds";
+                case orm_error_code::value_is_null:
+                    return "Value is null";
+                case orm_error_code::no_tables_specified:
+                    return "No tables specified";
+                default:
+                    return "unknown error";
+            }
+        }
+    };
+
+    class sqlite_error_category : public std::error_category {
+      public:
+        const char* name() const noexcept override final {
+            return "SQLite error";
+        }
+
+        std::string message(int c) const override final {
+            return sqlite3_errstr(c);
+        }
+    };
+
+    inline const orm_error_category& get_orm_error_category() {
+        static orm_error_category res;
+        return res;
+    }
+
+    inline const sqlite_error_category& get_sqlite_error_category() {
+        static sqlite_error_category res;
+        return res;
+    }
+
+    inline std::error_code make_error_code(sqlite_errc ev) noexcept {
+        return {static_cast<int>(ev), get_sqlite_error_category()};
+    }
+
+    inline std::error_code make_error_code(orm_error_code ev) noexcept {
+        return {static_cast<int>(ev), get_orm_error_category()};
+    }
+
+    template<typename... T>
+    std::string get_error_message(sqlite3* db, T&&... args) {
+        std::ostringstream stream;
+        using unpack = int[];
+        (void)unpack{0, (stream << args, 0)...};
+        stream << sqlite3_errmsg(db);
+        return stream.str();
+    }
+
+    template<typename... T>
+    [[noreturn]] void throw_error(sqlite3* db, T&&... args) {
+        throw std::system_error{sqlite_errc(sqlite3_errcode(db)), get_error_message(db, std::forward<T>(args)...)};
+    }
+
+    inline std::system_error sqlite_to_system_error(int ev) {
+        return {sqlite_errc(ev)};
+    }
+
+    inline std::system_error sqlite_to_system_error(sqlite3* db) {
+        return {sqlite_errc(sqlite3_errcode(db)), sqlite3_errmsg(db)};
+    }
+
+    [[noreturn]] inline void throw_translated_sqlite_error(int ev) {
+        throw sqlite_to_system_error(ev);
+    }
+
+    [[noreturn]] inline void throw_translated_sqlite_error(sqlite3* db) {
+        throw sqlite_to_system_error(db);
+    }
+
+    [[noreturn]] inline void throw_translated_sqlite_error(sqlite3_stmt* stmt) {
+        throw sqlite_to_system_error(sqlite3_db_handle(stmt));
+    }
+}
+
 // #include "table_type_of.h"
 
 #include <type_traits>  //  std::enable_if, std::is_convertible
@@ -1822,6 +1700,129 @@ namespace sqlite_orm {
 }
 
 // #include "type_printer.h"
+
+#include <string>  //  std::string
+#include <memory>  //  std::shared_ptr, std::unique_ptr
+#include <vector>  //  std::vector
+// #include "functional/cxx_optional.h"
+
+// #include "cxx_core_features.h"
+
+#if SQLITE_ORM_HAS_INCLUDE(<optional>)
+#include <optional>
+#endif
+
+#if __cpp_lib_optional >= 201606L
+#define SQLITE_ORM_OPTIONAL_SUPPORTED
+#endif
+
+// #include "functional/cxx_type_traits_polyfill.h"
+
+// #include "type_traits.h"
+
+// #include "is_std_ptr.h"
+
+#include <type_traits>
+#include <memory>
+
+namespace sqlite_orm {
+
+    /**
+     *  Specialization for optional type (std::shared_ptr / std::unique_ptr).
+     */
+    template<typename T>
+    struct is_std_ptr : std::false_type {};
+
+    template<typename T>
+    struct is_std_ptr<std::shared_ptr<T>> : std::true_type {
+        using element_type = typename std::shared_ptr<T>::element_type;
+
+        static std::shared_ptr<T> make(std::remove_cv_t<T>&& v) {
+            return std::make_shared<T>(std::move(v));
+        }
+    };
+
+    template<typename T>
+    struct is_std_ptr<std::unique_ptr<T>> : std::true_type {
+        using element_type = typename std::unique_ptr<T>::element_type;
+
+        static auto make(std::remove_cv_t<T>&& v) {
+            return std::make_unique<T>(std::move(v));
+        }
+    };
+}
+
+namespace sqlite_orm {
+
+    /**
+     *  This class transforms a C++ type to a sqlite type name (int -> INTEGER, ...)
+     */
+    template<class T, typename Enable = void>
+    struct type_printer {};
+
+    struct integer_printer {
+        const std::string& print() const {
+            static const std::string res = "INTEGER";
+            return res;
+        }
+    };
+
+    struct text_printer {
+        const std::string& print() const {
+            static const std::string res = "TEXT";
+            return res;
+        }
+    };
+
+    struct real_printer {
+        const std::string& print() const {
+            static const std::string res = "REAL";
+            return res;
+        }
+    };
+
+    struct blob_printer {
+        const std::string& print() const {
+            static const std::string res = "BLOB";
+            return res;
+        }
+    };
+
+    // Note: char, unsigned/signed char are used for storing integer values, not char values.
+    template<class T>
+    struct type_printer<T,
+                        std::enable_if_t<polyfill::conjunction<polyfill::negation<internal::is_any_of<T,
+                                                                                                      wchar_t,
+#ifdef SQLITE_ORM_CHAR8T_SUPPORTED
+                                                                                                      char8_t,
+#endif
+                                                                                                      char16_t,
+                                                                                                      char32_t>>,
+                                                               std::is_integral<T>>::value>> : integer_printer {
+    };
+
+    template<class T>
+    struct type_printer<T, std::enable_if_t<std::is_floating_point<T>::value>> : real_printer {};
+
+    template<class T>
+    struct type_printer<T,
+                        std::enable_if_t<polyfill::disjunction<std::is_same<T, const char*>,
+                                                               std::is_base_of<std::string, T>,
+                                                               std::is_base_of<std::wstring, T>>::value>>
+        : text_printer {};
+
+    template<class T>
+    struct type_printer<T, std::enable_if_t<is_std_ptr<T>::value>> : type_printer<typename T::element_type> {};
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<class T>
+    struct type_printer<T, std::enable_if_t<polyfill::is_specialization_of_v<T, std::optional>>>
+        : type_printer<typename T::value_type> {};
+#endif
+
+    template<>
+    struct type_printer<std::vector<char>, void> : blob_printer {};
+}
 
 namespace sqlite_orm {
 
@@ -2462,8 +2463,8 @@ namespace sqlite_orm {
      *  This is class that tells `sqlite_orm` that type is nullable. Nullable types
      *  are mapped to sqlite database as `NULL` and not-nullable are mapped as `NOT NULL`.
      *  Default nullability status for all types is `NOT NULL`. So if you want to map
-     *  custom type as `NULL` (for example: boost::optional) you have to create a specialiation
-     *  of type_is_nullable for your type and derive from `std::true_type`.
+     *  custom type as `NULL` (for example: boost::optional) you have to create a specialization
+     *  of `type_is_nullable` for your type and derive from `std::true_type`.
      */
     template<class T, class SFINAE = void>
     struct type_is_nullable : std::false_type {
@@ -3236,177 +3237,6 @@ namespace sqlite_orm {
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
             return {std::move(name), getter, setter, std::tuple<Op...>{std::move(constraints)...}});
     }
-}
-#pragma once
-
-#include <locale>  // std::wstring_convert
-#include <string>  //  std::string
-#include <sstream>  //  std::stringstream
-#include <vector>  //  std::vector
-#include <memory>  //  std::shared_ptr, std::unique_ptr
-#ifndef SQLITE_ORM_OMITS_CODECVT
-#include <codecvt>  //  std::codecvt_utf8_utf16
-#endif  //  SQLITE_ORM_OMITS_CODECVT
-// #include "functional/cxx_optional.h"
-
-// #include "functional/cxx_universal.h"
-
-// #include "functional/cxx_type_traits_polyfill.h"
-
-// #include "is_std_ptr.h"
-
-// #include "type_traits.h"
-
-namespace sqlite_orm {
-
-    /**
-     *  Is used to print members mapped to objects in storage_t::dump member function.
-     *  Other developers can create own specialization to map custom types
-     */
-    template<class T, typename SFINAE = void>
-    struct field_printer;
-
-    namespace internal {
-        /*
-         *  Implementation note: the technique of indirect expression testing is because
-         *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
-         *  It must also be a type that differs from those for `is_preparable_v`, `is_bindable_v`.
-         */
-        template<class Printer>
-        struct indirectly_test_printable;
-
-        template<class T, class SFINAE = void>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_printable_v = false;
-        template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool
-            is_printable_v<T, polyfill::void_t<indirectly_test_printable<decltype(field_printer<T>{})>>> = true;
-
-        template<class T>
-        struct is_printable : polyfill::bool_constant<is_printable_v<T>> {};
-    }
-
-    template<class T>
-    struct field_printer<T, internal::match_if<std::is_arithmetic, T>> {
-        std::string operator()(const T& t) const {
-            std::stringstream ss;
-            ss << t;
-            return ss.str();
-        }
-    };
-
-    /**
-     *  Upgrade to integer is required when using unsigned char(uint8_t)
-     */
-    template<>
-    struct field_printer<unsigned char, void> {
-        std::string operator()(const unsigned char& t) const {
-            std::stringstream ss;
-            ss << +t;
-            return ss.str();
-        }
-    };
-
-    /**
-     *  Upgrade to integer is required when using signed char(int8_t)
-     */
-    template<>
-    struct field_printer<signed char, void> {
-        std::string operator()(const signed char& t) const {
-            std::stringstream ss;
-            ss << +t;
-            return ss.str();
-        }
-    };
-
-    /**
-     *  char is neither signed char nor unsigned char so it has its own specialization
-     */
-    template<>
-    struct field_printer<char, void> {
-        std::string operator()(const char& t) const {
-            std::stringstream ss;
-            ss << +t;
-            return ss.str();
-        }
-    };
-
-    template<class T>
-    struct field_printer<T, internal::match_if<std::is_base_of, std::string, T>> {
-        std::string operator()(std::string string) const {
-            return string;
-        }
-    };
-
-    template<>
-    struct field_printer<std::vector<char>, void> {
-        std::string operator()(const std::vector<char>& t) const {
-            std::stringstream ss;
-            ss << std::hex;
-            for(auto c: t) {
-                ss << c;
-            }
-            return ss.str();
-        }
-    };
-#ifndef SQLITE_ORM_OMITS_CODECVT
-    /**
-     *  Specialization for std::wstring (UTF-16 assumed).
-     */
-    template<class T>
-    struct field_printer<T, internal::match_if<std::is_base_of, std::wstring, T>> {
-        std::string operator()(const std::wstring& wideString) const {
-            std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-            return converter.to_bytes(wideString);
-        }
-    };
-#endif  //  SQLITE_ORM_OMITS_CODECVT
-    template<>
-    struct field_printer<nullptr_t, void> {
-        std::string operator()(const nullptr_t&) const {
-            return "NULL";
-        }
-    };
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-    template<>
-    struct field_printer<std::nullopt_t, void> {
-        std::string operator()(const std::nullopt_t&) const {
-            return "NULL";
-        }
-    };
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
-    template<class T>
-    struct field_printer<T,
-                         std::enable_if_t<polyfill::conjunction<
-                             is_std_ptr<T>,
-                             internal::is_printable<std::remove_cv_t<typename T::element_type>>>::value>> {
-        using unqualified_type = std::remove_cv_t<typename T::element_type>;
-
-        std::string operator()(const T& t) const {
-            if(t) {
-                return field_printer<unqualified_type>()(*t);
-            } else {
-                return field_printer<nullptr_t>{}(nullptr);
-            }
-        }
-    };
-
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-    template<class T>
-    struct field_printer<
-        T,
-        std::enable_if_t<polyfill::conjunction_v<polyfill::is_specialization_of<T, std::optional>,
-                                                 internal::is_printable<std::remove_cv_t<typename T::value_type>>>>> {
-        using unqualified_type = std::remove_cv_t<typename T::value_type>;
-
-        std::string operator()(const T& t) const {
-            if(t.has_value()) {
-                return field_printer<unqualified_type>()(*t);
-            } else {
-                return field_printer<std::nullopt_t>{}(std::nullopt);
-            }
-        }
-    };
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 }
 #pragma once
 
@@ -5979,7 +5809,6 @@ namespace sqlite_orm {
         };
 
 #if SQLITE_VERSION_NUMBER >= 3007016
-
         struct char_string {
             serialize_result_type serialize() const {
                 return "CHAR";
@@ -7898,22 +7727,6 @@ namespace sqlite_orm {
 }
 #pragma once
 
-namespace sqlite_orm {
-
-    namespace internal {
-
-        template<class L, class R>
-        bool compare_any(const L& /*lhs*/, const R& /*rhs*/) {
-            return false;
-        }
-        template<class O>
-        bool compare_any(const O& lhs, const O& rhs) {
-            return lhs == rhs;
-        }
-    }
-}
-#pragma once
-
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <concepts>
 #endif
@@ -9472,18 +9285,37 @@ namespace sqlite_orm {
 #pragma once
 
 #include <sqlite3.h>
-#include <memory>  // std::unique_ptr
-#include <type_traits>  // std::integral_constant
+#include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::true_type, std::false_type, std::make_index_sequence, std::index_sequence
+#include <memory>  //  std::default_delete
+#include <string>  //  std::string, std::wstring
+#include <vector>  //  std::vector
+#include <cstring>  //  ::strncpy, ::strlen
+// #include "functional/cxx_string_view.h"
 
-namespace sqlite_orm {
+#ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
+#include <cwchar>  //  ::wcsncpy, ::wcslen
+#endif
+#ifndef SQLITE_ORM_OMITS_CODECVT
+#include <locale>  // std::wstring_convert
+#include <codecvt>  //  std::codecvt_utf8_utf16
+#endif
 
-    /**
-     *  Guard class which finalizes `sqlite3_stmt` in dtor
-     */
-    using statement_finalizer =
-        std::unique_ptr<sqlite3_stmt, std::integral_constant<decltype(&sqlite3_finalize), sqlite3_finalize>>;
-}
-#pragma once
+// #include "functional/cxx_universal.h"
+
+// #include "functional/cxx_type_traits_polyfill.h"
+
+// #include "functional/cxx_functional_polyfill.h"
+
+// #include "is_std_ptr.h"
+
+// #include "tuple_helper/tuple_filter.h"
+
+// #include "type_traits.h"
+
+// #include "error_code.h"
+
+// #include "arithmetic_tag.h"
+
 #include <type_traits>  // std::is_integral
 
 // #include "functional/mpl/conditional.h"
@@ -9505,18 +9337,6 @@ namespace sqlite_orm {
                            // Floating-point class
                            real_tag>;
 }
-#pragma once
-
-#if SQLITE_VERSION_NUMBER >= 3020000
-#include <type_traits>
-#include <memory>
-#include <utility>
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-#include <concepts>
-#endif
-#endif
-
-// #include "functional/cstring_literal.h"
 
 // #include "xdestroy_handling.h"
 
@@ -9769,6 +9589,21 @@ namespace sqlite_orm {
     }
 #endif
 }
+
+// #include "pointer_value.h"
+
+#if SQLITE_VERSION_NUMBER >= 3020000
+#include <type_traits>
+#include <memory>
+#include <utility>
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+#include <concepts>
+#endif
+#endif
+
+// #include "functional/cstring_literal.h"
+
+// #include "xdestroy_handling.h"
 
 #if SQLITE_VERSION_NUMBER >= 3020000
 namespace sqlite_orm {
@@ -10052,39 +9887,6 @@ namespace sqlite_orm {
     }
 }
 #endif
-#pragma once
-
-#include <sqlite3.h>
-#include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::true_type, std::false_type, std::make_index_sequence, std::index_sequence
-#include <memory>  //  std::default_delete
-#include <string>  //  std::string, std::wstring
-#include <vector>  //  std::vector
-#include <cstring>  //  ::strncpy, ::strlen
-// #include "functional/cxx_string_view.h"
-
-#ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
-#include <cwchar>  //  ::wcsncpy, ::wcslen
-#endif
-
-// #include "functional/cxx_universal.h"
-
-// #include "functional/cxx_type_traits_polyfill.h"
-
-// #include "functional/cxx_functional_polyfill.h"
-
-// #include "is_std_ptr.h"
-
-// #include "tuple_helper/tuple_filter.h"
-
-// #include "type_traits.h"
-
-// #include "error_code.h"
-
-// #include "arithmetic_tag.h"
-
-// #include "xdestroy_handling.h"
-
-// #include "pointer_value.h"
 
 namespace sqlite_orm {
 
@@ -10436,11 +10238,11 @@ namespace sqlite_orm {
 #include <system_error>  //  std::system_error
 #include <string>  //  std::string, std::wstring
 #ifndef SQLITE_ORM_OMITS_CODECVT
-#include <codecvt>  //  std::wstring_convert, std::codecvt_utf8_utf16
-#endif  //  SQLITE_ORM_OMITS_CODECVT
+#include <locale>  // std::wstring_convert
+#include <codecvt>  //  std::codecvt_utf8_utf16
+#endif
 #include <vector>  //  std::vector
 #include <cstring>  //  strlen
-#include <locale>
 #include <algorithm>  //  std::copy
 #include <iterator>  //  std::back_inserter
 #include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
@@ -11184,136 +10986,6 @@ namespace sqlite_orm {
 }
 #pragma once
 
-#include <sqlite3.h>
-#include <string>  //  std::string
-#include <utility>  //  std::move
-
-// #include "error_code.h"
-
-namespace sqlite_orm {
-
-    /** 
-     *  Escape the provided character in the given string by doubling it.
-     *  @param str A copy of the original string
-     *  @param char2Escape The character to escape
-     */
-    inline std::string sql_escape(std::string str, char char2Escape) {
-        for(size_t pos = 0; (pos = str.find(char2Escape, pos)) != str.npos; pos += 2) {
-            str.replace(pos, 1, 2, char2Escape);
-        }
-
-        return str;
-    }
-
-    /** 
-     *  Quote the given string value using single quotes,
-     *  escape containing single quotes by doubling them.
-     */
-    inline std::string quote_string_literal(std::string v) {
-        constexpr char quoteChar = '\'';
-        return quoteChar + sql_escape(std::move(v), quoteChar) + quoteChar;
-    }
-
-    /** 
-     *  Quote the given string value using single quotes,
-     *  escape containing single quotes by doubling them.
-     */
-    inline std::string quote_blob_literal(std::string v) {
-        constexpr char quoteChar = '\'';
-        return std::string{char('x'), quoteChar} + std::move(v) + quoteChar;
-    }
-
-    /** 
-     *  Quote the given identifier using double quotes,
-     *  escape containing double quotes by doubling them.
-     */
-    inline std::string quote_identifier(std::string identifier) {
-        constexpr char quoteChar = '"';
-        return quoteChar + sql_escape(std::move(identifier), quoteChar) + quoteChar;
-    }
-
-    namespace internal {
-        // Wrapper to reduce boiler-plate code
-        inline sqlite3_stmt* reset_stmt(sqlite3_stmt* stmt) {
-            sqlite3_reset(stmt);
-            return stmt;
-        }
-
-        // note: query is deliberately taken by value, such that it is thrown away early
-        inline sqlite3_stmt* prepare_stmt(sqlite3* db, std::string query) {
-            sqlite3_stmt* stmt;
-            if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
-                throw_translated_sqlite_error(db);
-            }
-            return stmt;
-        }
-
-        inline void perform_void_exec(sqlite3* db, const std::string& query) {
-            int rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
-            if(rc != SQLITE_OK) {
-                throw_translated_sqlite_error(db);
-            }
-        }
-
-        inline void perform_exec(sqlite3* db,
-                                 const char* query,
-                                 int (*callback)(void* data, int argc, char** argv, char**),
-                                 void* user_data) {
-            int rc = sqlite3_exec(db, query, callback, user_data, nullptr);
-            if(rc != SQLITE_OK) {
-                throw_translated_sqlite_error(db);
-            }
-        }
-
-        inline void perform_exec(sqlite3* db,
-                                 const std::string& query,
-                                 int (*callback)(void* data, int argc, char** argv, char**),
-                                 void* user_data) {
-            return perform_exec(db, query.c_str(), callback, user_data);
-        }
-
-        template<int expected = SQLITE_DONE>
-        void perform_step(sqlite3_stmt* stmt) {
-            int rc = sqlite3_step(stmt);
-            if(rc != expected) {
-                throw_translated_sqlite_error(stmt);
-            }
-        }
-
-        template<class L>
-        void perform_step(sqlite3_stmt* stmt, L&& lambda) {
-            switch(int rc = sqlite3_step(stmt)) {
-                case SQLITE_ROW: {
-                    lambda(stmt);
-                } break;
-                case SQLITE_DONE:
-                    break;
-                default: {
-                    throw_translated_sqlite_error(stmt);
-                }
-            }
-        }
-
-        template<class L>
-        void perform_steps(sqlite3_stmt* stmt, L&& lambda) {
-            int rc;
-            do {
-                switch(rc = sqlite3_step(stmt)) {
-                    case SQLITE_ROW: {
-                        lambda(stmt);
-                    } break;
-                    case SQLITE_DONE:
-                        break;
-                    default: {
-                        throw_translated_sqlite_error(stmt);
-                    }
-                }
-            } while(rc != SQLITE_DONE);
-        }
-    }
-}
-#pragma once
-
 #include <ostream>
 
 namespace sqlite_orm {
@@ -11617,6 +11289,21 @@ namespace sqlite_orm {
 // #include "../member_traits/member_traits.h"
 
 // #include "../typed_comparator.h"
+
+namespace sqlite_orm {
+
+    namespace internal {
+
+        template<class L, class R>
+        bool compare_any(const L& /*lhs*/, const R& /*rhs*/) {
+            return false;
+        }
+        template<class O>
+        bool compare_any(const O& lhs, const O& rhs) {
+            return lhs == rhs;
+        }
+    }
+}
 
 // #include "../type_traits.h"
 
@@ -12524,6 +12211,176 @@ namespace sqlite_orm {
 // #include "constraints.h"
 
 // #include "field_printer.h"
+
+#include <string>  //  std::string
+#include <sstream>  //  std::stringstream
+#include <vector>  //  std::vector
+#include <memory>  //  std::shared_ptr, std::unique_ptr
+#ifndef SQLITE_ORM_OMITS_CODECVT
+#include <locale>  // std::wstring_convert
+#include <codecvt>  //  std::codecvt_utf8_utf16
+#endif
+// #include "functional/cxx_optional.h"
+
+// #include "functional/cxx_universal.h"
+
+// #include "functional/cxx_type_traits_polyfill.h"
+
+// #include "is_std_ptr.h"
+
+// #include "type_traits.h"
+
+namespace sqlite_orm {
+
+    /**
+     *  Is used to print members mapped to objects in storage_t::dump member function.
+     *  Other developers can create own specialization to map custom types
+     */
+    template<class T, typename SFINAE = void>
+    struct field_printer;
+
+    namespace internal {
+        /*
+         *  Implementation note: the technique of indirect expression testing is because
+         *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
+         *  It must also be a type that differs from those for `is_preparable_v`, `is_bindable_v`.
+         */
+        template<class Printer>
+        struct indirectly_test_printable;
+
+        template<class T, class SFINAE = void>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_printable_v = false;
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool
+            is_printable_v<T, polyfill::void_t<indirectly_test_printable<decltype(field_printer<T>{})>>> = true;
+
+        template<class T>
+        struct is_printable : polyfill::bool_constant<is_printable_v<T>> {};
+    }
+
+    template<class T>
+    struct field_printer<T, internal::match_if<std::is_arithmetic, T>> {
+        std::string operator()(const T& t) const {
+            std::stringstream ss;
+            ss << t;
+            return ss.str();
+        }
+    };
+
+    /**
+     *  Upgrade to integer is required when using unsigned char(uint8_t)
+     */
+    template<>
+    struct field_printer<unsigned char, void> {
+        std::string operator()(const unsigned char& t) const {
+            std::stringstream ss;
+            ss << +t;
+            return ss.str();
+        }
+    };
+
+    /**
+     *  Upgrade to integer is required when using signed char(int8_t)
+     */
+    template<>
+    struct field_printer<signed char, void> {
+        std::string operator()(const signed char& t) const {
+            std::stringstream ss;
+            ss << +t;
+            return ss.str();
+        }
+    };
+
+    /**
+     *  char is neither signed char nor unsigned char so it has its own specialization
+     */
+    template<>
+    struct field_printer<char, void> {
+        std::string operator()(const char& t) const {
+            std::stringstream ss;
+            ss << +t;
+            return ss.str();
+        }
+    };
+
+    template<class T>
+    struct field_printer<T, internal::match_if<std::is_base_of, std::string, T>> {
+        std::string operator()(std::string string) const {
+            return string;
+        }
+    };
+
+    template<>
+    struct field_printer<std::vector<char>, void> {
+        std::string operator()(const std::vector<char>& t) const {
+            std::stringstream ss;
+            ss << std::hex;
+            for(auto c: t) {
+                ss << c;
+            }
+            return ss.str();
+        }
+    };
+#ifndef SQLITE_ORM_OMITS_CODECVT
+    /**
+     *  Specialization for std::wstring (UTF-16 assumed).
+     */
+    template<class T>
+    struct field_printer<T, internal::match_if<std::is_base_of, std::wstring, T>> {
+        std::string operator()(const std::wstring& wideString) const {
+            std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+            return converter.to_bytes(wideString);
+        }
+    };
+#endif  //  SQLITE_ORM_OMITS_CODECVT
+    template<>
+    struct field_printer<nullptr_t, void> {
+        std::string operator()(const nullptr_t&) const {
+            return "NULL";
+        }
+    };
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<>
+    struct field_printer<std::nullopt_t, void> {
+        std::string operator()(const std::nullopt_t&) const {
+            return "NULL";
+        }
+    };
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<class T>
+    struct field_printer<T,
+                         std::enable_if_t<polyfill::conjunction<
+                             is_std_ptr<T>,
+                             internal::is_printable<std::remove_cv_t<typename T::element_type>>>::value>> {
+        using unqualified_type = std::remove_cv_t<typename T::element_type>;
+
+        std::string operator()(const T& t) const {
+            if(t) {
+                return field_printer<unqualified_type>()(*t);
+            } else {
+                return field_printer<nullptr_t>{}(nullptr);
+            }
+        }
+    };
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<class T>
+    struct field_printer<
+        T,
+        std::enable_if_t<polyfill::conjunction_v<polyfill::is_specialization_of<T, std::optional>,
+                                                 internal::is_printable<std::remove_cv_t<typename T::value_type>>>>> {
+        using unqualified_type = std::remove_cv_t<typename T::value_type>;
+
+        std::string operator()(const T& t) const {
+            if(t.has_value()) {
+                return field_printer<unqualified_type>()(*t);
+            } else {
+                return field_printer<std::nullopt_t>{}(std::nullopt);
+            }
+        }
+    };
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+}
 
 // #include "rowid.h"
 
@@ -13668,6 +13525,19 @@ namespace sqlite_orm {
 //  ::ptrdiff_t
 // #include "statement_finalizer.h"
 
+#include <sqlite3.h>
+#include <memory>  // std::unique_ptr
+#include <type_traits>  // std::integral_constant
+
+namespace sqlite_orm {
+
+    /**
+     *  Guard class which finalizes `sqlite3_stmt` in dtor
+     */
+    using statement_finalizer =
+        std::unique_ptr<sqlite3_stmt, std::integral_constant<decltype(&sqlite3_finalize), sqlite3_finalize>>;
+}
+
 // #include "error_code.h"
 
 // #include "object_from_column_builder.h"
@@ -13762,6 +13632,135 @@ namespace sqlite_orm {
 // #include "storage_lookup.h"
 
 // #include "util.h"
+
+#include <sqlite3.h>
+#include <string>  //  std::string
+#include <utility>  //  std::move
+
+// #include "error_code.h"
+
+namespace sqlite_orm {
+
+    /** 
+     *  Escape the provided character in the given string by doubling it.
+     *  @param str A copy of the original string
+     *  @param char2Escape The character to escape
+     */
+    inline std::string sql_escape(std::string str, char char2Escape) {
+        for(size_t pos = 0; (pos = str.find(char2Escape, pos)) != str.npos; pos += 2) {
+            str.replace(pos, 1, 2, char2Escape);
+        }
+
+        return str;
+    }
+
+    /** 
+     *  Quote the given string value using single quotes,
+     *  escape containing single quotes by doubling them.
+     */
+    inline std::string quote_string_literal(std::string v) {
+        constexpr char quoteChar = '\'';
+        return quoteChar + sql_escape(std::move(v), quoteChar) + quoteChar;
+    }
+
+    /** 
+     *  Quote the given string value using single quotes,
+     *  escape containing single quotes by doubling them.
+     */
+    inline std::string quote_blob_literal(std::string v) {
+        constexpr char quoteChar = '\'';
+        return std::string{char('x'), quoteChar} + std::move(v) + quoteChar;
+    }
+
+    /** 
+     *  Quote the given identifier using double quotes,
+     *  escape containing double quotes by doubling them.
+     */
+    inline std::string quote_identifier(std::string identifier) {
+        constexpr char quoteChar = '"';
+        return quoteChar + sql_escape(std::move(identifier), quoteChar) + quoteChar;
+    }
+
+    namespace internal {
+        // Wrapper to reduce boiler-plate code
+        inline sqlite3_stmt* reset_stmt(sqlite3_stmt* stmt) {
+            sqlite3_reset(stmt);
+            return stmt;
+        }
+
+        // note: query is deliberately taken by value, such that it is thrown away early
+        inline sqlite3_stmt* prepare_stmt(sqlite3* db, std::string query) {
+            sqlite3_stmt* stmt;
+            if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+                throw_translated_sqlite_error(db);
+            }
+            return stmt;
+        }
+
+        inline void perform_void_exec(sqlite3* db, const std::string& query) {
+            int rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
+            if(rc != SQLITE_OK) {
+                throw_translated_sqlite_error(db);
+            }
+        }
+
+        inline void perform_exec(sqlite3* db,
+                                 const char* query,
+                                 int (*callback)(void* data, int argc, char** argv, char**),
+                                 void* user_data) {
+            int rc = sqlite3_exec(db, query, callback, user_data, nullptr);
+            if(rc != SQLITE_OK) {
+                throw_translated_sqlite_error(db);
+            }
+        }
+
+        inline void perform_exec(sqlite3* db,
+                                 const std::string& query,
+                                 int (*callback)(void* data, int argc, char** argv, char**),
+                                 void* user_data) {
+            return perform_exec(db, query.c_str(), callback, user_data);
+        }
+
+        template<int expected = SQLITE_DONE>
+        void perform_step(sqlite3_stmt* stmt) {
+            int rc = sqlite3_step(stmt);
+            if(rc != expected) {
+                throw_translated_sqlite_error(stmt);
+            }
+        }
+
+        template<class L>
+        void perform_step(sqlite3_stmt* stmt, L&& lambda) {
+            switch(int rc = sqlite3_step(stmt)) {
+                case SQLITE_ROW: {
+                    lambda(stmt);
+                } break;
+                case SQLITE_DONE:
+                    break;
+                default: {
+                    throw_translated_sqlite_error(stmt);
+                }
+            }
+        }
+
+        template<class L>
+        void perform_steps(sqlite3_stmt* stmt, L&& lambda) {
+            int rc;
+            do {
+                switch(rc = sqlite3_step(stmt)) {
+                    case SQLITE_ROW: {
+                        lambda(stmt);
+                    } break;
+                    case SQLITE_DONE:
+                        break;
+                    default: {
+                        throw_translated_sqlite_error(stmt);
+                    }
+                }
+            } while(rc != SQLITE_DONE);
+        }
+    }
+}
 
 namespace sqlite_orm {
     namespace internal {
@@ -13964,12 +13963,14 @@ namespace sqlite_orm {
             }
 
             // rebind connection reference
-            connection_ref operator=(const connection_ref& other) {
+            connection_ref& operator=(const connection_ref& other) {
                 if(other.holder != this->holder) {
                     this->holder->release();
                     this->holder = other.holder;
                     this->holder->retain();
                 }
+
+                return *this;
             }
 
             ~connection_ref() {
@@ -14040,7 +14041,6 @@ namespace sqlite_orm {
 
 // #include "ast/upsert_clause.h"
 
-#include <sqlite3.h>
 #if SQLITE_VERSION_NUMBER >= 3024000
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::forward, std::move
@@ -18220,7 +18220,6 @@ namespace sqlite_orm {
             }
 
 #if SQLITE_VERSION_NUMBER >= 3006019
-
             void foreign_keys(sqlite3* db, bool value) {
                 std::stringstream ss;
                 ss << "PRAGMA foreign_keys = " << value << std::flush;
@@ -18632,10 +18631,10 @@ namespace sqlite_orm {
 #include <string>  //  std::string
 #include <type_traits>  //  std::enable_if, std::remove_pointer
 #include <vector>  //  std::vector
-#include <algorithm>  //  std::iter_swap
 #ifndef SQLITE_ORM_OMITS_CODECVT
+#include <locale>  // std::wstring_convert
 #include <codecvt>  //  std::codecvt_utf8_utf16
-#endif  //  SQLITE_ORM_OMITS_CODECVT
+#endif
 #include <memory>
 #include <array>
 #include <list>  //  std::list
@@ -19155,6 +19154,8 @@ namespace sqlite_orm {
 // #include "schema/table.h"
 
 // #include "util.h"
+
+// #include "error_code.h"
 
 namespace sqlite_orm {
 
