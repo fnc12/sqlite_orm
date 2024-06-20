@@ -1,5 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include "catch_matchers.h"
 
 using namespace sqlite_orm;
 
@@ -215,6 +216,29 @@ struct alignas(2 * __STDCPP_DEFAULT_NEW_ALIGNMENT__) OverAlignedAggregateFunctio
 };
 #endif
 
+struct NonAllocatableAggregateFunction {
+    void step(double /*arg*/) {}
+
+    double fin() const {
+        return 0;
+    }
+
+    static const char* name() {
+        return "NONALLOCATABLE";
+    }
+};
+
+template<>
+struct std::allocator<NonAllocatableAggregateFunction> {
+    using value_type = NonAllocatableAggregateFunction;
+
+    NonAllocatableAggregateFunction* allocate(size_t /*count*/) {
+        throw std::bad_alloc();
+    }
+
+    void deallocate(NonAllocatableAggregateFunction*, size_t /*count*/) {}
+};
+
 struct NonDefaultCtorScalarFunction {
     const int multiplier;
 
@@ -387,6 +411,12 @@ TEST_CASE("custom functions") {
         REQUIRE(int(std::get<1>(rows[0])) == 4);
     }
     storage.delete_aggregate_function<MeanFunction>();
+
+    storage.create_aggregate_function<NonAllocatableAggregateFunction>();
+    REQUIRE_THROWS_MATCHES(storage.select(func<NonAllocatableAggregateFunction>(&User::id)),
+                           std::system_error,
+                           ErrorCodeExceptionMatcher(sqlite_errc(SQLITE_NOMEM)));
+    storage.delete_aggregate_function<NonAllocatableAggregateFunction>();
 
     storage.create_scalar_function<FirstFunction>();
     {

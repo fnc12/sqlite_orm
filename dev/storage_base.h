@@ -776,14 +776,20 @@ namespace sqlite_orm {
                     obtain_xdestroy_for<F>(udf_destruct_only_deleter{}),
                     /* step = */
                     [](sqlite3_context* context, int argsCount, sqlite3_value** values) {
-                        F& udf = *proxy_get_aggregate_step_udf<F>(context, argsCount);
+                        F* udfPointer;
+                        try {
+                            udfPointer = proxy_get_aggregate_step_udf<F>(context, argsCount);
+                        } catch(const std::bad_alloc&) {
+                            sqlite3_result_error_nomem(context);
+                            return;
+                        }
                         args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
 #if __cpp_lib_bind_front >= 201907L
-                        std::apply(std::bind_front(&F::step, &udf), std::move(argsTuple));
+                        std::apply(std::bind_front(&F::step, udfPointer), std::move(argsTuple));
 #else
                         polyfill::apply(
-                            [&udf](auto&&... args) {
-                                udf.step(std::forward<decltype(args)>(args)...);
+                            [udfPointer](auto&&... args) {
+                                udfPointer->step(std::forward<decltype(args)>(args)...);
                             },
                             std::move(argsTuple));
 #endif

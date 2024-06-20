@@ -17413,6 +17413,7 @@ namespace sqlite_orm {
 #include <sqlite3.h>
 #include <cassert>  //  assert
 #include <type_traits>  //  std::true_type, std::false_type
+#include <new>  //  std::bad_alloc
 #include <memory>  //  std::allocator, std::allocator_traits, std::unique_ptr
 #include <string>  //  std::string
 #include <functional>  //  std::function
@@ -17564,9 +17565,14 @@ namespace sqlite_orm {
             (void)context;
         }
 
+        // note: may throw `std::bad_alloc` in case memory space for the aggregate function object cannot be allocated
         inline void* ensure_aggregate_udf(sqlite3_context* context, udf_proxy* proxy, int argsCount) {
             // reserve memory for storing a void pointer (which is the `udfHandle`, i.e. address of the aggregate function object)
             void* ctxMemory = sqlite3_aggregate_context(context, sizeof(void*));
+            if(!ctxMemory)
+                SQLITE_ORM_CPP_UNLIKELY {
+                    throw std::bad_alloc();
+                }
             void*& udfHandle = *static_cast<void**>(ctxMemory);
 
             if(udfHandle)
@@ -17592,7 +17598,8 @@ namespace sqlite_orm {
 
         // Return C pointer to preallocated and a priori constructed UDF
         template<class UDF>
-        inline UDF* proxy_get_scalar_udf(std::true_type /*is_stateless*/, sqlite3_context* context, int argsCount) {
+        inline UDF*
+        proxy_get_scalar_udf(std::true_type /*is_stateless*/, sqlite3_context* context, int argsCount) noexcept {
             proxy_assert_args_count(context, argsCount);
             udf_proxy* proxy = static_cast<udf_proxy*>(sqlite3_user_data(context));
             return static_cast<UDF*>(preallocated_udf_handle(proxy));
@@ -17612,6 +17619,7 @@ namespace sqlite_orm {
                                                        proxy->destroy};
         }
 
+        // note: may throw `std::bad_alloc` in case memory space for the aggregate function object cannot be allocated
         template<class UDF>
         inline UDF* proxy_get_aggregate_step_udf(sqlite3_context* context, int argsCount) {
             udf_proxy* proxy = static_cast<udf_proxy*>(sqlite3_user_data(context));
@@ -17621,8 +17629,14 @@ namespace sqlite_orm {
 
         inline void aggregate_function_final_callback(sqlite3_context* context) {
             udf_proxy* proxy = static_cast<udf_proxy*>(sqlite3_user_data(context));
-            // note: it is possible that the 'step' function was never called
-            void* udfHandle = ensure_aggregate_udf(context, proxy, -1);
+            void* udfHandle;
+            try {
+                // note: it is possible that the 'step' function was never called
+                udfHandle = ensure_aggregate_udf(context, proxy, -1);
+            } catch(const std::bad_alloc&) {
+                sqlite3_result_error_nomem(context);
+                return;
+            }
             proxy->finalAggregateCall(udfHandle, context);
             delete_aggregate_udf(proxy, udfHandle);
         }
@@ -18376,14 +18390,20 @@ namespace sqlite_orm {
                     obtain_xdestroy_for<F>(udf_destruct_only_deleter{}),
                     /* step = */
                     [](sqlite3_context* context, int argsCount, sqlite3_value** values) {
-                        F& udf = *proxy_get_aggregate_step_udf<F>(context, argsCount);
+                        F* udfPointer;
+                        try {
+                            udfPointer = proxy_get_aggregate_step_udf<F>(context, argsCount);
+                        } catch(const std::bad_alloc&) {
+                            sqlite3_result_error_nomem(context);
+                            return;
+                        }
                         args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
 #if __cpp_lib_bind_front >= 201907L
-                        std::apply(std::bind_front(&F::step, &udf), std::move(argsTuple));
+                        std::apply(std::bind_front(&F::step, udfPointer), std::move(argsTuple));
 #else
                         polyfill::apply(
-                            [&udf](auto&&... args) {
-                                udf.step(std::forward<decltype(args)>(args)...);
+                            [udfPointer](auto&&... args) {
+                                udfPointer->step(std::forward<decltype(args)>(args)...);
                             },
                             std::move(argsTuple));
 #endif
