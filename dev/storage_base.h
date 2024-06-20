@@ -736,16 +736,16 @@ namespace sqlite_orm {
                                                ? -1
                                                : int(std::tuple_size<args_tuple>::value);
                 using is_stateless = std::is_empty<F>;
-                auto udfStorage = allocate_udf_storage<F>();
+                auto udfMemorySpace = preallocate_udf_memory<F>();
                 if SQLITE_ORM_CONSTEXPR_IF(is_stateless::value) {
-                    constructAt(udfStorage.first);
+                    constructAt(udfMemorySpace.first);
                 }
                 this->scalarFunctions.emplace_back(
                     udfName(),
                     argsCount,
                     is_stateless::value ? nullptr : std::move(constructAt),
                     /* destroy = */
-                    obtain_xdestroy_for<F>(udf_proxy::destruct_only_deleter{}),
+                    obtain_xdestroy_for<F>(udf_destruct_only_deleter{}),
                     /* call = */
                     [](sqlite3_context* context, int argsCount, sqlite3_value** values) {
                         auto udfPointer = proxy_get_scalar_udf<F>(is_stateless{}, context, argsCount);
@@ -753,9 +753,7 @@ namespace sqlite_orm {
                         auto result = polyfill::apply(*udfPointer, std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
                     },
-                    /* finalCall = */
-                    nullptr,
-                    udfStorage);
+                    udfMemorySpace);
 
                 if(this->connection->retain_count() > 0) {
                     sqlite3* db = this->connection->get();
@@ -776,7 +774,7 @@ namespace sqlite_orm {
                     argsCount,
                     std::move(constructAt),
                     /* destroy = */
-                    obtain_xdestroy_for<F>(udf_proxy::destruct_only_deleter{}),
+                    obtain_xdestroy_for<F>(udf_destruct_only_deleter{}),
                     /* step = */
                     [](sqlite3_context* context, int argsCount, sqlite3_value** values) {
                         F& udf = *proxy_get_aggregate_step_udf<F>(context, argsCount);
@@ -797,7 +795,7 @@ namespace sqlite_orm {
                         auto result = udf.fin();
                         statement_binder<return_type>().result(context, result);
                     },
-                    allocate_udf_storage<F>());
+                    obtain_udf_allocator<F>());
 
                 if(this->connection->retain_count() > 0) {
                     sqlite3* db = this->connection->get();

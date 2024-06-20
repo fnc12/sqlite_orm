@@ -79,9 +79,11 @@ struct MeanFunction {
     double total = 0;
     int count = 0;
 
+    static int wasInstantiatedCount;
     static int objectsCount;
 
     MeanFunction() {
+        ++wasInstantiatedCount;
         ++objectsCount;
     }
 
@@ -105,6 +107,7 @@ struct MeanFunction {
     }
 };
 
+int MeanFunction::wasInstantiatedCount = 0;
 int MeanFunction::objectsCount = 0;
 
 struct FirstFunction {
@@ -289,8 +292,7 @@ TEST_CASE("custom functions") {
     {
         auto rows = storage.select(func<SqrtFunction>(4));
         REQUIRE(SqrtFunction::callsCount == 1);
-        decltype(rows) expected;
-        expected.push_back(2);
+        decltype(rows) expected{2};
         REQUIRE(rows == expected);
     }
 
@@ -306,16 +308,14 @@ TEST_CASE("custom functions") {
         //  call after creation
         {
             auto rows = storage.select(func<StatelessHasPrefixFunction>("one", "o"));
-            decltype(rows) expected;
-            expected.push_back(true);
+            decltype(rows) expected{true};
             REQUIRE(rows == expected);
         }
         REQUIRE(StatelessHasPrefixFunction::callsCount == 1);
         REQUIRE(StatelessHasPrefixFunction::objectsCount == 1);
         {
             auto rows = storage.select(func<StatelessHasPrefixFunction>("two", "b"));
-            decltype(rows) expected;
-            expected.push_back(false);
+            decltype(rows) expected{false};
             REQUIRE(rows == expected);
         }
         REQUIRE(StatelessHasPrefixFunction::callsCount == 2);
@@ -338,16 +338,14 @@ TEST_CASE("custom functions") {
         //  call after creation
         {
             auto rows = storage.select(func<HasPrefixFunction>("one", "o"));
-            decltype(rows) expected;
-            expected.push_back(true);
+            decltype(rows) expected{true};
             REQUIRE(rows == expected);
         }
         REQUIRE(HasPrefixFunction::callsCount == 1);
         REQUIRE(HasPrefixFunction::objectsCount == 0);
         {
             auto rows = storage.select(func<HasPrefixFunction>("two", "b"));
-            decltype(rows) expected;
-            expected.push_back(false);
+            decltype(rows) expected{false};
             REQUIRE(rows == expected);
         }
         REQUIRE(HasPrefixFunction::callsCount == 2);
@@ -370,41 +368,51 @@ TEST_CASE("custom functions") {
         REQUIRE(MeanFunction::objectsCount == 0);
         auto rows = storage.select(func<MeanFunction>(&User::id));
         REQUIRE(MeanFunction::objectsCount == 0);
-        decltype(rows) expected;
-        expected.push_back(2);
+        decltype(rows) expected{2};
         REQUIRE(rows == expected);
+    }
+    storage.delete_aggregate_function<MeanFunction>();
+
+    storage.create_aggregate_function<MeanFunction>();
+    // expect two different aggregate function objects to be created, which provide two different results;
+    // This ensures that `proxy_get_aggregate_step_udf()` uses `sqlite3_aggregate_context()` correctly
+    {
+        MeanFunction::wasInstantiatedCount = 0;
+        REQUIRE(MeanFunction::objectsCount == 0);
+        REQUIRE(MeanFunction::wasInstantiatedCount == 0);
+        auto rows = storage.select(columns(func<MeanFunction>(&User::id), func<MeanFunction>(c(&User::id) * 2)));
+        REQUIRE(MeanFunction::objectsCount == 0);
+        REQUIRE(MeanFunction::wasInstantiatedCount == 2);
+        REQUIRE(int(std::get<0>(rows[0])) == 2);
+        REQUIRE(int(std::get<1>(rows[0])) == 4);
     }
     storage.delete_aggregate_function<MeanFunction>();
 
     storage.create_scalar_function<FirstFunction>();
     {
         auto rows = storage.select(func<FirstFunction>("Vanotek", "Tinashe", "Pitbull"));
-        decltype(rows) expected;
-        expected.push_back("VTP");
+        decltype(rows) expected{"VTP"};
         REQUIRE(rows == expected);
         REQUIRE(FirstFunction::objectsCount == 0);
         REQUIRE(FirstFunction::callsCount == 1);
     }
     {
         auto rows = storage.select(func<FirstFunction>("Charli XCX", "Rita Ora"));
-        decltype(rows) expected;
-        expected.push_back("CR");
+        decltype(rows) expected{"CR"};
         REQUIRE(rows == expected);
         REQUIRE(FirstFunction::objectsCount == 0);
         REQUIRE(FirstFunction::callsCount == 2);
     }
     {
         auto rows = storage.select(func<FirstFunction>("Ted"));
-        decltype(rows) expected;
-        expected.push_back("T");
+        decltype(rows) expected{"T"};
         REQUIRE(rows == expected);
         REQUIRE(FirstFunction::objectsCount == 0);
         REQUIRE(FirstFunction::callsCount == 3);
     }
     {
         auto rows = storage.select(func<FirstFunction>());
-        decltype(rows) expected;
-        expected.push_back("");
+        decltype(rows) expected{""};
         REQUIRE(rows == expected);
         REQUIRE(FirstFunction::objectsCount == 0);
         REQUIRE(FirstFunction::callsCount == 4);
@@ -415,8 +423,7 @@ TEST_CASE("custom functions") {
     {
         REQUIRE(MultiSum::objectsCount == 0);
         auto rows = storage.select(func<MultiSum>(&User::id, 5));
-        decltype(rows) expected;
-        expected.push_back(21);
+        decltype(rows) expected{21};
         REQUIRE(rows == expected);
         REQUIRE(MultiSum::objectsCount == 0);
     }
