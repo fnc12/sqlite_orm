@@ -1,5 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include "catch_matchers.h"
 
 using namespace sqlite_orm;
 
@@ -73,25 +74,7 @@ TEST_CASE("Transaction guard") {
 
     storage.insert(Object{0, "Jack"});
 
-    struct ExceptionMatcher : Catch::Matchers::MatcherGenericBase {
-        std::error_code errorCode;
-
-        ExceptionMatcher(std::error_code errorCode) : errorCode(std::move(errorCode)) {}
-
-        bool match(const std::system_error& systemError) const {
-            return systemError.code() == this->errorCode;
-        }
-
-        std::string describe() const override {
-            std::stringstream ss;
-            const std::string message = get_orm_error_category().message(this->errorCode.value());
-            ss << "Exception with code: " << message;
-            ;
-            return ss.str();
-        }
-    };
-
-    const ExceptionMatcher notFoundExceptionMatcher(make_error_code(orm_error_code::not_found));
+    const ErrorCodeExceptionMatcher notFoundExceptionMatcher(orm_error_code::not_found);
     SECTION("insert, call make a storage to call an exception and check that rollback was fired") {
         auto countBefore = storage.count<Object>();
         SECTION("transaction_guard") {

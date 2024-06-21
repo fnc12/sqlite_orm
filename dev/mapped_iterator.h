@@ -83,10 +83,9 @@ namespace sqlite_orm {
             mapped_iterator& operator=(mapped_iterator&&) = default;
 
             value_type& operator*() const {
-                if(!this->stmt)
-                    SQLITE_ORM_CPP_UNLIKELY {
-                        throw std::system_error{orm_error_code::trying_to_dereference_null_iterator};
-                    }
+                if(!this->stmt) SQLITE_ORM_CPP_UNLIKELY {
+                    throw std::system_error{orm_error_code::trying_to_dereference_null_iterator};
+                }
                 return *this->current;
             }
 

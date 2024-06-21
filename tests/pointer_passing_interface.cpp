@@ -78,7 +78,7 @@ TEST_CASE("pointer-passing") {
 
     storage.insert(Object{});
 
-    storage.create_scalar_function<note_value_fn<int64>>();
+    storage.create_scalar_function<remember_fn>();
     storage.create_scalar_function<make_pointer_fn>();
     storage.create_scalar_function<fetch_from_pointer_fn>();
     storage.create_scalar_function<pass_thru_pointer_fn>();
@@ -86,19 +86,18 @@ TEST_CASE("pointer-passing") {
     // test the note_value function
     SECTION("note_value, bind_pointer_statically") {
         int64 lastUpdatedId = -1;
-        storage.update_all(set(
-            c(&Object::id) = add(1ll,
-                                 func<note_value_fn<int64>>(&Object::id,
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-                                                            bind_pointer_statically<carray_pointer_tag>(&lastUpdatedId)
-#else
-                                                            bind_pointer_statically<carray_pointer_type>(&lastUpdatedId)
-#endif
-                                                                ))));
-        REQUIRE(lastUpdatedId == 1);
         storage.update_all(
-            set(c(&Object::id) =
-                    add(1ll, func<note_value_fn<int64>>(&Object::id, bind_carray_pointer_statically(&lastUpdatedId)))));
+            set(c(&Object::id) = add(1ll,
+                                     func<remember_fn>(&Object::id,
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+                                                       bind_pointer_statically<carray_pointer_tag>(&lastUpdatedId)
+#else
+                                                       bind_pointer_statically<carray_pointer_type>(&lastUpdatedId)
+#endif
+                                                           ))));
+        REQUIRE(lastUpdatedId == 1);
+        storage.update_all(set(
+            c(&Object::id) = add(1ll, func<remember_fn>(&Object::id, bind_carray_pointer_statically(&lastUpdatedId)))));
         REQUIRE(lastUpdatedId == 2);
     }
 
@@ -106,11 +105,11 @@ TEST_CASE("pointer-passing") {
     SECTION("test_pass_thru, bind_pointer_statically") {
         int64 lastSelectedId = -1;
         auto v = storage.select(
-            func<note_value_fn<int64>>(&Object::id,
-                                       func<pass_thru_pointer_fn>(bind_carray_pointer_statically(&lastSelectedId))));
+            func<remember_fn>(&Object::id,
+                              func<pass_thru_pointer_fn>(bind_carray_pointer_statically(&lastSelectedId))));
         REQUIRE(v.back() == lastSelectedId);
         lastSelectedId = -1;
-        v = storage.select(func<note_value_fn<int64>>(&Object::id, bind_carray_pointer_statically(&lastSelectedId)));
+        v = storage.select(func<remember_fn>(&Object::id, bind_carray_pointer_statically(&lastSelectedId)));
     }
 
     SECTION("bindable_pointer") {
@@ -158,7 +157,7 @@ TEST_CASE("pointer-passing") {
         }
 
         SECTION("ownership transfer") {
-            auto ast = select(func<note_value_fn<int64>>(&Object::id, func<make_pointer_fn>()));
+            auto ast = select(func<remember_fn>(&Object::id, func<make_pointer_fn>()));
             auto stmt = storage.prepare(std::move(ast));
 
             auto results = storage.execute(stmt);
@@ -169,9 +168,9 @@ TEST_CASE("pointer-passing") {
 
         // test passing a pointer into another function
         SECTION("test_pass_thru") {
-            auto v = storage.select(func<note_value_fn<int64>>(
-                &Object::id,
-                func<pass_thru_pointer_fn>(bind_carray_pointer(new int64{-1}, delete_int64{}))));
+            auto v = storage.select(
+                func<remember_fn>(&Object::id,
+                                  func<pass_thru_pointer_fn>(bind_carray_pointer(new int64{-1}, delete_int64{}))));
             REQUIRE(delete_int64::deleted == true);
             REQUIRE(v.back() == delete_int64::lastSelectedId);
         }

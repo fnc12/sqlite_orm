@@ -1,5 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include "catch_matchers.h"
 
 using namespace sqlite_orm;
 
@@ -79,9 +80,11 @@ struct MeanFunction {
     double total = 0;
     int count = 0;
 
+    static int ctorCallsCount;
     static int objectsCount;
 
     MeanFunction() {
+        ++ctorCallsCount;
         ++objectsCount;
     }
 
@@ -105,6 +108,7 @@ struct MeanFunction {
     }
 };
 
+int MeanFunction::ctorCallsCount = 0;
 int MeanFunction::objectsCount = 0;
 
 struct FirstFunction {
@@ -212,6 +216,36 @@ struct alignas(2 * __STDCPP_DEFAULT_NEW_ALIGNMENT__) OverAlignedAggregateFunctio
 };
 #endif
 
+struct NonAllocatableAggregateFunction {
+    void step(double /*arg*/) {}
+
+    double fin() const {
+        return 0;
+    }
+
+    static const char* name() {
+        return "NONALLOCATABLE";
+    }
+};
+
+template<>
+struct std::allocator<NonAllocatableAggregateFunction> {
+    using value_type = NonAllocatableAggregateFunction;
+
+    NonAllocatableAggregateFunction* allocate(size_t /*count*/) {
+        throw std::bad_alloc();
+    }
+
+    void deallocate(NonAllocatableAggregateFunction*, size_t /*count*/) {}
+
+    // legacy allocator members
+
+    template<class... Args>
+    void construct(NonAllocatableAggregateFunction*, Args&&...) {}
+
+    void destroy(NonAllocatableAggregateFunction*) {}
+};
+
 struct NonDefaultCtorScalarFunction {
     const int multiplier;
 
@@ -271,9 +305,16 @@ TEST_CASE("custom functions") {
     storage.sync_schema();
 
     storage.create_aggregate_function<MeanFunction>();
-    // test the case when `MeanFunction::step()` was never called
-    { REQUIRE_NOTHROW(storage.select(func<MeanFunction>(&User::id))); }
+    // test w/o a result set, i.e when the final aggregate call is the first to require the aggregate function
+    REQUIRE_NOTHROW(storage.select(func<MeanFunction>(&User::id)));
     storage.delete_aggregate_function<MeanFunction>();
+
+    storage.create_aggregate_function<NonAllocatableAggregateFunction>();
+    // test w/o a result set, i.e when the final aggregate call is the first to require the aggregate function
+    REQUIRE_THROWS_MATCHES(storage.select(func<NonAllocatableAggregateFunction>(&User::id)),
+                           std::system_error,
+                           ErrorCodeExceptionMatcher(sqlite_errc(SQLITE_NOMEM)));
+    storage.delete_aggregate_function<NonAllocatableAggregateFunction>();
 
     //   call before creation
     REQUIRE_THROWS_WITH(storage.select(func<SqrtFunction>(4)), ContainsSubstring("no such function"));
@@ -289,8 +330,7 @@ TEST_CASE("custom functions") {
     {
         auto rows = storage.select(func<SqrtFunction>(4));
         REQUIRE(SqrtFunction::callsCount == 1);
-        decltype(rows) expected;
-        expected.push_back(2);
+        decltype(rows) expected{2};
         REQUIRE(rows == expected);
     }
 
@@ -306,16 +346,14 @@ TEST_CASE("custom functions") {
         //  call after creation
         {
             auto rows = storage.select(func<StatelessHasPrefixFunction>("one", "o"));
-            decltype(rows) expected;
-            expected.push_back(true);
+            decltype(rows) expected{true};
             REQUIRE(rows == expected);
         }
         REQUIRE(StatelessHasPrefixFunction::callsCount == 1);
         REQUIRE(StatelessHasPrefixFunction::objectsCount == 1);
         {
             auto rows = storage.select(func<StatelessHasPrefixFunction>("two", "b"));
-            decltype(rows) expected;
-            expected.push_back(false);
+            decltype(rows) expected{false};
             REQUIRE(rows == expected);
         }
         REQUIRE(StatelessHasPrefixFunction::callsCount == 2);
@@ -338,16 +376,14 @@ TEST_CASE("custom functions") {
         //  call after creation
         {
             auto rows = storage.select(func<HasPrefixFunction>("one", "o"));
-            decltype(rows) expected;
-            expected.push_back(true);
+            decltype(rows) expected{true};
             REQUIRE(rows == expected);
         }
         REQUIRE(HasPrefixFunction::callsCount == 1);
         REQUIRE(HasPrefixFunction::objectsCount == 0);
         {
             auto rows = storage.select(func<HasPrefixFunction>("two", "b"));
-            decltype(rows) expected;
-            expected.push_back(false);
+            decltype(rows) expected{false};
             REQUIRE(rows == expected);
         }
         REQUIRE(HasPrefixFunction::callsCount == 2);
@@ -370,41 +406,57 @@ TEST_CASE("custom functions") {
         REQUIRE(MeanFunction::objectsCount == 0);
         auto rows = storage.select(func<MeanFunction>(&User::id));
         REQUIRE(MeanFunction::objectsCount == 0);
-        decltype(rows) expected;
-        expected.push_back(2);
+        decltype(rows) expected{2};
         REQUIRE(rows == expected);
     }
     storage.delete_aggregate_function<MeanFunction>();
 
+    storage.create_aggregate_function<MeanFunction>();
+    // expect two different aggregate function objects to be created, which provide two different results;
+    // This ensures that `proxy_get_aggregate_step_udf()` uses `sqlite3_aggregate_context()` correctly
+    {
+        MeanFunction::ctorCallsCount = 0;
+        REQUIRE(MeanFunction::objectsCount == 0);
+        REQUIRE(MeanFunction::ctorCallsCount == 0);
+        auto rows = storage.select(columns(func<MeanFunction>(&User::id), func<MeanFunction>(c(&User::id) * 2)));
+        REQUIRE(MeanFunction::objectsCount == 0);
+        REQUIRE(MeanFunction::ctorCallsCount == 2);
+        REQUIRE(int(std::get<0>(rows[0])) == 2);
+        REQUIRE(int(std::get<1>(rows[0])) == 4);
+    }
+    storage.delete_aggregate_function<MeanFunction>();
+
+    storage.create_aggregate_function<NonAllocatableAggregateFunction>();
+    REQUIRE_THROWS_MATCHES(storage.select(func<NonAllocatableAggregateFunction>(&User::id)),
+                           std::system_error,
+                           ErrorCodeExceptionMatcher(sqlite_errc(SQLITE_NOMEM)));
+    storage.delete_aggregate_function<NonAllocatableAggregateFunction>();
+
     storage.create_scalar_function<FirstFunction>();
     {
         auto rows = storage.select(func<FirstFunction>("Vanotek", "Tinashe", "Pitbull"));
-        decltype(rows) expected;
-        expected.push_back("VTP");
+        decltype(rows) expected{"VTP"};
         REQUIRE(rows == expected);
         REQUIRE(FirstFunction::objectsCount == 0);
         REQUIRE(FirstFunction::callsCount == 1);
     }
     {
         auto rows = storage.select(func<FirstFunction>("Charli XCX", "Rita Ora"));
-        decltype(rows) expected;
-        expected.push_back("CR");
+        decltype(rows) expected{"CR"};
         REQUIRE(rows == expected);
         REQUIRE(FirstFunction::objectsCount == 0);
         REQUIRE(FirstFunction::callsCount == 2);
     }
     {
         auto rows = storage.select(func<FirstFunction>("Ted"));
-        decltype(rows) expected;
-        expected.push_back("T");
+        decltype(rows) expected{"T"};
         REQUIRE(rows == expected);
         REQUIRE(FirstFunction::objectsCount == 0);
         REQUIRE(FirstFunction::callsCount == 3);
     }
     {
         auto rows = storage.select(func<FirstFunction>());
-        decltype(rows) expected;
-        expected.push_back("");
+        decltype(rows) expected{""};
         REQUIRE(rows == expected);
         REQUIRE(FirstFunction::objectsCount == 0);
         REQUIRE(FirstFunction::callsCount == 4);
@@ -415,8 +467,7 @@ TEST_CASE("custom functions") {
     {
         REQUIRE(MultiSum::objectsCount == 0);
         auto rows = storage.select(func<MultiSum>(&User::id, 5));
-        decltype(rows) expected;
-        expected.push_back(21);
+        decltype(rows) expected{21};
         REQUIRE(rows == expected);
         REQUIRE(MultiSum::objectsCount == 0);
     }

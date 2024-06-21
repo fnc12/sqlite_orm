@@ -119,7 +119,7 @@ namespace sqlite_orm {
 #endif
 
     /**
-     *  Generalized form of the 'remember' SQL function that is a pass-through for values
+     *  Base for a generalized form of the 'remember' SQL function that is a pass-through for values
      *  (it returns its argument unchanged using move semantics) but also saves the
      *  value that is passed through into a bound variable.
      */
@@ -130,10 +130,6 @@ namespace sqlite_orm {
                 *observer = value;
             }
             return std::move(value);
-        }
-
-        static constexpr const char* name() {
-            return "note_value";
         }
     };
 

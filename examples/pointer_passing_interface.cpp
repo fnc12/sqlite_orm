@@ -43,14 +43,12 @@ using std::make_unique;
 using std::min;
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-inline constexpr orm_pointer_type auto ecat_pointer_tag = "ecat"_pointer_type;
+// c++ integral constant for our pointer type domain
 inline constexpr orm_pointer_type auto ecode_pointer_tag = "ecode"_pointer_type;
 #else
-// name for our pointer types
-inline constexpr const char ecat_pvt_name[] = "ecat";
+// name for our pointer type domain
 inline constexpr const char ecode_pvt_name[] = "ecode";
-// c++ integral constant for our pointer types
-using ecat_pointer_type = std::integral_constant<const char*, ecat_pvt_name>;
+// c++ integral constant for our pointer type domain
 using ecode_pointer_type = std::integral_constant<const char*, ecode_pvt_name>;
 #endif
 
@@ -94,29 +92,29 @@ int main() {
         unsigned int errorCategory = 0;
     };
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    using ecat_arg = pointer_arg_t<const std::error_category, ecat_pointer_tag>;
-    using ecode_arg = pointer_arg_t<std::error_code, ecode_pointer_tag>;
+    using ecat_arg = pointer_arg_t<const std::error_category, ecode_pointer_tag>;
+    using ecode_arg = pointer_arg_t<const std::error_code, ecode_pointer_tag>;
 #else
-    using ecat_arg = pointer_arg<const std::error_category, ecat_pointer_type>;
-    using ecode_arg = pointer_arg<std::error_code, ecode_pointer_type>;
+    using ecat_arg = pointer_arg<const std::error_category, ecode_pointer_type>;
+    using ecode_arg = pointer_arg<const std::error_code, ecode_pointer_type>;
 #endif
 
     // function returning a pointer to a std::error_category,
     // which is only visible to functions accepting pointer values of type "ecat"
     struct get_error_category_fn {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        using ecat_binding = static_pointer_binding_t<const std::error_category, ecat_pointer_tag>;
+        using ecat_binding = static_pointer_binding_t<const std::error_category, ecode_pointer_tag>;
 #else
-        using ecat_binding = static_pointer_binding<const std::error_category, ecat_pointer_type>;
+        using ecat_binding = static_pointer_binding<const std::error_category, ecode_pointer_type>;
 #endif
 
         ecat_binding operator()(unsigned int errorCategory) const {
             size_t idx = min<size_t>(errorCategory, ecat_map.size());
             const error_category* ecat = idx != ecat_map.size() ? &get<const error_category&>(ecat_map[idx]) : nullptr;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-            return bind_pointer_statically<ecat_pointer_tag>(ecat);
+            return bind_pointer_statically<ecode_pointer_tag>(ecat);
 #else
-            return bind_pointer_statically<ecat_pointer_type>(ecat);
+            return bind_pointer_statically<ecode_pointer_type>(ecat);
 #endif
         }
 
@@ -181,7 +179,7 @@ int main() {
     // function comparing two error_code objects
     struct equal_error_code_fn {
         bool operator()(ecode_arg pv1, ecode_arg pv2) const {
-            error_code *ec1 = pv1, *ec2 = pv2;
+            const error_code *ec1 = pv1, *ec2 = pv2;
             if(ec1 && ec2) {
                 return *ec1 == *ec2;
             }
