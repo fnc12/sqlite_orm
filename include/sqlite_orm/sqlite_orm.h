@@ -13831,10 +13831,9 @@ namespace sqlite_orm {
             mapped_iterator& operator=(mapped_iterator&&) = default;
 
             value_type& operator*() const {
-                if(!this->stmt)
-                    SQLITE_ORM_CPP_UNLIKELY {
-                        throw std::system_error{orm_error_code::trying_to_dereference_null_iterator};
-                    }
+                if(!this->stmt) SQLITE_ORM_CPP_UNLIKELY {
+                    throw std::system_error{orm_error_code::trying_to_dereference_null_iterator};
+                }
                 return *this->current;
             }
 
@@ -16277,11 +16276,10 @@ namespace sqlite_orm {
             for(size_t offset = 0, next; true; offset = next + 1) {
                 next = str.find(char2Escape, offset);
 
-                if(next == str.npos)
-                    SQLITE_ORM_CPP_LIKELY {
-                        os.write(str.data() + offset, str.size() - offset);
-                        break;
-                    }
+                if(next == str.npos) SQLITE_ORM_CPP_LIKELY {
+                    os.write(str.data() + offset, str.size() - offset);
+                    break;
+                }
 
                 os.write(str.data() + offset, next - offset + 1);
                 os.write(&char2Escape, 1);
@@ -17569,17 +17567,14 @@ namespace sqlite_orm {
         inline void* ensure_aggregate_udf(sqlite3_context* context, udf_proxy* proxy, int argsCount) {
             // reserve memory for storing a void pointer (which is the `udfHandle`, i.e. address of the aggregate function object)
             void* ctxMemory = sqlite3_aggregate_context(context, sizeof(void*));
-            if(!ctxMemory)
-                SQLITE_ORM_CPP_UNLIKELY {
-                    throw std::bad_alloc();
-                }
+            if(!ctxMemory) SQLITE_ORM_CPP_UNLIKELY {
+                throw std::bad_alloc();
+            }
             void*& udfHandle = *static_cast<void**>(ctxMemory);
 
-            if(udfHandle)
-                SQLITE_ORM_CPP_LIKELY {
-                    return udfHandle;
-                }
-            else {
+            if(udfHandle) SQLITE_ORM_CPP_LIKELY {
+                return udfHandle;
+            } else {
                 assert_args_count(proxy, argsCount);
                 udfHandle = allocate_udf(proxy);
                 // Note on the use of the `udfHandle` pointer after the object construction:

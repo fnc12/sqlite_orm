@@ -159,17 +159,14 @@ namespace sqlite_orm {
         inline void* ensure_aggregate_udf(sqlite3_context* context, udf_proxy* proxy, int argsCount) {
             // reserve memory for storing a void pointer (which is the `udfHandle`, i.e. address of the aggregate function object)
             void* ctxMemory = sqlite3_aggregate_context(context, sizeof(void*));
-            if(!ctxMemory)
-                SQLITE_ORM_CPP_UNLIKELY {
-                    throw std::bad_alloc();
-                }
+            if(!ctxMemory) SQLITE_ORM_CPP_UNLIKELY {
+                throw std::bad_alloc();
+            }
             void*& udfHandle = *static_cast<void**>(ctxMemory);
 
-            if(udfHandle)
-                SQLITE_ORM_CPP_LIKELY {
-                    return udfHandle;
-                }
-            else {
+            if(udfHandle) SQLITE_ORM_CPP_LIKELY {
+                return udfHandle;
+            } else {
                 assert_args_count(proxy, argsCount);
                 udfHandle = allocate_udf(proxy);
                 // Note on the use of the `udfHandle` pointer after the object construction:
