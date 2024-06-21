@@ -240,6 +240,9 @@ struct std::allocator<NonAllocatableAggregateFunction> {
 
     // legacy allocator members
 
+    template<class... Args>
+    void construct(NonAllocatableAggregateFunction*, Args&&...) {}
+
     void destroy(NonAllocatableAggregateFunction*) {}
 };
 
