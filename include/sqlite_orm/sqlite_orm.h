@@ -12949,10 +12949,10 @@ namespace sqlite_orm {
          */
         template<typename UDF, typename... CallArgs>
 #ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
-        SQLITE_ORM_CONSTEVAL
+        SQLITE_ORM_CONSTEVAL void check_function_call() {
+#else
+        void check_function_call() {
 #endif
-            void
-            check_function_call() {
             using call_args_tuple = std::tuple<CallArgs...>;
             using function_params_tuple = typename callable_arguments<UDF>::args_tuple;
             constexpr size_t callArgsCount = std::tuple_size<call_args_tuple>::value;

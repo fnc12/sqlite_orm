@@ -80,11 +80,11 @@ struct MeanFunction {
     double total = 0;
     int count = 0;
 
-    static int wasInstantiatedCount;
+    static int ctorCallsCount;
     static int objectsCount;
 
     MeanFunction() {
-        ++wasInstantiatedCount;
+        ++ctorCallsCount;
         ++objectsCount;
     }
 
@@ -108,7 +108,7 @@ struct MeanFunction {
     }
 };
 
-int MeanFunction::wasInstantiatedCount = 0;
+int MeanFunction::ctorCallsCount = 0;
 int MeanFunction::objectsCount = 0;
 
 struct FirstFunction {
@@ -415,12 +415,12 @@ TEST_CASE("custom functions") {
     // expect two different aggregate function objects to be created, which provide two different results;
     // This ensures that `proxy_get_aggregate_step_udf()` uses `sqlite3_aggregate_context()` correctly
     {
-        MeanFunction::wasInstantiatedCount = 0;
+        MeanFunction::ctorCallsCount = 0;
         REQUIRE(MeanFunction::objectsCount == 0);
-        REQUIRE(MeanFunction::wasInstantiatedCount == 0);
+        REQUIRE(MeanFunction::ctorCallsCount == 0);
         auto rows = storage.select(columns(func<MeanFunction>(&User::id), func<MeanFunction>(c(&User::id) * 2)));
         REQUIRE(MeanFunction::objectsCount == 0);
-        REQUIRE(MeanFunction::wasInstantiatedCount == 2);
+        REQUIRE(MeanFunction::ctorCallsCount == 2);
         REQUIRE(int(std::get<0>(rows[0])) == 2);
         REQUIRE(int(std::get<1>(rows[0])) == 4);
     }
