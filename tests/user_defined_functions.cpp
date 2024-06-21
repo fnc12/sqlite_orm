@@ -305,9 +305,16 @@ TEST_CASE("custom functions") {
     storage.sync_schema();
 
     storage.create_aggregate_function<MeanFunction>();
-    // test the case when `MeanFunction::step()` was never called
-    { REQUIRE_NOTHROW(storage.select(func<MeanFunction>(&User::id))); }
+    // test w/o a result set, i.e when the final aggregate call is the first to require the aggregate function
+    REQUIRE_NOTHROW(storage.select(func<MeanFunction>(&User::id)));
     storage.delete_aggregate_function<MeanFunction>();
+
+    storage.create_aggregate_function<NonAllocatableAggregateFunction>();
+    // test w/o a result set, i.e when the final aggregate call is the first to require the aggregate function
+    REQUIRE_THROWS_MATCHES(storage.select(func<NonAllocatableAggregateFunction>(&User::id)),
+                           std::system_error,
+                           ErrorCodeExceptionMatcher(sqlite_errc(SQLITE_NOMEM)));
+    storage.delete_aggregate_function<NonAllocatableAggregateFunction>();
 
     //   call before creation
     REQUIRE_THROWS_WITH(storage.select(func<SqrtFunction>(4)), ContainsSubstring("no such function"));
