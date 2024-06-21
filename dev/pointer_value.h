@@ -62,6 +62,8 @@ namespace sqlite_orm {
 #endif
 
         using tag = T;
+        using qualified_type = P;
+
         P* p_;
 
         P* ptr() const noexcept {
