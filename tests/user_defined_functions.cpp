@@ -237,6 +237,10 @@ struct std::allocator<NonAllocatableAggregateFunction> {
     }
 
     void deallocate(NonAllocatableAggregateFunction*, size_t /*count*/) {}
+
+    // legacy allocator members
+
+    void destroy(NonAllocatableAggregateFunction*) {}
 };
 
 struct NonDefaultCtorScalarFunction {
