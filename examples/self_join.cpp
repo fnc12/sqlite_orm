@@ -31,6 +31,9 @@ struct Employee {
     std::string fax;
     std::string email;
 };
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+inline constexpr sqlite_orm::orm_table_reference auto employee = sqlite_orm::c<Employee>();
+#endif
 
 /**
  *  This is how custom alias is made:
@@ -208,9 +211,10 @@ int main() {
         //  ON m.ReportsTo = employees.EmployeeId
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         constexpr orm_table_alias auto m = "m"_alias.for_<Employee>();
-        auto firstNames = storage.select(columns(m->*&Employee::firstName || " " || m->*&Employee::lastName,
-                                                 &Employee::firstName || " " || &Employee::lastName),
-                                         inner_join<m>(on(m->*&Employee::reportsTo == &Employee::employeeId)));
+        auto firstNames =
+            storage.select(columns(m->*&Employee::firstName || " " || m->*&Employee::lastName,
+                                   employee->*&Employee::firstName || " " || employee->*&Employee::lastName),
+                           inner_join<m>(on(m->*&Employee::reportsTo == employee->*&Employee::employeeId)));
         cout << "firstNames count = " << firstNames.size() << endl;
         for(auto& row: firstNames) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << endl;
@@ -219,7 +223,7 @@ int main() {
         using als = alias_m<Employee>;
         auto firstNames = storage.select(
             columns(alias_column<als>(&Employee::firstName) || " " || alias_column<als>(&Employee::lastName),
-                    &Employee::firstName || " " || &Employee::lastName),
+                    &Employee::firstName || c(" ") || &Employee::lastName),
             inner_join<als>(on(alias_column<als>(&Employee::reportsTo) == &Employee::employeeId)));
         cout << "firstNames count = " << firstNames.size() << endl;
         for(auto& row: firstNames) {
@@ -240,9 +244,10 @@ int main() {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         static_assert(std::is_empty_v<custom_alias<Employee>>);
         constexpr orm_table_alias auto emp = custom_alias<Employee>{};
-        auto firstNames = storage.select(columns(emp->*&Employee::firstName || " " || emp->*&Employee::lastName,
-                                                 &Employee::firstName || " " || &Employee::lastName),
-                                         inner_join<emp>(on(emp->*&Employee::reportsTo == &Employee::employeeId)));
+        auto firstNames =
+            storage.select(columns(emp->*&Employee::firstName || " " || emp->*&Employee::lastName,
+                                   employee->*&Employee::firstName || " " || employee->*&Employee::lastName),
+                           inner_join<emp>(on(emp->*&Employee::reportsTo == employee->*&Employee::employeeId)));
         cout << "firstNames count = " << firstNames.size() << endl;
         for(auto& row: firstNames) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << endl;
@@ -251,7 +256,7 @@ int main() {
         using als = custom_alias<Employee>;
         auto firstNames = storage.select(
             columns(alias_column<als>(&Employee::firstName) || " " || alias_column<als>(&Employee::lastName),
-                    &Employee::firstName || " " || &Employee::lastName),
+                    &Employee::firstName || c(" ") || &Employee::lastName),
             inner_join<als>(on(alias_column<als>(&Employee::reportsTo) == &Employee::employeeId)));
         cout << "firstNames count = " << firstNames.size() << endl;
         for(auto& row: firstNames) {
