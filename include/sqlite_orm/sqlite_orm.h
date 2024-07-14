@@ -18561,7 +18561,7 @@ namespace sqlite_orm {
                 if(ifExists) {
                     ss << " IF EXISTS";
                 }
-                ss << streaming_identifier(tableName) << std::flush;
+                ss << ' ' << streaming_identifier(tableName) << std::flush;
                 perform_void_exec(db, ss.str());
             }
 
@@ -18571,7 +18571,7 @@ namespace sqlite_orm {
                 if(ifExists) {
                     ss << " IF EXISTS";
                 }
-                ss << quote_identifier(indexName) << std::flush;
+                ss << ' ' << quote_identifier(indexName) << std::flush;
                 perform_void_exec(this->get_connection().get(), ss.str());
             }
 
@@ -18581,7 +18581,7 @@ namespace sqlite_orm {
                 if(ifExists) {
                     ss << " IF EXISTS";
                 }
-                ss << quote_identifier(triggerName) << std::flush;
+                ss << ' ' << quote_identifier(triggerName) << std::flush;
                 perform_void_exec(this->get_connection().get(), ss.str());
             }
 
