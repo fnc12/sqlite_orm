@@ -4,7 +4,7 @@
 #include <memory>  //  std::unique_ptr/shared_ptr, std::make_unique/std::make_shared
 #include <system_error>  //  std::system_error
 #include <string>  //  std::string
-#include <type_traits>  //  std::remove_reference, std::is_base_of, std::decay, std::false_type, std::true_type
+#include <type_traits>  //  std::remove_reference, std::is_base_of, std::remove_cvref, std::decay, std::false_type, std::true_type
 #include <functional>  //   std::identity
 #include <sstream>  //  std::stringstream
 #include <map>  //  std::map
@@ -117,7 +117,7 @@ namespace sqlite_orm {
 
             template<class Table>
             void create_table(sqlite3* db, const std::string& tableName, const Table& table) {
-                using table_type = std::decay_t<decltype(table)>;
+                using table_type = polyfill::remove_cvref_t<decltype(table)>;
                 using context_t = serializer_context<db_objects_type>;
 
                 context_t context{this->db_objects};
@@ -802,7 +802,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "{ ";
                 table.for_each_column([&ss, &object, first = true](auto& column) mutable {
-                    using column_type = std::decay_t<decltype(column)>;
+                    using column_type = polyfill::remove_cvref_t<decltype(column)>;
                     using field_type = typename column_type::field_type;
                     constexpr std::array<const char*, 2> sep = {", ", ""};
 
@@ -852,11 +852,11 @@ namespace sqlite_orm {
             }
 
             template<class O, class... Cols>
-            int insert(const O& o, columns_t<Cols...> cols) {
-                static_assert(cols.count > 0, "Use insert or replace with 1 argument instead");
+            int64 insert(const O& o, columns_t<Cols...> cols) {
+                static_assert(cols.count > 0, "Specify at least one column");
                 this->assert_mapped_type<O>();
                 auto statement = this->prepare(sqlite_orm::insert(std::ref(o), std::move(cols)));
-                return int(this->execute(statement));
+                return this->execute(statement);
             }
 
             /**
@@ -865,11 +865,11 @@ namespace sqlite_orm {
              *  @return id of just created object.
              */
             template<class O>
-            int insert(const O& o) {
+            int64 insert(const O& o) {
                 this->assert_mapped_type<O>();
                 this->assert_insertable_type<O>();
                 auto statement = this->prepare(sqlite_orm::insert(std::ref(o)));
-                return int(this->execute(statement));
+                return this->execute(statement);
             }
 
             /**
@@ -907,9 +907,9 @@ namespace sqlite_orm {
              *  ```
              */
             template<class... Args>
-            void insert(Args... args) {
+            int64 insert(Args... args) {
                 auto statement = this->prepare(sqlite_orm::insert(std::forward<Args>(args)...));
-                this->execute(statement);
+                return this->execute(statement);
             }
 
             /**
@@ -947,28 +947,28 @@ namespace sqlite_orm {
             }
 
             template<class It, class Projection = polyfill::identity>
-            void insert_range(It from, It to, Projection project = {}) {
+            int64 insert_range(It from, It to, Projection project = {}) {
                 using O = std::decay_t<decltype(polyfill::invoke(std::declval<Projection>(), *std::declval<It>()))>;
                 this->assert_mapped_type<O>();
                 this->assert_insertable_type<O>();
                 if(from == to) {
-                    return;
+                    return 0;
                 }
                 auto statement =
                     this->prepare(sqlite_orm::insert_range(std::move(from), std::move(to), std::move(project)));
-                this->execute(statement);
+                return this->execute(statement);
             }
 
             template<class O, class It, class Projection = polyfill::identity>
-            void insert_range(It from, It to, Projection project = {}) {
+            int64 insert_range(It from, It to, Projection project = {}) {
                 this->assert_mapped_type<O>();
                 this->assert_insertable_type<O>();
                 if(from == to) {
-                    return;
+                    return 0;
                 }
                 auto statement =
                     this->prepare(sqlite_orm::insert_range<O>(std::move(from), std::move(to), std::move(project)));
-                this->execute(statement);
+                return this->execute(statement);
             }
 
             /**
@@ -1381,18 +1381,20 @@ namespace sqlite_orm {
 
 #if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             template<class... CTEs, class E, satisfies<is_insert_raw, E> = true>
-            void execute(const prepared_statement_t<with_t<E, CTEs...>>& statement) {
+            int64 execute(const prepared_statement_t<with_t<E, CTEs...>>& statement) {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
                 iterate_ast(statement.expression, conditional_binder{stmt});
                 perform_step(stmt);
+                return sqlite3_last_insert_rowid(sqlite3_db_handle(stmt));
             }
 #endif
 
             template<class... Args>
-            void execute(const prepared_statement_t<insert_raw_t<Args...>>& statement) {
+            int64 execute(const prepared_statement_t<insert_raw_t<Args...>>& statement) {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
                 iterate_ast(statement.expression, conditional_binder{stmt});
                 perform_step(stmt);
+                return sqlite3_last_insert_rowid(sqlite3_db_handle(stmt));
             }
 
             template<class T, class... Cols>
@@ -1459,7 +1461,7 @@ namespace sqlite_orm {
 
                 auto processObject = [&table = this->get_table<object_type>(),
                                       bindValue = field_value_binder{stmt}](auto& object) mutable {
-                    using is_without_rowid = typename std::decay_t<decltype(table)>::is_without_rowid;
+                    using is_without_rowid = typename polyfill::remove_cvref_t<decltype(table)>::is_without_rowid;
                     table.template for_each_column_excluding<
                         mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                          mpl::disjunction_fn<is_primary_key, is_generated_always>>>(

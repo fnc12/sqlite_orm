@@ -451,3 +451,46 @@ TEST_CASE("insert with generated column") {
     REQUIRE(allProducts == expectedProducts);
 }
 #endif
+
+TEST_CASE("last insert rowid") {
+    struct Object {
+        int64 id;
+    };
+
+    auto storage = make_storage("", make_table("objects", make_column("id", &Object::id, primary_key())));
+
+    storage.sync_schema();
+
+    SECTION("ordinary insert") {
+        auto id = storage.insert<Object>({0});
+        REQUIRE_NOTHROW(storage.get<Object>(id));
+    }
+    SECTION("explicit insert") {
+        auto id = storage.insert<Object>({2}, columns(&Object::id));
+        REQUIRE(id == 2);
+    }
+    SECTION("raw insert") {
+        auto id = storage.insert(into<Object>(), columns(&Object::id), values(std::make_tuple(2)));
+        REQUIRE(id == 2);
+    }
+    SECTION("empty range") {
+        std::vector<Object> rng;
+        auto id = storage.insert_range(rng.begin(), rng.end());
+        REQUIRE(id == 0);
+    }
+    SECTION("range") {
+        std::vector<Object> rng{{2}};
+        auto id = storage.insert_range(rng.begin(), rng.end());
+        REQUIRE_NOTHROW(storage.get<Object>(id));
+    }
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    constexpr auto data = "data"_cte;
+    SECTION("raw insert with CTE") {
+        auto id = storage.with(cte<data>().as(select(2)),
+                               insert(into<Object>(), columns(&Object::id), select(data->*1_colalias)));
+        REQUIRE(id == 2);
+    }
+#endif
+#endif
+}
