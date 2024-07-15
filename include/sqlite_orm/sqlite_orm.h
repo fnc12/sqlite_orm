@@ -17701,27 +17701,66 @@ namespace sqlite_orm {
                         std::bind(&storage_base::rollback, this)};
             }
 
+            /**
+             *  Drops index with given name. 
+             *  Calls `DROP INDEX indexName`.
+             *  More info: https://www.sqlite.org/lang_dropindex.html
+             */
             void drop_index(const std::string& indexName) {
-                std::stringstream ss;
-                ss << "DROP INDEX " << quote_identifier(indexName) << std::flush;
-                perform_void_exec(this->get_connection().get(), ss.str());
+                this->drop_index_internal(indexName, false);
             }
 
+            /**
+             *  Drops trigger with given name if trigger exists. 
+             *  Calls `DROP INDEX IF EXISTS indexName`.
+             *  More info: https://www.sqlite.org/lang_dropindex.html
+             */
+            void drop_index_if_exists(const std::string& indexName) {
+                this->drop_index_internal(indexName, true);
+            }
+
+            /**
+             *  Drops trigger with given name. 
+             *  Calls `DROP TRIGGER triggerName`.
+             *  More info: https://www.sqlite.org/lang_droptrigger.html
+             */
             void drop_trigger(const std::string& triggerName) {
-                std::stringstream ss;
-                ss << "DROP TRIGGER " << quote_identifier(triggerName) << std::flush;
-                perform_void_exec(this->get_connection().get(), ss.str());
+                this->drop_trigger_internal(triggerName, false);
             }
 
+            /**
+             *  Drops trigger with given name if trigger exists. 
+             *  Calls `DROP TRIGGER IF EXISTS triggerName`.
+             *  More info: https://www.sqlite.org/lang_droptrigger.html
+             */
+            void drop_trigger_if_exists(const std::string& triggerName) {
+                this->drop_trigger_internal(triggerName, true);
+            }
+
+            /**
+             *  `VACUUM` query.
+             *  More info: https://www.sqlite.org/lang_vacuum.html
+             */
             void vacuum() {
                 perform_void_exec(this->get_connection().get(), "VACUUM");
             }
 
             /**
-             *  Drops table with given name.
+             *  Drops table with given name. 
+             *  Calls `DROP TABLE tableName`.
+             *  More info: https://www.sqlite.org/lang_droptable.html
              */
             void drop_table(const std::string& tableName) {
-                this->drop_table_internal(this->get_connection().get(), tableName);
+                this->drop_table_internal(this->get_connection().get(), tableName, false);
+            }
+
+            /**
+             *  Drops table with given name if table exists. 
+             *  Calls `DROP TABLE IF EXISTS tableName`.
+             *  More info: https://www.sqlite.org/lang_droptable.html
+             */
+            void drop_table_if_exists(const std::string& tableName) {
+                this->drop_table_internal(this->get_connection().get(), tableName, true);
             }
 
             /**
@@ -18516,15 +18555,40 @@ namespace sqlite_orm {
                 return result;
             }
 
-            void drop_table_internal(sqlite3* db, const std::string& tableName) {
+            void drop_table_internal(sqlite3* db, const std::string& tableName, bool ifExists) {
                 std::stringstream ss;
-                ss << "DROP TABLE " << streaming_identifier(tableName) << std::flush;
+                ss << "DROP TABLE";
+                if(ifExists) {
+                    ss << " IF EXISTS";
+                }
+                ss << ' ' << streaming_identifier(tableName) << std::flush;
                 perform_void_exec(db, ss.str());
             }
 
-            static int collate_callback(void* arg, int leftLen, const void* lhs, int rightLen, const void* rhs) {
-                auto& f = *(collating_function*)arg;
-                return f(leftLen, lhs, rightLen, rhs);
+            void drop_index_internal(const std::string& indexName, bool ifExists) {
+                std::stringstream ss;
+                ss << "DROP INDEX";
+                if(ifExists) {
+                    ss << " IF EXISTS";
+                }
+                ss << ' ' << quote_identifier(indexName) << std::flush;
+                perform_void_exec(this->get_connection().get(), ss.str());
+            }
+
+            void drop_trigger_internal(const std::string& triggerName, bool ifExists) {
+                std::stringstream ss;
+                ss << "DROP TRIGGER";
+                if(ifExists) {
+                    ss << " IF EXISTS";
+                }
+                ss << ' ' << quote_identifier(triggerName) << std::flush;
+                perform_void_exec(this->get_connection().get(), ss.str());
+            }
+
+            static int
+            collate_callback(void* argument, int leftLength, const void* lhs, int rightLength, const void* rhs) {
+                auto& function = *(collating_function*)argument;
+                return function(leftLength, lhs, rightLength, rhs);
             }
 
             static int busy_handler_callback(void* selfPointer, int triesCount) {
@@ -22059,7 +22123,7 @@ namespace sqlite_orm {
             template<class Table>
             void drop_create_with_loss(sqlite3* db, const Table& table) {
                 // eliminated all transaction handling
-                this->drop_table_internal(db, table.name);
+                this->drop_table_internal(db, table.name, false);
                 this->create_table(db, table.name, table);
             }
 
@@ -22086,7 +22150,7 @@ namespace sqlite_orm {
 
                 this->copy_table(db, table.name, backupTableName, table, columnsToIgnore);
 
-                this->drop_table_internal(db, table.name);
+                this->drop_table_internal(db, table.name, false);
 
                 this->rename_table(db, backupTableName, table.name);
             }
