@@ -58,6 +58,12 @@
 #include "util.h"
 #include "serializing_util.h"
 
+#ifdef SQLITE_ORM_INSERT_RETURN_TYPE_INT64
+#define SQLITE_ORM_INSERT_RETURN_TYPE int64
+#else
+#define SQLITE_ORM_INSERT_RETURN_TYPE int
+#endif
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -852,11 +858,11 @@ namespace sqlite_orm {
             }
 
             template<class O, class... Cols>
-            int insert(const O& o, columns_t<Cols...> cols) {
+            SQLITE_ORM_INSERT_RETURN_TYPE insert(const O& o, columns_t<Cols...> cols) {
                 static_assert(cols.count > 0, "Use insert or replace with 1 argument instead");
                 this->assert_mapped_type<O>();
                 auto statement = this->prepare(sqlite_orm::insert(std::ref(o), std::move(cols)));
-                return int(this->execute(statement));
+                return SQLITE_ORM_INSERT_RETURN_TYPE(this->execute(statement));
             }
 
             /**
@@ -865,11 +871,11 @@ namespace sqlite_orm {
              *  @return id of just created object.
              */
             template<class O>
-            int insert(const O& o) {
+            SQLITE_ORM_INSERT_RETURN_TYPE insert(const O& o) {
                 this->assert_mapped_type<O>();
                 this->assert_insertable_type<O>();
                 auto statement = this->prepare(sqlite_orm::insert(std::ref(o)));
-                return int(this->execute(statement));
+                return SQLITE_ORM_INSERT_RETURN_TYPE(this->execute(statement));
             }
 
             /**
