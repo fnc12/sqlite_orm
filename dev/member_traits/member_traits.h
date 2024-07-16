@@ -5,7 +5,7 @@
 #include "../functional/cxx_universal.h"
 #include "../functional/cxx_type_traits_polyfill.h"
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     namespace internal {
         // SFINAE friendly trait to get a member object pointer's field type
         template<class T>

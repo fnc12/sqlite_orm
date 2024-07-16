@@ -7,7 +7,7 @@
 #include "../schema/column.h"
 #include "../schema/table.h"
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
     struct dbstat {
         std::string name;

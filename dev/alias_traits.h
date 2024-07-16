@@ -10,7 +10,7 @@
 #include "type_traits.h"
 #include "table_reference.h"
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 
     /** @short Base class for a custom table alias, column alias or expression alias.
      */

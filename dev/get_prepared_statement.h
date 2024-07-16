@@ -12,7 +12,7 @@
 #include "node_tuple.h"
 #include "expression_object_type.h"
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 
     template<int N, class It, class L, class O>
     auto& get(internal::prepared_statement_t<internal::insert_range_t<It, L, O>>& statement) {

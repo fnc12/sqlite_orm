@@ -9,7 +9,7 @@
 #include "../tuple_helper/tuple_traits.h"
 #include "../table_name_collector.h"
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 
     namespace internal {
 

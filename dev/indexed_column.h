@@ -6,7 +6,7 @@
 #include "functional/cxx_universal.h"
 #include "ast/where.h"
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 
     namespace internal {
 

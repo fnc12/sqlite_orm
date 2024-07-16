@@ -10,7 +10,7 @@
 #include "functional/cxx_core_features.h"
 #include "functional/cxx_type_traits_polyfill.h"
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     // C++ generic traits used throughout the library
     namespace internal {
         template<class T, class... Types>

@@ -26,7 +26,7 @@
 #include "xdestroy_handling.h"
 #include "pointer_value.h"
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 
     /**
      *  Helper class used for binding fields to sqlite3 statements.

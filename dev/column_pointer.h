@@ -10,7 +10,7 @@
 #include "alias_traits.h"
 #include "tags.h"
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     namespace internal {
         /**
          *  This class is used to store explicit mapped type T and its column descriptor (member pointer/getter/setter).

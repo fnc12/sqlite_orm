@@ -25,7 +25,7 @@
 #include "type_printer.h"
 #include "literal.h"
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 
     namespace internal {
 
@@ -844,7 +844,7 @@ namespace sqlite_orm {
 
     // Intentionally place operators for types classified as arithmetic or general operator arguments in the internal namespace
     // to facilitate ADL (Argument Dependent Lookup)
-    namespace internal {
+    _EXPORT_SQLITE_ORM namespace internal {
         template<
             class T,
             std::enable_if_t<polyfill::disjunction<std::is_base_of<negatable_t, T>, is_operator_argument<T>>::value,

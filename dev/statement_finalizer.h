@@ -4,7 +4,7 @@
 #include <memory>  // std::unique_ptr
 #include <type_traits>  // std::integral_constant
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 
     /**
      *  Guard class which finalizes `sqlite3_stmt` in dtor

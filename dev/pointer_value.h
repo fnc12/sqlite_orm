@@ -13,7 +13,7 @@
 #include "xdestroy_handling.h"
 
 #if SQLITE_VERSION_NUMBER >= 3020000
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     namespace internal {
         template<char... C>
@@ -184,7 +184,7 @@ namespace sqlite_orm {
 #endif
 }
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     /**
      *  Wrap a pointer, its type and its deleter function for binding it to a statement.
      *  

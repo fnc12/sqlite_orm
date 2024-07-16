@@ -8,14 +8,14 @@
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 
     using xdestroy_fn_t = void (*)(void*);
     using null_xdestroy_t = std::integral_constant<xdestroy_fn_t, nullptr>;
     SQLITE_ORM_INLINE_VAR constexpr null_xdestroy_t null_xdestroy_f{};
 }
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     namespace internal {
 #ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
         /**
@@ -173,7 +173,7 @@ namespace sqlite_orm {
     }
 }
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     /**

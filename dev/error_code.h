@@ -7,7 +7,7 @@
 #include <sstream>  //  std::ostringstream
 #include <type_traits>
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 
     /** @short Enables classifying sqlite error codes.
 
@@ -50,7 +50,7 @@ namespace std {
     struct is_error_code_enum<::sqlite_orm::orm_error_code> : true_type {};
 }
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 
     class orm_error_category : public std::error_category {
       public:

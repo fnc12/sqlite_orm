@@ -22,7 +22,7 @@
 #include "alias_traits.h"
 #include "cte_moniker.h"
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 
     namespace internal {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED

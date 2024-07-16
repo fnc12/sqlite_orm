@@ -15,7 +15,7 @@
 #include "is_std_ptr.h"
 #include "type_traits.h"
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 
     /**
      *  Is used to print members mapped to objects in storage_t::dump member function.

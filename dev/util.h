@@ -6,7 +6,7 @@
 
 #include "error_code.h"
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 
     /** 
      *  Escape the provided character in the given string by doubling it.

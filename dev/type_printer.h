@@ -9,7 +9,7 @@
 #include "type_traits.h"
 #include "is_std_ptr.h"
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 
     /**
      *  This class transforms a C++ type to a sqlite type name (int -> INTEGER, ...)

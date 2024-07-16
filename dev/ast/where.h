@@ -7,7 +7,7 @@
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../serialize_result_type.h"
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     namespace internal {
 
         struct where_string {

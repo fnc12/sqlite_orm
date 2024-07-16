@@ -13,7 +13,7 @@
 #undef DELETE
 #endif
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 
     /**
      *  Caps case because of:

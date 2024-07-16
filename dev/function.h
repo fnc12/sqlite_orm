@@ -15,7 +15,7 @@
 #include "type_traits.h"
 #include "tags.h"
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 
     struct arg_values;
 

@@ -31,7 +31,7 @@
 #include "udf_proxy.h"
 #include "serializing_util.h"
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 
     namespace internal {
 

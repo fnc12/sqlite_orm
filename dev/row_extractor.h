@@ -30,7 +30,7 @@
 #include "is_std_ptr.h"
 #include "type_traits.h"
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 
     /**
      *  Helper for casting values originating from SQL to C++ typed values, usually from rows of a result set.

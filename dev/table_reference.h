@@ -7,7 +7,7 @@
 
 #include "functional/cxx_type_traits_polyfill.h"
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     namespace internal {
         /*
          *  Identity wrapper around a mapped object, facilitating uniform column pointer expressions.

@@ -2,6 +2,12 @@
 
 #include "cxx_universal.h"
 
+#ifdef _BUILD_SQLITE_ORM_MODULE
+#define _EXPORT_SQLITE_ORM export
+#else
+#define _EXPORT_SQLITE_ORM
+#endif
+
 #if SQLITE_ORM_HAS_INCLUDE(<version>)
 #include <version>
 #endif

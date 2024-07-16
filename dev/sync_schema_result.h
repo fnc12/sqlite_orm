@@ -2,7 +2,7 @@
 
 #include <ostream>
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 
     enum class sync_schema_result {
 

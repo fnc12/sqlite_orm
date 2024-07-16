@@ -7,7 +7,7 @@
 #include "column_pointer.h"
 #include "alias.h"
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     /** 
      *  SQLite's "schema table" that stores the schema for a database.
      *  

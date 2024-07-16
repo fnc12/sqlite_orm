@@ -24,7 +24,7 @@
 #include "../table_info.h"
 #include "column.h"
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 
     namespace internal {
 

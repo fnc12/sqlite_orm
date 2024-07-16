@@ -1,6 +1,6 @@
 #pragma once
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     namespace internal {
         struct rank_t {};
     }
