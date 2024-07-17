@@ -150,7 +150,7 @@ namespace sqlite_orm {
             template<class Table>
             void drop_create_with_loss(sqlite3* db, const Table& table) {
                 // eliminated all transaction handling
-                this->drop_table_internal(db, table.name);
+                this->drop_table_internal(db, table.name, false);
                 this->create_table(db, table.name, table);
             }
 
@@ -177,7 +177,7 @@ namespace sqlite_orm {
 
                 this->copy_table(db, table.name, backupTableName, table, columnsToIgnore);
 
-                this->drop_table_internal(db, table.name);
+                this->drop_table_internal(db, table.name, false);
 
                 this->rename_table(db, backupTableName, table.name);
             }

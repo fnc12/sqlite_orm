@@ -91,6 +91,45 @@ TEST_CASE("drop table") {
     storage.drop_table(visitsTableName);
     REQUIRE_FALSE(storage.table_exists(usersTableName));
     REQUIRE_FALSE(storage.table_exists(visitsTableName));
+
+    REQUIRE_THROWS(storage.drop_table(usersTableName));
+    REQUIRE_THROWS(storage.drop_table(visitsTableName));
+
+    REQUIRE_NOTHROW(storage.drop_table_if_exists(usersTableName));
+    REQUIRE_NOTHROW(storage.drop_table_if_exists(visitsTableName));
+}
+
+TEST_CASE("drop index") {
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    const std::string indexName = "user_id_index";
+    auto storage = make_storage(
+        {},
+        make_index("user_id_index", &User::id),
+        make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)));
+    storage.sync_schema();
+
+    REQUIRE_NOTHROW(storage.drop_index(indexName));
+    REQUIRE_THROWS(storage.drop_index(indexName));
+    REQUIRE_NOTHROW(storage.drop_index_if_exists(indexName));
+}
+
+TEST_CASE("drop trigger") {
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    const std::string triggerName = "table_insert_InsertTest";
+    auto storage = make_storage(
+        {},
+        make_trigger(triggerName, after().insert().on<User>().begin(update_all(set(c(&User::id) = 5))).end()),
+        make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)));
+    storage.sync_schema();
+    REQUIRE_NOTHROW(storage.drop_trigger(triggerName));
+    REQUIRE_THROWS(storage.drop_trigger(triggerName));
+    REQUIRE_NOTHROW(storage.drop_trigger_if_exists(triggerName));
 }
 
 TEST_CASE("rename table") {
