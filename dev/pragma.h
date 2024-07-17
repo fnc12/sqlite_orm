@@ -6,6 +6,7 @@
 #include <memory>  // std::shared_ptr
 #include <vector>  //  std::vector
 #include <sstream>
+#include <iomanip>  //  std::flush
 
 #include "error_code.h"
 #include "row_extractor.h"

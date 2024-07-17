@@ -66,5 +66,4 @@ namespace sqlite_orm {
     internal::indexed_column_t<C> indexed_column(C column_or_expression) {
         return {std::move(column_or_expression)};
     }
-
 }

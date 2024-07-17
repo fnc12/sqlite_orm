@@ -11,6 +11,8 @@
 #include "type_traits.h"
 #include "select_constraints.h"
 #include "cte_types.h"
+#include "schema/column.h"
+#include "schema/table.h"
 #include "storage_lookup.h"
 
 // interface functions

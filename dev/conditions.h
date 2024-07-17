@@ -6,6 +6,7 @@
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::move, std::forward
 #include <sstream>  //  std::stringstream
+#include <iomanip>  //  std::flush
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"

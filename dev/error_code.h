@@ -39,7 +39,6 @@ namespace sqlite_orm {
         value_is_null,
         no_tables_specified,
     };
-
 }
 
 namespace std {

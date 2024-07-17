@@ -3,7 +3,7 @@
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <concepts>
 #endif
-#include <type_traits>  //  std::remove_const
+#include <type_traits>  //  std::remove_cvref, std::is_convertible, std::is_same, std::is_member_pointer
 #include <string>  //  std::string
 #include <utility>  //  std::move
 #include <tuple>  //  std::tuple, std::get, std::tuple_size
@@ -21,6 +21,7 @@
 #include "core_functions.h"
 #include "alias_traits.h"
 #include "cte_moniker.h"
+#include "schema/column.h"
 
 namespace sqlite_orm {
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <type_traits>  //  std::integral_constant, std::index_sequence, std::conditional, std::declval
-#include <tuple>  //  std::tuple
+#include <tuple>  //  std::tuple, std::tuple_cat, std::tuple_element
 
 #include "../functional/cxx_universal.h"  //  ::size_t
 #include "../functional/mpl/conditional.h"

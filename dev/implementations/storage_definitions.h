@@ -3,11 +3,14 @@
  *  e.g. usage of the dbstat table.
  */
 #pragma once
+
 #include <type_traits>  //  std::is_same
-#include <sstream>
+#include <sstream>  //  std::stringstream
+#include <iomanip>  //  std::flush
 #include <functional>  //  std::reference_wrapper, std::cref
 #include <algorithm>  //  std::find_if, std::ranges::find
 
+#include "../type_traits.h"
 #include "../sqlite_schema_table.h"
 #include "../eponymous_vtabs/dbstat.h"
 #include "../type_traits.h"

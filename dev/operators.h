@@ -272,5 +272,4 @@ namespace sqlite_orm {
     internal::assign_t<L, R> assign(L l, R r) {
         return {std::move(l), std::move(r)};
     }
-
 }

@@ -22,6 +22,7 @@
 #include "../alias_traits.h"
 #include "../constraints.h"
 #include "../table_info.h"
+#include "index.h"
 #include "column.h"
 
 namespace sqlite_orm {
