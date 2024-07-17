@@ -2698,7 +2698,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
                  polyfill::conjunction_v<internal::is_table_alias<A>, internal::is_cte_moniker<internal::type_t<A>>>,
                  bool> = true>
     constexpr auto alias_column(C c) {
-        using namespace internal;
+        using namespace ::sqlite_orm::internal;
         using cte_moniker_t = type_t<A>;
 
         if constexpr(is_column_pointer_v<C>) {
