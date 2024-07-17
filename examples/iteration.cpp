@@ -3,9 +3,7 @@
 #include <vector>
 #include <iostream>
 #include <algorithm>
-//#include <sqlite_orm/sqlite_orm.h>
-//import std;
-import sqlite_orm;
+#include <sqlite_orm/sqlite_orm.h>
 
 using std::cout;
 using std::endl;
