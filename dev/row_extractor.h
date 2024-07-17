@@ -2,7 +2,8 @@
 
 #include <sqlite3.h>
 #include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::enable_if
-#include <stdlib.h>  //  atof, atoi, atoll
+#include <cstdlib>  //  std::atof, std::atoi, std::atoll
+#include <cstring>  //  std::strlen
 #include <system_error>  //  std::system_error
 #include <string>  //  std::string, std::wstring
 #ifndef SQLITE_ORM_OMITS_CODECVT
@@ -10,7 +11,6 @@
 #include <codecvt>  //  std::codecvt_utf8_utf16
 #endif
 #include <vector>  //  std::vector
-#include <cstring>  //  strlen
 #include <algorithm>  //  std::copy
 #include <iterator>  //  std::back_inserter
 #include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
@@ -18,7 +18,7 @@
 #include <concepts>
 #endif
 
-#include "functional/cxx_universal.h"
+#include "functional/cxx_universal.h"  // ::nullptr_t, ::size_t
 #include "functional/cxx_functional_polyfill.h"
 #include "functional/static_magic.h"
 #include "tuple_helper/tuple_transformer.h"
@@ -175,7 +175,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         using tag = arithmetic_tag_t<V>;
 
         V extract(const char* columnText, const int_or_smaller_tag&) const {
-            return static_cast<V>(atoi(columnText));
+            return static_cast<V>(std::atoi(columnText));
         }
 
         V extract(sqlite3_stmt* stmt, int columnIndex, const int_or_smaller_tag&) const {
@@ -187,7 +187,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         }
 
         V extract(const char* columnText, const bigint_tag&) const {
-            return static_cast<V>(atoll(columnText));
+            return static_cast<V>(std::atoll(columnText));
         }
 
         V extract(sqlite3_stmt* stmt, int columnIndex, const bigint_tag&) const {
@@ -199,7 +199,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         }
 
         V extract(const char* columnText, const real_tag&) const {
-            return static_cast<V>(atof(columnText));
+            return static_cast<V>(std::atof(columnText));
         }
 
         V extract(sqlite3_stmt* stmt, int columnIndex, const real_tag&) const {
@@ -389,7 +389,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     template<>
     struct row_extractor<std::vector<char>, void> {
         std::vector<char> extract(const char* columnText) const {
-            return {columnText, columnText + (columnText ? ::strlen(columnText) : 0)};
+            return {columnText, columnText + (columnText ? std::strlen(columnText) : 0)};
         }
 
         std::vector<char> extract(sqlite3_stmt* stmt, int columnIndex) const {

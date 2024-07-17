@@ -37,9 +37,9 @@ int main(int, char**) {
     storage.insert(MarvelHero{-1, "Natasha Romanoff", "Black widow"});
     storage.insert(MarvelHero{-1, "Groot", "I am Groot!"});
 
-    cout << "Heros count = " << storage.count<MarvelHero>() << endl;
+    cout << "Heroes count = " << storage.count<MarvelHero>() << endl;
 
-    //  iterate through heros - iteration takes less memory than `get_all` because
+    //  iterate through heroes - iteration takes less memory than `get_all` because
     //  iteration fetches row by row once it is needed. If you break at any iteration
     //  statement will be cleared without fetching remaining rows.
     for(auto& hero: storage.iterate<MarvelHero>()) {
@@ -53,7 +53,7 @@ int main(int, char**) {
         cout << "hero = " << storage.dump(hero) << endl;
     }
 
-    cout << "Heros with LENGTH(name) < 6 :" << endl;
+    cout << "Heroes with LENGTH(name) < 6 :" << endl;
     for(auto& hero: storage.iterate<MarvelHero>(where(length(&MarvelHero::name) < 6))) {
         cout << "hero = " << storage.dump(hero) << endl;
     }

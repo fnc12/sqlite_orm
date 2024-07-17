@@ -3,7 +3,7 @@
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <concepts>
 #endif
-#include <type_traits>  //  std::remove_const
+#include <type_traits>  //  std::remove_cvref, std::is_convertible, std::is_same, std::is_member_pointer
 #include <string>  //  std::string
 #include <utility>  //  std::move
 #include <tuple>  //  std::tuple, std::get, std::tuple_size
@@ -21,6 +21,7 @@
 #include "core_functions.h"
 #include "alias_traits.h"
 #include "cte_moniker.h"
+#include "schema/column.h"
 
 _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
@@ -703,8 +704,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  @note The use of RECURSIVE does not force common table expressions to be recursive.
      */
     template<class Compound, class... CTEs, internal::satisfies<internal::is_compound_operator, Compound> = true>
-    internal::with_t<internal::select_t<Compound>, CTEs...>
-    with_recursive(internal::common_table_expressions<CTEs...> ctes, Compound sel) {
+    internal::with_t<internal::select_t<Compound>, CTEs...> with_recursive(
+        internal::common_table_expressions<CTEs...> ctes,
+        Compound sel) {
         return {true, std::move(ctes), sqlite_orm::select(std::move(sel))};
     }
 

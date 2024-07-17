@@ -40,5 +40,4 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     internal::dynamic_values_t<T> values(std::vector<T> vector) {
         return {{std::move(vector)}};
     }
-
 }

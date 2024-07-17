@@ -5,7 +5,7 @@
 #include <memory>  //  std::default_delete
 #include <string>  //  std::string, std::wstring
 #include <vector>  //  std::vector
-#include <cstring>  //  ::strncpy, ::strlen
+#include <cstring>  //  std::strncpy, std::strlen
 #include "functional/cxx_string_view.h"
 #ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <cwchar>  //  ::wcsncpy, ::wcslen
@@ -140,7 +140,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
             auto stringData = this->string_data(value);
             auto dataCopy = new char[stringData.second + 1];
             constexpr auto deleter = std::default_delete<char[]>{};
-            ::strncpy(dataCopy, stringData.first, stringData.second + 1);
+            std::strncpy(dataCopy, stringData.first, stringData.second + 1);
             sqlite3_result_text(context, dataCopy, stringData.second, obtain_xdestroy_for(deleter, dataCopy));
         }
 
@@ -155,7 +155,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         }
 
         std::pair<const char*, int> string_data(const char* s) const {
-            return {s, int(::strlen(s))};
+            return {s, int(std::strlen(s))};
         }
 #endif
     };

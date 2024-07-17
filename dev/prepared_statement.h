@@ -739,7 +739,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     template<orm_refers_to_table auto mapped,
              class R = std::vector<internal::mapped_type_proxy_t<decltype(mapped)>>,
              class... Args>
-    auto get_all(Args&&... conditions) {
+    auto get_all(Args && ... conditions) {
         return get_all<internal::auto_decay_table_ref_t<mapped>, R>(std::forward<Args>(conditions)...);
     }
 #endif
@@ -809,7 +809,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     template<orm_table_reference auto table,
              class R = std::vector<internal::auto_decay_table_ref_t<table>>,
              class... Args>
-    auto get_all_optional(Args&&... conditions) {
+    auto get_all_optional(Args && ... conditions) {
         return get_all_optional<internal::auto_decay_table_ref_t<table>, R>(std::forward<Args>(conditions)...);
     }
 #endif

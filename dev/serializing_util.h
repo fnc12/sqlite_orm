@@ -5,7 +5,7 @@
 #include <array>
 #include <string>
 #include <ostream>
-#include <utility>  //  std::exchange, std::tuple_size
+#include <utility>  //  std::exchange, std::tuple_size, std::make_index_sequence
 
 #include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/cxx_type_traits_polyfill.h"

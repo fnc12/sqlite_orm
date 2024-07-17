@@ -41,12 +41,12 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  the deleter when the statement finishes.
      */
     template<class P, class D>
-    carray_pointer_binding<P, D> bind_carray_pointer(P* p, D d) noexcept {
+    carray_pointer_binding<P, D> bind_carray_pointer(P * p, D d) noexcept {
         return bind_pointer<carray_pointer_tag>(p, std::move(d));
     }
 
     template<class P>
-    static_carray_pointer_binding<P> bind_carray_pointer_statically(P* p) noexcept {
+    static_carray_pointer_binding<P> bind_carray_pointer_statically(P * p) noexcept {
         return bind_pointer_statically<carray_pointer_tag>(p);
     }
 
@@ -58,14 +58,14 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      */
     template<class P, class D>
     [[deprecated("Use the better named function `bind_carray_pointer(...)`")]] carray_pointer_binding<P, D>
-    bindable_carray_pointer(P* p, D d) noexcept {
+    bindable_carray_pointer(P * p, D d) noexcept {
         return bind_pointer<carray_pointer_tag>(p, std::move(d));
     }
 
     template<class P>
     [[deprecated(
         "Use the better named function `bind_carray_pointer_statically(...)` ")]] static_carray_pointer_binding<P>
-    statically_bindable_carray_pointer(P* p) noexcept {
+    statically_bindable_carray_pointer(P * p) noexcept {
         return bind_pointer_statically<carray_pointer_tag>(p);
     }
 #else
@@ -89,7 +89,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  the deleter when the statement finishes.
      */
     template<class P, class D>
-    carray_pointer_binding<P, D> bind_carray_pointer(P* p, D d) noexcept {
+    carray_pointer_binding<P, D> bind_carray_pointer(P * p, D d) noexcept {
         return bind_pointer<carray_pointer_type>(p, std::move(d));
     }
 
@@ -100,20 +100,20 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  and sqlite assumes the object pointed to is valid throughout the lifetime of a statement.
      */
     template<class P>
-    static_carray_pointer_binding<P> bind_carray_pointer_statically(P* p) noexcept {
+    static_carray_pointer_binding<P> bind_carray_pointer_statically(P * p) noexcept {
         return bind_pointer_statically<carray_pointer_type>(p);
     }
 
     template<class P, class D>
     [[deprecated("Use the better named function `bind_carray_pointer(...)`")]] carray_pointer_binding<P, D>
-    bindable_carray_pointer(P* p, D d) noexcept {
+    bindable_carray_pointer(P * p, D d) noexcept {
         return bind_carray_pointer(p, std::move(d));
     }
 
     template<class P>
     [[deprecated(
         "Use the better named function `bind_carray_pointer_statically(...)` ")]] static_carray_pointer_binding<P>
-    statically_bindable_carray_pointer(P* p) noexcept {
+    statically_bindable_carray_pointer(P * p) noexcept {
         return bind_carray_pointer_statically(p);
     }
 #endif
