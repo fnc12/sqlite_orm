@@ -1,8 +1,10 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #if SQLITE_VERSION_NUMBER >= 3024000
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::forward, std::move
+#endif
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"

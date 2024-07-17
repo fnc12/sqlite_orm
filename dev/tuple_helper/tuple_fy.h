@@ -1,6 +1,8 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <tuple>
+#endif
 
 namespace sqlite_orm {
 

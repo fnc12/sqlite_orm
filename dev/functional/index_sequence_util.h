@@ -1,6 +1,8 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <utility>  //  std::index_sequence
+#endif
 
 #include "../functional/cxx_universal.h"  //  ::size_t
 

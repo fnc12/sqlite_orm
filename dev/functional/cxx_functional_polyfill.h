@@ -1,10 +1,14 @@
 #pragma once
 
+#ifdef _IMPORT_STD_MODULE
+#include <version>
+#else
 #include <functional>
 #if __cpp_lib_invoke < 201411L
 #include <type_traits>  //  std::enable_if, std::is_member_object_pointer, std::is_member_function_pointer
 #endif
 #include <utility>  //  std::forward
+#endif
 
 #include "cxx_type_traits_polyfill.h"
 #include "../member_traits/member_traits.h"

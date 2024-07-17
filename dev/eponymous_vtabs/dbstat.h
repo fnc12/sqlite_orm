@@ -1,7 +1,9 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
 #include <string>  //  std::string
+#endif
 #endif
 
 #include "../schema/column.h"

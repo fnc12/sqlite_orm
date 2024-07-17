@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sqlite3.h>
+#ifndef _IMPORT_STD_MODULE
 #include <memory>  //  std::unique_ptr/shared_ptr, std::make_unique/std::make_shared
 #include <system_error>  //  std::system_error
 #include <string>  //  std::string
@@ -13,6 +14,7 @@
 #include <tuple>  //  std::tuple_size, std::tuple, std::make_tuple, std::tie
 #include <utility>  //  std::forward, std::pair
 #include <algorithm>  //  std::for_each, std::ranges::for_each
+#endif
 #include "functional/cxx_optional.h"
 
 #include "functional/cxx_universal.h"

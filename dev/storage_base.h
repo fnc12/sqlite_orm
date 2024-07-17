@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sqlite3.h>
+#ifndef _IMPORT_STD_MODULE
 #include <memory>  //  std::allocator
 #include <functional>  //  std::function, std::bind, std::bind_front
 #include <string>  //  std::string
@@ -14,6 +15,7 @@
 #include <map>  //  std::map
 #include <type_traits>  //  std::is_same
 #include <algorithm>  //  std::find_if, std::ranges::find
+#endif
 
 #include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/cxx_tuple_polyfill.h"  //  std::apply

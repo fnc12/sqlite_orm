@@ -1,8 +1,10 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::forward
+#endif
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"

@@ -1,8 +1,10 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <type_traits>  //  std::true_type, std::false_type, std::remove_const, std::enable_if, std::is_base_of, std::is_void
 #include <tuple>
 #include <utility>  //  std::index_sequence, std::make_index_sequence
+#endif
 
 #include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/cxx_type_traits_polyfill.h"

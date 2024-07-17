@@ -1,7 +1,9 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_same, std::remove_reference, std::remove_cvref
 #include <tuple>  //  std::get
+#endif
 
 #include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/cxx_type_traits_polyfill.h"

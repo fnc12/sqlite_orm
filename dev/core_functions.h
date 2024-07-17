@@ -1,10 +1,12 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <tuple>  //  std::make_tuple, std::tuple_size
 #include <type_traits>  //  std::forward, std::is_base_of, std::enable_if
 #include <memory>  //  std::unique_ptr
 #include <vector>  //  std::vector
+#endif
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/mpl/conditional.h"

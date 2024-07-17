@@ -1,7 +1,9 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <type_traits>  //  std::false_type, std::true_type, std::enable_if
 #include <memory>  //  std::shared_ptr, std::unique_ptr
+#endif
 #include "functional/cxx_optional.h"
 
 #include "functional/cxx_type_traits_polyfill.h"

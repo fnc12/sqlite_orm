@@ -1,7 +1,9 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <type_traits>
 #include <memory>
+#endif
 
 _EXPORT_SQLITE_ORM namespace sqlite_orm {
 

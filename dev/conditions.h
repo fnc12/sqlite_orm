@@ -1,5 +1,6 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <type_traits>  //  std::enable_if, std::is_same, std::remove_const
 #include <vector>  //  std::vector
@@ -7,6 +8,7 @@
 #include <utility>  //  std::move, std::forward
 #include <sstream>  //  std::stringstream
 #include <iomanip>  //  std::flush
+#endif
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"

@@ -1,7 +1,9 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <type_traits>  //  std::decay, std::remove_reference
 #include <functional>  //  std::reference_wrapper
+#endif
 
 #include "type_traits.h"
 #include "prepared_statement.h"

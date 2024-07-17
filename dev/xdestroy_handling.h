@@ -1,8 +1,10 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <type_traits>  // std::integral_constant
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #include <concepts>
+#endif
 #endif
 
 #include "functional/cxx_universal.h"
@@ -15,7 +17,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     SQLITE_ORM_INLINE_VAR constexpr null_xdestroy_t null_xdestroy_f{};
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+namespace sqlite_orm {
     namespace internal {
 #ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
         /**

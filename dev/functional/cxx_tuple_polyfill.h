@@ -1,8 +1,12 @@
 #pragma once
 
+#ifdef _IMPORT_STD_MODULE
+#include <version>
+#else
 #include <tuple>  //  std::apply; std::tuple_size
 #if __cpp_lib_apply < 201603L
 #include <utility>  //  std::forward, std::index_sequence, std::make_index_sequence
+#endif
 #endif
 
 #include "../functional/cxx_universal.h"  //  ::size_t

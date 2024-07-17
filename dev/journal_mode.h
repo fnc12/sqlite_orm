@@ -1,11 +1,13 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <iterator>  //  std::back_inserter
 #include <string>  //  std::string
 #include <memory>  //  std::unique_ptr
 #include <array>  //  std::array
 #include <algorithm>  //  std::transform
 #include <cctype>  // std::toupper
+#endif
 
 #if defined(_WINNT_)
 // DELETE is a macro defined in the Windows SDK (winnt.h)

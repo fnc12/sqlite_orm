@@ -1,6 +1,8 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <type_traits>  // std::is_integral
+#endif
 
 #include "functional/mpl/conditional.h"
 

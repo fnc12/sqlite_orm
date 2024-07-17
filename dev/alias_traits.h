@@ -1,8 +1,10 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_base_of, std::is_same
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <concepts>
+#endif
 #endif
 
 #include "functional/cxx_universal.h"

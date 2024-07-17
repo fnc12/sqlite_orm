@@ -1,5 +1,6 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <concepts>
 #endif
@@ -7,6 +8,7 @@
 #include <string>  //  std::string
 #include <utility>  //  std::move
 #include <tuple>  //  std::tuple, std::get, std::tuple_size
+#endif
 #include "functional/cxx_optional.h"
 
 #include "functional/cxx_universal.h"  //  ::size_t

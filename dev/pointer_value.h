@@ -1,11 +1,13 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #if SQLITE_VERSION_NUMBER >= 3020000
 #include <type_traits>
 #include <memory>
 #include <utility>
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <concepts>
+#endif
 #endif
 #endif
 

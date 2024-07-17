@@ -1,5 +1,6 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
 #include <vector>  //  std::vector
@@ -9,8 +10,9 @@
 #include <codecvt>  //  std::codecvt_utf8_utf16
 #endif
 #include "functional/cxx_optional.h"
+#endif
 
-#include "functional/cxx_universal.h"  //  ::nullptr_t
+#include "functional/cxx_universal.h"  //  std::nullptr_t
 #include "functional/cxx_type_traits_polyfill.h"
 #include "is_std_ptr.h"
 #include "type_traits.h"
@@ -119,8 +121,8 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     };
 #endif  //  SQLITE_ORM_OMITS_CODECVT
     template<>
-    struct field_printer<nullptr_t, void> {
-        std::string operator()(const nullptr_t&) const {
+    struct field_printer<std::nullptr_t, void> {
+        std::string operator()(const std::nullptr_t&) const {
             return "NULL";
         }
     };
@@ -143,7 +145,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
             if(t) {
                 return field_printer<unqualified_type>()(*t);
             } else {
-                return field_printer<nullptr_t>{}(nullptr);
+                return field_printer<std::nullptr_t>{}(nullptr);
             }
         }
     };

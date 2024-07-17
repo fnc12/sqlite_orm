@@ -1,9 +1,11 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <memory>
 #include <sstream>
 #include <string>
 #include <tuple>
+#endif
 
 #include "../functional/cxx_universal.h"
 #include "../optional_container.h"

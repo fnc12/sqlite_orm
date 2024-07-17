@@ -1,7 +1,9 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <utility>  //  std::move
+#endif
 
 #include "functional/cxx_universal.h"
 #include "ast/where.h"

@@ -1,11 +1,13 @@
 #pragma once
 
 #include <sqlite3.h>
+#ifndef _IMPORT_STD_MODULE
 #include <memory>  //  std::shared_ptr, std::make_shared
 #include <utility>  //  std::move
 #include <iterator>  //  std::input_iterator_tag
 #include <system_error>  //  std::system_error
 #include <functional>  //  std::bind
+#endif
 
 #include "functional/cxx_universal.h"  //  ::ptrdiff_t
 #include "statement_finalizer.h"

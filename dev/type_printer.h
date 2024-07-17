@@ -1,8 +1,10 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <memory>  //  std::shared_ptr, std::unique_ptr
 #include <vector>  //  std::vector
+#endif
 #include "functional/cxx_optional.h"
 
 #include "functional/cxx_type_traits_polyfill.h"

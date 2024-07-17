@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sqlite3.h>
+#ifndef _IMPORT_STD_MODULE
 #include <cassert>  //  assert macro
 #include <type_traits>  //  std::true_type, std::false_type
 #include <new>  //  std::bad_alloc
@@ -8,6 +9,7 @@
 #include <string>  //  std::string
 #include <functional>  //  std::function
 #include <utility>  //  std::move, std::pair
+#endif
 
 #include "error_code.h"
 

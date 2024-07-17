@@ -1,7 +1,9 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <sqlite3.h>
 #include <utility>  //  std::forward, std::move
+#endif
 
 #include "row_extractor.h"
 #include "mapped_iterator.h"

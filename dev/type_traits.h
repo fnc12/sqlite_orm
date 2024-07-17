@@ -1,10 +1,12 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_same, std::is_empty, std::is_aggregate
 #if __cpp_lib_unwrap_ref >= 201811L
 #include <utility>  //  std::reference_wrapper
 #else
 #include <functional>  //  std::reference_wrapper
+#endif
 #endif
 
 #include "functional/cxx_core_features.h"

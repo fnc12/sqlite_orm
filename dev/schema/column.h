@@ -1,10 +1,12 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple
 #include <string>  //  std::string
 #include <memory>  //  std::unique_ptr
 #include <type_traits>  //  std::is_same, std::is_member_object_pointer
 #include <utility>  //  std::move
+#endif
 
 #include "../functional/cxx_universal.h"
 #include "../functional/cxx_type_traits_polyfill.h"

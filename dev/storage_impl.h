@@ -1,6 +1,8 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <string>  //  std::string
+#endif
 
 #include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/static_magic.h"

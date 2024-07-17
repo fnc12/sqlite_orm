@@ -1,5 +1,6 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_member_function_pointer, std::is_function, std::remove_const, std::decay, std::is_convertible, std::is_same, std::false_type, std::true_type
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #include <concepts>  //  std::copy_constructible
@@ -7,8 +8,9 @@
 #include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
 #include <algorithm>  //  std::min, std::copy_n
 #include <utility>  //  std::move, std::forward
+#endif
 
-#include "functional/cxx_universal.h"  //  ::size_t, ::nullptr_t
+#include "functional/cxx_universal.h"  //  ::size_t, std::nullptr_t
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/cstring_literal.h"
 #include "functional/function_traits.h"
@@ -240,10 +242,10 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
         // Always allow binding nullptr to a pointer argument
         template<size_t I, class PointerArg>
-        constexpr bool is_same_pvt_v<I, PointerArg, nullptr_t, polyfill::void_t<typename PointerArg::tag>> = true;
+        constexpr bool is_same_pvt_v<I, PointerArg, std::nullptr_t, polyfill::void_t<typename PointerArg::tag>> = true;
         // Always allow binding nullptr to a pointer argument
         template<size_t I, class P, class T, class D>
-        constexpr bool is_same_pvt_v<I, pointer_arg<P, T>, pointer_binding<nullptr_t, T, D>, void> = true;
+        constexpr bool is_same_pvt_v<I, pointer_arg<P, T>, pointer_binding<std::nullptr_t, T, D>, void> = true;
 
         template<size_t I, class PointerArgDataType, class BindingDataType>
         SQLITE_ORM_CONSTEVAL bool assert_same_pointer_data_type() {

@@ -1,12 +1,14 @@
 #pragma once
 
 #include <sqlite3.h>
+#ifndef _IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <functional>  //  std::function
 #include <memory>  // std::shared_ptr
 #include <vector>  //  std::vector
 #include <sstream>
 #include <iomanip>  //  std::flush
+#endif
 
 #include "error_code.h"
 #include "row_extractor.h"

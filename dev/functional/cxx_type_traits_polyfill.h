@@ -1,5 +1,10 @@
 #pragma once
+
+#ifdef _IMPORT_STD_MODULE
+#include <version>
+#else
 #include <type_traits>
+#endif
 
 #include "cxx_universal.h"
 #include "mpl/conditional.h"

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sqlite3.h>
+#ifndef _IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::true_type, std::false_type, std::make_index_sequence, std::index_sequence
 #include <memory>  //  std::default_delete
 #include <string>  //  std::string, std::wstring
@@ -13,6 +14,7 @@
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <locale>  // std::wstring_convert
 #include <codecvt>  //  std::codecvt_utf8_utf16
+#endif
 #endif
 
 #include "functional/cxx_universal.h"
@@ -201,15 +203,15 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 #endif
 
     /**
-     *  Specialization for nullptr_t.
+     *  Specialization for std::nullptr_t.
      */
     template<>
-    struct statement_binder<nullptr_t, void> {
-        int bind(sqlite3_stmt* stmt, int index, const nullptr_t&) const {
+    struct statement_binder<std::nullptr_t, void> {
+        int bind(sqlite3_stmt* stmt, int index, const std::nullptr_t&) const {
             return sqlite3_bind_null(stmt, index);
         }
 
-        void result(sqlite3_context* context, const nullptr_t&) const {
+        void result(sqlite3_context* context, const std::nullptr_t&) const {
             sqlite3_result_null(context);
         }
     };
@@ -241,7 +243,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
             if(value) {
                 return statement_binder<unqualified_type>().bind(stmt, index, *value);
             } else {
-                return statement_binder<nullptr_t>().bind(stmt, index, nullptr);
+                return statement_binder<std::nullptr_t>().bind(stmt, index, nullptr);
             }
         }
     };

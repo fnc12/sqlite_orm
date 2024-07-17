@@ -1,10 +1,12 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::pair
 #include <functional>  //  std::reference_wrapper
 #include "functional/cxx_optional.h"
+#endif
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "tuple_helper/tuple_filter.h"

@@ -1,6 +1,8 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <string>  //  std::string
+#endif
 
 #include "schema/column.h"
 #include "schema/table.h"

@@ -1,12 +1,14 @@
 #pragma once
 
 #include <sqlite3.h>
+#ifndef _IMPORT_STD_MODULE
 #include <memory>  //  std::unique_ptr
 #include <iterator>  //  std::iterator_traits
 #include <string>  //  std::string
 #include <type_traits>  //  std::integral_constant, std::declval
 #include <utility>  //  std::move, std::forward, std::pair
 #include <tuple>  //  std::tuple
+#endif
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"

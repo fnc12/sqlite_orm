@@ -6,11 +6,13 @@
  *  Hence we make it only available for compilers supporting inline variables.
  */
 
+#ifndef _IMPORT_STD_MODULE
 #if SQLITE_VERSION_NUMBER >= 3020000
 #ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 #include <utility>  //  std::move
 #ifndef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <type_traits>  //  std::integral_constant
+#endif
 #endif
 #endif
 #endif

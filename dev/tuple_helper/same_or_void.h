@@ -1,6 +1,8 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <type_traits>  //  std::common_type
+#endif
 
 namespace sqlite_orm {
     namespace internal {

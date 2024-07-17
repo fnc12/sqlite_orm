@@ -1,11 +1,13 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <tuple>
 #include <type_traits>  //  std::enable_if
 #include <utility>  //  std::move, std::forward, std::declval
+#endif
 #include "functional/cxx_optional.h"
 
-#include "functional/cxx_universal.h"  //  ::nullptr_t
+#include "functional/cxx_universal.h"  //  std::nullptr_t
 #include "functional/cxx_type_traits_polyfill.h"
 #include "tags.h"
 #include "operators.h"
@@ -35,7 +37,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
                 return {this->value, std::move(r)};
             }
 
-            assign_t<T, nullptr_t> operator=(nullptr_t) const {
+            assign_t<T, std::nullptr_t> operator=(std::nullptr_t) const {
                 return {this->value, nullptr};
             }
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED

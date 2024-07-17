@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sqlite3.h>
+#ifndef _IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::enable_if
 #include <cstdlib>  //  std::atof, std::atoi, std::atoll
 #include <cstring>  //  std::strlen
@@ -17,8 +18,9 @@
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #include <concepts>
 #endif
+#endif
 
-#include "functional/cxx_universal.h"  // ::nullptr_t, ::size_t
+#include "functional/cxx_universal.h"  // std::nullptr_t, ::size_t
 #include "functional/cxx_functional_polyfill.h"
 #include "functional/static_magic.h"
 #include "tuple_helper/tuple_transformer.h"
@@ -370,16 +372,16 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<>
-    struct row_extractor<nullptr_t, void> {
-        nullptr_t extract(const char* /*columnText*/) const {
+    struct row_extractor<std::nullptr_t, void> {
+        std::nullptr_t extract(const char* /*columnText*/) const {
             return nullptr;
         }
 
-        nullptr_t extract(sqlite3_stmt*, int /*columnIndex*/) const {
+        std::nullptr_t extract(sqlite3_stmt*, int /*columnIndex*/) const {
             return nullptr;
         }
 
-        nullptr_t extract(sqlite3_value*) const {
+        std::nullptr_t extract(sqlite3_value*) const {
             return nullptr;
         }
     };

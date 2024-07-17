@@ -1,9 +1,11 @@
 #pragma once
 
 #include <sqlite3.h>
+#ifndef _IMPORT_STD_MODULE
 #include <utility>  //  std::move
 #include <iterator>  //  std::input_iterator_tag, std::default_sentinel_t
 #include <functional>  //  std::reference_wrapper
+#endif
 
 #include "functional/cxx_universal.h"  //  ::ptrdiff_t
 #include "statement_finalizer.h"

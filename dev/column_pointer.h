@@ -1,7 +1,9 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_convertible
 #include <utility>  // std::move
+#endif
 
 #include "functional/cxx_core_features.h"
 #include "functional/cxx_type_traits_polyfill.h"

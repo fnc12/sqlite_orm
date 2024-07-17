@@ -1,8 +1,10 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple, std::make_tuple, std::declval, std::tuple_element_t
 #include <string>  //  std::string
 #include <utility>  //  std::forward
+#endif
 
 #include "../functional/cxx_universal.h"
 #include "../tuple_helper/tuple_traits.h"

@@ -1,6 +1,8 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <ostream>
+#endif
 
 _EXPORT_SQLITE_ORM namespace sqlite_orm {
 

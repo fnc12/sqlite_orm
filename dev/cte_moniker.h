@@ -1,5 +1,6 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <concepts>
@@ -8,6 +9,7 @@
 #include <type_traits>  //  std::enable_if, std::is_member_pointer, std::is_same, std::is_convertible
 #include <tuple>  //  std::ignore
 #include <string>
+#endif
 #endif
 
 #include "functional/cxx_universal.h"
