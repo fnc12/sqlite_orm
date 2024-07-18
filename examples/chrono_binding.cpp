@@ -1,4 +1,10 @@
+#include <sqlite3.h>
 #include <sqlite_orm/sqlite_orm.h>
+#ifdef __has_include
+#if __has_include(<version>)
+#include <version>
+#endif
+#endif
 #if __cpp_lib_chrono >= 201907L && __cpp_lib_format >= 201907L
 #define ENABLE_THIS_EXAMPLE
 #endif
