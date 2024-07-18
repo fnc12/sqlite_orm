@@ -12,7 +12,7 @@
 #include "functional/cxx_core_features.h"
 #include "functional/cxx_type_traits_polyfill.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+namespace sqlite_orm {
     // C++ generic traits used throughout the library
     namespace internal {
         template<class T, class... Types>
@@ -138,7 +138,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         concept stateless = std::is_empty_v<T>;
 #endif
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     template<class T>
     concept orm_names_type = requires { typename T::type; };

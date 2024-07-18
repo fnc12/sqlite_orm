@@ -8,7 +8,7 @@
 
 #include "../functional/cxx_type_traits_polyfill.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+namespace sqlite_orm {
     namespace internal {
 
         template<class T, class... Args>
@@ -39,7 +39,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         using is_group_by = polyfill::disjunction<polyfill::is_specialization_of<T, group_by_t>,
                                                   polyfill::is_specialization_of<T, group_by_with_having>>;
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     /**
      *  GROUP BY column.
      *  Example: storage.get_all<Employee>(group_by(&Employee::name))

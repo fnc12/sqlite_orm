@@ -4,7 +4,7 @@
 #include <utility>  //  std::move
 #endif
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+namespace sqlite_orm {
     namespace internal {
 
         template<class T>
@@ -14,7 +14,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
             expression_type expression;
         };
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     template<class T>
     internal::excluded_t<T> excluded(T expression) {
         return {std::move(expression)};

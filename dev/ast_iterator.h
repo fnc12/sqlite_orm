@@ -24,7 +24,7 @@
 #include "ast/set.h"
 #include "ast/match.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+namespace sqlite_orm {
 
     namespace internal {
 

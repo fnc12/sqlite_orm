@@ -25,7 +25,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      */
     template<class T, typename SFINAE = void>
     struct field_printer;
+}
 
+namespace sqlite_orm {
     namespace internal {
         /*
          *  Implementation note: the technique of indirect expression testing is because

@@ -12,7 +12,7 @@
 #include "tuple_helper/tuple_fy.h"
 
 #if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+namespace sqlite_orm {
 
     namespace internal {
 

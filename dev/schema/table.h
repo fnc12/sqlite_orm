@@ -27,7 +27,7 @@
 #include "index.h"
 #include "column.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+namespace sqlite_orm {
 
     namespace internal {
 
@@ -417,7 +417,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
             return false;
         }
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3009000
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::using_fts5_t<T, Cs...> using_fts5(Cs... columns) {

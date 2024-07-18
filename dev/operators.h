@@ -10,7 +10,7 @@
 #include "tags.h"
 #include "serialize_result_type.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+namespace sqlite_orm {
 
     namespace internal {
 
@@ -193,7 +193,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         template<class L, class R>
         struct is_assign_t<assign_t<L, R>> : public std::true_type {};
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     /**
      *  Public interface for || concatenation operator. Example: `select(conc(&User::name, "@gmail.com"));` => SELECT
      * name || '@gmail.com' FROM users

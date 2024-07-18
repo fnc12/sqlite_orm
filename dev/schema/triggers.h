@@ -15,7 +15,7 @@
 // the event in the C++ code, to call the C++ user callback, with update hooks: https://www.sqlite.org/c3ref/update_hook.html)
 // It could be an interesting feature to bring to sqlite_orm that other libraries don't have ?
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+namespace sqlite_orm {
     namespace internal {
         enum class trigger_timing { trigger_before, trigger_after, trigger_instead_of };
         enum class trigger_type { trigger_delete, trigger_insert, trigger_update };
@@ -225,8 +225,10 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
             expression_type expression;
         };
-    }  // NAMESPACE internal
+    }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     /**
      *  NEW.expression function used within TRIGGER expressions
      */

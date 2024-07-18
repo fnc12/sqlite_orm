@@ -5,7 +5,7 @@ module;
 #define _IMPORT_STD_MODULE
 
 #ifdef _IMPORT_STD_MODULE
-// Including assert.h when using `import std;` below doesn't work, so we include it here
+// Including assert.h when using `import std;` below doesn't work (as it leads to multiple defined symbols), hence we include it here
 #include <assert.h>  //  assert macro
 #endif
 

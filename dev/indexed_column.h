@@ -8,7 +8,7 @@
 #include "functional/cxx_universal.h"
 #include "ast/where.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+namespace sqlite_orm {
 
     namespace internal {
 
@@ -59,7 +59,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
             return std::move(col);
         }
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     /**
      * Use this function to specify indexed column inside `make_index` function call.
      * Example: make_index("index_name", indexed_column(&User::id).asc())

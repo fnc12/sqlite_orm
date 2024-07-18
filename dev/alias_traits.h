@@ -12,7 +12,7 @@
 #include "type_traits.h"
 #include "table_reference.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+namespace sqlite_orm {
 
     /** @short Base class for a custom table alias, column alias or expression alias.
      */
@@ -68,7 +68,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         template<class A>
         using is_cte_moniker = polyfill::bool_constant<is_cte_moniker_v<A>>;
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<class A>
     concept orm_alias = std::derived_from<A, alias_tag>;

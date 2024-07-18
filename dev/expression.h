@@ -12,7 +12,7 @@
 #include "tags.h"
 #include "operators.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+namespace sqlite_orm {
 
     namespace internal {
 
@@ -83,7 +83,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         template<class T>
         using unwrap_expression_t = decltype(get_from_expression(std::declval<T>()));
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     /**
      *  Public interface for syntax sugar for columns. Example: `where(c(&User::id) == 5)` or
      * `storage.update(set(c(&User::name) = "Dua Lipa"));

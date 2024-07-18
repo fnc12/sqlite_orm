@@ -19,11 +19,7 @@
 #include "table_reference.h"
 #include "ast/into.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
-
-    using int64 = sqlite_int64;
-    using uint64 = sqlite_uint64;
-
+namespace sqlite_orm {
     namespace internal {
 
         template<class T>
@@ -632,9 +628,14 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
                 argument0(std::move(argument0)), argument1(std::move(argument1)), argument2(std::move(argument2)) {}
         };
     }
+}
+
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
+
+    using int64 = sqlite_int64;
+    using uint64 = sqlite_uint64;
 
 #ifdef SQLITE_ENABLE_MATH_FUNCTIONS
-
     /**
      *  ACOS(X) function https://www.sqlite.org/lang_mathfunc.html#acos
      *
@@ -2047,7 +2048,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
     // Intentionally place operators for types classified as arithmetic or general operator arguments in the internal namespace
     // to facilitate ADL (Argument Dependent Lookup)
-    _EXPORT_SQLITE_ORM namespace internal {
+    namespace internal {
         template<class L,
                  class R,
                  std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,

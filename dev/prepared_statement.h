@@ -22,7 +22,7 @@
 #include "ast/upsert_clause.h"
 #include "ast/set.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+namespace sqlite_orm {
 
     namespace internal {
 
@@ -313,7 +313,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         template<class T>
         using is_insert_constraint = std::is_same<T, insert_constraint>;
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     inline internal::insert_constraint or_rollback() {
         return {internal::conflict_action::rollback};
     }

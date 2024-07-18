@@ -6,7 +6,7 @@
 
 #include "functional/cxx_type_traits_polyfill.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+namespace sqlite_orm {
     namespace internal {
         /*
          *  Identity wrapper around a mapped object, facilitating uniform column pointer expressions.
@@ -35,7 +35,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         template<class R>
         struct is_table_reference : polyfill::bool_constant<is_table_reference_v<R>> {};
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     /** @short Specifies that a type is a reference of a concrete table, especially of a derived class.
      *

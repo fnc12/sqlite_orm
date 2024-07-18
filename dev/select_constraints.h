@@ -25,7 +25,7 @@
 #include "cte_moniker.h"
 #include "schema/column.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+namespace sqlite_orm {
 
     namespace internal {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -427,7 +427,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
             static_assert(count_tuple<T, is_from>::value <= 1, "a single query cannot contain > 1 FROM blocks");
         }
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
     internal::as_optional_t<T> as_optional(T value) {

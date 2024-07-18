@@ -17,7 +17,7 @@
 #include "alias.h"
 
 #if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+namespace sqlite_orm {
 
     namespace internal {
         /** 
@@ -66,7 +66,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 #endif
         };
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     inline namespace literals {
         /**
          *  cte_moniker<'n'> from a numeric literal.

@@ -28,7 +28,7 @@
 #include "type_printer.h"
 #include "literal.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+namespace sqlite_orm {
 
     namespace internal {
 
@@ -823,7 +823,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         template<class T>
         using is_constrained_join = polyfill::is_detected<on_type_t, T>;
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     /**
      *  Explicit FROM function. Usage:
      *  `storage.select(&User::id, from<User>());`
@@ -847,7 +849,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
     // Intentionally place operators for types classified as arithmetic or general operator arguments in the internal namespace
     // to facilitate ADL (Argument Dependent Lookup)
-    _EXPORT_SQLITE_ORM namespace internal {
+    namespace internal {
         template<
             class T,
             std::enable_if_t<polyfill::disjunction<std::is_base_of<negatable_t, T>, is_operator_argument<T>>::value,

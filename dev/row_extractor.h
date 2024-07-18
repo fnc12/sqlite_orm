@@ -83,7 +83,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         { extractor.extract(value) } -> std::same_as<T>;
     };
 #endif
+}
 
+namespace sqlite_orm {
     namespace internal {
         /*  
          *  Make a row extractor to be used for casting SQL column text to a C++ typed value.
@@ -118,7 +120,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
             return {};
         }
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     template<class R>
     int extract_single_value(void* data, int argc, char** argv, char**) {
         auto& res = *(R*)data;
@@ -128,7 +132,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         }
         return 0;
     }
+}
 
+namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3020000
     /**
      *  Specialization for the 'pointer-passing interface'.

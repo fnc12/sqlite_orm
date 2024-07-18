@@ -20,7 +20,7 @@
 #include "table_type_of.h"
 #include "type_printer.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+namespace sqlite_orm {
 
     namespace internal {
 
@@ -510,7 +510,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
                                                                     check_if_is_type<unindexed_t>>,
                                                    T>;
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3031000
     template<class T>
     internal::generated_always_t<T> generated_always_as(T expression) {

@@ -61,7 +61,7 @@
 #include "util.h"
 #include "serializing_util.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+namespace sqlite_orm {
 
     namespace internal {
         /*
@@ -143,6 +143,8 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
             void drop_column(sqlite3* db, const std::string& tableName, const std::string& columnName) {
                 std::stringstream ss;
+                using namespace ::sqlite_orm::internal;
+                operator<<(ss, streaming_identifier(tableName));
                 ss << "ALTER TABLE " << streaming_identifier(tableName) << " DROP COLUMN "
                    << streaming_identifier(columnName) << std::flush;
                 perform_void_exec(db, ss.str());
@@ -1695,7 +1697,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
         };  // struct storage_t
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     /*
      *  Factory function for a storage, from a database file and a bunch of database object definitions.
      */

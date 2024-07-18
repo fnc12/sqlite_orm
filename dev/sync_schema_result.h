@@ -42,7 +42,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
          */
         dropped_and_recreated,
     };
+}
 
+namespace sqlite_orm {
     inline std::ostream& operator<<(std::ostream& os, sync_schema_result value) {
         switch(value) {
             case sync_schema_result::new_table_created:

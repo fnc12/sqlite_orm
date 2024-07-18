@@ -19,7 +19,7 @@
 #include "tags.h"
 #include "column_pointer.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+namespace sqlite_orm {
 
     namespace internal {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -187,7 +187,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         inline constexpr bool is_builtin_numeric_column_alias_v<column_alias<C...>> = ((C >= '0' && C <= '9') && ...);
 #endif
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     /**
      *  Using a column pointer, create a column reference to an aliased table column.
      *  

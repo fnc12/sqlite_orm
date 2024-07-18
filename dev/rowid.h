@@ -4,7 +4,7 @@
 #include <string>  //  std::string
 #endif
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+namespace sqlite_orm {
 
     namespace internal {
 
@@ -41,7 +41,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         };
 
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     inline internal::rowid_t rowid() {
         return {};
     }

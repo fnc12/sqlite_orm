@@ -17,7 +17,7 @@
 #include "type_traits.h"
 #include "tags.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+namespace sqlite_orm {
 
     struct arg_values;
 
@@ -63,7 +63,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         template<class UDF>
         struct function;
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /** @short Specifies that a type is a function signature (i.e. a function in the C++ type system).
      */
@@ -130,7 +132,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         quotedF.callable();
     };
 #endif
+}
 
+namespace sqlite_orm {
     namespace internal {
         template<class F, class SFINAE = void>
         struct callable_arguments_impl;
@@ -491,7 +495,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         };
 #endif
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     /** @short Call a user-defined function.
      *  
      *  Note: Currently the number of call arguments is checked and whether the types of pointer values match,

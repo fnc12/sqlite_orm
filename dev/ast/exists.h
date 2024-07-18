@@ -6,7 +6,7 @@
 
 #include "../tags.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+namespace sqlite_orm {
     namespace internal {
 
         template<class T>
@@ -19,7 +19,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
             exists_t(expression_type expression_) : expression(std::move(expression_)) {}
         };
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     /**
      *  EXISTS(condition).
      *  Example: storage.select(columns(&Agent::code, &Agent::name, &Agent::workingArea, &Agent::comission),

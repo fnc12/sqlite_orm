@@ -35,7 +35,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      */
     template<class V, typename Enable = void>
     struct statement_binder;
+}
 
+namespace sqlite_orm {
     namespace internal {
         /*
          *  Implementation note: the technique of indirect expression testing is because

@@ -32,7 +32,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         WAL = 4,
         OFF = 5,
     };
+}
 
+namespace sqlite_orm {
     namespace internal {
 
         inline const std::string& to_string(journal_mode j) {

@@ -11,7 +11,7 @@
 #include "../tuple_helper/tuple_traits.h"
 #include "../table_name_collector.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+namespace sqlite_orm {
 
     namespace internal {
 
@@ -86,7 +86,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         template<class C>
         struct is_dynamic_set<dynamic_set_t<C>> : std::true_type {};
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     /**
      *  SET keyword used in UPDATE ... SET queries.
      *  Args must have `assign_t` type. E.g. set(assign(&User::id, 5)) or set(c(&User::id) = 5)

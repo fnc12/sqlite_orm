@@ -15,16 +15,20 @@
 #include "xdestroy_handling.h"
 
 #if SQLITE_VERSION_NUMBER >= 3020000
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+namespace sqlite_orm {
     namespace internal {
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         template<char... C>
         struct pointer_type {
             using value_type = const char[sizeof...(C) + 1];
             static inline constexpr value_type value = {C..., '\0'};
         };
+#endif
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     inline namespace literals {
         template<internal::cstring_literal tag>
         [[nodiscard]] consteval auto operator"" _pointer_type() {

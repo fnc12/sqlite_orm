@@ -11,7 +11,7 @@
 #include "../indexed_column.h"
 #include "../table_type_of.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+namespace sqlite_orm {
 
     namespace internal {
 
@@ -38,7 +38,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
             elements_type elements;
         };
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     template<class T, class... Cols>
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
                                                                                                       Cols... cols) {

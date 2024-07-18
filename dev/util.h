@@ -49,7 +49,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         constexpr char quoteChar = '"';
         return quoteChar + sql_escape(std::move(identifier), quoteChar) + quoteChar;
     }
+}
 
+namespace sqlite_orm {
     namespace internal {
         // Wrapper to reduce boiler-plate code
         inline sqlite3_stmt* reset_stmt(sqlite3_stmt* stmt) {

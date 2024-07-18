@@ -17,7 +17,7 @@
 #include "../type_is_nullable.h"
 #include "../constraints.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+namespace sqlite_orm {
 
     namespace internal {
 
@@ -144,7 +144,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
                                                                      constraints_type_t,
                                                                      filter_tuple_sequence_t<Elements, is_column>>;
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     /**
      *  Factory function for a column definition from a member object pointer of the object to be mapped.
      */
