@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 
