@@ -1,5 +1,6 @@
 #include <sqlite3.h>
 #include <sqlite_orm/sqlite_orm.h>
+#include <cstdint>
 #include <iostream>
 
 using namespace sqlite_orm;
