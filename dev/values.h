@@ -3,7 +3,7 @@
 #ifndef _IMPORT_STD_MODULE
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple
-#include <utility>  //  std::forward
+#include <utility>  //  std::forward, std::move
 #endif
 
 #include "functional/cxx_universal.h"

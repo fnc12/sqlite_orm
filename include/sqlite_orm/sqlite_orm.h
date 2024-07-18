@@ -1994,9 +1994,6 @@ namespace sqlite_orm::internal {
 
 #ifndef _IMPORT_STD_MODULE
 #include <type_traits>  //  std::remove_const, std::type_identity
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-#include <concepts>
-#endif
 #endif
 
 // #include "functional/cxx_type_traits_polyfill.h"
@@ -13842,7 +13839,7 @@ namespace sqlite_orm {
 #ifndef _IMPORT_STD_MODULE
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple
-#include <utility>  //  std::forward
+#include <utility>  //  std::forward, std::move
 #endif
 
 // #include "functional/cxx_universal.h"
@@ -16125,7 +16122,11 @@ namespace sqlite_orm {
 //  ::size_t
 // #include "functional/cxx_type_traits_polyfill.h"
 
+// #include "functional/cxx_functional_polyfill.h"
+
 // #include "tuple_helper/tuple_iteration.h"
+
+// #include "type_traits.h"
 
 // #include "error_code.h"
 
@@ -16134,6 +16135,8 @@ namespace sqlite_orm {
 // #include "serialize_result_type.h"
 
 // #include "util.h"
+
+// #include "schema/column.h"
 
 namespace sqlite_orm {
     namespace internal {
