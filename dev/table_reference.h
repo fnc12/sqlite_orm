@@ -1,8 +1,6 @@
 #pragma once
 
 #include <type_traits>  //  std::remove_const, std::type_identity
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-#include <concepts>
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
