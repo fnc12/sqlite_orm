@@ -26,7 +26,22 @@ install(TARGETS sqlite_orm
 	INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
-INSTALL(DIRECTORY ${PROJECT_SOURCE_DIR}/include/sqlite_orm DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/sqlite_orm DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+# install C++ named module interface unit file and possible various accompanying files produced by CMake.
+# note that there is no convention for the install location of module source files at the time of writing.
+# the module source file will get installed to subfolder "${SQLITE_ORM_INSTALL_CMAKEDIR}/src" following Craig Scott's [writeup](https://crascit.com/2024/04/04/cxx-modules-cmake-shared-libraries/#h-installing-shared-libraries-with-c-20-modules).
+# also see @starball's detailed stackoverflow [answer](https://stackoverflow.com/a/78209338/279251).
+if(CMAKE_VERSION GREATER_EQUAL 3.28.2)
+    install(TARGETS sqlite_orm
+        FILE_SET CXX_MODULES
+            DESTINATION ${SQLITE_ORM_INSTALL_CMAKEDIR}/src
+    )
+    install(EXPORT SqliteOrmTargets
+        DESTINATION ${SQLITE_ORM_INSTALL_CMAKEDIR}
+        CXX_MODULES_DIRECTORY .
+    )
+endif()
 
 install(EXPORT SqliteOrmTargets
 	DESTINATION ${SQLITE_ORM_INSTALL_CMAKEDIR}
