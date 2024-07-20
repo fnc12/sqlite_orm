@@ -6,7 +6,6 @@
 #include <utility>  //  std::forward, std::move
 #endif
 
-
 namespace sqlite_orm {
     namespace internal {
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
