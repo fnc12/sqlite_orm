@@ -4,7 +4,6 @@
 #include <type_traits>  //  std::enable_if, std::is_same, std::index_sequence, std::make_index_sequence
 #include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
 
-#include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/cxx_functional_polyfill.h"
 #include "type_traits.h"
 #include "row_extractor.h"

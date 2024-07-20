@@ -18,7 +18,6 @@
 #include <concepts>
 #endif
 
-#include "functional/cxx_universal.h"  // ::nullptr_t, ::size_t
 #include "functional/cxx_functional_polyfill.h"
 #include "functional/static_magic.h"
 #include "tuple_helper/tuple_transformer.h"

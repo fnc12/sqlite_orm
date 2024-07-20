@@ -7,7 +7,6 @@
 #include <system_error>  //  std::system_error
 #include <functional>  //  std::bind
 
-#include "functional/cxx_universal.h"  //  ::ptrdiff_t
 #include "statement_finalizer.h"
 #include "error_code.h"
 #include "object_from_column_builder.h"

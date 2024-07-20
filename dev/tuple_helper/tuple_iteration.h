@@ -4,8 +4,6 @@
 #include <type_traits>  //  std::index_sequence, std::make_index_sequence
 #include <utility>  //  std::forward, std::move
 
-#include "../functional/cxx_universal.h"  //  ::size_t
-
 namespace sqlite_orm {
     namespace internal {
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)

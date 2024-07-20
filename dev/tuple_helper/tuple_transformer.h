@@ -3,7 +3,6 @@
 #include <type_traits>  //  std::remove_reference, std::common_type, std::index_sequence, std::make_index_sequence, std::forward, std::move, std::integral_constant, std::declval
 #include <tuple>  //  std::tuple_size, std::get
 
-#include "../functional/cxx_universal.h"  //  ::size_t
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/cxx_functional_polyfill.h"
 #include "../functional/mpl.h"

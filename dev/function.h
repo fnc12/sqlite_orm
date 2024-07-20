@@ -8,7 +8,6 @@
 #include <algorithm>  //  std::min, std::copy_n
 #include <utility>  //  std::move, std::forward
 
-#include "functional/cxx_universal.h"  //  ::size_t, ::nullptr_t
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/cstring_literal.h"
 #include "functional/function_traits.h"

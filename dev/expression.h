@@ -5,7 +5,6 @@
 #include <utility>  //  std::move, std::forward, std::declval
 #include "functional/cxx_optional.h"
 
-#include "functional/cxx_universal.h"  //  ::nullptr_t
 #include "functional/cxx_type_traits_polyfill.h"
 #include "tags.h"
 #include "operators.h"

@@ -3,7 +3,6 @@
 #include <type_traits>  //  std::is_same, std::remove_reference, std::remove_cvref
 #include <tuple>  //  std::get
 
-#include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/static_magic.h"
 #include "type_traits.h"

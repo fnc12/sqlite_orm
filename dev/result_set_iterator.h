@@ -5,7 +5,6 @@
 #include <iterator>  //  std::input_iterator_tag, std::default_sentinel_t
 #include <functional>  //  std::reference_wrapper
 
-#include "functional/cxx_universal.h"  //  ::ptrdiff_t
 #include "statement_finalizer.h"
 #include "row_extractor.h"
 #include "column_result_proxy.h"

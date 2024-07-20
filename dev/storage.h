@@ -15,7 +15,6 @@
 #include <algorithm>  //  std::for_each, std::ranges::for_each
 #include "functional/cxx_optional.h"
 
-#include "functional/cxx_universal.h"
 #include "functional/cxx_functional_polyfill.h"
 #include "functional/static_magic.h"
 #include "functional/mpl.h"

@@ -2,8 +2,6 @@
 
 #include <utility>  //  std::index_sequence
 
-#include "../functional/cxx_universal.h"  //  ::size_t
-
 namespace sqlite_orm {
     namespace internal {
 #if defined(SQLITE_ORM_PACK_INDEXING_SUPPORTED)

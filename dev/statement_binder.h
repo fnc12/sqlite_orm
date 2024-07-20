@@ -15,7 +15,6 @@
 #include <codecvt>  //  std::codecvt_utf8_utf16
 #endif
 
-#include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/cxx_functional_polyfill.h"
 #include "is_std_ptr.h"
