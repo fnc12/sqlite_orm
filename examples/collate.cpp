@@ -11,7 +11,7 @@ using std::endl;
 struct User {
     int id;
     std::string name;
-    time_t createdAt;
+    std::time_t createdAt;
 };
 
 struct Foo {
