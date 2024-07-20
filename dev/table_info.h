@@ -4,8 +4,6 @@
 #include <string>  //  std::string
 #endif
 
-#include "functional/cxx_universal.h"
-
 _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
     struct table_info {

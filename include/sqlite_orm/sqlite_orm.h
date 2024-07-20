@@ -532,8 +532,6 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::enable_if, std::is_function, std::true_type, std::false_type
 #endif
 
-// #include "../functional/cxx_universal.h"
-
 // #include "../functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
@@ -1987,8 +1985,6 @@ namespace sqlite_orm::internal {
 #include <concepts>
 #endif
 #endif
-
-// #include "functional/cxx_universal.h"
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
@@ -4591,8 +4587,6 @@ namespace sqlite_orm {
 #include <utility>  //  std::move
 #endif
 
-// #include "../functional/cxx_universal.h"
-
 // #include "../functional/cxx_type_traits_polyfill.h"
 
 // #include "../serialize_result_type.h"
@@ -4727,8 +4721,6 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 #include <sstream>  //  std::stringstream
 #include <iomanip>  //  std::flush
 #endif
-
-// #include "functional/cxx_universal.h"
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
@@ -8317,8 +8309,6 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 #endif
 #endif
 
-// #include "functional/cxx_universal.h"
-
 // #include "functional/cstring_literal.h"
 
 // #include "alias.h"
@@ -8409,8 +8399,6 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 #include <type_traits>  //  std::is_same, std::is_member_object_pointer
 #include <utility>  //  std::move
 #endif
-
-// #include "../functional/cxx_universal.h"
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
@@ -9508,8 +9496,6 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 #include <concepts>
 #endif
 #endif
-
-// #include "functional/cxx_universal.h"
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
@@ -11900,8 +11886,6 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 #include <string>  //  std::string
 #endif
 
-// #include "functional/cxx_universal.h"
-
 _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
     struct table_info {
@@ -12040,8 +12024,6 @@ namespace sqlite_orm {
 #include <utility>  //  std::forward
 #endif
 
-// #include "../functional/cxx_universal.h"
-
 // #include "../tuple_helper/tuple_traits.h"
 
 // #include "../indexed_column.h"
@@ -12050,8 +12032,6 @@ namespace sqlite_orm {
 #include <string>  //  std::string
 #include <utility>  //  std::move
 #endif
-
-// #include "functional/cxx_universal.h"
 
 // #include "ast/where.h"
 
@@ -13808,8 +13788,6 @@ namespace sqlite_orm {
 #include <tuple>  //  std::tuple
 #endif
 
-// #include "functional/cxx_universal.h"
-
 // #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "functional/cxx_functional_polyfill.h"
@@ -13910,8 +13888,6 @@ namespace sqlite_orm {
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::forward, std::move
 #endif
-
-// #include "functional/cxx_universal.h"
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
@@ -19273,8 +19249,6 @@ namespace sqlite_orm {
 #include <string>
 #include <tuple>
 #endif
-
-// #include "../functional/cxx_universal.h"
 
 // #include "../optional_container.h"
 

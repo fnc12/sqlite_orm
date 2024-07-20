@@ -8,7 +8,6 @@
 #include <utility>  //  std::move
 #endif
 
-#include "../functional/cxx_universal.h"
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../tuple_helper/tuple_traits.h"
 #include "../tuple_helper/tuple_filter.h"

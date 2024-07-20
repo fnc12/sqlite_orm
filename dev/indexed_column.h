@@ -5,7 +5,6 @@
 #include <utility>  //  std::move
 #endif
 
-#include "functional/cxx_universal.h"
 #include "ast/where.h"
 
 namespace sqlite_orm {
