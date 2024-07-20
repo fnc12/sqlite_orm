@@ -2,8 +2,6 @@
 
 #include <string>  //  std::string
 
-#include "functional/cxx_universal.h"
-
 namespace sqlite_orm {
 
     struct table_info {

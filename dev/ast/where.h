@@ -3,7 +3,6 @@
 #include <type_traits>  //  std::false_type, std::true_type
 #include <utility>  //  std::move
 
-#include "../functional/cxx_universal.h"
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../serialize_result_type.h"
 

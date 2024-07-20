@@ -8,7 +8,6 @@
 #include <utility>  //  std::move, std::forward, std::pair
 #include <tuple>  //  std::tuple
 
-#include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/cxx_functional_polyfill.h"
 #include "tuple_helper/tuple_traits.h"
