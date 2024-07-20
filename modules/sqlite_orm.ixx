@@ -12,11 +12,11 @@ module;
 export module sqlite_orm;
 
 #ifdef _IMPORT_STD_MODULE
-import std;
+import std.compat;
 #endif
 
 #pragma warning(push)
-#pragma warning(disable : 5244)  // '#include <meow>' in the purview of module 'sqlite_orm' appears erroneous.
+#pragma warning(disable : 5244)  // '#include <filename>' in the purview of module 'sqlite_orm' appears erroneous.
 
 #include <sqlite_orm/sqlite_orm.h>
 

@@ -16,20 +16,22 @@ __pragma(push_macro("max"))
 /*
  *  This header makes central C++ functionality on which sqlite_orm depends universally available:
  *  - alternative operator representations
- *  - ::size_t, ::ptrdiff_t, ::nullptr_t
+ *  - ::size_t, ::ptrdiff_t, std::nullptr_t
  *  - C++ core language feature macros
  *  - macros for dealing with compiler quirks
+ *  - macros for exporting symbols from the C++ named module
  */
 
 #include <iso646.h>  //  alternative operator representations
 #ifndef _IMPORT_STD_MODULE
-#include <cstddef>  //  sqlite_orm is using size_t, ptrdiff_t, nullptr_t everywhere, pull it in early
-#endif
-
-// earlier clang versions didn't make nullptr_t available in the global namespace via stddef.h,
-// though it should have according to C++ documentation (see https://en.cppreference.com/w/cpp/types/nullptr_t#Notes).
-// actually it should be available when including stddef.h
+#include <cstddef>  //  sqlite_orm is using ::size_t, ::ptrdiff_t, std::nullptr_t everywhere, pull it in early
+// earlier libcxx versions didn't make std::nullptr_t available in the global namespace via stddef.h,
+// though it should have according to C++ documentation (see https://en.cppreference.com/w/cpp/types/std::nullptr_t#Notes).
 using std::nullptr_t;
+// Further note on the use of nullptr_t:
+// msvc 14.40 has problems finding `::nullptr_t` within sqlite_orm when consuming sqlite_orm as a named module.
+// Hence, sqlite_orm is internally using `std::nullptr_t` instead.
+#endif
 
 // #include "cxx_core_features.h"
 
@@ -318,7 +320,7 @@ namespace sqlite_orm {
 #endif
 
 // #include "functional/cxx_universal.h"
-
+// ::size_t, ::ptrdiff_t
 // #include "functional/cxx_functional_polyfill.h"
 
 #ifdef _IMPORT_STD_MODULE
@@ -340,7 +342,7 @@ namespace sqlite_orm {
 #endif
 
 // #include "cxx_universal.h"
-
+// ::size_t
 // #include "mpl/conditional.h"
 
 namespace sqlite_orm {
@@ -3206,7 +3208,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 #endif
 
 // #include "functional/cxx_universal.h"
-
+// ::size_t
 // #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "functional/mpl.h"
@@ -9444,7 +9446,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 #include <memory>  //  std::default_delete
 #include <string>  //  std::string, std::wstring
 #include <vector>  //  std::vector
-#include <cstring>  //  std::strncpy, std::strlen
+#include <cstring>  //  ::strncpy, ::strlen
 // #include "functional/cxx_string_view.h"
 
 #ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
@@ -9457,7 +9459,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 #endif
 
 // #include "functional/cxx_universal.h"
-
+// ::size_t, std::nullptr_t
 // #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "functional/cxx_functional_polyfill.h"
@@ -10174,7 +10176,7 @@ namespace sqlite_orm {
             auto stringData = this->string_data(value);
             auto dataCopy = new char[stringData.second + 1];
             constexpr auto deleter = std::default_delete<char[]>{};
-            std::strncpy(dataCopy, stringData.first, stringData.second + 1);
+            strncpy(dataCopy, stringData.first, stringData.second + 1);
             sqlite3_result_text(context, dataCopy, stringData.second, obtain_xdestroy_for(deleter, dataCopy));
         }
 
@@ -10189,7 +10191,7 @@ namespace sqlite_orm {
         }
 
         std::pair<const char*, int> string_data(const char* s) const {
-            return {s, int(std::strlen(s))};
+            return {s, int(strlen(s))};
         }
 #endif
     };
@@ -10228,7 +10230,7 @@ namespace sqlite_orm {
         }
 
         std::pair<const wchar_t*, int> string_data(const wchar_t* s) const {
-            return {s, int(::wcslen(s))};
+            return {s, int(wcslen(s))};
         }
 #endif
     };
@@ -12842,8 +12844,8 @@ namespace sqlite_orm {
 #include <sqlite3.h>
 #ifndef _IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::enable_if
-#include <cstdlib>  //  std::atof, std::atoi, std::atoll
-#include <cstring>  //  std::strlen
+#include <cstdlib>  //  ::atof, ::atoi, ::atoll
+#include <cstring>  //  ::strlen
 #include <system_error>  //  std::system_error
 #include <string>  //  std::string, std::wstring
 #ifndef SQLITE_ORM_OMITS_CODECVT
@@ -12860,7 +12862,7 @@ namespace sqlite_orm {
 #endif
 
 // #include "functional/cxx_universal.h"
-// std::nullptr_t, ::size_t
+// ::size_t, std::nullptr_t
 // #include "functional/cxx_functional_polyfill.h"
 
 // #include "functional/static_magic.h"
@@ -13032,7 +13034,7 @@ namespace sqlite_orm {
         using tag = arithmetic_tag_t<V>;
 
         V extract(const char* columnText, const int_or_smaller_tag&) const {
-            return static_cast<V>(std::atoi(columnText));
+            return static_cast<V>(atoi(columnText));
         }
 
         V extract(sqlite3_stmt* stmt, int columnIndex, const int_or_smaller_tag&) const {
@@ -13044,7 +13046,7 @@ namespace sqlite_orm {
         }
 
         V extract(const char* columnText, const bigint_tag&) const {
-            return static_cast<V>(std::atoll(columnText));
+            return static_cast<V>(atoll(columnText));
         }
 
         V extract(sqlite3_stmt* stmt, int columnIndex, const bigint_tag&) const {
@@ -13056,7 +13058,7 @@ namespace sqlite_orm {
         }
 
         V extract(const char* columnText, const real_tag&) const {
-            return static_cast<V>(std::atof(columnText));
+            return static_cast<V>(atof(columnText));
         }
 
         V extract(sqlite3_stmt* stmt, int columnIndex, const real_tag&) const {
@@ -13246,7 +13248,7 @@ namespace sqlite_orm {
     template<>
     struct row_extractor<std::vector<char>, void> {
         std::vector<char> extract(const char* columnText) const {
-            return {columnText, columnText + (columnText ? std::strlen(columnText) : 0)};
+            return {columnText, columnText + (columnText ? strlen(columnText) : 0)};
         }
 
         std::vector<char> extract(sqlite3_stmt* stmt, int columnIndex) const {
@@ -18732,9 +18734,9 @@ namespace sqlite_orm {
 // #include "statement_serializer.h"
 
 #ifndef _IMPORT_STD_MODULE
+#include <type_traits>  //  std::enable_if, std::remove_pointer
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string
-#include <type_traits>  //  std::enable_if, std::remove_pointer
 #include <vector>  //  std::vector
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <locale>  // std::wstring_convert
@@ -18749,7 +18751,7 @@ namespace sqlite_orm {
 // #include "functional/cxx_optional.h"
 
 // #include "functional/cxx_universal.h"
-// std::nullptr_t, ::size_t
+// ::size_t, std::nullptr_t
 // #include "functional/cxx_functional_polyfill.h"
 
 // #include "functional/mpl.h"
@@ -18960,7 +18962,7 @@ namespace sqlite_orm {
 #endif
 
 // #include "functional/cxx_universal.h"
-
+// ::size_t
 // #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "type_traits.h"

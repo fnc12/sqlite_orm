@@ -1,9 +1,9 @@
 #pragma once
 
 #ifndef _IMPORT_STD_MODULE
+#include <type_traits>  //  std::enable_if, std::remove_pointer
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string
-#include <type_traits>  //  std::enable_if, std::remove_pointer
 #include <vector>  //  std::vector
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <locale>  // std::wstring_convert
@@ -16,7 +16,7 @@
 #include "functional/cxx_string_view.h"
 #include "functional/cxx_optional.h"
 
-#include "functional/cxx_universal.h"  // std::nullptr_t, ::size_t
+#include "functional/cxx_universal.h"  // ::size_t, std::nullptr_t
 #include "functional/cxx_functional_polyfill.h"
 #include "functional/mpl.h"
 #include "tuple_helper/tuple_filter.h"

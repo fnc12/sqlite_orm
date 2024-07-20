@@ -17,7 +17,7 @@
 #endif
 #include "functional/cxx_optional.h"
 
-#include "functional/cxx_universal.h"
+#include "functional/cxx_universal.h"  // ::size_t, ::ptrdiff_t
 #include "functional/cxx_functional_polyfill.h"
 #include "functional/static_magic.h"
 #include "functional/mpl.h"
