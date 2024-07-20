@@ -286,8 +286,8 @@ void family_tree() {
         std::string name;
         std::optional<std::string> mom;
         std::optional<std::string> dad;
-        time_t born;
-        std::optional<time_t> died;
+        std::time_t born;
+        std::optional<std::time_t> died;
     };
 
     auto storage = make_storage("",
@@ -915,7 +915,7 @@ void neevek_issue_222() {
     struct user_activity {
         int64 id;
         int64 uid;
-        time_t timestamp;
+        std::time_t timestamp;
     };
 
     auto storage = make_storage("",
@@ -925,7 +925,7 @@ void neevek_issue_222() {
                                            make_column("timestamp", &user_activity::timestamp)));
     storage.sync_schema();
     storage.transaction([&storage]() {
-        time_t now = std::time(nullptr);
+        std::time_t now = std::time(nullptr);
         auto values = {user_activity{0, 1, now - 86400 * 3},
                        user_activity{0, 1, now - 86400 * 2},
                        user_activity{0, 1, now},
@@ -993,7 +993,7 @@ void greatest_n_per_group() {
     struct some_result {
         int64 result_id;
         int64 item_id;
-        time_t timestamp;
+        std::time_t timestamp;
         bool flag;
     };
 
@@ -1006,7 +1006,7 @@ void greatest_n_per_group() {
                                 make_column("flag", &some_result::flag)));
     storage.sync_schema();
     storage.transaction([&storage]() {
-        time_t now = std::time(nullptr);
+        std::time_t now = std::time(nullptr);
         auto values = std::initializer_list<some_result>{{-1, 1, now - 86400 * 3, false},
                                                          {-1, 1, now - 86400 * 2, true},
                                                          {-1, 1, now, true},

@@ -27,7 +27,7 @@ struct User {
 struct UserVisit {
     int userId;
     std::string userFirstName;
-    time_t time;
+    std::time_t time;
 };
 #endif
 
