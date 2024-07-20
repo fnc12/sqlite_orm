@@ -1,5 +1,6 @@
 #pragma once
-#include <utility>
+
+#include <utility>  // std::move
 
 namespace sqlite_orm {
     namespace internal {
