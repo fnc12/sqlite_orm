@@ -17,7 +17,6 @@
 #endif
 #endif
 
-#include "functional/cxx_universal.h"  // ::size_t, std::nullptr_t
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/cxx_functional_polyfill.h"
 #include "is_std_ptr.h"

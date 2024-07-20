@@ -4,7 +4,6 @@
 #include <string>  //  std::string
 #endif
 
-#include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/static_magic.h"
 #include "functional/index_sequence_util.h"
 #include "tuple_helper/tuple_traits.h"

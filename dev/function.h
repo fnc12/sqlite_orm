@@ -10,7 +10,6 @@
 #include <utility>  //  std::move, std::forward
 #endif
 
-#include "functional/cxx_universal.h"  //  ::size_t, std::nullptr_t
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/cstring_literal.h"
 #include "functional/function_traits.h"

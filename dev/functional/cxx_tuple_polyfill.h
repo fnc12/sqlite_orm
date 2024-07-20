@@ -9,7 +9,6 @@
 #endif
 #endif
 
-#include "../functional/cxx_universal.h"  //  ::size_t
 #include "../functional/cxx_functional_polyfill.h"  //  std::invoke
 
 namespace sqlite_orm {

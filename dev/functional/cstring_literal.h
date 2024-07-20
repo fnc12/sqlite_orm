@@ -7,8 +7,6 @@
 #endif
 #endif
 
-#include "cxx_universal.h"  //  ::size_t
-
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 namespace sqlite_orm::internal {
     /*

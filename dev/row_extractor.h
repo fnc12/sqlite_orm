@@ -20,7 +20,6 @@
 #endif
 #endif
 
-#include "functional/cxx_universal.h"  // ::size_t, std::nullptr_t
 #include "functional/cxx_functional_polyfill.h"
 #include "functional/static_magic.h"
 #include "tuple_helper/tuple_transformer.h"

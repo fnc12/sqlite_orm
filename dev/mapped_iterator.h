@@ -9,7 +9,6 @@
 #include <functional>  //  std::bind
 #endif
 
-#include "functional/cxx_universal.h"  //  ::ptrdiff_t
 #include "statement_finalizer.h"
 #include "error_code.h"
 #include "object_from_column_builder.h"

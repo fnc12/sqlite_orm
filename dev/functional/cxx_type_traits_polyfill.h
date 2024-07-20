@@ -6,7 +6,6 @@
 #include <type_traits>
 #endif
 
-#include "cxx_universal.h"  // ::size_t
 #include "mpl/conditional.h"
 
 namespace sqlite_orm {

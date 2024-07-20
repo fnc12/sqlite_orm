@@ -10,7 +10,6 @@
 #include <algorithm>  //  std::find_if, std::ranges::find
 #endif
 
-#include "../functional/cxx_universal.h"  //  ::size_t
 #include "../type_printer.h"
 #include "../schema/column.h"
 #include "../schema/table.h"

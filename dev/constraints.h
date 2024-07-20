@@ -8,7 +8,6 @@
 #include <tuple>  //  std::tuple
 #endif
 
-#include "functional/cxx_universal.h"  // ::size_t
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/mpl.h"
 #include "tuple_helper/same_or_void.h"

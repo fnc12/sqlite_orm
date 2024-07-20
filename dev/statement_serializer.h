@@ -16,7 +16,6 @@
 #include "functional/cxx_string_view.h"
 #include "functional/cxx_optional.h"
 
-#include "functional/cxx_universal.h"  // ::size_t, std::nullptr_t
 #include "functional/cxx_functional_polyfill.h"
 #include "functional/mpl.h"
 #include "tuple_helper/tuple_filter.h"

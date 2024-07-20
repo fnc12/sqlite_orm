@@ -5,7 +5,6 @@
 #include <functional>  //  std::reference_wrapper
 #endif
 
-#include "functional/cxx_universal.h"  //  std::nullptr_t
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/mpl.h"
 #include "tuple_helper/tuple_traits.h"

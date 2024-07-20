@@ -5,7 +5,6 @@
 #include <tuple>  //  std::tuple, std::tuple_cat, std::tuple_element
 #endif
 
-#include "../functional/cxx_universal.h"  //  ::size_t
 #include "../functional/mpl/conditional.h"
 #include "../functional/index_sequence_util.h"
 

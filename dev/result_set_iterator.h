@@ -7,7 +7,6 @@
 #include <functional>  //  std::reference_wrapper
 #endif
 
-#include "functional/cxx_universal.h"  //  ::ptrdiff_t
 #include "statement_finalizer.h"
 #include "row_extractor.h"
 #include "column_result_proxy.h"

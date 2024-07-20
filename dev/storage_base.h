@@ -17,7 +17,6 @@
 #include <algorithm>  //  std::find_if, std::ranges::find
 #endif
 
-#include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/cxx_tuple_polyfill.h"  //  std::apply
 #include "tuple_helper/tuple_iteration.h"
 #include "pragma.h"
