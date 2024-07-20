@@ -1,8 +1,8 @@
 #pragma once
 
+#include <type_traits>  //  std::enable_if, std::remove_pointer
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string
-#include <type_traits>  //  std::enable_if, std::remove_pointer
 #include <vector>  //  std::vector
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <locale>  // std::wstring_convert

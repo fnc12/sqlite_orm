@@ -19,6 +19,7 @@ __pragma(push_macro("max"))
  *  - ::size_t, ::ptrdiff_t, ::nullptr_t
  *  - C++ core language feature macros
  *  - macros for dealing with compiler quirks
+ *  - macros for exporting symbols from the C++ named module
  */
 
 #include <iso646.h>  //  alternative operator representations
@@ -9270,11 +9271,11 @@ namespace sqlite_orm {
 #include <memory>  //  std::default_delete
 #include <string>  //  std::string, std::wstring
 #include <vector>  //  std::vector
-#include <cstring>  //  std::strncpy, std::strlen
+#include <cstring>  //  strncpy, strlen
 // #include "functional/cxx_string_view.h"
 
 #ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
-#include <cwchar>  //  ::wcsncpy, ::wcslen
+#include <cwchar>  //  wcsncpy, wcslen
 #endif
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <locale>  // std::wstring_convert
@@ -9981,7 +9982,7 @@ namespace sqlite_orm {
             auto stringData = this->string_data(value);
             auto dataCopy = new char[stringData.second + 1];
             constexpr auto deleter = std::default_delete<char[]>{};
-            std::strncpy(dataCopy, stringData.first, stringData.second + 1);
+            strncpy(dataCopy, stringData.first, stringData.second + 1);
             sqlite3_result_text(context, dataCopy, stringData.second, obtain_xdestroy_for(deleter, dataCopy));
         }
 
@@ -9996,7 +9997,7 @@ namespace sqlite_orm {
         }
 
         std::pair<const char*, int> string_data(const char* s) const {
-            return {s, int(std::strlen(s))};
+            return {s, int(strlen(s))};
         }
 #endif
     };
@@ -10035,7 +10036,7 @@ namespace sqlite_orm {
         }
 
         std::pair<const wchar_t*, int> string_data(const wchar_t* s) const {
-            return {s, int(::wcslen(s))};
+            return {s, int(wcslen(s))};
         }
 #endif
     };
@@ -12584,8 +12585,8 @@ namespace sqlite_orm {
 
 #include <sqlite3.h>
 #include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::enable_if
-#include <cstdlib>  //  std::atof, std::atoi, std::atoll
-#include <cstring>  //  std::strlen
+#include <cstdlib>  //  atof, atoi, atoll
+#include <cstring>  //  strlen
 #include <system_error>  //  std::system_error
 #include <string>  //  std::string, std::wstring
 #ifndef SQLITE_ORM_OMITS_CODECVT
@@ -12765,7 +12766,7 @@ namespace sqlite_orm {
         using tag = arithmetic_tag_t<V>;
 
         V extract(const char* columnText, const int_or_smaller_tag&) const {
-            return static_cast<V>(std::atoi(columnText));
+            return static_cast<V>(atoi(columnText));
         }
 
         V extract(sqlite3_stmt* stmt, int columnIndex, const int_or_smaller_tag&) const {
@@ -12777,7 +12778,7 @@ namespace sqlite_orm {
         }
 
         V extract(const char* columnText, const bigint_tag&) const {
-            return static_cast<V>(std::atoll(columnText));
+            return static_cast<V>(atoll(columnText));
         }
 
         V extract(sqlite3_stmt* stmt, int columnIndex, const bigint_tag&) const {
@@ -12789,7 +12790,7 @@ namespace sqlite_orm {
         }
 
         V extract(const char* columnText, const real_tag&) const {
-            return static_cast<V>(std::atof(columnText));
+            return static_cast<V>(atof(columnText));
         }
 
         V extract(sqlite3_stmt* stmt, int columnIndex, const real_tag&) const {
@@ -12979,7 +12980,7 @@ namespace sqlite_orm {
     template<>
     struct row_extractor<std::vector<char>, void> {
         std::vector<char> extract(const char* columnText) const {
-            return {columnText, columnText + (columnText ? std::strlen(columnText) : 0)};
+            return {columnText, columnText + (columnText ? strlen(columnText) : 0)};
         }
 
         std::vector<char> extract(sqlite3_stmt* stmt, int columnIndex) const {
@@ -15788,6 +15789,7 @@ inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::r
 // #include "storage_base.h"
 
 #include <sqlite3.h>
+#include <cstdlib>  // atoi
 #include <memory>  //  std::allocator
 #include <functional>  //  std::function, std::bind, std::bind_front
 #include <string>  //  std::string
@@ -15842,6 +15844,7 @@ namespace sqlite_orm {
 // #include "pragma.h"
 
 #include <sqlite3.h>
+#include <cstdlib>  // atoi
 #include <string>  //  std::string
 #include <functional>  //  std::function
 #include <memory>  // std::shared_ptr
@@ -16434,14 +16437,14 @@ namespace sqlite_orm {
                         auto& res = *(std::vector<sqlite_orm::table_xinfo>*)data;
                         if(argc) {
                             auto index = 0;
-                            auto cid = std::atoi(argv[index++]);
+                            auto cid = atoi(argv[index++]);
                             std::string name = argv[index++];
                             std::string type = argv[index++];
-                            bool notnull = !!std::atoi(argv[index++]);
+                            bool notnull = !!atoi(argv[index++]);
                             std::string dflt_value = argv[index] ? argv[index] : "";
                             ++index;
-                            auto pk = std::atoi(argv[index++]);
-                            auto hidden = std::atoi(argv[index++]);
+                            auto pk = atoi(argv[index++]);
+                            auto hidden = atoi(argv[index++]);
                             res.emplace_back(cid,
                                              std::move(name),
                                              std::move(type),
@@ -16471,13 +16474,13 @@ namespace sqlite_orm {
                         auto& res = *(std::vector<sqlite_orm::table_info>*)data;
                         if(argc) {
                             auto index = 0;
-                            auto cid = std::atoi(argv[index++]);
+                            auto cid = atoi(argv[index++]);
                             std::string name = argv[index++];
                             std::string type = argv[index++];
-                            bool notnull = !!std::atoi(argv[index++]);
+                            bool notnull = !!atoi(argv[index++]);
                             std::string dflt_value = argv[index] ? argv[index] : "";
                             ++index;
-                            auto pk = std::atoi(argv[index++]);
+                            auto pk = atoi(argv[index++]);
                             res.emplace_back(cid, std::move(name), std::move(type), notnull, std::move(dflt_value), pk);
                         }
                         return 0;
@@ -17402,7 +17405,7 @@ namespace sqlite_orm {
                     [](void* data, int argc, char** argv, char** /*azColName*/) -> int {
                         auto& res = *(bool*)data;
                         if(argc) {
-                            res = !!std::atoi(argv[0]);
+                            res = !!atoi(argv[0]);
                         }
                         return 0;
                     },
@@ -18380,9 +18383,9 @@ namespace sqlite_orm {
 
 // #include "statement_serializer.h"
 
+#include <type_traits>  //  std::enable_if, std::remove_pointer
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string
-#include <type_traits>  //  std::enable_if, std::remove_pointer
 #include <vector>  //  std::vector
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <locale>  // std::wstring_convert

@@ -6,6 +6,7 @@
  *  - ::size_t, ::ptrdiff_t, ::nullptr_t
  *  - C++ core language feature macros
  *  - macros for dealing with compiler quirks
+ *  - macros for exporting symbols from the C++ named module
  */
 
 #include <iso646.h>  //  alternative operator representations

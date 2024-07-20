@@ -2,8 +2,8 @@
 
 #include <sqlite3.h>
 #include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::enable_if
-#include <cstdlib>  //  std::atof, std::atoi, std::atoll
-#include <cstring>  //  std::strlen
+#include <cstdlib>  //  atof, atoi, atoll
+#include <cstring>  //  strlen
 #include <system_error>  //  std::system_error
 #include <string>  //  std::string, std::wstring
 #ifndef SQLITE_ORM_OMITS_CODECVT
@@ -174,7 +174,7 @@ namespace sqlite_orm {
         using tag = arithmetic_tag_t<V>;
 
         V extract(const char* columnText, const int_or_smaller_tag&) const {
-            return static_cast<V>(std::atoi(columnText));
+            return static_cast<V>(atoi(columnText));
         }
 
         V extract(sqlite3_stmt* stmt, int columnIndex, const int_or_smaller_tag&) const {
@@ -186,7 +186,7 @@ namespace sqlite_orm {
         }
 
         V extract(const char* columnText, const bigint_tag&) const {
-            return static_cast<V>(std::atoll(columnText));
+            return static_cast<V>(atoll(columnText));
         }
 
         V extract(sqlite3_stmt* stmt, int columnIndex, const bigint_tag&) const {
@@ -198,7 +198,7 @@ namespace sqlite_orm {
         }
 
         V extract(const char* columnText, const real_tag&) const {
-            return static_cast<V>(std::atof(columnText));
+            return static_cast<V>(atof(columnText));
         }
 
         V extract(sqlite3_stmt* stmt, int columnIndex, const real_tag&) const {
@@ -388,7 +388,7 @@ namespace sqlite_orm {
     template<>
     struct row_extractor<std::vector<char>, void> {
         std::vector<char> extract(const char* columnText) const {
-            return {columnText, columnText + (columnText ? std::strlen(columnText) : 0)};
+            return {columnText, columnText + (columnText ? strlen(columnText) : 0)};
         }
 
         std::vector<char> extract(sqlite3_stmt* stmt, int columnIndex) const {

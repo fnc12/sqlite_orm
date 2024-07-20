@@ -5,10 +5,10 @@
 #include <memory>  //  std::default_delete
 #include <string>  //  std::string, std::wstring
 #include <vector>  //  std::vector
-#include <cstring>  //  std::strncpy, std::strlen
+#include <cstring>  //  strncpy, strlen
 #include "functional/cxx_string_view.h"
 #ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
-#include <cwchar>  //  ::wcsncpy, ::wcslen
+#include <cwchar>  //  wcsncpy, wcslen
 #endif
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <locale>  // std::wstring_convert
@@ -139,7 +139,7 @@ namespace sqlite_orm {
             auto stringData = this->string_data(value);
             auto dataCopy = new char[stringData.second + 1];
             constexpr auto deleter = std::default_delete<char[]>{};
-            std::strncpy(dataCopy, stringData.first, stringData.second + 1);
+            strncpy(dataCopy, stringData.first, stringData.second + 1);
             sqlite3_result_text(context, dataCopy, stringData.second, obtain_xdestroy_for(deleter, dataCopy));
         }
 
@@ -154,7 +154,7 @@ namespace sqlite_orm {
         }
 
         std::pair<const char*, int> string_data(const char* s) const {
-            return {s, int(std::strlen(s))};
+            return {s, int(strlen(s))};
         }
 #endif
     };
@@ -193,7 +193,7 @@ namespace sqlite_orm {
         }
 
         std::pair<const wchar_t*, int> string_data(const wchar_t* s) const {
-            return {s, int(::wcslen(s))};
+            return {s, int(wcslen(s))};
         }
 #endif
     };
