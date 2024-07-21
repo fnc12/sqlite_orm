@@ -583,7 +583,7 @@ TEST_CASE("With clause") {
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    SECTION("insert") {
+    SECTION("crud") {
         struct Object {
             int id;
         };
@@ -596,6 +596,10 @@ TEST_CASE("With clause") {
         storage.with(cte<data>().as(select(2)),
                      insert(into<Object>(), columns(&Object::id), select(data->*1_colalias)));
         REQUIRE(2 == storage.last_insert_rowid());
+
+        storage.with(cte<data>().as(select(2)),
+                     replace(into<Object>(), columns(&Object::id), select(data->*1_colalias)));
+        REQUIRE(storage.changes() == 1);
     }
 #endif
 }
