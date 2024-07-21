@@ -1362,7 +1362,10 @@ namespace sqlite_orm {
         template<class Ctx, class... Args>
         std::set<std::pair<std::string, std::string>> collect_table_names(const set_t<Args...>& set, const Ctx& ctx) {
             auto collector = make_table_name_collector(ctx.db_objects);
-            iterate_ast(set, collector);
+            // note: we are only interested in the table name on the left-hand side of the assignment operator expression
+            iterate_tuple(set.assigns, [&collector](const auto& assignmentOperator) {
+                iterate_ast(assignmentOperator.lhs, collector);
+            });
             return std::move(collector.table_names);
         }
 
@@ -1375,8 +1378,7 @@ namespace sqlite_orm {
         template<class Ctx, class T, satisfies<is_select, T> = true>
         std::set<std::pair<std::string, std::string>> collect_table_names(const T& sel, const Ctx& ctx) {
             auto collector = make_table_name_collector(ctx.db_objects);
-            iterate_ast(sel.col, collector);
-            iterate_ast(sel.conditions, collector);
+            iterate_ast(sel, collector);
             return std::move(collector.table_names);
         }
 

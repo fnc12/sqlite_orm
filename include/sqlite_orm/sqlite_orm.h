@@ -13895,7 +13895,8 @@ namespace sqlite_orm {
             void push_back(assign_t<L, R> assign) {
                 auto newContext = this->context;
                 newContext.skip_table_name = true;
-                iterate_ast(assign, this->collector);
+                // note: we are only interested in the table name on the left-hand side of the assignment operator expression
+                iterate_ast(assign.lhs, this->collector);
                 std::stringstream ss;
                 ss << serialize(assign.lhs, newContext) << ' ' << assign.serialize() << ' '
                    << serialize(assign.rhs, context);
@@ -14076,6 +14077,12 @@ namespace sqlite_orm {
             conditions_type conditions;
         };
 
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_update_all_v = polyfill::is_specialization_of<T, update_all_t>::value;
+
+        template<class T>
+        using is_update_all = polyfill::bool_constant<is_update_all_v<T>>;
+
         template<class T, class... Args>
         struct remove_all_t {
             using type = T;
@@ -14083,6 +14090,12 @@ namespace sqlite_orm {
 
             conditions_type conditions;
         };
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_remove_all_v = polyfill::is_specialization_of<T, remove_all_t>::value;
+
+        template<class T>
+        using is_remove_all = polyfill::bool_constant<is_remove_all_v<T>>;
 
         template<class T, class... Ids>
         struct get_t {
@@ -20505,7 +20518,10 @@ namespace sqlite_orm {
         template<class Ctx, class... Args>
         std::set<std::pair<std::string, std::string>> collect_table_names(const set_t<Args...>& set, const Ctx& ctx) {
             auto collector = make_table_name_collector(ctx.db_objects);
-            iterate_ast(set, collector);
+            // note: we are only interested in the table name on the left-hand side of the assignment operator expression
+            iterate_tuple(set.assigns, [&collector](const auto& assignmentOperator) {
+                iterate_ast(assignmentOperator.lhs, collector);
+            });
             return std::move(collector.table_names);
         }
 
@@ -20518,8 +20534,7 @@ namespace sqlite_orm {
         template<class Ctx, class T, satisfies<is_select, T> = true>
         std::set<std::pair<std::string, std::string>> collect_table_names(const T& sel, const Ctx& ctx) {
             auto collector = make_table_name_collector(ctx.db_objects);
-            iterate_ast(sel.col, collector);
-            iterate_ast(sel.conditions, collector);
+            iterate_ast(sel, collector);
             return std::move(collector.table_names);
         }
 
@@ -23112,7 +23127,11 @@ namespace sqlite_orm {
 #if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             template<class... CTEs,
                      class E,
-                     std::enable_if_t<polyfill::disjunction_v<is_select<E>, is_insert_raw<E>, is_replace_raw<E>>,
+                     std::enable_if_t<polyfill::disjunction_v<is_select<E>,
+                                                              is_insert_raw<E>,
+                                                              is_replace_raw<E>,
+                                                              is_update_all<E>,
+                                                              is_remove_all<E>>,
                                       bool> = true>
             prepared_statement_t<with_t<E, CTEs...>> prepare(with_t<E, CTEs...> sel) {
                 return this->prepare_impl<with_t<E, CTEs...>>(std::move(sel));
@@ -23240,9 +23259,12 @@ namespace sqlite_orm {
             }
 
 #if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-            template<class... CTEs,
-                     class E,
-                     std::enable_if_t<polyfill::disjunction_v<is_insert_raw<E>, is_replace_raw<E>>, bool> = true>
+            template<
+                class... CTEs,
+                class E,
+                std::enable_if_t<
+                    polyfill::disjunction_v<is_insert_raw<E>, is_replace_raw<E>, is_update_all<E>, is_remove_all<E>>,
+                    bool> = true>
             void execute(const prepared_statement_t<with_t<E, CTEs...>>& statement) {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
                 iterate_ast(statement.expression, conditional_binder{stmt});

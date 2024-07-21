@@ -592,14 +592,25 @@ TEST_CASE("With clause") {
 
         storage.sync_schema();
 
-        constexpr auto data = "data"_cte;
-        storage.with(cte<data>().as(select(2)),
+        constexpr orm_cte_moniker auto data = "data"_cte;
+        storage.with(cte<data>().as(union_all(select(2), select(3))),
                      insert(into<Object>(), columns(&Object::id), select(data->*1_colalias)));
-        REQUIRE(2 == storage.last_insert_rowid());
+        REQUIRE(3 == storage.last_insert_rowid());
 
-        storage.with(cte<data>().as(select(2)),
+        storage.with(cte<data>().as(union_all(select(2), select(3))),
                      replace(into<Object>(), columns(&Object::id), select(data->*1_colalias)));
-        REQUIRE(storage.changes() == 1);
+        REQUIRE(storage.changes() == 2);
+
+        storage.with(
+            cte<data>().as(union_all(select(2), select(3))),
+            update_all(
+                set(c(&Object::id) = select(data->*1_colalias, from<data>(), where(data->*1_colalias == &Object::id))),
+                where(c(&Object::id).in(select(data->*1_colalias)))));
+        REQUIRE(storage.changes() == 2);
+
+        storage.with(cte<data>().as(union_all(select(2), select(3))),
+                     remove_all<Object>(where(c(&Object::id).in(select(data->*1_colalias)))));
+        REQUIRE(storage.changes() == 2);
     }
 #endif
 }

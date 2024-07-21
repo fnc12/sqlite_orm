@@ -142,6 +142,12 @@ namespace sqlite_orm {
             conditions_type conditions;
         };
 
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_update_all_v = polyfill::is_specialization_of<T, update_all_t>::value;
+
+        template<class T>
+        using is_update_all = polyfill::bool_constant<is_update_all_v<T>>;
+
         template<class T, class... Args>
         struct remove_all_t {
             using type = T;
@@ -149,6 +155,12 @@ namespace sqlite_orm {
 
             conditions_type conditions;
         };
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_remove_all_v = polyfill::is_specialization_of<T, remove_all_t>::value;
+
+        template<class T>
+        using is_remove_all = polyfill::bool_constant<is_remove_all_v<T>>;
 
         template<class T, class... Ids>
         struct get_t {
