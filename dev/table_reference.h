@@ -1,7 +1,6 @@
 #pragma once
 
 #include <type_traits>  //  std::remove_const, std::type_identity
-#endif
 
 #include "functional/cxx_type_traits_polyfill.h"
 
