@@ -1639,7 +1639,7 @@ namespace sqlite_orm {
     namespace internal {
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
         template<bool reversed = false, class Tpl, size_t... Idx, class L>
-        void iterate_tuple(Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
+        constexpr void iterate_tuple(Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
             if constexpr(reversed) {
                 // nifty fold expression trick: make use of guaranteed right-to-left evaluation order when folding over operator=
                 int sink;
@@ -1665,7 +1665,7 @@ namespace sqlite_orm {
         }
 #endif
         template<bool reversed = false, class Tpl, class L>
-        void iterate_tuple(Tpl&& tpl, L&& lambda) {
+        constexpr void iterate_tuple(Tpl&& tpl, L&& lambda) {
             iterate_tuple<reversed>(tpl,
                                     std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
                                     std::forward<L>(lambda));
@@ -4147,7 +4147,7 @@ namespace sqlite_orm {
             left_type lhs;
             right_type rhs;
 
-            binary_operator(left_type lhs_, right_type rhs_) : lhs(std::move(lhs_)), rhs(std::move(rhs_)) {}
+            constexpr binary_operator(left_type lhs_, right_type rhs_) : lhs(std::move(lhs_)), rhs(std::move(rhs_)) {}
         };
 
         template<class T>
@@ -4324,7 +4324,7 @@ namespace sqlite_orm {
      * name || '@gmail.com' FROM users
      */
     template<class L, class R>
-    internal::conc_t<L, R> conc(L l, R r) {
+    constexpr internal::conc_t<L, R> conc(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
@@ -4332,7 +4332,7 @@ namespace sqlite_orm {
      *  Public interface for + operator. Example: `select(add(&User::age, 100));` => SELECT age + 100 FROM users
      */
     template<class L, class R>
-    internal::add_t<L, R> add(L l, R r) {
+    constexpr internal::add_t<L, R> add(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
@@ -4340,7 +4340,7 @@ namespace sqlite_orm {
      *  Public interface for - operator. Example: `select(sub(&User::age, 1));` => SELECT age - 1 FROM users
      */
     template<class L, class R>
-    internal::sub_t<L, R> sub(L l, R r) {
+    constexpr internal::sub_t<L, R> sub(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
@@ -4348,7 +4348,7 @@ namespace sqlite_orm {
      *  Public interface for * operator. Example: `select(mul(&User::salary, 2));` => SELECT salary * 2 FROM users
      */
     template<class L, class R>
-    internal::mul_t<L, R> mul(L l, R r) {
+    constexpr internal::mul_t<L, R> mul(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
@@ -4358,7 +4358,7 @@ namespace sqlite_orm {
      *  If you use `using namespace sqlite_orm` directive you an specify which `div` you call explicitly using  `::div` or `sqlite_orm::div` statements.
      */
     template<class L, class R>
-    internal::div_t<L, R> div(L l, R r) {
+    constexpr internal::div_t<L, R> div(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
@@ -4366,32 +4366,32 @@ namespace sqlite_orm {
      *  Public interface for % operator. Example: `select(mod(&User::age, 5));` => SELECT age % 5 FROM users
      */
     template<class L, class R>
-    internal::mod_t<L, R> mod(L l, R r) {
+    constexpr internal::mod_t<L, R> mod(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    internal::bitwise_shift_left_t<L, R> bitwise_shift_left(L l, R r) {
+    constexpr internal::bitwise_shift_left_t<L, R> bitwise_shift_left(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    internal::bitwise_shift_right_t<L, R> bitwise_shift_right(L l, R r) {
+    constexpr internal::bitwise_shift_right_t<L, R> bitwise_shift_right(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    internal::bitwise_and_t<L, R> bitwise_and(L l, R r) {
+    constexpr internal::bitwise_and_t<L, R> bitwise_and(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    internal::bitwise_or_t<L, R> bitwise_or(L l, R r) {
+    constexpr internal::bitwise_or_t<L, R> bitwise_or(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class T>
-    internal::bitwise_not_t<T> bitwise_not(T t) {
+    constexpr internal::bitwise_not_t<T> bitwise_not(T t) {
         return {std::move(t)};
     }
 
@@ -4485,7 +4485,7 @@ namespace sqlite_orm {
 
             expression_type expression;
 
-            where_t(expression_type expression_) : expression(std::move(expression_)) {}
+            constexpr where_t(expression_type expression_) : expression(std::move(expression_)) {}
         };
 
         template<class T>
@@ -4505,7 +4505,7 @@ namespace sqlite_orm {
      *  auto rows = storage.select(&Letter::name, where(greater_than(&Letter::id, 3)));
      */
     template<class C>
-    internal::where_t<C> where(C expression) {
+    constexpr internal::where_t<C> where(C expression) {
         return {std::move(expression)};
     }
 }
@@ -4717,12 +4717,12 @@ namespace sqlite_orm {
             is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, expression_t>::value>> = true;
 
         template<class T>
-        T get_from_expression(T value) {
+        constexpr T get_from_expression(T value) {
             return std::move(value);
         }
 
         template<class T>
-        T get_from_expression(expression_t<T> expression) {
+        constexpr T get_from_expression(expression_t<T> expression) {
             return std::move(expression.value);
         }
 
@@ -4735,7 +4735,7 @@ namespace sqlite_orm {
      * `storage.update(set(c(&User::name) = "Dua Lipa"));
      */
     template<class T>
-    internal::expression_t<T> c(T value) {
+    constexpr internal::expression_t<T> c(T value) {
         return {std::move(value)};
     }
 }
@@ -4852,7 +4852,7 @@ namespace sqlite_orm {
         struct negated_condition_t : condition_t, negated_condition_string {
             C c;
 
-            negated_condition_t(C c_) : c(std::move(c_)) {}
+            constexpr negated_condition_t(C c_) : c(std::move(c_)) {}
         };
 
         /**
@@ -4871,9 +4871,9 @@ namespace sqlite_orm {
             left_type lhs;
             right_type rhs;
 
-            binary_condition() = default;
+            constexpr binary_condition() = default;
 
-            binary_condition(left_type l_, right_type r_) : lhs(std::move(l_)), rhs(std::move(r_)) {}
+            constexpr binary_condition(left_type l_, right_type r_) : lhs(std::move(l_)), rhs(std::move(r_)) {}
         };
 
         template<class T>
@@ -5588,7 +5588,7 @@ namespace sqlite_orm {
             class T,
             std::enable_if_t<polyfill::disjunction<std::is_base_of<negatable_t, T>, is_operator_argument<T>>::value,
                              bool> = true>
-        negated_condition_t<T> operator!(T arg) {
+        constexpr negated_condition_t<T> operator!(T arg) {
             return {std::move(arg)};
         }
 
@@ -5599,7 +5599,7 @@ namespace sqlite_orm {
                                                         is_operator_argument<L>,
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
-        less_than_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator<(L l, R r) {
+        constexpr less_than_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator<(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
         }
 
@@ -5610,7 +5610,7 @@ namespace sqlite_orm {
                                                         is_operator_argument<L>,
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
-        less_or_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator<=(L l, R r) {
+        constexpr less_or_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator<=(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
         }
 
@@ -5621,7 +5621,7 @@ namespace sqlite_orm {
                                                         is_operator_argument<L>,
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
-        greater_than_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator>(L l, R r) {
+        constexpr greater_than_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator>(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
         }
 
@@ -5632,20 +5632,7 @@ namespace sqlite_orm {
                                                         is_operator_argument<L>,
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
-        greater_or_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator>=(L l, R r) {
-            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
-        }
-
-        template<class L,
-                 class R,
-                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                        std::is_base_of<arithmetic_t, R>,
-                                                        std::is_base_of<condition_t, L>,
-                                                        std::is_base_of<condition_t, R>,
-                                                        is_operator_argument<L>,
-                                                        is_operator_argument<R>>::value,
-                                  bool> = true>
-        is_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator==(L l, R r) {
+        constexpr greater_or_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator>=(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
         }
 
@@ -5658,7 +5645,20 @@ namespace sqlite_orm {
                                                         is_operator_argument<L>,
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
-        is_not_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator!=(L l, R r) {
+        constexpr is_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator==(L l, R r) {
+            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+        }
+
+        template<class L,
+                 class R,
+                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
+                                                        std::is_base_of<arithmetic_t, R>,
+                                                        std::is_base_of<condition_t, L>,
+                                                        std::is_base_of<condition_t, R>,
+                                                        is_operator_argument<L>,
+                                                        is_operator_argument<R>>::value,
+                                  bool> = true>
+        constexpr is_not_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator!=(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
         }
 
@@ -5669,7 +5669,7 @@ namespace sqlite_orm {
                                                         is_operator_argument<L>,
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
-        and_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator&&(L l, R r) {
+        constexpr and_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator&&(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
         }
 
@@ -5678,7 +5678,7 @@ namespace sqlite_orm {
                  std::enable_if_t<
                      polyfill::disjunction<std::is_base_of<condition_t, L>, std::is_base_of<condition_t, R>>::value,
                      bool> = true>
-        or_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator||(L l, R r) {
+        constexpr or_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator||(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
         }
 
@@ -5694,7 +5694,7 @@ namespace sqlite_orm {
                                  polyfill::negation<polyfill::disjunction<std::is_base_of<condition_t, L>,
                                                                           std::is_base_of<condition_t, R>>>>::value,
                              bool> = true>
-        conc_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator||(L l, R r) {
+        constexpr conc_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator||(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
         }
     }
@@ -5792,14 +5792,14 @@ namespace sqlite_orm {
     }
 
     template<class L, class R>
-    auto and_(L l, R r) {
+    constexpr auto and_(L l, R r) {
         using namespace ::sqlite_orm::internal;
         return and_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>>{get_from_expression(std::forward<L>(l)),
                                                                                get_from_expression(std::forward<R>(r))};
     }
 
     template<class L, class R>
-    auto or_(L l, R r) {
+    constexpr auto or_(L l, R r) {
         using namespace ::sqlite_orm::internal;
         return or_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>>{get_from_expression(std::forward<L>(l)),
                                                                               get_from_expression(std::forward<R>(r))};
@@ -5846,52 +5846,52 @@ namespace sqlite_orm {
     }
 
     template<class L, class R>
-    internal::is_equal_t<L, R> is_equal(L l, R r) {
+    constexpr internal::is_equal_t<L, R> is_equal(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    internal::is_equal_t<L, R> eq(L l, R r) {
+    constexpr internal::is_equal_t<L, R> eq(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    internal::is_equal_with_table_t<L, R> is_equal(R rhs) {
+    constexpr internal::is_equal_with_table_t<L, R> is_equal(R rhs) {
         return {std::move(rhs)};
     }
 
     template<class L, class R>
-    internal::is_not_equal_t<L, R> is_not_equal(L l, R r) {
+    constexpr internal::is_not_equal_t<L, R> is_not_equal(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    internal::is_not_equal_t<L, R> ne(L l, R r) {
+    constexpr internal::is_not_equal_t<L, R> ne(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    internal::greater_than_t<L, R> greater_than(L l, R r) {
+    constexpr internal::greater_than_t<L, R> greater_than(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    internal::greater_than_t<L, R> gt(L l, R r) {
+    constexpr internal::greater_than_t<L, R> gt(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    internal::greater_or_equal_t<L, R> greater_or_equal(L l, R r) {
+    constexpr internal::greater_or_equal_t<L, R> greater_or_equal(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    internal::greater_or_equal_t<L, R> ge(L l, R r) {
+    constexpr internal::greater_or_equal_t<L, R> ge(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    internal::less_than_t<L, R> less_than(L l, R r) {
+    constexpr internal::less_than_t<L, R> less_than(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
@@ -5905,12 +5905,12 @@ namespace sqlite_orm {
     }
 
     template<class L, class R>
-    internal::less_than_t<L, R> lt(L l, R r) {
+    constexpr internal::less_than_t<L, R> lt(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    internal::less_or_equal_t<L, R> less_or_equal(L l, R r) {
+    constexpr internal::less_or_equal_t<L, R> less_or_equal(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
@@ -5924,7 +5924,7 @@ namespace sqlite_orm {
     }
 
     template<class L, class R>
-    internal::less_or_equal_t<L, R> le(L l, R r) {
+    constexpr internal::less_or_equal_t<L, R> le(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
@@ -8086,7 +8086,7 @@ namespace sqlite_orm {
                                                         is_operator_argument<L>,
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
-        add_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator+(L l, R r) {
+        constexpr add_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator+(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
         }
 
@@ -8097,7 +8097,7 @@ namespace sqlite_orm {
                                                         is_operator_argument<L>,
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
-        sub_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator-(L l, R r) {
+        constexpr sub_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator-(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
         }
 
@@ -8108,7 +8108,7 @@ namespace sqlite_orm {
                                                         is_operator_argument<L>,
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
-        mul_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator*(L l, R r) {
+        constexpr mul_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator*(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
         }
 
@@ -8119,7 +8119,7 @@ namespace sqlite_orm {
                                                         is_operator_argument<L>,
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
-        div_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator/(L l, R r) {
+        constexpr div_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator/(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
         }
 
@@ -8130,7 +8130,7 @@ namespace sqlite_orm {
                                                         is_operator_argument<L>,
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
-        mod_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator%(L l, R r) {
+        constexpr mod_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator%(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
         }
     }
@@ -8196,7 +8196,7 @@ namespace sqlite_orm {
                           std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
                           std::convertible_to<ExplicitCols, std::string>) &&
                          ...)
-            auto operator()(ExplicitCols... explicitColumns) const;
+            constexpr auto operator()(ExplicitCols... explicitColumns) const;
 #else
             template<class... ExplicitCols,
                      std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
@@ -8205,7 +8205,7 @@ namespace sqlite_orm {
                                           std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
                                           std::is_convertible<ExplicitCols, std::string>>...>,
                                       bool> = true>
-            auto operator()(ExplicitCols... explicitColumns) const;
+            constexpr auto operator()(ExplicitCols... explicitColumns) const;
 #endif
         };
     }
@@ -8600,7 +8600,7 @@ namespace sqlite_orm {
 
             expressions_tuple compound;
 
-            compound_operator(expressions_tuple compound) : compound{std::move(compound)} {
+            constexpr compound_operator(expressions_tuple compound) : compound{std::move(compound)} {
                 iterate_tuple(this->compound, [](auto& expression) {
                     expression.highest_level = true;
                 });
@@ -8636,7 +8636,7 @@ namespace sqlite_orm {
         struct union_t : public compound_operator<E...>, union_base {
             using typename compound_operator<E...>::expressions_tuple;
 
-            union_t(expressions_tuple compound, bool all) :
+            constexpr union_t(expressions_tuple compound, bool all) :
                 compound_operator<E...>{std::move(compound)}, union_base{all} {}
         };
 
@@ -8717,7 +8717,7 @@ namespace sqlite_orm {
             explicit_colrefs_tuple explicitColumns;
             expression_type subselect;
 
-            common_table_expression(explicit_colrefs_tuple explicitColumns, expression_type subselect) :
+            constexpr common_table_expression(explicit_colrefs_tuple explicitColumns, expression_type subselect) :
                 explicitColumns{std::move(explicitColumns)}, subselect{std::move(subselect)} {
                 this->subselect.highest_level = true;
             }
@@ -8732,23 +8732,25 @@ namespace sqlite_orm {
 
 #if SQLITE_VERSION_NUMBER >= 3035000 && defined(SQLITE_ORM_WITH_CPP20_ALIASES)
             template<auto... hints, class Select, satisfies<is_select, Select> = true>
-            common_table_expression<Moniker, ExplicitCols, std::tuple<decltype(hints)...>, Select> as(Select sel) && {
+            constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<decltype(hints)...>, Select>
+            as(Select sel) && {
                 return {std::move(this->explicitColumns), std::move(sel)};
             }
 
             template<auto... hints, class Compound, satisfies<is_compound_operator, Compound> = true>
-            common_table_expression<Moniker, ExplicitCols, std::tuple<decltype(hints)...>, select_t<Compound>>
+            constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<decltype(hints)...>, select_t<Compound>>
             as(Compound sel) && {
                 return {std::move(this->explicitColumns), {std::move(sel)}};
             }
 #else
             template<class Select, satisfies<is_select, Select> = true>
-            common_table_expression<Moniker, ExplicitCols, std::tuple<>, Select> as(Select sel) && {
+            constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<>, Select> as(Select sel) && {
                 return {std::move(this->explicitColumns), std::move(sel)};
             }
 
             template<class Compound, satisfies<is_compound_operator, Compound> = true>
-            common_table_expression<Moniker, ExplicitCols, std::tuple<>, select_t<Compound>> as(Compound sel) && {
+            constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<>, select_t<Compound>>
+            as(Compound sel) && {
                 return {std::move(this->explicitColumns), {std::move(sel)}};
             }
 #endif
@@ -8870,7 +8872,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        void validate_conditions() {
+        constexpr void validate_conditions() {
             static_assert(count_tuple<T, is_where>::value <= 1, "a single query cannot contain > 1 WHERE blocks");
             static_assert(count_tuple<T, is_group_by>::value <= 1, "a single query cannot contain > 1 GROUP BY blocks");
             static_assert(count_tuple<T, is_order_by>::value <= 1, "a single query cannot contain > 1 ORDER BY blocks");
@@ -8937,7 +8939,7 @@ namespace sqlite_orm {
      *  Public function for subselect query. Is useful in UNION queries.
      */
     template<class T, class... Args>
-    internal::select_t<T, Args...> select(T t, Args... args) {
+    constexpr internal::select_t<T, Args...> select(T t, Args... args) {
         using args_tuple = std::tuple<Args...>;
         internal::validate_conditions<args_tuple>();
         return {std::move(t), {std::forward<Args>(args)...}};
@@ -8949,7 +8951,7 @@ namespace sqlite_orm {
      *  Look through example in examples/union.cpp
      */
     template<class... E>
-    internal::union_t<E...> union_(E... expressions) {
+    constexpr internal::union_t<E...> union_(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}, false};
     }
@@ -8960,7 +8962,7 @@ namespace sqlite_orm {
      *  Look through example in examples/union.cpp
      */
     template<class... E>
-    internal::union_t<E...> union_all(E... expressions) {
+    constexpr internal::union_t<E...> union_all(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}, true};
     }
@@ -8971,13 +8973,13 @@ namespace sqlite_orm {
      *  Look through example in examples/except.cpp
      */
     template<class... E>
-    internal::except_t<E...> except(E... expressions) {
+    constexpr internal::except_t<E...> except(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}};
     }
 
     template<class... E>
-    internal::intersect_t<E...> intersect(E... expressions) {
+    constexpr internal::intersect_t<E...> intersect(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}};
     }
@@ -9031,7 +9033,7 @@ namespace sqlite_orm {
                                   std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
                                   std::is_convertible<ExplicitCols, std::string>>...>,
                               bool> = true>
-    auto cte(ExplicitCols... explicitColumns) {
+    constexpr auto cte(ExplicitCols... explicitColumns) {
         using namespace ::sqlite_orm::internal;
         static_assert(is_cte_moniker_v<Moniker>, "Moniker must be a CTE moniker");
         static_assert((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
@@ -9049,7 +9051,7 @@ namespace sqlite_orm {
                   std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
                   std::convertible_to<ExplicitCols, std::string>) &&
                  ...)
-    auto cte(ExplicitCols... explicitColumns) {
+    constexpr auto cte(ExplicitCols... explicitColumns) {
         using namespace ::sqlite_orm::internal;
         static_assert((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
@@ -9068,7 +9070,7 @@ namespace sqlite_orm {
                       std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
                       std::convertible_to<ExplicitCols, std::string>) &&
                      ...)
-        auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) const {
+        constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) const {
             return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
         }
 #else
@@ -9080,7 +9082,7 @@ namespace sqlite_orm {
                                       std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
                                       std::is_convertible<ExplicitCols, std::string>>...>,
                                   bool>>
-        auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) const {
+        constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) const {
             return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
         }
 #endif
@@ -9217,7 +9219,7 @@ namespace sqlite_orm {
      *   If you need to fetch results as objects instead of tuples please use `object<T>()`.
      */
     template<class T>
-    internal::asterisk_t<T> asterisk(bool definedOrder = false) {
+    constexpr internal::asterisk_t<T> asterisk(bool definedOrder = false) {
         return {definedOrder};
     }
 
@@ -9229,7 +9231,7 @@ namespace sqlite_orm {
      *      storage.select(asterisk<m>(), inner_join<m>(on(m->*&Employee::reportsTo == &Employee::employeeId)));
      */
     template<orm_refers_to_recordset auto recordset>
-    auto asterisk(bool definedOrder = false) {
+    constexpr auto asterisk(bool definedOrder = false) {
         return asterisk<internal::auto_decay_table_ref_t<recordset>>(definedOrder);
     }
 #endif
@@ -9246,13 +9248,13 @@ namespace sqlite_orm {
      *   If you need to fetch results as tuples instead of objects please use `asterisk<T>()`.
      */
     template<class T>
-    internal::object_t<T> object(bool definedOrder = false) {
+    constexpr internal::object_t<T> object(bool definedOrder = false) {
         return {definedOrder};
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<orm_refers_to_table auto als>
-    auto object(bool definedOrder = false) {
+    constexpr auto object(bool definedOrder = false) {
         return object<internal::auto_decay_table_ref_t<als>>(definedOrder);
     }
 #endif
