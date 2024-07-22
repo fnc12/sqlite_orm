@@ -32,7 +32,7 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/sqlite_orm DESTINATION ${CMAKE_I
 # note that there is no convention for the install location of module source files at the time of writing.
 # the module source file will get installed to subfolder "${SQLITE_ORM_INSTALL_CMAKEDIR}/src" following Craig Scott's [writeup](https://crascit.com/2024/04/04/cxx-modules-cmake-shared-libraries/#h-installing-shared-libraries-with-c-20-modules).
 # also see @starball's detailed stackoverflow [answer](https://stackoverflow.com/a/78209338/279251).
-if(CMAKE_VERSION GREATER_EQUAL 3.28.2)
+if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.28.2)
     install(TARGETS sqlite_orm
         FILE_SET CXX_MODULES
             DESTINATION ${SQLITE_ORM_INSTALL_CMAKEDIR}/src
