@@ -6,10 +6,10 @@
 #include <memory>  //  std::default_delete
 #include <string>  //  std::string, std::wstring
 #include <vector>  //  std::vector
-#include <cstring>  //  ::strncpy, ::strlen
+#include <cstring>  //  strncpy, strlen
 #include "functional/cxx_string_view.h"
 #ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
-#include <cwchar>  //  ::wcsncpy, ::wcslen
+#include <cwchar>  //  wcsncpy, wcslen
 #endif
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <locale>  // std::wstring_convert

@@ -2,6 +2,7 @@
 
 #include <sqlite3.h>
 #ifndef _IMPORT_STD_MODULE
+#include <cstdlib>  // atoi
 #include <memory>  //  std::allocator
 #include <functional>  //  std::function, std::bind, std::bind_front
 #include <string>  //  std::string
@@ -171,7 +172,7 @@ namespace sqlite_orm {
                     [](void* data, int argc, char** argv, char** /*azColName*/) -> int {
                         auto& res = *(bool*)data;
                         if(argc) {
-                            res = !!std::atoi(argv[0]);
+                            res = !!atoi(argv[0]);
                         }
                         return 0;
                     },

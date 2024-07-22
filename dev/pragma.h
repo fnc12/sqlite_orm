@@ -151,14 +151,14 @@ namespace sqlite_orm {
                         auto& res = *(std::vector<sqlite_orm::table_xinfo>*)data;
                         if(argc) {
                             auto index = 0;
-                            auto cid = std::atoi(argv[index++]);
+                            auto cid = atoi(argv[index++]);
                             std::string name = argv[index++];
                             std::string type = argv[index++];
-                            bool notnull = !!std::atoi(argv[index++]);
+                            bool notnull = !!atoi(argv[index++]);
                             std::string dflt_value = argv[index] ? argv[index] : "";
                             ++index;
-                            auto pk = std::atoi(argv[index++]);
-                            auto hidden = std::atoi(argv[index++]);
+                            auto pk = atoi(argv[index++]);
+                            auto hidden = atoi(argv[index++]);
                             res.emplace_back(cid,
                                              std::move(name),
                                              std::move(type),
@@ -188,13 +188,13 @@ namespace sqlite_orm {
                         auto& res = *(std::vector<sqlite_orm::table_info>*)data;
                         if(argc) {
                             auto index = 0;
-                            auto cid = std::atoi(argv[index++]);
+                            auto cid = atoi(argv[index++]);
                             std::string name = argv[index++];
                             std::string type = argv[index++];
-                            bool notnull = !!std::atoi(argv[index++]);
+                            bool notnull = !!atoi(argv[index++]);
                             std::string dflt_value = argv[index] ? argv[index] : "";
                             ++index;
-                            auto pk = std::atoi(argv[index++]);
+                            auto pk = atoi(argv[index++]);
                             res.emplace_back(cid, std::move(name), std::move(type), notnull, std::move(dflt_value), pk);
                         }
                         return 0;
