@@ -27,6 +27,9 @@ if(SQLITE_ORM_ENABLE_CXX_23 AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.28.2 AND M
     target_precompile_headers(module_tests PRIVATE
         <sqlite3.h>)
 
+    # note: sqlite3 already linked in top-level CMakeLists
+    target_link_libraries(module_tests PRIVATE sqlite_orm)
+
     add_test(NAME "module_tests"
         COMMAND module_tests
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
