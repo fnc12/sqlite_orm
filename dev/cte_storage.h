@@ -7,7 +7,6 @@
 #include <vector>
 #endif
 
-#include "functional/cxx_universal.h"  //  ::size_t
 #include "tuple_helper/tuple_fy.h"
 #include "table_type_of.h"
 #include "column_result.h"

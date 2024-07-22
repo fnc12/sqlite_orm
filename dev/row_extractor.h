@@ -2,7 +2,8 @@
 
 #include <sqlite3.h>
 #include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::enable_if
-#include <stdlib.h>  //  atof, atoi, atoll
+#include <cstdlib>  //  atof, atoi, atoll
+#include <cstring>  //  strlen
 #include <system_error>  //  std::system_error
 #include <string>  //  std::string, std::wstring
 #ifndef SQLITE_ORM_OMITS_CODECVT
@@ -10,7 +11,6 @@
 #include <codecvt>  //  std::codecvt_utf8_utf16
 #endif
 #include <vector>  //  std::vector
-#include <cstring>  //  strlen
 #include <algorithm>  //  std::copy
 #include <iterator>  //  std::back_inserter
 #include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
@@ -18,7 +18,6 @@
 #include <concepts>
 #endif
 
-#include "functional/cxx_universal.h"
 #include "functional/cxx_functional_polyfill.h"
 #include "functional/static_magic.h"
 #include "tuple_helper/tuple_transformer.h"
@@ -389,7 +388,7 @@ namespace sqlite_orm {
     template<>
     struct row_extractor<std::vector<char>, void> {
         std::vector<char> extract(const char* columnText) const {
-            return {columnText, columnText + (columnText ? ::strlen(columnText) : 0)};
+            return {columnText, columnText + (columnText ? strlen(columnText) : 0)};
         }
 
         std::vector<char> extract(sqlite3_stmt* stmt, int columnIndex) const {

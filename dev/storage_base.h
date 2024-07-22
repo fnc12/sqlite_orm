@@ -1,10 +1,12 @@
 #pragma once
 
 #include <sqlite3.h>
+#include <cstdlib>  // atoi
 #include <memory>  //  std::allocator
 #include <functional>  //  std::function, std::bind, std::bind_front
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
+#include <iomanip>  //  std::flush
 #include <utility>  //  std::move
 #include <system_error>  //  std::system_error
 #include <vector>  //  std::vector
@@ -14,7 +16,6 @@
 #include <type_traits>  //  std::is_same
 #include <algorithm>  //  std::find_if, std::ranges::find
 
-#include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/cxx_tuple_polyfill.h"  //  std::apply
 #include "tuple_helper/tuple_iteration.h"
 #include "pragma.h"
@@ -30,6 +31,7 @@
 #include "xdestroy_handling.h"
 #include "udf_proxy.h"
 #include "serializing_util.h"
+#include "table_info.h"
 
 namespace sqlite_orm {
 
@@ -168,7 +170,7 @@ namespace sqlite_orm {
                     [](void* data, int argc, char** argv, char** /*azColName*/) -> int {
                         auto& res = *(bool*)data;
                         if(argc) {
-                            res = !!std::atoi(argv[0]);
+                            res = !!atoi(argv[0]);
                         }
                         return 0;
                     },

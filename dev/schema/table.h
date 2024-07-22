@@ -6,7 +6,6 @@
 #include <tuple>  //  std::tuple_element
 #include <utility>  //  std::forward, std::move
 
-#include "../functional/cxx_universal.h"  //  ::size_t
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/cxx_functional_polyfill.h"
 #include "../functional/static_magic.h"
@@ -22,6 +21,7 @@
 #include "../alias_traits.h"
 #include "../constraints.h"
 #include "../table_info.h"
+#include "index.h"
 #include "column.h"
 
 namespace sqlite_orm {

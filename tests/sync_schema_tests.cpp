@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 
@@ -138,7 +139,7 @@ TEST_CASE("issue521") {
     struct MockDatabasePoco {
         int id{-1};
         std::string name;
-        uint32_t alpha{0};
+        std::uint32_t alpha{0};
         float beta{0.0};
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED

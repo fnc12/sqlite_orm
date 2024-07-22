@@ -1,6 +1,6 @@
 #pragma once
 
-#include <type_traits>  //  std::enable_if, std::is_same, std::conditional
+#include <type_traits>  //  std::enable_if, std::is_same
 #include <utility>  //  std::make_index_sequence, std::move
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
@@ -291,7 +291,7 @@ namespace sqlite_orm {
                  polyfill::conjunction_v<internal::is_table_alias<A>, internal::is_cte_moniker<internal::type_t<A>>>,
                  bool> = true>
     constexpr auto alias_column(C c) {
-        using namespace internal;
+        using namespace ::sqlite_orm::internal;
         using cte_moniker_t = type_t<A>;
 
         if constexpr(is_column_pointer_v<C>) {

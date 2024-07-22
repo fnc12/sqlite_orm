@@ -1,8 +1,8 @@
 #pragma once
 
+#include <type_traits>  //  std::enable_if, std::remove_pointer
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string
-#include <type_traits>  //  std::enable_if, std::remove_pointer
 #include <vector>  //  std::vector
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <locale>  // std::wstring_convert
@@ -14,7 +14,6 @@
 #include "functional/cxx_string_view.h"
 #include "functional/cxx_optional.h"
 
-#include "functional/cxx_universal.h"
 #include "functional/cxx_functional_polyfill.h"
 #include "functional/mpl.h"
 #include "tuple_helper/tuple_filter.h"
@@ -28,7 +27,6 @@
 #include "core_functions.h"
 #include "constraints.h"
 #include "conditions.h"
-#include "schema/column.h"
 #include "indexed_column.h"
 #include "function.h"
 #include "prepared_statement.h"
@@ -45,12 +43,13 @@
 #include "serialize_result_type.h"
 #include "statement_binder.h"
 #include "values.h"
-#include "schema/triggers.h"
 #include "table_type_of.h"
-#include "schema/index.h"
-#include "schema/table.h"
 #include "util.h"
 #include "error_code.h"
+#include "schema/triggers.h"
+#include "schema/column.h"
+#include "schema/index.h"
+#include "schema/table.h"
 
 namespace sqlite_orm {
 

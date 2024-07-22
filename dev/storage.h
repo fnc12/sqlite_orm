@@ -7,6 +7,7 @@
 #include <type_traits>  //  std::remove_reference, std::is_base_of, std::decay, std::false_type, std::true_type
 #include <functional>  //   std::identity
 #include <sstream>  //  std::stringstream
+#include <iomanip>  //  std::flush
 #include <map>  //  std::map
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_size, std::tuple, std::make_tuple, std::tie
@@ -14,7 +15,6 @@
 #include <algorithm>  //  std::for_each, std::ranges::for_each
 #include "functional/cxx_optional.h"
 
-#include "functional/cxx_universal.h"
 #include "functional/cxx_functional_polyfill.h"
 #include "functional/static_magic.h"
 #include "functional/mpl.h"

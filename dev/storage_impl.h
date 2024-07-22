@@ -2,7 +2,6 @@
 
 #include <string>  //  std::string
 
-#include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/static_magic.h"
 #include "functional/index_sequence_util.h"
 #include "tuple_helper/tuple_traits.h"
@@ -11,6 +10,8 @@
 #include "type_traits.h"
 #include "select_constraints.h"
 #include "cte_types.h"
+#include "schema/column.h"
+#include "schema/table.h"
 #include "storage_lookup.h"
 
 // interface functions

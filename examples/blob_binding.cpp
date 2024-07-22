@@ -1,4 +1,6 @@
+#include <sqlite3.h>
 #include <sqlite_orm/sqlite_orm.h>
+#include <cstdint>
 #include <iostream>
 
 using namespace sqlite_orm;
@@ -66,7 +68,7 @@ namespace sqlite_orm {
             std::vector<char> blobValue;
             blobValue.reserve(16);
             auto encodeInteger = [&blobValue](int value) {
-                auto preciseValue = int32_t(value);
+                auto preciseValue = std::int32_t(value);
                 const auto intPointer = &preciseValue;
                 auto charPointer = (const char*)(intPointer);
                 blobValue.push_back(charPointer[0]);
@@ -110,7 +112,7 @@ namespace sqlite_orm {
             Rect value;
             auto decodeInteger = [charPointer](int& integer, int index) {
                 auto pointerWithOffset = charPointer + index * 4;
-                auto intPointer = (const int32_t*)pointerWithOffset;
+                auto intPointer = (const std::int32_t*)pointerWithOffset;
                 integer = int(*intPointer);
             };
             decodeInteger(value.x, 0);

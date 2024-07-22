@@ -1,7 +1,7 @@
 #pragma once
 
 #include <sqlite3.h>
-#include <cassert>  //  assert
+#include <cassert>  //  assert macro
 #include <type_traits>  //  std::true_type, std::false_type
 #include <new>  //  std::bad_alloc
 #include <memory>  //  std::allocator, std::allocator_traits, std::unique_ptr

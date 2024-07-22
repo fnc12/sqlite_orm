@@ -10,7 +10,6 @@
 #include <string>
 #endif
 
-#include "functional/cxx_universal.h"
 #include "functional/cstring_literal.h"
 #include "alias.h"
 
