@@ -11,9 +11,10 @@ if(SQLITE_ORM_ENABLE_CXX_23 AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.28.2 AND M
         named_module.cpp
     )
 
-    target_sources(module_tests PUBLIC
-        FILE_SET all_my_modules TYPE CXX_MODULES FILES
-        ../modules/sqlite_orm.ixx
+    target_sources(module_tests
+        PRIVATE FILE_SET all_modules TYPE CXX_MODULES
+        BASE_DIRS ../modules
+        FILES ../modules/sqlite_orm.ixx
     )
 
     target_compile_features(module_tests PUBLIC cxx_std_23)
