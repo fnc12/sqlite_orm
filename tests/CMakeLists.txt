@@ -5,6 +5,33 @@ FetchContent_MakeAvailable(Catch2)
 
 option(SQLITE_ORM_OMITS_CODECVT "Omits codec testing" OFF)
 
+
+if(SQLITE_ORM_ENABLE_CXX_23 AND CMAKE_VERSION GREATER_EQUAL 3.28.2 AND MSVC and MSVC_VERSION GREATER_EQUAL 1930)
+    add_executable(module_tests
+        named_module.cpp
+    )
+
+    target_sources(module_tests PUBLIC
+        FILE_SET all_my_modules TYPE CXX_MODULES FILES
+        ../modules/sqlite_orm.ixx
+    )
+
+    target_compile_features(module_tests PUBLIC cxx_std_23)
+
+    if(SQLITE_ORM_OMITS_CODECVT)
+        message(STATUS "SQLITE_ORM_OMITS_CODECVT is enabled")
+        target_compile_definitions(module_tests PRIVATE SQLITE_ORM_OMITS_CODECVT=1)
+    endif()
+
+    target_precompile_headers(module_tests PRIVATE
+        <sqlite3.h>)
+
+    add_test(NAME "module_tests"
+        COMMAND module_tests
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+endif()
+
+
 add_executable(unit_tests
     static_tests/functional/static_if_tests.cpp
     static_tests/functional/mpl.cpp
