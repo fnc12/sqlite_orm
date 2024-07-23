@@ -209,6 +209,24 @@ TEST_CASE("Node tuple") {
         using AssignTuple = node_tuple_t<assign_t<decltype(&User::name), std::string>>;
         static_assert(is_same<AssignTuple, tuple<decltype(&User::name), std::string>>::value, "assign_t");
     }
+    SECTION("bitwise operator") {
+        using namespace internal;
+
+        using BitwiseNotTuple = node_tuple_t<bitwise_not_t<decltype(&User::id)>>;
+        STATIC_REQUIRE(is_same<BitwiseNotTuple, tuple<decltype(&User::id)>>::value);
+
+        using BitwiseShiftLeftTuple = node_tuple_t<bitwise_shift_left_t<int, decltype(&User::id)>>;
+        STATIC_REQUIRE(is_same<BitwiseShiftLeftTuple, tuple<int, decltype(&User::id)>>::value);
+
+        using BitwiseShiftRightTuple = node_tuple_t<bitwise_shift_right_t<int, decltype(&User::id)>>;
+        STATIC_REQUIRE(is_same<BitwiseShiftRightTuple, tuple<int, decltype(&User::id)>>::value);
+
+        using BitwiseAndTuple = node_tuple_t<bitwise_and_t<int, decltype(&User::id)>>;
+        STATIC_REQUIRE(is_same<BitwiseAndTuple, tuple<int, decltype(&User::id)>>::value);
+
+        using BitwiseOrTuple = node_tuple_t<bitwise_or_t<int, decltype(&User::id)>>;
+        STATIC_REQUIRE(is_same<BitwiseOrTuple, tuple<int, decltype(&User::id)>>::value);
+    }
     SECTION("columns") {
         auto cols = columns(&User::id, &User::name);
         using Cols = decltype(cols);
