@@ -50,6 +50,10 @@ TEST_CASE("builtin tables") {
 
         auto dbstatRows = storage.get_all<dbstat>();
         std::ignore = dbstatRows;
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        dbstatRows = storage.get_all<dbstat_table>();
+#endif
     }
 #endif  //  SQLITE_ENABLE_DBSTAT_VTAB
 }
