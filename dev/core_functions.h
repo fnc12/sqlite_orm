@@ -2041,6 +2041,14 @@ namespace sqlite_orm {
     // Intentionally place operators for types classified as arithmetic or general operator arguments in the internal namespace
     // to facilitate ADL (Argument Dependent Lookup)
     namespace internal {
+        template<
+            class T,
+            std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, T>, is_operator_argument<T>>::value,
+                             bool> = true>
+        constexpr unary_minus_t<unwrap_expression_t<T>> operator-(T arg) {
+            return {get_from_expression(std::forward<T>(arg))};
+        }
+
         template<class L,
                  class R,
                  std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,

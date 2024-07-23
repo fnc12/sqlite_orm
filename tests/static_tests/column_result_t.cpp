@@ -95,6 +95,8 @@ TEST_CASE("column_result_of_t") {
     runTest<db_objects_t, std::string>(all(&User::name));
     runTest<db_objects_t, std::string>(conc(&User::name, &User::id));
     runTest<db_objects_t, std::string>(c(&User::name) || &User::id);
+    runTest<db_objects_t, double>(minus(&User::id));
+    runTest<db_objects_t, double>(-c(&User::id));
     runTest<db_objects_t, double>(add(&User::id, 5));
     runTest<db_objects_t, double>(c(&User::id) + 5);
     runTest<db_objects_t, double>(sub(&User::id, 5));

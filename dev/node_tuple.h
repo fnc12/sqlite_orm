@@ -200,6 +200,9 @@ namespace sqlite_orm {
         struct node_tuple<negated_condition_t<C>, void> : node_tuple<C> {};
 
         template<class T>
+        struct node_tuple<unary_minus_t<T>, void> : node_tuple<T> {};
+
+        template<class T>
         struct node_tuple<bitwise_not_t<T>, void> : node_tuple<T> {};
 
         template<class R, class S, class... Args>

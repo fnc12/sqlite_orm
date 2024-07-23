@@ -4168,6 +4168,24 @@ namespace sqlite_orm {
         template<class L, class R>
         using conc_t = binary_operator<L, R, conc_string>;
 
+        struct unary_minus_string {
+            serialize_result_type serialize() const {
+                return "-";
+            }
+        };
+
+        /**
+         *  Result of unary minus - operator
+         */
+        template<class T>
+        struct unary_minus_t : unary_minus_string, arithmetic_t, negatable_t {
+            using argument_type = T;
+
+            argument_type argument;
+
+            unary_minus_t(argument_type argument_) : argument(std::move(argument_)) {}
+        };
+
         struct add_string {
             serialize_result_type serialize() const {
                 return "+";
@@ -4187,7 +4205,7 @@ namespace sqlite_orm {
         };
 
         /**
-         *  Result of substitute - operator
+         *  Result of substraction - operator
          */
         template<class L, class R>
         using sub_t = binary_operator<L, R, sub_string, arithmetic_t, negatable_t>;
@@ -4326,6 +4344,11 @@ namespace sqlite_orm {
     template<class L, class R>
     constexpr internal::conc_t<L, R> conc(L l, R r) {
         return {std::move(l), std::move(r)};
+    }
+
+    template<class T>
+    constexpr internal::unary_minus_t<T> minus(T t) {
+        return {std::move(t)};
     }
 
     /**
@@ -8091,6 +8114,14 @@ namespace sqlite_orm {
     // Intentionally place operators for types classified as arithmetic or general operator arguments in the internal namespace
     // to facilitate ADL (Argument Dependent Lookup)
     namespace internal {
+        template<
+            class T,
+            std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, T>, is_operator_argument<T>>::value,
+                             bool> = true>
+        constexpr unary_minus_t<unwrap_expression_t<T>> operator-(T arg) {
+            return {get_from_expression(std::forward<T>(arg))};
+        }
+
         template<class L,
                  class R,
                  std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
@@ -11472,6 +11503,11 @@ namespace sqlite_orm {
         template<class DBOs, class L, class R>
         struct column_result_t<DBOs, conc_t<L, R>, void> {
             using type = std::string;
+        };
+
+        template<class DBOs, class T>
+        struct column_result_t<DBOs, unary_minus_t<T>, void> {
+            using type = double;
         };
 
         template<class DBOs, class L, class R>
@@ -19941,8 +19977,11 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializer<bitwise_not_t<T>, void> {
-            using statement_type = bitwise_not_t<T>;
+        struct statement_serializer<
+            T,
+            std::enable_if_t<polyfill::disjunction<polyfill::is_specialization_of<T, unary_minus_t>,
+                                                   polyfill::is_specialization_of<T, bitwise_not_t>>::value>> {
+            using statement_type = T;
 
             template<class Ctx>
             std::string operator()(const statement_type& expression, const Ctx& context) const {
@@ -24286,6 +24325,9 @@ namespace sqlite_orm {
 
         template<class C>
         struct node_tuple<negated_condition_t<C>, void> : node_tuple<C> {};
+
+        template<class T>
+        struct node_tuple<unary_minus_t<T>, void> : node_tuple<T> {};
 
         template<class T>
         struct node_tuple<bitwise_not_t<T>, void> : node_tuple<T> {};

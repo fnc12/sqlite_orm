@@ -28,6 +28,7 @@ using sqlite_orm::internal::less_or_equal_t;
 using sqlite_orm::internal::less_than_t;
 using sqlite_orm::internal::negated_condition_t;
 using sqlite_orm::internal::or_condition_t;
+using sqlite_orm::internal::unary_minus_t;
 using sqlite_orm::polyfill::is_specialization_of_v;
 
 template<class E>
@@ -67,6 +68,10 @@ void runTests(E expression) {
     STATIC_REQUIRE(is_specialization_of_v<decltype(expression || 42 || c(42)), binary_operator>);
     STATIC_REQUIRE(is_specialization_of_v<decltype(42 || (expression || 42)), binary_operator>);
     STATIC_REQUIRE(is_specialization_of_v<decltype(c(42) || (expression || 42)), binary_operator>);
+
+    STATIC_REQUIRE(is_specialization_of_v<decltype(-expression), unary_minus_t>);
+    STATIC_REQUIRE(is_specialization_of_v<decltype(-(expression + expression)), unary_minus_t>);
+    STATIC_REQUIRE(is_specialization_of_v<decltype(-expression + expression), binary_operator>);
 
     STATIC_REQUIRE(is_specialization_of_v<decltype(expression + 42), binary_operator>);
     STATIC_REQUIRE(is_specialization_of_v<decltype(42 + expression), binary_operator>);

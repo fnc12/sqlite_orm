@@ -718,8 +718,11 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializer<bitwise_not_t<T>, void> {
-            using statement_type = bitwise_not_t<T>;
+        struct statement_serializer<
+            T,
+            std::enable_if_t<polyfill::disjunction<polyfill::is_specialization_of<T, unary_minus_t>,
+                                                   polyfill::is_specialization_of<T, bitwise_not_t>>::value>> {
+            using statement_type = T;
 
             template<class Ctx>
             std::string operator()(const statement_type& expression, const Ctx& context) const {

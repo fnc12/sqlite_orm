@@ -41,6 +41,24 @@ namespace sqlite_orm {
         template<class L, class R>
         using conc_t = binary_operator<L, R, conc_string>;
 
+        struct unary_minus_string {
+            serialize_result_type serialize() const {
+                return "-";
+            }
+        };
+
+        /**
+         *  Result of unary minus - operator
+         */
+        template<class T>
+        struct unary_minus_t : unary_minus_string, arithmetic_t, negatable_t {
+            using argument_type = T;
+
+            argument_type argument;
+
+            unary_minus_t(argument_type argument_) : argument(std::move(argument_)) {}
+        };
+
         struct add_string {
             serialize_result_type serialize() const {
                 return "+";
@@ -60,7 +78,7 @@ namespace sqlite_orm {
         };
 
         /**
-         *  Result of substitute - operator
+         *  Result of substraction - operator
          */
         template<class L, class R>
         using sub_t = binary_operator<L, R, sub_string, arithmetic_t, negatable_t>;
@@ -199,6 +217,11 @@ namespace sqlite_orm {
     template<class L, class R>
     constexpr internal::conc_t<L, R> conc(L l, R r) {
         return {std::move(l), std::move(r)};
+    }
+
+    template<class T>
+    constexpr internal::unary_minus_t<T> minus(T t) {
+        return {std::move(t)};
     }
 
     /**

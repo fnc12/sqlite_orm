@@ -189,25 +189,28 @@ TEST_CASE("Node tuple") {
         using namespace internal;
 
         using CondTuple = node_tuple_t<conc_t<std::string, decltype(&User::name)>>;
-        static_assert(is_same<CondTuple, tuple<std::string, decltype(&User::name)>>::value, "conc_t");
+        STATIC_REQUIRE(is_same<CondTuple, tuple<std::string, decltype(&User::name)>>::value);
+
+        using MinusTuple = node_tuple_t<unary_minus_t<decltype(&User::id)>>;
+        STATIC_REQUIRE(is_same<MinusTuple, tuple<decltype(&User::id)>>::value);
 
         using AddTuple = node_tuple_t<add_t<int, decltype(&User::id)>>;
-        static_assert(is_same<AddTuple, tuple<int, decltype(&User::id)>>::value, "add_t");
+        STATIC_REQUIRE(is_same<AddTuple, tuple<int, decltype(&User::id)>>::value);
 
         using SubTuple = node_tuple_t<sub_t<float, double>>;
-        static_assert(is_same<SubTuple, tuple<float, double>>::value, "sub_t");
+        STATIC_REQUIRE(is_same<SubTuple, tuple<float, double>>::value);
 
         using MulTuple = node_tuple_t<mul_t<double, decltype(&User::id)>>;
-        static_assert(is_same<MulTuple, tuple<double, decltype(&User::id)>>::value, "mul_t");
+        STATIC_REQUIRE(is_same<MulTuple, tuple<double, decltype(&User::id)>>::value);
 
         using DivTuple = node_tuple_t<sqlite_orm::internal::div_t<int, float>>;
-        static_assert(is_same<DivTuple, tuple<int, float>>::value, "div_t");
+        STATIC_REQUIRE(is_same<DivTuple, tuple<int, float>>::value);
 
         using ModTuple = node_tuple_t<mod_t<decltype(&User::id), int>>;
-        static_assert(is_same<ModTuple, tuple<decltype(&User::id), int>>::value, "mod_t");
+        STATIC_REQUIRE(is_same<ModTuple, tuple<decltype(&User::id), int>>::value);
 
         using AssignTuple = node_tuple_t<assign_t<decltype(&User::name), std::string>>;
-        static_assert(is_same<AssignTuple, tuple<decltype(&User::name), std::string>>::value, "assign_t");
+        STATIC_REQUIRE(is_same<AssignTuple, tuple<decltype(&User::name), std::string>>::value);
     }
     SECTION("bitwise operator") {
         using namespace internal;
