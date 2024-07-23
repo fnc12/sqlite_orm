@@ -6,6 +6,13 @@ FetchContent_MakeAvailable(Catch2)
 option(SQLITE_ORM_OMITS_CODECVT "Omits codec testing" OFF)
 
 
+# Consuming the standard library as C++ named module is a C++23 standard library feature and additionally requires support from build systems.
+# At the time of adding support for sqlite_orm as a C++ named module, CMake has still only experimental features to
+# effect the provision of the the C++ Standard Library Modules [see `CMAKE_EXPERIMENTAL_CXX_IMPORT_STD`].
+# 
+# However, Visual C++ has an option that instructs MSBuild to automatically provision the standard modules,
+# and this option is ON by default when using the `/std:c++latest` compiler switch:
+# "Build ISO C++23 Standard Library Modules", MSBuild property `BuildStlModules`.
 if(SQLITE_ORM_ENABLE_CXX_23 AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.28.2 AND MSVC AND MSVC_VERSION GREATER_EQUAL 1930)
     add_executable(module_tests
         named_module.cpp
