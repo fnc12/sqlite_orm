@@ -15,6 +15,11 @@ using sqlite_orm::get;
 using sqlite_orm::or_;
 using sqlite_orm::internal::and_condition_t;
 using sqlite_orm::internal::binary_operator;
+using sqlite_orm::internal::bitwise_and_t;
+using sqlite_orm::internal::bitwise_not_t;
+using sqlite_orm::internal::bitwise_or_t;
+using sqlite_orm::internal::bitwise_shift_left_t;
+using sqlite_orm::internal::bitwise_shift_right_t;
 using sqlite_orm::internal::greater_or_equal_t;
 using sqlite_orm::internal::greater_than_t;
 using sqlite_orm::internal::is_equal_t;
@@ -106,6 +111,12 @@ void runTests(E expression) {
     // conc_t + condition_t yield or_condition_t
     STATIC_REQUIRE(is_specialization_of_v<decltype((expression && 42) || !expression), or_condition_t>);
     STATIC_REQUIRE(is_specialization_of_v<decltype(!expression || (expression && 42)), or_condition_t>);
+
+    STATIC_REQUIRE(is_specialization_of_v<decltype(~expression), bitwise_not_t>);
+    STATIC_REQUIRE(is_specialization_of_v<decltype(expression << expression), binary_operator>);
+    STATIC_REQUIRE(is_specialization_of_v<decltype(expression >> expression), binary_operator>);
+    STATIC_REQUIRE(is_specialization_of_v<decltype(expression & expression), binary_operator>);
+    STATIC_REQUIRE(is_specialization_of_v<decltype(expression | expression), binary_operator>);
 }
 
 TEST_CASE("inline namespace literals expressions") {
