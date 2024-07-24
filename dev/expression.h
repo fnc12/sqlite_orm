@@ -68,12 +68,12 @@ namespace sqlite_orm {
             is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, expression_t>::value>> = true;
 
         template<class T>
-        T get_from_expression(T value) {
+        constexpr T get_from_expression(T value) {
             return std::move(value);
         }
 
         template<class T>
-        T get_from_expression(expression_t<T> expression) {
+        constexpr T get_from_expression(expression_t<T> expression) {
             return std::move(expression.value);
         }
 
@@ -86,7 +86,7 @@ namespace sqlite_orm {
      * `storage.update(set(c(&User::name) = "Dua Lipa"));
      */
     template<class T>
-    internal::expression_t<T> c(T value) {
+    constexpr internal::expression_t<T> c(T value) {
         return {std::move(value)};
     }
 }

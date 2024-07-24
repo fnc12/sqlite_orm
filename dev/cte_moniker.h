@@ -50,7 +50,7 @@ namespace sqlite_orm {
                           std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
                           std::convertible_to<ExplicitCols, std::string>) &&
                          ...)
-            auto operator()(ExplicitCols... explicitColumns) const;
+            constexpr auto operator()(ExplicitCols... explicitColumns) const;
 #else
             template<class... ExplicitCols,
                      std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
@@ -59,7 +59,7 @@ namespace sqlite_orm {
                                           std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
                                           std::is_convertible<ExplicitCols, std::string>>...>,
                                       bool> = true>
-            auto operator()(ExplicitCols... explicitColumns) const;
+            constexpr auto operator()(ExplicitCols... explicitColumns) const;
 #endif
         };
     }

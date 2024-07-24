@@ -20,7 +20,7 @@ namespace sqlite_orm {
             left_type lhs;
             right_type rhs;
 
-            binary_operator(left_type lhs_, right_type rhs_) : lhs(std::move(lhs_)), rhs(std::move(rhs_)) {}
+            constexpr binary_operator(left_type lhs_, right_type rhs_) : lhs(std::move(lhs_)), rhs(std::move(rhs_)) {}
         };
 
         template<class T>
@@ -197,7 +197,7 @@ namespace sqlite_orm {
      * name || '@gmail.com' FROM users
      */
     template<class L, class R>
-    internal::conc_t<L, R> conc(L l, R r) {
+    constexpr internal::conc_t<L, R> conc(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
@@ -205,7 +205,7 @@ namespace sqlite_orm {
      *  Public interface for + operator. Example: `select(add(&User::age, 100));` => SELECT age + 100 FROM users
      */
     template<class L, class R>
-    internal::add_t<L, R> add(L l, R r) {
+    constexpr internal::add_t<L, R> add(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
@@ -213,7 +213,7 @@ namespace sqlite_orm {
      *  Public interface for - operator. Example: `select(sub(&User::age, 1));` => SELECT age - 1 FROM users
      */
     template<class L, class R>
-    internal::sub_t<L, R> sub(L l, R r) {
+    constexpr internal::sub_t<L, R> sub(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
@@ -221,7 +221,7 @@ namespace sqlite_orm {
      *  Public interface for * operator. Example: `select(mul(&User::salary, 2));` => SELECT salary * 2 FROM users
      */
     template<class L, class R>
-    internal::mul_t<L, R> mul(L l, R r) {
+    constexpr internal::mul_t<L, R> mul(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
@@ -231,7 +231,7 @@ namespace sqlite_orm {
      *  If you use `using namespace sqlite_orm` directive you an specify which `div` you call explicitly using  `::div` or `sqlite_orm::div` statements.
      */
     template<class L, class R>
-    internal::div_t<L, R> div(L l, R r) {
+    constexpr internal::div_t<L, R> div(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
@@ -239,32 +239,32 @@ namespace sqlite_orm {
      *  Public interface for % operator. Example: `select(mod(&User::age, 5));` => SELECT age % 5 FROM users
      */
     template<class L, class R>
-    internal::mod_t<L, R> mod(L l, R r) {
+    constexpr internal::mod_t<L, R> mod(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    internal::bitwise_shift_left_t<L, R> bitwise_shift_left(L l, R r) {
+    constexpr internal::bitwise_shift_left_t<L, R> bitwise_shift_left(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    internal::bitwise_shift_right_t<L, R> bitwise_shift_right(L l, R r) {
+    constexpr internal::bitwise_shift_right_t<L, R> bitwise_shift_right(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    internal::bitwise_and_t<L, R> bitwise_and(L l, R r) {
+    constexpr internal::bitwise_and_t<L, R> bitwise_and(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    internal::bitwise_or_t<L, R> bitwise_or(L l, R r) {
+    constexpr internal::bitwise_or_t<L, R> bitwise_or(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class T>
-    internal::bitwise_not_t<T> bitwise_not(T t) {
+    constexpr internal::bitwise_not_t<T> bitwise_not(T t) {
         return {std::move(t)};
     }
 

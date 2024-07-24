@@ -1253,7 +1253,12 @@ namespace sqlite_orm {
 #if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             template<class... CTEs,
                      class E,
-                     std::enable_if_t<polyfill::disjunction_v<is_select<E>, is_insert_raw<E>>, bool> = true>
+                     std::enable_if_t<polyfill::disjunction_v<is_select<E>,
+                                                              is_insert_raw<E>,
+                                                              is_replace_raw<E>,
+                                                              is_update_all<E>,
+                                                              is_remove_all<E>>,
+                                      bool> = true>
             prepared_statement_t<with_t<E, CTEs...>> prepare(with_t<E, CTEs...> sel) {
                 return this->prepare_impl<with_t<E, CTEs...>>(std::move(sel));
             }
@@ -1380,7 +1385,12 @@ namespace sqlite_orm {
             }
 
 #if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-            template<class... CTEs, class E, satisfies<is_insert_raw, E> = true>
+            template<
+                class... CTEs,
+                class E,
+                std::enable_if_t<
+                    polyfill::disjunction_v<is_insert_raw<E>, is_replace_raw<E>, is_update_all<E>, is_remove_all<E>>,
+                    bool> = true>
             void execute(const prepared_statement_t<with_t<E, CTEs...>>& statement) {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
                 iterate_ast(statement.expression, conditional_binder{stmt});

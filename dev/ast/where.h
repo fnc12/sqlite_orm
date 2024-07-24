@@ -26,7 +26,7 @@ namespace sqlite_orm {
 
             expression_type expression;
 
-            where_t(expression_type expression_) : expression(std::move(expression_)) {}
+            constexpr where_t(expression_type expression_) : expression(std::move(expression_)) {}
         };
 
         template<class T>
@@ -46,7 +46,7 @@ namespace sqlite_orm {
      *  auto rows = storage.select(&Letter::name, where(greater_than(&Letter::id, 3)));
      */
     template<class C>
-    internal::where_t<C> where(C expression) {
+    constexpr internal::where_t<C> where(C expression) {
         return {std::move(expression)};
     }
 }
