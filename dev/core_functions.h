@@ -1673,12 +1673,12 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      */
     template<class R = void, class... Args>
     auto coalesce(Args... args)
-        ->internal::built_in_function_t<typename mpl::conditional_t<  //  choose R or common type
-                                            std::is_void<R>::value,
-                                            std::common_type<internal::field_type_or_type_t<Args>...>,
-                                            polyfill::type_identity<R>>::type,
-                                        internal::coalesce_string,
-                                        Args...> {
+        -> internal::built_in_function_t<typename mpl::conditional_t<  //  choose R or common type
+                                             std::is_void<R>::value,
+                                             std::common_type<internal::field_type_or_type_t<Args>...>,
+                                             polyfill::type_identity<R>>::type,
+                                         internal::coalesce_string,
+                                         Args...> {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
@@ -1686,15 +1686,14 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  IFNULL(X,Y) function https://www.sqlite.org/lang_corefunc.html#ifnull
      */
     template<class R = void, class X, class Y>
-    auto ifnull(X x, Y y)
-        ->internal::built_in_function_t<
-            typename mpl::conditional_t<  //  choose R or common type
-                std::is_void<R>::value,
-                std::common_type<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>,
-                polyfill::type_identity<R>>::type,
-            internal::ifnull_string,
-            X,
-            Y> {
+    auto ifnull(X x, Y y) -> internal::built_in_function_t<
+        typename mpl::conditional_t<  //  choose R or common type
+            std::is_void<R>::value,
+            std::common_type<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>,
+            polyfill::type_identity<R>>::type,
+        internal::ifnull_string,
+        X,
+        Y> {
         return {std::make_tuple(std::move(x), std::move(y))};
     }
 
@@ -1889,10 +1888,8 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  The return type is the type of the first argument.
      */
     template<class X, class Y, class... Rest>
-    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X, Y, Rest...> max(
-        X x,
-        Y y,
-        Rest... rest) {
+    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X, Y, Rest...>
+    max(X x, Y y, Rest... rest) {
         return {std::tuple<X, Y, Rest...>{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
     }
 
@@ -1901,10 +1898,8 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  The return type is the type of the first argument.
      */
     template<class X, class Y, class... Rest>
-    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X, Y, Rest...> min(
-        X x,
-        Y y,
-        Rest... rest) {
+    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X, Y, Rest...>
+    min(X x, Y y, Rest... rest) {
         return {std::tuple<X, Y, Rest...>{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
     }
 

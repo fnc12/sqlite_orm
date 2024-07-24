@@ -709,9 +709,8 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  @note The use of RECURSIVE does not force common table expressions to be recursive.
      */
     template<class Compound, class... CTEs, internal::satisfies<internal::is_compound_operator, Compound> = true>
-    internal::with_t<internal::select_t<Compound>, CTEs...> with_recursive(
-        internal::common_table_expressions<CTEs...> ctes,
-        Compound sel) {
+    internal::with_t<internal::select_t<Compound>, CTEs...>
+    with_recursive(internal::common_table_expressions<CTEs...> ctes, Compound sel) {
         return {true, std::move(ctes), sqlite_orm::select(std::move(sel))};
     }
 

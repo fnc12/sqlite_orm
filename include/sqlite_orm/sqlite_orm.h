@@ -3023,7 +3023,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<typename... T>
-    std::string get_error_message(sqlite3 * db, T && ... args) {
+    std::string get_error_message(sqlite3* db, T&&... args) {
         std::ostringstream stream;
         using unpack = int[];
         (void)unpack{0, (stream << args, 0)...};
@@ -3032,7 +3032,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<typename... T>
-    [[noreturn]] void throw_error(sqlite3 * db, T && ... args) {
+    [[noreturn]] void throw_error(sqlite3* db, T&&... args) {
         throw std::system_error{sqlite_errc(sqlite3_errcode(db)), get_error_message(db, std::forward<T>(args)...)};
     }
 
@@ -3040,7 +3040,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         return {sqlite_errc(ev)};
     }
 
-    inline std::system_error sqlite_to_system_error(sqlite3 * db) {
+    inline std::system_error sqlite_to_system_error(sqlite3* db) {
         return {sqlite_errc(sqlite3_errcode(db)), sqlite3_errmsg(db)};
     }
 
@@ -3048,11 +3048,11 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         throw sqlite_to_system_error(ev);
     }
 
-    [[noreturn]] inline void throw_translated_sqlite_error(sqlite3 * db) {
+    [[noreturn]] inline void throw_translated_sqlite_error(sqlite3* db) {
         throw sqlite_to_system_error(db);
     }
 
-    [[noreturn]] inline void throw_translated_sqlite_error(sqlite3_stmt * stmt) {
+    [[noreturn]] inline void throw_translated_sqlite_error(sqlite3_stmt* stmt) {
         throw sqlite_to_system_error(sqlite3_db_handle(stmt));
     }
 }
@@ -6090,8 +6090,8 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  }
      */
     template<class S>
-    internal::dynamic_order_by_t<internal::serializer_context<typename S::db_objects_type>> dynamic_order_by(
-        const S& storage) {
+    internal::dynamic_order_by_t<internal::serializer_context<typename S::db_objects_type>>
+    dynamic_order_by(const S& storage) {
         internal::serializer_context_builder<S> builder(storage);
         return builder();
     }
@@ -7828,12 +7828,12 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      */
     template<class R = void, class... Args>
     auto coalesce(Args... args)
-        ->internal::built_in_function_t<typename mpl::conditional_t<  //  choose R or common type
-                                            std::is_void<R>::value,
-                                            std::common_type<internal::field_type_or_type_t<Args>...>,
-                                            polyfill::type_identity<R>>::type,
-                                        internal::coalesce_string,
-                                        Args...> {
+        -> internal::built_in_function_t<typename mpl::conditional_t<  //  choose R or common type
+                                             std::is_void<R>::value,
+                                             std::common_type<internal::field_type_or_type_t<Args>...>,
+                                             polyfill::type_identity<R>>::type,
+                                         internal::coalesce_string,
+                                         Args...> {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
@@ -7841,15 +7841,14 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  IFNULL(X,Y) function https://www.sqlite.org/lang_corefunc.html#ifnull
      */
     template<class R = void, class X, class Y>
-    auto ifnull(X x, Y y)
-        ->internal::built_in_function_t<
-            typename mpl::conditional_t<  //  choose R or common type
-                std::is_void<R>::value,
-                std::common_type<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>,
-                polyfill::type_identity<R>>::type,
-            internal::ifnull_string,
-            X,
-            Y> {
+    auto ifnull(X x, Y y) -> internal::built_in_function_t<
+        typename mpl::conditional_t<  //  choose R or common type
+            std::is_void<R>::value,
+            std::common_type<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>,
+            polyfill::type_identity<R>>::type,
+        internal::ifnull_string,
+        X,
+        Y> {
         return {std::make_tuple(std::move(x), std::move(y))};
     }
 
@@ -8044,10 +8043,8 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  The return type is the type of the first argument.
      */
     template<class X, class Y, class... Rest>
-    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X, Y, Rest...> max(
-        X x,
-        Y y,
-        Rest... rest) {
+    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X, Y, Rest...>
+    max(X x, Y y, Rest... rest) {
         return {std::tuple<X, Y, Rest...>{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
     }
 
@@ -8056,10 +8053,8 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  The return type is the type of the first argument.
      */
     template<class X, class Y, class... Rest>
-    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X, Y, Rest...> min(
-        X x,
-        Y y,
-        Rest... rest) {
+    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X, Y, Rest...>
+    min(X x, Y y, Rest... rest) {
         return {std::tuple<X, Y, Rest...>{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
     }
 
@@ -8562,9 +8557,8 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  Factory function for a column definition from a member object pointer of the object to be mapped.
      */
     template<class M, class... Op, internal::satisfies<std::is_member_object_pointer, M> = true>
-    internal::column_t<M, internal::empty_setter, Op...> make_column(std::string name,
-                                                                     M memberPointer,
-                                                                     Op... constraints) {
+    internal::column_t<M, internal::empty_setter, Op...>
+    make_column(std::string name, M memberPointer, Op... constraints) {
         static_assert(polyfill::conjunction_v<internal::is_column_constraint<Op>...>, "Incorrect constraints pack");
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
@@ -9297,9 +9291,8 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  @note The use of RECURSIVE does not force common table expressions to be recursive.
      */
     template<class Compound, class... CTEs, internal::satisfies<internal::is_compound_operator, Compound> = true>
-    internal::with_t<internal::select_t<Compound>, CTEs...> with_recursive(
-        internal::common_table_expressions<CTEs...> ctes,
-        Compound sel) {
+    internal::with_t<internal::select_t<Compound>, CTEs...>
+    with_recursive(internal::common_table_expressions<CTEs...> ctes, Compound sel) {
         return {true, std::move(ctes), sqlite_orm::select(std::move(sel))};
     }
 
@@ -9915,7 +9908,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  the deleter when the statement finishes.
      */
     template<class T, class P, class D>
-    auto bind_pointer(P * p, D d) noexcept -> pointer_binding<P, T, D> {
+    auto bind_pointer(P* p, D d) noexcept -> pointer_binding<P, T, D> {
         return {p, std::move(d)};
     }
 
@@ -9925,27 +9918,25 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<typename B>
-    auto bind_pointer(typename B::qualified_type * p, typename B::deleter_type d = {}) noexcept -> B {
+    auto bind_pointer(typename B::qualified_type* p, typename B::deleter_type d = {}) noexcept -> B {
         return B{p, std::move(d)};
     }
 
     template<class T, class P, class D>
-    [[deprecated("Use the better named function `bind_pointer(...)`")]] pointer_binding<P, T, D> bindable_pointer(
-        P * p,
-        D d) noexcept {
+    [[deprecated("Use the better named function `bind_pointer(...)`")]] pointer_binding<P, T, D>
+    bindable_pointer(P* p, D d) noexcept {
         return bind_pointer<T>(p, std::move(d));
     }
 
     template<class T, class P, class D>
-    [[deprecated("Use the better named function `bind_pointer(...)`")]] pointer_binding<P, T, D> bindable_pointer(
-        std::unique_ptr<P, D> p) noexcept {
+    [[deprecated("Use the better named function `bind_pointer(...)`")]] pointer_binding<P, T, D>
+    bindable_pointer(std::unique_ptr<P, D> p) noexcept {
         return bind_pointer<T>(p.release(), p.get_deleter());
     }
 
     template<typename B>
-    [[deprecated("Use the better named function `bind_pointer(...)`")]] B bindable_pointer(
-        typename B::qualified_type * p,
-        typename B::deleter_type d = {}) noexcept {
+    [[deprecated("Use the better named function `bind_pointer(...)`")]] B
+    bindable_pointer(typename B::qualified_type* p, typename B::deleter_type d = {}) noexcept {
         return bind_pointer<B>(p, std::move(d));
     }
 
@@ -9958,7 +9949,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  the deleter when the statement finishes.
      */
     template<orm_pointer_type auto tag, class P, class D>
-    auto bind_pointer(P * p, D d) noexcept -> pointer_binding<P, decltype(tag), D> {
+    auto bind_pointer(P* p, D d) noexcept -> pointer_binding<P, decltype(tag), D> {
         return {p, std::move(d)};
     }
 
@@ -9975,26 +9966,26 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  and sqlite assumes the object pointed to is valid throughout the lifetime of a statement.
      */
     template<class T, class P>
-    auto bind_pointer_statically(P * p) noexcept -> static_pointer_binding<P, T> {
+    auto bind_pointer_statically(P* p) noexcept -> static_pointer_binding<P, T> {
         return bind_pointer<T>(p, null_xdestroy_f);
     }
 
     template<typename B>
-    B bind_pointer_statically(typename B::qualified_type * p,
+    B bind_pointer_statically(typename B::qualified_type* p,
                               typename B::deleter_type* /*exposition*/ = nullptr) noexcept {
         return bind_pointer<B>(p);
     }
 
     template<class T, class P>
     [[deprecated("Use the better named function `bind_pointer_statically(...)`")]] static_pointer_binding<P, T>
-    statically_bindable_pointer(P * p) noexcept {
+    statically_bindable_pointer(P* p) noexcept {
         return bind_pointer<T>(p, null_xdestroy_f);
     }
 
     template<typename B>
-    [[deprecated("Use the better named function `bind_pointer_statically(...)`")]] B statically_bindable_pointer(
-        typename B::qualified_type * p,
-        typename B::deleter_type* /*exposition*/ = nullptr) noexcept {
+    [[deprecated("Use the better named function `bind_pointer_statically(...)`")]] B
+    statically_bindable_pointer(typename B::qualified_type* p,
+                                typename B::deleter_type* /*exposition*/ = nullptr) noexcept {
         return bind_pointer<B>(p);
     }
 
@@ -10006,7 +9997,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  and sqlite assumes the object pointed to is valid throughout the lifetime of a statement.
      */
     template<orm_pointer_type auto tag, class P>
-    auto bind_pointer_statically(P * p) noexcept -> static_pointer_binding<P, decltype(tag)> {
+    auto bind_pointer_statically(P* p) noexcept -> static_pointer_binding<P, decltype(tag)> {
         return bind_pointer<tag>(p, null_xdestroy_f);
     }
 #endif
@@ -14928,7 +14919,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     template<orm_refers_to_table auto mapped,
              class R = std::vector<internal::mapped_type_proxy_t<decltype(mapped)>>,
              class... Args>
-    auto get_all(Args && ... conditions) {
+    auto get_all(Args&&... conditions) {
         return get_all<internal::auto_decay_table_ref_t<mapped>, R>(std::forward<Args>(conditions)...);
     }
 #endif
@@ -14998,7 +14989,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     template<orm_table_reference auto table,
              class R = std::vector<internal::auto_decay_table_ref_t<table>>,
              class... Args>
-    auto get_all_optional(Args && ... conditions) {
+    auto get_all_optional(Args&&... conditions) {
         return get_all_optional<internal::auto_decay_table_ref_t<table>, R>(std::forward<Args>(conditions)...);
     }
 #endif
@@ -24573,7 +24564,7 @@ namespace sqlite_orm {
 _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
     template<int N, class It, class L, class O>
-    auto& get(internal::prepared_statement_t<internal::insert_range_t<It, L, O>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::insert_range_t<It, L, O>>& statement) {
         return std::get<N>(statement.expression.range);
     }
 
@@ -24583,7 +24574,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<int N, class It, class L, class O>
-    auto& get(internal::prepared_statement_t<internal::replace_range_t<It, L, O>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::replace_range_t<It, L, O>>& statement) {
         return std::get<N>(statement.expression.range);
     }
 
@@ -24593,7 +24584,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<int N, class T, class... Ids>
-    auto& get(internal::prepared_statement_t<internal::get_t<T, Ids...>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::get_t<T, Ids...>>& statement) {
         return internal::get_ref(std::get<N>(statement.expression.ids));
     }
 
@@ -24603,7 +24594,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<int N, class T, class... Ids>
-    auto& get(internal::prepared_statement_t<internal::get_pointer_t<T, Ids...>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::get_pointer_t<T, Ids...>>& statement) {
         return internal::get_ref(std::get<N>(statement.expression.ids));
     }
 
@@ -24614,7 +24605,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<int N, class T, class... Ids>
-    auto& get(internal::prepared_statement_t<internal::get_optional_t<T, Ids...>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::get_optional_t<T, Ids...>>& statement) {
         return internal::get_ref(std::get<N>(statement.expression.ids));
     }
 
@@ -24625,7 +24616,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<int N, class T, class... Ids>
-    auto& get(internal::prepared_statement_t<internal::remove_t<T, Ids...>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::remove_t<T, Ids...>>& statement) {
         return internal::get_ref(std::get<N>(statement.expression.ids));
     }
 
@@ -24635,7 +24626,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<int N, class T>
-    auto& get(internal::prepared_statement_t<internal::update_t<T>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::update_t<T>>& statement) {
         static_assert(N == 0, "get<> works only with 0 argument for update statement");
         return internal::get_ref(statement.expression.object);
     }
@@ -24647,7 +24638,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<int N, class T, class... Cols>
-    auto& get(internal::prepared_statement_t<internal::insert_explicit<T, Cols...>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::insert_explicit<T, Cols...>>& statement) {
         static_assert(N == 0, "get<> works only with 0 argument for insert statement");
         return internal::get_ref(statement.expression.obj);
     }
@@ -24659,7 +24650,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<int N, class T>
-    auto& get(internal::prepared_statement_t<internal::replace_t<T>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::replace_t<T>>& statement) {
         static_assert(N == 0, "get<> works only with 0 argument for replace statement");
         return internal::get_ref(statement.expression.object);
     }
@@ -24671,7 +24662,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<int N, class T>
-    auto& get(internal::prepared_statement_t<internal::insert_t<T>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::insert_t<T>>& statement) {
         static_assert(N == 0, "get<> works only with 0 argument for insert statement");
         return internal::get_ref(statement.expression.object);
     }
@@ -24708,7 +24699,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<int N, class T>
-    auto& get(internal::prepared_statement_t<T> & statement) {
+    auto& get(internal::prepared_statement_t<T>& statement) {
         using statement_type = std::remove_reference_t<decltype(statement)>;
         using expression_type = internal::expression_type_t<statement_type>;
         using node_tuple = internal::node_tuple_t<expression_type>;
@@ -24778,12 +24769,12 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  the deleter when the statement finishes.
      */
     template<class P, class D>
-    carray_pointer_binding<P, D> bind_carray_pointer(P * p, D d) noexcept {
+    carray_pointer_binding<P, D> bind_carray_pointer(P* p, D d) noexcept {
         return bind_pointer<carray_pointer_tag>(p, std::move(d));
     }
 
     template<class P>
-    static_carray_pointer_binding<P> bind_carray_pointer_statically(P * p) noexcept {
+    static_carray_pointer_binding<P> bind_carray_pointer_statically(P* p) noexcept {
         return bind_pointer_statically<carray_pointer_tag>(p);
     }
 
@@ -24795,14 +24786,14 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      */
     template<class P, class D>
     [[deprecated("Use the better named function `bind_carray_pointer(...)`")]] carray_pointer_binding<P, D>
-    bindable_carray_pointer(P * p, D d) noexcept {
+    bindable_carray_pointer(P* p, D d) noexcept {
         return bind_pointer<carray_pointer_tag>(p, std::move(d));
     }
 
     template<class P>
     [[deprecated(
         "Use the better named function `bind_carray_pointer_statically(...)` ")]] static_carray_pointer_binding<P>
-    statically_bindable_carray_pointer(P * p) noexcept {
+    statically_bindable_carray_pointer(P* p) noexcept {
         return bind_pointer_statically<carray_pointer_tag>(p);
     }
 #else
@@ -24826,7 +24817,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  the deleter when the statement finishes.
      */
     template<class P, class D>
-    carray_pointer_binding<P, D> bind_carray_pointer(P * p, D d) noexcept {
+    carray_pointer_binding<P, D> bind_carray_pointer(P* p, D d) noexcept {
         return bind_pointer<carray_pointer_type>(p, std::move(d));
     }
 
@@ -24837,20 +24828,20 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  and sqlite assumes the object pointed to is valid throughout the lifetime of a statement.
      */
     template<class P>
-    static_carray_pointer_binding<P> bind_carray_pointer_statically(P * p) noexcept {
+    static_carray_pointer_binding<P> bind_carray_pointer_statically(P* p) noexcept {
         return bind_pointer_statically<carray_pointer_type>(p);
     }
 
     template<class P, class D>
     [[deprecated("Use the better named function `bind_carray_pointer(...)`")]] carray_pointer_binding<P, D>
-    bindable_carray_pointer(P * p, D d) noexcept {
+    bindable_carray_pointer(P* p, D d) noexcept {
         return bind_carray_pointer(p, std::move(d));
     }
 
     template<class P>
     [[deprecated(
         "Use the better named function `bind_carray_pointer_statically(...)` ")]] static_carray_pointer_binding<P>
-    statically_bindable_carray_pointer(P * p) noexcept {
+    statically_bindable_carray_pointer(P* p) noexcept {
         return bind_carray_pointer_statically(p);
     }
 #endif

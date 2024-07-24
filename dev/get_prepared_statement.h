@@ -16,7 +16,7 @@
 _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
     template<int N, class It, class L, class O>
-    auto& get(internal::prepared_statement_t<internal::insert_range_t<It, L, O>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::insert_range_t<It, L, O>>& statement) {
         return std::get<N>(statement.expression.range);
     }
 
@@ -26,7 +26,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<int N, class It, class L, class O>
-    auto& get(internal::prepared_statement_t<internal::replace_range_t<It, L, O>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::replace_range_t<It, L, O>>& statement) {
         return std::get<N>(statement.expression.range);
     }
 
@@ -36,7 +36,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<int N, class T, class... Ids>
-    auto& get(internal::prepared_statement_t<internal::get_t<T, Ids...>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::get_t<T, Ids...>>& statement) {
         return internal::get_ref(std::get<N>(statement.expression.ids));
     }
 
@@ -46,7 +46,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<int N, class T, class... Ids>
-    auto& get(internal::prepared_statement_t<internal::get_pointer_t<T, Ids...>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::get_pointer_t<T, Ids...>>& statement) {
         return internal::get_ref(std::get<N>(statement.expression.ids));
     }
 
@@ -57,7 +57,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<int N, class T, class... Ids>
-    auto& get(internal::prepared_statement_t<internal::get_optional_t<T, Ids...>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::get_optional_t<T, Ids...>>& statement) {
         return internal::get_ref(std::get<N>(statement.expression.ids));
     }
 
@@ -68,7 +68,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<int N, class T, class... Ids>
-    auto& get(internal::prepared_statement_t<internal::remove_t<T, Ids...>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::remove_t<T, Ids...>>& statement) {
         return internal::get_ref(std::get<N>(statement.expression.ids));
     }
 
@@ -78,7 +78,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<int N, class T>
-    auto& get(internal::prepared_statement_t<internal::update_t<T>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::update_t<T>>& statement) {
         static_assert(N == 0, "get<> works only with 0 argument for update statement");
         return internal::get_ref(statement.expression.object);
     }
@@ -90,7 +90,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<int N, class T, class... Cols>
-    auto& get(internal::prepared_statement_t<internal::insert_explicit<T, Cols...>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::insert_explicit<T, Cols...>>& statement) {
         static_assert(N == 0, "get<> works only with 0 argument for insert statement");
         return internal::get_ref(statement.expression.obj);
     }
@@ -102,7 +102,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<int N, class T>
-    auto& get(internal::prepared_statement_t<internal::replace_t<T>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::replace_t<T>>& statement) {
         static_assert(N == 0, "get<> works only with 0 argument for replace statement");
         return internal::get_ref(statement.expression.object);
     }
@@ -114,7 +114,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<int N, class T>
-    auto& get(internal::prepared_statement_t<internal::insert_t<T>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::insert_t<T>>& statement) {
         static_assert(N == 0, "get<> works only with 0 argument for insert statement");
         return internal::get_ref(statement.expression.object);
     }
@@ -151,7 +151,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<int N, class T>
-    auto& get(internal::prepared_statement_t<T> & statement) {
+    auto& get(internal::prepared_statement_t<T>& statement) {
         using statement_type = std::remove_reference_t<decltype(statement)>;
         using expression_type = internal::expression_type_t<statement_type>;
         using node_tuple = internal::node_tuple_t<expression_type>;
