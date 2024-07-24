@@ -70,13 +70,23 @@ namespace sqlite_orm {
             is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, expression_t>::value>> = true;
 
         template<class T>
-        constexpr T get_from_expression(T value) {
+        constexpr T get_from_expression(T&& value) {
             return std::move(value);
         }
 
         template<class T>
-        constexpr T get_from_expression(expression_t<T> expression) {
+        constexpr const T& get_from_expression(const T& value) {
+            return value;
+        }
+
+        template<class T>
+        constexpr T get_from_expression(expression_t<T>&& expression) {
             return std::move(expression.value);
+        }
+
+        template<class T>
+        constexpr const T& get_from_expression(const expression_t<T>& expression) {
+            return expression.value;
         }
 
         template<class T>

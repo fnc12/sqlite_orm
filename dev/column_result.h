@@ -151,6 +151,11 @@ namespace sqlite_orm {
             using type = std::string;
         };
 
+        template<class DBOs, class T>
+        struct column_result_t<DBOs, unary_minus_t<T>, void> {
+            using type = double;
+        };
+
         template<class DBOs, class L, class R>
         struct column_result_t<DBOs, add_t<L, R>, void> {
             using type = double;
