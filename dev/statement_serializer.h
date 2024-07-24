@@ -35,6 +35,7 @@
 #include "type_printer.h"
 #include "field_printer.h"
 #include "literal.h"
+#include "expression.h"
 #include "table_name_collector.h"
 #include "column_names_getter.h"
 #include "cte_column_names_collector.h"
@@ -717,15 +718,30 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializer<bitwise_not_t<T>, void> {
-            using statement_type = bitwise_not_t<T>;
+        struct statement_serializer<
+            T,
+            std::enable_if_t<polyfill::disjunction<polyfill::is_specialization_of<T, unary_minus_t>,
+                                                   polyfill::is_specialization_of<T, bitwise_not_t>>::value>> {
+            using statement_type = T;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type& expression, const Ctx& context) const {
+                // subqueries should always use parentheses in binary expressions
+                auto subCtx = context;
+                subCtx.use_parentheses = true;
+                // parentheses for sub-trees to ensure the order of precedence
+                constexpr bool parenthesize = is_binary_condition<typename statement_type::argument_type>::value ||
+                                              is_binary_operator<typename statement_type::argument_type>::value;
+
                 std::stringstream ss;
-                ss << statement.serialize() << " ";
-                auto cString = serialize(statement.argument, context);
-                ss << " (" << cString << " )";
+                ss << expression.serialize();
+                if SQLITE_ORM_CONSTEXPR_IF(parenthesize) {
+                    ss << "(";
+                }
+                ss << serialize(get_from_expression(expression.argument), subCtx);
+                if SQLITE_ORM_CONSTEXPR_IF(parenthesize) {
+                    ss << ")";
+                }
                 return ss.str();
             }
         };
@@ -735,11 +751,23 @@ namespace sqlite_orm {
             using statement_type = negated_condition_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
+            std::string operator()(const statement_type& expression, const Ctx& context) const {
+                // subqueries should always use parentheses in binary expressions
+                auto subCtx = context;
+                subCtx.use_parentheses = true;
+                // parentheses for sub-trees to ensure the order of precedence
+                constexpr bool parenthesize = is_binary_condition<typename statement_type::argument_type>::value ||
+                                              is_binary_operator<typename statement_type::argument_type>::value;
+
                 std::stringstream ss;
-                ss << static_cast<std::string>(c) << " ";
-                auto cString = serialize(c.c, context);
-                ss << " (" << cString << " )";
+                ss << static_cast<std::string>(expression) << " ";
+                if SQLITE_ORM_CONSTEXPR_IF(parenthesize) {
+                    ss << "(";
+                }
+                ss << serialize(get_from_expression(expression.c), subCtx);
+                if SQLITE_ORM_CONSTEXPR_IF(parenthesize) {
+                    ss << ")";
+                }
                 return ss.str();
             }
         };

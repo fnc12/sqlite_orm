@@ -4168,6 +4168,24 @@ namespace sqlite_orm {
         template<class L, class R>
         using conc_t = binary_operator<L, R, conc_string>;
 
+        struct unary_minus_string {
+            serialize_result_type serialize() const {
+                return "-";
+            }
+        };
+
+        /**
+         *  Result of unary minus - operator
+         */
+        template<class T>
+        struct unary_minus_t : unary_minus_string, arithmetic_t, negatable_t {
+            using argument_type = T;
+
+            argument_type argument;
+
+            unary_minus_t(argument_type argument_) : argument(std::move(argument_)) {}
+        };
+
         struct add_string {
             serialize_result_type serialize() const {
                 return "+";
@@ -4187,7 +4205,7 @@ namespace sqlite_orm {
         };
 
         /**
-         *  Result of substitute - operator
+         *  Result of substraction - operator
          */
         template<class L, class R>
         using sub_t = binary_operator<L, R, sub_string, arithmetic_t, negatable_t>;
@@ -4326,6 +4344,11 @@ namespace sqlite_orm {
     template<class L, class R>
     constexpr internal::conc_t<L, R> conc(L l, R r) {
         return {std::move(l), std::move(r)};
+    }
+
+    template<class T>
+    constexpr internal::unary_minus_t<T> minus(T t) {
+        return {std::move(t)};
     }
 
     /**
@@ -4717,13 +4740,23 @@ namespace sqlite_orm {
             is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, expression_t>::value>> = true;
 
         template<class T>
-        constexpr T get_from_expression(T value) {
+        constexpr T get_from_expression(T&& value) {
             return std::move(value);
         }
 
         template<class T>
-        constexpr T get_from_expression(expression_t<T> expression) {
+        constexpr const T& get_from_expression(const T& value) {
+            return value;
+        }
+
+        template<class T>
+        constexpr T get_from_expression(expression_t<T>&& expression) {
             return std::move(expression.value);
+        }
+
+        template<class T>
+        constexpr const T& get_from_expression(const expression_t<T>& expression) {
+            return expression.value;
         }
 
         template<class T>
@@ -4850,9 +4883,11 @@ namespace sqlite_orm {
          */
         template<class C>
         struct negated_condition_t : condition_t, negated_condition_string {
-            C c;
+            using argument_type = C;
 
-            constexpr negated_condition_t(C c_) : c(std::move(c_)) {}
+            argument_type c;
+
+            constexpr negated_condition_t(argument_type arg) : c(std::move(arg)) {}
         };
 
         /**
@@ -4892,7 +4927,7 @@ namespace sqlite_orm {
          *  Result of and operator
          */
         template<class L, class R>
-        struct and_condition_t : binary_condition<L, R, and_condition_string, bool> {
+        struct and_condition_t : binary_condition<L, R, and_condition_string, bool>, negatable_t {
             using super = binary_condition<L, R, and_condition_string, bool>;
 
             using super::super;
@@ -4908,7 +4943,7 @@ namespace sqlite_orm {
          *  Result of or operator
          */
         template<class L, class R>
-        struct or_condition_t : binary_condition<L, R, or_condition_string, bool> {
+        struct or_condition_t : binary_condition<L, R, or_condition_string, bool>, negatable_t {
             using super = binary_condition<L, R, or_condition_string, bool>;
 
             using super::super;
@@ -8079,6 +8114,14 @@ namespace sqlite_orm {
     // Intentionally place operators for types classified as arithmetic or general operator arguments in the internal namespace
     // to facilitate ADL (Argument Dependent Lookup)
     namespace internal {
+        template<
+            class T,
+            std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, T>, is_operator_argument<T>>::value,
+                             bool> = true>
+        constexpr unary_minus_t<unwrap_expression_t<T>> operator-(T arg) {
+            return {get_from_expression(std::forward<T>(arg))};
+        }
+
         template<class L,
                  class R,
                  std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
@@ -8131,6 +8174,58 @@ namespace sqlite_orm {
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr mod_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator%(L l, R r) {
+            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+        }
+
+        template<
+            class T,
+            std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, T>, is_operator_argument<T>>::value,
+                             bool> = true>
+        constexpr bitwise_not_t<unwrap_expression_t<T>> operator~(T arg) {
+            return {get_from_expression(std::forward<T>(arg))};
+        }
+
+        template<class L,
+                 class R,
+                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
+                                                        std::is_base_of<arithmetic_t, R>,
+                                                        is_operator_argument<L>,
+                                                        is_operator_argument<R>>::value,
+                                  bool> = true>
+        constexpr bitwise_shift_left_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator<<(L l, R r) {
+            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+        }
+
+        template<class L,
+                 class R,
+                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
+                                                        std::is_base_of<arithmetic_t, R>,
+                                                        is_operator_argument<L>,
+                                                        is_operator_argument<R>>::value,
+                                  bool> = true>
+        constexpr bitwise_shift_right_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator>>(L l, R r) {
+            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+        }
+
+        template<class L,
+                 class R,
+                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
+                                                        std::is_base_of<arithmetic_t, R>,
+                                                        is_operator_argument<L>,
+                                                        is_operator_argument<R>>::value,
+                                  bool> = true>
+        constexpr bitwise_and_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator&(L l, R r) {
+            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+        }
+
+        template<class L,
+                 class R,
+                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
+                                                        std::is_base_of<arithmetic_t, R>,
+                                                        is_operator_argument<L>,
+                                                        is_operator_argument<R>>::value,
+                                  bool> = true>
+        constexpr bitwise_or_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator|(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
         }
     }
@@ -11408,6 +11503,11 @@ namespace sqlite_orm {
         template<class DBOs, class L, class R>
         struct column_result_t<DBOs, conc_t<L, R>, void> {
             using type = std::string;
+        };
+
+        template<class DBOs, class T>
+        struct column_result_t<DBOs, unary_minus_t<T>, void> {
+            using type = double;
         };
 
         template<class DBOs, class L, class R>
@@ -18463,6 +18563,8 @@ namespace sqlite_orm {
 
 // #include "literal.h"
 
+// #include "expression.h"
+
 // #include "table_name_collector.h"
 
 // #include "column_names_getter.h"
@@ -19875,15 +19977,30 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializer<bitwise_not_t<T>, void> {
-            using statement_type = bitwise_not_t<T>;
+        struct statement_serializer<
+            T,
+            std::enable_if_t<polyfill::disjunction<polyfill::is_specialization_of<T, unary_minus_t>,
+                                                   polyfill::is_specialization_of<T, bitwise_not_t>>::value>> {
+            using statement_type = T;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type& expression, const Ctx& context) const {
+                // subqueries should always use parentheses in binary expressions
+                auto subCtx = context;
+                subCtx.use_parentheses = true;
+                // parentheses for sub-trees to ensure the order of precedence
+                constexpr bool parenthesize = is_binary_condition<typename statement_type::argument_type>::value ||
+                                              is_binary_operator<typename statement_type::argument_type>::value;
+
                 std::stringstream ss;
-                ss << statement.serialize() << " ";
-                auto cString = serialize(statement.argument, context);
-                ss << " (" << cString << " )";
+                ss << expression.serialize();
+                if SQLITE_ORM_CONSTEXPR_IF(parenthesize) {
+                    ss << "(";
+                }
+                ss << serialize(get_from_expression(expression.argument), subCtx);
+                if SQLITE_ORM_CONSTEXPR_IF(parenthesize) {
+                    ss << ")";
+                }
                 return ss.str();
             }
         };
@@ -19893,11 +20010,23 @@ namespace sqlite_orm {
             using statement_type = negated_condition_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
+            std::string operator()(const statement_type& expression, const Ctx& context) const {
+                // subqueries should always use parentheses in binary expressions
+                auto subCtx = context;
+                subCtx.use_parentheses = true;
+                // parentheses for sub-trees to ensure the order of precedence
+                constexpr bool parenthesize = is_binary_condition<typename statement_type::argument_type>::value ||
+                                              is_binary_operator<typename statement_type::argument_type>::value;
+
                 std::stringstream ss;
-                ss << static_cast<std::string>(c) << " ";
-                auto cString = serialize(c.c, context);
-                ss << " (" << cString << " )";
+                ss << static_cast<std::string>(expression) << " ";
+                if SQLITE_ORM_CONSTEXPR_IF(parenthesize) {
+                    ss << "(";
+                }
+                ss << serialize(get_from_expression(expression.c), subCtx);
+                if SQLITE_ORM_CONSTEXPR_IF(parenthesize) {
+                    ss << ")";
+                }
                 return ss.str();
             }
         };
@@ -24202,6 +24331,12 @@ namespace sqlite_orm {
 
         template<class C>
         struct node_tuple<negated_condition_t<C>, void> : node_tuple<C> {};
+
+        template<class T>
+        struct node_tuple<unary_minus_t<T>, void> : node_tuple<T> {};
+
+        template<class T>
+        struct node_tuple<bitwise_not_t<T>, void> : node_tuple<T> {};
 
         template<class R, class S, class... Args>
         struct node_tuple<built_in_function_t<R, S, Args...>, void> : node_tuple_for<Args...> {};

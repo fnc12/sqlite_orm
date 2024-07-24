@@ -111,9 +111,11 @@ namespace sqlite_orm {
          */
         template<class C>
         struct negated_condition_t : condition_t, negated_condition_string {
-            C c;
+            using argument_type = C;
 
-            constexpr negated_condition_t(C c_) : c(std::move(c_)) {}
+            argument_type c;
+
+            constexpr negated_condition_t(argument_type arg) : c(std::move(arg)) {}
         };
 
         /**
@@ -153,7 +155,7 @@ namespace sqlite_orm {
          *  Result of and operator
          */
         template<class L, class R>
-        struct and_condition_t : binary_condition<L, R, and_condition_string, bool> {
+        struct and_condition_t : binary_condition<L, R, and_condition_string, bool>, negatable_t {
             using super = binary_condition<L, R, and_condition_string, bool>;
 
             using super::super;
@@ -169,7 +171,7 @@ namespace sqlite_orm {
          *  Result of or operator
          */
         template<class L, class R>
-        struct or_condition_t : binary_condition<L, R, or_condition_string, bool> {
+        struct or_condition_t : binary_condition<L, R, or_condition_string, bool>, negatable_t {
             using super = binary_condition<L, R, or_condition_string, bool>;
 
             using super::super;

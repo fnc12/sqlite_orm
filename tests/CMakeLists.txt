@@ -57,15 +57,15 @@ add_executable(unit_tests
     built_in_functions_tests/math_functions.cpp
     user_defined_functions.cpp
     constraints/composite_key.cpp
-    operators/arithmetic_operators.cpp
     operators/like.cpp
     operators/glob.cpp
     operators/in.cpp
     operators/cast.cpp
     operators/is_null.cpp
-    operators/not_operator.cpp
-    operators/bitwise.cpp
+    operators/arithmetic_operators.cpp
+    operators/bitwise_operators.cpp
     operators/binary_operators.cpp
+    operators/not_operator.cpp
     prepared_statement_tests/select.cpp
     prepared_statement_tests/get_all.cpp
     prepared_statement_tests/get_all_pointer.cpp
