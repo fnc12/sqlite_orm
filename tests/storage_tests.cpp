@@ -583,7 +583,7 @@ TEST_CASE("With clause") {
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    SECTION("insert") {
+    SECTION("crud") {
         struct Object {
             int id;
         };
@@ -592,10 +592,24 @@ TEST_CASE("With clause") {
 
         storage.sync_schema();
 
-        constexpr auto data = "data"_cte;
-        storage.with(cte<data>().as(select(2)),
-                     insert(into<Object>(), columns(&Object::id), select(data->*1_colalias)));
-        REQUIRE(2 == storage.last_insert_rowid());
+        constexpr orm_cte_moniker auto data = "data"_cte;
+        constexpr auto cteExpression = cte<data>().as(union_all(select(2), select(3)));
+
+        storage.with(cteExpression, insert(into<Object>(), columns(&Object::id), select(data->*1_colalias)));
+        REQUIRE(3 == storage.last_insert_rowid());
+
+        storage.with(cteExpression, replace(into<Object>(), columns(&Object::id), select(data->*1_colalias)));
+        REQUIRE(storage.changes() == 2);
+
+        storage.with(
+            cteExpression,
+            update_all(
+                set(c(&Object::id) = select(data->*1_colalias, from<data>(), where(data->*1_colalias == &Object::id))),
+                where(c(&Object::id).in(select(data->*1_colalias)))));
+        REQUIRE(storage.changes() == 2);
+
+        storage.with(cteExpression, remove_all<Object>(where(c(&Object::id).in(select(data->*1_colalias)))));
+        REQUIRE(storage.changes() == 2);
     }
 #endif
 }

@@ -148,7 +148,7 @@ namespace sqlite_orm {
 
             expressions_tuple compound;
 
-            compound_operator(expressions_tuple compound) : compound{std::move(compound)} {
+            constexpr compound_operator(expressions_tuple compound) : compound{std::move(compound)} {
                 iterate_tuple(this->compound, [](auto& expression) {
                     expression.highest_level = true;
                 });
@@ -184,7 +184,7 @@ namespace sqlite_orm {
         struct union_t : public compound_operator<E...>, union_base {
             using typename compound_operator<E...>::expressions_tuple;
 
-            union_t(expressions_tuple compound, bool all) :
+            constexpr union_t(expressions_tuple compound, bool all) :
                 compound_operator<E...>{std::move(compound)}, union_base{all} {}
         };
 
@@ -265,7 +265,7 @@ namespace sqlite_orm {
             explicit_colrefs_tuple explicitColumns;
             expression_type subselect;
 
-            common_table_expression(explicit_colrefs_tuple explicitColumns, expression_type subselect) :
+            constexpr common_table_expression(explicit_colrefs_tuple explicitColumns, expression_type subselect) :
                 explicitColumns{std::move(explicitColumns)}, subselect{std::move(subselect)} {
                 this->subselect.highest_level = true;
             }
@@ -280,23 +280,25 @@ namespace sqlite_orm {
 
 #if SQLITE_VERSION_NUMBER >= 3035000 && defined(SQLITE_ORM_WITH_CPP20_ALIASES)
             template<auto... hints, class Select, satisfies<is_select, Select> = true>
-            common_table_expression<Moniker, ExplicitCols, std::tuple<decltype(hints)...>, Select> as(Select sel) && {
+            constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<decltype(hints)...>, Select>
+            as(Select sel) && {
                 return {std::move(this->explicitColumns), std::move(sel)};
             }
 
             template<auto... hints, class Compound, satisfies<is_compound_operator, Compound> = true>
-            common_table_expression<Moniker, ExplicitCols, std::tuple<decltype(hints)...>, select_t<Compound>>
+            constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<decltype(hints)...>, select_t<Compound>>
             as(Compound sel) && {
                 return {std::move(this->explicitColumns), {std::move(sel)}};
             }
 #else
             template<class Select, satisfies<is_select, Select> = true>
-            common_table_expression<Moniker, ExplicitCols, std::tuple<>, Select> as(Select sel) && {
+            constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<>, Select> as(Select sel) && {
                 return {std::move(this->explicitColumns), std::move(sel)};
             }
 
             template<class Compound, satisfies<is_compound_operator, Compound> = true>
-            common_table_expression<Moniker, ExplicitCols, std::tuple<>, select_t<Compound>> as(Compound sel) && {
+            constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<>, select_t<Compound>>
+            as(Compound sel) && {
                 return {std::move(this->explicitColumns), {std::move(sel)}};
             }
 #endif
@@ -418,7 +420,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        void validate_conditions() {
+        constexpr void validate_conditions() {
             static_assert(count_tuple<T, is_where>::value <= 1, "a single query cannot contain > 1 WHERE blocks");
             static_assert(count_tuple<T, is_group_by>::value <= 1, "a single query cannot contain > 1 GROUP BY blocks");
             static_assert(count_tuple<T, is_order_by>::value <= 1, "a single query cannot contain > 1 ORDER BY blocks");
@@ -487,7 +489,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  Public function for subselect query. Is useful in UNION queries.
      */
     template<class T, class... Args>
-    internal::select_t<T, Args...> select(T t, Args... args) {
+    constexpr internal::select_t<T, Args...> select(T t, Args... args) {
         using args_tuple = std::tuple<Args...>;
         internal::validate_conditions<args_tuple>();
         return {std::move(t), {std::forward<Args>(args)...}};
@@ -499,7 +501,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  Look through example in examples/union.cpp
      */
     template<class... E>
-    internal::union_t<E...> union_(E... expressions) {
+    constexpr internal::union_t<E...> union_(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}, false};
     }
@@ -510,7 +512,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  Look through example in examples/union.cpp
      */
     template<class... E>
-    internal::union_t<E...> union_all(E... expressions) {
+    constexpr internal::union_t<E...> union_all(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}, true};
     }
@@ -521,13 +523,13 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  Look through example in examples/except.cpp
      */
     template<class... E>
-    internal::except_t<E...> except(E... expressions) {
+    constexpr internal::except_t<E...> except(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}};
     }
 
     template<class... E>
-    internal::intersect_t<E...> intersect(E... expressions) {
+    constexpr internal::intersect_t<E...> intersect(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
         return {{std::forward<E>(expressions)...}};
     }
@@ -581,7 +583,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
                                   std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
                                   std::is_convertible<ExplicitCols, std::string>>...>,
                               bool> = true>
-    auto cte(ExplicitCols... explicitColumns) {
+    constexpr auto cte(ExplicitCols... explicitColumns) {
         using namespace ::sqlite_orm::internal;
         static_assert(is_cte_moniker_v<Moniker>, "Moniker must be a CTE moniker");
         static_assert((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
@@ -599,7 +601,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
                   std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
                   std::convertible_to<ExplicitCols, std::string>) &&
                  ...)
-    auto cte(ExplicitCols... explicitColumns) {
+    constexpr auto cte(ExplicitCols... explicitColumns) {
         using namespace ::sqlite_orm::internal;
         static_assert((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
@@ -618,7 +620,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
                       std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
                       std::convertible_to<ExplicitCols, std::string>) &&
                      ...)
-        auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) const {
+        constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) const {
             return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
         }
 #else
@@ -630,7 +632,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
                                       std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
                                       std::is_convertible<ExplicitCols, std::string>>...>,
                                   bool>>
-        auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) const {
+        constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) const {
             return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
         }
 #endif
@@ -768,7 +770,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *   If you need to fetch results as objects instead of tuples please use `object<T>()`.
      */
     template<class T>
-    internal::asterisk_t<T> asterisk(bool definedOrder = false) {
+    constexpr internal::asterisk_t<T> asterisk(bool definedOrder = false) {
         return {definedOrder};
     }
 
@@ -780,7 +782,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *      storage.select(asterisk<m>(), inner_join<m>(on(m->*&Employee::reportsTo == &Employee::employeeId)));
      */
     template<orm_refers_to_recordset auto recordset>
-    auto asterisk(bool definedOrder = false) {
+    constexpr auto asterisk(bool definedOrder = false) {
         return asterisk<internal::auto_decay_table_ref_t<recordset>>(definedOrder);
     }
 #endif
@@ -797,13 +799,13 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *   If you need to fetch results as tuples instead of objects please use `asterisk<T>()`.
      */
     template<class T>
-    internal::object_t<T> object(bool definedOrder = false) {
+    constexpr internal::object_t<T> object(bool definedOrder = false) {
         return {definedOrder};
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<orm_refers_to_table auto als>
-    auto object(bool definedOrder = false) {
+    constexpr auto object(bool definedOrder = false) {
         return object<internal::auto_decay_table_ref_t<als>>(definedOrder);
     }
 #endif

@@ -8,6 +8,7 @@
 
 #include "../schema/column.h"
 #include "../schema/table.h"
+#include "../column_pointer.h"
 
 _EXPORT_SQLITE_ORM namespace sqlite_orm {
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
@@ -37,5 +38,9 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
                           make_column("pgoffset", &dbstat::pgoffset),
                           make_column("pgsize", &dbstat::pgsize));
     }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    inline constexpr orm_table_reference auto dbstat_table = c<dbstat>();
+#endif
 #endif  //  SQLITE_ENABLE_DBSTAT_VTAB
 }

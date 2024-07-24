@@ -52,7 +52,8 @@ namespace sqlite_orm {
             void push_back(assign_t<L, R> assign) {
                 auto newContext = this->context;
                 newContext.skip_table_name = true;
-                iterate_ast(assign, this->collector);
+                // note: we are only interested in the table name on the left-hand side of the assignment operator expression
+                iterate_ast(assign.lhs, this->collector);
                 std::stringstream ss;
                 ss << serialize(assign.lhs, newContext) << ' ' << assign.serialize() << ' '
                    << serialize(assign.rhs, context);
