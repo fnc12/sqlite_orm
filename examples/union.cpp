@@ -8,11 +8,17 @@
 #include <algorithm>
 #include <iostream>
 
+#if SQLITE_VERSION_NUMBER >= 3006019
+#define ENABLE_THIS_EXAMPLE
+#endif
+
+#ifdef ENABLE_THIS_EXAMPLE
 using std::cout;
 using std::endl;
+#endif
 
 int main() {
-
+#ifdef ENABLE_THIS_EXAMPLE
     struct Employee {
         int id;
         std::string name;
@@ -108,6 +114,7 @@ int main() {
         }
         cout << endl;
     }
+#endif
 
     return 0;
 }

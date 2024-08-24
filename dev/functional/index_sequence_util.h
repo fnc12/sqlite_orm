@@ -1,18 +1,47 @@
 #pragma once
 
-#include <utility>  //  std::index_sequence, std::make_index_sequence
+#include <utility>  //  std::index_sequence
 
-#include "../functional/cxx_universal.h"
+#include "../functional/cxx_universal.h"  //  ::size_t
 
 namespace sqlite_orm {
     namespace internal {
+#if defined(SQLITE_ORM_PACK_INDEXING_SUPPORTED)
         /**
-         *  Get the first value of an index_sequence.
+         *  Get the index value of an `index_sequence` at a specific position.
          */
-        template<size_t I, size_t... Idx>
-        SQLITE_ORM_CONSTEVAL size_t first_index_sequence_value(std::index_sequence<I, Idx...>) {
+        template<size_t Pos, size_t... Idx>
+        SQLITE_ORM_CONSTEVAL size_t index_sequence_value_at(std::index_sequence<Idx...>) {
+            return Idx...[Pos];
+        }
+#elif defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
+        /**
+         *  Get the index value of an `index_sequence` at a specific position.
+         */
+        template<size_t Pos, size_t... Idx>
+        SQLITE_ORM_CONSTEVAL size_t index_sequence_value_at(std::index_sequence<Idx...>) {
+            static_assert(Pos < sizeof...(Idx));
+#ifdef SQLITE_ORM_CONSTEVAL_SUPPORTED
+            size_t result;
+#else
+            size_t result = 0;
+#endif
+            size_t i = 0;
+            // note: `(void)` cast silences warning 'expression result unused'
+            (void)((result = Idx, i++ == Pos) || ...);
+            return result;
+        }
+#else
+        /**
+         *  Get the index value of an `index_sequence` at a specific position.
+         *  `Pos` must always be `0`.
+         */
+        template<size_t Pos, size_t I, size_t... Idx>
+        SQLITE_ORM_CONSTEVAL size_t index_sequence_value_at(std::index_sequence<I, Idx...>) {
+            static_assert(Pos == 0, "");
             return I;
         }
+#endif
 
         template<class... Seq>
         struct flatten_idxseq {

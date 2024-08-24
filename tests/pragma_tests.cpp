@@ -4,6 +4,22 @@
 
 using namespace sqlite_orm;
 
+TEST_CASE("module_list") {
+    auto storage = make_storage({});
+
+    std::ignore = storage.pragma.module_list();
+}
+
+TEST_CASE("recursive_triggers") {
+    auto filename = "recursive_triggers.sqlite";
+    ::remove(filename);
+    auto storage = make_storage(filename);
+    storage.open_forever();
+    storage.pragma.recursive_triggers(true);
+    const auto result = storage.pragma.recursive_triggers();
+    REQUIRE(result);
+}
+
 TEST_CASE("Journal mode") {
     auto filename = "journal_mode.sqlite";
     ::remove(filename);
@@ -143,6 +159,29 @@ TEST_CASE("Integrity Check") {
     REQUIRE(storage.pragma.integrity_check() == std::vector<std::string>{"ok"});
     REQUIRE(storage.pragma.integrity_check(5) == std::vector<std::string>{"ok"});
     REQUIRE(storage.pragma.integrity_check(tablename) == std::vector<std::string>{"ok"});
+}
+
+TEST_CASE("Quick Check") {
+    struct User {
+        int id;
+        std::string name;
+        int age;
+        std::string email;
+    };
+
+    auto filename = "quick_check.sqlite";
+    ::remove(filename);
+
+    std::string tablename = "users";
+    auto storage = make_storage(filename,
+                                make_table(tablename,
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name),
+                                           make_column("age", &User::age),
+                                           make_column("email", &User::email, default_value("dummy@email.com"))));
+    storage.sync_schema();
+
+    REQUIRE(storage.pragma.quick_check() == std::vector<std::string>{"ok"});
 }
 
 TEST_CASE("application_id") {

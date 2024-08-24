@@ -75,7 +75,7 @@ array<string, N> single_value_array(const char* s) {
 }
 
 template<class T>
-using wrap_in_literal = internal::literal_holder<T>;
+using make_literal_holder = internal::literal_holder<T>;
 
 inline void require_string(const string& value, const string& expected) {
     REQUIRE(value == expected);
@@ -171,14 +171,14 @@ TEST_CASE("bindables") {
                                                   "0",
                                                   "0",
                                                   "''",
-                                                  "null"
+                                                  "NULL"
 #ifndef SQLITE_ORM_OMITS_CODECVT
                                                   ,
                                                   "''"
 #endif
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                                                   ,
-                                                  "null"
+                                                  "NULL"
 #endif
         };
 
@@ -192,7 +192,7 @@ TEST_CASE("bindables") {
         }
         SECTION("non-bindable literals") {
             context.replace_bindable_with_question = true;
-            constexpr auto t = make_default_tuple<internal::transform_tuple_t<Tuple, wrap_in_literal>>();
+            constexpr auto t = make_default_tuple<internal::transform_tuple_t<Tuple, make_literal_holder>>();
             test_tuple(t, context, e);
         }
     }
@@ -227,12 +227,12 @@ TEST_CASE("bindables") {
                                                   "''",
                                                   "''",
 #endif
-                                                  "null",
-                                                  "null",
+                                                  "NULL",
+                                                  "NULL",
                                                   "x''",
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-                                                  "null",
-                                                  "null",
+                                                  "NULL",
+                                                  "NULL",
 #endif
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
                                                   "''",
@@ -242,7 +242,7 @@ TEST_CASE("bindables") {
 #endif
                                                   "''",
                                                   "custom",
-                                                  "null"};
+                                                  "NULL"};
 
         SECTION("dump") {
             context.replace_bindable_with_question = false;
@@ -254,44 +254,62 @@ TEST_CASE("bindables") {
         }
         SECTION("non-bindable literals") {
             context.replace_bindable_with_question = true;
-            auto t = make_default_tuple<internal::transform_tuple_t<Tuple, wrap_in_literal>>();
+            auto t = make_default_tuple<internal::transform_tuple_t<Tuple, make_literal_holder>>();
             test_tuple(t, context, e);
         }
     }
 
+#if SQLITE_VERSION_NUMBER >= 3020000
 #ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
     SECTION("bindable_pointer") {
         string value, expected;
         context.replace_bindable_with_question = false;
 
         SECTION("null by itself") {
-            auto v = statically_bindable_pointer<carray_pvt, nullptr_t>(nullptr);
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            auto v = bind_pointer_statically<carray_pointer_tag, nullptr_t>(nullptr);
+#else
+            auto v = bind_pointer_statically<carray_pointer_type, nullptr_t>(nullptr);
+#endif
             value = serialize(v, context);
-            expected = "null";
+            expected = "NULL";
         }
         SECTION("null by itself 2") {
-            auto v = statically_bindable_pointer<carray_pvt>(&value);
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            auto v = bind_pointer_statically<carray_pointer_tag>(&value);
+#else
+            auto v = bind_pointer_statically<carray_pointer_type>(&value);
+#endif
             value = serialize(v, context);
-            expected = "null";
+            expected = "NULL";
         }
         SECTION("null in select") {
-            auto ast = select(statically_bindable_pointer<carray_pvt, nullptr_t>(nullptr));
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            auto ast = select(bind_pointer_statically<carray_pointer_tag, nullptr_t>(nullptr));
+#else
+            auto ast = select(bind_pointer_statically<carray_pointer_type, nullptr_t>(nullptr));
+#endif
             ast.highest_level = true;
             value = serialize(ast, context);
-            expected = "SELECT null";
+            expected = "SELECT NULL";
         }
         SECTION("null as function argument") {
-            auto ast = func<remember_fn>(1, statically_bindable_pointer<carray_pvt, nullptr_t>(nullptr));
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            auto ast = func<remember_fn>(1, bind_pointer_statically<carray_pointer_tag, nullptr_t>(nullptr));
+#else
+            auto ast = func<remember_fn>(1, bind_pointer_statically<carray_pointer_type, nullptr_t>(nullptr));
+#endif
             value = serialize(ast, context);
-            expected = "remember(1, null)";
+            expected = R"("remember"(1, NULL))";
         }
         SECTION("null as function argument 2") {
             auto ast = func<remember_fn>(1, nullptr);
             value = serialize(ast, context);
-            expected = "remember(1, null)";
+            expected = R"("remember"(1, NULL))";
         }
 
         REQUIRE(value == expected);
     }
+#endif
 #endif
 }

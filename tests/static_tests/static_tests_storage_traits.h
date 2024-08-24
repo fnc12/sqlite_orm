@@ -80,7 +80,7 @@ namespace sqlite_orm {
                                filter_tuple_sequence_t<elements_type_t<Table>, is_foreign_key>>;
 
             /*
-             *  Implementation note: must be a struct instead of an template alias because the foreign keys tuple
+             *  Implementation note: must be a struct instead of an alias template because the foreign keys tuple
              *  must be hoisted into a named alias, otherwise type replacement may fail for legacy compilers
              *  if an alias template has a dependent expression in it [SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION].
              */

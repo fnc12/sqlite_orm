@@ -24,7 +24,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = length("hi");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(LENGTH('hi'))";
+            expected = "LENGTH('hi')";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -36,7 +36,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = sqlite_orm::abs(-100);
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(ABS(-100))";
+            expected = "ABS(-100)";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -48,7 +48,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = lower("dancefloor");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(LOWER('dancefloor'))";
+            expected = "LOWER('dancefloor')";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -60,7 +60,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = upper("call");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(UPPER('call'))";
+            expected = "UPPER('call')";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -72,7 +72,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = total_changes();
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(TOTAL_CHANGES())";
+            expected = "TOTAL_CHANGES()";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -84,7 +84,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = changes();
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(CHANGES())";
+            expected = "CHANGES()";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -96,7 +96,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = trim("hey");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(TRIM('hey'))";
+            expected = "TRIM('hey')";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -108,7 +108,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = trim("hey", "h");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(TRIM('hey', 'h'))";
+            expected = "TRIM('hey', 'h')";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -120,7 +120,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = ltrim("hey");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(LTRIM('hey'))";
+            expected = "LTRIM('hey')";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -132,7 +132,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = ltrim("hey", "h");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(LTRIM('hey', 'h'))";
+            expected = "LTRIM('hey', 'h')";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -144,7 +144,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = rtrim("hey");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(RTRIM('hey'))";
+            expected = "RTRIM('hey')";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -156,7 +156,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = rtrim("hey", "h");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(RTRIM('hey', 'h'))";
+            expected = "RTRIM('hey', 'h')";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -168,7 +168,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = hex("love");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(HEX('love'))";
+            expected = "HEX('love')";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -180,8 +180,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = quote("one");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(QUOTE('one'))";
-            ;
+            expected = "QUOTE('one')";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -193,7 +192,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = randomblob(5);
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(RANDOMBLOB(5))";
+            expected = "RANDOMBLOB(5)";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -205,7 +204,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = instr("hi", "i");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(INSTR('hi', 'i'))";
+            expected = "INSTR('hi', 'i')";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -217,7 +216,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = replace("contigo", "o", "a");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(REPLACE('contigo', 'o', 'a'))";
+            expected = "REPLACE('contigo', 'o', 'a')";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -229,7 +228,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = sqlite_orm::round(10.5);
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(ROUND(10.5))";
+            expected = "ROUND(10.5)";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -241,7 +240,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = sqlite_orm::round(10.5, 0.5);
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(ROUND(10.5, 0.5))";
+            expected = "ROUND(10.5, 0.5)";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -254,7 +253,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = char_(40, 45);
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(CHAR(40, 45))";
+            expected = "CHAR(40, 45)";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -266,7 +265,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = sqlite_orm::random();
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(RANDOM())";
+            expected = "RANDOM()";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -279,7 +278,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = coalesce<std::string>(10, 15);
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(COALESCE(10, 15))";
+            expected = "COALESCE(10, 15)";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -291,7 +290,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = date("now");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(DATE('now'))";
+            expected = "DATE('now')";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -303,7 +302,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = time("12:00", "localtime");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(TIME('12:00', 'localtime'))";
+            expected = "TIME('12:00', 'localtime')";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -315,7 +314,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = datetime("now");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(DATETIME('now'))";
+            expected = "DATETIME('now')";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -327,7 +326,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = julianday("now");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(JULIANDAY('now'))";
+            expected = "JULIANDAY('now')";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -339,7 +338,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = strftime("%s", "2014-10-07 02:34:56");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(STRFTIME('%s', '2014-10-07 02:34:56'))";
+            expected = "STRFTIME('%s', '2014-10-07 02:34:56')";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -351,7 +350,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = zeroblob(5);
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(ZEROBLOB(5))";
+            expected = "ZEROBLOB(5)";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -363,7 +362,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = substr("Zara", 2);
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(SUBSTR('Zara', 2))";
+            expected = "SUBSTR('Zara', 2)";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -375,7 +374,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = substr("Natasha", 3, 2);
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(SUBSTR('Natasha', 3, 2))";
+            expected = "SUBSTR('Natasha', 3, 2)";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
@@ -388,7 +387,7 @@ TEST_CASE("statement_serializer core functions") {
         auto expression = soundex("Vaso");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(SOUNDEX('Vaso'))";
+            expected = "SOUNDEX('Vaso')";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;

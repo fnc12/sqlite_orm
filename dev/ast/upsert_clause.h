@@ -38,13 +38,18 @@ namespace sqlite_orm {
 
             actions_tuple actions;
         };
+#endif
 
         template<class T>
-        using is_upsert_clause = polyfill::is_specialization_of<T, upsert_clause>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_upsert_clause_v =
+#if SQLITE_VERSION_NUMBER >= 3024000
+            polyfill::is_specialization_of<T, upsert_clause>::value;
 #else
-        template<class T>
-        struct is_upsert_clause : polyfill::bool_constant<false> {};
+            false;
 #endif
+
+        template<class T>
+        using is_upsert_clause = polyfill::bool_constant<is_upsert_clause_v<T>>;
     }
 
 #if SQLITE_VERSION_NUMBER >= 3024000
@@ -62,7 +67,7 @@ namespace sqlite_orm {
      */
     template<class... Args>
     internal::conflict_target<Args...> on_conflict(Args... args) {
-        return {std::tuple<Args...>(std::forward<Args>(args)...)};
+        return {{std::forward<Args>(args)...}};
     }
 #endif
 }

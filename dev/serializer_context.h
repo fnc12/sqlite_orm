@@ -8,6 +8,7 @@ namespace sqlite_orm {
             bool replace_bindable_with_question = false;
             bool skip_table_name = true;
             bool use_parentheses = true;
+            bool fts5_columns = false;
         };
 
         template<class DBOs>
@@ -32,7 +33,6 @@ namespace sqlite_orm {
 
             const storage_type& storage;
         };
-
     }
 
 }

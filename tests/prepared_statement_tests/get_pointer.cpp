@@ -3,6 +3,7 @@
 
 #include "prepared_common.h"
 
+#if SQLITE_VERSION_NUMBER >= 3006019
 using namespace sqlite_orm;
 
 TEST_CASE("Prepared get pointer") {
@@ -93,7 +94,7 @@ TEST_CASE("Prepared get pointer") {
         }
         SECTION("execute") {
             auto user = storage.execute(statement);
-            REQUIRE(!user);
+            REQUIRE_FALSE(user);
         }
     }
     {
@@ -139,3 +140,4 @@ TEST_CASE("Prepared get pointer") {
         }
     }
 }
+#endif

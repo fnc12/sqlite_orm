@@ -34,12 +34,12 @@ TEST_CASE("statement_serializer select_t") {
             SECTION("!highest_level") {
                 statement.highest_level = false;
                 stringValue = serialize(statement, context);
-                expected = "(SELECT null)";
+                expected = "(SELECT NULL)";
             }
             SECTION("highest_level") {
                 statement.highest_level = true;
                 stringValue = serialize(statement, context);
-                expected = "SELECT null";
+                expected = "SELECT NULL";
             }
         }
     }
@@ -48,18 +48,35 @@ TEST_CASE("statement_serializer select_t") {
         SECTION("!highest_level") {
             statement.highest_level = false;
             stringValue = serialize(statement, context);
-            expected = "(SELECT ((1, 2, 3) = (4, 5, 6)))";
+            expected = "(SELECT (1, 2, 3) = (4, 5, 6))";
         }
         SECTION("highest_level") {
             statement.highest_level = true;
             stringValue = serialize(statement, context);
-            expected = "SELECT ((1, 2, 3) = (4, 5, 6))";
+            expected = "SELECT (1, 2, 3) = (4, 5, 6)";
         }
     }
-    SECTION("compound operator") {
-        auto statement = select(union_(select(1), select(2)));
-        stringValue = serialize(statement, context);
-        expected = "SELECT 1 UNION SELECT 2";
+    SECTION("compound operators") {
+        SECTION("union") {
+            auto statement = select(union_(select(1), select(2), select(3)));
+            stringValue = serialize(statement, context);
+            expected = "SELECT 1 UNION SELECT 2 UNION SELECT 3";
+        }
+        SECTION("union all") {
+            auto statement = select(union_all(select(1), select(2), select(3)));
+            stringValue = serialize(statement, context);
+            expected = "SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3";
+        }
+        SECTION("except") {
+            auto statement = select(except(select(1), select(2), select(3)));
+            stringValue = serialize(statement, context);
+            expected = "SELECT 1 EXCEPT SELECT 2 EXCEPT SELECT 3";
+        }
+        SECTION("intersect") {
+            auto statement = select(intersect(select(1), select(2), select(3)));
+            stringValue = serialize(statement, context);
+            expected = "SELECT 1 INTERSECT SELECT 2 INTERSECT SELECT 3";
+        }
     }
     SECTION("columns") {
         SECTION("literals") {
@@ -93,12 +110,12 @@ TEST_CASE("statement_serializer select_t") {
             SECTION("!highest_level") {
                 statement.highest_level = false;
                 stringValue = serialize(statement, context);
-                expected = "(SELECT null)";
+                expected = "(SELECT NULL)";
             }
             SECTION("highest_level") {
                 statement.highest_level = true;
                 stringValue = serialize(statement, context);
-                expected = "SELECT null";
+                expected = "SELECT NULL";
             }
         }
         SECTION("asterisk") {
@@ -154,6 +171,24 @@ TEST_CASE("statement_serializer select_t") {
                 stringValue = serialize(expression, context);
                 expected = R"(SELECT "users"."id", "users"."name" FROM "users")";
             }
+            SECTION("multi object, defined select order") {
+                auto expression = select(columns(object<User>(true), object<User>(true)));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT "users"."id", "users"."name", "users"."id", "users"."name" FROM "users")";
+            }
+            SECTION("struct") {
+                auto expression = select(struct_<User>(asterisk<User>()));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT "users".* FROM "users")";
+            }
+            SECTION("multi struct") {
+                auto expression = select(columns(struct_<User>(asterisk<User>()), struct_<User>(asterisk<User>())));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT "users".*, "users".* FROM "users")";
+            }
             // issue #1106
             SECTION("multi") {
                 auto expression = columns(asterisk<User>(), asterisk<User>(true));
@@ -162,6 +197,7 @@ TEST_CASE("statement_serializer select_t") {
                 stringValue = serialize(expression, context);
                 expected = R"("users".*, "users"."id", "users"."name")";
             }
+#if SQLITE_VERSION_NUMBER >= 3006019
             SECTION("issue #945") {
                 struct Employee {
                     int m_empno;
@@ -187,7 +223,7 @@ TEST_CASE("statement_serializer select_t") {
                 using als_e = alias_e<Employee>;
 
                 auto expression = select(asterisk<als_d>(),
-                                         left_join<als_e>(on(c(alias_column<als_d>(&Department::m_deptno)) ==
+                                         left_join<als_e>(on(alias_column<als_d>(&Department::m_deptno) ==
                                                              alias_column<als_e>(&Employee::m_deptno))),
                                          where(is_null(alias_column<als_e>(&Employee::m_deptno))));
                 expression.highest_level = true;
@@ -195,8 +231,9 @@ TEST_CASE("statement_serializer select_t") {
                 context.skip_table_name = false;
                 stringValue = serialize(expression, context);
                 expected =
-                    R"(SELECT "d".* FROM "Dept" "d" LEFT JOIN "Emp" "e" ON ("d"."deptno" = "e"."deptno")  WHERE ("e"."deptno" IS NULL))";
+                    R"(SELECT "d".* FROM "Dept" "d" LEFT JOIN "Emp" "e" ON "d"."deptno" = "e"."deptno"  WHERE ("e"."deptno" IS NULL))";
             }
+#endif
         }
     }
     REQUIRE(stringValue == expected);

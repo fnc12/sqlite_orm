@@ -5,6 +5,7 @@
 
 #include "../static_tests/static_tests_storage_traits.h"
 
+#if SQLITE_VERSION_NUMBER >= 3006019
 using namespace sqlite_orm;
 
 TEST_CASE("Foreign key") {
@@ -62,7 +63,7 @@ TEST_CASE("Foreign key") {
     storage.select(columns(&Visit::mark, &Visit::visited_at, &Location::place),
                    inner_join<Location>(on(is_equal(&Visit::location, &Location::id))),
                    where(is_equal(&Visit::user, id) and greater_than(&Visit::visited_at, fromDate) and
-                         lesser_than(&Visit::visited_at, toDate) and lesser_than(&Location::distance, toDistance)),
+                         less_than(&Visit::visited_at, toDate) and less_than(&Location::distance, toDistance)),
                    order_by(&Visit::visited_at));
 }
 
@@ -127,3 +128,4 @@ TEST_CASE("Foreign key 2") {
 
     storage.update(t2);
 }
+#endif

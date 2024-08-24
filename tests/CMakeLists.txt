@@ -9,12 +9,14 @@ add_executable(unit_tests
     static_tests/functional/static_if_tests.cpp
     static_tests/functional/mpl.cpp
     static_tests/functional/same_or_void.cpp
+    static_tests/functional/index_sequence_util.cpp
     static_tests/functional/tuple_conc.cpp
     static_tests/functional/tuple_filter.cpp
     static_tests/functional/tuple_traits.cpp
     static_tests/functional/tuple_transform.cpp
     static_tests/is_printable.cpp
     static_tests/is_bindable.cpp
+    static_tests/row_extractor.cpp
     static_tests/iterator_t.cpp
     static_tests/arithmetic_operators_result_type.cpp
     static_tests/node_tuple.cpp
@@ -26,26 +28,34 @@ add_executable(unit_tests
     static_tests/function_static_tests.cpp
     static_tests/aggregate_function_return_types.cpp
     static_tests/core_function_return_types.cpp
+    static_tests/column_expression_type.cpp
     static_tests/column_result_t.cpp
+    static_tests/column_pointer.cpp
     static_tests/alias.cpp
+    static_tests/cte.cpp
     static_tests/is_primary_key_insertable.cpp
     static_tests/is_column_with_insertable_primary_key.cpp
     static_tests/operators_adl.cpp
+    static_tests/table_static_tests.cpp
+    static_tests/statements.cpp
     tuple_iteration.cpp
+    xdestroy_handling.cpp
     sync_schema_tests.cpp
     tests.cpp
-    tests2.cpp
     tests3.cpp
     tests4.cpp
     tests5.cpp
-    column_tests.cpp
+    schema/column_tests.cpp
+    schema/index_tests.cpp
+    schema/table_tests.cpp
+    schema/explicit_columns.cpp
+    schema/virtual_table.cpp
     private_getters_tests.cpp
     pragma_tests.cpp
-    explicit_columns.cpp
     built_in_functions_tests/core_functions_tests.cpp
     built_in_functions_tests/datetime_function_tests.cpp
     built_in_functions_tests/math_functions.cpp
-    index_tests.cpp
+    user_defined_functions.cpp
     constraints/composite_key.cpp
     operators/arithmetic_operators.cpp
     operators/like.cpp
@@ -79,17 +89,24 @@ add_executable(unit_tests
     constraints/unique.cpp
     constraints/foreign_key.cpp
     constraints/check.cpp
-    table_tests.cpp
     statement_serializer_tests/column_constraints/generated.cpp
     statement_serializer_tests/column_constraints/default.cpp
     statement_serializer_tests/column_constraints/primary_key.cpp
-    statement_serializer_tests/column_constraints/autoincrement.cpp
     statement_serializer_tests/column_constraints/unique.cpp
     statement_serializer_tests/column_constraints/check.cpp
+    statement_serializer_tests/column_constraints/null.cpp
+    statement_serializer_tests/column_constraints/not_null.cpp
+    statement_serializer_tests/column_constraints/unindexed.cpp
+    statement_serializer_tests/table_constraints/prefix.cpp
+    statement_serializer_tests/table_constraints/foreign_key.cpp
+    statement_serializer_tests/table_constraints/tokenize.cpp
+    statement_serializer_tests/table_constraints/content.cpp
     statement_serializer_tests/bindables.cpp
     statement_serializer_tests/ast/upsert_clause.cpp
     statement_serializer_tests/ast/excluded.cpp
     statement_serializer_tests/ast/set.cpp
+    statement_serializer_tests/ast/match.cpp
+    statement_serializer_tests/ast/rank.cpp
     statement_serializer_tests/arithmetic_operators.cpp
     statement_serializer_tests/base_types.cpp
     statement_serializer_tests/collate.cpp
@@ -97,11 +114,14 @@ add_executable(unit_tests
     statement_serializer_tests/core_functions.cpp
     statement_serializer_tests/rowid.cpp
     statement_serializer_tests/column_names.cpp
-    statement_serializer_tests/foreign_key.cpp
     statement_serializer_tests/schema/index.cpp
     statement_serializer_tests/schema/trigger.cpp
     statement_serializer_tests/schema/new_old.cpp
     statement_serializer_tests/schema/raise.cpp
+    statement_serializer_tests/schema/using_fts5.cpp
+    statement_serializer_tests/schema/virtual_table.cpp
+    statement_serializer_tests/schema/column.cpp
+    statement_serializer_tests/schema/table.cpp
     statement_serializer_tests/indexed_column.cpp
     statement_serializer_tests/logical_operators.cpp
     statement_serializer_tests/statements/select.cpp
@@ -134,6 +154,8 @@ add_executable(unit_tests
     ast_iterator_tests.cpp
     table_name_collector.cpp
     pointer_passing_interface.cpp
+    row_extractor.cpp
+    iterate.cpp
 )
 
 if(SQLITE_ORM_OMITS_CODECVT)
@@ -162,9 +184,15 @@ if (MSVC)
             # C4458: declaration of 'symbol' hides class member
             /wd4458)
     endif()
+    if (CMAKE_CXX_FLAGS MATCHES "/D_UNICODE")
+        # explicitly set the entry point of the executable file,
+        # otherwise for some reason the linker will not pick up `wmain`, which is provided by the static Catch2 library
+        target_link_options(unit_tests PRIVATE "/ENTRY:wmainCRTStartup")
+    endif()
 endif()
 
 target_precompile_headers(unit_tests PRIVATE
+    <sqlite3.h>
     <sqlite_orm/sqlite_orm.h>
     <catch2/catch_all.hpp>)
 

@@ -6,6 +6,11 @@
 
 #include <iostream>
 
+#if SQLITE_VERSION_NUMBER >= 3006019
+#define ENABLE_THIS_EXAMPLE
+#endif
+
+#ifdef ENABLE_THIS_EXAMPLE
 using namespace sqlite_orm;
 using std::cout;
 using std::endl;
@@ -66,7 +71,7 @@ void all_employees() {
 
     //  now let's select id, name and salary..
     auto idsNamesSalarys = storage.select(columns(&Employee::id, &Employee::name, &Employee::salary));
-    for(auto& row: idsNamesSalarys) {  //  row's type is tuple<int, string, unique_ptr<double>>
+    for(auto& row: idsNamesSalarys) {  //  row's type is `tuple<int, string, unique_ptr<double>>`
         cout << "id = " << get<0>(row) << ", name = " << get<1>(row) << ", salary = ";
         if(get<2>(row)) {
             cout << *get<2>(row);
@@ -150,7 +155,7 @@ void all_artists() {
     // SELECT artists.*, albums.* FROM artists JOIN albums ON albums.artist_id = artist.id
 
     cout << "artists.*, albums.*\n";
-    // row's type is std::tuple<int, std::string, id, int>
+    // row's type is `std::tuple<int, std::string, id, int>`
     for(auto& row: storage.select(columns(asterisk<Artist>(), asterisk<Album>()),
                                   join<Album>(on(c(&Album::artist_id) == &Artist::id)))) {
         cout << get<0>(row) << '\t' << get<1>(row) << '\t' << get<2>(row) << '\t' << get<3>(row) << '\n';
@@ -158,14 +163,63 @@ void all_artists() {
     cout << endl;
 }
 
-int main() {
+void named_adhoc_structs() {
+    struct Artist {
+        int id;
+        std::string name;
+    };
 
+    struct Album {
+        int id;
+        int artist_id;
+        std::string name;
+    };
+
+    struct Z {
+        decltype(Album::name) album_name;
+        decltype(Artist::name) artist_name;
+    };
+    // define SQL expression for ad-hoc construction of Z
+    constexpr auto z_struct = struct_<Z>(&Album::name, &Artist::name);
+
+    auto storage = make_storage("",
+                                make_table("artists",
+                                           make_column("id", &Artist::id, primary_key().autoincrement()),
+                                           make_column("name", &Artist::name)),
+                                make_table("albums",
+                                           make_column("id", &Album::id, primary_key().autoincrement()),
+                                           make_column("artist_id", &Album::artist_id),
+                                           make_column("name", &Album::name),
+                                           foreign_key(&Album::artist_id).references(&Artist::id)));
+    storage.sync_schema();
+    storage.transaction([&storage] {
+        auto artistPk = storage.insert(Artist{-1, "Artist"});
+        storage.insert(Album{-1, artistPk, "Album 1"});
+        storage.insert(Album{-1, artistPk, "Album 2"});
+        return true;
+    });
+
+    // SELECT albums.name, artists.name FROM albums JOIN artists ON artist.id = albums.artist_id
+
+    cout << "albums.name, artists.name\n";
+    // row's type is Z
+    for(auto& row: storage.select(z_struct, join<Album>(on(c(&Album::artist_id) == &Artist::id)))) {
+        cout << row.album_name << '\t' << row.artist_name << '\n';
+    }
+    cout << endl;
+}
+#endif
+
+int main() {
+#ifdef ENABLE_THIS_EXAMPLE
     try {
         all_employees();
         all_artists();
+        named_adhoc_structs();
     } catch(const std::system_error& e) {
         cout << "[" << e.code() << "] " << e.what();
     }
+#endif
 
     return 0;
 }

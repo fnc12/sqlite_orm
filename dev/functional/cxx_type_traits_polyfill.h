@@ -2,6 +2,7 @@
 #include <type_traits>
 
 #include "cxx_universal.h"
+#include "mpl/conditional.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -9,8 +10,15 @@ namespace sqlite_orm {
 #if __cpp_lib_void_t >= 201411L
             using std::void_t;
 #else
+            /*
+             *  Implementation note: Conservative implementation due to CWG issue 1558 (Unused arguments in alias template specializations).
+             */
             template<class...>
-            using void_t = void;
+            struct always_void {
+                using type = void;
+            };
+            template<class... T>
+            using void_t = typename always_void<T...>::type;
 #endif
 
 #if __cpp_lib_bool_constant >= 201505L
@@ -33,7 +41,7 @@ namespace sqlite_orm {
             template<typename B1>
             struct conjunction<B1> : B1 {};
             template<typename B1, typename... Bn>
-            struct conjunction<B1, Bn...> : std::conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
+            struct conjunction<B1, Bn...> : mpl::conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
             template<typename... Bs>
             SQLITE_ORM_INLINE_VAR constexpr bool conjunction_v = conjunction<Bs...>::value;
 
@@ -42,7 +50,7 @@ namespace sqlite_orm {
             template<typename B1>
             struct disjunction<B1> : B1 {};
             template<typename B1, typename... Bn>
-            struct disjunction<B1, Bn...> : std::conditional_t<bool(B1::value), B1, disjunction<Bn...>> {};
+            struct disjunction<B1, Bn...> : mpl::conditional_t<bool(B1::value), B1, disjunction<Bn...>> {};
             template<typename... Bs>
             SQLITE_ORM_INLINE_VAR constexpr bool disjunction_v = disjunction<Bs...>::value;
 

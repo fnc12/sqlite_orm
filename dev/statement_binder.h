@@ -10,12 +10,17 @@
 #ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <cwchar>  //  ::wcsncpy, ::wcslen
 #endif
+#ifndef SQLITE_ORM_OMITS_CODECVT
+#include <locale>  // std::wstring_convert
+#include <codecvt>  //  std::codecvt_utf8_utf16
+#endif
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/cxx_functional_polyfill.h"
 #include "is_std_ptr.h"
 #include "tuple_helper/tuple_filter.h"
+#include "type_traits.h"
 #include "error_code.h"
 #include "arithmetic_tag.h"
 #include "xdestroy_handling.h"
@@ -30,22 +35,27 @@ namespace sqlite_orm {
     struct statement_binder;
 
     namespace internal {
+        /*
+         *  Implementation note: the technique of indirect expression testing is because
+         *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
+         *  It must also be a type that differs from those for `is_printable_v`, `is_preparable_v`.
+         */
+        template<class Binder>
+        struct indirectly_test_bindable;
 
         template<class T, class SFINAE = void>
         SQLITE_ORM_INLINE_VAR constexpr bool is_bindable_v = false;
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_bindable_v<T, polyfill::void_t<decltype(statement_binder<T>())>> = true
-            // note : msvc 14.0 needs the parentheses constructor, otherwise `is_bindable<const char*>` isn't recognised.
-            // The strangest thing is that this is mutually exclusive with `is_printable_v`.
-            ;
+        SQLITE_ORM_INLINE_VAR constexpr bool
+            is_bindable_v<T, polyfill::void_t<indirectly_test_bindable<decltype(statement_binder<T>{})>>> = true;
 
         template<class T>
-        using is_bindable = polyfill::bool_constant<is_bindable_v<T>>;
-
+        struct is_bindable : polyfill::bool_constant<is_bindable_v<T>> {};
     }
 
+#if SQLITE_VERSION_NUMBER >= 3020000
     /**
-     *  Specialization for 'pointer-passing interface'.
+     *  Specialization for pointer bindings (part of the 'pointer-passing interface').
      */
     template<class P, class T, class D>
     struct statement_binder<pointer_binding<P, T, D>, void> {
@@ -64,12 +74,13 @@ namespace sqlite_orm {
             sqlite3_result_pointer(context, (void*)value.take_ptr(), T::value, value.get_xdestroy());
         }
     };
+#endif
 
     /**
      *  Specialization for arithmetic types.
      */
     template<class V>
-    struct statement_binder<V, std::enable_if_t<std::is_arithmetic<V>::value>> {
+    struct statement_binder<V, internal::match_if<std::is_arithmetic, V>> {
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
             return this->bind(stmt, index, value, tag());
@@ -112,13 +123,13 @@ namespace sqlite_orm {
      */
     template<class V>
     struct statement_binder<V,
-                            std::enable_if_t<polyfill::disjunction_v<std::is_base_of<std::string, V>,
-                                                                     std::is_same<V, const char*>
+                            std::enable_if_t<polyfill::disjunction<std::is_base_of<std::string, V>,
+                                                                   std::is_same<V, const char*>
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                                                                     ,
-                                                                     std::is_same<V, std::string_view>
+                                                                   ,
+                                                                   std::is_same<V, std::string_view>
 #endif
-                                                                     >>> {
+                                                                   >::value>> {
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
             auto stringData = this->string_data(value);
@@ -152,13 +163,13 @@ namespace sqlite_orm {
 #ifndef SQLITE_ORM_OMITS_CODECVT
     template<class V>
     struct statement_binder<V,
-                            std::enable_if_t<polyfill::disjunction_v<std::is_base_of<std::wstring, V>,
-                                                                     std::is_same<V, const wchar_t*>
+                            std::enable_if_t<polyfill::disjunction<std::is_base_of<std::wstring, V>,
+                                                                   std::is_same<V, const wchar_t*>
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                                                                     ,
-                                                                     std::is_same<V, std::wstring_view>
+                                                                   ,
+                                                                   std::is_same<V, std::wstring_view>
 #endif
-                                                                     >>> {
+                                                                   >::value>> {
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
             auto stringData = this->string_data(value);
@@ -222,7 +233,8 @@ namespace sqlite_orm {
     template<class V>
     struct statement_binder<
         V,
-        std::enable_if_t<is_std_ptr<V>::value && internal::is_bindable_v<std::remove_cv_t<typename V::element_type>>>> {
+        std::enable_if_t<is_std_ptr<V>::value &&
+                         internal::is_bindable<std::remove_cv_t<typename V::element_type>>::value>> {
         using unqualified_type = std::remove_cv_t<typename V::element_type>;
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
@@ -328,14 +340,11 @@ namespace sqlite_orm {
                 (this->bind(polyfill::invoke(project, std::get<Idx>(tpl)), Idx), ...);
             }
 #else
-            template<class Tpl, size_t I, size_t... Idx, class Projection>
-            void operator()(const Tpl& tpl, std::index_sequence<I, Idx...>, Projection project) const {
-                this->bind(polyfill::invoke(project, std::get<I>(tpl)), I);
-                (*this)(tpl, std::index_sequence<Idx...>{}, std::forward<Projection>(project));
+            template<class Tpl, size_t... Idx, class Projection>
+            void operator()(const Tpl& tpl, std::index_sequence<Idx...>, Projection project) const {
+                using Sink = int[sizeof...(Idx)];
+                (void)Sink{(this->bind(polyfill::invoke(project, std::get<Idx>(tpl)), Idx), 0)...};
             }
-
-            template<class Tpl, class Projection>
-            void operator()(const Tpl&, std::index_sequence<>, Projection) const {}
 #endif
 
             template<class T>

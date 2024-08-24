@@ -65,46 +65,52 @@ TEST_CASE("is_bindable") {
     STATIC_REQUIRE(is_bindable_v<std::nullopt_t>);
     STATIC_REQUIRE(is_bindable_v<std::optional<int>>);
     STATIC_REQUIRE(is_bindable_v<std::optional<Custom>>);
-    STATIC_REQUIRE(!is_bindable_v<std::optional<User>>);
+    STATIC_REQUIRE_FALSE(is_bindable_v<std::optional<User>>);
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+#if SQLITE_VERSION_NUMBER >= 3020000
 #ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
-    STATIC_REQUIRE(is_bindable_v<static_pointer_binding<std::nullptr_t, carray_pvt>>);
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    STATIC_REQUIRE(is_bindable_v<static_pointer_binding_t<std::nullptr_t, carray_pointer_tag>>);
+#else
+    STATIC_REQUIRE(is_bindable_v<static_pointer_binding<std::nullptr_t, carray_pointer_type>>);
+#endif
+#endif
 #endif
 
     STATIC_REQUIRE(is_bindable_v<Custom>);
     STATIC_REQUIRE(is_bindable_v<std::unique_ptr<Custom>>);
 
-    STATIC_REQUIRE(!is_bindable_v<void>);
-    STATIC_REQUIRE(!is_bindable_v<internal::literal_holder<int>>);
-    STATIC_REQUIRE(!is_bindable_v<User>);
-    STATIC_REQUIRE(!is_bindable_v<std::unique_ptr<User>>);
+    STATIC_REQUIRE_FALSE(is_bindable_v<void>);
+    STATIC_REQUIRE_FALSE(is_bindable_v<internal::literal_holder<int>>);
+    STATIC_REQUIRE_FALSE(is_bindable_v<User>);
+    STATIC_REQUIRE_FALSE(is_bindable_v<std::unique_ptr<User>>);
     {
         auto isEqual = is_equal(&User::id, 5);
-        STATIC_REQUIRE(!is_bindable_v<decltype(isEqual)>);
+        STATIC_REQUIRE_FALSE(is_bindable_v<decltype(isEqual)>);
     }
     {
         auto notEqual = is_not_equal(&User::id, 10);
-        STATIC_REQUIRE(!is_bindable_v<decltype(notEqual)>);
+        STATIC_REQUIRE_FALSE(is_bindable_v<decltype(notEqual)>);
     }
     {
-        auto lesserThan = lesser_than(&User::id, 10);
-        STATIC_REQUIRE(!is_bindable_v<decltype(lesserThan)>);
+        auto lessThan = less_than(&User::id, 10);
+        STATIC_REQUIRE_FALSE(is_bindable_v<decltype(lessThan)>);
     }
     {
-        auto lesserOrEqual = lesser_or_equal(&User::id, 5);
-        STATIC_REQUIRE(!is_bindable_v<decltype(lesserOrEqual)>);
+        auto lessOrEqual = less_or_equal(&User::id, 5);
+        STATIC_REQUIRE_FALSE(is_bindable_v<decltype(lessOrEqual)>);
     }
     {
         auto greaterThan = greater_than(&User::id, 5);
-        STATIC_REQUIRE(!is_bindable_v<decltype(greaterThan)>);
+        STATIC_REQUIRE_FALSE(is_bindable_v<decltype(greaterThan)>);
     }
     {
         auto greaterOrEqual = greater_or_equal(&User::id, 5);
-        STATIC_REQUIRE(!is_bindable_v<decltype(greaterOrEqual)>);
+        STATIC_REQUIRE_FALSE(is_bindable_v<decltype(greaterOrEqual)>);
     }
     {
         auto func = datetime("now");
-        STATIC_REQUIRE(!is_bindable_v<decltype(func)>);
+        STATIC_REQUIRE_FALSE(is_bindable_v<decltype(func)>);
         bool trueCalled = false;
         bool falseCalled = false;
         auto dummy = 5;  //  for gcc compilation
@@ -115,7 +121,7 @@ TEST_CASE("is_bindable") {
             [&falseCalled](int&) {
                 falseCalled = true;
             })(dummy);
-        REQUIRE(!trueCalled);
+        REQUIRE_FALSE(trueCalled);
         REQUIRE(falseCalled);
     }
 }

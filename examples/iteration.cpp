@@ -64,5 +64,14 @@ int main(int, char**) {
     }
     cout << "heroesByAlgorithm.size = " << heroesByAlgorithm.size() << endl;
 
+#if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)
+    cout << "====" << endl;
+
+    cout << "Distinct hero names:" << endl;
+    for(std::string name: storage.iterate(select(distinct(&MarvelHero::name)))) {
+        cout << name << endl;
+    }
+#endif
+
     return 0;
 }

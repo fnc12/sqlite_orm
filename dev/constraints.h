@@ -3,7 +3,7 @@
 #include <system_error>  //  std::system_error
 #include <ostream>  //  std::ostream
 #include <string>  //  std::string
-#include <tuple>  //  std::tuple, std::make_tuple
+#include <tuple>  //  std::tuple
 #include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
 
 #include "functional/cxx_universal.h"
@@ -21,11 +21,6 @@
 namespace sqlite_orm {
 
     namespace internal {
-
-        /**
-         *  AUTOINCREMENT constraint class.
-         */
-        struct autoincrement_t {};
 
         enum class conflict_clause_t {
             rollback,
@@ -49,12 +44,15 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct primary_key_with_autoincrement {
+        struct primary_key_with_autoincrement : T {
             using primary_key_type = T;
 
-            primary_key_type primary_key;
-
-            primary_key_with_autoincrement(primary_key_type primary_key_) : primary_key(primary_key_) {}
+            const primary_key_type& as_base() const {
+                return *this;
+            }
+#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
+            primary_key_with_autoincrement(primary_key_type primary_key) : primary_key_type{primary_key} {}
+#endif
         };
 
         /**
@@ -70,7 +68,7 @@ namespace sqlite_orm {
 
             columns_tuple columns;
 
-            primary_key_t(decltype(columns) columns) : columns(std::move(columns)) {}
+            primary_key_t(columns_tuple columns) : columns(std::move(columns)) {}
 
             self asc() const {
                 auto res = *this;
@@ -142,6 +140,34 @@ namespace sqlite_orm {
             unique_t(columns_tuple columns_) : columns(std::move(columns_)) {}
         };
 
+        struct unindexed_t {};
+
+        template<class T>
+        struct prefix_t {
+            using value_type = T;
+
+            value_type value;
+        };
+
+        template<class T>
+        struct tokenize_t {
+            using value_type = T;
+
+            value_type value;
+        };
+
+        template<class T>
+        struct content_t {
+            using value_type = T;
+
+            value_type value;
+        };
+
+        template<class T>
+        struct table_content_t {
+            using mapped_type = T;
+        };
+
         /**
          *  DEFAULT constraint class.
          *  T is a value type.
@@ -158,7 +184,6 @@ namespace sqlite_orm {
         };
 
 #if SQLITE_VERSION_NUMBER >= 3006019
-
         /**
          *  FOREIGN KEY constraint class.
          *  Cs are columns which has foreign key
@@ -296,12 +321,12 @@ namespace sqlite_orm {
             /**
              * Holds obect type of all referenced columns.
              */
-            using target_type = typename same_or_void<table_type_of_t<Rs>...>::type;
+            using target_type = same_or_void_t<table_type_of_t<Rs>...>;
 
             /**
              * Holds obect type of all source columns.
              */
-            using source_type = typename same_or_void<table_type_of_t<Cs>...>::type;
+            using source_type = same_or_void_t<table_type_of_t<Cs>...>;
 
             columns_type columns;
             references_type references;
@@ -349,7 +374,7 @@ namespace sqlite_orm {
 
             template<class... Rs>
             foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> references(Rs... refs) {
-                return {std::move(this->columns), std::make_tuple(std::forward<Rs>(refs)...)};
+                return {std::move(this->columns), {std::forward<Rs>(refs)...}};
             }
         };
 #endif
@@ -391,14 +416,17 @@ namespace sqlite_orm {
                 stored,
             };
 
+#if SQLITE_VERSION_NUMBER >= 3031000
             bool full = true;
             storage_type storage = storage_type::not_specified;
+#endif
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
             basic_generated_always(bool full, storage_type storage) : full{full}, storage{storage} {}
 #endif
         };
 
+#if SQLITE_VERSION_NUMBER >= 3031000
         template<class T>
         struct generated_always_t : basic_generated_always {
             using expression_type = T;
@@ -416,72 +444,69 @@ namespace sqlite_orm {
                 return {std::move(this->expression), this->full, storage_type::stored};
             }
         };
+#endif
 
+        struct null_t {};
+
+        struct not_null_t {};
     }
 
     namespace internal {
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_foreign_key_v = polyfill::is_specialization_of_v<T, foreign_key_t>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_foreign_key_v =
+#if SQLITE_VERSION_NUMBER >= 3006019
+            polyfill::is_specialization_of<T, foreign_key_t>::value;
+#else
+            false;
+#endif
 
         template<class T>
-        using is_foreign_key = polyfill::bool_constant<is_foreign_key_v<T>>;
+        struct is_foreign_key : polyfill::bool_constant<is_foreign_key_v<T>> {};
 
         template<class T>
-        struct is_primary_key : std::false_type {};
-
-        template<class... Cs>
-        struct is_primary_key<primary_key_t<Cs...>> : std::true_type {};
+        SQLITE_ORM_INLINE_VAR constexpr bool is_primary_key_v = std::is_base_of<primary_key_base, T>::value;
 
         template<class T>
-        struct is_primary_key<primary_key_with_autoincrement<T>> : std::true_type {};
+        struct is_primary_key : polyfill::bool_constant<is_primary_key_v<T>> {};
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_primary_key_v = is_primary_key<T>::value;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_generated_always_v =
+#if SQLITE_VERSION_NUMBER >= 3031000
+            polyfill::is_specialization_of<T, generated_always_t>::value;
+#else
+            false;
+#endif
 
         template<class T>
-        using is_generated_always = polyfill::is_specialization_of<T, generated_always_t>;
-
-        template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_generated_always_v = is_generated_always<T>::value;
-
-        template<class T>
-        using is_autoincrement = std::is_same<T, autoincrement_t>;
-
-        template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_autoincrement_v = is_autoincrement<T>::value;
+        struct is_generated_always : polyfill::bool_constant<is_generated_always_v<T>> {};
 
         /**
          * PRIMARY KEY INSERTABLE traits.
          */
-        template<typename T>
+        template<typename Column>
         struct is_primary_key_insertable
             : polyfill::disjunction<
-                  mpl::instantiate<mpl::disjunction<check_if_tuple_has<is_autoincrement>,
-                                                    check_if_tuple_has_template<default_t>,
-                                                    check_if_tuple_has_template<primary_key_with_autoincrement>>,
-                                   constraints_type_t<T>>,
-                  std::is_base_of<integer_printer, type_printer<field_type_t<T>>>> {
+                  mpl::invoke_t<mpl::disjunction<check_if_has_template<primary_key_with_autoincrement>,
+                                                 check_if_has_template<default_t>>,
+                                constraints_type_t<Column>>,
+                  std::is_base_of<integer_printer, type_printer<field_type_t<Column>>>> {
 
-            static_assert(tuple_has<is_primary_key, constraints_type_t<T>>::value, "an unexpected type was passed");
+            static_assert(tuple_has<constraints_type_t<Column>, is_primary_key>::value,
+                          "an unexpected type was passed");
         };
 
         template<class T>
-        using is_constraint =
-            mpl::instantiate<mpl::disjunction<check_if<is_autoincrement>,
-                                              check_if<is_primary_key>,
-                                              check_if<is_foreign_key>,
-                                              check_if_is_template<unique_t>,
-                                              check_if_is_template<default_t>,
-                                              check_if_is_template<check_t>,
-                                              check_if_is_template<primary_key_with_autoincrement>,
-                                              check_if_is_type<collate_constraint_t>,
-#if SQLITE_VERSION_NUMBER >= 3031000
-                                              check_if<is_generated_always>,
-#endif
-                                              // dummy tail because of SQLITE_VERSION_NUMBER checks above
-                                              mpl::always<std::false_type>>,
-                             T>;
+        using is_column_constraint = mpl::invoke_t<mpl::disjunction<check_if<std::is_base_of, primary_key_t<>>,
+                                                                    check_if_is_type<null_t>,
+                                                                    check_if_is_type<not_null_t>,
+                                                                    check_if_is_type<unique_t<>>,
+                                                                    check_if_is_template<default_t>,
+                                                                    check_if_is_template<check_t>,
+                                                                    check_if_is_type<collate_constraint_t>,
+                                                                    check_if<is_generated_always>,
+                                                                    check_if_is_type<unindexed_t>>,
+                                                   T>;
     }
 
 #if SQLITE_VERSION_NUMBER >= 3031000
@@ -495,43 +520,95 @@ namespace sqlite_orm {
         return {std::move(expression), false, internal::basic_generated_always::storage_type::not_specified};
     }
 #endif
-#if SQLITE_VERSION_NUMBER >= 3006019
 
+#if SQLITE_VERSION_NUMBER >= 3006019
     /**
      *  FOREIGN KEY constraint construction function that takes member pointer as argument
      *  Available in SQLite 3.6.19 or higher
      */
     template<class... Cs>
     internal::foreign_key_intermediate_t<Cs...> foreign_key(Cs... columns) {
-        return {std::make_tuple(std::forward<Cs>(columns)...)};
+        return {{std::forward<Cs>(columns)...}};
     }
 #endif
 
     /**
-     *  UNIQUE constraint builder function.
+     *  UNIQUE table constraint builder function.
      */
     template<class... Args>
     internal::unique_t<Args...> unique(Args... args) {
-        return {std::make_tuple(std::forward<Args>(args)...)};
+        return {{std::forward<Args>(args)...}};
     }
 
+    /**
+     *  UNIQUE column constraint builder function.
+     */
     inline internal::unique_t<> unique() {
         return {{}};
     }
 
+#if SQLITE_VERSION_NUMBER >= 3009000
     /**
-     *  AUTOINCREMENT keyword. [Deprecation notice] Use `primary_key().autoincrement()` instead of using this function.
-     *  This function will be removed in 1.9
+     *  UNINDEXED column constraint builder function. Used in FTS virtual tables.
+     * 
+     *  https://www.sqlite.org/fts5.html#the_unindexed_column_option
      */
-    [[deprecated("Use primary_key().autoincrement()` instead")]] inline internal::autoincrement_t autoincrement() {
+    inline internal::unindexed_t unindexed() {
         return {};
     }
 
-    template<class... Cs>
-    internal::primary_key_t<Cs...> primary_key(Cs... cs) {
-        return {std::make_tuple(std::forward<Cs>(cs)...)};
+    /**
+     *  prefix=N table constraint builder function. Used in FTS virtual tables.
+     * 
+     *  https://www.sqlite.org/fts5.html#prefix_indexes
+     */
+    template<class T>
+    internal::prefix_t<T> prefix(T value) {
+        return {std::move(value)};
     }
 
+    /**
+     *  tokenize='...'' table constraint builder function. Used in FTS virtual tables.
+     * 
+     *  https://www.sqlite.org/fts5.html#tokenizers
+     */
+    template<class T>
+    internal::tokenize_t<T> tokenize(T value) {
+        return {std::move(value)};
+    }
+
+    /**
+     *  content='' table constraint builder function. Used in FTS virtual tables.
+     * 
+     *  https://www.sqlite.org/fts5.html#contentless_tables
+     */
+    template<class T>
+    internal::content_t<T> content(T value) {
+        return {std::move(value)};
+    }
+
+    /**
+     *  content='table' table constraint builder function. Used in FTS virtual tables.
+     * 
+     *  https://www.sqlite.org/fts5.html#external_content_tables
+     */
+    template<class T>
+    internal::table_content_t<T> content() {
+        return {};
+    }
+#endif
+
+    /**
+     *  PRIMARY KEY table constraint builder function.
+     */
+    template<class... Cs>
+    internal::primary_key_t<Cs...> primary_key(Cs... cs) {
+        return {{std::forward<Cs>(cs)...}};
+    }
+
+    /**
+     *  PRIMARY KEY column constraint builder function.
+     */
     inline internal::primary_key_t<> primary_key() {
         return {{}};
     }
@@ -556,5 +633,13 @@ namespace sqlite_orm {
     template<class T>
     internal::check_t<T> check(T t) {
         return {std::move(t)};
+    }
+
+    inline internal::null_t null() {
+        return {};
+    }
+
+    inline internal::not_null_t not_null() {
+        return {};
     }
 }

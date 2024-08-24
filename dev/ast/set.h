@@ -6,6 +6,7 @@
 #include <sstream>  //  std::stringstream
 #include <type_traits>  //  std::false_type, std::true_type
 
+#include "../tuple_helper/tuple_traits.h"
 #include "../table_name_collector.h"
 
 namespace sqlite_orm {

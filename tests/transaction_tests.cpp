@@ -1,5 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include "catch_matchers.h"
 
 using namespace sqlite_orm;
 
@@ -25,41 +26,14 @@ TEST_CASE("transaction") {
     auto storage = make_storage(
         "test_transaction_guard.sqlite",
         make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name)));
-    REQUIRE(!storage.is_opened());
+    REQUIRE_FALSE(storage.is_opened());
     storage.sync_schema();
-    REQUIRE(!storage.is_opened());
+    REQUIRE_FALSE(storage.is_opened());
     storage.transaction([&] {
         storage.insert(Object{0, "Jack"});
         return true;
     });
-    REQUIRE(!storage.is_opened());
-}
-
-TEST_CASE("transaction_rollback") {
-    auto storage = make_storage(
-        "test_transaction_guard.sqlite",
-        make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name)));
-
-    storage.sync_schema();
-    storage.remove_all<Object>();
-
-    storage.insert(Object{0, "Jack"});
-
-    SECTION("insert, call make a storage to call an exception and check that rollback was fired") {
-        auto countBefore = storage.count<Object>();
-        try {
-            storage.transaction([&] {
-                storage.insert(Object{0, "John"});
-                storage.get<Object>(-1);
-                REQUIRE(false);
-                return true;
-            });
-        } catch(const std::system_error& e) {
-            REQUIRE(e.code() == orm_error_code::not_found);
-            auto countNow = storage.count<Object>();
-            REQUIRE(countBefore == countNow);
-        }
-    }
+    REQUIRE_FALSE(storage.is_opened());
 }
 
 TEST_CASE("begin_transaction") {
@@ -100,22 +74,51 @@ TEST_CASE("Transaction guard") {
 
     storage.insert(Object{0, "Jack"});
 
+    const ErrorCodeExceptionMatcher notFoundExceptionMatcher(orm_error_code::not_found);
     SECTION("insert, call make a storage to call an exception and check that rollback was fired") {
         auto countBefore = storage.count<Object>();
-        try {
-            auto guard = storage.transaction_guard();
-
-            storage.insert(Object{0, "John"});
-
-            storage.get<Object>(-1);
-
-            REQUIRE(false);
-        } catch(const std::system_error& e) {
-            REQUIRE(e.code() == orm_error_code::not_found);
-            auto countNow = storage.count<Object>();
-
-            REQUIRE(countBefore == countNow);
+        SECTION("transaction_guard") {
+            REQUIRE_THROWS_MATCHES(
+                [&storage] {
+                    auto guard = storage.transaction_guard();
+                    storage.insert(Object{0, "John"});
+                    storage.get<Object>(-1);
+                }(),
+                std::system_error,
+                notFoundExceptionMatcher);
         }
+        SECTION("deferred_transaction_guard") {
+            REQUIRE_THROWS_MATCHES(
+                [&storage] {
+                    auto guard = storage.deferred_transaction_guard();
+                    storage.insert(Object{0, "John"});
+                    storage.get<Object>(-1);
+                }(),
+                std::system_error,
+                notFoundExceptionMatcher);
+        }
+        SECTION("exclusive_transaction_guard") {
+            REQUIRE_THROWS_MATCHES(
+                [&storage] {
+                    auto guard = storage.exclusive_transaction_guard();
+                    storage.insert(Object{0, "John"});
+                    storage.get<Object>(-1);
+                }(),
+                std::system_error,
+                notFoundExceptionMatcher);
+        }
+        SECTION("immediate_transaction_guard") {
+            REQUIRE_THROWS_MATCHES(
+                [&storage] {
+                    auto guard = storage.immediate_transaction_guard();
+                    storage.insert(Object{0, "John"});
+                    storage.get<Object>(-1);
+                }(),
+                std::system_error,
+                notFoundExceptionMatcher);
+        }
+        auto countNow = storage.count<Object>();
+        REQUIRE(countBefore == countNow);
     }
     SECTION("check that one can call other transaction functions without exceptions") {
         REQUIRE_NOTHROW(storage.transaction([] {
@@ -124,51 +127,170 @@ TEST_CASE("Transaction guard") {
     }
     SECTION("commit explicitly and check that after exception data was saved") {
         auto countBefore = storage.count<Object>();
-        try {
-            auto guard = storage.transaction_guard();
-            storage.insert(Object{0, "John"});
-            guard.commit();
-            storage.get<Object>(-1);
-            REQUIRE(false);
-        } catch(const std::system_error& e) {
-            REQUIRE(e.code() == orm_error_code::not_found);
-            auto countNow = storage.count<Object>();
-            REQUIRE(countNow == countBefore + 1);
+        SECTION("transaction_guard") {
+            REQUIRE_THROWS_MATCHES(
+                [&storage] {
+                    auto guard = storage.transaction_guard();
+                    storage.insert(Object{0, "John"});
+                    guard.commit();
+                    storage.get<Object>(-1);
+                }(),
+                std::system_error,
+                notFoundExceptionMatcher);
         }
+        SECTION("deferred_transaction_guard") {
+            REQUIRE_THROWS_MATCHES(
+                [&storage] {
+                    auto guard = storage.deferred_transaction_guard();
+                    storage.insert(Object{0, "John"});
+                    guard.commit();
+                    storage.get<Object>(-1);
+                }(),
+                std::system_error,
+                notFoundExceptionMatcher);
+        }
+        SECTION("exclusive_transaction_guard") {
+            REQUIRE_THROWS_MATCHES(
+                [&storage] {
+                    auto guard = storage.exclusive_transaction_guard();
+                    storage.insert(Object{0, "John"});
+                    guard.commit();
+                    storage.get<Object>(-1);
+                }(),
+                std::system_error,
+                notFoundExceptionMatcher);
+        }
+        SECTION("immediate_transaction_guard") {
+            REQUIRE_THROWS_MATCHES(
+                [&storage] {
+                    auto guard = storage.immediate_transaction_guard();
+                    storage.insert(Object{0, "John"});
+                    guard.commit();
+                    storage.get<Object>(-1);
+                }(),
+                std::system_error,
+                notFoundExceptionMatcher);
+        }
+        auto countNow = storage.count<Object>();
+        REQUIRE(countNow == countBefore + 1);
     }
     SECTION("rollback explicitly") {
         auto countBefore = storage.count<Object>();
-        try {
-            auto guard = storage.transaction_guard();
-            storage.insert(Object{0, "Michael"});
-            guard.rollback();
-            storage.get<Object>(-1);
-            REQUIRE(false);
-        } catch(const std::system_error& e) {
-            REQUIRE(e.code() == orm_error_code::not_found);
-            auto countNow = storage.count<Object>();
-            REQUIRE(countNow == countBefore);
+        SECTION("transaction_guard") {
+            REQUIRE_THROWS_MATCHES(
+                [&storage] {
+                    auto guard = storage.transaction_guard();
+                    storage.insert(Object{0, "Michael"});
+                    guard.rollback();
+                    storage.get<Object>(-1);
+                }(),
+                std::system_error,
+                notFoundExceptionMatcher);
         }
+        SECTION("deferred_transaction_guard") {
+            REQUIRE_THROWS_MATCHES(
+                [&storage] {
+                    auto guard = storage.deferred_transaction_guard();
+                    storage.insert(Object{0, "Michael"});
+                    guard.rollback();
+                    storage.get<Object>(-1);
+                }(),
+                std::system_error,
+                notFoundExceptionMatcher);
+        }
+        SECTION("exclusive_transaction_guard") {
+            REQUIRE_THROWS_MATCHES(
+                [&storage] {
+                    auto guard = storage.exclusive_transaction_guard();
+                    storage.insert(Object{0, "Michael"});
+                    guard.rollback();
+                    storage.get<Object>(-1);
+                }(),
+                std::system_error,
+                notFoundExceptionMatcher);
+        }
+        SECTION("immediate_transaction_guard") {
+            REQUIRE_THROWS_MATCHES(
+                [&storage] {
+                    auto guard = storage.immediate_transaction_guard();
+                    storage.insert(Object{0, "Michael"});
+                    guard.rollback();
+                    storage.get<Object>(-1);
+                }(),
+                std::system_error,
+                notFoundExceptionMatcher);
+        }
+        auto countNow = storage.count<Object>();
+        REQUIRE(countNow == countBefore);
     }
     SECTION("commit on exception") {
         auto countBefore = storage.count<Object>();
-        try {
-            auto guard = storage.transaction_guard();
-            guard.commit_on_destroy = true;
-            storage.insert(Object{0, "Michael"});
-            storage.get<Object>(-1);
-            REQUIRE(false);
-        } catch(const std::system_error& e) {
-            REQUIRE(e.code() == orm_error_code::not_found);
-            auto countNow = storage.count<Object>();
-            REQUIRE(countNow == countBefore + 1);
+        SECTION("transaction_guard") {
+            REQUIRE_THROWS_MATCHES(
+                [&storage] {
+                    auto guard = storage.transaction_guard();
+                    guard.commit_on_destroy = true;
+                    storage.insert(Object{0, "Michael"});
+                    storage.get<Object>(-1);
+                }(),
+                std::system_error,
+                notFoundExceptionMatcher);
         }
+        SECTION("deferred_transaction_guard") {
+            REQUIRE_THROWS_MATCHES(
+                [&storage] {
+                    auto guard = storage.deferred_transaction_guard();
+                    guard.commit_on_destroy = true;
+                    storage.insert(Object{0, "Michael"});
+                    storage.get<Object>(-1);
+                }(),
+                std::system_error,
+                notFoundExceptionMatcher);
+        }
+        SECTION("exclusive_transaction_guard") {
+            REQUIRE_THROWS_MATCHES(
+                [&storage] {
+                    auto guard = storage.exclusive_transaction_guard();
+                    guard.commit_on_destroy = true;
+                    storage.insert(Object{0, "Michael"});
+                    storage.get<Object>(-1);
+                }(),
+                std::system_error,
+                notFoundExceptionMatcher);
+        }
+        SECTION("immediate_transaction_guard") {
+            REQUIRE_THROWS_MATCHES(
+                [&storage] {
+                    auto guard = storage.immediate_transaction_guard();
+                    guard.commit_on_destroy = true;
+                    storage.insert(Object{0, "Michael"});
+                    storage.get<Object>(-1);
+                }(),
+                std::system_error,
+                notFoundExceptionMatcher);
+        }
+        auto countNow = storage.count<Object>();
+        REQUIRE(countNow == countBefore + 1);
     }
     SECTION("work without exception") {
         auto countBefore = storage.count<Object>();
-        // transaction scope
-        {
+        SECTION("transaction_guard") {
             auto guard = storage.transaction_guard();
+            guard.commit_on_destroy = true;
+            REQUIRE_NOTHROW(storage.insert(Object{0, "Lincoln"}));
+        }
+        SECTION("deferred_transaction_guard") {
+            auto guard = storage.deferred_transaction_guard();
+            guard.commit_on_destroy = true;
+            REQUIRE_NOTHROW(storage.insert(Object{0, "Lincoln"}));
+        }
+        SECTION("exclusive_transaction_guard") {
+            auto guard = storage.exclusive_transaction_guard();
+            guard.commit_on_destroy = true;
+            REQUIRE_NOTHROW(storage.insert(Object{0, "Lincoln"}));
+        }
+        SECTION("immediate_transaction_guard") {
+            auto guard = storage.immediate_transaction_guard();
             guard.commit_on_destroy = true;
             REQUIRE_NOTHROW(storage.insert(Object{0, "Lincoln"}));
         }
@@ -178,8 +300,26 @@ TEST_CASE("Transaction guard") {
     SECTION("std::move ctor") {
         std::vector<internal::transaction_guard_t> guards;
         auto countBefore = storage.count<Object>();
-        {
+        SECTION("transaction_guard") {
             auto guard = storage.transaction_guard();
+            storage.insert(Object{0, "Lincoln"});
+            guards.push_back(std::move(guard));
+            REQUIRE(storage.count<Object>() == countBefore + 1);
+        }
+        SECTION("deferred_transaction_guard") {
+            auto guard = storage.deferred_transaction_guard();
+            storage.insert(Object{0, "Lincoln"});
+            guards.push_back(std::move(guard));
+            REQUIRE(storage.count<Object>() == countBefore + 1);
+        }
+        SECTION("exclusive_transaction_guard") {
+            auto guard = storage.exclusive_transaction_guard();
+            storage.insert(Object{0, "Lincoln"});
+            guards.push_back(std::move(guard));
+            REQUIRE(storage.count<Object>() == countBefore + 1);
+        }
+        SECTION("immediate_transaction_guard") {
+            auto guard = storage.immediate_transaction_guard();
             storage.insert(Object{0, "Lincoln"});
             guards.push_back(std::move(guard));
             REQUIRE(storage.count<Object>() == countBefore + 1);

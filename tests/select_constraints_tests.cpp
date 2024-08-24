@@ -139,6 +139,7 @@ TEST_CASE("select constraints") {
             expected.push_back("James");
             REQUIRE_THAT(rows, UnorderedEquals(expected));
         }
+#if SQLITE_VERSION_NUMBER >= 3006019
         SECTION("left join") {
             struct Author {
                 int id = 0;
@@ -208,6 +209,7 @@ TEST_CASE("select constraints") {
                 REQUIRE_THAT(rows, UnorderedEquals(expected));
             }
         }
+#endif
     }
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 }
@@ -234,6 +236,7 @@ namespace {
 #endif
     };
 }
+#if SQLITE_VERSION_NUMBER >= 3006019
 TEST_CASE("Exists") {
     auto storage = make_storage(
         "",
@@ -259,6 +262,7 @@ TEST_CASE("Exists") {
         where(exists(select(&Visit1::id, where(c(&Visit1::time) == 200000 and eq(&Visit1::userId, &User1::id))))));
     REQUIRE(rows.empty() == false);
 }
+#endif
 
 namespace {
     struct User2 {

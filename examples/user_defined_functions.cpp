@@ -34,6 +34,9 @@ struct SignFunction {
         return "SIGN";
     }
 };
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+inline constexpr orm_scalar_function auto sign = func<SignFunction>;
+#endif
 
 /**
  *  Aggregate function must be defined as a dedicated class with at least three functions:
@@ -77,6 +80,9 @@ struct AcceleratedSumFunction {
         return result;
     }
 };
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+inline constexpr orm_aggregate_function auto accelerated_sum = func<AcceleratedSumFunction>;
+#endif
 
 /**
  *  This is also a scalar function just like `SignFunction` but this function
@@ -105,6 +111,9 @@ struct ArithmeticMeanFunction {
         return result;
     }
 };
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+inline constexpr orm_scalar_function auto arithmetic_mean = func<ArithmeticMeanFunction>;
+#endif
 
 int main() {
 
@@ -124,6 +133,49 @@ int main() {
         make_table("t", make_column("a", &Table::a), make_column("b", &Table::b), make_column("c", &Table::c)));
     storage.sync_schema();
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  This function can be called at any time doesn't matter whether connection is open or not.
+     *  To delete created scalar function use `storage.delete_scalar_function<T>()` function call.
+     */
+    storage.create_scalar_function<sign>();
+
+    //  SELECT SIGN(3)
+    auto signRows = storage.select(sign(3));
+    cout << "SELECT SIGN(3) = " << signRows.at(0) << endl;
+
+    storage.insert(Table{1, -1, 2});
+    storage.insert(Table{2, -2, 4});
+    storage.insert(Table{3, -3, 8});
+    storage.insert(Table{4, -4, 16});
+
+    storage.create_aggregate_function<accelerated_sum>();
+
+    //  SELECT ASUM(a), ASUM(b), ASUM(c)
+    //  FROM t
+    auto aSumRows =
+        storage.select(columns(accelerated_sum(&Table::a), accelerated_sum(&Table::b), accelerated_sum(&Table::c)));
+    cout << "SELECT ASUM(a), ASUM(b), ASUM(c) FROM t:" << endl;
+    for(auto& row: aSumRows) {
+        cout << '\t' << get<0>(row) << endl;
+        cout << '\t' << get<1>(row) << endl;
+        cout << '\t' << get<2>(row) << endl;
+    }
+
+    storage.create_scalar_function<arithmetic_mean>();
+
+    //  SELECT ARITHMETIC_MEAN(5, 6, 7)
+    auto arithmeticMeanRows1 = storage.select(arithmetic_mean(5, 6, 7));
+    cout << "SELECT ARITHMETIC_MEAN(5, 6, 7) = " << arithmeticMeanRows1.front() << endl;
+
+    //  SELECT ARITHMETIC_MEAN(-2, 1)
+    auto arithmeticMeanRows2 = storage.select(arithmetic_mean(-2, 1));
+    cout << "SELECT ARITHMETIC_MEAN(-2, 1) = " << arithmeticMeanRows2.front() << endl;
+
+    //  SELECT ARITHMETIC_MEAN(-5.5, 4, 13.2, 256.4)
+    auto arithmeticMeanRows3 = storage.select(arithmetic_mean(-5.5, 4, 13.2, 256.4));
+    cout << "SELECT ARITHMETIC_MEAN(-5.5, 4, 13.2, 256.4) = " << arithmeticMeanRows3.front() << endl;
+#else
     /**
      *  This function can be called at any time doesn't matter whether connection is open or not.
      *  To delete created scalar function use `storage.delete_scalar_function<T>()` function call.
@@ -166,6 +218,7 @@ int main() {
     //  SELECT ARITHMETIC_MEAN(-5.5, 4, 13.2, 256.4)
     auto arithmeticMeanRows3 = storage.select(func<ArithmeticMeanFunction>(-5.5, 4, 13.2, 256.4));
     cout << "SELECT ARITHMETIC_MEAN(-5.5, 4, 13.2, 256.4) = " << arithmeticMeanRows3.front() << endl;
+#endif
 
     return 0;
 }

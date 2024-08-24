@@ -192,7 +192,7 @@ TEST_CASE("ast_iterator") {
             iterate_ast(node, lambda);
         }
         SECTION("column alias in expression") {
-            auto node = order_by(get<colalias_a>() > c(1));
+            auto node = order_by(get<colalias_a>() > 1);
             expected.push_back(typeid(int));
             iterate_ast(node, lambda);
         }
@@ -217,6 +217,11 @@ TEST_CASE("ast_iterator") {
 #endif
     SECTION("into") {
         auto node = into<User>();
+        iterate_ast(node, lambda);
+    }
+    SECTION("match") {
+        auto node = match<User>(std::string("Plazma"));
+        expected.push_back(typeid(std::string));
         iterate_ast(node, lambda);
     }
     SECTION("replace") {
@@ -269,6 +274,7 @@ TEST_CASE("ast_iterator") {
     }
     SECTION("function_call") {
         struct Func {
+            static const char* name();
             bool operator()(int value) const {
                 return value % 2 == 0;
             }
@@ -279,10 +285,24 @@ TEST_CASE("ast_iterator") {
     }
     SECTION("aliases") {
         SECTION("holder") {
-            auto expression = get<colalias_a>() > c(0);
+            auto expression = get<colalias_a>() > 0;
             expected.push_back(typeid(int));
             iterate_ast(expression, lambda);
         }
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        {
+            SECTION("direct") {
+                auto expression = "a"_col > 0;
+                expected.push_back(typeid(int));
+                iterate_ast(expression, lambda);
+            }
+        }
+#endif
+    }
+    SECTION("is_equal_with_table_t") {
+        auto expression = is_equal<User>(std::string("Claude"));
+        expected.push_back(typeid(std::string));
+        iterate_ast(expression, lambda);
     }
     SECTION("aliased regular column") {
         using als = alias_z<User>;
@@ -294,6 +314,91 @@ TEST_CASE("ast_iterator") {
         using als = alias_z<User>;
         auto expression = alias_column<als>(column<User>(&User::id));
         expected.push_back(typeid(alias_column_t<alias_z<User>, column_pointer<User, decltype(&User::id)>>));
+        iterate_ast(expression, lambda);
+    }
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    SECTION("aliased regular column 2") {
+        constexpr auto z_alias = "z"_alias.for_<User>();
+        auto expression = z_alias->*&User::id;
+        expected.push_back(typeid(alias_column_t<alias_z<User>, decltype(&User::id)>));
+        iterate_ast(expression, lambda);
+    }
+    SECTION("aliased regular column pointer 2") {
+        constexpr auto z_alias = "z"_alias.for_<User>();
+        auto expression = z_alias->*column<User>(&User::id);
+        expected.push_back(typeid(alias_column_t<alias_z<User>, column_pointer<User, decltype(&User::id)>>));
+        iterate_ast(expression, lambda);
+    }
+#endif
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+    SECTION("with ordinary") {
+        using cte_1 = decltype(1_ctealias);
+        auto expression = with(cte<cte_1>().as(select(1)), select(column<cte_1>(1_colalias)));
+        expected.insert(expected.cend(), {typeid(int), typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>)});
+        iterate_ast(expression, lambda);
+    }
+    SECTION("with not enforced recursive") {
+        using cte_1 = decltype(1_ctealias);
+        auto expression = with_recursive(cte<cte_1>().as(select(1)), select(column<cte_1>(1_colalias)));
+        expected.insert(expected.cend(), {typeid(int), typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>)});
+        iterate_ast(expression, lambda);
+    }
+    SECTION("with optional recursive") {
+        using cte_1 = decltype(1_ctealias);
+        auto expression = with(
+            cte<cte_1>().as(
+                union_all(select(1), select(column<cte_1>(1_colalias) + 1, where(column<cte_1>(1_colalias) < 10)))),
+            select(column<cte_1>(1_colalias)));
+        expected.insert(expected.cend(),
+                        {typeid(int),
+                         typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>),
+                         typeid(int),
+                         typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>),
+                         typeid(int),
+                         typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>)});
+        iterate_ast(expression, lambda);
+    }
+    SECTION("with recursive") {
+        using cte_1 = decltype(1_ctealias);
+        auto expression = with_recursive(
+            cte<cte_1>().as(
+                union_all(select(1), select(column<cte_1>(1_colalias) + 1, where(column<cte_1>(1_colalias) < 10)))),
+            select(column<cte_1>(1_colalias)));
+        expected.insert(expected.cend(),
+                        {typeid(int),
+                         typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>),
+                         typeid(int),
+                         typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>),
+                         typeid(int),
+                         typeid(column_pointer<cte_1, alias_holder<column_alias<'1'>>>)});
+        iterate_ast(expression, lambda);
+    }
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    SECTION("aliased CTE column pointer") {
+        constexpr auto c = "1"_cte;
+        using cte_1 = decltype("1"_cte);
+        constexpr auto z_alias = "z"_alias.for_<c>();
+        auto expression = z_alias->*&User::id;
+        expected.push_back(typeid(alias_column_t<alias_z<cte_1>, column_pointer<cte_1, decltype(&User::id)>>));
+        iterate_ast(expression, lambda);
+    }
+    SECTION("aliased CTE column alias") {
+        constexpr auto c = "1"_cte;
+        using cte_1 = decltype("1"_cte);
+        constexpr auto z_alias = "z"_alias.for_<c>();
+        auto expression = z_alias->*1_colalias;
+        expected.push_back(
+            typeid(alias_column_t<alias_z<cte_1>, column_pointer<cte_1, alias_holder<column_alias<'1'>>>>));
+        iterate_ast(expression, lambda);
+    }
+#endif
+#endif
+    SECTION("highlight") {
+        auto expression = highlight<User>(0, std::string("<b>"), std::string("</b>"));
+        expected.push_back(typeid(expression));
+        expected.push_back(typeid(int));
+        expected.push_back(typeid(std::string));
+        expected.push_back(typeid(std::string));
         iterate_ast(expression, lambda);
     }
     REQUIRE(typeIndexes == expected);

@@ -28,8 +28,9 @@ namespace sqlite_orm {
         inline int getPragmaCallback<std::vector<std::string>>(void* data, int argc, char** argv, char**) {
             auto& res = *(std::vector<std::string>*)data;
             res.reserve(argc);
-            for(decltype(argc) i = 0; i < argc; ++i) {
-                auto rowString = row_extractor<std::string>().extract(argv[i]);
+            const auto rowExtractor = column_text_extractor<std::string>();
+            for(int i = 0; i < argc; ++i) {
+                auto rowString = rowExtractor.extract(argv[i]);
                 res.push_back(std::move(rowString));
             }
             return 0;
@@ -39,6 +40,18 @@ namespace sqlite_orm {
             using get_connection_t = std::function<internal::connection_ref()>;
 
             pragma_t(get_connection_t get_connection_) : get_connection(std::move(get_connection_)) {}
+
+            std::vector<std::string> module_list() {
+                return this->get_pragma<std::vector<std::string>>("module_list");
+            }
+
+            bool recursive_triggers() {
+                return bool(this->get_pragma<int>("recursive_triggers"));
+            }
+
+            void recursive_triggers(bool value) {
+                this->set_pragma("recursive_triggers", int(value));
+            }
 
             void busy_timeout(int value) {
                 this->set_pragma("busy_timeout", value);
@@ -113,6 +126,10 @@ namespace sqlite_orm {
                 std::ostringstream ss;
                 ss << "integrity_check(" << n << ")" << std::flush;
                 return this->get_pragma<std::vector<std::string>>(ss.str());
+            }
+
+            std::vector<std::string> quick_check() {
+                return this->get_pragma<std::vector<std::string>>("quick_check");
             }
 
             // will include generated columns in response as opposed to table_info

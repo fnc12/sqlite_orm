@@ -14,9 +14,9 @@ TEST_CASE("Unique ptr in update") {
         std::unique_ptr<std::string> name;
     };
 
-    auto storage = make_storage(
-        {},
-        make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)));
+    auto nameColumn = make_column("name", &User::name);
+    auto nameTable = make_table("users", make_column("id", &User::id, primary_key()), nameColumn);
+    auto storage = make_storage({}, nameTable);
     storage.sync_schema();
 
     storage.insert(User{});
@@ -144,6 +144,7 @@ TEST_CASE("join") {
     }
 }
 
+#if SQLITE_VERSION_NUMBER >= 3006019
 TEST_CASE("two joins") {
     struct Statement {
         int id_statement;
@@ -265,26 +266,27 @@ TEST_CASE("two joins") {
                                          alias_column<als_t>(&Transaccion::fkey_account_own),
                                          alias_column<als_a>(&Account::id_account),
                                          alias_column<als_b>(&Account::id_account)),
-                                 left_outer_join<als_a>(on(c(alias_column<als_t>(&Transaccion::fkey_account_other)) ==
+                                 left_outer_join<als_a>(on(alias_column<als_t>(&Transaccion::fkey_account_other) ==
                                                            alias_column<als_a>(&Account::id_account))),
-                                 inner_join<als_b>(on(c(alias_column<als_t>(&Transaccion::fkey_account_own)) ==
+                                 inner_join<als_b>(on(alias_column<als_t>(&Transaccion::fkey_account_own) ==
                                                       alias_column<als_b>(&Account::id_account))));
 
     std::ignore = storage.select(columns(alias_column<als_t>(&Transaccion::fkey_account_other),
                                          alias_column<als_t>(&Transaccion::fkey_account_own),
                                          alias_column<als_a>(&Account::id_account),
                                          alias_column<als_b>(&Account::id_account)),
-                                 left_join<als_a>(on(c(alias_column<als_t>(&Transaccion::fkey_account_other)) ==
+                                 left_join<als_a>(on(alias_column<als_t>(&Transaccion::fkey_account_other) ==
                                                      alias_column<als_a>(&Account::id_account))),
-                                 inner_join<als_b>(on(c(alias_column<als_t>(&Transaccion::fkey_account_own)) ==
+                                 inner_join<als_b>(on(alias_column<als_t>(&Transaccion::fkey_account_own) ==
                                                       alias_column<als_b>(&Account::id_account))));
 
     std::ignore = storage.select(columns(alias_column<als_t>(&Transaccion::fkey_account_other),
                                          alias_column<als_t>(&Transaccion::fkey_account_own),
                                          alias_column<als_a>(&Account::id_account),
                                          alias_column<als_b>(&Account::id_account)),
-                                 join<als_a>(on(c(alias_column<als_t>(&Transaccion::fkey_account_other)) ==
+                                 join<als_a>(on(alias_column<als_t>(&Transaccion::fkey_account_other) ==
                                                 alias_column<als_a>(&Account::id_account))),
-                                 inner_join<als_b>(on(c(alias_column<als_t>(&Transaccion::fkey_account_own)) ==
+                                 inner_join<als_b>(on(alias_column<als_t>(&Transaccion::fkey_account_own) ==
                                                       alias_column<als_b>(&Account::id_account))));
 }
+#endif

@@ -5,6 +5,7 @@
 
 using namespace sqlite_orm;
 
+#if SQLITE_VERSION_NUMBER >= 3006019
 TEST_CASE("Prepared select") {
     using namespace PreparedStatementTests;
     using Catch::Matchers::UnorderedEquals;
@@ -123,7 +124,7 @@ TEST_CASE("Prepared select") {
     SECTION("three columns, aggregate func and where") {
         SECTION("by val") {
             auto statement =
-                storage.prepare(select(columns(5.0, &User::id, count(&User::name)), where(lesser_than(&User::id, 10))));
+                storage.prepare(select(columns(5.0, &User::id, count(&User::name)), where(less_than(&User::id, 10))));
             auto str = storage.dump(statement);
             REQUIRE(get<0>(statement) == 5.0);
             REQUIRE(get<1>(statement) == 10);
@@ -139,7 +140,7 @@ TEST_CASE("Prepared select") {
             auto first = 5.0;
             auto id = 10;
             auto statement = storage.prepare(select(columns(std::ref(first), &User::id, count(&User::name)),
-                                                    where(lesser_than(&User::id, std::ref(id)))));
+                                                    where(less_than(&User::id, std::ref(id)))));
             auto str = storage.dump(statement);
             REQUIRE(get<0>(statement) == 5.0);
             REQUIRE(&get<0>(statement) == &first);
@@ -303,7 +304,107 @@ TEST_CASE("Prepared select") {
             }
         }
     }
+    SECTION("object") {
+        auto statement = storage.prepare(select(object<User>(true)));
+        auto str = storage.dump(statement);
+        testSerializing(statement);
+        SECTION("nothing") {
+            //..
+        }
+        SECTION("execute") {
+            auto rows = storage.execute(statement);
+            std::vector<User> expected{{1, "Team BS"}, {2, "Shy'm"}, {3, "Maître Gims"}};
+            REQUIRE_THAT(rows, UnorderedEquals(expected));
+        }
+    }
+    SECTION("multi object") {
+        auto statement = storage.prepare(select(columns(object<User>(true), object<User>(true))));
+        auto str = storage.dump(statement);
+        testSerializing(statement);
+        SECTION("nothing") {
+            //..
+        }
+        SECTION("execute") {
+            auto rows = storage.execute(statement);
+            std::vector<std::tuple<User, User>> expected;
+            expected.push_back({User{1, "Team BS"}, User{1, "Team BS"}});
+            expected.push_back({User{2, "Shy'm"}, User{2, "Shy'm"}});
+            expected.push_back({User{3, "Maître Gims"}, User{3, "Maître Gims"}});
+            REQUIRE_THAT(rows, UnorderedEquals(expected));
+        }
+    }
+    SECTION("multi object 2") {
+        auto statement = storage.prepare(select(columns(object<User>(true), asterisk<User>(true), object<User>(true))));
+        auto str = storage.dump(statement);
+        testSerializing(statement);
+        SECTION("nothing") {
+            //..
+        }
+        SECTION("execute") {
+            auto rows = storage.execute(statement);
+            std::vector<std::tuple<User, int, std::string, User>> expected;
+            expected.push_back({User{1, "Team BS"}, 1, "Team BS", User{1, "Team BS"}});
+            expected.push_back({User{2, "Shy'm"}, 2, "Shy'm", User{2, "Shy'm"}});
+            expected.push_back({User{3, "Maître Gims"}, 3, "Maître Gims", User{3, "Maître Gims"}});
+            REQUIRE_THAT(rows, UnorderedEquals(expected));
+        }
+    }
+    SECTION("struct") {
+        using Z = User;  // for the unit test it is fine to just reuse `User` as an unmapped struct
+        constexpr auto z_struct = struct_<Z>(&User::id, &User::name);
+        auto statement = storage.prepare(select(z_struct));
+        auto str = storage.dump(statement);
+        testSerializing(statement);
+        SECTION("nothing") {
+            //..
+        }
+        SECTION("execute") {
+            auto rows = storage.execute(statement);
+            std::vector<Z> expected{{1, "Team BS"}, {2, "Shy'm"}, {3, "Maître Gims"}};
+            REQUIRE_THAT(rows, UnorderedEquals(expected));
+        }
+    }
+    SECTION("non-aggregate struct") {
+        // testing `struct_extractor` with a non-aggregate type,
+        // which is expected to extract sql result values in the order of arguments.
+        // This was not the case with msvc, which would extract the name before the id.
+
+        struct Z {
+            decltype(User::id) id = 0;
+            decltype(User::name) name;
+
+            Z(decltype(id) id, decltype(name) name) : id{id}, name{std::move(name)} {}
+
+            bool operator==(const Z& z) const {
+                return this->id == z.id && this->name == z.name;
+            }
+        };
+        constexpr auto z_struct = struct_<Z>(&User::id, &User::name);
+        auto statement = storage.prepare(select(z_struct));
+        auto rows = storage.execute(statement);
+        std::vector<Z> expected{{1, "Team BS"}, {2, "Shy'm"}, {3, "Maître Gims"}};
+        REQUIRE_THAT(rows, UnorderedEquals(expected));
+    }
+    SECTION("multi struct") {
+        using Z = User;  // for the unit test it is fine to just reuse `User` as an unmapped struct
+        constexpr auto z_struct = struct_<Z>(&User::id, &User::name);
+        auto statement = storage.prepare(select(columns(z_struct, z_struct)));
+        auto str = storage.dump(statement);
+        testSerializing(statement);
+        SECTION("nothing") {
+            //..
+        }
+        SECTION("execute") {
+            auto rows = storage.execute(statement);
+            std::vector<std::tuple<Z, Z>> expected;
+            expected.push_back({Z{1, "Team BS"}, Z{1, "Team BS"}});
+            expected.push_back({Z{2, "Shy'm"}, Z{2, "Shy'm"}});
+            expected.push_back({Z{3, "Maître Gims"}, Z{3, "Maître Gims"}});
+            REQUIRE_THAT(rows, UnorderedEquals(expected));
+        }
+    }
 }
+#endif
 
 TEST_CASE("dumping") {
     auto storage = make_storage("");
@@ -340,5 +441,25 @@ TEST_CASE("dumping") {
             expected = "SELECT 1";
         }
     }
+#if SQLITE_VERSION_NUMBER >= 3020000
+#ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
+    SECTION("with bound pointer") {
+        int64 lastSelectedId;
+        auto statement = storage.prepare(select(bind_carray_pointer_statically(&lastSelectedId)));
+        SECTION("default") {
+            value = storage.dump(statement);
+            expected = "SELECT ?";
+        }
+        SECTION("parametrized") {
+            value = storage.dump(statement, true);
+            expected = "SELECT ?";
+        }
+        SECTION("dump") {
+            value = storage.dump(statement, false);
+            expected = "SELECT NULL";
+        }
+    }
+#endif
+#endif
     REQUIRE(value == expected);
 }

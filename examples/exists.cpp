@@ -475,6 +475,25 @@ int main(int, char**) {
         //      )
         //  ORDER BY 'c'."PAYMENT_AMT"
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        constexpr orm_table_alias auto c_als = "c"_alias.for_<Customer>();
+        constexpr orm_table_alias auto d = "d"_alias.for_<Customer>();
+
+        double amount = 2000;
+        auto where_clause = select(d->*&Customer::agentCode,
+                                   from<d>(),
+                                   where(is_equal(c_als->*&Customer::paymentAmt, std::ref(amount)) and
+                                         (d->*&Customer::agentCode == c_als->*&Customer::agentCode)));
+
+        amount = 7000;
+
+        auto statement = storage.prepare(select(
+            columns(&Order::agentCode, &Order::num, &Order::amount, &Order::custCode, c_als->*&Customer::paymentAmt),
+            from<Order>(),
+            inner_join<c_als>(using_(&Customer::agentCode)),
+            where(not exists(where_clause)),
+            order_by(c_als->*&Customer::paymentAmt)));
+#else
         using als = alias_c<Customer>;
         using als_2 = alias_d<Customer>;
 
@@ -483,7 +502,7 @@ int main(int, char**) {
             select(alias_column<als_2>(&Customer::agentCode),
                    from<als_2>(),
                    where(is_equal(alias_column<als>(&Customer::paymentAmt), std::ref(amount)) and
-                         (alias_column<als_2>(&Customer::agentCode) == c(alias_column<als>(&Customer::agentCode)))));
+                         (alias_column<als_2>(&Customer::agentCode) == alias_column<als>(&Customer::agentCode))));
 
         amount = 7000;
 
@@ -494,11 +513,14 @@ int main(int, char**) {
                                            &Order::custCode,
                                            alias_column<als>(&Customer::paymentAmt)),
                                    from<Order>(),
-                                   inner_join<als>(on(alias_column<als>(&Customer::agentCode) == c(&Order::agentCode))),
+                                   inner_join<als>(on(alias_column<als>(&Customer::agentCode) == &Order::agentCode)),
                                    where(not exists(where_clause)),
                                    order_by(alias_column<als>(&Customer::paymentAmt))));
+#endif
 
+#if SQLITE_VERSION_NUMBER >= 3014000
         auto sql = statement.expanded_sql();
+#endif
         auto rows = storage.execute(statement);
         cout << endl;
         for(auto& row: rows) {

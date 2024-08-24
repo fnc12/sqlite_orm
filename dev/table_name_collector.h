@@ -42,7 +42,8 @@ namespace sqlite_orm {
 
             template<class T, class F>
             void operator()(const column_pointer<T, F>&) {
-                this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
+                auto tableName = lookup_table_name<mapped_type_proxy_t<T>>(this->db_objects);
+                this->table_names.emplace(std::move(tableName), alias_extractor<T>::as_alias());
             }
 
             template<class A, class C>
@@ -83,6 +84,11 @@ namespace sqlite_orm {
 
             template<class T>
             void operator()(const table__rowid_t<T>&) {
+                this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
+            }
+
+            template<class T, class X, class Y, class Z>
+            void operator()(const highlight_t<T, X, Y, Z>&) {
                 this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
             }
         };

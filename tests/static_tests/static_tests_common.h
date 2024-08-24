@@ -1,7 +1,11 @@
 #pragma once
 
+#include <memory>  //  std::unique_ptr
+#include <string>  //  std::string
+
 struct User {
     int id;
+    std::unique_ptr<std::string> name;
 
     const int& getIdByRefConst() const {
         return this->id;

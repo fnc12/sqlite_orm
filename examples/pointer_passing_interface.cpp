@@ -17,8 +17,10 @@
  *  Note: pointers are only accessible within application code, and therefore unleakable.
  */
 #include <sqlite_orm/sqlite_orm.h>
+#if SQLITE_VERSION_NUMBER >= 3020000
 #ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 #define ENABLE_THIS_EXAMPLE
+#endif
 #endif
 
 #ifdef ENABLE_THIS_EXAMPLE
@@ -40,12 +42,15 @@ using std::error_code;
 using std::make_unique;
 using std::min;
 
-// name for our pointer value types
-inline constexpr const char ecat_pvt_name[] = "ecat";
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+// c++ integral constant for our pointer type domain
+inline constexpr orm_pointer_type auto ecode_pointer_tag = "ecode"_pointer_type;
+#else
+// name for our pointer type domain
 inline constexpr const char ecode_pvt_name[] = "ecode";
-// c++ integral constant for our pointer value types
-using ecat_pvt = std::integral_constant<const char*, ecat_pvt_name>;
-using ecode_pvt = std::integral_constant<const char*, ecode_pvt_name>;
+// c++ integral constant for our pointer type domain
+using ecode_pointer_type = std::integral_constant<const char*, ecode_pvt_name>;
+#endif
 
 // a fixed set of error categories the application is dealing with
 enum class app_error_category : unsigned int {
@@ -86,18 +91,31 @@ int main() {
         int errorValue = 0;
         unsigned int errorCategory = 0;
     };
-    using ecat_arg_t = pointer_arg<const std::error_category, ecat_pvt>;
-    using ecode_arg_t = pointer_arg<std::error_code, ecode_pvt>;
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    using ecat_arg = pointer_arg_t<const std::error_category, ecode_pointer_tag>;
+    using ecode_arg = pointer_arg_t<const std::error_code, ecode_pointer_tag>;
+#else
+    using ecat_arg = pointer_arg<const std::error_category, ecode_pointer_type>;
+    using ecode_arg = pointer_arg<const std::error_code, ecode_pointer_type>;
+#endif
 
     // function returning a pointer to a std::error_category,
     // which is only visible to functions accepting pointer values of type "ecat"
     struct get_error_category_fn {
-        using ecat_binding = static_pointer_binding<const std::error_category, ecat_pvt>;
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        using ecat_binding = static_pointer_binding_t<const std::error_category, ecode_pointer_tag>;
+#else
+        using ecat_binding = static_pointer_binding<const std::error_category, ecode_pointer_type>;
+#endif
 
         ecat_binding operator()(unsigned int errorCategory) const {
             size_t idx = min<size_t>(errorCategory, ecat_map.size());
             const error_category* ecat = idx != ecat_map.size() ? &get<const error_category&>(ecat_map[idx]) : nullptr;
-            return statically_bindable_pointer<ecat_pvt>(ecat);
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            return bind_pointer_statically<ecode_pointer_tag>(ecat);
+#else
+            return bind_pointer_statically<ecode_pointer_type>(ecat);
+#endif
         }
 
         static constexpr const char* name() {
@@ -108,7 +126,7 @@ int main() {
     // function accepting a pointer to a std::error_category,
     // returns the category's name
     struct error_category_name_fn {
-        std::string operator()(ecat_arg_t pv) const {
+        std::string operator()(ecat_arg pv) const {
             if(const error_category* ec = pv) {
                 return ec->name();
             }
@@ -123,7 +141,7 @@ int main() {
     // function accepting a pointer to a std::error_category and an error code,
     // returns the error message
     struct error_category_message_fn {
-        std::string operator()(ecat_arg_t pv, int errorValue) const {
+        std::string operator()(ecat_arg pv, int errorValue) const {
             if(const error_category* ec = pv) {
                 return ec->message(errorValue);
             }
@@ -137,14 +155,20 @@ int main() {
 
     // function returning an error_code object from an error value
     struct make_error_code_fn {
-        using ecode_binding = pointer_binding<std::error_code, ecode_pvt, std::default_delete<std::error_code>>;
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        using ecode_binding =
+            pointer_binding_t<std::error_code, ecode_pointer_tag, std::default_delete<std::error_code>>;
+#else
+        using ecode_binding =
+            pointer_binding<std::error_code, ecode_pointer_type, std::default_delete<std::error_code>>;
+#endif
 
         ecode_binding operator()(int errorValue, unsigned int errorCategory) const {
             size_t idx = min<size_t>(errorCategory, ecat_map.size());
             error_code* ec = idx != ecat_map.size()
                                  ? new error_code{errorValue, get<const error_category&>(ecat_map[idx])}
                                  : nullptr;
-            return bindable_pointer<ecode_binding>(ec, default_delete<error_code>{});
+            return bind_pointer<ecode_binding>(ec, default_delete<error_code>{});
         }
 
         static constexpr const char* name() {
@@ -154,8 +178,8 @@ int main() {
 
     // function comparing two error_code objects
     struct equal_error_code_fn {
-        bool operator()(ecode_arg_t pv1, ecode_arg_t pv2) const {
-            error_code *ec1 = pv1, *ec2 = pv2;
+        bool operator()(ecode_arg pv1, ecode_arg pv2) const {
+            const error_code *ec1 = pv1, *ec2 = pv2;
             if(ec1 && ec2) {
                 return *ec1 == *ec2;
             }
@@ -207,7 +231,11 @@ int main() {
                                    &Result::errorCategory,
                                    as<str_alias<'e', 'q'>>(func<equal_error_code_fn>(
                                        func<make_error_code_fn>(&Result::errorValue, &Result::errorCategory),
-                                       bindable_pointer<ecode_pvt>(make_unique<error_code>()))),
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+                                       bind_pointer<ecode_pointer_tag>(make_unique<error_code>()))),
+#else
+                                       bind_pointer<ecode_pointer_type>(make_unique<error_code>()))),
+#endif
                                    func<error_category_name_fn>(func<get_error_category_fn>(&Result::errorCategory)),
                                    func<error_category_message_fn>(func<get_error_category_fn>(&Result::errorCategory),
                                                                    &Result::errorValue)),

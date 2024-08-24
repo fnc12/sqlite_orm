@@ -71,3 +71,32 @@ TEST_CASE("default value for string") {
                                 make_column("phone", &Contact::phone)));
     storage.sync_schema();
 }
+
+TEST_CASE("default current time/date/timestamp") {
+    struct User {
+        int id = 0;
+        std::string current;
+    };
+    SECTION("time") {
+        auto storage = make_storage({},
+                                    make_table("users",
+                                               make_column("id", &User::id, primary_key()),
+                                               make_column("current", &User::current, default_value(current_time()))));
+        storage.sync_schema();
+    }
+    SECTION("date") {
+        auto storage = make_storage({},
+                                    make_table("users",
+                                               make_column("id", &User::id, primary_key()),
+                                               make_column("current", &User::current, default_value(current_date()))));
+        storage.sync_schema();
+    }
+    SECTION("timestamp") {
+        auto storage =
+            make_storage({},
+                         make_table("users",
+                                    make_column("id", &User::id, primary_key()),
+                                    make_column("current", &User::current, default_value(current_timestamp()))));
+        storage.sync_schema();
+    }
+}

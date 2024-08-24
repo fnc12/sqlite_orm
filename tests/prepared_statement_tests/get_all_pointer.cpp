@@ -3,6 +3,7 @@
 
 #include "prepared_common.h"
 
+#if SQLITE_VERSION_NUMBER >= 3006019
 using namespace sqlite_orm;
 
 TEST_CASE("Prepared get all pointer") {
@@ -56,7 +57,7 @@ TEST_CASE("Prepared get all pointer") {
         }
     }
     SECTION("with conditions by val") {
-        auto statement = storage.prepare(get_all_pointer<User>(where(lesser_than(&User::id, 3))));
+        auto statement = storage.prepare(get_all_pointer<User>(where(less_than(&User::id, 3))));
         using Statement = decltype(statement);
         using Expression = Statement::expression_type;
         using NodeTuple = internal::node_tuple<Expression>::type;
@@ -96,7 +97,7 @@ TEST_CASE("Prepared get all pointer") {
     }
     SECTION("with conditions by ref") {
         auto id = 3;
-        auto statement = storage.prepare(get_all_pointer<User>(where(lesser_than(&User::id, std::ref(id)))));
+        auto statement = storage.prepare(get_all_pointer<User>(where(less_than(&User::id, std::ref(id)))));
 
         using Statement = decltype(statement);
         using Expression = Statement::expression_type;
@@ -138,3 +139,4 @@ TEST_CASE("Prepared get all pointer") {
         }
     }
 }
+#endif
