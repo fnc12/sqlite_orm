@@ -113,6 +113,14 @@ namespace sqlite_orm {
                 this->set_pragma("auto_vacuum", value);
             }
 
+            int max_page_count() {
+                return this->get_pragma<int>("max_page_count");
+            }
+
+            void max_page_count(int value) {
+                this->set_pragma("max_page_count", value);
+            }
+
             std::vector<std::string> integrity_check() {
                 return this->get_pragma<std::vector<std::string>>("integrity_check");
             }
