@@ -1,8 +1,10 @@
 #pragma once
 
 #include "functional/cxx_string_view.h"
+#ifndef _IMPORT_STD_MODULE
 #ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <string>  //  std::string
+#endif
 #endif
 
 namespace sqlite_orm {

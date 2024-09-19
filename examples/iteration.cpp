@@ -1,7 +1,9 @@
-
-#include <sqlite_orm/sqlite_orm.h>
+#include <iterator>
+#include <string>
+#include <vector>
 #include <iostream>
 #include <algorithm>
+#include <sqlite_orm/sqlite_orm.h>
 
 using std::cout;
 using std::endl;

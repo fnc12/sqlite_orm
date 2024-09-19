@@ -1,8 +1,10 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #if SQLITE_VERSION_NUMBER >= 3024000
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::forward, std::move
+#endif
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
@@ -51,7 +53,9 @@ namespace sqlite_orm {
         template<class T>
         using is_upsert_clause = polyfill::bool_constant<is_upsert_clause_v<T>>;
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3024000
     /**
      *  ON CONFLICT upsert clause builder function.

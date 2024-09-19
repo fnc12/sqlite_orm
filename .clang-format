@@ -114,7 +114,7 @@ SpacesInCStyleCastParentheses: false
 SpacesInParentheses: false
 SpacesInSquareBrackets: false
 Standard:        Cpp11
-AttributeMacros: [SQLITE_ORM_CPP_LIKELY, SQLITE_ORM_CPP_UNLIKELY]
+AttributeMacros: [SQLITE_ORM_CPP_LIKELY, SQLITE_ORM_CPP_UNLIKELY, _EXPORT_SQLITE_ORM]
 StatementMacros: 
   - __pragma
   - _Pragma

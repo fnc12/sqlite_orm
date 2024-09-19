@@ -1,6 +1,8 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <utility>  //  std::index_sequence
+#endif
 
 namespace sqlite_orm {
     namespace internal {

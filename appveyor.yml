@@ -20,6 +20,11 @@ configuration:
 environment:
   appveyor_yml_disable_ps_linux: true
   matrix:
+    - job_name: Visual Studio 2022, x64, C++23
+      appveyor_build_worker_image: Visual Studio 2022
+      platform: x64
+      SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_23=ON"
+
     - job_name: clang, C++14
       appveyor_build_worker_image: Ubuntu
       CC: clang

@@ -4,9 +4,11 @@
  */
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <type_traits>  //  std::decay_t
 #include <utility>  //  std::move
 #include <algorithm>  //  std::find_if, std::ranges::find
+#endif
 
 #include "../type_printer.h"
 #include "../schema/column.h"

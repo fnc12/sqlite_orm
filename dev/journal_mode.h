@@ -1,11 +1,13 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <iterator>  //  std::back_inserter
 #include <string>  //  std::string
 #include <memory>  //  std::unique_ptr
 #include <array>  //  std::array
 #include <algorithm>  //  std::transform
 #include <cctype>  // std::toupper
+#endif
 
 #if defined(_WINNT_)
 // DELETE is a macro defined in the Windows SDK (winnt.h)
@@ -13,7 +15,7 @@
 #undef DELETE
 #endif
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 
     /**
      *  Caps case because of:
@@ -30,7 +32,9 @@ namespace sqlite_orm {
         WAL = 4,
         OFF = 5,
     };
+}
 
+namespace sqlite_orm {
     namespace internal {
 
         inline const std::string& to_string(journal_mode j) {

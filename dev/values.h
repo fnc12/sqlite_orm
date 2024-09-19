@@ -1,8 +1,10 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::forward, std::move
+#endif
 
 #include "functional/cxx_type_traits_polyfill.h"
 
@@ -29,7 +31,9 @@ namespace sqlite_orm {
         };
 
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     template<class... Args>
     internal::values_t<Args...> values(Args... args) {
         return {{std::forward<Args>(args)...}};

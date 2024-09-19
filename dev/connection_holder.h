@@ -1,8 +1,10 @@
 #pragma once
 
 #include <sqlite3.h>
+#ifndef _IMPORT_STD_MODULE
 #include <atomic>
 #include <string>  //  std::string
+#endif
 
 #include "error_code.h"
 

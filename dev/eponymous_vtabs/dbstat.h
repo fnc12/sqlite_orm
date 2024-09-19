@@ -1,14 +1,16 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
 #include <string>  //  std::string
+#endif
 #endif
 
 #include "../schema/column.h"
 #include "../schema/table.h"
 #include "../column_pointer.h"
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
     struct dbstat {
         std::string name;

@@ -1,6 +1,8 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <utility>  //  std::move
+#endif
 
 namespace sqlite_orm {
     namespace internal {
@@ -12,7 +14,9 @@ namespace sqlite_orm {
             expression_type expression;
         };
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     template<class T>
     internal::excluded_t<T> excluded(T expression) {
         return {std::move(expression)};

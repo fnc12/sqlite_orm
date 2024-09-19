@@ -1,7 +1,9 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <vector>  //  std::vector
 #include <functional>  //  std::reference_wrapper
+#endif
 
 #include "tuple_helper/tuple_iteration.h"
 #include "type_traits.h"

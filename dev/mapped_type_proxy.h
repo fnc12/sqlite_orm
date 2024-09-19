@@ -1,6 +1,8 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <type_traits>  //  std::remove_const
+#endif
 
 #include "type_traits.h"
 #include "table_reference.h"

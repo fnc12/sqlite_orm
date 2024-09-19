@@ -1,6 +1,8 @@
 #pragma once
 
+#ifndef _IMPORT_STD_MODULE
 #include <type_traits>  //  std::remove_const, std::type_identity
+#endif
 
 #include "functional/cxx_type_traits_polyfill.h"
 
@@ -33,7 +35,9 @@ namespace sqlite_orm {
         template<class R>
         struct is_table_reference : polyfill::bool_constant<is_table_reference_v<R>> {};
     }
+}
 
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     /** @short Specifies that a type is a reference of a concrete table, especially of a derived class.
      *
