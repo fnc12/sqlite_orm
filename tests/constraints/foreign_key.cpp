@@ -204,23 +204,8 @@ TEST_CASE("Foreign key with inheritance") {
     Student student = {0, "Alice", 20, "High School"};
     int student_id = storage.insert(student);
 
-    // try
-    // {
-
     // Create and insert a Classroom record with foreign keys
     Classroom classroom = {0, teacher_id, student_id, "Room A"};
     storage.insert(classroom);
-    // }
-    // catch (std::exception& ex)
-    // {
-    // auto s = ex.what();
-    // }
-
-    // Fetch and display inserted Classroom with foreign key references
-    auto classrooms = storage.get_all<Classroom>();
-    for(const auto& c: classrooms) {
-        // std::cout << "Classroom: " << c.room_name << ", Teacher ID: " << c.teacher_id
-        // << ", Student ID: " << c.student_id << "\n";
-    }
 }
 #endif
