@@ -23838,10 +23838,17 @@ namespace sqlite_orm {
                 if(auto d = column.default_value()) {
                     dft = std::move(*d);
                 }
+                using constraints_tuple = decltype(column.constraints);
+                constexpr bool hasExplicitNull =
+                    mpl::invoke_t<mpl::disjunction<check_if_has_type<null_t>>, constraints_tuple>::value;
+                constexpr bool hasExplicitNotNull =
+                    mpl::invoke_t<mpl::disjunction<check_if_has_type<not_null_t>>, constraints_tuple>::value;
                 res.emplace_back(-1,
                                  column.name,
                                  type_printer<field_type>().print(),
-                                 column.is_not_null(),
+                                 !hasExplicitNull && !hasExplicitNotNull
+                                     ? column.is_not_null()
+                                     : (hasExplicitNull ? hasExplicitNull : hasExplicitNotNull),
                                  std::move(dft),
                                  column.template is<is_primary_key>(),
                                  column.template is<is_generated_always>());
