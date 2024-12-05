@@ -23848,7 +23848,7 @@ namespace sqlite_orm {
                                  type_printer<field_type>().print(),
                                  !hasExplicitNull && !hasExplicitNotNull
                                      ? column.is_not_null()
-                                     : (hasExplicitNull ? hasExplicitNull : hasExplicitNotNull),
+                                     : (hasExplicitNull ? !hasExplicitNull : hasExplicitNotNull),
                                  std::move(dft),
                                  column.template is<is_primary_key>(),
                                  column.template is<is_generated_always>());
