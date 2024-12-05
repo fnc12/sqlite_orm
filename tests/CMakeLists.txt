@@ -144,6 +144,7 @@ add_executable(unit_tests
     unique_cases/issue86.cpp
     unique_cases/issue937.cpp
     unique_cases/issue663.cpp
+    unique_cases/issue1357.cpp
     get_all_custom_containers.cpp
     select_constraints_tests.cpp
     backup_tests.cpp
