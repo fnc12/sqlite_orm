@@ -20,7 +20,22 @@ TEST_CASE("recursive_triggers") {
     REQUIRE(result);
 }
 
-TEST_CASE("Journal mode") {
+TEST_CASE("locking_mode") {
+    auto storage = make_storage("");
+
+    SECTION("EXCLUSIVE") {
+        storage.pragma.locking_mode(locking_mode::EXCLUSIVE);
+        const auto result = storage.pragma.locking_mode();
+        REQUIRE(result == locking_mode::EXCLUSIVE);
+    }
+    SECTION("NORMAL") {
+        storage.pragma.locking_mode(locking_mode::NORMAL);
+        const auto result = storage.pragma.locking_mode();
+        REQUIRE(result == locking_mode::NORMAL);
+    }
+}
+
+TEST_CASE("journal_mode") {
     auto filename = "journal_mode.sqlite";
     ::remove(filename);
     auto storage = make_storage(filename);
