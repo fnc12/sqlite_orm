@@ -12,6 +12,7 @@
 #include "error_code.h"
 #include "row_extractor.h"
 #include "journal_mode.h"
+#include "locking_mode.h"
 #include "connection_holder.h"
 #include "util.h"
 #include "serializing_util.h"
@@ -61,6 +62,14 @@ namespace sqlite_orm {
 
             int busy_timeout() {
                 return this->get_pragma<int>("busy_timeout");
+            }
+
+            sqlite_orm::locking_mode locking_mode() {
+                return this->get_pragma<sqlite_orm::locking_mode>("locking_mode");
+            }
+
+            void locking_mode(sqlite_orm::locking_mode value) {
+                this->set_pragma("locking_mode", value);
             }
 
             sqlite_orm::journal_mode journal_mode() {
@@ -231,23 +240,29 @@ namespace sqlite_orm {
              */
             template<class T>
             void set_pragma(const std::string& name, const T& value, sqlite3* db = nullptr) {
-                auto con = this->get_connection();
-                if(!db) {
-                    db = con.get();
-                }
                 std::stringstream ss;
-                ss << "PRAGMA " << name << " = " << value << std::flush;
-                perform_void_exec(db, ss.str());
+                ss << "PRAGMA " << name << " = " << value;
+                this->set_pragma_impl(ss.str(), db);
             }
 
             void set_pragma(const std::string& name, const sqlite_orm::journal_mode& value, sqlite3* db = nullptr) {
+                std::stringstream ss;
+                ss << "PRAGMA " << name << " = " << to_string(value);
+                this->set_pragma_impl(ss.str(), db);
+            }
+
+            void set_pragma(const std::string& name, const sqlite_orm::locking_mode& value, sqlite3* db = nullptr) {
+                std::stringstream ss;
+                ss << "PRAGMA " << name << " = " << to_string(value);
+                this->set_pragma_impl(ss.str(), db);
+            }
+
+            void set_pragma_impl(const std::string& query, sqlite3* db = nullptr) {
                 auto con = this->get_connection();
-                if(!db) {
+                if(db == nullptr) {
                     db = con.get();
                 }
-                std::stringstream ss;
-                ss << "PRAGMA " << name << " = " << to_string(value) << std::flush;
-                perform_void_exec(db, ss.str());
+                perform_void_exec(db, query);
             }
         };
     }
