@@ -73,6 +73,7 @@
         "system_error": "cpp",
         "type_traits": "cpp",
         "utility": "cpp",
-        "__config": "cpp"
+        "__config": "cpp",
+        "any": "cpp"
     }
 }
