@@ -12726,6 +12726,7 @@ namespace sqlite_orm {
 // #include "journal_mode.h"
 
 // #include "locking_mode.h"
+
 #include <array>  //  std::array
 #include <string>  //  std::string
 #include <utility>  //  std::pair
