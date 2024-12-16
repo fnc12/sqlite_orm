@@ -1,3 +1,5 @@
+#pragma once
+
 #include <array>  //  std::array
 #include <string>  //  std::string
 #include <utility>  //  std::pair
