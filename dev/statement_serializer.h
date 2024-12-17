@@ -47,6 +47,7 @@
 #include "table_type_of.h"
 #include "util.h"
 #include "error_code.h"
+#include "sql_auditing.h"
 #include "schema/triggers.h"
 #include "schema/column.h"
 #include "schema/index.h"
@@ -587,7 +588,7 @@ namespace sqlite_orm {
             }
         };
 
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #if SQLITE_VERSION_NUMBER >= 3035003
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         template<>

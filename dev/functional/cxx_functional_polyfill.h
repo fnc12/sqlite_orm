@@ -19,7 +19,7 @@ namespace sqlite_orm {
             // The check here doesn't care and checks the library versions in use.
             //
             // Another way of detection would be the constrained algorithms feature-test macro __cpp_lib_ranges
-#if(__cplusplus >= 202002L) &&                                                                                         \
+#if (__cplusplus >= 202002L) &&                                                                                        \
     ((!_LIBCPP_VERSION || _LIBCPP_VERSION >= 13000) && (!_GLIBCXX_RELEASE || _GLIBCXX_RELEASE >= 10))
             using std::identity;
 #else

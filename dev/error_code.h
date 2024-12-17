@@ -39,6 +39,7 @@ namespace sqlite_orm {
         index_is_out_of_bounds,
         value_is_null,
         no_tables_specified,
+        failure_to_init_logfile,
     };
 }
 

@@ -24,8 +24,7 @@ namespace sqlite_orm {
          *  A function's arguments tuple
          */
         template<class F,
-                 template<class...>
-                 class Tuple,
+                 template<class...> class Tuple,
                  template<class...> class ProjectOp = polyfill::type_identity_t>
         using function_arguments = typename function_traits<F>::template arguments_tuple<Tuple, ProjectOp>;
 

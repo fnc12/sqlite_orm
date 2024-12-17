@@ -137,7 +137,7 @@ TEST_CASE("column_result_of_t") {
         columns(struct_<User>(asterisk<User>()), struct_<User>(asterisk<User>())));
     runTest<db_objects_t, int>(union_all(select(1), select(2)));
     runTest<db_objects_t, int64>(union_all(select(1ll), select(2)));
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     using cte_1 = decltype(1_ctealias);
     // note: even though used with the CTE, &User::id doesn't need to be mapped into the CTE to make column results work;
     //       this is because the result type is taken from the member pointer just because we can't look it up in the storage definition

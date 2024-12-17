@@ -540,8 +540,7 @@ TEST_CASE("ifnull") {
                  decltype(fax) fax,
                  std::string email,
                  int supportRepId) :
-            id{id},
-            firstName{std::move(firstName)}, lastName{std::move(lastName)}, company{std::move(company)},
+            id{id}, firstName{std::move(firstName)}, lastName{std::move(lastName)}, company{std::move(company)},
             address{std::move(address)}, city{std::move(city)}, state{std::move(state)}, country{std::move(country)},
             postalCode{std::move(postalCode)}, phone{std::move(phone)}, fax{std::move(fax)}, email{std::move(email)},
             supportRepId{supportRepId} {}

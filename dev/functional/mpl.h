@@ -329,8 +329,7 @@ namespace sqlite_orm {
              *  Bind a metafunction and arguments at the front of a higher-order metafunction.
              */
             template<template<template<class...> class Fn, class... Args2> class HigherFn,
-                     template<class...>
-                     class BoundFn,
+                     template<class...> class BoundFn,
                      class... Bound>
             using bind_front_higherorder_fn =
                 bind_front<higherorder<0>::quote_fn<HigherFn>, quote_fn<BoundFn>, Bound...>;

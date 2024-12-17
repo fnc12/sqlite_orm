@@ -271,7 +271,7 @@ TEST_CASE("Node tuple") {
             using Expected = tuple<decltype(node)>;
             static_assert(is_same<Tuple, Expected>::value, "count(*)");
         }
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         SECTION("count(*) cte") {
             auto node = count<decltype(1_ctealias)>();
             using Node = decltype(node);
@@ -997,7 +997,7 @@ TEST_CASE("Node tuple") {
         using ExpectedTuple = tuple<decltype(&User::name), decltype(&User::name), const char*>;
         STATIC_REQUIRE(std::is_same<Tuple, ExpectedTuple>::value);
     }
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     SECTION("with ordinary") {
         using cte_1 = decltype(1_ctealias);
         auto expression = with(1_ctealias().as(select(1)), select(column<cte_1>(1_colalias)));

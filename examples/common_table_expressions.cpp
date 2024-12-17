@@ -3,7 +3,7 @@
  */
 
 #include <sqlite_orm/sqlite_orm.h>
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #define ENABLE_THIS_EXAMPLE
 #endif
 
