@@ -14,6 +14,13 @@ TEST_CASE("Prepared select") {
 
     auto filename = "prepared.sqlite";
     remove(filename);
+
+#define JD_AUDITING_SETTINGS
+#ifdef JD_AUDITING_SETTINGS
+    sql_auditor_settings::set_destination_file("log.txt");
+    sql_auditor_settings::set_behavior(auditing_behavior::OFF);
+
+#endif
     auto storage = make_storage(filename,
                                 make_index("user_id_index", &User::id),
                                 make_table("users",
