@@ -5,7 +5,8 @@
 #include <utility>  //  std::move
 
 #include "error_code.h"
-// Before clang-format 17
+
+#include "sql_auditing.h"
 
 namespace sqlite_orm {
 
@@ -62,6 +63,7 @@ namespace sqlite_orm {
             if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
                 throw_translated_sqlite_error(db);
             }
+            sql_auditor::log(query);
             return stmt;
         }
 
@@ -70,6 +72,7 @@ namespace sqlite_orm {
             if(rc != SQLITE_OK) {
                 throw_translated_sqlite_error(db);
             }
+            sql_auditor::log(query);
         }
 
         inline void perform_exec(sqlite3* db,
@@ -80,6 +83,7 @@ namespace sqlite_orm {
             if(rc != SQLITE_OK) {
                 throw_translated_sqlite_error(db);
             }
+            sql_auditor::log(query);
         }
 
         inline void perform_exec(sqlite3* db,
