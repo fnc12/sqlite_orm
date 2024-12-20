@@ -5,6 +5,7 @@
 #include <utility>  //  std::move
 
 #include "error_code.h"
+// Before clang-format 17
 
 namespace sqlite_orm {
 
