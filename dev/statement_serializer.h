@@ -47,6 +47,7 @@
 #include "table_type_of.h"
 #include "util.h"
 #include "error_code.h"
+#include "sql_auditing.h"
 #include "schema/triggers.h"
 #include "schema/column.h"
 #include "schema/index.h"

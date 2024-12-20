@@ -60,7 +60,7 @@ TEST_CASE("statement_serializer update_all") {
         expected =
             R"(UPDATE "contacts" SET "phone" = (SELECT "customers"."Phone" FROM "customers" WHERE ("customers"."CustomerId" = 1)) WHERE ("contact_id" = 1))";
     }
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     SECTION("With clause") {
         constexpr orm_cte_moniker auto data = "data"_cte;

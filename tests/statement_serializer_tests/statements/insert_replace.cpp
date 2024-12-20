@@ -80,7 +80,7 @@ TEST_CASE("statement_serializer insert/replace") {
                 expected =
                     R"(REPLACE INTO "users" SELECT "users_backup"."id", "users_backup"."name" FROM "users_backup")";
             }
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
             SECTION("With clause") {
                 constexpr orm_cte_moniker auto data = "data"_cte;
@@ -374,7 +374,7 @@ TEST_CASE("statement_serializer insert/replace") {
                 }
             }
             SECTION("With clause") {
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
                 constexpr orm_cte_moniker auto data = "data"_cte;
                 constexpr auto cteExpression = cte<data>().as(select(asterisk<UserBackup>()));
