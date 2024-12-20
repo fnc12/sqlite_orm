@@ -18,8 +18,8 @@ TEST_CASE("Prepared select") {
 #define JD_AUDITING_SETTINGS
 #ifdef JD_AUDITING_SETTINGS
     sql_auditor_settings::set_destination_file("log.txt");
-    sql_auditor_settings::set_behavior(auditing_behavior::OFF);
-
+    sql_auditor_settings::set_behavior(auditing_behavior::ON);
+    sql_auditor_settings::set_format("%H:%M:%S");
 #endif
     auto storage = make_storage(filename,
                                 make_index("user_id_index", &User::id),
