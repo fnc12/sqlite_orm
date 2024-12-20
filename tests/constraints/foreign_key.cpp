@@ -72,7 +72,7 @@ TEST_CASE("Foreign key 2") {
     class test1 {
       public:
         // Constructors
-        test1() {};
+        test1(){};
 
         // Variables
         int id;
@@ -83,7 +83,7 @@ TEST_CASE("Foreign key 2") {
     class test2 {
       public:
         // Constructors
-        test2() {};
+        test2(){};
 
         // Variables
         int id;

@@ -4,7 +4,7 @@
 #include <utility>  //  std::make_index_sequence, std::move
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #include <array>
 #endif
 
@@ -101,7 +101,7 @@ namespace sqlite_orm {
                 return alias_extractor::extract();
             }
 
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             // for CTE monikers -> empty
             template<class T = A, satisfies<std::is_same, polyfill::detected_t<type_t, T>, A> = true>
             static std::string as_alias() {
@@ -168,7 +168,7 @@ namespace sqlite_orm {
         };
 #endif
 
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         template<size_t n, char... C>
         SQLITE_ORM_CONSTEVAL auto n_to_colalias() {
             constexpr column_alias<'1' + n % 10, C...> colalias{};
@@ -223,7 +223,7 @@ namespace sqlite_orm {
                  polyfill::conjunction<internal::is_table_alias<A>,
                                        polyfill::negation<internal::is_cte_moniker<internal::type_t<A>>>>::value,
                  bool> = true>
-    constexpr auto alias_column(F O::* field) {
+    constexpr auto alias_column(F O::*field) {
         using namespace ::sqlite_orm::internal;
         using aliased_type = type_t<A>;
         static_assert(is_field_of_v<F O::*, aliased_type>, "Column must be from aliased table");
@@ -281,7 +281,7 @@ namespace sqlite_orm {
     }
 #endif
 
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     /**
      *  Create a column reference to an aliased CTE column.
      */
@@ -474,7 +474,7 @@ namespace sqlite_orm {
     }
 #endif
 
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     inline namespace literals {
         /**
          *  column_alias<'1'[, ...]> from a numeric literal.

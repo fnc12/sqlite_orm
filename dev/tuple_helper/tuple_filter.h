@@ -60,7 +60,8 @@ namespace sqlite_orm {
          *  `FilterProj` is a metafunction
          */
         template<class Tpl,
-                 template<class...> class Pred,
+                 template<class...>
+                 class Pred,
                  template<class...> class FilterProj = polyfill::type_identity_t,
                  class Seq = std::make_index_sequence<std::tuple_size<Tpl>::value>>
         using filter_tuple_sequence_t = typename filter_tuple_sequence<Tpl, Pred, FilterProj, Seq>::type;
@@ -70,7 +71,8 @@ namespace sqlite_orm {
          *  `FilterProj` is a metafunction
          */
         template<class Tpl,
-                 template<class...> class Pred,
+                 template<class...>
+                 class Pred,
                  template<class...> class FilterProj = polyfill::type_identity_t,
                  class Seq = std::make_index_sequence<std::tuple_size<Tpl>::value>>
         using filter_tuple_t = tuple_from_index_sequence_t<Tpl, filter_tuple_sequence_t<Tpl, Pred, FilterProj, Seq>>;
@@ -85,7 +87,8 @@ namespace sqlite_orm {
          *  with a default Sequence in function template parameters [SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION].
          */
         template<class Tpl,
-                 template<class...> class Pred,
+                 template<class...>
+                 class Pred,
                  class Seq,
                  template<class...> class FilterProj = polyfill::type_identity_t>
         struct count_filtered_tuple

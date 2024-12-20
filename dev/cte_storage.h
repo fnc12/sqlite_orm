@@ -1,6 +1,6 @@
 #pragma once
 
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #include <type_traits>
 #include <tuple>
 #include <string>
@@ -21,7 +21,7 @@
 namespace sqlite_orm {
     namespace internal {
 
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         // F = field_type
         template<typename Moniker,
                  typename ExplicitColRefs,
@@ -148,7 +148,7 @@ namespace sqlite_orm {
 
         // F O::* (field/getter) -> field/getter
         template<class DBOs, class F, class O, size_t Idx = 0>
-        auto extract_colref_expressions(const DBOs& /*dbObjects*/, F O::* col, std::index_sequence<Idx> = {}) {
+        auto extract_colref_expressions(const DBOs& /*dbObjects*/, F O::*col, std::index_sequence<Idx> = {}) {
             return std::make_tuple(col);
         }
 

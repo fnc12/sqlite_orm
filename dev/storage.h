@@ -269,7 +269,7 @@ namespace sqlite_orm {
                 return {this->db_objects, std::move(con), std::move(expression)};
             }
 
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             template<class... CTEs, class E>
 #ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
                 requires(is_select_v<E>)
@@ -344,7 +344,7 @@ namespace sqlite_orm {
 
           protected:
             template<class F, class O, class... Args>
-            std::string group_concat_internal(F O::* m, std::unique_ptr<std::string> y, Args&&... args) {
+            std::string group_concat_internal(F O::*m, std::unique_ptr<std::string> y, Args&&... args) {
                 this->assert_mapped_type<O>();
                 std::vector<std::string> rows;
                 if(y) {
@@ -731,7 +731,7 @@ namespace sqlite_orm {
                 return this->execute(statement);
             }
 
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             /**
              *  Using a CTE, select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
              */
@@ -997,12 +997,12 @@ namespace sqlite_orm {
 
             template<class F, class O>
             [[deprecated("Use the more accurately named function `find_column_name()`")]] const std::string*
-            column_name(F O::* memberPointer) const {
+            column_name(F O::*memberPointer) const {
                 return internal::find_column_name(this->db_objects, memberPointer);
             }
 
             template<class F, class O>
-            const std::string* find_column_name(F O::* memberPointer) const {
+            const std::string* find_column_name(F O::*memberPointer) const {
                 return internal::find_column_name(this->db_objects, memberPointer);
             }
 
@@ -1250,7 +1250,7 @@ namespace sqlite_orm {
 
             using storage_base::table_exists;  // now that it is in storage_base make it into overload set
 
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             template<class... CTEs,
                      class E,
                      std::enable_if_t<polyfill::disjunction_v<is_select<E>,
@@ -1384,7 +1384,7 @@ namespace sqlite_orm {
                 perform_step(stmt);
             }
 
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             template<
                 class... CTEs,
                 class E,
@@ -1619,7 +1619,7 @@ namespace sqlite_orm {
                 perform_step(stmt);
             }
 
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             template<class... CTEs, class T, class... Args>
             auto execute(const prepared_statement_t<with_t<select_t<T, Args...>, CTEs...>>& statement) {
                 using ExprDBOs = decltype(db_objects_for_expression(this->db_objects, statement.expression));

@@ -240,7 +240,7 @@ namespace sqlite_orm {
         template<class DBOs, class T, class F>
         struct column_result_t<DBOs, column_pointer<T, F>, void> : column_result_t<DBOs, F> {};
 
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         template<class DBOs, class Moniker, class ColAlias>
         struct column_result_t<DBOs, column_pointer<Moniker, alias_holder<ColAlias>>, void> {
             using table_type = storage_pick_table_t<Moniker, DBOs>;

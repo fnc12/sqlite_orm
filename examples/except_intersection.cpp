@@ -32,7 +32,8 @@ struct EmpMaster {
               std::string lastName,
               long salary,
               decltype(DeptMaster::deptId) deptId) :
-        empId{empId}, firstName{std::move(firstName)}, lastName{std::move(lastName)}, salary{salary}, deptId{deptId} {}
+        empId{empId},
+        firstName{std::move(firstName)}, lastName{std::move(lastName)}, salary{salary}, deptId{deptId} {}
 #endif
 };
 

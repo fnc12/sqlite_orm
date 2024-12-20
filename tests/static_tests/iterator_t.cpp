@@ -77,7 +77,7 @@ concept storage_iterate_mapped = requires(S& storage_type) {
 };
 #endif
 
-#if (defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)) &&         \
+#if(defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)) &&          \
     defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED)
 template<class Iter, class Value>
 concept can_iterate_result_set = requires(Iter it) {
@@ -131,9 +131,7 @@ TEST_CASE("can view and iterate mapped") {
             STATIC_REQUIRE(std::is_same<decltype(++it), iter&>::value);
             STATIC_REQUIRE(std::is_same<decltype(*it++), Object&>::value);
             // copyable (partially, as it is a rather extensive concept)
-            {
-                STATIC_REQUIRE(std::is_copy_constructible<iter>::value);
-            }
+            { STATIC_REQUIRE(std::is_copy_constructible<iter>::value); }
         }
         // equality_comparable (sentinel)
         {
@@ -145,9 +143,7 @@ TEST_CASE("can view and iterate mapped") {
         STATIC_REQUIRE(std::is_same<std::iterator_traits<iter>::difference_type, ptrdiff_t>::value);
     }
     // semiregular (actually sentinel_for, but the other concepts were verified above)
-    {
-        STATIC_REQUIRE(std::is_default_constructible<iter>::value);
-    }
+    { STATIC_REQUIRE(std::is_default_constructible<iter>::value); }
     STATIC_REQUIRE(std::is_same<std::iterator_traits<iter>::pointer, Object*>::value);
     // note: should actually be only present for contiguous iterators
     STATIC_REQUIRE(std::is_same<decltype(it.operator->()), Object*>::value);
@@ -158,7 +154,7 @@ TEST_CASE("can view and iterate mapped") {
 #endif
 }
 
-#if (defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)) &&         \
+#if(defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)) &&          \
     defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED)
 TEST_CASE("can view and iterate result set") {
     struct Object {};
@@ -188,7 +184,7 @@ TEST_CASE("can view and iterate result set") {
         storage_iterate_result_set<storage_type, decltype(select(object<Object>())), table_reference<Object>>);
 #endif
 
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     constexpr orm_cte_moniker auto x = "x"_cte;
     constexpr orm_column_alias auto i = "i"_col;
