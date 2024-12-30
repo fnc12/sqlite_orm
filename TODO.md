@@ -14,7 +14,6 @@
 * named constraints: constraint can have name `CREATE TABLE heroes(id INTEGER CONSTRAINT pk PRIMARY KEY)`
 * `FILTER` clause https://sqlite.org/lang_aggfunc.html#aggfilter
 * scalar math functions https://sqlite.org/lang_mathfunc.html
-* improve DROP COLUMN in `sync_schema` https://sqlite.org/lang_altertable.html#altertabdropcol
 * `UPDATE FROM` support https://sqlite.org/lang_update.html#upfrom
 * `iif()` function https://sqlite.org/lang_corefunc.html#iif
 * add strong typed collate syntax (more info [here](https://github.com/fnc12/sqlite_orm/issues/767#issuecomment-887689672))
