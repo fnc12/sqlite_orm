@@ -766,6 +766,9 @@ namespace sqlite_orm {
                 if(this->on_open) {
                     this->on_open(db);
                 }
+                // JD added
+                log_admin::admin().register_db(this, db);
+                // JD end
             }
 
             template<class F>

@@ -17,9 +17,7 @@ TEST_CASE("Prepared select") {
 
 #define JD_AUDITING_SETTINGS
 #ifdef JD_AUDITING_SETTINGS
-    sql_auditor_settings::set_destination_file("log.txt");
-    sql_auditor_settings::set_behavior(auditing_behavior::ON);
-    sql_auditor_settings::set_format("%H:%M:%S");
+    log_admin::admin().open_log_file("sql_auditor.txt", auditing_behavior::OFF, nullptr, "%Y-%m-%d %H:%M:%S");
 #endif
 
     auto storage = make_storage(filename,
@@ -38,6 +36,7 @@ TEST_CASE("Prepared select") {
                                            make_column("description", &UserAndVisit::description),
                                            primary_key(&UserAndVisit::userId, &UserAndVisit::visitId)));
     storage.sync_schema();
+    log_admin::admin().open_log_file("prepared.txt", auditing_behavior::ON, &storage, "%H:%M:%S");
 
     storage.replace(User{1, "Team BS"});
     storage.replace(User{2, "Shy'm"});
