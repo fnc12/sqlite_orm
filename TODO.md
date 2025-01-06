@@ -15,7 +15,6 @@
 * scalar math functions https://sqlite.org/lang_mathfunc.html
 * `UPDATE FROM` support https://sqlite.org/lang_update.html#upfrom
 * `iif()` function https://sqlite.org/lang_corefunc.html#iif
-* add strong typed collate syntax (more info [here](https://github.com/fnc12/sqlite_orm/issues/767#issuecomment-887689672))
 * strict tables https://sqlite.org/stricttables.html
 * static assert when UPDATE is called with no PKs
 * `json_each` and `json_tree` functions for JSON1 extension
