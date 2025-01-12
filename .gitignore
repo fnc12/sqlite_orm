@@ -6,4 +6,5 @@ cmake-build-debug/
 .idea/
 
 /compile
-build
+build/
+build-xcode/
