@@ -1371,7 +1371,7 @@ namespace sqlite_orm {
          *  Get the index value of an `index_sequence` at a specific position.
          */
         template<size_t Pos, size_t... Idx>
-        SQLITE_ORM_CONSTEVAL size_t index_sequence_value_at(std::index_sequence<Idx...>) {
+        SQLITE_ORM_CONSTEVAL auto index_sequence_value_at(std::index_sequence<Idx...>) {
             return Idx...[Pos];
         }
 #elif defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
