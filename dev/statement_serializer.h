@@ -1,6 +1,6 @@
 #pragma once
 
-#include <type_traits>  //  std::enable_if, std::remove_pointer, std::remove_reference, std::remove_cvref
+#include <type_traits>  //  std::enable_if, std::remove_pointer, std::remove_reference, std::remove_cvref, std::disjunction
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string
 #include <vector>  //  std::vector
@@ -14,7 +14,8 @@
 #include "functional/cxx_string_view.h"
 #include "functional/cxx_optional.h"
 
-#include "functional/cxx_functional_polyfill.h"
+#include "functional/cxx_type_traits_polyfill.h"  // std::remove_cvref, std::disjunction
+#include "functional/cxx_functional_polyfill.h"  // std::identity, std::invoke
 #include "functional/mpl.h"
 #include "tuple_helper/tuple_filter.h"
 #include "ast/upsert_clause.h"

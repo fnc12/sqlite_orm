@@ -303,15 +303,7 @@ namespace sqlite_orm {
 #define SQLITE_ORM_OPTIONAL_SUPPORTED
 #endif
 
-// #include "functional/cxx_functional_polyfill.h"
-
-#include <functional>
-#if __cpp_lib_invoke < 201411L
-#include <type_traits>  //  std::enable_if, std::is_member_object_pointer, std::is_member_function_pointer
-#endif
-#include <utility>  //  std::forward
-
-// #include "cxx_type_traits_polyfill.h"
+// #include "functional/cxx_type_traits_polyfill.h"
 
 #include <type_traits>
 
@@ -497,6 +489,16 @@ namespace sqlite_orm {
 
     namespace polyfill = internal::polyfill;
 }
+
+// #include "functional/cxx_functional_polyfill.h"
+
+#include <functional>
+#if __cpp_lib_invoke < 201411L
+#include <type_traits>  //  std::enable_if, std::is_member_object_pointer, std::is_member_function_pointer
+#endif
+#include <utility>  //  std::forward
+
+// #include "cxx_type_traits_polyfill.h"
 
 // #include "../member_traits/member_traits.h"
 
@@ -16085,7 +16087,7 @@ namespace sqlite_orm {
 
 // #include "serializing_util.h"
 
-#include <type_traits>  //  std::index_sequence
+#include <type_traits>  //  std::index_sequence, std::remove_cvref
 #include <tuple>
 #include <array>
 #include <string>
@@ -16093,7 +16095,7 @@ namespace sqlite_orm {
 #include <utility>  //  std::exchange, std::tuple_size, std::make_index_sequence
 
 // #include "functional/cxx_type_traits_polyfill.h"
-
+// std::remove_cvref, polyfill::is_detected
 // #include "functional/cxx_functional_polyfill.h"
 
 // #include "tuple_helper/tuple_iteration.h"
@@ -18626,7 +18628,7 @@ namespace sqlite_orm {
 
 // #include "statement_serializer.h"
 
-#include <type_traits>  //  std::enable_if, std::remove_pointer, std::remove_reference, std::remove_cvref
+#include <type_traits>  //  std::enable_if, std::remove_pointer, std::remove_reference, std::remove_cvref, std::disjunction
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string
 #include <vector>  //  std::vector
@@ -18641,8 +18643,10 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_optional.h"
 
+// #include "functional/cxx_type_traits_polyfill.h"
+// std::remove_cvref, std::disjunction
 // #include "functional/cxx_functional_polyfill.h"
-
+// std::identity, std::invoke
 // #include "functional/mpl.h"
 
 // #include "tuple_helper/tuple_filter.h"
