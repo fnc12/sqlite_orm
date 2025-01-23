@@ -267,7 +267,7 @@ TEST_CASE("issue822") {
       public:
         A() = default;
         A(const uint8_t& address, const uint8_t& type, const uint8_t& idx, std::shared_ptr<double> value) :
-            address(address), type(type), idx(idx), value(std::move(value)) {};
+            address(address), type(type), idx(idx), value(std::move(value)){};
 
         const uint8_t& getAddress() const {
             return this->address;
