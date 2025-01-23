@@ -54,7 +54,7 @@ TEST_CASE("column_expression_of_t") {
     runTest<db_objects_t, column_pointer<Derived, int64 Org::*>>(moniker->*&Org::id);
     runTest<db_objects_t, std::tuple<int64 Org::*, int64 Org::*>>(asterisk<moniker>());
 #endif
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     using cte_1 = decltype(1_ctealias);
     auto dbObjects2 =
         internal::db_objects_cat(dbObjects,

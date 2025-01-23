@@ -94,9 +94,9 @@ namespace sqlite_orm {
                       xdestroy_fn_t destroy,
                       sqlite_func_t func,
                       memory_space udfMemorySpace) :
-                name{std::move(name)},
-                argumentsCount{argumentsCount}, constructAt{std::move(constructAt)}, destroy{destroy}, func{func},
-                finalAggregateCall{nullptr}, udfAllocator{}, udfMemorySpace{udfMemorySpace} {}
+                name{std::move(name)}, argumentsCount{argumentsCount}, constructAt{std::move(constructAt)},
+                destroy{destroy}, func{func}, finalAggregateCall{nullptr}, udfAllocator{},
+                udfMemorySpace{udfMemorySpace} {}
 
             udf_proxy(std::string name,
                       int argumentsCount,
@@ -105,9 +105,9 @@ namespace sqlite_orm {
                       sqlite_func_t func,
                       final_call_fn_t finalAggregateCall,
                       memory_alloc udfAllocator) :
-                name{std::move(name)},
-                argumentsCount{argumentsCount}, constructAt{std::move(constructAt)}, destroy{destroy}, func{func},
-                finalAggregateCall{finalAggregateCall}, udfAllocator{udfAllocator}, udfMemorySpace{} {}
+                name{std::move(name)}, argumentsCount{argumentsCount}, constructAt{std::move(constructAt)},
+                destroy{destroy}, func{func}, finalAggregateCall{finalAggregateCall}, udfAllocator{udfAllocator},
+                udfMemorySpace{} {}
 
             ~udf_proxy() {
                 // destruct

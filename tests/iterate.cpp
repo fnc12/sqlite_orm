@@ -97,7 +97,7 @@ TEST_CASE("Iterate select statement") {
     }
 #endif
 
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     constexpr auto x = "x"_cte;
     std::input_iterator auto begin =

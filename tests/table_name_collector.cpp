@@ -49,7 +49,7 @@ TEST_CASE("table name collector") {
         REQUIRE(collector.table_names == expected);
     }
 
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     SECTION("from CTE") {
         auto dbObjects2 =
             internal::db_objects_cat(dbObjects, internal::make_cte_table(dbObjects, 1_ctealias().as(select(1))));

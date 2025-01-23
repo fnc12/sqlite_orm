@@ -588,7 +588,7 @@ namespace sqlite_orm {
             }
         };
 
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #if SQLITE_VERSION_NUMBER >= 3035003
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         template<>

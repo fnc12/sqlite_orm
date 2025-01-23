@@ -35,7 +35,7 @@ namespace sqlite_orm {
         SQLITE_ORM_INLINE_VAR constexpr bool is_operator_argument_v<T, std::enable_if_t<is_column_pointer<T>::value>> =
             true;
 
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         template<class A>
         struct alias_holder;
 #endif
@@ -51,7 +51,7 @@ namespace sqlite_orm {
      *  storage.select(column<MyType>(&BaseType::id));
      */
     template<class O, class Base, class F, internal::satisfies_not<internal::is_recordset_alias, O> = true>
-    constexpr internal::column_pointer<O, F Base::*> column(F Base::*field) {
+    constexpr internal::column_pointer<O, F Base::*> column(F Base::* field) {
         static_assert(std::is_convertible<F Base::*, F O::*>::value, "Field must be from derived class");
         return {field};
     }
@@ -61,7 +61,7 @@ namespace sqlite_orm {
      *  Explicitly refer to a column.
      */
     template<orm_table_reference auto table, class O, class F>
-    constexpr auto column(F O::*field) {
+    constexpr auto column(F O::* field) {
         return column<internal::auto_type_t<table>>(field);
     }
 
@@ -72,7 +72,7 @@ namespace sqlite_orm {
          *  Explicitly refer to a column.
          */
         template<orm_table_reference R, class O, class F>
-        constexpr auto operator->*(const R& /*table*/, F O::*field) {
+        constexpr auto operator->*(const R& /*table*/, F O::* field) {
             return column<typename R::type>(field);
         }
     }
@@ -96,7 +96,7 @@ namespace sqlite_orm {
     }
 #endif
 
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     /**
      *  Explicitly refer to a column alias mapped into a CTE or subquery.
      *

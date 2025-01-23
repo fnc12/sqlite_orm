@@ -9,6 +9,6 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: clang-format lint
-      uses: DoozyX/clang-format-lint-action@v0.16.2
+      uses: d-griet/clang-format-lint-action@99a106be2f3f1a92d9783ea7c744fde62d8ce1fa
       with:
-        clangFormatVersion: 16
+        clangFormatVersion: 19
