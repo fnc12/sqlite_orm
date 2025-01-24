@@ -122,4 +122,5 @@ StatementMacros:
   - QT_REQUIRE_VERSION
 TabWidth:        4
 UseTab:          Never
+LineEnding:      LF
 ...

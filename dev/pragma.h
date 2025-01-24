@@ -77,9 +77,9 @@ namespace sqlite_orm {
             }
 
             void journal_mode(sqlite_orm::journal_mode value) {
-                this->_journal_mode = -1;
+                this->journal_mode_ = -1;
                 this->set_pragma("journal_mode", value);
-                this->_journal_mode = static_cast<decltype(this->_journal_mode)>(value);
+                this->journal_mode_ = static_cast<decltype(this->journal_mode_)>(value);
             }
 
             /**
@@ -101,9 +101,9 @@ namespace sqlite_orm {
             }
 
             void synchronous(int value) {
-                this->_synchronous = -1;
+                this->synchronous_ = -1;
                 this->set_pragma("synchronous", value);
-                this->_synchronous = value;
+                this->synchronous_ = value;
             }
 
             int user_version() {
@@ -222,8 +222,8 @@ namespace sqlite_orm {
           private:
             friend struct storage_base;
 
-            int _synchronous = -1;
-            signed char _journal_mode = -1;  //  if != -1 stores static_cast<sqlite_orm::journal_mode>(journal_mode)
+            int synchronous_ = -1;
+            signed char journal_mode_ = -1;  //  if != -1 stores static_cast<sqlite_orm::journal_mode>(journal_mode)
             get_connection_t get_connection;
 
             template<class T>
@@ -245,15 +245,15 @@ namespace sqlite_orm {
                 this->set_pragma_impl(ss.str(), db);
             }
 
-            void set_pragma(const std::string& name, const sqlite_orm::journal_mode& value, sqlite3* db = nullptr) {
+            void set_pragma(const std::string& name, sqlite_orm::journal_mode value, sqlite3* db = nullptr) {
                 std::stringstream ss;
-                ss << "PRAGMA " << name << " = " << to_string(value);
+                ss << "PRAGMA " << name << " = " << journal_mode_to_string(value);
                 this->set_pragma_impl(ss.str(), db);
             }
 
-            void set_pragma(const std::string& name, const sqlite_orm::locking_mode& value, sqlite3* db = nullptr) {
+            void set_pragma(const std::string& name, sqlite_orm::locking_mode value, sqlite3* db = nullptr) {
                 std::stringstream ss;
-                ss << "PRAGMA " << name << " = " << to_string(value);
+                ss << "PRAGMA " << name << " = " << locking_mode_to_string(value);
                 this->set_pragma_impl(ss.str(), db);
             }
 
