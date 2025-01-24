@@ -1371,7 +1371,7 @@ namespace sqlite_orm {
          *  Get the index value of an `index_sequence` at a specific position.
          */
         template<size_t Pos, size_t... Idx>
-        SQLITE_ORM_CONSTEVAL size_t index_sequence_value_at(std::index_sequence<Idx...>) {
+        SQLITE_ORM_CONSTEVAL auto index_sequence_value_at(std::index_sequence<Idx...>) {
             return Idx...[Pos];
         }
 #elif defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
@@ -2852,6 +2852,7 @@ namespace sqlite_orm {
         cannot_start_a_transaction_within_a_transaction,
         no_active_transaction,
         incorrect_journal_mode_string,
+        incorrect_locking_mode_string,
         invalid_collate_argument_enum,
         failed_to_init_a_backup,
         unknown_member_value,
@@ -3190,6 +3191,8 @@ namespace sqlite_orm {
 // #include "table_type_of.h"
 
 // #include "type_printer.h"
+
+// #include "column_pointer.h"
 
 namespace sqlite_orm {
 
@@ -3548,6 +3551,11 @@ namespace sqlite_orm {
             template<class... Rs>
             foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> references(Rs... refs) {
                 return {std::move(this->columns), {std::forward<Rs>(refs)...}};
+            }
+
+            template<class T, class... Rs>
+            foreign_key_t<std::tuple<Cs...>, std::tuple<internal::column_pointer<T, Rs>...>> references(Rs... refs) {
+                return {std::move(this->columns), {sqlite_orm::column<T>(refs)...}};
             }
         };
 #endif
@@ -5312,7 +5320,7 @@ namespace sqlite_orm {
             template<class O>
             void push_back(order_by_t<O> order_by) {
                 auto newContext = this->context;
-                newContext.skip_table_name = true;
+                newContext.skip_table_name = false;
                 auto columnName = serialize(order_by.expression, newContext);
                 this->entries.emplace_back(std::move(columnName),
                                            order_by.asc_desc,
@@ -12611,6 +12619,8 @@ namespace sqlite_orm {
 #include <algorithm>  //  std::transform
 #include <cctype>  // std::toupper
 
+// #include "serialize_result_type.h"
+
 #if defined(_WINNT_)
 // DELETE is a macro defined in the Windows SDK (winnt.h)
 #pragma push_macro("DELETE")
@@ -12637,8 +12647,8 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        inline const std::string& to_string(journal_mode j) {
-            static std::string res[] = {
+        inline const serialize_result_type& to_string(journal_mode value) {
+            static const std::array<serialize_result_type, 6> res = {
                 "DELETE",
                 "TRUNCATE",
                 "PERSIST",
@@ -12646,15 +12656,15 @@ namespace sqlite_orm {
                 "WAL",
                 "OFF",
             };
-            return res[static_cast<int>(j)];
+            return res.at(static_cast<int>(value));
         }
 
-        inline std::unique_ptr<journal_mode> journal_mode_from_string(const std::string& str) {
-            std::string upper_str;
-            std::transform(str.begin(), str.end(), std::back_inserter(upper_str), [](char c) {
+        inline std::pair<bool, journal_mode> journal_mode_from_string(const std::string& string) {
+            std::string upperString;
+            std::transform(string.begin(), string.end(), std::back_inserter(upperString), [](char c) {
                 return static_cast<char>(std::toupper(static_cast<int>(c)));
             });
-            static std::array<journal_mode, 6> all = {{
+            static const std::array<journal_mode, 6> allValues = {{
                 journal_mode::DELETE,
                 journal_mode::TRUNCATE,
                 journal_mode::PERSIST,
@@ -12662,12 +12672,12 @@ namespace sqlite_orm {
                 journal_mode::WAL,
                 journal_mode::OFF,
             }};
-            for(auto j: all) {
-                if(to_string(j) == upper_str) {
-                    return std::make_unique<journal_mode>(j);
+            for(auto journalMode: allValues) {
+                if(to_string(journalMode) == upperString) {
+                    return {true, journalMode};
                 }
             }
-            return {};
+            return {false, journal_mode::OFF};
         }
     }
 }
@@ -12715,6 +12725,48 @@ namespace sqlite_orm {
 
 // #include "journal_mode.h"
 
+// #include "locking_mode.h"
+
+#include <array>  //  std::array
+#include <string>  //  std::string
+#include <utility>  //  std::pair
+#include <iterator>  //  std::back_inserter
+
+// #include "serialize_result_type.h"
+
+namespace sqlite_orm {
+    enum class locking_mode : signed char {
+        NORMAL = 0,
+        EXCLUSIVE = 1,
+    };
+
+    namespace internal {
+        inline const serialize_result_type& to_string(locking_mode value) {
+            static const std::array<serialize_result_type, 2> res = {
+                "NORMAL",
+                "EXCLUSIVE",
+            };
+            return res.at(static_cast<int>(value));
+        }
+
+        inline std::pair<bool, locking_mode> locking_mode_from_string(const std::string& string) {
+            std::string upperString;
+            std::transform(string.begin(), string.end(), std::back_inserter(upperString), [](char c) {
+                return static_cast<char>(std::toupper(static_cast<int>(c)));
+            });
+            static const std::array<locking_mode, 2> allValues = {{
+                locking_mode::NORMAL,
+                locking_mode::EXCLUSIVE,
+            }};
+            for(auto lockingMode: allValues) {
+                if(to_string(lockingMode) == upperString) {
+                    return {true, lockingMode};
+                }
+            }
+            return {false, locking_mode::NORMAL};
+        }
+    }
+}
 // #include "error_code.h"
 
 // #include "is_std_ptr.h"
@@ -13097,14 +13149,41 @@ namespace sqlite_orm {
     };
 
     /**
+     *  Specialization for locking_mode.
+     */
+    template<>
+    struct row_extractor<locking_mode, void> {
+        locking_mode extract(const char* columnText) const {
+            if(columnText) {
+                auto resultPair = internal::locking_mode_from_string(columnText);
+                if(resultPair.first) {
+                    return resultPair.second;
+                } else {
+                    throw std::system_error{orm_error_code::incorrect_locking_mode_string};
+                }
+            } else {
+                throw std::system_error{orm_error_code::incorrect_locking_mode_string};
+            }
+        }
+
+        locking_mode extract(sqlite3_stmt* stmt, int columnIndex) const {
+            auto cStr = (const char*)sqlite3_column_text(stmt, columnIndex);
+            return this->extract(cStr);
+        }
+
+        locking_mode extract(sqlite3_value* value) const = delete;
+    };
+
+    /**
      *  Specialization for journal_mode.
      */
     template<>
     struct row_extractor<journal_mode, void> {
         journal_mode extract(const char* columnText) const {
             if(columnText) {
-                if(auto res = internal::journal_mode_from_string(columnText)) {
-                    return std::move(*res);
+                auto resultPair = internal::journal_mode_from_string(columnText);
+                if(resultPair.first) {
+                    return resultPair.second;
                 } else {
                     throw std::system_error{orm_error_code::incorrect_journal_mode_string};
                 }
@@ -15685,7 +15764,7 @@ namespace sqlite_orm {
             get_all_t<T, void, Args...> expression;
 
             mapped_view(storage_type& storage, connection_ref conn, Args&&... args) :
-                storage(storage), connection(std::move(conn)), expression{std::forward<Args>(args)...} {}
+                storage(storage), connection(std::move(conn)), expression{{std::forward<Args>(args)...}} {}
 
             size_t size() const {
                 return this->storage.template count<T>();
@@ -15970,6 +16049,8 @@ namespace sqlite_orm {
 // #include "row_extractor.h"
 
 // #include "journal_mode.h"
+
+// #include "locking_mode.h"
 
 // #include "connection_holder.h"
 
@@ -16463,6 +16544,14 @@ namespace sqlite_orm {
                 return this->get_pragma<int>("busy_timeout");
             }
 
+            sqlite_orm::locking_mode locking_mode() {
+                return this->get_pragma<sqlite_orm::locking_mode>("locking_mode");
+            }
+
+            void locking_mode(sqlite_orm::locking_mode value) {
+                this->set_pragma("locking_mode", value);
+            }
+
             sqlite_orm::journal_mode journal_mode() {
                 return this->get_pragma<sqlite_orm::journal_mode>("journal_mode");
             }
@@ -16511,6 +16600,14 @@ namespace sqlite_orm {
 
             void auto_vacuum(int value) {
                 this->set_pragma("auto_vacuum", value);
+            }
+
+            int max_page_count() {
+                return this->get_pragma<int>("max_page_count");
+            }
+
+            void max_page_count(int value) {
+                this->set_pragma("max_page_count", value);
             }
 
             std::vector<std::string> integrity_check() {
@@ -16623,23 +16720,29 @@ namespace sqlite_orm {
              */
             template<class T>
             void set_pragma(const std::string& name, const T& value, sqlite3* db = nullptr) {
-                auto con = this->get_connection();
-                if(!db) {
-                    db = con.get();
-                }
                 std::stringstream ss;
-                ss << "PRAGMA " << name << " = " << value << std::flush;
-                perform_void_exec(db, ss.str());
+                ss << "PRAGMA " << name << " = " << value;
+                this->set_pragma_impl(ss.str(), db);
             }
 
             void set_pragma(const std::string& name, const sqlite_orm::journal_mode& value, sqlite3* db = nullptr) {
+                std::stringstream ss;
+                ss << "PRAGMA " << name << " = " << to_string(value);
+                this->set_pragma_impl(ss.str(), db);
+            }
+
+            void set_pragma(const std::string& name, const sqlite_orm::locking_mode& value, sqlite3* db = nullptr) {
+                std::stringstream ss;
+                ss << "PRAGMA " << name << " = " << to_string(value);
+                this->set_pragma_impl(ss.str(), db);
+            }
+
+            void set_pragma_impl(const std::string& query, sqlite3* db = nullptr) {
                 auto con = this->get_connection();
-                if(!db) {
+                if(db == nullptr) {
                     db = con.get();
                 }
-                std::stringstream ss;
-                ss << "PRAGMA " << name << " = " << to_string(value) << std::flush;
-                perform_void_exec(db, ss.str());
+                perform_void_exec(db, query);
             }
         };
     }
@@ -23823,10 +23926,17 @@ namespace sqlite_orm {
                 if(auto d = column.default_value()) {
                     dft = std::move(*d);
                 }
+                using constraints_tuple = decltype(column.constraints);
+                constexpr bool hasExplicitNull =
+                    mpl::invoke_t<mpl::disjunction<check_if_has_type<null_t>>, constraints_tuple>::value;
+                constexpr bool hasExplicitNotNull =
+                    mpl::invoke_t<mpl::disjunction<check_if_has_type<not_null_t>>, constraints_tuple>::value;
                 res.emplace_back(-1,
                                  column.name,
                                  type_printer<field_type>().print(),
-                                 column.is_not_null(),
+                                 !hasExplicitNull && !hasExplicitNotNull
+                                     ? column.is_not_null()
+                                     : (hasExplicitNull ? !hasExplicitNull : hasExplicitNotNull),
                                  std::move(dft),
                                  column.template is<is_primary_key>(),
                                  column.template is<is_generated_always>());

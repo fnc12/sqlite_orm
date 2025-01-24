@@ -7,6 +7,8 @@
 #include <algorithm>  //  std::transform
 #include <cctype>  // std::toupper
 
+#include "serialize_result_type.h"
+
 #if defined(_WINNT_)
 // DELETE is a macro defined in the Windows SDK (winnt.h)
 #pragma push_macro("DELETE")
@@ -33,8 +35,8 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        inline const std::string& to_string(journal_mode j) {
-            static std::string res[] = {
+        inline const serialize_result_type& to_string(journal_mode value) {
+            static const std::array<serialize_result_type, 6> res = {
                 "DELETE",
                 "TRUNCATE",
                 "PERSIST",
@@ -42,15 +44,15 @@ namespace sqlite_orm {
                 "WAL",
                 "OFF",
             };
-            return res[static_cast<int>(j)];
+            return res.at(static_cast<int>(value));
         }
 
-        inline std::unique_ptr<journal_mode> journal_mode_from_string(const std::string& str) {
-            std::string upper_str;
-            std::transform(str.begin(), str.end(), std::back_inserter(upper_str), [](char c) {
+        inline std::pair<bool, journal_mode> journal_mode_from_string(const std::string& string) {
+            std::string upperString;
+            std::transform(string.begin(), string.end(), std::back_inserter(upperString), [](char c) {
                 return static_cast<char>(std::toupper(static_cast<int>(c)));
             });
-            static std::array<journal_mode, 6> all = {{
+            static const std::array<journal_mode, 6> allValues = {{
                 journal_mode::DELETE,
                 journal_mode::TRUNCATE,
                 journal_mode::PERSIST,
@@ -58,12 +60,12 @@ namespace sqlite_orm {
                 journal_mode::WAL,
                 journal_mode::OFF,
             }};
-            for(auto j: all) {
-                if(to_string(j) == upper_str) {
-                    return std::make_unique<journal_mode>(j);
+            for(auto journalMode: allValues) {
+                if(to_string(journalMode) == upperString) {
+                    return {true, journalMode};
                 }
             }
-            return {};
+            return {false, journal_mode::OFF};
         }
     }
 }
