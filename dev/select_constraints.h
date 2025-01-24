@@ -469,7 +469,7 @@ namespace sqlite_orm {
      */
     template<class... Args>
     constexpr internal::columns_t<Args...> columns(Args... args) {
-        return {std::make_tuple<Args...>(std::forward<Args>(args)...)};
+        return {{std::forward<Args>(args)...}};
     }
 
     /*
@@ -478,7 +478,13 @@ namespace sqlite_orm {
      */
     template<class T, class... Args>
     constexpr internal::struct_t<T, Args...> struct_(Args... args) {
-        return {std::make_tuple<Args...>(std::forward<Args>(args)...)};
+        return {{std::forward<Args>(args)...}};
+    }
+
+    template<class T, class... Args>
+    internal::struct_t<T, Args...> distinct(internal::struct_t<T, Args...> cols) {
+        cols.distinct = true;
+        return cols;
     }
 
     /**

@@ -554,9 +554,13 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& c, const Ctx& context) const {
+                // DISTINCT has no parentheses
+                auto subCtx = context;
+                subCtx.use_parentheses = false;
+
                 std::stringstream ss;
-                auto expr = serialize(c.value, context);
-                ss << static_cast<std::string>(c) << "(" << expr << ")";
+                auto expr = serialize(c.value, subCtx);
+                ss << static_cast<std::string>(c) << " " << expr;
                 return ss.str();
             }
         };
@@ -567,9 +571,13 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& c, const Ctx& context) const {
+                // ALL has no parentheses
+                auto subCtx = context;
+                subCtx.use_parentheses = false;
+
                 std::stringstream ss;
-                auto expr = serialize(c.value, context);
-                ss << static_cast<std::string>(c) << "(" << expr << ")";
+                auto expr = serialize(c.value, subCtx);
+                ss << static_cast<std::string>(c) << " " << expr;
                 return ss.str();
             }
         };
@@ -587,7 +595,7 @@ namespace sqlite_orm {
             }
         };
 
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #if SQLITE_VERSION_NUMBER >= 3035003
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         template<>

@@ -189,6 +189,42 @@ TEST_CASE("statement_serializer select_t") {
                 stringValue = serialize(expression, context);
                 expected = R"(SELECT "users".*, "users".* FROM "users")";
             }
+            SECTION("distinct struct") {
+                auto expression = select(distinct(struct_<User>(&User::name)));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT DISTINCT "users"."name" FROM "users")";
+            }
+            SECTION("all struct") {
+                auto expression = select(all(struct_<User>(&User::name)));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT ALL "users"."name" FROM "users")";
+            }
+            SECTION("distinct") {
+                auto expression = select(distinct(&User::name));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT DISTINCT "users"."name" FROM "users")";
+            }
+            SECTION("all") {
+                auto expression = select(all(&User::name));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT ALL "users"."name" FROM "users")";
+            }
+            SECTION("distinct multi") {
+                auto expression = select(distinct(columns(&User::id, &User::name)));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT DISTINCT "users"."id", "users"."name" FROM "users")";
+            }
+            SECTION("all multi") {
+                auto expression = select(all(columns(&User::id, &User::name)));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT ALL "users"."id", "users"."name" FROM "users")";
+            }
             // issue #1106
             SECTION("multi") {
                 auto expression = columns(asterisk<User>(), asterisk<User>(true));
