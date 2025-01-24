@@ -159,18 +159,18 @@ namespace sqlite_orm {
                 //  here we copy source table to another with a name with '_backup' suffix, but in case table with such
                 //  a name already exists we append suffix 1, then 2, etc until we find a free name..
                 auto backupTableName = table.name + "_backup";
-                if(this->table_exists(db, backupTableName)) {
+                if (this->table_exists(db, backupTableName)) {
                     int suffix = 1;
                     do {
                         std::stringstream ss;
                         ss << suffix << std::flush;
                         auto anotherBackupTableName = backupTableName + ss.str();
-                        if(!this->table_exists(db, anotherBackupTableName)) {
+                        if (!this->table_exists(db, anotherBackupTableName)) {
                             backupTableName = std::move(anotherBackupTableName);
                             break;
                         }
                         ++suffix;
-                    } while(true);
+                    } while (true);
                 }
                 this->create_table(db, backupTableName, table);
 
@@ -261,7 +261,7 @@ namespace sqlite_orm {
 #if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)
             template<class Select>
 #ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
-                requires(is_select_v<Select>)
+                requires (is_select_v<Select>)
 #endif
             result_set_view<Select, db_objects_type> iterate(Select expression) {
                 expression.highest_level = true;
@@ -272,7 +272,7 @@ namespace sqlite_orm {
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             template<class... CTEs, class E>
 #ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
-                requires(is_select_v<E>)
+                requires (is_select_v<E>)
 #endif
             result_set_view<with_t<E, CTEs...>, db_objects_type> iterate(with_t<E, CTEs...> expression) {
                 auto con = this->get_connection();
@@ -347,12 +347,12 @@ namespace sqlite_orm {
             std::string group_concat_internal(F O::* m, std::unique_ptr<std::string> y, Args&&... args) {
                 this->assert_mapped_type<O>();
                 std::vector<std::string> rows;
-                if(y) {
+                if (y) {
                     rows = this->select(sqlite_orm::group_concat(m, std::move(*y)), std::forward<Args>(args)...);
                 } else {
                     rows = this->select(sqlite_orm::group_concat(m), std::forward<Args>(args)...);
                 }
-                if(!rows.empty()) {
+                if (!rows.empty()) {
                     return std::move(rows.front());
                 } else {
                     return {};
@@ -530,7 +530,7 @@ namespace sqlite_orm {
                 using R = mapped_type_proxy_t<O>;
                 this->assert_mapped_type<R>();
                 auto rows = this->select(sqlite_orm::count<R>(), std::forward<Args>(args)...);
-                if(!rows.empty()) {
+                if (!rows.empty()) {
                     return rows.front();
                 } else {
                     return 0;
@@ -556,7 +556,7 @@ namespace sqlite_orm {
             int count(F field, Args&&... args) {
                 this->assert_mapped_type<table_type_of_t<F>>();
                 auto rows = this->select(sqlite_orm::count(std::move(field)), std::forward<Args>(args)...);
-                if(!rows.empty()) {
+                if (!rows.empty()) {
                     return rows.front();
                 } else {
                     return 0;
@@ -575,7 +575,7 @@ namespace sqlite_orm {
             double avg(F field, Args&&... args) {
                 this->assert_mapped_type<table_type_of_t<F>>();
                 auto rows = this->select(sqlite_orm::avg(std::move(field)), std::forward<Args>(args)...);
-                if(!rows.empty()) {
+                if (!rows.empty()) {
                     return rows.front();
                 } else {
                     return 0;
@@ -625,7 +625,7 @@ namespace sqlite_orm {
                                       bool> = true>
             std::string group_concat(F field, const char* y, Args&&... args) {
                 std::unique_ptr<std::string> str;
-                if(y) {
+                if (y) {
                     str = std::make_unique<std::string>(y);
                 } else {
                     str = std::make_unique<std::string>();
@@ -646,7 +646,7 @@ namespace sqlite_orm {
             std::unique_ptr<R> max(F field, Args&&... args) {
                 this->assert_mapped_type<table_type_of_t<F>>();
                 auto rows = this->select(sqlite_orm::max(std::move(field)), std::forward<Args>(args)...);
-                if(!rows.empty()) {
+                if (!rows.empty()) {
                     return std::move(rows.front());
                 } else {
                     return {};
@@ -666,7 +666,7 @@ namespace sqlite_orm {
             std::unique_ptr<R> min(F field, Args&&... args) {
                 this->assert_mapped_type<table_type_of_t<F>>();
                 auto rows = this->select(sqlite_orm::min(std::move(field)), std::forward<Args>(args)...);
-                if(!rows.empty()) {
+                if (!rows.empty()) {
                     return std::move(rows.front());
                 } else {
                     return {};
@@ -687,8 +687,8 @@ namespace sqlite_orm {
                 this->assert_mapped_type<table_type_of_t<F>>();
                 std::vector<std::unique_ptr<double>> rows =
                     this->select(sqlite_orm::sum(std::move(field)), std::forward<Args>(args)...);
-                if(!rows.empty()) {
-                    if(rows.front()) {
+                if (!rows.empty()) {
+                    if (rows.front()) {
                         return std::make_unique<R>(std::move(*rows.front()));
                     } else {
                         return {};
@@ -711,7 +711,7 @@ namespace sqlite_orm {
             double total(F field, Args&&... args) {
                 this->assert_mapped_type<table_type_of_t<F>>();
                 auto rows = this->select(sqlite_orm::total(std::move(field)), std::forward<Args>(args)...);
-                if(!rows.empty()) {
+                if (!rows.empty()) {
                     return std::move(rows.front());
                 } else {
                     return {};
@@ -829,7 +829,7 @@ namespace sqlite_orm {
             void replace_range(It from, It to, Projection project = {}) {
                 using O = std::decay_t<decltype(polyfill::invoke(project, *from))>;
                 this->assert_mapped_type<O>();
-                if(from == to) {
+                if (from == to) {
                     return;
                 }
 
@@ -841,7 +841,7 @@ namespace sqlite_orm {
             template<class O, class It, class Projection = polyfill::identity>
             void replace_range(It from, It to, Projection project = {}) {
                 this->assert_mapped_type<O>();
-                if(from == to) {
+                if (from == to) {
                     return;
                 }
 
@@ -950,7 +950,7 @@ namespace sqlite_orm {
                 using O = std::decay_t<decltype(polyfill::invoke(std::declval<Projection>(), *std::declval<It>()))>;
                 this->assert_mapped_type<O>();
                 this->assert_insertable_type<O>();
-                if(from == to) {
+                if (from == to) {
                     return;
                 }
                 auto statement =
@@ -962,7 +962,7 @@ namespace sqlite_orm {
             void insert_range(It from, It to, Projection project = {}) {
                 this->assert_mapped_type<O>();
                 this->assert_insertable_type<O>();
-                if(from == to) {
+                if (from == to) {
                     return;
                 }
                 auto statement =
@@ -1026,7 +1026,7 @@ namespace sqlite_orm {
                                              sqlite3* db,
                                              bool preserve,
                                              bool* attempt_to_preserve) {
-                if(attempt_to_preserve) {
+                if (attempt_to_preserve) {
                     *attempt_to_preserve = true;
                 }
 
@@ -1035,7 +1035,7 @@ namespace sqlite_orm {
 
                 //  first let's see if table with such name exists..
                 auto gottaCreateTable = !this->table_exists(db, table.name);
-                if(!gottaCreateTable) {
+                if (!gottaCreateTable) {
 
                     //  get table info provided in `make_table` call..
                     auto storageTableInfo = table.get_table_info();
@@ -1043,15 +1043,15 @@ namespace sqlite_orm {
                     //  this vector will contain pointers to columns that gotta be added..
                     std::vector<const table_xinfo*> columnsToAdd;
 
-                    if(calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo)) {
+                    if (calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo)) {
                         gottaCreateTable = true;
                     }
 
-                    if(!gottaCreateTable) {  //  if all storage columns are equal to actual db columns but there are
+                    if (!gottaCreateTable) {  //  if all storage columns are equal to actual db columns but there are
                         //  excess columns at the db..
-                        if(!dbTableInfo.empty()) {
+                        if (!dbTableInfo.empty()) {
                             // extra table columns than storage columns
-                            if(!preserve) {
+                            if (!preserve) {
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
                                 res = sync_schema_result::old_columns_removed;
 #else
@@ -1062,33 +1062,33 @@ namespace sqlite_orm {
                             }
                         }
                     }
-                    if(gottaCreateTable) {
+                    if (gottaCreateTable) {
                         res = sync_schema_result::dropped_and_recreated;
                     } else {
-                        if(!columnsToAdd.empty()) {
+                        if (!columnsToAdd.empty()) {
                             // extra storage columns than table columns
-                            for(const table_xinfo* colInfo: columnsToAdd) {
+                            for (const table_xinfo* colInfo: columnsToAdd) {
                                 const basic_generated_always::storage_type* generatedStorageType =
                                     table.find_column_generated_storage_type(colInfo->name);
-                                if(generatedStorageType) {
-                                    if(*generatedStorageType == basic_generated_always::storage_type::stored) {
+                                if (generatedStorageType) {
+                                    if (*generatedStorageType == basic_generated_always::storage_type::stored) {
                                         gottaCreateTable = true;
                                         break;
                                     }
                                     //  fallback cause VIRTUAL can be added
                                 } else {
-                                    if(colInfo->notnull && colInfo->dflt_value.empty()) {
+                                    if (colInfo->notnull && colInfo->dflt_value.empty()) {
                                         gottaCreateTable = true;
                                         // no matter if preserve is true or false, there is no way to preserve data, so we wont try!
-                                        if(attempt_to_preserve) {
+                                        if (attempt_to_preserve) {
                                             *attempt_to_preserve = false;
                                         };
                                         break;
                                     }
                                 }
                             }
-                            if(!gottaCreateTable) {
-                                if(res == sync_schema_result::old_columns_removed) {
+                            if (!gottaCreateTable) {
+                                if (res == sync_schema_result::old_columns_removed) {
                                     res = sync_schema_result::new_columns_added_and_old_columns_removed;
                                 } else {
                                     res = sync_schema_result::new_columns_added;
@@ -1097,7 +1097,7 @@ namespace sqlite_orm {
                                 res = sync_schema_result::dropped_and_recreated;
                             }
                         } else {
-                            if(res != sync_schema_result::old_columns_removed) {
+                            if (res != sync_schema_result::old_columns_removed) {
                                 res = sync_schema_result::already_in_sync;
                             }
                         }
@@ -1473,7 +1473,7 @@ namespace sqlite_orm {
                         mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                          mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
                         call_as_template_base<column_field>([&table, &bindValue, &object](auto& column) {
-                            if(!exists_in_composite_primary_key(table, column)) {
+                            if (!exists_in_composite_primary_key(table, column)) {
                                 bindValue(polyfill::invoke(column.member_pointer, object));
                             }
                         }));
@@ -1523,12 +1523,12 @@ namespace sqlite_orm {
                 auto& object = get_object(statement.expression);
                 table.template for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
                     call_as_template_base<column_field>([&table, &bindValue, &object](auto& column) {
-                        if(!exists_in_composite_primary_key(table, column)) {
+                        if (!exists_in_composite_primary_key(table, column)) {
                             bindValue(polyfill::invoke(column.member_pointer, object));
                         }
                     }));
                 table.for_each_column([&table, &bindValue, &object](auto& column) {
-                    if(column.template is<is_primary_key>() || exists_in_composite_primary_key(table, column)) {
+                    if (column.template is<is_primary_key>() || exists_in_composite_primary_key(table, column)) {
                         bindValue(polyfill::invoke(column.member_pointer, object));
                     }
                 });
@@ -1578,14 +1578,14 @@ namespace sqlite_orm {
                     object_from_column_builder<T> builder{res.emplace(), stmt};
                     table.for_each_column(builder);
                 });
-                if(!res.has_value()) {
+                if (!res.has_value()) {
                     throw std::system_error{orm_error_code::not_found};
                 }
                 return std::move(res).value();
 #else
                 auto& table = this->get_table<T>();
                 auto stepRes = sqlite3_step(stmt);
-                switch(stepRes) {
+                switch (stepRes) {
                     case SQLITE_ROW: {
                         T res;
                         object_from_column_builder<T> builder{res, stmt};
@@ -1649,7 +1649,7 @@ namespace sqlite_orm {
                     res.push_back(std::move(obj));
                 });
 #ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
-                if constexpr(polyfill::is_specialization_of_v<R, std::vector>) {
+                if constexpr (polyfill::is_specialization_of_v<R, std::vector>) {
                     res.shrink_to_fit();
                 }
 #endif
@@ -1670,7 +1670,7 @@ namespace sqlite_orm {
                     res.push_back(std::move(obj));
                 });
 #ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
-                if constexpr(polyfill::is_specialization_of_v<R, std::vector>) {
+                if constexpr (polyfill::is_specialization_of_v<R, std::vector>) {
                     res.shrink_to_fit();
                 }
 #endif
@@ -1692,7 +1692,7 @@ namespace sqlite_orm {
                     res.push_back(std::move(obj));
                 });
 #ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
-                if constexpr(polyfill::is_specialization_of_v<R, std::vector>) {
+                if constexpr (polyfill::is_specialization_of_v<R, std::vector>) {
                     res.shrink_to_fit();
                 }
 #endif

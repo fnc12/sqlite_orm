@@ -337,7 +337,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
             constexpr size_t find_first_true_helper(std::initializer_list<bool> values) {
                 size_t i = 0;
-                for(auto first = values.begin(); first != values.end() && !*first; ++first) {
+                for (auto first = values.begin(); first != values.end() && !*first; ++first) {
                     ++i;
                 }
                 return i;
@@ -345,7 +345,7 @@ namespace sqlite_orm {
 
             constexpr size_t count_true_helper(std::initializer_list<bool> values) {
                 size_t n = 0;
-                for(auto first = values.begin(); first != values.end(); ++first) {
+                for (auto first = values.begin(); first != values.end(); ++first) {
                     n += *first;
                 }
                 return n;

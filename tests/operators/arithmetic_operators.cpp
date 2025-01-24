@@ -23,12 +23,12 @@ TEST_CASE("Arithmetic operators") {
         "Upside down",
     };
     auto number = 10;
-    for(auto& name: names) {
+    for (auto& name: names) {
         storage.insert(Object{name, int(name.length()), number});
     }
     {  //  +
         auto rows = storage.select(c(&Object::nameLen) + 1000);
-        for(size_t i = 0; i < rows.size(); ++i) {
+        for (size_t i = 0; i < rows.size(); ++i) {
             auto& row = rows[i];
             auto& name = names[i];
             REQUIRE(int(row) == name.length() + 1000);
@@ -36,7 +36,7 @@ TEST_CASE("Arithmetic operators") {
     }
     {  //  +
         auto rows = storage.select(columns(c(&Object::nameLen) + 1000));
-        for(size_t i = 0; i < rows.size(); ++i) {
+        for (size_t i = 0; i < rows.size(); ++i) {
             auto& row = rows[i];
             auto& name = names[i];
             REQUIRE(int(std::get<0>(row)) == name.length() + 1000);
@@ -45,7 +45,7 @@ TEST_CASE("Arithmetic operators") {
     {  //  ||
         std::string suffix = "ototo";
         auto rows = storage.select(c(&Object::name) || suffix);
-        for(size_t i = 0; i < rows.size(); ++i) {
+        for (size_t i = 0; i < rows.size(); ++i) {
             auto& row = rows[i];
             auto& name = names[i];
             REQUIRE(row == name + suffix);
@@ -54,7 +54,7 @@ TEST_CASE("Arithmetic operators") {
     {  //  daisy-chaining ||, left
         std::string suffix = "ototo";
         auto rows = storage.select(c(&Object::name) || suffix || ".");
-        for(size_t i = 0; i < rows.size(); ++i) {
+        for (size_t i = 0; i < rows.size(); ++i) {
             auto& row = rows[i];
             auto& name = names[i];
             REQUIRE(row == name + suffix + ".");
@@ -63,7 +63,7 @@ TEST_CASE("Arithmetic operators") {
     {  //  daisy-chaining ||, right
         std::string prefix = "ototo";
         auto rows = storage.select(prefix || (c(&Object::name) || "."));
-        for(size_t i = 0; i < rows.size(); ++i) {
+        for (size_t i = 0; i < rows.size(); ++i) {
             auto& row = rows[i];
             auto& name = names[i];
             REQUIRE(row == prefix + name + ".");
@@ -72,7 +72,7 @@ TEST_CASE("Arithmetic operators") {
     {  //  ||
         std::string suffix = "ototo";
         auto rows = storage.select(columns(conc(&Object::name, suffix)));
-        for(size_t i = 0; i < rows.size(); ++i) {
+        for (size_t i = 0; i < rows.size(); ++i) {
             auto& row = rows[i];
             auto& name = names[i];
             REQUIRE(std::get<0>(row) == name + suffix);
@@ -109,7 +109,7 @@ TEST_CASE("Arithmetic operators") {
                                            c(&Object::nameLen) / c(&Object::number),
                                            c(&Object::nameLen) / 2));
 
-        for(size_t i = 0; i < rows.size(); ++i) {
+        for (size_t i = 0; i < rows.size(); ++i) {
             auto& row = rows[i];
             auto& name = names[i];
             REQUIRE(std::get<0>(row) == name + suffix);
@@ -155,7 +155,7 @@ TEST_CASE("Arithmetic operators") {
                                            &Object::nameLen % c(&Object::number),
                                            c(&Object::nameLen) % c(&Object::number),
                                            c(&Object::nameLen) % 5));
-        for(size_t i = 0; i < rows.size(); ++i) {
+        for (size_t i = 0; i < rows.size(); ++i) {
             auto& row = rows[i];
             auto& name = names[i];
             REQUIRE(std::get<0>(row) == static_cast<int>(name.length()) % number);

@@ -27,7 +27,7 @@ namespace sqlite_orm {
                      std::unique_ptr<connection_holder> holder_) :
                 handle(sqlite3_backup_init(to_.get(), zDestName.c_str(), from_.get(), zSourceName.c_str())),
                 holder(std::move(holder_)), to(to_), from(from_) {
-                if(!this->handle) {
+                if (!this->handle) {
                     throw std::system_error{orm_error_code::failed_to_init_a_backup};
                 }
             }
@@ -37,7 +37,7 @@ namespace sqlite_orm {
                 from(other.from) {}
 
             ~backup_t() {
-                if(this->handle) {
+                if (this->handle) {
                     (void)sqlite3_backup_finish(this->handle);
                 }
             }

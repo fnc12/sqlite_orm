@@ -896,7 +896,7 @@ int main(int, char** argv) {
     //  FROM marvel
     auto nameLengths = storage.select(length(&MarvelHero::name));  //  nameLengths is std::vector<int>
     cout << "nameLengths.size = " << nameLengths.size() << endl;
-    for(auto& len: nameLengths) {
+    for (auto& len: nameLengths) {
         cout << len << " ";
     }
     cout << endl;
@@ -907,7 +907,7 @@ int main(int, char** argv) {
         columns(&MarvelHero::name,
                 length(&MarvelHero::name)));  //  namesWithLengths is std::vector<std::tuple<std::string, int>>
     cout << "namesWithLengths.size = " << namesWithLengths.size() << endl;
-    for(auto& row: namesWithLengths) {
+    for (auto& row: namesWithLengths) {
         cout << "LENGTH(" << std::get<0>(row) << ") = " << std::get<1>(row) << endl;
     }
 
@@ -917,7 +917,7 @@ int main(int, char** argv) {
     auto namesWithLengthGreaterThan5 =
         storage.select(&MarvelHero::name, where(length(&MarvelHero::name) > 5));  //  std::vector<std::string>
     cout << "namesWithLengthGreaterThan5.size = " << namesWithLengthGreaterThan5.size() << endl;
-    for(auto& name: namesWithLengthGreaterThan5) {
+    for (auto& name: namesWithLengthGreaterThan5) {
         cout << "name = " << name << endl;
     }
 
@@ -933,8 +933,8 @@ int main(int, char** argv) {
     //  FROM marvel
     auto absPoints = storage.select(abs(&MarvelHero::points));  //  std::vector<std::unique_ptr<int>>
     cout << "absPoints: ";
-    for(auto& value: absPoints) {
-        if(value) {
+    for (auto& value: absPoints) {
+        if (value) {
             cout << *value;
         } else {
             cout << "null";
@@ -948,7 +948,7 @@ int main(int, char** argv) {
     //  WHERE ABS(points) < 5
     auto namesByAbs = storage.select(&MarvelHero::name, where(abs(&MarvelHero::points) < 5));
     cout << "namesByAbs.size = " << namesByAbs.size() << endl;
-    for(auto& name: namesByAbs) {
+    for (auto& name: namesByAbs) {
         cout << name << endl;
     }
     cout << endl;
@@ -963,7 +963,7 @@ int main(int, char** argv) {
     //  FROM marvel
     auto lowerNames = storage.select(lower(&MarvelHero::name));
     cout << "lowerNames.size = " << lowerNames.size() << endl;
-    for(auto& name: lowerNames) {
+    for (auto& name: lowerNames) {
         cout << name << endl;
     }
     cout << endl;
@@ -972,7 +972,7 @@ int main(int, char** argv) {
     //  FROM marvel
     auto upperAbilities = storage.select(upper(&MarvelHero::abilities));
     cout << "upperAbilities.size = " << upperAbilities.size() << endl;
-    for(auto& abilities: upperAbilities) {
+    for (auto& abilities: upperAbilities) {
         cout << abilities << endl;
     }
     cout << endl;
@@ -1006,7 +1006,7 @@ int main(int, char** argv) {
     //  FROM marvel
     auto emails = storage.select(lower(&MarvelHero::name) || c("@marvel.com"));
     cout << "emails.size = " << emails.size() << endl;
-    for(auto& email: emails) {
+    for (auto& email: emails) {
         cout << email << endl;
     }
     cout << endl;
@@ -1030,12 +1030,12 @@ int main(int, char** argv) {
 
 #if SQLITE_VERSION_NUMBER >= 3007016
     //  SELECT RANDOM()
-    for(auto i = 0; i < 10; ++i) {
+    for (auto i = 0; i < 10; ++i) {
         cout << "RANDOM() = " << storage.select(sqlite_orm::random()).front() << endl;
     }
 
     //  SELECT * FROM marvel ORDER BY RANDOM()
-    for(auto& hero: storage.iterate<MarvelHero>(order_by(sqlite_orm::random()))) {
+    for (auto& hero: storage.iterate<MarvelHero>(order_by(sqlite_orm::random()))) {
         cout << "hero = " << storage.dump(hero) << endl;
     }
 #endif
@@ -1148,7 +1148,7 @@ int main(int, char** argv) {
         auto rows = storage.select(columns(&MarvelHero::name, as<o_pos>(instr(&MarvelHero::abilities, "o"))),
                                    where(greater_than(get<o_pos>(), 0)),
                                    order_by(get<o_pos>()));
-        for(auto& row: rows) {
+        for (auto& row: rows) {
             cout << get<0>(row) << '\t' << get<1>(row) << endl;
         }
         cout << endl;
@@ -1166,7 +1166,7 @@ int main(int, char** argv) {
     //  SET phone = REPLACE(phone, '410', '+1-410')
     storage.update_all(set(c(&Contact::phone) = replace(&Contact::phone, "410", "+1-410")));
     cout << "Contacts:" << endl;
-    for(auto& contact: storage.iterate<Contact>()) {
+    for (auto& contact: storage.iterate<Contact>()) {
         cout << storage.dump(contact) << endl;
     }
 
@@ -1213,7 +1213,7 @@ int main(int, char** argv) {
                                            ifnull<std::string>(&Customer::fax, "Call:" || c(&Customer::phone))),
                                    order_by(&Customer::firstName));
         cout << "rows count: " << rows.size() << endl;
-        for(auto& row: rows) {
+        for (auto& row: rows) {
             cout << get<0>(row) << '\t' << get<1>(row) << '\t' << get<2>(row) << endl;
         }
         cout << endl;

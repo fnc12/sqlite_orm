@@ -28,7 +28,7 @@ TEST_CASE("Iterate mapped") {
     db.replace(expected);
 
     SECTION("range-based for") {
-        for(Test& obj: db.iterate<Test>()) {
+        for (Test& obj: db.iterate<Test>()) {
             REQUIRE(obj == expected);
         }
     }
@@ -77,7 +77,7 @@ TEST_CASE("Iterate select statement") {
     std::vector<Test> expected_vec{expected};
 
     SECTION("range-based for") {
-        for(Test&& obj: db.iterate(select(object<Test>()))) {
+        for (Test&& obj: db.iterate(select(object<Test>()))) {
             REQUIRE(obj == expected);
         }
     }

@@ -334,7 +334,7 @@ TEST_CASE("insert") {
     storage.remove_all<Object>();
     storage.remove_all<ObjectWithoutRowid>();
 
-    for(auto i = 0; i < 100; ++i) {
+    for (auto i = 0; i < 100; ++i) {
         storage.insert(Object{
             0,
             "Skillet",

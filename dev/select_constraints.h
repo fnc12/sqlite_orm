@@ -167,7 +167,7 @@ namespace sqlite_orm {
 #endif
 
             operator std::string() const {
-                if(!this->all) {
+                if (!this->all) {
                     return "UNION";
                 } else {
                     return "UNION ALL";
@@ -316,7 +316,7 @@ namespace sqlite_orm {
 
             with_t(bool recursiveIndicated, cte_type cte, expression_type expression) :
                 recursiveIndicated{recursiveIndicated}, cte{std::move(cte)}, expression{std::move(expression)} {
-                if constexpr(is_select_v<expression_type>) {
+                if constexpr (is_select_v<expression_type>) {
                     this->expression.highest_level = true;
                 }
             }
@@ -592,11 +592,11 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<orm_cte_moniker auto moniker, class... ExplicitCols>
-        requires((internal::is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
-                  internal::is_column_v<ExplicitCols> ||
-                  std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
-                  std::convertible_to<ExplicitCols, std::string>) &&
-                 ...)
+        requires ((internal::is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
+                   internal::is_column_v<ExplicitCols> ||
+                   std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
+                   std::convertible_to<ExplicitCols, std::string>) &&
+                  ...)
     constexpr auto cte(ExplicitCols... explicitColumns) {
         using namespace ::sqlite_orm::internal;
         static_assert((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
@@ -612,10 +612,10 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         template<char A, char... X>
         template<class... ExplicitCols>
-            requires((is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
-                      std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
-                      std::convertible_to<ExplicitCols, std::string>) &&
-                     ...)
+            requires ((is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
+                       std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
+                       std::convertible_to<ExplicitCols, std::string>) &&
+                      ...)
         constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) const {
             return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
         }

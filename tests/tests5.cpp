@@ -317,7 +317,7 @@ TEST_CASE("issue822") {
     storage.sync_schema();
     storage.replace(A(1, 1, 0, std::make_shared<double>(55.5)));
     auto records = storage.get_all<A>(where(c(&A::getAddress) == 1 and c(&A::getType) == 1 and c(&A::getIndex) == 0));
-    if(records.size() != 0) {
+    if (records.size() != 0) {
         A a = records[0];
         a.setValue(std::make_shared<double>(10));
         storage.update(a);

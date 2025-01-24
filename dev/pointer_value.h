@@ -136,8 +136,8 @@ namespace sqlite_orm {
             p_{std::exchange(other.p_, nullptr)}, d_{std::move(other.d_)} {}
 
         ~pointer_binding() {
-            if(p_) {
-                if(auto xDestroy = get_xdestroy()) {
+            if (p_) {
+                if (auto xDestroy = get_xdestroy()) {
                     // note: C-casting `P* -> void*` like statement_binder<pointer_binding<P, T, D>>
                     xDestroy((void*)p_);
                 }

@@ -248,7 +248,7 @@ TEST_CASE("quote") {
 
 TEST_CASE("randomblob") {
     auto storage = make_storage({});
-    for(auto i = 0; i < 20; ++i) {
+    for (auto i = 0; i < 20; ++i) {
         auto blobLength = i + 1;
         auto rows = storage.select(randomblob(blobLength));
         REQUIRE(rows.size() == 1);

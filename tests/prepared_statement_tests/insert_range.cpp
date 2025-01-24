@@ -99,7 +99,7 @@ TEST_CASE("Prepared insert range") {
             decltype(users) otherUsers;
             otherUsers.push_back(User{6, "DJ Alban"});
             otherUsers.push_back(User{7, "Flo Rida"});
-            for(auto& user: otherUsers) {
+            for (auto& user: otherUsers) {
                 expected.push_back(user);
             }
             get<0>(statement) = otherUsers.begin();
@@ -125,7 +125,7 @@ TEST_CASE("Prepared insert range") {
             decltype(usersPointers) otherUsers;
             otherUsers.emplace_back(new User{6, "DJ Alban"});
             otherUsers.emplace_back(new User{7, "Flo Rida"});
-            for(auto& user: otherUsers) {
+            for (auto& user: otherUsers) {
                 expected.push_back(*user);
             }
             get<0>(statement) = otherUsers.begin();

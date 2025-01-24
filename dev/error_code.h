@@ -59,7 +59,7 @@ namespace sqlite_orm {
         }
 
         std::string message(int c) const override final {
-            switch(static_cast<orm_error_code>(c)) {
+            switch (static_cast<orm_error_code>(c)) {
                 case orm_error_code::not_found:
                     return "Not found";
                 case orm_error_code::type_is_not_mapped_to_storage:

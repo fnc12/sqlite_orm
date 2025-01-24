@@ -24,11 +24,11 @@ namespace sqlite_orm {
         template<class... DBO>
         template<class Table, satisfies<is_table, Table>>
         sync_schema_result storage_t<DBO...>::sync_table(const Table& table, sqlite3* db, bool preserve) {
-            if(std::is_same<object_type_t<Table>, sqlite_master>::value) {
+            if (std::is_same<object_type_t<Table>, sqlite_master>::value) {
                 return sync_schema_result::already_in_sync;
             }
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
-            if(std::is_same<object_type_t<Table>, dbstat>::value) {
+            if (std::is_same<object_type_t<Table>, dbstat>::value) {
                 return sync_schema_result::already_in_sync;
             }
 #endif  //  SQLITE_ENABLE_DBSTAT_VTAB
@@ -36,14 +36,14 @@ namespace sqlite_orm {
             bool attempt_to_preserve = true;
 
             auto schema_stat = this->schema_status(table, db, preserve, &attempt_to_preserve);
-            if(schema_stat != sync_schema_result::already_in_sync) {
-                if(schema_stat == sync_schema_result::new_table_created) {
+            if (schema_stat != sync_schema_result::already_in_sync) {
+                if (schema_stat == sync_schema_result::new_table_created) {
                     this->create_table(db, table.name, table);
                     res = sync_schema_result::new_table_created;
                 } else {
-                    if(schema_stat == sync_schema_result::old_columns_removed ||
-                       schema_stat == sync_schema_result::new_columns_added ||
-                       schema_stat == sync_schema_result::new_columns_added_and_old_columns_removed) {
+                    if (schema_stat == sync_schema_result::old_columns_removed ||
+                        schema_stat == sync_schema_result::new_columns_added ||
+                        schema_stat == sync_schema_result::new_columns_added_and_old_columns_removed) {
 
                         //  get table info provided in `make_table` call..
                         auto storageTableInfo = table.get_table_info();
@@ -56,9 +56,9 @@ namespace sqlite_orm {
 
                         this->calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
 
-                        if(schema_stat == sync_schema_result::old_columns_removed) {
+                        if (schema_stat == sync_schema_result::old_columns_removed) {
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
-                            for(auto& tableInfo: dbTableInfo) {
+                            for (auto& tableInfo: dbTableInfo) {
                                 this->drop_column(db, table.name, tableInfo.name);
                             }
                             res = sync_schema_result::old_columns_removed;
@@ -69,10 +69,10 @@ namespace sqlite_orm {
 #endif
                         }
 
-                        if(schema_stat == sync_schema_result::new_columns_added) {
-                            for(const table_xinfo* colInfo: columnsToAdd) {
+                        if (schema_stat == sync_schema_result::new_columns_added) {
+                            for (const table_xinfo* colInfo: columnsToAdd) {
                                 table.for_each_column([this, colInfo, &tableName = table.name, db](auto& column) {
-                                    if(column.name != colInfo->name) {
+                                    if (column.name != colInfo->name) {
                                         return;
                                     }
                                     this->add_column(db, tableName, column);
@@ -81,7 +81,7 @@ namespace sqlite_orm {
                             res = sync_schema_result::new_columns_added;
                         }
 
-                        if(schema_stat == sync_schema_result::new_columns_added_and_old_columns_removed) {
+                        if (schema_stat == sync_schema_result::new_columns_added_and_old_columns_removed) {
 
                             auto storageTableInfo = table.get_table_info();
                             this->add_generated_cols(columnsToAdd, storageTableInfo);
@@ -90,7 +90,7 @@ namespace sqlite_orm {
                             this->backup_table(db, table, columnsToAdd);
                             res = sync_schema_result::new_columns_added_and_old_columns_removed;
                         }
-                    } else if(schema_stat == sync_schema_result::dropped_and_recreated) {
+                    } else if (schema_stat == sync_schema_result::dropped_and_recreated) {
                         //  now get current table info from db using `PRAGMA table_xinfo` query..
                         auto dbTableInfo = this->pragma.table_xinfo(table.name);  // should include generated columns
                         auto storageTableInfo = table.get_table_info();
@@ -102,7 +102,7 @@ namespace sqlite_orm {
 
                         this->add_generated_cols(columnsToAdd, storageTableInfo);
 
-                        if(preserve && attempt_to_preserve) {
+                        if (preserve && attempt_to_preserve) {
                             this->backup_table(db, table, columnsToAdd);
                         } else {
                             this->drop_create_with_loss(db, table);
@@ -135,7 +135,7 @@ namespace sqlite_orm {
                                                          return columnName == tableInfo->name;
                                                      });
 #endif
-                if(columnToIgnoreIt == columnsToIgnore.end()) {
+                if (columnToIgnoreIt == columnsToIgnore.end()) {
                     columnNames.push_back(cref(columnName));
                 }
             });

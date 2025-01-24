@@ -26,9 +26,9 @@ TEST_CASE("Prepared insert") {
         }
 
         bool compareNames(const decltype(name)& lhs, const decltype(name)& rhs) const {
-            if(lhs && rhs) {
+            if (lhs && rhs) {
                 return *lhs == *rhs;
-            } else if(!lhs && !rhs) {
+            } else if (!lhs && !rhs) {
                 return true;
             } else {
                 return false;

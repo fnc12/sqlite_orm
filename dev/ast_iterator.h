@@ -210,7 +210,7 @@ namespace sqlite_orm {
 
             template<class L>
             void operator()(const node_type& vec, L& lambda) const {
-                for(auto& i: vec) {
+                for (auto& i: vec) {
                     iterate_ast(i, lambda);
                 }
             }

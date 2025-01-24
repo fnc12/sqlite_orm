@@ -81,7 +81,7 @@ namespace sqlite_orm {
      *  Make a table reference.
      */
     template<class O>
-        requires(!orm_recordset_alias<O>)
+        requires (!orm_recordset_alias<O>)
     consteval internal::table_reference<O> column() {
         return {};
     }
@@ -90,7 +90,7 @@ namespace sqlite_orm {
      *  Make a table reference.
      */
     template<class O>
-        requires(!orm_recordset_alias<O>)
+        requires (!orm_recordset_alias<O>)
     consteval internal::table_reference<O> c() {
         return {};
     }
@@ -115,10 +115,10 @@ namespace sqlite_orm {
 
         static_assert(is_cte_moniker_v<Moniker>, "`Moniker' must be a CTE moniker");
 
-        if constexpr(polyfill::is_specialization_of_v<F, alias_holder>) {
+        if constexpr (polyfill::is_specialization_of_v<F, alias_holder>) {
             static_assert(is_column_alias_v<type_t<F>>);
             return column_pointer<Moniker, F>{{}};
-        } else if constexpr(is_column_alias_v<F>) {
+        } else if constexpr (is_column_alias_v<F>) {
             return column_pointer<Moniker, alias_holder<F>>{{}};
         } else {
             return column_pointer<Moniker, F>{std::move(field)};

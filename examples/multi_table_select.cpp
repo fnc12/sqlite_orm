@@ -62,7 +62,7 @@ int main(int, char**) {
     auto rows = storage.select(
         columns(&ReqEquip::reqNumber, &ReqEquip::requestor, &ReqDetail::quantity, &ReqDetail::stockNumber),
         where(c(&ReqEquip::reqNumber) == &ReqDetail::reqNumber));
-    for(auto& row: rows) {
+    for (auto& row: rows) {
         cout << std::get<0>(row) << '\t';
         cout << std::get<1>(row) << '\t';
         cout << std::get<2>(row) << '\t';
@@ -79,7 +79,7 @@ int main(int, char**) {
     rows = storage.select(
         columns(&ReqEquip::reqNumber, &ReqEquip::requestor, &ReqDetail::quantity, &ReqDetail::stockNumber),
         where(c(&ReqEquip::reqNumber) == &ReqDetail::reqNumber and c(&ReqEquip::reqNumber) == 1000));
-    for(auto& row: rows) {
+    for (auto& row: rows) {
         cout << std::get<0>(row) << '\t';
         cout << std::get<1>(row) << '\t';
         cout << std::get<2>(row) << '\t';

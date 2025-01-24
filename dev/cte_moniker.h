@@ -46,10 +46,10 @@ namespace sqlite_orm {
              */
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
             template<class... ExplicitCols>
-                requires((is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
-                          std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
-                          std::convertible_to<ExplicitCols, std::string>) &&
-                         ...)
+                requires ((is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
+                           std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
+                           std::convertible_to<ExplicitCols, std::string>) &&
+                          ...)
             constexpr auto operator()(ExplicitCols... explicitColumns) const;
 #else
             template<class... ExplicitCols,

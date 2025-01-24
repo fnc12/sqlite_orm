@@ -132,7 +132,7 @@ int main() {
 
     auto allZones = storage.get_all<Zone>();
     cout << "zones count = " << allZones.size() << ":" << endl;  //  zones count = 1:
-    for(auto& zone: allZones) {
+    for (auto& zone: allZones) {
         cout << "zone = " << storage.dump(zone)
              << endl;  //  zone = { id : '1', rect : '{ x = 10, y = 10, width = 200, height = 300 }' }
     }
@@ -141,7 +141,7 @@ int main() {
     cout << endl;
     allZones = storage.get_all<Zone>();
     cout << "zones count = " << allZones.size() << ":" << endl;  //  zones count = 1:
-    for(auto& zone: allZones) {
+    for (auto& zone: allZones) {
         cout << "zone = " << storage.dump(zone)
              << endl;  //  zone = { id : '1', rect : '{ x = 20, y = 20, width = 500, height = 600 }' }
     }
