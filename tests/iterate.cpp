@@ -53,6 +53,11 @@ TEST_CASE("Iterate mapped") {
         REQUIRE(std::vector<Test>{std::from_range, view} == expected_vec);
     }
 #endif
+
+    SECTION("with conditions") {
+        auto view = db.iterate<Test>(where(c(&Test::id) == 5), order_by(&Test::id));
+        REQUIRE(std::vector<Test>{std::from_range, view} == expected_vec);
+    }
 }
 
 #if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)
