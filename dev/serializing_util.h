@@ -22,8 +22,8 @@ namespace sqlite_orm {
         template<class O>
         struct order_by_t;
 
-        template<class T, class C>
-        auto serialize(const T& t, const C& context);
+        template<class T, class Ctx>
+        auto serialize(const T& t, const Ctx& context);
 
         template<class T, class Ctx>
         std::string serialize_order_by(const T&, const Ctx&);

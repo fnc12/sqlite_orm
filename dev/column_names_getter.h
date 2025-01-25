@@ -21,8 +21,8 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        template<class T, class C>
-        auto serialize(const T& t, const C& context);
+        template<class T, class Ctx>
+        auto serialize(const T& t, const Ctx& context);
 
         template<class T, class Ctx>
         std::vector<std::string>& collect_table_column_names(std::vector<std::string>& collectedExpressions,
