@@ -540,7 +540,7 @@ namespace sqlite_orm {
      *  Example:
      *  1_ctealias().as<materialized()>(select(1));
      */
-    inline consteval internal::materialized_t materialized() {
+    consteval internal::materialized_t materialized() {
         return {};
     }
 
@@ -550,7 +550,7 @@ namespace sqlite_orm {
      *  Example:
      *  1_ctealias().as<not_materialized()>(select(1));
      */
-    inline consteval internal::not_materialized_t not_materialized() {
+    consteval internal::not_materialized_t not_materialized() {
         return {};
     }
 #endif
