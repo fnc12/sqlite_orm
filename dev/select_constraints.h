@@ -3,7 +3,7 @@
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <concepts>
 #endif
-#include <type_traits>  //  std::remove_cvref, std::is_convertible, std::is_same, std::is_member_pointer
+#include <type_traits>  //  std::enable_if, std::remove_cvref, std::is_convertible, std::is_same, std::is_member_pointer
 #include <string>  //  std::string
 #include <utility>  //  std::move
 #include <tuple>  //  std::tuple, std::get, std::tuple_size
@@ -28,9 +28,9 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T>
         struct as_optional_t {
-            using value_type = T;
+            using expression_type = T;
 
-            value_type value;
+            expression_type expression;
         };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
@@ -45,11 +45,11 @@ namespace sqlite_orm {
          */
         template<class T>
         struct distinct_t : distinct_string {
-            using value_type = T;
+            using expression_type = T;
 
-            value_type value;
+            expression_type expression;
 
-            distinct_t(value_type value_) : value(std::move(value_)) {}
+            distinct_t(expression_type expression) : expression(std::move(expression)) {}
         };
 
         struct all_string {
@@ -63,17 +63,29 @@ namespace sqlite_orm {
          */
         template<class T>
         struct all_t : all_string {
-            T value;
+            using expression_type = T;
 
-            all_t(T value_) : value(std::move(value_)) {}
+            expression_type expression;
+
+            all_t(expression_type expression) : expression(std::move(expression)) {}
         };
+
+        /**
+         *  Whether a type represents a keyword for a result set modifier (as part of a simple select expression).
+         */
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_rowset_deduplicator_v =
+            polyfill::disjunction<polyfill::is_specialization_of<T, distinct_t>,
+                                  polyfill::is_specialization_of<T, all_t>>::value;
+
+        template<class T>
+        struct is_rowset_deduplicator : polyfill::bool_constant<is_rowset_deduplicator_v<T>> {};
 
         template<class... Args>
         struct columns_t {
             using columns_type = std::tuple<Args...>;
 
             columns_type columns;
-            bool distinct = false;
 
             static constexpr int count = std::tuple_size<columns_type>::value;
 
@@ -98,7 +110,6 @@ namespace sqlite_orm {
             using columns_type = std::tuple<Args...>;
 
             columns_type columns;
-            bool distinct = false;
 
             static constexpr int count = std::tuple_size<columns_type>::value;
 
@@ -323,24 +334,6 @@ namespace sqlite_orm {
         };
 #endif
 
-        /**
-         *  Generic way to get DISTINCT value from any type.
-         */
-        template<class T>
-        bool get_distinct(const T&) {
-            return false;
-        }
-
-        template<class... Args>
-        bool get_distinct(const columns_t<Args...>& cols) {
-            return cols.distinct;
-        }
-
-        template<class T, class... Args>
-        bool get_distinct(const struct_t<T, Args...>& cols) {
-            return cols.distinct;
-        }
-
         template<class T>
         struct asterisk_t {
             using type = T;
@@ -417,6 +410,19 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T, std::enable_if_t<!is_rowset_deduplicator_v<T>, bool> = true>
+        const T& access_column_expression(const T& expression) {
+            return expression;
+        }
+
+        /*  
+         *  Access a column expression prefixed by a result set deduplicator (as part of a simple select expression, i.e. distinct, all)
+         */
+        template<class D, std::enable_if_t<is_rowset_deduplicator_v<D>, bool> = true>
+        const typename D::expression_type& access_column_expression(const D& modifier) {
+            return modifier.expression;
+        }
+
         template<class T>
         constexpr void validate_conditions() {
             static_assert(count_tuple<T, is_where>::value <= 1, "a single query cannot contain > 1 WHERE blocks");
@@ -433,6 +439,7 @@ namespace sqlite_orm {
         return {std::move(value)};
     }
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+
     template<class T>
     internal::then_t<T> then(T t) {
         return {std::move(t)};
@@ -458,12 +465,6 @@ namespace sqlite_orm {
         return {std::move(t)};
     }
 
-    template<class... Args>
-    internal::columns_t<Args...> distinct(internal::columns_t<Args...> cols) {
-        cols.distinct = true;
-        return cols;
-    }
-
     /*
      *  Combine multiple columns in a tuple.
      */
@@ -479,12 +480,6 @@ namespace sqlite_orm {
     template<class T, class... Args>
     constexpr internal::struct_t<T, Args...> struct_(Args... args) {
         return {{std::forward<Args>(args)...}};
-    }
-
-    template<class T, class... Args>
-    internal::struct_t<T, Args...> distinct(internal::struct_t<T, Args...> cols) {
-        cols.distinct = true;
-        return cols;
     }
 
     /**

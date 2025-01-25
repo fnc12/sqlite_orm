@@ -67,7 +67,7 @@ namespace sqlite_orm {
         template<class T, class Ctx>
         std::vector<std::string> get_cte_column_names(const T& t, const Ctx& context) {
             cte_column_names_collector<T> collector;
-            return collector(t, context);
+            return collector(access_column_expression(t), context);
         }
 
         template<class As>

@@ -92,7 +92,7 @@ TEST_CASE("column_result_of_t") {
     runTest<db_objects_t, int>(distinct(&User::id));
     runTest<db_objects_t, std::string>(distinct(&User::name));
     runTest<db_objects_t, int>(all(&User::id));
-    runTest<db_objects_t, std::string>(all(&User::name));
+    runTest<db_objects_t, int>(count(distinct(&User::id)));
     runTest<db_objects_t, std::string>(conc(&User::name, &User::id));
     runTest<db_objects_t, std::string>(c(&User::name) || &User::id);
     runTest<db_objects_t, double>(minus(&User::id));
@@ -123,8 +123,11 @@ TEST_CASE("column_result_of_t") {
     runTest<db_objects_t, int64>(rowid<User>());
     runTest<db_objects_t, int64>(oid<User>());
     runTest<db_objects_t, int64>(_rowid_<User>());
+    runTest<db_objects_t, bool>(glob(&User::name, "S*"));
+    runTest<db_objects_t, bool>(like(&User::name, "S*"));
     runTest<db_objects_t, tuple<int, std::string>>(columns(&User::id, &User::name));
     runTest<db_objects_t, tuple<int, std::string>>(distinct(columns(&User::id, &User::name)));
+    runTest<db_objects_t, tuple<int, std::string>>(all(columns(&User::id, &User::name)));
     runTest<db_objects_t, tuple<int, std::string>>(asterisk<User>());
     runTest<db_objects_t, tuple<int, std::string>>(asterisk<alias_a<User>>());
     runTest<db_objects_t, tuple<int, std::string, int, std::string>>(columns(asterisk<User>(), asterisk<User>()));
@@ -135,11 +138,12 @@ TEST_CASE("column_result_of_t") {
     runTest<db_objects_t, structure<User, tuple<int, std::string>>>(struct_<User>(&User::id, &User::name));
     runTest<db_objects_t, structure<User, tuple<int, std::string>>>(struct_<User>(asterisk<User>()));
     runTest<db_objects_t, structure<User, tuple<int, std::string>>>(distinct(struct_<User>(&User::id, &User::name)));
+    runTest<db_objects_t, structure<User, tuple<int, std::string>>>(all(struct_<User>(&User::id, &User::name)));
     runTest<db_objects_t, tuple<structure<User, tuple<int, std::string>>, structure<User, tuple<int, std::string>>>>(
         columns(struct_<User>(asterisk<User>()), struct_<User>(asterisk<User>())));
     runTest<db_objects_t, int>(union_all(select(1), select(2)));
     runTest<db_objects_t, int64>(union_all(select(1ll), select(2)));
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     using cte_1 = decltype(1_ctealias);
     // note: even though used with the CTE, &User::id doesn't need to be mapped into the CTE to make column results work;
     //       this is because the result type is taken from the member pointer just because we can't look it up in the storage definition
