@@ -1,13 +1,13 @@
 #pragma once
 
-#include <type_traits>  //  std::index_sequence
+#include <type_traits>  //  std::index_sequence, std::remove_cvref
 #include <tuple>
 #include <array>
 #include <string>
 #include <ostream>
 #include <utility>  //  std::exchange, std::tuple_size, std::make_index_sequence
 
-#include "functional/cxx_type_traits_polyfill.h"
+#include "functional/cxx_type_traits_polyfill.h"  // std::remove_cvref, polyfill::is_detected
 #include "functional/cxx_functional_polyfill.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "type_traits.h"
@@ -29,10 +29,10 @@ namespace sqlite_orm {
         std::string serialize_order_by(const T&, const Ctx&);
 
         inline void stream_sql_escaped(std::ostream& os, serialize_arg_type str, char char2Escape) {
-            for(size_t offset = 0, next; true; offset = next + 1) {
+            for (size_t offset = 0, next; true; offset = next + 1) {
                 next = str.find(char2Escape, offset);
 
-                if(next == str.npos) SQLITE_ORM_CPP_LIKELY {
+                if (next == str.npos) SQLITE_ORM_CPP_LIKELY {
                     os.write(str.data() + offset, str.size() - offset);
                     break;
                 }
@@ -53,7 +53,7 @@ namespace sqlite_orm {
             // note: In practice, escaping double quotes in identifiers is arguably overkill,
             // but since the SQLite grammar allows it, it's better to be safe than sorry.
 
-            if(!qualifier.empty()) {
+            if (!qualifier.empty()) {
                 ss << quoteChar;
                 stream_sql_escaped(ss, qualifier, quoteChar);
                 ss << qualified;
@@ -63,7 +63,7 @@ namespace sqlite_orm {
                 stream_sql_escaped(ss, identifier, quoteChar);
                 ss << quoteChar;
             }
-            if(!alias.empty()) {
+            if (!alias.empty()) {
                 ss << aliased;
                 stream_sql_escaped(ss, alias, quoteChar);
                 ss << quoteChar;
@@ -158,7 +158,7 @@ namespace sqlite_orm {
             auto& context = std::get<2>(tpl);
 
             iterate_tuple(actions, [&ss, &context, first = true](auto& action) mutable {
-                constexpr std::array<const char*, 2> sep = {" ", ""};
+                static constexpr std::array<const char*, 2> sep = {" ", ""};
                 ss << sep[std::exchange(first, false)] << serialize(action, context);
             });
             return ss;
@@ -173,7 +173,7 @@ namespace sqlite_orm {
             auto& context = std::get<2>(tpl);
 
             iterate_tuple(args, [&ss, &context, first = true](auto& arg) mutable {
-                constexpr std::array<const char*, 2> sep = {", ", ""};
+                static constexpr std::array<const char*, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)] << serialize(arg, context);
             });
             return ss;
@@ -190,7 +190,7 @@ namespace sqlite_orm {
             auto& context = std::get<3>(tpl);
 
             iterate_tuple(args, [&ss, &opString, &context, first = true](auto& arg) mutable {
-                if(!std::exchange(first, false)) {
+                if (!std::exchange(first, false)) {
                     ss << ' ' << opString << ' ';
                 }
                 ss << serialize(arg, context);
@@ -208,7 +208,7 @@ namespace sqlite_orm {
             auto& context = std::get<2>(tpl);
 
             iterate_tuple(args, [&ss, &context, first = true](auto& arg) mutable {
-                constexpr std::array<const char*, 2> sep = {", ", ""};
+                static constexpr std::array<const char*, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)] << serialize_order_by(arg, context);
             });
             return ss;
@@ -222,9 +222,9 @@ namespace sqlite_orm {
             const auto& args = std::get<1>(tpl);
             auto& context = std::get<2>(tpl);
 
-            constexpr std::array<const char*, 2> sep = {", ", ""};
+            static constexpr std::array<const char*, 2> sep = {", ", ""};
             bool first = true;
-            for(auto& argument: args) {
+            for (auto& argument: args) {
                 ss << sep[std::exchange(first, false)] << serialize(argument, context);
             }
             return ss;
@@ -236,8 +236,8 @@ namespace sqlite_orm {
         std::ostream& operator<<(std::ostream& ss, std::tuple<const streaming<stream_as::serialized>&, C> tpl) {
             const auto& strings = std::get<1>(tpl);
 
-            constexpr std::array<const char*, 2> sep = {", ", ""};
-            for(size_t i = 0, first = true; i < strings.size(); ++i) {
+            static constexpr std::array<const char*, 2> sep = {", ", ""};
+            for (size_t i = 0, first = true; i < strings.size(); ++i) {
                 ss << sep[std::exchange(first, false)] << strings[i];
             }
             return ss;
@@ -265,9 +265,9 @@ namespace sqlite_orm {
         std::ostream& operator<<(std::ostream& ss, std::tuple<const streaming<stream_as::identifiers>&, C> tpl) {
             const auto& identifiers = std::get<1>(tpl);
 
-            constexpr std::array<const char*, 2> sep = {", ", ""};
+            static constexpr std::array<const char*, 2> sep = {", ", ""};
             bool first = true;
-            for(auto& identifier: identifiers) {
+            for (auto& identifier: identifiers) {
                 ss << sep[std::exchange(first, false)];
                 stream_identifier(ss, identifier);
             }
@@ -281,18 +281,18 @@ namespace sqlite_orm {
             const size_t& columnsCount = std::get<1>(tpl);
             const ptrdiff_t& valuesCount = std::get<2>(tpl);
 
-            if(!valuesCount || !columnsCount) {
+            if (!valuesCount || !columnsCount) {
                 return ss;
             }
 
             std::string result;
             result.reserve((1 + (columnsCount * 1) + (columnsCount * 2 - 2) + 1) * valuesCount + (valuesCount * 2 - 2));
 
-            constexpr std::array<const char*, 2> sep = {", ", ""};
-            for(ptrdiff_t i = 0, first = true; i < valuesCount; ++i) {
+            static constexpr std::array<const char*, 2> sep = {", ", ""};
+            for (ptrdiff_t i = 0, first = true; i < valuesCount; ++i) {
                 result += sep[std::exchange(first, false)];
                 result += "(";
-                for(size_t i = 0, first = true; i < columnsCount; ++i) {
+                for (size_t i = 0, first = true; i < columnsCount; ++i) {
                     result += sep[std::exchange(first, false)];
                     result += "?";
                 }
@@ -312,7 +312,7 @@ namespace sqlite_orm {
             const std::string& qualifier = std::get<2>(tpl);
 
             table.for_each_column([&ss, &qualifier, first = true](const column_identifier& column) mutable {
-                constexpr std::array<const char*, 2> sep = {", ", ""};
+                static constexpr std::array<const char*, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)];
                 stream_identifier(ss, qualifier, column.name, std::string{});
             });
@@ -328,7 +328,7 @@ namespace sqlite_orm {
 
             table.template for_each_column_excluding<is_generated_always>(
                 [&ss, first = true](const column_identifier& column) mutable {
-                    constexpr std::array<const char*, 2> sep = {", ", ""};
+                    static constexpr std::array<const char*, 2> sep = {", ", ""};
                     ss << sep[std::exchange(first, false)];
                     stream_identifier(ss, column.name);
                 });
@@ -350,11 +350,11 @@ namespace sqlite_orm {
 
             table.template for_each_column_excluding<check_if_excluded>(call_as_template_base<column_field>(
                 [&ss, &excluded, &context, &object, first = true](auto& column) mutable {
-                    if(excluded(column)) {
+                    if (excluded(column)) {
                         return;
                     }
 
-                    constexpr std::array<const char*, 2> sep = {", ", ""};
+                    static constexpr std::array<const char*, 2> sep = {", ", ""};
                     ss << sep[std::exchange(first, false)]
                        << serialize(polyfill::invoke(column.member_pointer, object), context);
                 }));
@@ -371,11 +371,11 @@ namespace sqlite_orm {
 
             iterate_tuple(columns, [&ss, &context, first = true](auto& colRef) mutable {
                 const std::string* columnName = find_column_name(context.db_objects, colRef);
-                if(!columnName) {
+                if (!columnName) {
                     throw std::system_error{orm_error_code::column_not_found};
                 }
 
-                constexpr std::array<const char*, 2> sep = {", ", ""};
+                static constexpr std::array<const char*, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)];
                 stream_identifier(ss, *columnName);
             });
@@ -413,12 +413,12 @@ namespace sqlite_orm {
                 ss << ' ' << serialize(constraint, context);
             });
             // add implicit null constraint
-            if(!context.fts5_columns) {
+            if (!context.fts5_columns) {
                 constexpr bool hasExplicitNullableConstraint =
                     mpl::invoke_t<mpl::disjunction<check_if_has_type<null_t>, check_if_has_type<not_null_t>>,
                                   constraints_tuple>::value;
-                if SQLITE_ORM_CONSTEXPR_IF(!hasExplicitNullableConstraint) {
-                    if(isNotNull) {
+                if SQLITE_ORM_CONSTEXPR_IF (!hasExplicitNullableConstraint) {
+                    if (isNotNull) {
                         ss << " NOT NULL";
                     } else {
                         ss << " NULL";

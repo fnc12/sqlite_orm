@@ -48,7 +48,7 @@ TEST_CASE("Glob") {
     }
 
     auto expectIds = [](const std::vector<Employee>& employees, const std::vector<decltype(Employee::id)> ids) {
-        for(auto expectedId: ids) {
+        for (auto expectedId: ids) {
             REQUIRE(find_if(employees.begin(), employees.end(), [expectedId](auto& employee) {
                         return employee.id == expectedId;
                     }) != employees.end());

@@ -28,16 +28,16 @@ namespace sqlite_orm {
         std::vector<std::string>& collect_table_column_names(std::vector<std::string>& collectedExpressions,
                                                              bool definedOrder,
                                                              const Ctx& context) {
-            if(definedOrder) {
+            if (definedOrder) {
                 auto& table = pick_table<mapped_type_proxy_t<T>>(context.db_objects);
                 collectedExpressions.reserve(collectedExpressions.size() + table.template count_of<is_column>());
                 table.for_each_column([qualified = !context.skip_table_name,
                                        &tableName = table.name,
                                        &collectedExpressions](const column_identifier& column) {
-                    if(is_alias<T>::value) {
+                    if (is_alias<T>::value) {
                         collectedExpressions.push_back(quote_identifier(alias_extractor<T>::extract()) + "." +
                                                        quote_identifier(column.name));
-                    } else if(qualified) {
+                    } else if (qualified) {
                         collectedExpressions.push_back(quote_identifier(tableName) + "." +
                                                        quote_identifier(column.name));
                     } else {
@@ -46,9 +46,9 @@ namespace sqlite_orm {
                 });
             } else {
                 collectedExpressions.reserve(collectedExpressions.size() + 1);
-                if(is_alias<T>::value) {
+                if (is_alias<T>::value) {
                     collectedExpressions.push_back(quote_identifier(alias_extractor<T>::extract()) + ".*");
-                } else if(!context.skip_table_name) {
+                } else if (!context.skip_table_name) {
                     const basic_table& table = pick_table<mapped_type_proxy_t<T>>(context.db_objects);
                     collectedExpressions.push_back(quote_identifier(table.name) + ".*");
                 } else {
@@ -68,7 +68,7 @@ namespace sqlite_orm {
             template<class E, class Ctx>
             std::vector<std::string>& operator()(const E& t, const Ctx& context) {
                 auto columnExpression = serialize(t, context);
-                if(columnExpression.empty()) {
+                if (columnExpression.empty()) {
                     throw std::system_error{orm_error_code::column_not_found};
                 }
                 this->collectedExpressions.reserve(this->collectedExpressions.size() + 1);
@@ -98,8 +98,8 @@ namespace sqlite_orm {
                     (*this)(colExpr, context);
                 });
                 // note: `capacity() > size()` can occur in case `asterisk_t<>` does spell out the columns in defined order
-                if(tuple_has_template<typename columns_t<Args...>::columns_type, asterisk_t>::value &&
-                   this->collectedExpressions.capacity() > this->collectedExpressions.size()) {
+                if (tuple_has_template<typename columns_t<Args...>::columns_type, asterisk_t>::value &&
+                    this->collectedExpressions.capacity() > this->collectedExpressions.size()) {
                     this->collectedExpressions.shrink_to_fit();
                 }
                 return this->collectedExpressions;
@@ -112,8 +112,8 @@ namespace sqlite_orm {
                     (*this)(colExpr, context);
                 });
                 // note: `capacity() > size()` can occur in case `asterisk_t<>` does spell out the columns in defined order
-                if(tuple_has_template<typename struct_t<T, Args...>::columns_type, asterisk_t>::value &&
-                   this->collectedExpressions.capacity() > this->collectedExpressions.size()) {
+                if (tuple_has_template<typename struct_t<T, Args...>::columns_type, asterisk_t>::value &&
+                    this->collectedExpressions.capacity() > this->collectedExpressions.size()) {
                     this->collectedExpressions.shrink_to_fit();
                 }
                 return this->collectedExpressions;

@@ -71,9 +71,9 @@ void all_employees() {
 
     //  now let's select id, name and salary..
     auto idsNamesSalarys = storage.select(columns(&Employee::id, &Employee::name, &Employee::salary));
-    for(auto& row: idsNamesSalarys) {  //  row's type is `tuple<int, string, unique_ptr<double>>`
+    for (auto& row: idsNamesSalarys) {  //  row's type is `tuple<int, string, unique_ptr<double>>`
         cout << "id = " << get<0>(row) << ", name = " << get<1>(row) << ", salary = ";
-        if(get<2>(row)) {
+        if (get<2>(row)) {
             cout << *get<2>(row);
         } else {
             cout << "null";
@@ -85,16 +85,16 @@ void all_employees() {
 
     auto allEmployeeTuples = storage.select(asterisk<Employee>());
     cout << "allEmployeeTuples count = " << allEmployeeTuples.size() << endl;
-    for(auto& row: allEmployeeTuples) {  //  row's type is std::tuple<int, string, int, std::unique_ptr<string>,
+    for (auto& row: allEmployeeTuples) {  //  row's type is std::tuple<int, string, int, std::unique_ptr<string>,
         //  std::unique_ptr<double>>
         cout << get<0>(row) << '\t' << get<1>(row) << '\t' << get<2>(row) << '\t';
-        if(auto& value = get<3>(row)) {
+        if (auto& value = get<3>(row)) {
             cout << *value;
         } else {
             cout << "null";
         }
         cout << '\t';
-        if(auto& value = get<4>(row)) {
+        if (auto& value = get<4>(row)) {
             cout << *value;
         } else {
             cout << "null";
@@ -106,15 +106,15 @@ void all_employees() {
 
     auto allEmployeeObjects = storage.select(object<Employee>());
     cout << "allEmployeeObjects count = " << allEmployeeObjects.size() << endl;
-    for(auto& employee: allEmployeeObjects) {
+    for (auto& employee: allEmployeeObjects) {
         cout << employee.id << '\t' << employee.name << '\t' << employee.age << '\t';
-        if(auto& value = employee.address) {
+        if (auto& value = employee.address) {
             cout << *value;
         } else {
             cout << "null";
         }
         cout << '\t';
-        if(auto& value = employee.salary) {
+        if (auto& value = employee.salary) {
             cout << *value;
         } else {
             cout << "null";
@@ -156,8 +156,8 @@ void all_artists() {
 
     cout << "artists.*, albums.*\n";
     // row's type is `std::tuple<int, std::string, id, int>`
-    for(auto& row: storage.select(columns(asterisk<Artist>(), asterisk<Album>()),
-                                  join<Album>(on(c(&Album::artist_id) == &Artist::id)))) {
+    for (auto& row: storage.select(columns(asterisk<Artist>(), asterisk<Album>()),
+                                   join<Album>(on(c(&Album::artist_id) == &Artist::id)))) {
         cout << get<0>(row) << '\t' << get<1>(row) << '\t' << get<2>(row) << '\t' << get<3>(row) << '\n';
     }
     cout << endl;
@@ -203,7 +203,7 @@ void named_adhoc_structs() {
 
     cout << "albums.name, artists.name\n";
     // row's type is Z
-    for(auto& row: storage.select(z_struct, join<Album>(on(c(&Album::artist_id) == &Artist::id)))) {
+    for (auto& row: storage.select(z_struct, join<Album>(on(c(&Album::artist_id) == &Artist::id)))) {
         cout << row.album_name << '\t' << row.artist_name << '\n';
     }
     cout << endl;
@@ -216,7 +216,7 @@ int main() {
         all_employees();
         all_artists();
         named_adhoc_structs();
-    } catch(const std::system_error& e) {
+    } catch (const std::system_error& e) {
         cout << "[" << e.code() << "] " << e.what();
     }
 #endif

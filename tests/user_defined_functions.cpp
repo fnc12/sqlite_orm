@@ -132,9 +132,9 @@ struct FirstFunction {
         ++staticCallsCount;
         std::string res;
         res.reserve(args.size());
-        for(auto value: args) {
+        for (auto value: args) {
             auto stringValue = value.get<std::string>();
-            if(!stringValue.empty()) {
+            if (!stringValue.empty()) {
                 res += stringValue.front();
             }
         }
@@ -168,8 +168,8 @@ struct MultiSum {
     }
 
     void step(const arg_values& args) {
-        for(auto it = args.begin(); it != args.end(); ++it) {
-            if(!it->empty() && (it->is_integer() || it->is_float())) {
+        for (auto it = args.begin(); it != args.end(); ++it) {
+            if (!it->empty() && (it->is_integer() || it->is_float())) {
                 this->sum += it->get<double>();
             }
         }

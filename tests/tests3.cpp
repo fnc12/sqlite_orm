@@ -31,7 +31,7 @@ TEST_CASE("Multi order by") {
         auto expectedIds = {1, 2, 3, 5, 6, 4};
         REQUIRE(expectedIds.size() == singers.size());
         auto it = expectedIds.begin();
-        for(size_t i = 0; i < singers.size(); ++i) {
+        for (size_t i = 0; i < singers.size(); ++i) {
             REQUIRE(*it == singers[i].id);
             ++it;
         }
@@ -42,7 +42,7 @@ TEST_CASE("Multi order by") {
         auto singers = storage.get_all<Singer>(order_by(&Singer::id).asc());
         auto singers2 = storage.get_all<Singer>(multi_order_by(order_by(&Singer::id).asc()));
         REQUIRE(singers.size() == singers2.size());
-        for(size_t i = 0; i < singers.size(); ++i) {
+        for (size_t i = 0; i < singers.size(); ++i) {
             REQUIRE(singers[i].id == singers2[i].id);
         }
     }
@@ -115,7 +115,7 @@ TEST_CASE("Wide string") {
         L"АаБбВвГгДдЕеЁёЖжЗзИиЙйКкЛлМмНнОоППРрСсТтУуФфХхЦцЧчШшЩщЪъЫыЬьЭэЮюЯя",  //  russian
         L"AaBbCcÇçDdEeFFGgĞğHhIıİiJjKkLlMmNnOoÖöPpRrSsŞşTtUuÜüVvYyZz",  //  turkish
     };
-    for(auto& expectedString: expectedStrings) {
+    for (auto& expectedString: expectedStrings) {
         auto id = storage.insert(Alphabet{0, expectedString});
         REQUIRE(storage.get<Alphabet>(id).letters == expectedString);
     }
@@ -285,8 +285,8 @@ TEST_CASE("Blob") {
 
     auto generateData = [](size_t size) -> byte* {
         auto data = (byte*)::malloc(size * sizeof(byte));
-        for(int i = 0; i < static_cast<int>(size); ++i) {
-            if((i + 1) % 10 == 0) {
+        for (int i = 0; i < static_cast<int>(size); ++i) {
+            if ((i + 1) % 10 == 0) {
                 data[i] = 0;
             } else {
                 data[i] = static_cast<byte>((rand() % 100) + 1);

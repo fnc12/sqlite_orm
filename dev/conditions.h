@@ -963,7 +963,7 @@ namespace sqlite_orm {
     }
 
     template<class F, class O>
-    internal::using_t<O, F O::*> using_(F O::*field) {
+    internal::using_t<O, F O::*> using_(F O::* field) {
         return {field};
     }
     template<class T, class M>

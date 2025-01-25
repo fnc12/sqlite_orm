@@ -63,7 +63,7 @@ namespace sqlite_orm {
 
             iterator& operator++() {
                 ++this->index;
-                if(this->index < int(this->container.size())) {
+                if (this->index < int(this->container.size())) {
                     this->currentValue = this->container[this->index];
                 } else {
                     this->currentValue = {};
@@ -74,7 +74,7 @@ namespace sqlite_orm {
             iterator operator++(int) {
                 auto res = *this;
                 ++this->index;
-                if(this->index < int(this->container.size())) {
+                if (this->index < int(this->container.size())) {
                     this->currentValue = this->container[this->index];
                 } else {
                     this->currentValue = {};
@@ -83,7 +83,7 @@ namespace sqlite_orm {
             }
 
             arg_value operator*() const {
-                if(this->index < int(this->container.size()) && this->index >= 0) {
+                if (this->index < int(this->container.size()) && this->index >= 0) {
                     return this->currentValue;
                 } else {
                     throw std::system_error{orm_error_code::index_is_out_of_bounds};
@@ -121,7 +121,7 @@ namespace sqlite_orm {
         }
 
         arg_value operator[](int index) const {
-            if(index < this->argsCount && index >= 0) {
+            if (index < this->argsCount && index >= 0) {
                 sqlite3_value* value = this->values[index];
                 return {value};
             } else {

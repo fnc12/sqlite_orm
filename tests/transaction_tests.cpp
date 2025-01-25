@@ -337,7 +337,7 @@ TEST_CASE("Transaction guard") {
         storage2.get_all<Object>();
 
         alignas(internal::transaction_guard_t) char buffer[sizeof(internal::transaction_guard_t)];
-        auto guard = new(&buffer) internal::transaction_guard_t{storage.transaction_guard()};
+        auto guard = new (&buffer) internal::transaction_guard_t{storage.transaction_guard()};
         storage.insert<Object>({});
         guard->commit_on_destroy = true;
         REQUIRE_THROWS_WITH(guard->~transaction_guard_t(), ContainsSubstring("database is locked"));

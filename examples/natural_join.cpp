@@ -74,7 +74,7 @@ int main() {
             natural_join<Visit>(),
             where(c(&Doctor::degree) == "MD"));
         cout << "rows count = " << rows.size() << endl;
-        for(auto& row: rows) {
+        for (auto& row: rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row)
                  << '\t' << std::get<4>(row) << endl;
         }
@@ -96,7 +96,7 @@ int main() {
                                    natural_join<Visit>(),
                                    where(c(&Doctor::degree) == "MD"));
         cout << "rows count = " << rows.size() << endl;
-        for(auto& row: rows) {
+        for (auto& row: rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row)
                  << '\t' << std::get<4>(row) << '\t' << std::get<5>(row) << endl;
         }

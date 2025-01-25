@@ -4,10 +4,12 @@
  */
 #pragma once
 
-#include <type_traits>  //  std::decay_t
+#include <type_traits>  //  std::remove_reference
 #include <utility>  //  std::move
 #include <algorithm>  //  std::find_if, std::ranges::find
 
+#include "../tuple_helper/tuple_filter.h"
+#include "../type_traits.h"
 #include "../type_printer.h"
 #include "../schema/column.h"
 #include "../schema/table.h"
@@ -20,9 +22,9 @@ namespace sqlite_orm {
             std::vector<table_xinfo> res;
             res.reserve(filter_tuple_sequence_t<elements_type, is_column>::size());
             this->for_each_column([&res](auto& column) {
-                using field_type = field_type_t<std::decay_t<decltype(column)>>;
+                using field_type = field_type_t<std::remove_reference_t<decltype(column)>>;
                 std::string dft;
-                if(auto d = column.default_value()) {
+                if (auto d = column.default_value()) {
                     dft = std::move(*d);
                 }
                 using constraints_tuple = decltype(column.constraints);
@@ -41,7 +43,7 @@ namespace sqlite_orm {
                                  column.template is<is_generated_always>());
             });
             auto compositeKeyColumnNames = this->composite_key_columns_names();
-            for(size_t i = 0; i < compositeKeyColumnNames.size(); ++i) {
+            for (size_t i = 0; i < compositeKeyColumnNames.size(); ++i) {
                 const std::string& columnName = compositeKeyColumnNames[i];
 #if __cpp_lib_ranges >= 201911L
                 auto it = std::ranges::find(res, columnName, &table_xinfo::name);
@@ -50,7 +52,7 @@ namespace sqlite_orm {
                     return ti.name == columnName;
                 });
 #endif
-                if(it != res.end()) {
+                if (it != res.end()) {
                     it->pk = static_cast<int>(i + 1);
                 }
             }

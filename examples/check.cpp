@@ -54,20 +54,20 @@ int main() {
 
     try {
         storage.insert(Contact{0, "John", "Doe", {}, "408123456"});
-    } catch(const std::system_error& e) {
+    } catch (const std::system_error& e) {
         cout << e.what() << endl;
     }
     storage.insert(Contact{0, "John", "Doe", {}, "(408)-123-456"});
 
     try {
         storage.insert(Product{0, "New Product", 900, 1000});
-    } catch(const std::system_error& e) {
+    } catch (const std::system_error& e) {
         cout << e.what() << endl;
     }
 
     try {
         storage.insert(Product{0, "New XFactor", 1000, -10});
-    } catch(const std::system_error& e) {
+    } catch (const std::system_error& e) {
         cout << e.what() << endl;
     }
 
