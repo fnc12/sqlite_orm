@@ -48,7 +48,7 @@ int main() {
     storage.replace(Product{5, "Bandage", 70, 120.00f});
 
     cout << "Products:" << endl;
-    for(auto& product: storage.iterate<Product>()) {
+    for (auto& product: storage.iterate<Product>()) {
         cout << storage.dump(product) << endl;
     }
     cout << endl;
@@ -58,7 +58,7 @@ int main() {
     storage.update_all(set(c(&Product::quantity) = 5), where(c(&Product::id) == 1));
 
     cout << "Products after update:" << endl;
-    for(auto& product: storage.iterate<Product>()) {
+    for (auto& product: storage.iterate<Product>()) {
         cout << storage.dump(product) << endl;
     }
     cout << endl;

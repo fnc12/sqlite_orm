@@ -37,16 +37,16 @@ namespace sqlite_orm {
             std::ranges::transform(string, string.begin(), [](unsigned char c) noexcept {
                 return std::toupper(c);
             });
-            if(auto found = std::ranges::find(lockingModes, string, locking_mode_to_string);
-               found != lockingModes.end()) SQLITE_ORM_CPP_LIKELY {
+            if (auto found = std::ranges::find(lockingModes, string, locking_mode_to_string);
+                found != lockingModes.end()) SQLITE_ORM_CPP_LIKELY {
                 return {true, *found};
             }
 #else
             std::transform(string.begin(), string.end(), string.begin(), [](unsigned char c) noexcept {
                 return std::toupper(c);
             });
-            for(auto lockingMode: lockingModes) {
-                if(locking_mode_to_string(lockingMode) == string) {
+            for (auto lockingMode: lockingModes) {
+                if (locking_mode_to_string(lockingMode) == string) {
                     return {true, lockingMode};
                 }
             }

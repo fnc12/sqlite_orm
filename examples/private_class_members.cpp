@@ -81,7 +81,7 @@ int main(int, char**) {
     auto somePlayers = storage.get_all<Player>(where(less_than(length(&Player::getName), 5)));
     cout << "players with length(name) < 5 = " << somePlayers.size() << endl;
     assert(somePlayers.size() == 1);
-    for(auto& player: somePlayers) {
+    for (auto& player: somePlayers) {
         cout << storage.dump(player) << endl;
     }
 }

@@ -36,9 +36,7 @@ namespace PreparedStatementTests {
         UserAndVisit() = default;
         UserAndVisit(decltype(UserAndVisit::userId) userId,
                      decltype(UserAndVisit::visitId) visitId,
-                     std::string description) :
-            userId{userId},
-            visitId{visitId}, description{std::move(description)} {}
+                     std::string description) : userId{userId}, visitId{visitId}, description{std::move(description)} {}
 #endif
     };
 

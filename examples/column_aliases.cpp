@@ -53,7 +53,7 @@ void marvel_hero_ordered_by_o_pos() {
         auto rows = storage.select(columns(&MarvelHero::name, as<colalias_i>(instr(&MarvelHero::abilities, "o"))),
                                    where(greater_than(get<colalias_i>(), 0)),
                                    order_by(get<colalias_i>()));
-        for(auto& row: rows) {
+        for (auto& row: rows) {
             cout << get<0>(row) << '\t' << get<1>(row) << '\n';
         }
     }
@@ -68,7 +68,7 @@ void marvel_hero_ordered_by_o_pos() {
         auto rows = storage.select(columns(&MarvelHero::name, as<i>(instr(&MarvelHero::abilities, "o"))),
                                    where(i > 0),
                                    order_by(i));
-        for(auto& row: rows) {
+        for (auto& row: rows) {
             cout << get<0>(row) << '\t' << get<1>(row) << '\n';
         }
     }
@@ -79,7 +79,7 @@ void marvel_hero_ordered_by_o_pos() {
         //  FROM marvel
         //  ORDER BY 2
         auto rows = storage.select(columns(&MarvelHero::name, instr(&MarvelHero::abilities, "o")), order_by(2));
-        for(auto& row: rows) {
+        for (auto& row: rows) {
             cout << get<0>(row) << '\t' << get<1>(row) << '\n';
         }
     }
@@ -114,7 +114,7 @@ int main() {
     try {
         marvel_hero_ordered_by_o_pos();
         cpp20_column_pointer();
-    } catch(const system_error& e) {
+    } catch (const system_error& e) {
         cout << "[" << e.code() << "] " << e.what();
     }
 

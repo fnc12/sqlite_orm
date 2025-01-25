@@ -237,7 +237,7 @@ namespace sqlite_orm {
         using unqualified_type = std::remove_cv_t<typename V::element_type>;
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
-            if(value) {
+            if (value) {
                 return statement_binder<unqualified_type>().bind(stmt, index, *value);
             } else {
                 return statement_binder<nullptr_t>().bind(stmt, index, nullptr);
@@ -251,7 +251,7 @@ namespace sqlite_orm {
     template<>
     struct statement_binder<std::vector<char>, void> {
         int bind(sqlite3_stmt* stmt, int index, const std::vector<char>& value) const {
-            if(!value.empty()) {
+            if (!value.empty()) {
                 return sqlite3_bind_blob(stmt, index, (const void*)&value.front(), int(value.size()), SQLITE_TRANSIENT);
             } else {
                 return sqlite3_bind_blob(stmt, index, "", 0, SQLITE_TRANSIENT);
@@ -259,7 +259,7 @@ namespace sqlite_orm {
         }
 
         void result(sqlite3_context* context, const std::vector<char>& value) const {
-            if(!value.empty()) {
+            if (!value.empty()) {
                 sqlite3_result_blob(context, (const void*)&value.front(), int(value.size()), nullptr);
             } else {
                 sqlite3_result_blob(context, "", 0, nullptr);
@@ -275,7 +275,7 @@ namespace sqlite_orm {
         using unqualified_type = std::remove_cv_t<typename V::value_type>;
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
-            if(value) {
+            if (value) {
                 return statement_binder<unqualified_type>().bind(stmt, index, *value);
             } else {
                 return statement_binder<std::nullopt_t>().bind(stmt, index, std::nullopt);
@@ -295,7 +295,7 @@ namespace sqlite_orm {
             template<class T, satisfies<is_bindable, T> = true>
             void operator()(const T& t) {
                 int rc = statement_binder<T>{}.bind(this->stmt, this->index++, t);
-                if(SQLITE_OK != rc) {
+                if (SQLITE_OK != rc) {
                     throw_translated_sqlite_error(this->stmt);
                 }
             }
@@ -313,7 +313,7 @@ namespace sqlite_orm {
 
             template<class T>
             void operator()(const T* value) {
-                if(!value) {
+                if (!value) {
                     throw std::system_error{orm_error_code::value_is_null};
                 }
                 (*this)(*value);
@@ -349,14 +349,14 @@ namespace sqlite_orm {
             template<class T>
             void bind(const T& t, size_t idx) const {
                 int rc = statement_binder<T>{}.bind(this->stmt, int(idx + 1), t);
-                if(SQLITE_OK != rc) {
+                if (SQLITE_OK != rc) {
                     throw_translated_sqlite_error(this->stmt);
                 }
             }
 
             template<class T>
             void bind(const T* value, size_t idx) const {
-                if(!value) {
+                if (!value) {
                     throw std::system_error{orm_error_code::value_is_null};
                 }
                 (*this)(*value, idx);

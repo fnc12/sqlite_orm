@@ -21,9 +21,9 @@ using std::endl;
 struct SignFunction {
 
     double operator()(double arg) const {
-        if(arg > 0) {
+        if (arg > 0) {
             return 1;
-        } else if(arg < 0) {
+        } else if (arg < 0) {
             return -1;
         } else {
             return 0;
@@ -51,7 +51,7 @@ struct AcceleratedSumFunction {
     std::vector<int> list;
 
     void step(int value) {
-        if(!this->list.empty()) {
+        if (!this->list.empty()) {
             auto nextValue = list.back() + value;
             this->list.push_back(nextValue);
         } else {
@@ -62,9 +62,9 @@ struct AcceleratedSumFunction {
     std::string fin() const {
         std::stringstream ss;
         ss << "(";
-        for(size_t i = 0; i < this->list.size(); ++i) {
+        for (size_t i = 0; i < this->list.size(); ++i) {
             ss << this->list[i];
-            if(i < (this->list.size() - 1)) {
+            if (i < (this->list.size() - 1)) {
                 ss << ", ";
             }
         }
@@ -93,14 +93,14 @@ struct ArithmeticMeanFunction {
 
     double operator()(const arg_values& args) const {
         double result = 0;
-        for(auto arg_value: args) {
-            if(arg_value.is_float()) {
+        for (auto arg_value: args) {
+            if (arg_value.is_float()) {
                 result += arg_value.get<double>();
-            } else if(arg_value.is_integer()) {
+            } else if (arg_value.is_integer()) {
                 result += arg_value.get<int>();
             }
         }
-        if(!args.empty()) {
+        if (!args.empty()) {
             result /= double(args.size());
         }
         return result;
@@ -156,7 +156,7 @@ int main() {
     auto aSumRows =
         storage.select(columns(accelerated_sum(&Table::a), accelerated_sum(&Table::b), accelerated_sum(&Table::c)));
     cout << "SELECT ASUM(a), ASUM(b), ASUM(c) FROM t:" << endl;
-    for(auto& row: aSumRows) {
+    for (auto& row: aSumRows) {
         cout << '\t' << get<0>(row) << endl;
         cout << '\t' << get<1>(row) << endl;
         cout << '\t' << get<2>(row) << endl;
@@ -199,7 +199,7 @@ int main() {
                                            func<AcceleratedSumFunction>(&Table::b),
                                            func<AcceleratedSumFunction>(&Table::c)));
     cout << "SELECT ASUM(a), ASUM(b), ASUM(c) FROM t:" << endl;
-    for(auto& row: aSumRows) {
+    for (auto& row: aSumRows) {
         cout << '\t' << get<0>(row) << endl;
         cout << '\t' << get<1>(row) << endl;
         cout << '\t' << get<2>(row) << endl;

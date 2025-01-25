@@ -126,7 +126,7 @@ namespace sqlite_orm {
     template<typename P>
     struct note_value_fn {
         P operator()(P&& value, carray_pointer_arg<P> pv) const {
-            if(P* observer = pv) {
+            if (P* observer = pv) {
                 *observer = value;
             }
             return std::move(value);

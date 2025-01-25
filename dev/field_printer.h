@@ -99,7 +99,7 @@ namespace sqlite_orm {
         std::string operator()(const std::vector<char>& t) const {
             std::stringstream ss;
             ss << std::hex;
-            for(auto c: t) {
+            for (auto c: t) {
                 ss << c;
             }
             return ss.str();
@@ -139,7 +139,7 @@ namespace sqlite_orm {
         using unqualified_type = std::remove_cv_t<typename T::element_type>;
 
         std::string operator()(const T& t) const {
-            if(t) {
+            if (t) {
                 return field_printer<unqualified_type>()(*t);
             } else {
                 return field_printer<nullptr_t>{}(nullptr);
@@ -156,7 +156,7 @@ namespace sqlite_orm {
         using unqualified_type = std::remove_cv_t<typename T::value_type>;
 
         std::string operator()(const T& t) const {
-            if(t.has_value()) {
+            if (t.has_value()) {
                 return field_printer<unqualified_type>()(*t);
             } else {
                 return field_printer<std::nullopt_t>{}(std::nullopt);

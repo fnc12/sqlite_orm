@@ -117,7 +117,7 @@ namespace sqlite_orm {
          *  it doesn't check so explicitly, but a compiler error will occur.
          */
         template<typename D, typename P>
-            requires(!integral_fp_c<D>)
+            requires (!integral_fp_c<D>)
         void xdestroy_proxy(void* p) noexcept {
             // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>
             auto o = (P*)p;
@@ -182,7 +182,7 @@ namespace sqlite_orm {
      */
     template<typename P, typename D>
     constexpr xdestroy_fn_t obtain_xdestroy_for(D, P* = nullptr) noexcept
-        requires(internal::is_unusable_for_xdestroy<D>)
+        requires (internal::is_unusable_for_xdestroy<D>)
     {
         static_assert(polyfill::always_false_v<D>,
                       "A function pointer, which is not of type xdestroy_fn_t, is prohibited.");
@@ -203,7 +203,7 @@ namespace sqlite_orm {
      */
     template<typename P, typename D>
     constexpr xdestroy_fn_t obtain_xdestroy_for(D, P* = nullptr) noexcept
-        requires(internal::needs_xdestroy_proxy<D, P>)
+        requires (internal::needs_xdestroy_proxy<D, P>)
     {
         return internal::xdestroy_proxy<D, P>;
     }
@@ -224,7 +224,7 @@ namespace sqlite_orm {
      */
     template<typename P, typename D>
     constexpr xdestroy_fn_t obtain_xdestroy_for(D d, P* = nullptr) noexcept
-        requires(internal::yields_xdestroy<D>)
+        requires (internal::yields_xdestroy<D>)
     {
         return d;
     }

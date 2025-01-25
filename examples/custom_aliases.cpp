@@ -96,7 +96,7 @@ int main(int, char** argv) {
 
     cout << "ID" << '\t' << "NAME" << '\t' << "AGE" << '\t' << "DEPT" << endl;
     cout << "----------" << '\t' << "----------" << '\t' << "----------" << '\t' << "----------" << endl;
-    for(auto& row: simpleRows) {
+    for (auto& row: simpleRows) {
         cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row)
              << endl;
     }

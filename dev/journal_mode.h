@@ -63,16 +63,16 @@ namespace sqlite_orm {
             std::ranges::transform(string, string.begin(), [](unsigned char c) noexcept {
                 return std::toupper(c);
             });
-            if(auto found = std::ranges::find(journalModes, string, journal_mode_to_string);
-               found != journalModes.end()) SQLITE_ORM_CPP_LIKELY {
+            if (auto found = std::ranges::find(journalModes, string, journal_mode_to_string);
+                found != journalModes.end()) SQLITE_ORM_CPP_LIKELY {
                 return {true, *found};
             }
 #else
             std::transform(string.begin(), string.end(), string.begin(), [](unsigned char c) noexcept {
                 return std::toupper(c);
             });
-            for(auto journalMode: journalModes) {
-                if(journal_mode_to_string(journalMode) == string) {
+            for (auto journalMode: journalModes) {
+                if (journal_mode_to_string(journalMode) == string) {
                     return {true, journalMode};
                 }
             }

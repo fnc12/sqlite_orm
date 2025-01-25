@@ -28,7 +28,7 @@ namespace sqlite_orm {
     struct row_extractor<std::any> {
         std::any extract(sqlite3_stmt* stmt, int columnIndex) const {
             const int type = sqlite3_column_type(stmt, columnIndex);
-            switch(type) {
+            switch (type) {
                 case SQLITE_NULL:
                     return std::nullopt;
                 case SQLITE_INTEGER:
@@ -52,7 +52,7 @@ namespace sqlite_orm {
 
         std::any extract(sqlite3_value* value) const {
             const int type = sqlite3_value_type(value);
-            switch(type) {
+            switch (type) {
                 case SQLITE_NULL:
                     return std::nullopt;
                 case SQLITE_INTEGER:
@@ -78,18 +78,18 @@ namespace sqlite_orm {
     template<>
     struct statement_binder<std::any> {
         int bind(sqlite3_stmt* stmt, int index, const std::any& value) const {
-            if(!value.has_value()) {
+            if (!value.has_value()) {
                 return sqlite3_bind_null(stmt, index);
             }
 
-            if(value.type() == typeid(int)) {
+            if (value.type() == typeid(int)) {
                 return sqlite3_bind_int(stmt, index, std::any_cast<int>(value));
-            } else if(value.type() == typeid(double)) {
+            } else if (value.type() == typeid(double)) {
                 return sqlite3_bind_double(stmt, index, std::any_cast<double>(value));
-            } else if(value.type() == typeid(std::string)) {
+            } else if (value.type() == typeid(std::string)) {
                 const auto& text = std::any_cast<std::string>(value);
                 return sqlite3_bind_text(stmt, index, text.c_str(), static_cast<int>(text.size()), SQLITE_TRANSIENT);
-            } else if(value.type() == typeid(std::vector<char>)) {
+            } else if (value.type() == typeid(std::vector<char>)) {
                 const auto& blob = std::any_cast<std::vector<char>>(value);
                 return sqlite3_bind_blob(stmt, index, blob.data(), static_cast<int>(blob.size()), SQLITE_TRANSIENT);
             }
@@ -104,21 +104,21 @@ namespace sqlite_orm {
     template<>
     struct field_printer<std::any> {
         std::string operator()(const std::any& value) const {
-            if(!value.has_value()) {
+            if (!value.has_value()) {
                 return "NULL";
             }
 
-            if(value.type() == typeid(int)) {
+            if (value.type() == typeid(int)) {
                 return std::to_string(std::any_cast<int>(value));
-            } else if(value.type() == typeid(double)) {
+            } else if (value.type() == typeid(double)) {
                 return std::to_string(std::any_cast<double>(value));
-            } else if(value.type() == typeid(std::string)) {
+            } else if (value.type() == typeid(std::string)) {
                 return std::any_cast<std::string>(value);
-            } else if(value.type() == typeid(std::vector<char>)) {
+            } else if (value.type() == typeid(std::vector<char>)) {
                 const auto& blob = std::any_cast<std::vector<char>>(value);
                 std::ostringstream oss;
                 oss << "0x";
-                for(unsigned char c: blob) {
+                for (unsigned char c: blob) {
                     oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(c);
                 }
                 return oss.str();
@@ -147,7 +147,7 @@ int main() {
         Value{4, std::any{std::vector<char>{'H', 'e', 'l', 'l', 'o', ',', ' ', 'w', 'o', 'r', 'l', 'd', '!'}}});
 
     cout << "Test:" << endl;
-    for(auto& test: storage.iterate<Value>()) {
+    for (auto& test: storage.iterate<Value>()) {
         cout << storage.dump(test) << endl;
     }
     cout << endl;

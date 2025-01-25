@@ -32,7 +32,7 @@ namespace sqlite_orm {
             auto& res = *(std::vector<std::string>*)data;
             res.reserve(argc);
             const auto rowExtractor = column_text_extractor<std::string>();
-            for(int i = 0; i < argc; ++i) {
+            for (int i = 0; i < argc; ++i) {
                 auto rowString = rowExtractor.extract(argv[i]);
                 res.push_back(std::move(rowString));
             }
@@ -165,7 +165,7 @@ namespace sqlite_orm {
                     ss.str(),
                     [](void* data, int argc, char** argv, char**) -> int {
                         auto& res = *(std::vector<sqlite_orm::table_xinfo>*)data;
-                        if(argc) {
+                        if (argc) {
                             auto index = 0;
                             auto cid = atoi(argv[index++]);
                             std::string name = argv[index++];
@@ -202,7 +202,7 @@ namespace sqlite_orm {
                     ss.str(),
                     [](void* data, int argc, char** argv, char**) -> int {
                         auto& res = *(std::vector<sqlite_orm::table_info>*)data;
-                        if(argc) {
+                        if (argc) {
                             auto index = 0;
                             auto cid = atoi(argv[index++]);
                             std::string name = argv[index++];
@@ -259,7 +259,7 @@ namespace sqlite_orm {
 
             void set_pragma_impl(const std::string& query, sqlite3* db = nullptr) {
                 auto con = this->get_connection();
-                if(db == nullptr) {
+                if (db == nullptr) {
                     db = con.get();
                 }
                 perform_void_exec(db, query);
