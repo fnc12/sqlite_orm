@@ -21,8 +21,8 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        template<class T, class C>
-        auto serialize(const T& t, const C& context);
+        template<class T, class Ctx>
+        auto serialize(const T& t, const Ctx& context);
 
         template<class T, class Ctx>
         std::vector<std::string>& collect_table_column_names(std::vector<std::string>& collectedExpressions,
@@ -123,9 +123,9 @@ namespace sqlite_orm {
         };
 
         template<class T, class Ctx>
-        std::vector<std::string> get_column_names(const T& t, const Ctx& context) {
+        std::vector<std::string> get_column_names(const T& expression, const Ctx& context) {
             column_names_getter serializer;
-            return serializer(t, context);
+            return serializer(access_column_expression(expression), context);
         }
     }
 }

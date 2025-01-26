@@ -60,8 +60,8 @@ namespace sqlite_orm {
         template<class T, class SFINAE = void>
         struct statement_serializer;
 
-        template<class T, class C>
-        auto serialize(const T& t, const C& context) {
+        template<class T, class Ctx>
+        auto serialize(const T& t, const Ctx& context) {
             statement_serializer<T> serializer;
             return serializer(t, context);
         }
@@ -264,7 +264,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
-                return serialize(statement.value, context);
+                return serialize(statement.expression, context);
             }
         };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -549,28 +549,21 @@ namespace sqlite_orm {
             }
         };
 
+        // note (internal): this is a serializer for the deduplicator in an aggregate function;
+        // the result set deduplicators in a simple-select are treated by the select serializer.
         template<class T>
         struct statement_serializer<distinct_t<T>, void> {
             using statement_type = distinct_t<T>;
 
             template<class Ctx>
             std::string operator()(const statement_type& c, const Ctx& context) const {
-                std::stringstream ss;
-                auto expr = serialize(c.value, context);
-                ss << static_cast<std::string>(c) << "(" << expr << ")";
-                return ss.str();
-            }
-        };
+                // DISTINCT introduces no parentheses
+                auto subCtx = context;
+                subCtx.use_parentheses = false;
 
-        template<class T>
-        struct statement_serializer<all_t<T>, void> {
-            using statement_type = all_t<T>;
-
-            template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
                 std::stringstream ss;
-                auto expr = serialize(c.value, context);
-                ss << static_cast<std::string>(c) << "(" << expr << ")";
+                auto expr = serialize(c.expression, subCtx);
+                ss << static_cast<std::string>(c) << " " << expr;
                 return ss.str();
             }
         };
@@ -1771,9 +1764,11 @@ namespace sqlite_orm {
             }
         };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+
         template<class T, class... Args>
         struct statement_serializer<select_t<T, Args...>, void> {
             using statement_type = select_t<T, Args...>;
+            using return_type = typename statement_type::return_type;
 
             template<class Ctx>
             std::string operator()(const statement_type& sel, Ctx context) const {
@@ -1788,10 +1783,14 @@ namespace sqlite_orm {
                         ss << "(";
                     }
                     ss << "SELECT ";
+                    call_if_constexpr<is_rowset_deduplicator_v<return_type>>(
+                        // note: make use of implicit to-string conversion
+                        [&ss](std::string keyword) {
+                            ss << keyword << ' ';
+                        },
+                        sel.col);
                 }
-                if (get_distinct(sel.col)) {
-                    ss << static_cast<std::string>(distinct(0)) << " ";
-                }
+
                 ss << streaming_serialized(get_column_names(sel.col, subCtx));
                 using conditions_tuple = typename statement_type::conditions_type;
                 constexpr bool hasExplicitFrom = tuple_has<conditions_tuple, is_from>::value;

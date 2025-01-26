@@ -4432,7 +4432,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <concepts>
 #endif
-#include <type_traits>  //  std::remove_cvref, std::is_convertible, std::is_same, std::is_member_pointer
+#include <type_traits>  //  std::enable_if, std::remove_cvref, std::is_convertible, std::is_same, std::is_member_pointer
 #include <string>  //  std::string
 #include <utility>  //  std::move
 #include <tuple>  //  std::tuple, std::get, std::tuple_size
@@ -8580,9 +8580,9 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T>
         struct as_optional_t {
-            using value_type = T;
+            using expression_type = T;
 
-            value_type value;
+            expression_type expression;
         };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
@@ -8597,11 +8597,11 @@ namespace sqlite_orm {
          */
         template<class T>
         struct distinct_t : distinct_string {
-            using value_type = T;
+            using expression_type = T;
 
-            value_type value;
+            expression_type expression;
 
-            distinct_t(value_type value_) : value(std::move(value_)) {}
+            distinct_t(expression_type expression) : expression(std::move(expression)) {}
         };
 
         struct all_string {
@@ -8615,17 +8615,29 @@ namespace sqlite_orm {
          */
         template<class T>
         struct all_t : all_string {
-            T value;
+            using expression_type = T;
 
-            all_t(T value_) : value(std::move(value_)) {}
+            expression_type expression;
+
+            all_t(expression_type expression) : expression(std::move(expression)) {}
         };
+
+        /**
+         *  Whether a type represents a keyword for a result set modifier (as part of a simple select expression).
+         */
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_rowset_deduplicator_v =
+            polyfill::disjunction<polyfill::is_specialization_of<T, distinct_t>,
+                                  polyfill::is_specialization_of<T, all_t>>::value;
+
+        template<class T>
+        struct is_rowset_deduplicator : polyfill::bool_constant<is_rowset_deduplicator_v<T>> {};
 
         template<class... Args>
         struct columns_t {
             using columns_type = std::tuple<Args...>;
 
             columns_type columns;
-            bool distinct = false;
 
             static constexpr int count = std::tuple_size<columns_type>::value;
 
@@ -8650,7 +8662,6 @@ namespace sqlite_orm {
             using columns_type = std::tuple<Args...>;
 
             columns_type columns;
-            bool distinct = false;
 
             static constexpr int count = std::tuple_size<columns_type>::value;
 
@@ -8875,24 +8886,6 @@ namespace sqlite_orm {
         };
 #endif
 
-        /**
-         *  Generic way to get DISTINCT value from any type.
-         */
-        template<class T>
-        bool get_distinct(const T&) {
-            return false;
-        }
-
-        template<class... Args>
-        bool get_distinct(const columns_t<Args...>& cols) {
-            return cols.distinct;
-        }
-
-        template<class T, class... Args>
-        bool get_distinct(const struct_t<T, Args...>& cols) {
-            return cols.distinct;
-        }
-
         template<class T>
         struct asterisk_t {
             using type = T;
@@ -8969,6 +8962,19 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T, std::enable_if_t<!is_rowset_deduplicator_v<T>, bool> = true>
+        const T& access_column_expression(const T& expression) {
+            return expression;
+        }
+
+        /*  
+         *  Access a column expression prefixed by a result set deduplicator (as part of a simple select expression, i.e. distinct, all)
+         */
+        template<class D, std::enable_if_t<is_rowset_deduplicator_v<D>, bool> = true>
+        const typename D::expression_type& access_column_expression(const D& modifier) {
+            return modifier.expression;
+        }
+
         template<class T>
         constexpr void validate_conditions() {
             static_assert(count_tuple<T, is_where>::value <= 1, "a single query cannot contain > 1 WHERE blocks");
@@ -8985,6 +8991,7 @@ namespace sqlite_orm {
         return {std::move(value)};
     }
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+
     template<class T>
     internal::then_t<T> then(T t) {
         return {std::move(t)};
@@ -9010,18 +9017,12 @@ namespace sqlite_orm {
         return {std::move(t)};
     }
 
-    template<class... Args>
-    internal::columns_t<Args...> distinct(internal::columns_t<Args...> cols) {
-        cols.distinct = true;
-        return cols;
-    }
-
     /*
      *  Combine multiple columns in a tuple.
      */
     template<class... Args>
     constexpr internal::columns_t<Args...> columns(Args... args) {
-        return {std::make_tuple<Args...>(std::forward<Args>(args)...)};
+        return {{std::forward<Args>(args)...}};
     }
 
     /*
@@ -9030,7 +9031,7 @@ namespace sqlite_orm {
      */
     template<class T, class... Args>
     constexpr internal::struct_t<T, Args...> struct_(Args... args) {
-        return {std::make_tuple<Args...>(std::forward<Args>(args)...)};
+        return {{std::forward<Args>(args)...}};
     }
 
     /**
@@ -9091,7 +9092,7 @@ namespace sqlite_orm {
      *  Example:
      *  1_ctealias().as<materialized()>(select(1));
      */
-    inline consteval internal::materialized_t materialized() {
+    consteval internal::materialized_t materialized() {
         return {};
     }
 
@@ -9101,7 +9102,7 @@ namespace sqlite_orm {
      *  Example:
      *  1_ctealias().as<not_materialized()>(select(1));
      */
-    inline consteval internal::not_materialized_t not_materialized() {
+    consteval internal::not_materialized_t not_materialized() {
         return {};
     }
 #endif
@@ -15104,7 +15105,7 @@ namespace sqlite_orm {
 
             template<class L>
             void operator()(const node_type& node, L& lambda) const {
-                iterate_ast(node.value, lambda);
+                iterate_ast(node.expression, lambda);
             }
         };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -15670,7 +15671,7 @@ namespace sqlite_orm {
 
             template<class L>
             void operator()(const node_type& a, L& lambda) const {
-                iterate_ast(a.value, lambda);
+                iterate_ast(a.expression, lambda);
             }
         };
 
@@ -15680,7 +15681,7 @@ namespace sqlite_orm {
 
             template<class L>
             void operator()(const node_type& a, L& lambda) const {
-                iterate_ast(a.value, lambda);
+                iterate_ast(a.expression, lambda);
             }
         };
 
@@ -16108,8 +16109,8 @@ namespace sqlite_orm {
         template<class O>
         struct order_by_t;
 
-        template<class T, class C>
-        auto serialize(const T& t, const C& context);
+        template<class T, class Ctx>
+        auto serialize(const T& t, const Ctx& context);
 
         template<class T, class Ctx>
         std::string serialize_order_by(const T&, const Ctx&);
@@ -18723,8 +18724,8 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        template<class T, class C>
-        auto serialize(const T& t, const C& context);
+        template<class T, class Ctx>
+        auto serialize(const T& t, const Ctx& context);
 
         template<class T, class Ctx>
         std::vector<std::string>& collect_table_column_names(std::vector<std::string>& collectedExpressions,
@@ -18825,9 +18826,9 @@ namespace sqlite_orm {
         };
 
         template<class T, class Ctx>
-        std::vector<std::string> get_column_names(const T& t, const Ctx& context) {
+        std::vector<std::string> get_column_names(const T& expression, const Ctx& context) {
             column_names_getter serializer;
-            return serializer(t, context);
+            return serializer(access_column_expression(expression), context);
         }
     }
 }
@@ -18859,8 +18860,8 @@ namespace sqlite_orm {
 namespace sqlite_orm {
     namespace internal {
         // collecting column names utilizes the statement serializer
-        template<class T, class C>
-        auto serialize(const T& t, const C& context);
+        template<class T, class Ctx>
+        auto serialize(const T& t, const Ctx& context);
 
         inline void unquote_identifier(std::string& identifier) {
             if (!identifier.empty()) {
@@ -18907,7 +18908,7 @@ namespace sqlite_orm {
         template<class T, class Ctx>
         std::vector<std::string> get_cte_column_names(const T& t, const Ctx& context) {
             cte_column_names_collector<T> collector;
-            return collector(t, context);
+            return collector(access_column_expression(t), context);
         }
 
         template<class As>
@@ -19443,8 +19444,8 @@ namespace sqlite_orm {
         template<class T, class SFINAE = void>
         struct statement_serializer;
 
-        template<class T, class C>
-        auto serialize(const T& t, const C& context) {
+        template<class T, class Ctx>
+        auto serialize(const T& t, const Ctx& context) {
             statement_serializer<T> serializer;
             return serializer(t, context);
         }
@@ -19647,7 +19648,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
-                return serialize(statement.value, context);
+                return serialize(statement.expression, context);
             }
         };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -19932,28 +19933,21 @@ namespace sqlite_orm {
             }
         };
 
+        // note (internal): this is a serializer for the deduplicator in an aggregate function;
+        // the result set deduplicators in a simple-select are treated by the select serializer.
         template<class T>
         struct statement_serializer<distinct_t<T>, void> {
             using statement_type = distinct_t<T>;
 
             template<class Ctx>
             std::string operator()(const statement_type& c, const Ctx& context) const {
-                std::stringstream ss;
-                auto expr = serialize(c.value, context);
-                ss << static_cast<std::string>(c) << "(" << expr << ")";
-                return ss.str();
-            }
-        };
+                // DISTINCT introduces no parentheses
+                auto subCtx = context;
+                subCtx.use_parentheses = false;
 
-        template<class T>
-        struct statement_serializer<all_t<T>, void> {
-            using statement_type = all_t<T>;
-
-            template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
                 std::stringstream ss;
-                auto expr = serialize(c.value, context);
-                ss << static_cast<std::string>(c) << "(" << expr << ")";
+                auto expr = serialize(c.expression, subCtx);
+                ss << static_cast<std::string>(c) << " " << expr;
                 return ss.str();
             }
         };
@@ -21154,9 +21148,11 @@ namespace sqlite_orm {
             }
         };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+
         template<class T, class... Args>
         struct statement_serializer<select_t<T, Args...>, void> {
             using statement_type = select_t<T, Args...>;
+            using return_type = typename statement_type::return_type;
 
             template<class Ctx>
             std::string operator()(const statement_type& sel, Ctx context) const {
@@ -21171,10 +21167,14 @@ namespace sqlite_orm {
                         ss << "(";
                     }
                     ss << "SELECT ";
+                    call_if_constexpr<is_rowset_deduplicator_v<return_type>>(
+                        // note: make use of implicit to-string conversion
+                        [&ss](std::string keyword) {
+                            ss << keyword << ' ';
+                        },
+                        sel.col);
                 }
-                if (get_distinct(sel.col)) {
-                    ss << static_cast<std::string>(distinct(0)) << " ";
-                }
+
                 ss << streaming_serialized(get_column_names(sel.col, subCtx));
                 using conditions_tuple = typename statement_type::conditions_type;
                 constexpr bool hasExplicitFrom = tuple_has<conditions_tuple, is_from>::value;
@@ -23878,11 +23878,11 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        template<class T, class C>
-        auto serialize(const T& t, const C& context);
+        template<class T, class Ctx>
+        auto serialize(const T& t, const Ctx& context);
 
         /**
-         *  Serialize default value of a column's default valu
+         *  Serialize a column's default value.
          */
         template<class T>
         std::string serialize_default_value(const default_t<T>& dft) {
