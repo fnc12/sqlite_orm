@@ -77,6 +77,38 @@ macro(ucm_set_flags)
     ucm_add_flags(CLEAR_OLD ${ARGN})
 endmacro()
 
+# ucm_remove_flags
+# Removes compiler flags from CMAKE_<LANG>_FLAGS or from a specific config
+macro(ucm_remove_flags)
+    cmake_parse_arguments(ARG "C;CXX" "" "CONFIG" ${ARGN})
+
+    if(NOT ARG_CONFIG)
+        set(ARG_CONFIG " ")
+    endif()
+
+    foreach(CONFIG ${ARG_CONFIG})
+        # determine from which flags to remove
+        if(NOT ${CONFIG} STREQUAL " ")
+            string(TOUPPER ${CONFIG} CONFIG)
+            set(CXX_FLAGS CMAKE_CXX_FLAGS_${CONFIG})
+            set(C_FLAGS CMAKE_C_FLAGS_${CONFIG})
+        else()
+            set(CXX_FLAGS CMAKE_CXX_FLAGS)
+            set(C_FLAGS CMAKE_C_FLAGS)
+        endif()
+
+        # remove all the passed flags
+        foreach(flag ${ARG_UNPARSED_ARGUMENTS})
+            if("${ARG_CXX}" OR NOT "${ARG_C}")
+                string(REGEX REPLACE "${flag}" "" ${CXX_FLAGS} "${${CXX_FLAGS}}")
+            endif()
+            if("${ARG_C}" OR NOT "${ARG_CXX}")
+                string(REGEX REPLACE "${flag}" "" ${C_FLAGS} "${${C_FLAGS}}")
+            endif()
+        endforeach()
+    endforeach()
+endmacro()
+
 # ucm_add_linker_flags
 # Adds linker flags to CMAKE_<TYPE>_LINKER_FLAGS or to a specific config
 macro(ucm_add_linker_flags)
@@ -244,11 +276,11 @@ endmacro()
 # Prints all compiler flags for all configurations
 macro(ucm_print_flags)
     ucm_gather_flags(1 flags_configs)
-    message("")
+    message(STATUS "")
     foreach(flags ${flags_configs})
-        message("${flags}: ${${flags}}")
+        message(STATUS "${flags}: ${${flags}}")
     endforeach()
-    message("")
+    message(STATUS "")
 endmacro()
 
 # ucm_set_xcode_attrib
