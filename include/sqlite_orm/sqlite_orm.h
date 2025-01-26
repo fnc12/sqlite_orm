@@ -21152,6 +21152,7 @@ namespace sqlite_orm {
         template<class T, class... Args>
         struct statement_serializer<select_t<T, Args...>, void> {
             using statement_type = select_t<T, Args...>;
+            using return_type = typename statement_type::return_type;
 
             template<class Ctx>
             std::string operator()(const statement_type& sel, Ctx context) const {
@@ -21166,7 +21167,7 @@ namespace sqlite_orm {
                         ss << "(";
                     }
                     ss << "SELECT ";
-                    call_if_constexpr<is_rowset_deduplicator_v<T>>(
+                    call_if_constexpr<is_rowset_deduplicator_v<return_type>>(
                         // note: make use of implicit to-string conversion
                         [&ss](std::string keyword) {
                             ss << keyword << ' ';
