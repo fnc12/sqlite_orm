@@ -236,11 +236,17 @@ TEST_CASE("statement_serializer select_t") {
 #endif
         }
         SECTION("deduplication") {
-            SECTION("distinct column") {
+            SECTION("distinct column, top-level") {
                 auto expression = select(distinct(&User::name));
                 expression.highest_level = true;
                 stringValue = serialize(expression, context);
                 expected = R"(SELECT DISTINCT "users"."name" FROM "users")";
+            }
+            SECTION("distinct column, !top-level") {
+                auto expression = select(distinct(&User::name));
+                expression.highest_level = false;
+                stringValue = serialize(expression, context);
+                expected = R"((SELECT DISTINCT "users"."name" FROM "users"))";
             }
             SECTION("all column") {
                 auto expression = select(all(&User::name));
@@ -272,11 +278,17 @@ TEST_CASE("statement_serializer select_t") {
                 stringValue = serialize(expression, context);
                 expected = R"(SELECT ALL "users"."name" FROM "users")";
             }
-            SECTION("distinct aggregate function") {
+            SECTION("distinct aggregate function, top-level") {
                 auto expression = select(count(distinct(&User::name)));
                 expression.highest_level = true;
                 stringValue = serialize(expression, context);
                 expected = R"(SELECT COUNT(DISTINCT "users"."name") FROM "users")";
+            }
+            SECTION("distinct aggregate function, !top-level") {
+                auto expression = select(count(distinct(&User::name)));
+                expression.highest_level = false;
+                stringValue = serialize(expression, context);
+                expected = R"((SELECT COUNT(DISTINCT "users"."name") FROM "users"))";
             }
         }
     }
