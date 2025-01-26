@@ -56,7 +56,7 @@ TEST_CASE("Iterate mapped") {
 
     SECTION("with conditions") {
         auto view = db.iterate<Test>(where(c(&Test::id) == 5), order_by(&Test::id));
-        REQUIRE(std::vector<Test>{std::from_range, view} == expected_vec);
+        REQUIRE(std::vector<Test>{view.begin(), view.end()} == expected_vec);
     }
 }
 
