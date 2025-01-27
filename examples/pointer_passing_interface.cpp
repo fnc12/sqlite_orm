@@ -127,7 +127,7 @@ int main() {
     // returns the category's name
     struct error_category_name_fn {
         std::string operator()(ecat_arg pv) const {
-            if(const error_category* ec = pv) {
+            if (const error_category* ec = pv) {
                 return ec->name();
             }
             return {};
@@ -142,7 +142,7 @@ int main() {
     // returns the error message
     struct error_category_message_fn {
         std::string operator()(ecat_arg pv, int errorValue) const {
-            if(const error_category* ec = pv) {
+            if (const error_category* ec = pv) {
                 return ec->message(errorValue);
             }
             return {};
@@ -180,7 +180,7 @@ int main() {
     struct equal_error_code_fn {
         bool operator()(ecode_arg pv1, ecode_arg pv2) const {
             const error_code *ec1 = pv1, *ec2 = pv2;
-            if(ec1 && ec2) {
+            if (ec1 && ec2) {
                 return *ec1 == *ec2;
             }
             return false;
@@ -243,7 +243,7 @@ int main() {
                                           order_by(&Result::errorCategory),
                                           order_by(&Result::errorValue),
                                           order_by(&Result::id)));
-        for(auto& row: rows) {
+        for (auto& row: rows) {
             cout << std::get<0>(row) << ' ' << std::get<1>(row) << ' ' << std::get<2>(row) << ' ' << std::get<3>(row)
                  << ' ' << std::get<4>(row) << " \"" << std::get<5>(row) << "\""
                  << " \"" << std::get<6>(row) << "\"" << endl;

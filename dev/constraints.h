@@ -1,12 +1,11 @@
 #pragma once
 
+#include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
 #include <system_error>  //  std::system_error
 #include <ostream>  //  std::ostream
 #include <string>  //  std::string
 #include <tuple>  //  std::tuple
-#include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
 
-#include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/mpl.h"
 #include "tuple_helper/same_or_void.h"
@@ -17,6 +16,7 @@
 #include "error_code.h"
 #include "table_type_of.h"
 #include "type_printer.h"
+#include "column_pointer.h"
 
 namespace sqlite_orm {
 
@@ -204,7 +204,7 @@ namespace sqlite_orm {
         };
 
         inline std::ostream& operator<<(std::ostream& os, foreign_key_action action) {
-            switch(action) {
+            switch (action) {
                 case foreign_key_action::no_action:
                     os << "NO ACTION";
                     break;
@@ -230,7 +230,7 @@ namespace sqlite_orm {
             const bool update;  //  true if update and false if delete
 
             operator std::string() const {
-                if(this->update) {
+                if (this->update) {
                     return "ON UPDATE";
                 } else {
                     return "ON DELETE";
@@ -254,7 +254,7 @@ namespace sqlite_orm {
 
             foreign_key_type no_action() const {
                 auto res = this->fk;
-                if(update) {
+                if (update) {
                     res.on_update._action = foreign_key_action::no_action;
                 } else {
                     res.on_delete._action = foreign_key_action::no_action;
@@ -264,7 +264,7 @@ namespace sqlite_orm {
 
             foreign_key_type restrict_() const {
                 auto res = this->fk;
-                if(update) {
+                if (update) {
                     res.on_update._action = foreign_key_action::restrict_;
                 } else {
                     res.on_delete._action = foreign_key_action::restrict_;
@@ -274,7 +274,7 @@ namespace sqlite_orm {
 
             foreign_key_type set_null() const {
                 auto res = this->fk;
-                if(update) {
+                if (update) {
                     res.on_update._action = foreign_key_action::set_null;
                 } else {
                     res.on_delete._action = foreign_key_action::set_null;
@@ -284,7 +284,7 @@ namespace sqlite_orm {
 
             foreign_key_type set_default() const {
                 auto res = this->fk;
-                if(update) {
+                if (update) {
                     res.on_update._action = foreign_key_action::set_default;
                 } else {
                     res.on_delete._action = foreign_key_action::set_default;
@@ -294,7 +294,7 @@ namespace sqlite_orm {
 
             foreign_key_type cascade() const {
                 auto res = this->fk;
-                if(update) {
+                if (update) {
                     res.on_update._action = foreign_key_action::cascade;
                 } else {
                     res.on_delete._action = foreign_key_action::cascade;
@@ -376,6 +376,11 @@ namespace sqlite_orm {
             foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> references(Rs... refs) {
                 return {std::move(this->columns), {std::forward<Rs>(refs)...}};
             }
+
+            template<class T, class... Rs>
+            foreign_key_t<std::tuple<Cs...>, std::tuple<internal::column_pointer<T, Rs>...>> references(Rs... refs) {
+                return {std::move(this->columns), {sqlite_orm::column<T>(refs)...}};
+            }
         };
 #endif
 
@@ -390,7 +395,7 @@ namespace sqlite_orm {
             }
 
             static std::string string_from_collate_argument(collate_argument argument) {
-                switch(argument) {
+                switch (argument) {
                     case collate_argument::binary:
                         return "BINARY";
                     case collate_argument::nocase:

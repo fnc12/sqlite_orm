@@ -69,7 +69,7 @@ TEST_CASE("backup") {
             auto backup = storage.make_backup_to(backupFilename);
             do {
                 backup.step(1);
-            } while(backup.remaining() > 0);
+            } while (backup.remaining() > 0);
         }
         SECTION("storage step -1") {
             auto backup = storage.make_backup_to(storage2);
@@ -79,7 +79,7 @@ TEST_CASE("backup") {
             auto backup = storage.make_backup_to(storage2);
             do {
                 backup.step(1);
-            } while(backup.remaining() > 0);
+            } while (backup.remaining() > 0);
         }
         REQUIRE(storage2.table_exists(usersTableName));
         auto rowsFromBackup = storage2.get_all<User>();
@@ -105,7 +105,7 @@ TEST_CASE("backup") {
             auto backup = storage2.make_backup_from(backupFilename);
             do {
                 backup.step(1);
-            } while(backup.remaining() > 0);
+            } while (backup.remaining() > 0);
         }
         SECTION("storage") {
             storage2.backup_from(storage);
@@ -118,7 +118,7 @@ TEST_CASE("backup") {
             auto backup = storage2.make_backup_from(storage);
             do {
                 backup.step(1);
-            } while(backup.remaining() > 0);
+            } while (backup.remaining() > 0);
         }
         REQUIRE(storage2.table_exists(usersTableName));
         auto rowsFromBackup = storage2.get_all<User>();

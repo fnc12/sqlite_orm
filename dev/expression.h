@@ -5,9 +5,9 @@
 #include <utility>  //  std::move, std::forward, std::declval
 #include "functional/cxx_optional.h"
 
-#include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
 #include "tags.h"
+#include "operators.h"
 
 namespace sqlite_orm {
 
@@ -68,13 +68,23 @@ namespace sqlite_orm {
             is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, expression_t>::value>> = true;
 
         template<class T>
-        T get_from_expression(T value) {
+        constexpr T get_from_expression(T&& value) {
             return std::move(value);
         }
 
         template<class T>
-        T get_from_expression(expression_t<T> expression) {
+        constexpr const T& get_from_expression(const T& value) {
+            return value;
+        }
+
+        template<class T>
+        constexpr T get_from_expression(expression_t<T>&& expression) {
             return std::move(expression.value);
+        }
+
+        template<class T>
+        constexpr const T& get_from_expression(const expression_t<T>& expression) {
+            return expression.value;
         }
 
         template<class T>
@@ -86,7 +96,7 @@ namespace sqlite_orm {
      * `storage.update(set(c(&User::name) = "Dua Lipa"));
      */
     template<class T>
-    internal::expression_t<T> c(T value) {
+    constexpr internal::expression_t<T> c(T value) {
         return {std::move(value)};
     }
 }

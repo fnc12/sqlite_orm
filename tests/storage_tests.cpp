@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 
@@ -91,6 +92,45 @@ TEST_CASE("drop table") {
     storage.drop_table(visitsTableName);
     REQUIRE_FALSE(storage.table_exists(usersTableName));
     REQUIRE_FALSE(storage.table_exists(visitsTableName));
+
+    REQUIRE_THROWS(storage.drop_table(usersTableName));
+    REQUIRE_THROWS(storage.drop_table(visitsTableName));
+
+    REQUIRE_NOTHROW(storage.drop_table_if_exists(usersTableName));
+    REQUIRE_NOTHROW(storage.drop_table_if_exists(visitsTableName));
+}
+
+TEST_CASE("drop index") {
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    const std::string indexName = "user_id_index";
+    auto storage = make_storage(
+        {},
+        make_index("user_id_index", &User::id),
+        make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)));
+    storage.sync_schema();
+
+    REQUIRE_NOTHROW(storage.drop_index(indexName));
+    REQUIRE_THROWS(storage.drop_index(indexName));
+    REQUIRE_NOTHROW(storage.drop_index_if_exists(indexName));
+}
+
+TEST_CASE("drop trigger") {
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    const std::string triggerName = "table_insert_InsertTest";
+    auto storage = make_storage(
+        {},
+        make_trigger(triggerName, after().insert().on<User>().begin(update_all(set(c(&User::id) = 5))).end()),
+        make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)));
+    storage.sync_schema();
+    REQUIRE_NOTHROW(storage.drop_trigger(triggerName));
+    REQUIRE_THROWS(storage.drop_trigger(triggerName));
+    REQUIRE_NOTHROW(storage.drop_trigger_if_exists(triggerName));
 }
 
 TEST_CASE("rename table") {
@@ -294,7 +334,7 @@ TEST_CASE("insert") {
     storage.remove_all<Object>();
     storage.remove_all<ObjectWithoutRowid>();
 
-    for(auto i = 0; i < 100; ++i) {
+    for (auto i = 0; i < 100; ++i) {
         storage.insert(Object{
             0,
             "Skillet",
@@ -449,5 +489,128 @@ TEST_CASE("insert with generated column") {
     decltype(allProducts) expectedProducts;
     expectedProducts.push_back({"ABC Widget", 100, 0.05, 0.07, 101.65});
     REQUIRE(allProducts == expectedProducts);
+}
+#endif
+
+TEST_CASE("last insert rowid") {
+    struct Object {
+        int id;
+    };
+
+    auto storage = make_storage("", make_table("objects", make_column("id", &Object::id, primary_key())));
+
+    storage.sync_schema();
+
+    SECTION("ordinary insert") {
+        int id = storage.insert<Object>({0});
+        REQUIRE(id == storage.last_insert_rowid());
+        REQUIRE_NOTHROW(storage.get<Object>(id));
+    }
+    SECTION("explicit insert") {
+        int id = storage.insert<Object>({2}, columns(&Object::id));
+        REQUIRE(id == 2);
+        REQUIRE(id == storage.last_insert_rowid());
+    }
+    SECTION("range, prepared") {
+        std::vector<Object> rng{{0}};
+        auto stmt = storage.prepare(insert_range(rng.begin(), rng.end()));
+        int64 id = storage.execute(stmt);
+        REQUIRE(id == storage.last_insert_rowid());
+        REQUIRE_NOTHROW(storage.get<Object>(id));
+    }
+}
+
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+TEST_CASE("With clause") {
+    using Catch::Matchers::Equals;
+
+    SECTION("select") {
+        using cnt = decltype(1_ctealias);
+        auto storage = make_storage("");
+        SECTION("with ordinary") {
+            auto rows = storage.with(cte<cnt>().as(select(1)), select(column<cnt>(1_colalias)));
+            REQUIRE_THAT(rows, Equals(std::vector<int>{1}));
+        }
+        SECTION("with ordinary, compound") {
+            auto rows = storage.with(cte<cnt>().as(select(1)),
+                                     union_all(select(column<cnt>(1_colalias)), select(column<cnt>(1_colalias))));
+            REQUIRE_THAT(rows, Equals(std::vector<int>{1, 1}));
+        }
+        SECTION("with not enforced recursive") {
+            auto rows = storage.with_recursive(cte<cnt>().as(select(1)), select(column<cnt>(1_colalias)));
+            REQUIRE_THAT(rows, Equals(std::vector<int>{1}));
+        }
+        SECTION("with not enforced recursive, compound") {
+            auto rows =
+                storage.with_recursive(cte<cnt>().as(select(1)),
+                                       union_all(select(column<cnt>(1_colalias)), select(column<cnt>(1_colalias))));
+            REQUIRE_THAT(rows, Equals(std::vector<int>{1, 1}));
+        }
+        SECTION("with ordinary, multiple") {
+            auto rows = storage.with(std::make_tuple(cte<cnt>().as(select(1))), select(column<cnt>(1_colalias)));
+            REQUIRE_THAT(rows, Equals(std::vector<int>{1}));
+        }
+        SECTION("with ordinary, multiple, compound") {
+            auto rows = storage.with(std::make_tuple(cte<cnt>().as(select(1))),
+                                     union_all(select(column<cnt>(1_colalias)), select(column<cnt>(1_colalias))));
+            REQUIRE_THAT(rows, Equals(std::vector<int>{1, 1}));
+        }
+        SECTION("with not enforced recursive, multiple") {
+            auto rows =
+                storage.with_recursive(std::make_tuple(cte<cnt>().as(select(1))), select(column<cnt>(1_colalias)));
+            REQUIRE_THAT(rows, Equals(std::vector<int>{1}));
+        }
+        SECTION("with not enforced recursive, multiple, compound") {
+            auto rows =
+                storage.with_recursive(std::make_tuple(cte<cnt>().as(select(1))),
+                                       union_all(select(column<cnt>(1_colalias)), select(column<cnt>(1_colalias))));
+            REQUIRE_THAT(rows, Equals(std::vector<int>{1, 1}));
+        }
+        SECTION("with optional recursive") {
+            auto rows = storage.with(
+                cte<cnt>().as(
+                    union_all(select(1), select(column<cnt>(1_colalias) + 1, where(column<cnt>(1_colalias) < 2)))),
+                select(column<cnt>(1_colalias)));
+            REQUIRE_THAT(rows, Equals(std::vector<int>{1, 2}));
+        }
+        SECTION("with recursive") {
+            auto rows = storage.with_recursive(
+                cte<cnt>().as(
+                    union_all(select(1), select(column<cnt>(1_colalias) + 1, where(column<cnt>(1_colalias) < 2)))),
+                select(column<cnt>(1_colalias)));
+            REQUIRE_THAT(rows, Equals(std::vector<int>{1, 2}));
+        }
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    SECTION("crud") {
+        struct Object {
+            int id;
+        };
+
+        auto storage = make_storage("", make_table("objects", make_column("id", &Object::id, primary_key())));
+
+        storage.sync_schema();
+
+        constexpr orm_cte_moniker auto data = "data"_cte;
+        constexpr auto cteExpression = cte<data>().as(union_all(select(2), select(3)));
+
+        storage.with(cteExpression, insert(into<Object>(), columns(&Object::id), select(data->*1_colalias)));
+        REQUIRE(3 == storage.last_insert_rowid());
+
+        storage.with(cteExpression, replace(into<Object>(), columns(&Object::id), select(data->*1_colalias)));
+        REQUIRE(storage.changes() == 2);
+
+        storage.with(
+            cteExpression,
+            update_all(
+                set(c(&Object::id) = select(data->*1_colalias, from<data>(), where(data->*1_colalias == &Object::id))),
+                where(c(&Object::id).in(select(data->*1_colalias)))));
+        REQUIRE(storage.changes() == 2);
+
+        storage.with(cteExpression, remove_all<Object>(where(c(&Object::id).in(select(data->*1_colalias)))));
+        REQUIRE(storage.changes() == 2);
+    }
+#endif
 }
 #endif

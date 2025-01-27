@@ -1,7 +1,6 @@
 #pragma once
 #include <type_traits>
 
-#include "cxx_universal.h"
 #include "mpl/conditional.h"
 
 namespace sqlite_orm {

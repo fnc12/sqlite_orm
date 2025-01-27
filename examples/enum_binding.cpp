@@ -1,4 +1,4 @@
-
+#include <sqlite3.h>
 #include <sqlite_orm/sqlite_orm.h>
 
 #include <iostream>
@@ -28,7 +28,7 @@ struct SuperHero {
 
 //  also we need transform functions to make string from enum..
 std::string GenderToString(Gender gender) {
-    switch(gender) {
+    switch (gender) {
         case Gender::Female:
             return "female";
         case Gender::Male:
@@ -47,9 +47,9 @@ std::string GenderToString(Gender gender) {
  *  (for example BETTER_ENUM https://github.com/aantron/better-enums)
  */
 std::unique_ptr<Gender> GenderFromString(const std::string& s) {
-    if(s == "female") {
+    if (s == "female") {
         return std::make_unique<Gender>(Gender::Female);
-    } else if(s == "male") {
+    } else if (s == "male") {
         return std::make_unique<Gender>(Gender::Male);
     }
     return nullptr;
@@ -109,7 +109,7 @@ namespace sqlite_orm {
     template<>
     struct row_extractor<Gender> {
         Gender extract(const char* columnText) const {
-            if(auto gender = GenderFromString(columnText)) {
+            if (auto gender = GenderFromString(columnText)) {
                 return *gender;
             } else {
                 throw std::runtime_error("incorrect gender string (" + std::string(columnText) + ")");
@@ -150,7 +150,7 @@ int main(int /* argc*/, char** /*argv*/) {
 
     //  print all superheros
     cout << "allSuperHeros = " << allSuperHeros.size() << endl;
-    for(auto& superHero: allSuperHeros) {
+    for (auto& superHero: allSuperHeros) {
         cout << storage.dump(superHero) << endl;
     }
 
@@ -161,7 +161,7 @@ int main(int /* argc*/, char** /*argv*/) {
     auto males = storage.get_all<SuperHero>(where(c(&SuperHero::gender) == Gender::Male));
     cout << "males = " << males.size() << endl;
     assert(males.size() == 2);
-    for(auto& superHero: males) {
+    for (auto& superHero: males) {
         cout << storage.dump(superHero) << endl;
     }
 
@@ -169,7 +169,7 @@ int main(int /* argc*/, char** /*argv*/) {
     auto females = storage.get_all<SuperHero>(where(c(&SuperHero::gender) == Gender::Female));
     assert(females.size() == 1);
     cout << "females = " << females.size() << endl;
-    for(auto& superHero: females) {
+    for (auto& superHero: females) {
         cout << storage.dump(superHero) << endl;
     }
 

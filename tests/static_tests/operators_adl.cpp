@@ -15,6 +15,11 @@ using sqlite_orm::get;
 using sqlite_orm::or_;
 using sqlite_orm::internal::and_condition_t;
 using sqlite_orm::internal::binary_operator;
+using sqlite_orm::internal::bitwise_and_t;
+using sqlite_orm::internal::bitwise_not_t;
+using sqlite_orm::internal::bitwise_or_t;
+using sqlite_orm::internal::bitwise_shift_left_t;
+using sqlite_orm::internal::bitwise_shift_right_t;
 using sqlite_orm::internal::greater_or_equal_t;
 using sqlite_orm::internal::greater_than_t;
 using sqlite_orm::internal::is_equal_t;
@@ -23,6 +28,7 @@ using sqlite_orm::internal::less_or_equal_t;
 using sqlite_orm::internal::less_than_t;
 using sqlite_orm::internal::negated_condition_t;
 using sqlite_orm::internal::or_condition_t;
+using sqlite_orm::internal::unary_minus_t;
 using sqlite_orm::polyfill::is_specialization_of_v;
 
 template<class E>
@@ -62,6 +68,10 @@ void runTests(E expression) {
     STATIC_REQUIRE(is_specialization_of_v<decltype(expression || 42 || c(42)), binary_operator>);
     STATIC_REQUIRE(is_specialization_of_v<decltype(42 || (expression || 42)), binary_operator>);
     STATIC_REQUIRE(is_specialization_of_v<decltype(c(42) || (expression || 42)), binary_operator>);
+
+    STATIC_REQUIRE(is_specialization_of_v<decltype(-expression), unary_minus_t>);
+    STATIC_REQUIRE(is_specialization_of_v<decltype(-(expression + expression)), unary_minus_t>);
+    STATIC_REQUIRE(is_specialization_of_v<decltype(-expression + expression), binary_operator>);
 
     STATIC_REQUIRE(is_specialization_of_v<decltype(expression + 42), binary_operator>);
     STATIC_REQUIRE(is_specialization_of_v<decltype(42 + expression), binary_operator>);
@@ -106,10 +116,16 @@ void runTests(E expression) {
     // conc_t + condition_t yield or_condition_t
     STATIC_REQUIRE(is_specialization_of_v<decltype((expression && 42) || !expression), or_condition_t>);
     STATIC_REQUIRE(is_specialization_of_v<decltype(!expression || (expression && 42)), or_condition_t>);
+
+    STATIC_REQUIRE(is_specialization_of_v<decltype(~expression), bitwise_not_t>);
+    STATIC_REQUIRE(is_specialization_of_v<decltype(expression << expression), binary_operator>);
+    STATIC_REQUIRE(is_specialization_of_v<decltype(expression >> expression), binary_operator>);
+    STATIC_REQUIRE(is_specialization_of_v<decltype(expression & expression), binary_operator>);
+    STATIC_REQUIRE(is_specialization_of_v<decltype(expression | expression), binary_operator>);
 }
 
 TEST_CASE("inline namespace literals expressions") {
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     constexpr auto col1 = 1_colalias;
     constexpr auto cte1 = 1_ctealias;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -133,13 +149,13 @@ TEST_CASE("ADL and pointer-to-member expressions") {
     };
     constexpr auto user_table = c<User>();
     constexpr auto u_alias = "u"_alias.for_<User>();
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     constexpr auto cte = "1"_cte;
 #endif
 
     user_table->*&User::id;
     u_alias->*&User::id;
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     cte->*&User::id;
 #endif
 }

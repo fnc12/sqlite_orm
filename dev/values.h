@@ -2,9 +2,8 @@
 
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple
-#include <utility>  //  std::forward
+#include <utility>  //  std::forward, std::move
 
-#include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
@@ -40,5 +39,4 @@ namespace sqlite_orm {
     internal::dynamic_values_t<T> values(std::vector<T> vector) {
         return {{std::move(vector)}};
     }
-
 }

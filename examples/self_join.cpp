@@ -216,7 +216,7 @@ int main() {
                                    employee->*&Employee::firstName || " " || employee->*&Employee::lastName),
                            inner_join<m>(on(m->*&Employee::reportsTo == employee->*&Employee::employeeId)));
         cout << "firstNames count = " << firstNames.size() << endl;
-        for(auto& row: firstNames) {
+        for (auto& row: firstNames) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << endl;
         }
 #else
@@ -226,7 +226,7 @@ int main() {
                     &Employee::firstName || c(" ") || &Employee::lastName),
             inner_join<als>(on(alias_column<als>(&Employee::reportsTo) == &Employee::employeeId)));
         cout << "firstNames count = " << firstNames.size() << endl;
-        for(auto& row: firstNames) {
+        for (auto& row: firstNames) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << endl;
         }
 #endif
@@ -249,7 +249,7 @@ int main() {
                                    employee->*&Employee::firstName || " " || employee->*&Employee::lastName),
                            inner_join<emp>(on(emp->*&Employee::reportsTo == employee->*&Employee::employeeId)));
         cout << "firstNames count = " << firstNames.size() << endl;
-        for(auto& row: firstNames) {
+        for (auto& row: firstNames) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << endl;
         }
 #else
@@ -259,7 +259,7 @@ int main() {
                     &Employee::firstName || c(" ") || &Employee::lastName),
             inner_join<als>(on(alias_column<als>(&Employee::reportsTo) == &Employee::employeeId)));
         cout << "firstNames count = " << firstNames.size() << endl;
-        for(auto& row: firstNames) {
+        for (auto& row: firstNames) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << endl;
         }
 #endif

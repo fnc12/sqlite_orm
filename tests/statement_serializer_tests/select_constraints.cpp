@@ -92,7 +92,7 @@ TEST_CASE("statement_serializer select constraints") {
         }
 #endif
     }
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     SECTION("from CTE") {
         using cte_1 = decltype(1_ctealias);
         auto dbObjects2 =

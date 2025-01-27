@@ -8,7 +8,6 @@
 #include <algorithm>  //  std::min, std::copy_n
 #include <utility>  //  std::move, std::forward
 
-#include "functional/cxx_universal.h"  //  ::size_t, ::nullptr_t
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/cstring_literal.h"
 #include "functional/function_traits.h"
@@ -147,7 +146,7 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         template<class F>
-            requires(std::is_function_v<F>)
+            requires (std::is_function_v<F>)
         struct callable_arguments_impl<F, void> {
             using args_tuple = function_arguments<F, std::tuple, std::decay_t>;
             using return_type = std::decay_t<function_return_type_t<F>>;
@@ -178,7 +177,7 @@ namespace sqlite_orm {
          *  Bundle of type and name of a traditional sqlite_orm user-defined function.
          */
         template<class UDF>
-            requires(requires { UDF::name(); })
+            requires (requires { UDF::name(); })
         struct udf_holder<UDF>
 #else
         /*
@@ -405,7 +404,7 @@ namespace sqlite_orm {
              *  Return original `udf` if stateless or a copy of it otherwise
              */
             constexpr decltype(auto) callable() const {
-                if constexpr(stateless<F>) {
+                if constexpr (stateless<F>) {
                     return (this->udf);
                 } else {
                     // non-const copy
@@ -447,7 +446,7 @@ namespace sqlite_orm {
              *  From a classic function object instance.
              */
             template<class F>
-                requires(orm_classic_function_object<F> && (stateless<F> || std::copy_constructible<F>))
+                requires (orm_classic_function_object<F> && (stateless<F> || std::copy_constructible<F>))
             [[nodiscard]] consteval auto quote(F callable) const {
                 using Sig = function_signature_type_t<decltype(&F::operator())>;
                 // detect whether overloaded call operator can be picked using `Sig`
@@ -459,7 +458,7 @@ namespace sqlite_orm {
              *  From a function object instance, picking the overloaded call operator.
              */
             template<orm_function_sig Sig, class F>
-                requires((stateless<F> || std::copy_constructible<F>))
+                requires ((stateless<F> || std::copy_constructible<F>))
             [[nodiscard]] consteval auto quote(F callable) const {
                 // detect whether overloaded call operator can be picked using `Sig`
                 using call_operator_type = decltype(static_cast<Sig F::*>(&F::operator()));
@@ -470,7 +469,7 @@ namespace sqlite_orm {
              *  From a classic function object type.
              */
             template<orm_classic_function_object F, class... Args>
-                requires(stateless<F> || std::copy_constructible<F>)
+                requires (stateless<F> || std::copy_constructible<F>)
             [[nodiscard]] consteval auto quote(Args&&... constructorArgs) const {
                 using Sig = function_signature_type_t<decltype(&F::operator())>;
                 return quoted_scalar_function<F, Sig, N>{this->cstr, std::forward<Args>(constructorArgs)...};
@@ -480,7 +479,7 @@ namespace sqlite_orm {
              *  From a function object type, picking the overloaded call operator.
              */
             template<orm_function_sig Sig, class F, class... Args>
-                requires((stateless<F> || std::copy_constructible<F>))
+                requires ((stateless<F> || std::copy_constructible<F>))
             [[nodiscard]] consteval auto quote(Args&&... constructorArgs) const {
                 // detect whether overloaded call operator can be picked using `Sig`
                 using call_operator_type = decltype(static_cast<Sig F::*>(&F::operator()));
@@ -506,7 +505,7 @@ namespace sqlite_orm {
      */
     template<class UDF>
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        requires(orm_scalar_udf<UDF> || orm_aggregate_udf<UDF>)
+        requires (orm_scalar_udf<UDF> || orm_aggregate_udf<UDF>)
 #endif
     SQLITE_ORM_INLINE_VAR constexpr internal::function<UDF> func{};
 

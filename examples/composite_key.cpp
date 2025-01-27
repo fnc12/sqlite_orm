@@ -27,7 +27,7 @@ struct User {
 struct UserVisit {
     int userId;
     std::string userFirstName;
-    time_t time;
+    std::time_t time;
 };
 #endif
 
@@ -60,7 +60,7 @@ int main() {
     try {
         //  2 and 'Drake' values will be ignored cause they are primary keys
         storage.insert(User{2, "Drake", "Singer"});
-    } catch(const std::system_error& e) {
+    } catch (const std::system_error& e) {
         cout << "exception = " << e.what() << endl;
     }
     storage.replace(User{2, "The Weeknd", "Singer"});

@@ -85,7 +85,7 @@ template<size_t... Idx>
 void require_strings(const array<string, sizeof...(Idx)>& values,
                      const array<string, sizeof...(Idx)>& expected,
                      index_sequence<Idx...>) {
-    for(size_t i = 0; i < sizeof...(Idx); ++i) {
+    for (size_t i = 0; i < sizeof...(Idx); ++i) {
         require_string(values[i], expected[i]);
     }
 }

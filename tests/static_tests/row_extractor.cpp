@@ -1,3 +1,4 @@
+#include <sqlite3.h>
 #include <sqlite_orm/sqlite_orm.h>
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #define ENABLE_THIS_UT

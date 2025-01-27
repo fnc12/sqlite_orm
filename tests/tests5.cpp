@@ -267,7 +267,7 @@ TEST_CASE("issue822") {
       public:
         A() = default;
         A(const uint8_t& address, const uint8_t& type, const uint8_t& idx, std::shared_ptr<double> value) :
-            address(address), type(type), idx(idx), value(std::move(value)){};
+            address(address), type(type), idx(idx), value(std::move(value)) {};
 
         const uint8_t& getAddress() const {
             return this->address;
@@ -317,7 +317,7 @@ TEST_CASE("issue822") {
     storage.sync_schema();
     storage.replace(A(1, 1, 0, std::make_shared<double>(55.5)));
     auto records = storage.get_all<A>(where(c(&A::getAddress) == 1 and c(&A::getType) == 1 and c(&A::getIndex) == 0));
-    if(records.size() != 0) {
+    if (records.size() != 0) {
         A a = records[0];
         a.setValue(std::make_shared<double>(10));
         storage.update(a);

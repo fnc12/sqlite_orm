@@ -51,10 +51,33 @@ TEST_CASE("statement_serializer update_all") {
     using context_t = internal::serializer_context<db_objects_t>;
     context_t context{dbObjects};
 
-    auto statement =
-        update_all(set(c(&Contact::phone) = select(&Customer::phone, from<Customer>(), where(c(&Customer::id) == 1))));
-    auto value = serialize(statement, context);
-    decltype(value) expected =
-        R"(UPDATE "contacts" SET "phone" = (SELECT "customers"."Phone" FROM "customers" WHERE ("customers"."CustomerId" = 1)))";
+    std::string value;
+    std::string expected;
+    SECTION("select") {
+        auto expression = update_all(set(c(&Contact::phone) = select(&Customer::phone, where(c(&Customer::id) == 1))),
+                                     where(c(&Contact::id) == 1));
+        value = serialize(expression, context);
+        expected =
+            R"(UPDATE "contacts" SET "phone" = (SELECT "customers"."Phone" FROM "customers" WHERE ("customers"."CustomerId" = 1)) WHERE ("contact_id" = 1))";
+    }
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    SECTION("With clause") {
+        constexpr orm_cte_moniker auto data = "data"_cte;
+        constexpr auto cteExpression = cte<data>().as(select(&Customer::phone, where(c(&Customer::id) == 1)));
+        auto dbObjects2 = internal::db_objects_cat(dbObjects, internal::make_cte_table(dbObjects, cteExpression));
+        using context_t = internal::serializer_context<decltype(dbObjects2)>;
+        context_t context2{dbObjects2};
+
+        auto expression =
+            with(cteExpression,
+                 update_all(set(c(&Contact::phone) = select(data->*&Customer::phone)), where(c(&Contact::id) == 1)));
+
+        value = serialize(expression, context2);
+        expected =
+            R"(WITH "data"("Phone") AS (SELECT "customers"."Phone" FROM "customers" WHERE ("customers"."CustomerId" = 1)) UPDATE "contacts" SET "phone" = (SELECT "data"."Phone" FROM "data") WHERE ("contact_id" = 1))";
+    }
+#endif
+#endif
     REQUIRE(value == expected);
 }

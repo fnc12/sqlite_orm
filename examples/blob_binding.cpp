@@ -1,4 +1,5 @@
 #include <sqlite_orm/sqlite_orm.h>
+#include <cstdint>
 #include <iostream>
 
 using namespace sqlite_orm;
@@ -66,7 +67,7 @@ namespace sqlite_orm {
             std::vector<char> blobValue;
             blobValue.reserve(16);
             auto encodeInteger = [&blobValue](int value) {
-                auto preciseValue = int32_t(value);
+                auto preciseValue = std::int32_t(value);
                 const auto intPointer = &preciseValue;
                 auto charPointer = (const char*)(intPointer);
                 blobValue.push_back(charPointer[0]);
@@ -110,7 +111,7 @@ namespace sqlite_orm {
             Rect value;
             auto decodeInteger = [charPointer](int& integer, int index) {
                 auto pointerWithOffset = charPointer + index * 4;
-                auto intPointer = (const int32_t*)pointerWithOffset;
+                auto intPointer = (const std::int32_t*)pointerWithOffset;
                 integer = int(*intPointer);
             };
             decodeInteger(value.x, 0);
@@ -131,7 +132,7 @@ int main() {
 
     auto allZones = storage.get_all<Zone>();
     cout << "zones count = " << allZones.size() << ":" << endl;  //  zones count = 1:
-    for(auto& zone: allZones) {
+    for (auto& zone: allZones) {
         cout << "zone = " << storage.dump(zone)
              << endl;  //  zone = { id : '1', rect : '{ x = 10, y = 10, width = 200, height = 300 }' }
     }
@@ -140,7 +141,7 @@ int main() {
     cout << endl;
     allZones = storage.get_all<Zone>();
     cout << "zones count = " << allZones.size() << ":" << endl;  //  zones count = 1:
-    for(auto& zone: allZones) {
+    for (auto& zone: allZones) {
         cout << "zone = " << storage.dump(zone)
              << endl;  //  zone = { id : '1', rect : '{ x = 20, y = 20, width = 500, height = 600 }' }
     }

@@ -8,7 +8,6 @@
 #include <utility>  //  std::move, std::forward, std::pair
 #include <tuple>  //  std::tuple
 
-#include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/cxx_functional_polyfill.h"
 #include "tuple_helper/tuple_traits.h"
@@ -39,7 +38,7 @@ namespace sqlite_orm {
             std::string sql() const {
                 // note: sqlite3 internally checks for null before calling
                 // sqlite3_normalized_sql() or sqlite3_expanded_sql(), so check here, too, even if superfluous
-                if(const char* sql = sqlite3_sql(this->stmt)) {
+                if (const char* sql = sqlite3_sql(this->stmt)) {
                     return sql;
                 } else {
                     return {};
@@ -50,7 +49,7 @@ namespace sqlite_orm {
             std::string expanded_sql() const {
                 // note: must check return value due to SQLITE_OMIT_TRACE
                 using char_ptr = std::unique_ptr<char, std::integral_constant<decltype(&sqlite3_free), sqlite3_free>>;
-                if(char_ptr sql{sqlite3_expanded_sql(this->stmt)}) {
+                if (char_ptr sql{sqlite3_expanded_sql(this->stmt)}) {
                     return sql.get();
                 } else {
                     return {};
@@ -59,7 +58,7 @@ namespace sqlite_orm {
 #endif
 #if SQLITE_VERSION_NUMBER >= 3026000 and defined(SQLITE_ENABLE_NORMALIZE)
             std::string normalized_sql() const {
-                if(const char* sql = sqlite3_normalized_sql(this->stmt)) {
+                if (const char* sql = sqlite3_normalized_sql(this->stmt)) {
                     return sql;
                 } else {
                     return {};
@@ -143,6 +142,12 @@ namespace sqlite_orm {
             conditions_type conditions;
         };
 
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_update_all_v = polyfill::is_specialization_of<T, update_all_t>::value;
+
+        template<class T>
+        using is_update_all = polyfill::bool_constant<is_update_all_v<T>>;
+
         template<class T, class... Args>
         struct remove_all_t {
             using type = T;
@@ -150,6 +155,12 @@ namespace sqlite_orm {
 
             conditions_type conditions;
         };
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_remove_all_v = polyfill::is_specialization_of<T, remove_all_t>::value;
+
+        template<class T>
+        using is_remove_all = polyfill::bool_constant<is_remove_all_v<T>>;
 
         template<class T, class... Ids>
         struct get_t {

@@ -1,13 +1,12 @@
 #pragma once
 
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #include <type_traits>
 #include <tuple>
 #include <string>
 #include <vector>
 #endif
 
-#include "functional/cxx_universal.h"  //  ::size_t
 #include "tuple_helper/tuple_fy.h"
 #include "table_type_of.h"
 #include "column_result.h"
@@ -22,7 +21,7 @@
 namespace sqlite_orm {
     namespace internal {
 
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         // F = field_type
         template<typename Moniker,
                  typename ExplicitColRefs,
@@ -149,7 +148,7 @@ namespace sqlite_orm {
 
         // F O::* (field/getter) -> field/getter
         template<class DBOs, class F, class O, size_t Idx = 0>
-        auto extract_colref_expressions(const DBOs& /*dbObjects*/, F O::*col, std::index_sequence<Idx> = {}) {
+        auto extract_colref_expressions(const DBOs& /*dbObjects*/, F O::* col, std::index_sequence<Idx> = {}) {
             return std::make_tuple(col);
         }
 
@@ -216,15 +215,15 @@ namespace sqlite_orm {
         auto determine_cte_colref(const DBOs& /*dbObjects*/,
                                   const SubselectColRef& subselectColRef,
                                   const ExplicitColRef& explicitColRef) {
-            if constexpr(polyfill::is_specialization_of_v<ExplicitColRef, alias_holder>) {
+            if constexpr (polyfill::is_specialization_of_v<ExplicitColRef, alias_holder>) {
                 return explicitColRef;
-            } else if constexpr(std::is_member_pointer<ExplicitColRef>::value) {
+            } else if constexpr (std::is_member_pointer<ExplicitColRef>::value) {
                 return explicitColRef;
-            } else if constexpr(std::is_base_of_v<column_identifier, ExplicitColRef>) {
+            } else if constexpr (std::is_base_of_v<column_identifier, ExplicitColRef>) {
                 return explicitColRef.member_pointer;
-            } else if constexpr(std::is_same_v<ExplicitColRef, std::string>) {
+            } else if constexpr (std::is_same_v<ExplicitColRef, std::string>) {
                 return subselectColRef;
-            } else if constexpr(std::is_same_v<ExplicitColRef, polyfill::remove_cvref_t<decltype(std::ignore)>>) {
+            } else if constexpr (std::is_same_v<ExplicitColRef, polyfill::remove_cvref_t<decltype(std::ignore)>>) {
                 return subselectColRef;
             } else {
                 static_assert(polyfill::always_false_v<ExplicitColRef>, "Invalid explicit column reference specified");
@@ -236,7 +235,7 @@ namespace sqlite_orm {
                                    const SubselectColRefs& subselectColRefs,
                                    [[maybe_unused]] const ExplicitColRefs& explicitColRefs,
                                    std::index_sequence<Idx...>) {
-            if constexpr(std::tuple_size_v<ExplicitColRefs> != 0) {
+            if constexpr (std::tuple_size_v<ExplicitColRefs> != 0) {
                 static_assert(
                     (!is_builtin_numeric_column_alias_v<
                          alias_holder_type_or_none_t<std::tuple_element_t<Idx, ExplicitColRefs>>> &&
@@ -303,7 +302,7 @@ namespace sqlite_orm {
                                                      std::index_sequence<Ii, In...>) {
             auto tbl = make_cte_table(dbObjects, get<Ii>(cte));
 
-            if constexpr(sizeof...(In) > 0) {
+            if constexpr (sizeof...(In) > 0) {
                 return make_recursive_cte_db_objects(
                     // Because CTEs can depend on their predecessor we recursively pass in a new set of DBOs
                     db_objects_cat(dbObjects, std::move(tbl)),

@@ -421,7 +421,7 @@ int main(int, char**) {
                                    order_by(&Agent::comission));
         cout << "AGENT_CODE  AGENT_NAME                                WORKING_AREA  COMMISSION" << endl;
         cout << "----------  ----------------------------------------  ------------  ----------" << endl;
-        for(auto& row: rows) {
+        for (auto& row: rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row)
                  << endl;
         }
@@ -442,7 +442,7 @@ int main(int, char**) {
                                                        group_by(&Customer::grade).having(greater_than(count(), 2))))));
         cout << "CUST_CODE   CUST_NAME   CUST_CITY                            GRADE" << endl;
         cout << "----------  ----------  -----------------------------------  ----------" << endl;
-        for(auto& row: rows) {
+        for (auto& row: rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row)
                  << endl;
         }
@@ -460,7 +460,7 @@ int main(int, char**) {
             from<Order>(),
             where(not exists(select(&Customer::agentCode, where(is_equal(&Customer::paymentAmt, 1400))))));
         cout << "AGENT_CODE  ORD_NUM     ORD_AMOUNT  CUST_CODE" << endl;
-        for(auto& row: rows) {
+        for (auto& row: rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row)
                  << endl;
         }
@@ -523,7 +523,7 @@ int main(int, char**) {
 #endif
         auto rows = storage.execute(statement);
         cout << endl;
-        for(auto& row: rows) {
+        for (auto& row: rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row)
                  << '\t' << std::get<4>(row) << endl;
         }

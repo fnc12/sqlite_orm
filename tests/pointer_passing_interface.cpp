@@ -61,7 +61,7 @@ TEST_CASE("pointer-passing") {
     // return value from a pointer of type "carray"
     struct fetch_from_pointer_fn {
         int64 operator()(carray_pointer_arg<const int64> pv) const {
-            if(const int64* v = pv) {
+            if (const int64* v = pv) {
                 return *v;
             }
             return 0;
@@ -128,7 +128,7 @@ TEST_CASE("pointer-passing") {
                         ));
                 auto stmt = storage.prepare(std::move(ast));
                 throw std::system_error{0, std::system_category()};
-            } catch(const std::system_error&) {
+            } catch (const std::system_error&) {
             }
             // unbound pointer value must be deleted in face of exceptions (unregistered sql function)
             REQUIRE(delete_int64::deleted == true);
