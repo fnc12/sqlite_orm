@@ -12666,7 +12666,7 @@ namespace sqlite_orm {
                 journal_mode::WAL,
                 journal_mode::OFF,
             }};
-#if __cpp_lib_ranges >= 201911L
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
             std::ranges::transform(string, string.begin(), [](unsigned char c) noexcept {
                 return std::toupper(c);
             });
@@ -12767,7 +12767,7 @@ namespace sqlite_orm {
                 locking_mode::EXCLUSIVE,
             }};
 
-#if __cpp_lib_ranges >= 201911L
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
             std::ranges::transform(string, string.begin(), [](unsigned char c) noexcept {
                 return std::toupper(c);
             });
@@ -18328,7 +18328,7 @@ namespace sqlite_orm {
             }
 
             void delete_function_impl(const std::string& name, std::list<udf_proxy>& functions) const {
-#if __cpp_lib_ranges >= 201911L
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
                 auto it = std::ranges::find(functions, name, &udf_proxy::name);
 #else
                 auto it = std::find_if(functions.begin(), functions.end(), [&name](auto& udfProxy) {
@@ -18463,7 +18463,7 @@ namespace sqlite_orm {
                     const std::string& columnName = storageColumnInfo.name;
 
                     //  search for a column in db with the same name
-#if __cpp_lib_ranges >= 201911L
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
                     auto dbColumnInfoIt = std::ranges::find(dbTableInfo, columnName, &table_xinfo::name);
 #else
                     auto dbColumnInfoIt = std::find_if(dbTableInfo.begin(), dbTableInfo.end(), [&columnName](auto& ti) {
@@ -23587,7 +23587,7 @@ namespace sqlite_orm {
 
                 static_if<is_replace_range<T>::value>(
                     [&processObject](auto& expression) {
-#if __cpp_lib_ranges >= 201911L
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
                         std::ranges::for_each(expression.range.first,
                                               expression.range.second,
                                               std::ref(processObject),
@@ -23632,7 +23632,7 @@ namespace sqlite_orm {
 
                 static_if<is_insert_range<T>::value>(
                     [&processObject](auto& expression) {
-#if __cpp_lib_ranges >= 201911L
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
                         std::ranges::for_each(expression.range.first,
                                               expression.range.second,
                                               std::ref(processObject),
@@ -24238,7 +24238,7 @@ namespace sqlite_orm {
             columnNames.reserve(table.template count_of<is_column>());
             table.for_each_column([&columnNames, &columnsToIgnore](const column_identifier& column) {
                 auto& columnName = column.name;
-#if __cpp_lib_ranges >= 201911L
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
                 auto columnToIgnoreIt = std::ranges::find(columnsToIgnore, columnName, &table_xinfo::name);
 #else
                 auto columnToIgnoreIt = std::find_if(columnsToIgnore.begin(),
