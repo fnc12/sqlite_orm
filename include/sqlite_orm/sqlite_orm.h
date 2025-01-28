@@ -12951,20 +12951,24 @@ namespace sqlite_orm {
 
 // #include "locking_mode.h"
 
+#ifndef _IMPORT_STD_MODULE
 #include <array>  //  std::array
 #include <string>  //  std::string
 #include <utility>  //  std::pair
 #include <algorithm>  //  std::ranges::transform
 #include <cctype>  // std::toupper
+#endif
 
 // #include "serialize_result_type.h"
 
-namespace sqlite_orm {
+_EXPORT_SQLITE_ORM namespace sqlite_orm {
     enum class locking_mode : signed char {
         NORMAL = 0,
         EXCLUSIVE = 1,
     };
+}
 
+namespace sqlite_orm {
     namespace internal {
         inline const serialize_result_type& locking_mode_to_string(locking_mode value) {
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
