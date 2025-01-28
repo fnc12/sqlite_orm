@@ -84,7 +84,7 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
     add_subdirectory(tests)
 endif()
 
-option(BUILD_EXAMPLES "Build code examples" OFF)
+option(BUILD_EXAMPLES "Build code examples" ON)
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
