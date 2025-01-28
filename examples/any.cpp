@@ -3,7 +3,7 @@
  *  It is a bit more complex than the other examples, because it
  *  uses custom row_extractor and statement_binder.
  *  Please note that this implementation is not the one and only
- *  option of implementation of std:any bindong to sqlite_orm.
+ *  option of implementation of `std:any` binding to sqlite_orm.
  *  It is just an example of how to use std::any as a mapped type.
  *  Implementation is based on 5 types SQLite supports:
  *  NULL, INTEGER, REAL, TEXT, BLOB.
