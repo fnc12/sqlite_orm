@@ -454,12 +454,6 @@ TEST_CASE("insert with generated column") {
         double tax = 0;
         double netPrice = 0;
 
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        Product() = default;
-        Product(std::string name, double price, double discount, double tax, double netPrice) :
-            name{std::move(name)}, price{price}, discount{discount}, tax{tax}, netPrice{netPrice} {}
-#endif
-
         bool operator==(const Product& other) const {
             return this->name == other.name && this->price == other.price && this->discount == other.discount &&
                    this->tax == other.tax && this->netPrice == other.netPrice;

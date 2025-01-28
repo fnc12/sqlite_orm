@@ -368,10 +368,6 @@ namespace sqlite_orm {
 
         struct in_base {
             bool negative = false;  //  used in not_in
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            in_base(bool negative) : negative{negative} {}
-#endif
         };
 
         /**
@@ -435,14 +431,7 @@ namespace sqlite_orm {
 
         struct order_by_base {
             int asc_desc = 0;  //  1: asc, -1: desc
-            std::string _collate_argument;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            order_by_base() = default;
-
-            order_by_base(decltype(asc_desc) asc_desc_, decltype(_collate_argument) _collate_argument_) :
-                asc_desc(asc_desc_), _collate_argument(std::move(_collate_argument_)) {}
-#endif
+            std::string collate_argument;
         };
 
         struct order_by_string {
@@ -477,25 +466,25 @@ namespace sqlite_orm {
 
             self collate_binary() const {
                 auto res = *this;
-                res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::binary);
+                res.collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::binary);
                 return res;
             }
 
             self collate_nocase() const {
                 auto res = *this;
-                res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::nocase);
+                res.collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::nocase);
                 return res;
             }
 
             self collate_rtrim() const {
                 auto res = *this;
-                res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::rtrim);
+                res.collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::rtrim);
                 return res;
             }
 
             self collate(std::string name) const {
                 auto res = *this;
-                res._collate_argument = std::move(name);
+                res.collate_argument = std::move(name);
                 return res;
             }
 
@@ -544,7 +533,7 @@ namespace sqlite_orm {
                 auto columnName = serialize(order_by.expression, newContext);
                 this->entries.emplace_back(std::move(columnName),
                                            order_by.asc_desc,
-                                           std::move(order_by._collate_argument));
+                                           std::move(order_by.collate_argument));
             }
 
             const_iterator begin() const {

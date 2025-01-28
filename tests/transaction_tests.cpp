@@ -9,11 +9,6 @@ namespace {
         int id = 0;
         std::string name;
 
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        Object() = default;
-        Object(int id, std::string name) : id{id}, name{std::move(name)} {}
-#endif
-
         bool operator==(const Object& other) const {
             return this->id == other.id && this->name == other.name;
         }

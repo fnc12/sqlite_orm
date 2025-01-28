@@ -102,11 +102,6 @@ TEST_CASE("Compound index") {
     struct User {
         int id = 0;
         std::string name;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        User() = default;
-        User(int id, std::string name) : id{id}, name{std::move(name)} {}
-#endif
     };
     auto table = make_table("users", make_column("id", &User::id), make_column("name", &User::name));
 

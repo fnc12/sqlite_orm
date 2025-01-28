@@ -9,11 +9,6 @@ TEST_CASE("In") {
         struct User {
             int id = 0;
 
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            User() = default;
-            User(int id) : id{id} {}
-#endif
-
             bool operator==(const User& other) const {
                 return this->id == other.id;
             }

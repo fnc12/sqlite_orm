@@ -27,10 +27,6 @@ namespace sqlite_orm {
             sqlite3_stmt* stmt = nullptr;
             connection_ref con;
 
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            prepared_statement_base(sqlite3_stmt* stmt, connection_ref con) : stmt{stmt}, con{std::move(con)} {}
-#endif
-
             ~prepared_statement_base() {
                 sqlite3_finalize(this->stmt);
             }
@@ -313,10 +309,6 @@ namespace sqlite_orm {
 
         struct insert_constraint {
             conflict_action action = conflict_action::abort;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            insert_constraint(conflict_action action) : action{action} {}
-#endif
         };
 
         template<class T>

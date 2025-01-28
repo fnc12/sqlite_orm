@@ -16,5 +16,6 @@
 // actually it should be available when including stddef.h
 using std::nullptr_t;
 
+#include "cxx_check_prerequisites.h"
 #include "cxx_core_features.h"
 #include "cxx_compiler_quirks.h"

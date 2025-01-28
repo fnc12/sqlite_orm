@@ -218,22 +218,12 @@ namespace {
     struct User1 {
         int id = 0;
         std::string name;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        User1() = default;
-        User1(int id, std::string name) : id{id}, name{std::move(name)} {}
-#endif
     };
 
     struct Visit1 {
         int id = 0;
         int userId = 0;
         time_t time = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        Visit1() = default;
-        Visit1(int id, int userId, time_t time) : id{id}, userId{userId}, time{time} {}
-#endif
     };
 }
 #if SQLITE_VERSION_NUMBER >= 3006019
@@ -270,24 +260,12 @@ namespace {
         std::string firstName;
         std::string lastName;
         std::string country;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        User2() = default;
-        User2(int id, std::string firstName, std::string lastName, std::string country) :
-            id{id}, firstName{std::move(firstName)}, lastName{std::move(lastName)}, country{country} {}
-#endif
     };
 
     struct Track2 {
         int id = 0;
         std::string name;
         long milliseconds = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        Track2() = default;
-        Track2(int id, std::string name, long milliseconds) :
-            id{id}, name{std::move(name)}, milliseconds{milliseconds} {}
-#endif
     };
 
 }
@@ -379,11 +357,6 @@ namespace {
         int id = 0;
         int age = 0;
         std::string name;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        User3() = default;
-        User3(int id, int age, std::string name) : id{id}, age{age}, name{std::move(name)} {}
-#endif
     };
 
 }
@@ -423,11 +396,6 @@ namespace {
         int id = 0;
         std::string firstName;
 
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        User4() = default;
-        User4(int id, std::string firstName) : id{id}, firstName{std::move(firstName)} {}
-#endif
-
         bool operator==(const User4& user) const {
             return this->id == user.id && this->firstName == user.firstName;
         }
@@ -458,12 +426,6 @@ namespace {
         std::string firstName;
         std::string lastName;
         long registerTime = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        User5() = default;
-        User5(int id, std::string firstName, std::string lastName, long registerTime) :
-            id{id}, firstName{std::move(firstName)}, lastName{std::move(lastName)}, registerTime{registerTime} {}
-#endif
     };
 
 }
