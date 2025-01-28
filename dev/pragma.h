@@ -34,8 +34,7 @@ namespace sqlite_orm {
             res.reserve(argc);
             const auto rowExtractor = column_text_extractor<std::string>();
             for (int i = 0; i < argc; ++i) {
-                auto rowString = rowExtractor.extract(argv[i]);
-                res.push_back(std::move(rowString));
+                res.push_back(rowExtractor.extract(argv[i]));
             }
             return 0;
         }

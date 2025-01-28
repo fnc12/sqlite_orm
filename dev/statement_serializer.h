@@ -1691,12 +1691,19 @@ namespace sqlite_orm {
                 throw std::system_error{orm_error_code::table_has_no_primary_key_column};
             }
 
+#ifdef SQLITE_ORM_INIT_RANGE_BASED_FOR_SUPPORTED
+            static constexpr std::array<const char*, 2> sep = {" AND ", ""};
+            for (bool first = true; const std::string& pkName: primaryKeyColumnNames) {
+                ss << sep[std::exchange(first, false)] << streaming_identifier(pkName) << " = ?";
+            }
+#else
             for (size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
                 if (i > 0) {
                     ss << " AND ";
                 }
                 ss << streaming_identifier(primaryKeyColumnNames[i]) << " = ?";
             }
+#endif
             return ss.str();
         }
 

@@ -239,9 +239,15 @@ namespace sqlite_orm {
             const auto& strings = std::get<1>(tpl);
 
             static constexpr std::array<const char*, 2> sep = {", ", ""};
+#ifdef SQLITE_ORM_INIT_RANGE_BASED_FOR_SUPPORTED
+            for (bool first = true; auto& s: strings) {
+                ss << sep[std::exchange(first, false)] << s;
+            }
+#else
             for (size_t i = 0, first = true; i < strings.size(); ++i) {
                 ss << sep[std::exchange(first, false)] << strings[i];
             }
+#endif
             return ss;
         }
 
