@@ -195,11 +195,20 @@ namespace sqlite_orm {
 
             // 3. fill in blanks with numerical column identifiers
             {
+#ifdef SQLITE_ORM_INIT_RANGE_BASED_FOR_SUPPORTED
+                for (size_t n = 1; std::string & name: columnNames) {
+                    if (name.empty()) {
+                        name = std::to_string(n);
+                    }
+                    ++n;
+                }
+#else
                 for (size_t i = 0, n = columnNames.size(); i < n; ++i) {
                     if (columnNames[i].empty()) {
                         columnNames[i] = std::to_string(i + 1);
                     }
                 }
+#endif
             }
 
             return columnNames;
