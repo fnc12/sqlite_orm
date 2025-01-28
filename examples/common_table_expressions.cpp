@@ -3,7 +3,7 @@
  */
 
 #include <sqlite_orm/sqlite_orm.h>
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #define ENABLE_THIS_EXAMPLE
 #endif
 
@@ -54,7 +54,7 @@ void all_integers_between(int from, int end) {
         cout << "Integer range (where-clause) [" << from << ", " << end
              << "]"
                 "\n";
-        for(int n: storage.execute(stmt)) {
+        for (int n: storage.execute(stmt)) {
             cout << n << ", ";
         }
         cout << endl;
@@ -88,7 +88,7 @@ void all_integers_between(int from, int end) {
         cout << "Integer range (limit-clause) [" << from << ", " << end
              << "]"
                 "\n";
-        for(int n: storage.execute(stmt)) {
+        for (int n: storage.execute(stmt)) {
             cout << n << ", ";
         }
         cout << endl;
@@ -113,7 +113,7 @@ void all_integers_between(int from, int end) {
         cout << "Integer range (limit-clause) [" << from << ", " << end
              << "]"
                 "\n";
-        for(int n: storage.execute(stmt)) {
+        for (int n: storage.execute(stmt)) {
             cout << n << ", ";
         }
         cout << endl;
@@ -185,7 +185,7 @@ void supervisor_chain() {
         auto stmt = storage.prepare(ast);
         auto results = storage.execute(stmt);
         cout << "Hierarchy chain of Fred:\n";
-        for(const string& name: results) {
+        for (const string& name: results) {
             cout << name << ", ";
         }
         cout << endl;
@@ -387,7 +387,7 @@ void family_tree() {
     auto results = storage.execute(stmt);
 
     cout << "Living ancestor's of Alice:\n";
-    for(const string& name: results) {
+    for (const string& name: results) {
         cout << name << '\n';
     }
     cout << endl;
@@ -472,7 +472,7 @@ void depth_or_breadth_first() {
         auto results = storage.execute(stmt);
 
         cout << "List of organization members, breadth-first:\n";
-        for(const string& name: results) {
+        for (const string& name: results) {
             cout << name << '\n';
         }
     }
@@ -516,7 +516,7 @@ void depth_or_breadth_first() {
         auto results = storage.execute(stmt);
 
         cout << "List of organization members, depth-first:\n";
-        for(const string& name: results) {
+        for (const string& name: results) {
             cout << name << '\n';
         }
     }
@@ -572,7 +572,7 @@ void select_from_subselect() {
     auto results = storage.execute(stmt);
 
     cout << "List of employees with a salary less than 5000:\n";
-    for(auto& result: results) {
+    for (auto& result: results) {
         cout << get<0>(result) << '\n';
     }
     cout << endl;
@@ -673,7 +673,7 @@ void apfelmaennchen() {
     auto results = storage.execute(stmt);
 
     cout << "Apfelmaennchen (Mandelbrot set):\n";
-    for(const string& rowString: results) {
+    for (const string& rowString: results) {
         cout << rowString << '\n';
     }
     cout << endl;
@@ -750,7 +750,7 @@ void sudoku() {
     auto results = storage.execute(stmt);
 
     cout << "Sudoku solution:\n";
-    for(const string& answer: results) {
+    for (const string& answer: results) {
         cout << answer << '\n';
     }
     cout << endl;
@@ -963,15 +963,15 @@ void neevek_issue_222() {
     auto results = storage.execute(stmt);
 
     cout << "User Retention:\n";
-    for(const char* colName: {"register_date", "ndays", "retention", "user_count"}) {
+    for (const char* colName: {"register_date", "ndays", "retention", "user_count"}) {
         cout << " " << std::setw(13) << colName;
     }
     cout << '\n';
-    for(int i = 0; i < 4; ++i) {
+    for (int i = 0; i < 4; ++i) {
         cout << std::setfill(' ') << " " << std::setw(13) << std::setfill('_') << "";
     }
     cout << std::setfill(' ') << '\n';
-    for(auto& result: results) {
+    for (auto& result: results) {
         cout << " " << std::setw(13) << *get<0>(result);
         cout << " " << std::setw(13) << get<1>(result);
         cout << " " << std::setw(13) << get<2>(result);
@@ -1044,11 +1044,11 @@ void greatest_n_per_group() {
     auto results = storage.execute(stmt);
 
     cout << "most recent (successful) result per item:\n";
-    for(const char* colName: {"id", "item_id", "timestamp", "flag"}) {
+    for (const char* colName: {"id", "item_id", "timestamp", "flag"}) {
         cout << "\t" << colName;
     }
     cout << '\n';
-    for(auto& result: results) {
+    for (auto& result: results) {
         cout << "\t" << result.result_id << "\t" << result.item_id << "\t" << result.timestamp << "\t" << result.flag
              << '\n';
     }
@@ -1072,7 +1072,7 @@ int main() {
         greatest_n_per_group();
         show_optimization_fence();
         show_mapping_and_backreferencing();
-    } catch(const system_error& e) {
+    } catch (const system_error& e) {
         cout << "[" << e.code() << "] " << e.what();
     }
 #endif

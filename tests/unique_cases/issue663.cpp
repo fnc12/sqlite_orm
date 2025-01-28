@@ -28,7 +28,7 @@ namespace {
             storage.insert_range(usersInput.begin(), usersInput.end());
             const auto users = storage.template get_all<TUser>();
             REQUIRE(users.size() == usersInput.size());
-            for(size_t i = 0; i < users.size(); ++i) {
+            for (size_t i = 0; i < users.size(); ++i) {
                 REQUIRE(-1 != users[i].id);
                 usersInput[i].id = users[i].id;
             }
@@ -176,7 +176,7 @@ TEST_CASE("Issue 663 - fail test") {
     try {
         storage.insert_range(inputUsers.begin(), inputUsers.end());
         REQUIRE(false);
-    } catch(const std::system_error& e) {
+    } catch (const std::system_error& e) {
         REQUIRE(e.code() == make_error_code(orm_error_code::cannot_use_default_value));
         REQUIRE(storage.count<User3>() == 0);
     }

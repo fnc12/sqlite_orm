@@ -33,7 +33,7 @@ TEST_CASE("statement_serializer remove_all") {
         value = serialize(expression, context);
         expected = R"(DELETE FROM "users" WHERE ("id" = 1) LIMIT 1)";
     }
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     SECTION("With clause") {
         constexpr orm_cte_moniker auto data = "data"_cte;

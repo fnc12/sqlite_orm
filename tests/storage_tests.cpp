@@ -334,7 +334,7 @@ TEST_CASE("insert") {
     storage.remove_all<Object>();
     storage.remove_all<ObjectWithoutRowid>();
 
-    for(auto i = 0; i < 100; ++i) {
+    for (auto i = 0; i < 100; ++i) {
         storage.insert(Object{
             0,
             "Skillet",
@@ -520,7 +520,7 @@ TEST_CASE("last insert rowid") {
     }
 }
 
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 TEST_CASE("With clause") {
     using Catch::Matchers::Equals;
 

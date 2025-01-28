@@ -17,18 +17,18 @@ namespace sqlite_orm {
             connection_holder(std::string filename_) : filename(std::move(filename_)) {}
 
             void retain() {
-                if(1 == ++this->_retain_count) {
+                if (1 == ++this->_retain_count) {
                     auto rc = sqlite3_open(this->filename.c_str(), &this->db);
-                    if(rc != SQLITE_OK) {
+                    if (rc != SQLITE_OK) {
                         throw_translated_sqlite_error(db);
                     }
                 }
             }
 
             void release() {
-                if(0 == --this->_retain_count) {
+                if (0 == --this->_retain_count) {
                     auto rc = sqlite3_close(this->db);
-                    if(rc != SQLITE_OK) {
+                    if (rc != SQLITE_OK) {
                         throw_translated_sqlite_error(db);
                     }
                 }
@@ -60,7 +60,7 @@ namespace sqlite_orm {
 
             // rebind connection reference
             connection_ref& operator=(const connection_ref& other) {
-                if(other.holder != this->holder) {
+                if (other.holder != this->holder) {
                     this->holder->release();
                     this->holder = other.holder;
                     this->holder->retain();

@@ -44,7 +44,7 @@ auto storage =
 //  inserts or updates student and does the same with marks
 int addStudent(const Student& student) {
     auto studentId = student.id;
-    if(storage.count<Student>(where(c(&Student::id) == student.id))) {
+    if (storage.count<Student>(where(c(&Student::id) == student.id))) {
         storage.update(student);
     } else {
         studentId = storage.insert(student);
@@ -52,7 +52,7 @@ int addStudent(const Student& student) {
     //  insert all marks within a transaction
     storage.transaction([&] {
         storage.remove_all<Mark>(where(c(&Mark::student_id) == studentId));
-        for(auto& mark: student.marks) {
+        for (auto& mark: student.marks) {
             storage.insert(Mark{mark, studentId});
         }
         return true;
@@ -97,7 +97,7 @@ int main(int, char**) {
         auto mike = getStudent(mikeId);
         cout << "mike = " << storage.dump(mike) << endl;
         cout << "mike.marks = ";
-        for(auto& m: mike.marks) {
+        for (auto& m: mike.marks) {
             cout << m << " ";
         }
         cout << endl;
@@ -105,7 +105,7 @@ int main(int, char**) {
         auto anna = getStudent(annaId);
         cout << "anna = " << storage.dump(anna) << endl;
         cout << "anna.marks = ";
-        for(auto& m: anna.marks) {
+        for (auto& m: anna.marks) {
             cout << m << " ";
         }
         cout << endl;

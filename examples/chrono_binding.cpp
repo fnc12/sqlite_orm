@@ -50,7 +50,7 @@ static std::optional<std::chrono::sys_days> sysDaysFromString(const std::string&
     std::stringstream ss{s};
     std::chrono::sys_days tt;
     ss >> std::chrono::parse("%F"s, tt);
-    if(!ss.fail()) {
+    if (!ss.fail()) {
         return {tt};
     }
     return std::nullopt;
@@ -109,11 +109,11 @@ namespace sqlite_orm {
     template<>
     struct row_extractor<std::chrono::sys_days> {
         std::chrono::sys_days extract(const char* columnText) const {
-            if(!columnText) {
+            if (!columnText) {
                 throw std::runtime_error("incorrect date string (nullptr)");
             }
 
-            if(auto sd = sysDaysFromString(columnText)) {
+            if (auto sd = sysDaysFromString(columnText)) {
                 return sd.value();
             } else {
                 throw std::runtime_error("incorrect date string (" + std::string(columnText) + ")");

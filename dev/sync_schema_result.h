@@ -44,7 +44,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     };
 
     inline std::ostream& operator<<(std::ostream& os, sync_schema_result value) {
-        switch(value) {
+        switch (value) {
             case sync_schema_result::new_table_created:
                 return os << "new table created";
             case sync_schema_result::already_in_sync:

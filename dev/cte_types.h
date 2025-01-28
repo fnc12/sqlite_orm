@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef _IMPORT_STD_MODULE
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #include <type_traits>
 #include <tuple>
 #endif
@@ -11,7 +11,7 @@
 #include "functional/cxx_type_traits_polyfill.h"
 #include "tuple_helper/tuple_fy.h"
 
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 namespace sqlite_orm {
 
     namespace internal {

@@ -117,7 +117,7 @@ int main() {
     }
 
     cout << "Doctors count = " << storage.count<Doctor>() << endl;
-    for(auto& doctor: storage.iterate<Doctor>()) {
+    for (auto& doctor: storage.iterate<Doctor>()) {
         cout << storage.dump(doctor) << endl;
     }
 
@@ -134,7 +134,7 @@ int main() {
     }
 
     cout << "Specialities count = " << storage.count<Speciality>() << endl;
-    for(auto& speciality: storage.iterate<Speciality>()) {
+    for (auto& speciality: storage.iterate<Speciality>()) {
         cout << storage.dump(speciality) << endl;
     }
     {
@@ -165,7 +165,7 @@ int main() {
         storage.replace(Visit{212, "Jason Mallin", "2013-10-12"});
     }
     cout << "Visits count = " << storage.count<Visit>() << endl;
-    for(auto& visit: storage.iterate<Visit>()) {
+    for (auto& visit: storage.iterate<Visit>()) {
         cout << storage.dump(visit) << endl;
     }
     {
@@ -177,7 +177,7 @@ int main() {
         {
             auto rows = storage.execute(selectStatement);
             cout << "rows count = " << rows.size() << endl;
-            for(auto& id: rows) {
+            for (auto& id: rows) {
                 cout << id << endl;
             }
         }
@@ -190,7 +190,7 @@ int main() {
             get<0>(selectStatement) = 11;
             auto rows = storage.execute(selectStatement);
             cout << "rows count = " << rows.size() << endl;
-            for(auto& id: rows) {
+            for (auto& id: rows) {
                 cout << id << endl;
             }
         }
@@ -205,7 +205,7 @@ int main() {
         {
             auto rows = storage.execute(selectStatement);
             cout << "rows count = " << rows.size() << endl;
-            for(auto& row: rows) {
+            for (auto& row: rows) {
                 cout << get<0>(row) << '\t' << get<1>(row) << endl;
             }
         }
@@ -217,7 +217,7 @@ int main() {
         {
             auto rows = storage.execute(selectStatement);
             cout << "rows count = " << rows.size() << endl;
-            for(auto& row: rows) {
+            for (auto& row: rows) {
                 cout << get<0>(row) << '\t' << get<1>(row) << endl;
             }
         }

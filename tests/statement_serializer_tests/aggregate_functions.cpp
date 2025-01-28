@@ -94,7 +94,7 @@ TEST_CASE("statement_serializer aggregate functions") {
                 expected = R"(COUNT(*))";
             }
 #endif
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
             SECTION("with CTE") {
                 auto expression = count<1_ctealias>();

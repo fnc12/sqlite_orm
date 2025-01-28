@@ -35,15 +35,15 @@ TEST_CASE("Journal mode") {
     auto jm = stor->pragma.journal_mode();
     REQUIRE(jm == journal_mode::DELETE);
 
-    for(auto i = 0; i < 2; ++i) {
-        if(i == 0) {
+    for (auto i = 0; i < 2; ++i) {
+        if (i == 0) {
             stor->begin_transaction();
         }
         stor->pragma.journal_mode(journal_mode::MEMORY);
         jm = stor->pragma.journal_mode();
         REQUIRE(jm == journal_mode::MEMORY);
 
-        if(i == 1) {  //  WAL cannot be set within a transaction
+        if (i == 1) {  //  WAL cannot be set within a transaction
             stor->pragma.journal_mode(journal_mode::WAL);
             jm = stor->pragma.journal_mode();
             REQUIRE(jm == journal_mode::WAL);
@@ -62,7 +62,7 @@ TEST_CASE("Journal mode") {
         jm = stor->pragma.journal_mode();
         REQUIRE(jm == journal_mode::TRUNCATE);
 
-        if(i == 0) {
+        if (i == 0) {
             stor->rollback();
         }
     }
@@ -80,7 +80,7 @@ TEST_CASE("Synchronous") {
     try {
         storage.pragma.synchronous(newValue);
         throw std::runtime_error("Must not fire");
-    } catch(const std::system_error&) {
+    } catch (const std::system_error&) {
         //  Safety level may not be changed inside a transaction
         REQUIRE(storage.pragma.synchronous() == value);
     }

@@ -157,7 +157,7 @@ TEST_CASE("Prepared select") {
         }
     }
     SECTION("serialize one column") {
-        for(auto i = 0; i < 2; ++i) {
+        for (auto i = 0; i < 2; ++i) {
             auto statement = storage.prepare(select(&User::id));
             testSerializing(statement);
             SECTION("nothing") {
@@ -170,7 +170,7 @@ TEST_CASE("Prepared select") {
         }
     }
     SECTION("serialize one column with order by") {
-        for(auto i = 0; i < 2; ++i) {
+        for (auto i = 0; i < 2; ++i) {
             auto statement = storage.prepare(select(&User::name, order_by(&User::id)));
             auto str = storage.dump(statement);
             testSerializing(statement);

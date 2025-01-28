@@ -62,8 +62,8 @@ namespace sqlite_orm {
                 journal_mode::WAL,
                 journal_mode::OFF,
             }};
-            for(auto j: all) {
-                if(to_string(j) == upper_str) {
+            for (auto j: all) {
+                if (to_string(j) == upper_str) {
                     return std::make_unique<journal_mode>(j);
                 }
             }

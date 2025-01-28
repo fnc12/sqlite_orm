@@ -104,7 +104,11 @@ SpaceBeforeAssignmentOperators: true
 SpaceBeforeCpp11BracedList: false
 SpaceBeforeCtorInitializerColon: true
 SpaceBeforeInheritanceColon: true
-SpaceBeforeParens: Never
+SpaceBeforeParens: Custom
+SpaceBeforeParensOptions:
+  AfterControlStatements: true
+  AfterRequiresInClause: true
+  AfterRequiresInExpression: false
 SpaceBeforeRangeBasedForLoopColon: false
 SpaceInEmptyParentheses: false
 SpacesBeforeTrailingComments: 2
@@ -114,7 +118,7 @@ SpacesInCStyleCastParentheses: false
 SpacesInParentheses: false
 SpacesInSquareBrackets: false
 Standard:        Cpp11
-AttributeMacros: [SQLITE_ORM_CPP_LIKELY, SQLITE_ORM_CPP_UNLIKELY, _EXPORT_SQLITE_ORM]
+AttributeMacros: [SQLITE_ORM_CPP_LIKELY, SQLITE_ORM_CPP_UNLIKELY]
 StatementMacros: 
   - __pragma
   - _Pragma
@@ -122,4 +126,5 @@ StatementMacros:
   - QT_REQUIRE_VERSION
 TabWidth:        4
 UseTab:          Never
+LineEnding:      LF
 ...

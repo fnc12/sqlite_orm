@@ -164,7 +164,7 @@ TEST_CASE("statement_serializer column names") {
             auto value = serialize(alias_column<als>(&Object::id), context);
             REQUIRE(value == R"("a"."id")");
         }
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         SECTION("cte") {
             auto dbObjects2 =

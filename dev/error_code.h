@@ -60,7 +60,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         }
 
         std::string message(int c) const override final {
-            switch(static_cast<orm_error_code>(c)) {
+            switch (static_cast<orm_error_code>(c)) {
                 case orm_error_code::not_found:
                     return "Not found";
                 case orm_error_code::type_is_not_mapped_to_storage:
@@ -135,7 +135,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<typename... T>
-    std::string get_error_message(sqlite3* db, T&&... args) {
+    std::string get_error_message(sqlite3 * db, T && ... args) {
         std::ostringstream stream;
         using unpack = int[];
         (void)unpack{0, (stream << args, 0)...};
@@ -144,7 +144,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<typename... T>
-    [[noreturn]] void throw_error(sqlite3* db, T&&... args) {
+    [[noreturn]] void throw_error(sqlite3 * db, T && ... args) {
         throw std::system_error{sqlite_errc(sqlite3_errcode(db)), get_error_message(db, std::forward<T>(args)...)};
     }
 
@@ -152,7 +152,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         return {sqlite_errc(ev)};
     }
 
-    inline std::system_error sqlite_to_system_error(sqlite3* db) {
+    inline std::system_error sqlite_to_system_error(sqlite3 * db) {
         return {sqlite_errc(sqlite3_errcode(db)), sqlite3_errmsg(db)};
     }
 
@@ -160,11 +160,11 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         throw sqlite_to_system_error(ev);
     }
 
-    [[noreturn]] inline void throw_translated_sqlite_error(sqlite3* db) {
+    [[noreturn]] inline void throw_translated_sqlite_error(sqlite3 * db) {
         throw sqlite_to_system_error(db);
     }
 
-    [[noreturn]] inline void throw_translated_sqlite_error(sqlite3_stmt* stmt) {
+    [[noreturn]] inline void throw_translated_sqlite_error(sqlite3_stmt * stmt) {
         throw sqlite_to_system_error(sqlite3_db_handle(stmt));
     }
 }

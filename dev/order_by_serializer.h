@@ -29,10 +29,10 @@ namespace sqlite_orm {
                 newContext.skip_table_name = false;
 
                 ss << serialize(orderBy.expression, newContext);
-                if(!orderBy._collate_argument.empty()) {
+                if (!orderBy._collate_argument.empty()) {
                     ss << " COLLATE " << orderBy._collate_argument;
                 }
-                switch(orderBy.asc_desc) {
+                switch (orderBy.asc_desc) {
                     case 1:
                         ss << " ASC";
                         break;
@@ -53,16 +53,16 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << static_cast<std::string>(orderBy) << " ";
                 int index = 0;
-                for(const dynamic_order_by_entry_t& entry: orderBy) {
-                    if(index > 0) {
+                for (const dynamic_order_by_entry_t& entry: orderBy) {
+                    if (index > 0) {
                         ss << ", ";
                     }
 
                     ss << entry.name;
-                    if(!entry._collate_argument.empty()) {
+                    if (!entry._collate_argument.empty()) {
                         ss << " COLLATE " << entry._collate_argument;
                     }
-                    switch(entry.asc_desc) {
+                    switch (entry.asc_desc) {
                         case 1:
                             ss << " ASC";
                             break;

@@ -45,7 +45,7 @@ namespace sqlite_orm {
          *  Find column name by its type and member pointer.
          */
         template<class O, class F, class DBOs, satisfies<is_db_objects, DBOs> = true>
-        const std::string* find_column_name(const DBOs& dbObjects, F O::*field) {
+        const std::string* find_column_name(const DBOs& dbObjects, F O::* field) {
             return pick_table<O>(dbObjects).find_column_name(field);
         }
 
@@ -59,7 +59,7 @@ namespace sqlite_orm {
             return cp.field;
         }
 
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         /**
          *  Materialize column pointer:
          *  3. by moniker and alias_holder<>.
@@ -95,7 +95,7 @@ namespace sqlite_orm {
             return pick_table<O>(dbObjects).find_column_name(field);
         }
 
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         /**
          *  Find column name by:
          *  3. by moniker and alias_holder<>.

@@ -43,7 +43,7 @@ namespace sqlite_orm {
                                                                               check_if_is_template<table_content_t>>,
                                                              T>;
 
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         /**
          *  A subselect mapper's CTE moniker, void otherwise.
          */
@@ -71,7 +71,7 @@ namespace sqlite_orm {
          */
         template<class O, bool WithoutRowId, class... Cs>
         struct table_t : basic_table {
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             // this typename is used in contexts where it is known that the 'table' holds a subselect_mapper
             // instead of a regular object type
             using cte_mapper_type = O;
@@ -143,7 +143,7 @@ namespace sqlite_orm {
                 iterate_tuple(this->elements,
                               col_index_sequence_with_field_type<elements_type, field_type>{},
                               call_as_template_base<column_field>([&res, &memberPointer, &object](const auto& column) {
-                                  if(compare_any(column.setter, memberPointer)) {
+                                  if (compare_any(column.setter, memberPointer)) {
                                       res = &polyfill::invoke(column.member_pointer, object);
                                   }
                               }));
@@ -157,7 +157,7 @@ namespace sqlite_orm {
                 iterate_tuple(this->elements,
                               col_index_sequence_with<elements_type, is_generated_always>{},
                               [&result, &name](auto& column) {
-                                  if(column.name != name) {
+                                  if (column.name != name) {
                                       return;
                                   }
                                   using generated_op_index_sequence =
@@ -192,7 +192,7 @@ namespace sqlite_orm {
             std::vector<std::string> primary_key_column_names() const {
                 using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
 
-                if(pkcol_index_sequence::size() > 0) {
+                if (pkcol_index_sequence::size() > 0) {
                     return create_from_tuple<std::vector<std::string>>(this->elements,
                                                                        pkcol_index_sequence{},
                                                                        &column_identifier::name);
@@ -217,8 +217,8 @@ namespace sqlite_orm {
             std::vector<std::string> composite_key_columns_names(const primary_key_t<Args...>& primaryKey) const {
                 return create_from_tuple<std::vector<std::string>>(primaryKey.columns,
                                                                    [this, empty = std::string{}](auto& memberPointer) {
-                                                                       if(const std::string* columnName =
-                                                                              this->find_column_name(memberPointer)) {
+                                                                       if (const std::string* columnName =
+                                                                               this->find_column_name(memberPointer)) {
                                                                            return *columnName;
                                                                        } else {
                                                                            return empty;
@@ -237,7 +237,7 @@ namespace sqlite_orm {
                 iterate_tuple(this->elements,
                               col_index_sequence_with_field_type<elements_type, field_type>{},
                               [&res, m](auto& c) {
-                                  if(compare_any(c.member_pointer, m) || compare_any(c.setter, m)) {
+                                  if (compare_any(c.member_pointer, m) || compare_any(c.setter, m)) {
                                       res = &c.name;
                                   }
                               });
@@ -402,7 +402,8 @@ namespace sqlite_orm {
                                             check_if_is_type<member_field_type_t<G>>::template fn,
                                             member_field_type_t>;
                 iterate_tuple(primaryKey.columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
-                    if(compare_any(memberPointer, column.member_pointer) || compare_any(memberPointer, column.setter)) {
+                    if (compare_any(memberPointer, column.member_pointer) ||
+                        compare_any(memberPointer, column.setter)) {
                         res = true;
                     }
                 });

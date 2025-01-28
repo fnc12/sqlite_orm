@@ -1713,7 +1713,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
                                                                             internal::field_type_or_type_t<Y>>>,
                               bool> = true>
     auto nullif(X x, Y y) {
-        if constexpr(std::is_void_v<R>) {
+        if constexpr (std::is_void_v<R>) {
             using F = internal::built_in_function_t<
                 std::optional<std::common_type_t<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>>,
                 internal::nullif_string,
@@ -1888,8 +1888,10 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  The return type is the type of the first argument.
      */
     template<class X, class Y, class... Rest>
-    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X, Y, Rest...>
-    max(X x, Y y, Rest... rest) {
+    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X, Y, Rest...> max(
+        X x,
+        Y y,
+        Rest... rest) {
         return {std::tuple<X, Y, Rest...>{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
     }
 
@@ -1898,8 +1900,10 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  The return type is the type of the first argument.
      */
     template<class X, class Y, class... Rest>
-    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X, Y, Rest...>
-    min(X x, Y y, Rest... rest) {
+    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X, Y, Rest...> min(
+        X x,
+        Y y,
+        Rest... rest) {
         return {std::tuple<X, Y, Rest...>{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
     }
 

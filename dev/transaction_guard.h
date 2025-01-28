@@ -30,8 +30,8 @@ namespace sqlite_orm {
             transaction_guard_t(connection_ref connection_,
                                 std::function<void()> commit_func_,
                                 std::function<void()> rollback_func_) :
-                connection(std::move(connection_)),
-                commit_func(std::move(commit_func_)), rollback_func(std::move(rollback_func_)) {}
+                connection(std::move(connection_)), commit_func(std::move(commit_func_)),
+                rollback_func(std::move(rollback_func_)) {}
 
             transaction_guard_t(transaction_guard_t&& other) :
                 commit_on_destroy(other.commit_on_destroy), connection(std::move(other.connection)),
@@ -41,8 +41,8 @@ namespace sqlite_orm {
             }
 
             ~transaction_guard_t() noexcept(false) {
-                if(this->gotta_fire) {
-                    if(this->commit_on_destroy) {
+                if (this->gotta_fire) {
+                    if (this->commit_on_destroy) {
                         this->commit_func();
                     } else {
                         this->rollback_func();

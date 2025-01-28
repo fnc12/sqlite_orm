@@ -142,8 +142,8 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
             p_{std::exchange(other.p_, nullptr)}, d_{std::move(other.d_)} {}
 
         ~pointer_binding() {
-            if(p_) {
-                if(auto xDestroy = get_xdestroy()) {
+            if (p_) {
+                if (auto xDestroy = get_xdestroy()) {
                     // note: C-casting `P* -> void*` like statement_binder<pointer_binding<P, T, D>>
                     xDestroy((void*)p_);
                 }
@@ -199,7 +199,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  the deleter when the statement finishes.
      */
     template<class T, class P, class D>
-    auto bind_pointer(P* p, D d) noexcept -> pointer_binding<P, T, D> {
+    auto bind_pointer(P * p, D d) noexcept -> pointer_binding<P, T, D> {
         return {p, std::move(d)};
     }
 
@@ -209,25 +209,27 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<typename B>
-    auto bind_pointer(typename B::qualified_type* p, typename B::deleter_type d = {}) noexcept -> B {
+    auto bind_pointer(typename B::qualified_type * p, typename B::deleter_type d = {}) noexcept -> B {
         return B{p, std::move(d)};
     }
 
     template<class T, class P, class D>
-    [[deprecated("Use the better named function `bind_pointer(...)`")]] pointer_binding<P, T, D>
-    bindable_pointer(P* p, D d) noexcept {
+    [[deprecated("Use the better named function `bind_pointer(...)`")]] pointer_binding<P, T, D> bindable_pointer(
+        P * p,
+        D d) noexcept {
         return bind_pointer<T>(p, std::move(d));
     }
 
     template<class T, class P, class D>
-    [[deprecated("Use the better named function `bind_pointer(...)`")]] pointer_binding<P, T, D>
-    bindable_pointer(std::unique_ptr<P, D> p) noexcept {
+    [[deprecated("Use the better named function `bind_pointer(...)`")]] pointer_binding<P, T, D> bindable_pointer(
+        std::unique_ptr<P, D> p) noexcept {
         return bind_pointer<T>(p.release(), p.get_deleter());
     }
 
     template<typename B>
-    [[deprecated("Use the better named function `bind_pointer(...)`")]] B
-    bindable_pointer(typename B::qualified_type* p, typename B::deleter_type d = {}) noexcept {
+    [[deprecated("Use the better named function `bind_pointer(...)`")]] B bindable_pointer(
+        typename B::qualified_type * p,
+        typename B::deleter_type d = {}) noexcept {
         return bind_pointer<B>(p, std::move(d));
     }
 
@@ -240,7 +242,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  the deleter when the statement finishes.
      */
     template<orm_pointer_type auto tag, class P, class D>
-    auto bind_pointer(P* p, D d) noexcept -> pointer_binding<P, decltype(tag), D> {
+    auto bind_pointer(P * p, D d) noexcept -> pointer_binding<P, decltype(tag), D> {
         return {p, std::move(d)};
     }
 
@@ -257,26 +259,26 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  and sqlite assumes the object pointed to is valid throughout the lifetime of a statement.
      */
     template<class T, class P>
-    auto bind_pointer_statically(P* p) noexcept -> static_pointer_binding<P, T> {
+    auto bind_pointer_statically(P * p) noexcept -> static_pointer_binding<P, T> {
         return bind_pointer<T>(p, null_xdestroy_f);
     }
 
     template<typename B>
-    B bind_pointer_statically(typename B::qualified_type* p,
+    B bind_pointer_statically(typename B::qualified_type * p,
                               typename B::deleter_type* /*exposition*/ = nullptr) noexcept {
         return bind_pointer<B>(p);
     }
 
     template<class T, class P>
     [[deprecated("Use the better named function `bind_pointer_statically(...)`")]] static_pointer_binding<P, T>
-    statically_bindable_pointer(P* p) noexcept {
+    statically_bindable_pointer(P * p) noexcept {
         return bind_pointer<T>(p, null_xdestroy_f);
     }
 
     template<typename B>
-    [[deprecated("Use the better named function `bind_pointer_statically(...)`")]] B
-    statically_bindable_pointer(typename B::qualified_type* p,
-                                typename B::deleter_type* /*exposition*/ = nullptr) noexcept {
+    [[deprecated("Use the better named function `bind_pointer_statically(...)`")]] B statically_bindable_pointer(
+        typename B::qualified_type * p,
+        typename B::deleter_type* /*exposition*/ = nullptr) noexcept {
         return bind_pointer<B>(p);
     }
 
@@ -288,7 +290,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  and sqlite assumes the object pointed to is valid throughout the lifetime of a statement.
      */
     template<orm_pointer_type auto tag, class P>
-    auto bind_pointer_statically(P* p) noexcept -> static_pointer_binding<P, decltype(tag)> {
+    auto bind_pointer_statically(P * p) noexcept -> static_pointer_binding<P, decltype(tag)> {
         return bind_pointer<tag>(p, null_xdestroy_f);
     }
 #endif

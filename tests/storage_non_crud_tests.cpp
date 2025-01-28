@@ -177,7 +177,7 @@ TEST_CASE("InsertRange") {
     SECTION("pointers") {
         std::vector<std::unique_ptr<Object>> objects;
         objects.reserve(100);
-        for(auto i = 0; i < 100; ++i) {
+        for (auto i = 0; i < 100; ++i) {
             objects.push_back(std::make_unique<Object>(0, "Skillet"));
         }
         storage.insert_range(objects.begin(), objects.end(), &std::unique_ptr<Object>::operator*);
@@ -224,7 +224,7 @@ TEST_CASE("Select") {
     REQUIRE(rc == SQLITE_OK);
 
     rc = sqlite3_step(stmt);
-    if(rc != SQLITE_DONE) {
+    if (rc != SQLITE_DONE) {
         throw std::runtime_error(sqlite3_errmsg(db));
     }
     sqlite3_finalize(stmt);
@@ -240,7 +240,7 @@ TEST_CASE("Select") {
     sqlite3_bind_text(stmt, 3, "hey", -1, nullptr);
     sqlite3_bind_int(stmt, 4, 5);
     rc = sqlite3_step(stmt);
-    if(rc != SQLITE_DONE) {
+    if (rc != SQLITE_DONE) {
         throw std::runtime_error(sqlite3_errmsg(db));
     }
     sqlite3_finalize(stmt);
@@ -256,7 +256,7 @@ TEST_CASE("Select") {
     sqlite3_bind_text(stmt, 3, "brothers", -1, nullptr);
     sqlite3_bind_int(stmt, 4, 15);
     rc = sqlite3_step(stmt);
-    if(rc != SQLITE_DONE) {
+    if (rc != SQLITE_DONE) {
         throw std::runtime_error(sqlite3_errmsg(db));
     }
     sqlite3_finalize(stmt);
@@ -274,7 +274,7 @@ TEST_CASE("Select") {
 
         sqlite3_bind_int64(stmt, 1, firstId);
         rc = sqlite3_step(stmt);
-        if(rc != SQLITE_ROW) {
+        if (rc != SQLITE_ROW) {
             throw std::runtime_error(sqlite3_errmsg(db));
         }
         REQUIRE(sqlite3_column_int(stmt, 0) == firstId);

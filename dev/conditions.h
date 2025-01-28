@@ -967,7 +967,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<class F, class O>
-    internal::using_t<O, F O::*> using_(F O::*field) {
+    internal::using_t<O, F O::*> using_(F O::* field) {
         return {field};
     }
     template<class T, class M>
@@ -1240,8 +1240,8 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  }
      */
     template<class S>
-    internal::dynamic_order_by_t<internal::serializer_context<typename S::db_objects_type>>
-    dynamic_order_by(const S& storage) {
+    internal::dynamic_order_by_t<internal::serializer_context<typename S::db_objects_type>> dynamic_order_by(
+        const S& storage) {
         internal::serializer_context_builder<S> builder(storage);
         return builder();
     }

@@ -96,9 +96,9 @@ namespace sqlite_orm {
                       xdestroy_fn_t destroy,
                       sqlite_func_t func,
                       memory_space udfMemorySpace) :
-                name{std::move(name)},
-                argumentsCount{argumentsCount}, constructAt{std::move(constructAt)}, destroy{destroy}, func{func},
-                finalAggregateCall{nullptr}, udfAllocator{}, udfMemorySpace{udfMemorySpace} {}
+                name{std::move(name)}, argumentsCount{argumentsCount}, constructAt{std::move(constructAt)},
+                destroy{destroy}, func{func}, finalAggregateCall{nullptr}, udfAllocator{},
+                udfMemorySpace{udfMemorySpace} {}
 
             udf_proxy(std::string name,
                       int argumentsCount,
@@ -107,17 +107,17 @@ namespace sqlite_orm {
                       sqlite_func_t func,
                       final_call_fn_t finalAggregateCall,
                       memory_alloc udfAllocator) :
-                name{std::move(name)},
-                argumentsCount{argumentsCount}, constructAt{std::move(constructAt)}, destroy{destroy}, func{func},
-                finalAggregateCall{finalAggregateCall}, udfAllocator{udfAllocator}, udfMemorySpace{} {}
+                name{std::move(name)}, argumentsCount{argumentsCount}, constructAt{std::move(constructAt)},
+                destroy{destroy}, func{func}, finalAggregateCall{finalAggregateCall}, udfAllocator{udfAllocator},
+                udfMemorySpace{} {}
 
             ~udf_proxy() {
                 // destruct
-                if(/*bool aprioriConstructed = */ !constructAt && destroy) {
+                if (/*bool aprioriConstructed = */ !constructAt && destroy) {
                     destroy(udfMemorySpace.first);
                 }
                 // deallocate
-                if(udfMemorySpace.second) {
+                if (udfMemorySpace.second) {
                     udfMemorySpace.second(udfMemorySpace.first);
                 }
             }
@@ -161,12 +161,12 @@ namespace sqlite_orm {
         inline void* ensure_aggregate_udf(sqlite3_context* context, udf_proxy* proxy, int argsCount) {
             // reserve memory for storing a void pointer (which is the `udfHandle`, i.e. address of the aggregate function object)
             void* ctxMemory = sqlite3_aggregate_context(context, sizeof(void*));
-            if(!ctxMemory) SQLITE_ORM_CPP_UNLIKELY {
+            if (!ctxMemory) SQLITE_ORM_CPP_UNLIKELY {
                 throw std::bad_alloc();
             }
             void*& udfHandle = *static_cast<void**>(ctxMemory);
 
-            if(udfHandle) SQLITE_ORM_CPP_LIKELY {
+            if (udfHandle) SQLITE_ORM_CPP_LIKELY {
                 return udfHandle;
             } else {
                 assert_args_count(proxy, argsCount);
@@ -222,7 +222,7 @@ namespace sqlite_orm {
             try {
                 // note: it is possible that the 'step' function was never called
                 udfHandle = ensure_aggregate_udf(context, proxy, -1);
-            } catch(const std::bad_alloc&) {
+            } catch (const std::bad_alloc&) {
                 sqlite3_result_error_nomem(context);
                 return;
             }

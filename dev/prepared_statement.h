@@ -40,7 +40,7 @@ namespace sqlite_orm {
             std::string sql() const {
                 // note: sqlite3 internally checks for null before calling
                 // sqlite3_normalized_sql() or sqlite3_expanded_sql(), so check here, too, even if superfluous
-                if(const char* sql = sqlite3_sql(this->stmt)) {
+                if (const char* sql = sqlite3_sql(this->stmt)) {
                     return sql;
                 } else {
                     return {};
@@ -51,7 +51,7 @@ namespace sqlite_orm {
             std::string expanded_sql() const {
                 // note: must check return value due to SQLITE_OMIT_TRACE
                 using char_ptr = std::unique_ptr<char, std::integral_constant<decltype(&sqlite3_free), sqlite3_free>>;
-                if(char_ptr sql{sqlite3_expanded_sql(this->stmt)}) {
+                if (char_ptr sql{sqlite3_expanded_sql(this->stmt)}) {
                     return sql.get();
                 } else {
                     return {};
@@ -60,7 +60,7 @@ namespace sqlite_orm {
 #endif
 #if SQLITE_VERSION_NUMBER >= 3026000 and defined(SQLITE_ENABLE_NORMALIZE)
             std::string normalized_sql() const {
-                if(const char* sql = sqlite3_normalized_sql(this->stmt)) {
+                if (const char* sql = sqlite3_normalized_sql(this->stmt)) {
                     return sql;
                 } else {
                     return {};
@@ -754,7 +754,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     template<orm_refers_to_table auto mapped,
              class R = std::vector<internal::mapped_type_proxy_t<decltype(mapped)>>,
              class... Args>
-    auto get_all(Args&&... conditions) {
+    auto get_all(Args && ... conditions) {
         return get_all<internal::auto_decay_table_ref_t<mapped>, R>(std::forward<Args>(conditions)...);
     }
 #endif
@@ -824,7 +824,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     template<orm_table_reference auto table,
              class R = std::vector<internal::auto_decay_table_ref_t<table>>,
              class... Args>
-    auto get_all_optional(Args&&... conditions) {
+    auto get_all_optional(Args && ... conditions) {
         return get_all_optional<internal::auto_decay_table_ref_t<table>, R>(std::forward<Args>(conditions)...);
     }
 #endif

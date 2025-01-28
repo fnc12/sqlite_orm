@@ -16,7 +16,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  @param char2Escape The character to escape
      */
     inline std::string sql_escape(std::string str, char char2Escape) {
-        for(size_t pos = 0; (pos = str.find(char2Escape, pos)) != str.npos; pos += 2) {
+        for (size_t pos = 0; (pos = str.find(char2Escape, pos)) != str.npos; pos += 2) {
             str.replace(pos, 1, 2, char2Escape);
         }
 
@@ -62,7 +62,7 @@ namespace sqlite_orm {
         // note: query is deliberately taken by value, such that it is thrown away early
         inline sqlite3_stmt* prepare_stmt(sqlite3* db, std::string query) {
             sqlite3_stmt* stmt;
-            if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+            if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
                 throw_translated_sqlite_error(db);
             }
             return stmt;
@@ -70,7 +70,7 @@ namespace sqlite_orm {
 
         inline void perform_void_exec(sqlite3* db, const std::string& query) {
             int rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
-            if(rc != SQLITE_OK) {
+            if (rc != SQLITE_OK) {
                 throw_translated_sqlite_error(db);
             }
         }
@@ -80,7 +80,7 @@ namespace sqlite_orm {
                                  int (*callback)(void* data, int argc, char** argv, char**),
                                  void* user_data) {
             int rc = sqlite3_exec(db, query, callback, user_data, nullptr);
-            if(rc != SQLITE_OK) {
+            if (rc != SQLITE_OK) {
                 throw_translated_sqlite_error(db);
             }
         }
@@ -95,14 +95,14 @@ namespace sqlite_orm {
         template<int expected = SQLITE_DONE>
         void perform_step(sqlite3_stmt* stmt) {
             int rc = sqlite3_step(stmt);
-            if(rc != expected) {
+            if (rc != expected) {
                 throw_translated_sqlite_error(stmt);
             }
         }
 
         template<class L>
         void perform_step(sqlite3_stmt* stmt, L&& lambda) {
-            switch(int rc = sqlite3_step(stmt)) {
+            switch (int rc = sqlite3_step(stmt)) {
                 case SQLITE_ROW: {
                     lambda(stmt);
                 } break;
@@ -118,7 +118,7 @@ namespace sqlite_orm {
         void perform_steps(sqlite3_stmt* stmt, L&& lambda) {
             int rc;
             do {
-                switch(rc = sqlite3_step(stmt)) {
+                switch (rc = sqlite3_step(stmt)) {
                     case SQLITE_ROW: {
                         lambda(stmt);
                     } break;
@@ -128,7 +128,7 @@ namespace sqlite_orm {
                         throw_translated_sqlite_error(stmt);
                     }
                 }
-            } while(rc != SQLITE_DONE);
+            } while (rc != SQLITE_DONE);
         }
     }
 }
