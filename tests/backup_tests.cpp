@@ -1,6 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
-#include <cstdio>  //  remove
+#include <cstdio>  //  std::remove
 
 using namespace sqlite_orm;
 
@@ -47,7 +47,7 @@ TEST_CASE("backup") {
     static int filenameSuffix = 0;  //  to make an unique filename for every test
     const std::string backupFilename = "backup" + std::to_string(filenameSuffix++) + ".sqlite";
     SECTION("to") {
-        ::remove(backupFilename.c_str());
+        std::remove(backupFilename.c_str());
         auto storage2 = makeStorage(backupFilename);
         auto storage = makeStorage("");
         storage.sync_schema();
