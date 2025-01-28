@@ -27,6 +27,7 @@
 #include "arithmetic_tag.h"
 #include "pointer_value.h"
 #include "journal_mode.h"
+#include "locking_mode.h"
 #include "error_code.h"
 #include "is_std_ptr.h"
 #include "type_traits.h"
@@ -413,14 +414,41 @@ namespace sqlite_orm {
     };
 
     /**
+     *  Specialization for locking_mode.
+     */
+    template<>
+    struct row_extractor<locking_mode, void> {
+        locking_mode extract(const char* columnText) const {
+            if (columnText) {
+                auto resultPair = internal::locking_mode_from_string(columnText);
+                if (resultPair.first) {
+                    return resultPair.second;
+                } else {
+                    throw std::system_error{orm_error_code::incorrect_locking_mode_string};
+                }
+            } else {
+                throw std::system_error{orm_error_code::incorrect_locking_mode_string};
+            }
+        }
+
+        locking_mode extract(sqlite3_stmt* stmt, int columnIndex) const {
+            auto cStr = (const char*)sqlite3_column_text(stmt, columnIndex);
+            return this->extract(cStr);
+        }
+
+        locking_mode extract(sqlite3_value* value) const = delete;
+    };
+
+    /**
      *  Specialization for journal_mode.
      */
     template<>
     struct row_extractor<journal_mode, void> {
         journal_mode extract(const char* columnText) const {
             if (columnText) {
-                if (auto res = internal::journal_mode_from_string(columnText)) {
-                    return std::move(*res);
+                auto resultPair = internal::journal_mode_from_string(columnText);
+                if (resultPair.first) {
+                    return resultPair.second;
                 } else {
                     throw std::system_error{orm_error_code::incorrect_journal_mode_string};
                 }

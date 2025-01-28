@@ -235,6 +235,62 @@ TEST_CASE("statement_serializer select_t") {
             }
 #endif
         }
+        SECTION("deduplication") {
+            SECTION("distinct column, top-level") {
+                auto expression = select(distinct(&User::name));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT DISTINCT "users"."name" FROM "users")";
+            }
+            SECTION("distinct column, !top-level") {
+                auto expression = select(distinct(&User::name));
+                expression.highest_level = false;
+                stringValue = serialize(expression, context);
+                expected = R"((SELECT DISTINCT "users"."name" FROM "users"))";
+            }
+            SECTION("all column") {
+                auto expression = select(all(&User::name));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT ALL "users"."name" FROM "users")";
+            }
+            SECTION("distinct columns") {
+                auto expression = select(distinct(columns(&User::id, &User::name)));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT DISTINCT "users"."id", "users"."name" FROM "users")";
+            }
+            SECTION("all columns") {
+                auto expression = select(all(columns(&User::id, &User::name)));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT ALL "users"."id", "users"."name" FROM "users")";
+            }
+            SECTION("distinct struct") {
+                auto expression = select(distinct(struct_<User>(&User::name)));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT DISTINCT "users"."name" FROM "users")";
+            }
+            SECTION("all struct") {
+                auto expression = select(all(struct_<User>(&User::name)));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT ALL "users"."name" FROM "users")";
+            }
+            SECTION("distinct aggregate function, top-level") {
+                auto expression = select(count(distinct(&User::name)));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT COUNT(DISTINCT "users"."name") FROM "users")";
+            }
+            SECTION("distinct aggregate function, !top-level") {
+                auto expression = select(count(distinct(&User::name)));
+                expression.highest_level = false;
+                stringValue = serialize(expression, context);
+                expected = R"((SELECT COUNT(DISTINCT "users"."name") FROM "users"))";
+            }
+        }
     }
     REQUIRE(stringValue == expected);
 }

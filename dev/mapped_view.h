@@ -39,7 +39,7 @@ namespace sqlite_orm {
             get_all_t<T, void, Args...> expression;
 
             mapped_view(storage_type& storage, connection_ref conn, Args&&... args) :
-                storage(storage), connection(std::move(conn)), expression{std::forward<Args>(args)...} {}
+                storage(storage), connection(std::move(conn)), expression{{std::forward<Args>(args)...}} {}
 
             size_t size() const {
                 return this->storage.template count<T>();

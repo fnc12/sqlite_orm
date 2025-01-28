@@ -734,12 +734,12 @@ namespace sqlite_orm {
                     this->foreign_keys(db, true);
                 }
 #endif
-                if (this->pragma._synchronous != -1) {
-                    this->pragma.synchronous(this->pragma._synchronous);
+                if (this->pragma.synchronous_ != -1) {
+                    this->pragma.synchronous(this->pragma.synchronous_);
                 }
 
-                if (this->pragma._journal_mode != -1) {
-                    this->pragma.set_pragma("journal_mode", static_cast<journal_mode>(this->pragma._journal_mode), db);
+                if (this->pragma.journal_mode_ != -1) {
+                    this->pragma.set_pragma("journal_mode", static_cast<journal_mode>(this->pragma.journal_mode_), db);
                 }
 
                 for (auto& p: this->collatingFunctions) {

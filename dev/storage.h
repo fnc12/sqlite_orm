@@ -2,10 +2,10 @@
 
 #include <sqlite3.h>
 #ifndef _IMPORT_STD_MODULE
-#include <memory>  //  std::unique_ptr/shared_ptr, std::make_unique/std::make_shared
+#include <memory>  //  std::unique_ptr/shared_ptr, std::make_unique
 #include <system_error>  //  std::system_error
 #include <string>  //  std::string
-#include <type_traits>  //  std::remove_reference, std::is_base_of, std::decay, std::false_type, std::true_type
+#include <type_traits>  //  std::remove_reference, std::remove_cvref, std::decay
 #include <functional>  //   std::identity
 #include <sstream>  //  std::stringstream
 #include <iomanip>  //  std::flush
@@ -17,6 +17,7 @@
 #endif
 #include "functional/cxx_optional.h"
 
+#include "functional/cxx_type_traits_polyfill.h"
 #include "functional/cxx_functional_polyfill.h"
 #include "functional/static_magic.h"
 #include "functional/mpl.h"
@@ -119,7 +120,6 @@ namespace sqlite_orm {
 
             template<class Table>
             void create_table(sqlite3* db, const std::string& tableName, const Table& table) {
-                using table_type = std::decay_t<decltype(table)>;
                 using context_t = serializer_context<db_objects_type>;
 
                 context_t context{this->db_objects};
@@ -804,9 +804,8 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "{ ";
                 table.for_each_column([&ss, &object, first = true](auto& column) mutable {
-                    using column_type = std::decay_t<decltype(column)>;
-                    using field_type = typename column_type::field_type;
-                    constexpr std::array<const char*, 2> sep = {", ", ""};
+                    using field_type = field_type_t<std::remove_reference_t<decltype(column)>>;
+                    static constexpr std::array<const char*, 2> sep = {", ", ""};
 
                     ss << sep[std::exchange(first, false)] << column.name << " : '"
                        << field_printer<field_type>{}(polyfill::invoke(column.member_pointer, object)) << "'";
@@ -1471,7 +1470,7 @@ namespace sqlite_orm {
 
                 auto processObject = [&table = this->get_table<object_type>(),
                                       bindValue = field_value_binder{stmt}](auto& object) mutable {
-                    using is_without_rowid = typename std::decay_t<decltype(table)>::is_without_rowid;
+                    using is_without_rowid = typename std::remove_reference_t<decltype(table)>::is_without_rowid;
                     table.template for_each_column_excluding<
                         mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                          mpl::disjunction_fn<is_primary_key, is_generated_always>>>(

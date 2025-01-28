@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef _IMPORT_STD_MODULE
-#include <type_traits>  //  std::index_sequence
+#include <type_traits>  //  std::index_sequence, std::remove_cvref
 #include <tuple>
 #include <array>
 #include <string>
@@ -9,7 +9,7 @@
 #include <utility>  //  std::exchange, std::tuple_size, std::make_index_sequence
 #endif
 
-#include "functional/cxx_type_traits_polyfill.h"
+#include "functional/cxx_type_traits_polyfill.h"  // std::remove_cvref, polyfill::is_detected
 #include "functional/cxx_functional_polyfill.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "type_traits.h"
@@ -24,8 +24,8 @@ namespace sqlite_orm {
         template<class O>
         struct order_by_t;
 
-        template<class T, class C>
-        auto serialize(const T& t, const C& context);
+        template<class T, class Ctx>
+        auto serialize(const T& t, const Ctx& context);
 
         template<class T, class Ctx>
         std::string serialize_order_by(const T&, const Ctx&);
@@ -160,7 +160,7 @@ namespace sqlite_orm {
             auto& context = std::get<2>(tpl);
 
             iterate_tuple(actions, [&ss, &context, first = true](auto& action) mutable {
-                constexpr std::array<const char*, 2> sep = {" ", ""};
+                static constexpr std::array<const char*, 2> sep = {" ", ""};
                 ss << sep[std::exchange(first, false)] << serialize(action, context);
             });
             return ss;
@@ -175,7 +175,7 @@ namespace sqlite_orm {
             auto& context = std::get<2>(tpl);
 
             iterate_tuple(args, [&ss, &context, first = true](auto& arg) mutable {
-                constexpr std::array<const char*, 2> sep = {", ", ""};
+                static constexpr std::array<const char*, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)] << serialize(arg, context);
             });
             return ss;
@@ -210,7 +210,7 @@ namespace sqlite_orm {
             auto& context = std::get<2>(tpl);
 
             iterate_tuple(args, [&ss, &context, first = true](auto& arg) mutable {
-                constexpr std::array<const char*, 2> sep = {", ", ""};
+                static constexpr std::array<const char*, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)] << serialize_order_by(arg, context);
             });
             return ss;
@@ -224,7 +224,7 @@ namespace sqlite_orm {
             const auto& args = std::get<1>(tpl);
             auto& context = std::get<2>(tpl);
 
-            constexpr std::array<const char*, 2> sep = {", ", ""};
+            static constexpr std::array<const char*, 2> sep = {", ", ""};
             bool first = true;
             for (auto& argument: args) {
                 ss << sep[std::exchange(first, false)] << serialize(argument, context);
@@ -238,7 +238,7 @@ namespace sqlite_orm {
         std::ostream& operator<<(std::ostream& ss, std::tuple<const streaming<stream_as::serialized>&, C> tpl) {
             const auto& strings = std::get<1>(tpl);
 
-            constexpr std::array<const char*, 2> sep = {", ", ""};
+            static constexpr std::array<const char*, 2> sep = {", ", ""};
             for (size_t i = 0, first = true; i < strings.size(); ++i) {
                 ss << sep[std::exchange(first, false)] << strings[i];
             }
@@ -267,7 +267,7 @@ namespace sqlite_orm {
         std::ostream& operator<<(std::ostream& ss, std::tuple<const streaming<stream_as::identifiers>&, C> tpl) {
             const auto& identifiers = std::get<1>(tpl);
 
-            constexpr std::array<const char*, 2> sep = {", ", ""};
+            static constexpr std::array<const char*, 2> sep = {", ", ""};
             bool first = true;
             for (auto& identifier: identifiers) {
                 ss << sep[std::exchange(first, false)];
@@ -290,7 +290,7 @@ namespace sqlite_orm {
             std::string result;
             result.reserve((1 + (columnsCount * 1) + (columnsCount * 2 - 2) + 1) * valuesCount + (valuesCount * 2 - 2));
 
-            constexpr std::array<const char*, 2> sep = {", ", ""};
+            static constexpr std::array<const char*, 2> sep = {", ", ""};
             for (ptrdiff_t i = 0, first = true; i < valuesCount; ++i) {
                 result += sep[std::exchange(first, false)];
                 result += "(";
@@ -314,7 +314,7 @@ namespace sqlite_orm {
             const std::string& qualifier = std::get<2>(tpl);
 
             table.for_each_column([&ss, &qualifier, first = true](const column_identifier& column) mutable {
-                constexpr std::array<const char*, 2> sep = {", ", ""};
+                static constexpr std::array<const char*, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)];
                 stream_identifier(ss, qualifier, column.name, std::string{});
             });
@@ -330,7 +330,7 @@ namespace sqlite_orm {
 
             table.template for_each_column_excluding<is_generated_always>(
                 [&ss, first = true](const column_identifier& column) mutable {
-                    constexpr std::array<const char*, 2> sep = {", ", ""};
+                    static constexpr std::array<const char*, 2> sep = {", ", ""};
                     ss << sep[std::exchange(first, false)];
                     stream_identifier(ss, column.name);
                 });
@@ -356,7 +356,7 @@ namespace sqlite_orm {
                         return;
                     }
 
-                    constexpr std::array<const char*, 2> sep = {", ", ""};
+                    static constexpr std::array<const char*, 2> sep = {", ", ""};
                     ss << sep[std::exchange(first, false)]
                        << serialize(polyfill::invoke(column.member_pointer, object), context);
                 }));
@@ -377,7 +377,7 @@ namespace sqlite_orm {
                     throw std::system_error{orm_error_code::column_not_found};
                 }
 
-                constexpr std::array<const char*, 2> sep = {", ", ""};
+                static constexpr std::array<const char*, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)];
                 stream_identifier(ss, *columnName);
             });

@@ -8,8 +8,8 @@
 
 namespace sqlite_orm {
     namespace internal {
-        /*
-         *  Identity wrapper around a mapped object, facilitating uniform column pointer expressions.
+        /*
+         *  Identity wrapper around a mapped object, facilitating uniform column pointer expressions.
          */
         template<class O>
         struct table_reference : polyfill::type_identity<O> {};
@@ -39,10 +39,10 @@ namespace sqlite_orm {
 
 _EXPORT_SQLITE_ORM namespace sqlite_orm {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-    /** @short Specifies that a type is a reference of a concrete table, especially of a derived class.
-     *
-     *  A concrete table reference has the following traits:
-     *  - specialization of `table_reference`, whose `type` typename references a mapped object.
+    /** @short Specifies that a type is a reference of a concrete table, especially of a derived class.
+     *
+     *  A concrete table reference has the following traits:
+     *  - specialization of `table_reference`, whose `type` typename references a mapped object.
      */
     template<class R>
     concept orm_table_reference = polyfill::is_specialization_of_v<std::remove_const_t<R>, internal::table_reference>;

@@ -542,7 +542,7 @@ namespace sqlite_orm {
             template<class O>
             void push_back(order_by_t<O> order_by) {
                 auto newContext = this->context;
-                newContext.skip_table_name = true;
+                newContext.skip_table_name = false;
                 auto columnName = serialize(order_by.expression, newContext);
                 this->entries.emplace_back(std::move(columnName),
                                            order_by.asc_desc,

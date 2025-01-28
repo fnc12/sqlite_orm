@@ -30,6 +30,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         cannot_start_a_transaction_within_a_transaction,
         no_active_transaction,
         incorrect_journal_mode_string,
+        incorrect_locking_mode_string,
         invalid_collate_argument_enum,
         failed_to_init_a_backup,
         unknown_member_value,

@@ -9,9 +9,9 @@
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 namespace sqlite_orm::internal {
-    /*
-     *  Wraps a C string of fixed size.
-     *  Its main purpose is to enable the user-defined string literal operator template.
+    /*
+     *  Wraps a C string of fixed size.
+     *  Its main purpose is to enable the user-defined string literal operator template.
      */
     template<size_t N>
     struct cstring_literal {

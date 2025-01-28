@@ -18,6 +18,7 @@
 #include "error_code.h"
 #include "table_type_of.h"
 #include "type_printer.h"
+#include "column_pointer.h"
 
 namespace sqlite_orm {
 
@@ -376,6 +377,11 @@ namespace sqlite_orm {
             template<class... Rs>
             foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> references(Rs... refs) {
                 return {std::move(this->columns), {std::forward<Rs>(refs)...}};
+            }
+
+            template<class T, class... Rs>
+            foreign_key_t<std::tuple<Cs...>, std::tuple<internal::column_pointer<T, Rs>...>> references(Rs... refs) {
+                return {std::move(this->columns), {sqlite_orm::column<T>(refs)...}};
             }
         };
 #endif
