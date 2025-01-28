@@ -2,7 +2,6 @@
  *  This example shows you how to create a storage with a tablw with a composite primary key
  *  and another table woth foreign key to first table's primary compisite key.
  */
-#include <cstdio>
 #include <ctime>
 
 #include <string>

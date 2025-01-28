@@ -1,5 +1,5 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <cstdio>  //  ::remove
+#include <cstdio>  //  std::remove
 #include <catch2/catch_all.hpp>
 
 using namespace sqlite_orm;
@@ -12,7 +12,7 @@ TEST_CASE("module_list") {
 
 TEST_CASE("recursive_triggers") {
     auto filename = "recursive_triggers.sqlite";
-    ::remove(filename);
+    std::remove(filename);
     auto storage = make_storage(filename);
     storage.open_forever();
     storage.pragma.recursive_triggers(true);
@@ -37,7 +37,7 @@ TEST_CASE("locking_mode") {
 
 TEST_CASE("journal_mode") {
     auto filename = "journal_mode.sqlite";
-    ::remove(filename);
+    std::remove(filename);
     auto storage = make_storage(filename);
     auto storageCopy = storage;
     decltype(storage)* stor = nullptr;
@@ -118,7 +118,7 @@ TEST_CASE("User version") {
 
 TEST_CASE("Auto vacuum") {
     auto filename = "autovacuum.sqlite";
-    ::remove(filename);
+    std::remove(filename);
 
     auto storage = make_storage(filename);
 
@@ -160,7 +160,7 @@ TEST_CASE("Integrity Check") {
     };
 
     auto filename = "integrity.sqlite";
-    ::remove(filename);
+    std::remove(filename);
 
     std::string tablename = "users";
     auto storage = make_storage(filename,
@@ -185,7 +185,7 @@ TEST_CASE("Quick Check") {
     };
 
     auto filename = "quick_check.sqlite";
-    ::remove(filename);
+    std::remove(filename);
 
     std::string tablename = "users";
     auto storage = make_storage(filename,
@@ -201,7 +201,7 @@ TEST_CASE("Quick Check") {
 
 TEST_CASE("application_id") {
     auto filename = "application_id.sqlite";
-    ::remove(filename);
+    std::remove(filename);
 
     auto storage = make_storage(filename);
     storage.pragma.application_id(3);

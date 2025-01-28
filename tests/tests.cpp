@@ -3,7 +3,7 @@
 
 #include <vector>  //  std::vector
 #include <string>  //  std::string
-#include <cstdio>  //  remove
+#include <cstdio>  //  std::remove
 
 using namespace sqlite_orm;
 
@@ -141,7 +141,7 @@ TEST_CASE("Custom collate") {
     }
 
     auto filename = "custom_collate.sqlite";
-    ::remove(filename);
+    std::remove(filename);
     auto storage = make_storage(
         filename,
         make_table("items", make_column("id", &Item::id, primary_key()), make_column("name", &Item::name)));
