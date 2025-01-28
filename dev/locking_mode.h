@@ -37,7 +37,7 @@ namespace sqlite_orm {
                 locking_mode::EXCLUSIVE,
             }};
 
-#if __cpp_lib_ranges >= 201911L
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
             std::ranges::transform(string, string.begin(), [](unsigned char c) noexcept {
                 return std::toupper(c);
             });

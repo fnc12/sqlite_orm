@@ -1438,7 +1438,7 @@ namespace sqlite_orm {
 
                 static_if<is_replace_range<T>::value>(
                     [&processObject](auto& expression) {
-#if __cpp_lib_ranges >= 201911L
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
                         std::ranges::for_each(expression.range.first,
                                               expression.range.second,
                                               std::ref(processObject),
@@ -1483,7 +1483,7 @@ namespace sqlite_orm {
 
                 static_if<is_insert_range<T>::value>(
                     [&processObject](auto& expression) {
-#if __cpp_lib_ranges >= 201911L
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
                         std::ranges::for_each(expression.range.first,
                                               expression.range.second,
                                               std::ref(processObject),
