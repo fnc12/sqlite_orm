@@ -1,5 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <cstdio>  //  std::remove
 #include "catch_matchers.h"
 
 using namespace sqlite_orm;
@@ -17,7 +18,7 @@ namespace {
 
 TEST_CASE("transaction") {
     auto filename = "transaction_test.sqlite";
-    ::remove(filename);
+    std::remove(filename);
     auto storage = make_storage(
         "test_transaction_guard.sqlite",
         make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name)));
@@ -59,7 +60,7 @@ TEST_CASE("begin_transaction") {
 }
 
 TEST_CASE("Transaction guard") {
-    ::remove("guard.sqlite");
+    std::remove("guard.sqlite");
     auto table =
         make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name));
     auto storage = make_storage("guard.sqlite", table);
@@ -337,5 +338,5 @@ TEST_CASE("Transaction guard") {
         guard->commit_on_destroy = true;
         REQUIRE_THROWS_WITH(guard->~transaction_guard_t(), ContainsSubstring("database is locked"));
     }
-    ::remove("guard.sqlite");
+    std::remove("guard.sqlite");
 }

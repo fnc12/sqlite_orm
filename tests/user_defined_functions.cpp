@@ -1,5 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <cstdio>  //  std::remove
 #include "catch_matchers.h"
 
 using namespace sqlite_orm;
@@ -291,7 +292,7 @@ TEST_CASE("custom functions") {
     }
     SECTION("file") {
         path = "custom_function.sqlite";
-        ::remove(path.c_str());
+        std::remove(path.c_str());
     }
     struct User {
         int id = 0;
