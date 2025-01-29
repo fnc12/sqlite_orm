@@ -16,7 +16,7 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <any>
 #include <iostream>
-#include <cstdio>
+#include <cstdio>  //  std::remove
 
 using namespace sqlite_orm;
 using std::cout;
@@ -135,7 +135,7 @@ int main() {
         std::any value;
     };
     auto filename = "any.sqlite";
-    ::remove(filename);
+    std::remove(filename);
     auto storage = make_storage(
         filename,
         make_table("test", make_column("id", &Value::id, primary_key()), make_column("value", &Value::value)));

@@ -87,7 +87,7 @@ TEST_CASE("backup") {
         REQUIRE_THAT(rowsFromBackup, UnorderedEquals(expectedRows));
     }
     SECTION("from") {
-        ::remove(backupFilename.c_str());
+        std::remove(backupFilename.c_str());
         auto storage = makeStorage(backupFilename);
         storage.sync_schema();
         storage.replace(User{1, "Sharon"});

@@ -11,6 +11,7 @@
 
 #ifdef ENABLE_THIS_EXAMPLE
 #include <cassert>
+#include <cstdio>  //  std::remove
 #include <string>
 #include <iostream>
 #include <chrono>
@@ -30,8 +31,7 @@
 
 //  also we need transform functions to make string from enum..
 static std::string sysDaysToString(std::chrono::sys_days pt) {
-    auto r = std::format("{:%F}", pt);
-    return r;
+    return std::format("{:%F}", pt);
 }
 
 /**
@@ -149,7 +149,7 @@ struct Person {
 int main(int, char**) {
 #ifdef ENABLE_THIS_EXAMPLE
     const std::string db_name = "sys_days.sqlite";
-    ::remove(db_name.c_str());
+    std::remove(db_name.c_str());
 
     auto storage = make_storage(db_name,
                                 make_table("Persons",
