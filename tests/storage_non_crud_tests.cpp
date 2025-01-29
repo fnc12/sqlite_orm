@@ -113,7 +113,7 @@ TEST_CASE("update set null") {
 
 TEST_CASE("InsertRange") {
     struct Object {
-        int id;
+        int id = 0;
         std::string name;
 
 #ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
@@ -123,7 +123,7 @@ TEST_CASE("InsertRange") {
     };
 
     struct ObjectWithoutRowid {
-        int id;
+        int id = 0;
         std::string name;
 
 #ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
@@ -377,7 +377,7 @@ TEST_CASE("Select") {
 
 TEST_CASE("Replace query") {
     struct Object {
-        int id;
+        int id = 0;
         std::string name;
 
 #ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
@@ -483,7 +483,7 @@ TEST_CASE("Replace query") {
 
 TEST_CASE("Remove all") {
     struct Object {
-        int id;
+        int id = 0;
         std::string name;
     };
 

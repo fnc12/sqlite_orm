@@ -5,19 +5,19 @@ using namespace sqlite_orm;
 
 TEST_CASE("triggers_basics") {
     struct TestInsert {
-        int id;
+        int id = 0;
         std::string text;
         int x = 0;
         int y = 0;
     };
     struct TestUpdate {
-        int id;
+        int id = 0;
         std::string text;
         int x = 0;
         int y = 0;
     };
     struct TestDelete {
-        int id;
+        int id = 0;
         std::string text;
         int x = 0;
         int y = 0;

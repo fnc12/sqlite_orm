@@ -12,7 +12,7 @@ enum class Gender {
 };
 
 struct SuperHero {
-    int id;
+    int id = 0;
     std::string name;
     Gender gender = Gender::Invalid;
 };
@@ -132,9 +132,9 @@ TEST_CASE("Custom row extractors") {
     storage.sync_schema();
 
     storage.transaction([&storage]() {
-        storage.insert(SuperHero{-1, "Batman", Gender::Male});
-        storage.insert(SuperHero{-1, "Wonder woman", Gender::Female});
-        storage.insert(SuperHero{-1, "Superman", Gender::Male});
+        storage.insert(SuperHero{0, "Batman", Gender::Male});
+        storage.insert(SuperHero{0, "Wonder woman", Gender::Female});
+        storage.insert(SuperHero{0, "Superman", Gender::Male});
         return true;
     });
 

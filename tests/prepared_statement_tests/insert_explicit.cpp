@@ -102,7 +102,7 @@ TEST_CASE("Prepared insert explicit") {
             REQUIRE(insertedVisit.time == defaultVisitTime);
         }
         {
-            Visit visit{-1, 2, defaultVisitTime + 2};
+            Visit visit{0, 2, defaultVisitTime + 2};
             auto statement = storage.prepare(insert(visit, columns(&Visit::userId)));
             auto insertedId = storage.execute(statement);
             REQUIRE(insertedId == 3);

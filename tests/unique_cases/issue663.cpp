@@ -71,9 +71,9 @@ namespace {
         bool operator!=(const User1& rhs) const {
             return !(rhs == *this);
         }
-        int id;
+        int id = 0;
         std::string name;
-        int age;
+        int age = 0;
         std::string email;
     };
 }

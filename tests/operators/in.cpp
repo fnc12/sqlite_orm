@@ -82,7 +82,7 @@ TEST_CASE("In") {
     }
     {
         struct Letter {
-            int id;
+            int id = 0;
             std::string name;
         };
         auto storage = make_storage(

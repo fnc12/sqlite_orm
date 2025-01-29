@@ -13,13 +13,13 @@ namespace PreparedStatementTests {
 
     struct Visit {
         int id = 0;
-        decltype(User::id) userId;
+        decltype(User::id) userId = 0;
         long time = 0;
     };
 
     struct UserAndVisit {
-        decltype(User::id) userId;
-        decltype(Visit::id) visitId;
+        decltype(User::id) userId = 0;
+        decltype(Visit::id) visitId = 0;
         std::string description;
     };
 

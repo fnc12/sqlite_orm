@@ -29,6 +29,20 @@ __pragma(push_macro("max"))
 // actually it should be available when including stddef.h
 using std::nullptr_t;
 
+// #include "cxx_check_prerequisites.h"
+
+/*
+ *  This header detects missing core C++ language features on which sqlite_orm depends, bailing out with a hard error.
+ */
+
+#if __cpp_aggregate_nsdmi < 201304L
+#error A C++14 conforming compiler is required
+#endif
+
+#if __cpp_constexpr < 201304L
+#error A C++14 conforming compiler is required
+#endif
+
 // #include "cxx_core_features.h"
 
 /*
@@ -46,14 +60,6 @@ using std::nullptr_t;
 #define SQLITE_ORM_HAS_INCLUDE(file) __has_include(file)
 #else
 #define SQLITE_ORM_HAS_INCLUDE(file) 0L
-#endif
-
-#if __cpp_aggregate_nsdmi < 201304L
-#error A C++14 conforming compiler is required
-#endif
-
-#if __cpp_constexpr < 201304L
-#error A C++14 conforming compiler is required
 #endif
 
 #if __cpp_noexcept_function_type >= 201510L
@@ -11693,6 +11699,7 @@ namespace sqlite_orm {
 // #include "table_info.h"
 
 #include <string>  //  std::string
+#include <utility>  //  std::move
 
 namespace sqlite_orm {
 
