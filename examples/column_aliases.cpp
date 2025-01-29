@@ -1,6 +1,5 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <iostream>
-#include <cassert>
 
 using std::cout;
 using std::endl;

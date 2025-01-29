@@ -17278,7 +17278,7 @@ namespace sqlite_orm {
 // #include "udf_proxy.h"
 
 #include <sqlite3.h>
-#include <cassert>  //  assert macro
+#include <assert.h>  //  assert macro
 #include <type_traits>  //  std::true_type, std::false_type
 #include <new>  //  std::bad_alloc
 #include <memory>  //  std::allocator, std::allocator_traits, std::unique_ptr

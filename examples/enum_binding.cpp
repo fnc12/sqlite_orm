@@ -3,7 +3,7 @@
 
 #include <iostream>
 #include <memory>
-#include <cassert>
+#include <assert.h>
 
 using std::cout;
 using std::endl;

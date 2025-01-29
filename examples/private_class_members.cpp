@@ -10,7 +10,7 @@
 
 #include <sqlite_orm/sqlite_orm.h>
 #include <iostream>
-#include <cassert>
+#include <assert.h>
 
 using std::cout;
 using std::endl;
