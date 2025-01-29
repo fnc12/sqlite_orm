@@ -850,7 +850,7 @@ namespace sqlite_orm {
             }
 
             void delete_function_impl(const std::string& name, std::list<udf_proxy>& functions) const {
-#if __cpp_lib_ranges >= 201911L
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
                 auto it = std::ranges::find(functions, name, &udf_proxy::name);
 #else
                 auto it = std::find_if(functions.begin(), functions.end(), [&name](auto& udfProxy) {
@@ -985,7 +985,7 @@ namespace sqlite_orm {
                     const std::string& columnName = storageColumnInfo.name;
 
                     //  search for a column in db with the same name
-#if __cpp_lib_ranges >= 201911L
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
                     auto dbColumnInfoIt = std::ranges::find(dbTableInfo, columnName, &table_xinfo::name);
 #else
                     auto dbColumnInfoIt = std::find_if(dbTableInfo.begin(), dbTableInfo.end(), [&columnName](auto& ti) {

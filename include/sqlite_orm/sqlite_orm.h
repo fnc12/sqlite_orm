@@ -127,6 +127,7 @@ using std::nullptr_t;
 
 #if __cplusplus >= 202002L
 #define SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+#define SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
 #endif
 
 // #include "cxx_compiler_quirks.h"
@@ -12665,7 +12666,7 @@ namespace sqlite_orm {
                 journal_mode::WAL,
                 journal_mode::OFF,
             }};
-#if __cpp_lib_ranges >= 201911L
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
             std::ranges::transform(string, string.begin(), [](unsigned char c) noexcept {
                 return std::toupper(c);
             });
@@ -12766,7 +12767,7 @@ namespace sqlite_orm {
                 locking_mode::EXCLUSIVE,
             }};
 
-#if __cpp_lib_ranges >= 201911L
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
             std::ranges::transform(string, string.begin(), [](unsigned char c) noexcept {
                 return std::toupper(c);
             });
@@ -16324,9 +16325,15 @@ namespace sqlite_orm {
             const auto& strings = std::get<1>(tpl);
 
             static constexpr std::array<const char*, 2> sep = {", ", ""};
+#ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
+            for (bool first = true; auto& s: strings) {
+                ss << sep[std::exchange(first, false)] << s;
+            }
+#else
             for (size_t i = 0, first = true; i < strings.size(); ++i) {
                 ss << sep[std::exchange(first, false)] << strings[i];
             }
+#endif
             return ss;
         }
 
@@ -16534,8 +16541,7 @@ namespace sqlite_orm {
             res.reserve(argc);
             const auto rowExtractor = column_text_extractor<std::string>();
             for (int i = 0; i < argc; ++i) {
-                auto rowString = rowExtractor.extract(argv[i]);
-                res.push_back(std::move(rowString));
+                res.push_back(rowExtractor.extract(argv[i]));
             }
             return 0;
         }
@@ -18322,7 +18328,7 @@ namespace sqlite_orm {
             }
 
             void delete_function_impl(const std::string& name, std::list<udf_proxy>& functions) const {
-#if __cpp_lib_ranges >= 201911L
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
                 auto it = std::ranges::find(functions, name, &udf_proxy::name);
 #else
                 auto it = std::find_if(functions.begin(), functions.end(), [&name](auto& udfProxy) {
@@ -18457,7 +18463,7 @@ namespace sqlite_orm {
                     const std::string& columnName = storageColumnInfo.name;
 
                     //  search for a column in db with the same name
-#if __cpp_lib_ranges >= 201911L
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
                     auto dbColumnInfoIt = std::ranges::find(dbTableInfo, columnName, &table_xinfo::name);
 #else
                     auto dbColumnInfoIt = std::find_if(dbTableInfo.begin(), dbTableInfo.end(), [&columnName](auto& ti) {
@@ -19036,11 +19042,20 @@ namespace sqlite_orm {
 
             // 3. fill in blanks with numerical column identifiers
             {
+#ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
+                for (size_t n = 1; std::string & name: columnNames) {
+                    if (name.empty()) {
+                        name = std::to_string(n);
+                    }
+                    ++n;
+                }
+#else
                 for (size_t i = 0, n = columnNames.size(); i < n; ++i) {
                     if (columnNames[i].empty()) {
                         columnNames[i] = std::to_string(i + 1);
                     }
                 }
+#endif
             }
 
             return columnNames;
@@ -21073,12 +21088,19 @@ namespace sqlite_orm {
                 throw std::system_error{orm_error_code::table_has_no_primary_key_column};
             }
 
+#ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
+            static constexpr std::array<const char*, 2> sep = {" AND ", ""};
+            for (bool first = true; const std::string& pkName: primaryKeyColumnNames) {
+                ss << sep[std::exchange(first, false)] << streaming_identifier(pkName) << " = ?";
+            }
+#else
             for (size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
                 if (i > 0) {
                     ss << " AND ";
                 }
                 ss << streaming_identifier(primaryKeyColumnNames[i]) << " = ?";
             }
+#endif
             return ss.str();
         }
 
@@ -23565,7 +23587,7 @@ namespace sqlite_orm {
 
                 static_if<is_replace_range<T>::value>(
                     [&processObject](auto& expression) {
-#if __cpp_lib_ranges >= 201911L
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
                         std::ranges::for_each(expression.range.first,
                                               expression.range.second,
                                               std::ref(processObject),
@@ -23610,7 +23632,7 @@ namespace sqlite_orm {
 
                 static_if<is_insert_range<T>::value>(
                     [&processObject](auto& expression) {
-#if __cpp_lib_ranges >= 201911L
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
                         std::ranges::for_each(expression.range.first,
                                               expression.range.second,
                                               std::ref(processObject),
@@ -23966,19 +23988,24 @@ namespace sqlite_orm {
                                  column.template is<is_generated_always>());
             });
             auto compositeKeyColumnNames = this->composite_key_columns_names();
+#if defined(SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_CPP20_RANGES_SUPPORTED)
+            for (int n = 1; const std::string& columnName: compositeKeyColumnNames) {
+                if (auto it = std::ranges::find(res, columnName, &table_xinfo::name); it != res.end()) {
+                    it->pk = n;
+                }
+                ++n;
+            }
+#else
             for (size_t i = 0; i < compositeKeyColumnNames.size(); ++i) {
                 const std::string& columnName = compositeKeyColumnNames[i];
-#if __cpp_lib_ranges >= 201911L
-                auto it = std::ranges::find(res, columnName, &table_xinfo::name);
-#else
                 auto it = std::find_if(res.begin(), res.end(), [&columnName](const table_xinfo& ti) {
                     return ti.name == columnName;
                 });
-#endif
                 if (it != res.end()) {
                     it->pk = static_cast<int>(i + 1);
                 }
             }
+#endif
             return res;
         }
 
@@ -24211,7 +24238,7 @@ namespace sqlite_orm {
             columnNames.reserve(table.template count_of<is_column>());
             table.for_each_column([&columnNames, &columnsToIgnore](const column_identifier& column) {
                 auto& columnName = column.name;
-#if __cpp_lib_ranges >= 201911L
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
                 auto columnToIgnoreIt = std::ranges::find(columnsToIgnore, columnName, &table_xinfo::name);
 #else
                 auto columnToIgnoreIt = std::find_if(columnsToIgnore.begin(),
