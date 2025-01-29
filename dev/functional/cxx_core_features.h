@@ -1,7 +1,7 @@
 #pragma once
 
 /*
- *  This header detects core C++ language features on which sqlite_orm depends.
+ *  This header detects core C++ language features.
  *  May be updated/overwritten by cxx_compiler_quirks.h
  */
 

@@ -5,9 +5,9 @@
  */
 
 #if __cpp_aggregate_nsdmi < 201304L
-#error A C++14 conforming compiler is required
+#error A fully C++14-compliant compiler is required.
 #endif
 
 #if __cpp_constexpr < 201304L
-#error A C++14 conforming compiler is required
+#error A fully C++14-compliant compiler is required.
 #endif

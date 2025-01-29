@@ -36,17 +36,17 @@ using std::nullptr_t;
  */
 
 #if __cpp_aggregate_nsdmi < 201304L
-#error A C++14 conforming compiler is required
+#error A fully C++14-compliant compiler is required.
 #endif
 
 #if __cpp_constexpr < 201304L
-#error A C++14 conforming compiler is required
+#error A fully C++14-compliant compiler is required.
 #endif
 
 // #include "cxx_core_features.h"
 
 /*
- *  This header detects core C++ language features on which sqlite_orm depends.
+ *  This header detects core C++ language features.
  *  May be updated/overwritten by cxx_compiler_quirks.h
  */
 
