@@ -127,7 +127,7 @@ using std::nullptr_t;
 
 #if __cplusplus >= 202002L
 #define SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
-#define SQLITE_ORM_INIT_RANGE_BASED_FOR_SUPPORTED
+#define SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
 #endif
 
 // #include "cxx_compiler_quirks.h"
@@ -16325,7 +16325,7 @@ namespace sqlite_orm {
             const auto& strings = std::get<1>(tpl);
 
             static constexpr std::array<const char*, 2> sep = {", ", ""};
-#ifdef SQLITE_ORM_INIT_RANGE_BASED_FOR_SUPPORTED
+#ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
             for (bool first = true; auto& s: strings) {
                 ss << sep[std::exchange(first, false)] << s;
             }
@@ -19042,7 +19042,7 @@ namespace sqlite_orm {
 
             // 3. fill in blanks with numerical column identifiers
             {
-#ifdef SQLITE_ORM_INIT_RANGE_BASED_FOR_SUPPORTED
+#ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
                 for (size_t n = 1; std::string & name: columnNames) {
                     if (name.empty()) {
                         name = std::to_string(n);
@@ -21088,7 +21088,7 @@ namespace sqlite_orm {
                 throw std::system_error{orm_error_code::table_has_no_primary_key_column};
             }
 
-#ifdef SQLITE_ORM_INIT_RANGE_BASED_FOR_SUPPORTED
+#ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
             static constexpr std::array<const char*, 2> sep = {" AND ", ""};
             for (bool first = true; const std::string& pkName: primaryKeyColumnNames) {
                 ss << sep[std::exchange(first, false)] << streaming_identifier(pkName) << " = ?";
@@ -23988,7 +23988,7 @@ namespace sqlite_orm {
                                  column.template is<is_generated_always>());
             });
             auto compositeKeyColumnNames = this->composite_key_columns_names();
-#if defined(SQLITE_ORM_INIT_RANGE_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_CPP20_RANGES_SUPPORTED)
+#if defined(SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_CPP20_RANGES_SUPPORTED)
             for (int n = 1; const std::string& columnName: compositeKeyColumnNames) {
                 if (auto it = std::ranges::find(res, columnName, &table_xinfo::name); it != res.end()) {
                     it->pk = n;
