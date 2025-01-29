@@ -10,9 +10,13 @@ namespace {
         int id = 0;
         std::string name;
 
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+        bool operator==(const Object&) const = default;
+#else
         bool operator==(const Object& other) const {
             return this->id == other.id && this->name == other.name;
         }
+#endif
     };
 }
 

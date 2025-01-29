@@ -65,16 +65,18 @@ namespace {
 
 namespace {
     struct User1 {
-        bool operator==(const User1& rhs) const {
-            return std::tie(id, name, age, email) == std::tie(rhs.id, rhs.name, rhs.age, rhs.email);
-        }
-        bool operator!=(const User1& rhs) const {
-            return !(rhs == *this);
-        }
         int id = 0;
         std::string name;
         int age = 0;
         std::string email;
+
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+        bool operator==(const User1&) const = default;
+#else
+        bool operator==(const User1& rhs) const {
+            return std::tie(id, name, age, email) == std::tie(rhs.id, rhs.name, rhs.age, rhs.email);
+        }
+#endif
     };
 }
 

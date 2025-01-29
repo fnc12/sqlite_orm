@@ -11,10 +11,14 @@ namespace {
         std::string address;  //  optional
         double salary;  //  optional
 
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+        bool operator==(const Employee&) const = default;
+#else
         bool operator==(const Employee& other) const {
             return this->id == other.id && this->name == other.name && this->age == other.age &&
                    this->address == other.address && this->salary == other.salary;
         }
+#endif
     };
 }
 TEST_CASE("select constraints") {
@@ -396,9 +400,13 @@ namespace {
         int id = 0;
         std::string firstName;
 
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+        bool operator==(const User4&) const = default;
+#else
         bool operator==(const User4& user) const {
             return this->id == user.id && this->firstName == user.firstName;
         }
+#endif
     };
 }
 TEST_CASE("collate") {

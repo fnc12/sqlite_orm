@@ -9,9 +9,13 @@ TEST_CASE("In") {
         struct User {
             int id = 0;
 
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+            bool operator==(const User& other) const = default;
+#else
             bool operator==(const User& other) const {
                 return this->id == other.id;
             }
+#endif
 
             std::ostream& operator<<(std::ostream& os) const {
                 return os << this->id;

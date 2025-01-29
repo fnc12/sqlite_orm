@@ -9,9 +9,13 @@ TEST_CASE("Iterate mapped") {
         int64_t id = 0;
         std::vector<char> key;
 
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+        bool operator==(const Test&) const = default;
+#else
         bool operator==(const Test& rhs) const {
             return this->id == rhs.id && this->key == rhs.key;
         }
+#endif
     };
 
     auto db =

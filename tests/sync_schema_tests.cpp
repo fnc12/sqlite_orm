@@ -28,8 +28,8 @@ TEST_CASE("Sync schema") {
         int id = 0;
         std::string name;
 
-        bool operator==(const UserBefore& userBefore) const {
-            return this->id == userBefore.id && this->name == userBefore.name;
+        bool operator==(const UserBefore& before) const {
+            return this->id == before.id && this->name == before.name;
         }
     };
 
@@ -487,9 +487,13 @@ TEST_CASE("sync_schema with generated columns") {
         int id = 0;
         int hash = 0;
 
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+        bool operator==(const User& other) const = default;
+#else
         bool operator==(const User& other) const {
             return this->id == other.id && this->hash == other.hash;
         }
+#endif
     };
     auto storagePath = "sync_schema_with_generated.sqlite";
     std::remove(storagePath);
