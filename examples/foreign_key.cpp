@@ -6,7 +6,7 @@
 
 #include <string>
 #include <iostream>
-#include <cassert>
+#include <assert.h>
 #include <memory>
 
 #if SQLITE_VERSION_NUMBER >= 3006019

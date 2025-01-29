@@ -4,7 +4,7 @@
 
 #include <sqlite_orm/sqlite_orm.h>
 
-#include <cassert>
+#include <assert.h>
 #include <string>
 #include <iostream>
 

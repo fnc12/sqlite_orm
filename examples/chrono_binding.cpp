@@ -10,7 +10,7 @@
 #endif
 
 #ifdef ENABLE_THIS_EXAMPLE
-#include <cassert>
+#include <assert.h>
 #include <cstdio>  //  std::remove
 #include <string>
 #include <iostream>
