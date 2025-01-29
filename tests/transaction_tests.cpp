@@ -15,9 +15,13 @@ namespace {
         Object(int id, std::string name) : id{id}, name{std::move(name)} {}
 #endif
 
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+        bool operator==(const Object&) const = default;
+#else
         bool operator==(const Object& other) const {
             return this->id == other.id && this->name == other.name;
         }
+#endif
     };
 }
 

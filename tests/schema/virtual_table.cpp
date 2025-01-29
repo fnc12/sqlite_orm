@@ -11,9 +11,13 @@ TEST_CASE("virtual table") {
         std::string title;
         std::string body;
 
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+        bool operator==(const Post&) const = default;
+#else
         bool operator==(const Post& other) const {
             return this->title == other.title && this->body == other.body;
         }
+#endif
     };
 
     /// CREATE VIRTUAL TABLE posts

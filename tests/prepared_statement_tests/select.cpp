@@ -373,11 +373,17 @@ TEST_CASE("Prepared select") {
             decltype(User::id) id = 0;
             decltype(User::name) name;
 
+#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
             Z(decltype(id) id, decltype(name) name) : id{id}, name{std::move(name)} {}
+#endif
 
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+            bool operator==(const Z&) const = default;
+#else
             bool operator==(const Z& z) const {
                 return this->id == z.id && this->name == z.name;
             }
+#endif
         };
         constexpr auto z_struct = struct_<Z>(&User::id, &User::name);
         auto statement = storage.prepare(select(z_struct));
