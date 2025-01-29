@@ -43,7 +43,7 @@ namespace sqlite_orm {
                                  column.template is<is_generated_always>());
             });
             auto compositeKeyColumnNames = this->composite_key_columns_names();
-#if defined(SQLITE_ORM_INIT_RANGE_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_CPP20_RANGES_SUPPORTED)
+#if defined(SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_CPP20_RANGES_SUPPORTED)
             for (int n = 1; const std::string& columnName: compositeKeyColumnNames) {
                 if (auto it = std::ranges::find(res, columnName, &table_xinfo::name); it != res.end()) {
                     it->pk = n;

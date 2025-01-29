@@ -1689,7 +1689,7 @@ namespace sqlite_orm {
                 throw std::system_error{orm_error_code::table_has_no_primary_key_column};
             }
 
-#ifdef SQLITE_ORM_INIT_RANGE_BASED_FOR_SUPPORTED
+#ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
             static constexpr std::array<const char*, 2> sep = {" AND ", ""};
             for (bool first = true; const std::string& pkName: primaryKeyColumnNames) {
                 ss << sep[std::exchange(first, false)] << streaming_identifier(pkName) << " = ?";
