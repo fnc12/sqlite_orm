@@ -17189,9 +17189,11 @@ namespace sqlite_orm {
                 return &other.container == &this->container && other.index == this->index;
             }
 
+#ifndef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
             bool operator!=(const iterator& other) const {
                 return !(*this == other);
             }
+#endif
 
           private:
             const arg_values& container;
@@ -17278,7 +17280,7 @@ namespace sqlite_orm {
 // #include "udf_proxy.h"
 
 #include <sqlite3.h>
-#include <cassert>  //  assert macro
+#include <assert.h>  //  assert macro
 #include <type_traits>  //  std::true_type, std::false_type
 #include <new>  //  std::bad_alloc
 #include <memory>  //  std::allocator, std::allocator_traits, std::unique_ptr

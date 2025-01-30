@@ -14,6 +14,18 @@ namespace PreparedStatementTests {
         User() = default;
         User(int id, std::string name) : id{id}, name{std::move(name)} {}
 #endif
+
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+        friend bool operator==(const User&, const User&) = default;
+#else
+        friend bool operator==(const User& lhs, const User& rhs) {
+            return lhs.id == rhs.id && lhs.name == rhs.name;
+        }
+
+        friend bool operator!=(const User& lhs, const User& rhs) {
+            return !(lhs == rhs);
+        }
+#endif
     };
 
     struct Visit {
@@ -39,14 +51,6 @@ namespace PreparedStatementTests {
                      std::string description) : userId{userId}, visitId{visitId}, description{std::move(description)} {}
 #endif
     };
-
-    inline bool operator==(const User& lhs, const User& rhs) {
-        return lhs.id == rhs.id && lhs.name == rhs.name;
-    }
-
-    inline bool operator!=(const User& lhs, const User& rhs) {
-        return !(lhs == rhs);
-    }
 
     inline void testSerializing(const sqlite_orm::internal::prepared_statement_base& statement) {
         auto sql = statement.sql();

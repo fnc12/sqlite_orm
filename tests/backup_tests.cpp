@@ -13,11 +13,15 @@ namespace {
         User() = default;
         User(int id, std::string name) : id{id}, name{std::move(name)} {}
 #endif
-    };
 
-    bool operator==(const User& lhs, const User& rhs) {
-        return lhs.id == rhs.id && lhs.name == rhs.name;
-    }
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+        friend bool operator==(const User&, const User&) = default;
+#else
+        friend bool operator==(const User& lhs, const User& rhs) {
+            return lhs.id == rhs.id && lhs.name == rhs.name;
+        }
+#endif
+    };
 
     struct MarvelHero {
         int id;
@@ -87,7 +91,7 @@ TEST_CASE("backup") {
         REQUIRE_THAT(rowsFromBackup, UnorderedEquals(expectedRows));
     }
     SECTION("from") {
-        ::remove(backupFilename.c_str());
+        std::remove(backupFilename.c_str());
         auto storage = makeStorage(backupFilename);
         storage.sync_schema();
         storage.replace(User{1, "Sharon"});

@@ -14,9 +14,19 @@
  *  BLOB is mapped to std::vector<char>.
 */
 #include <sqlite_orm/sqlite_orm.h>
+#ifdef __has_include
+#if __has_include(<any>)
 #include <any>
+#endif
+#endif
+
+#if __cpp_lib_any >= 201606L
+#define ENABLE_THIS_EXAMPLE
+#endif
+
+#ifdef ENABLE_THIS_EXAMPLE
 #include <iostream>
-#include <cstdio>
+#include <cstdio>  //  std::remove
 
 using namespace sqlite_orm;
 using std::cout;
@@ -128,14 +138,16 @@ namespace sqlite_orm {
         }
     };
 }
+#endif
 
 int main() {
+#ifdef ENABLE_THIS_EXAMPLE
     struct Value {
         int id = 0;
         std::any value;
     };
     auto filename = "any.sqlite";
-    ::remove(filename);
+    std::remove(filename);
     auto storage = make_storage(
         filename,
         make_table("test", make_column("id", &Value::id, primary_key()), make_column("value", &Value::value)));
@@ -151,5 +163,6 @@ int main() {
         cout << storage.dump(test) << endl;
     }
     cout << endl;
+#endif
     return 0;
 }
