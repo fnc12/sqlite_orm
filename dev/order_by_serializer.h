@@ -27,8 +27,8 @@ namespace sqlite_orm {
                 newContext.skip_table_name = false;
 
                 ss << serialize(orderBy.expression, newContext);
-                if (!orderBy.collate_argument.empty()) {
-                    ss << " COLLATE " << orderBy.collate_argument;
+                if (!orderBy._collate_argument.empty()) {
+                    ss << " COLLATE " << orderBy._collate_argument;
                 }
                 switch (orderBy.asc_desc) {
                     case 1:
@@ -57,8 +57,8 @@ namespace sqlite_orm {
                     }
 
                     ss << entry.name;
-                    if (!entry.collate_argument.empty()) {
-                        ss << " COLLATE " << entry.collate_argument;
+                    if (!entry._collate_argument.empty()) {
+                        ss << " COLLATE " << entry._collate_argument;
                     }
                     switch (entry.asc_desc) {
                         case 1:

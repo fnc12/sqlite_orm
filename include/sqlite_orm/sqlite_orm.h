@@ -5180,7 +5180,7 @@ namespace sqlite_orm {
 
         struct order_by_base {
             int asc_desc = 0;  //  1: asc, -1: desc
-            std::string collate_argument;
+            std::string _collate_argument;
         };
 
         struct order_by_string {
@@ -5215,25 +5215,25 @@ namespace sqlite_orm {
 
             self collate_binary() const {
                 auto res = *this;
-                res.collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::binary);
+                res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::binary);
                 return res;
             }
 
             self collate_nocase() const {
                 auto res = *this;
-                res.collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::nocase);
+                res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::nocase);
                 return res;
             }
 
             self collate_rtrim() const {
                 auto res = *this;
-                res.collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::rtrim);
+                res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::rtrim);
                 return res;
             }
 
             self collate(std::string name) const {
                 auto res = *this;
-                res.collate_argument = std::move(name);
+                res._collate_argument = std::move(name);
                 return res;
             }
 
@@ -5282,7 +5282,7 @@ namespace sqlite_orm {
                 auto columnName = serialize(order_by.expression, newContext);
                 this->entries.emplace_back(std::move(columnName),
                                            order_by.asc_desc,
-                                           std::move(order_by.collate_argument));
+                                           std::move(order_by._collate_argument));
             }
 
             const_iterator begin() const {
@@ -11844,13 +11844,13 @@ namespace sqlite_orm {
         struct indexed_column_t {
             using column_type = C;
 
-            column_type column_or_expression;
-            std::string collation_name;
+            column_type _column_or_expression;
+            std::string _collation_name;
             int _order = 0;  //  -1 = desc, 1 = asc, 0 = not specified
 
             indexed_column_t<column_type> collate(std::string name) {
                 auto res = std::move(*this);
-                res.collation_name = std::move(name);
+                res._collation_name = std::move(name);
                 return res;
             }
 
@@ -18998,8 +18998,8 @@ namespace sqlite_orm {
                 newContext.skip_table_name = false;
 
                 ss << serialize(orderBy.expression, newContext);
-                if (!orderBy.collate_argument.empty()) {
-                    ss << " COLLATE " << orderBy.collate_argument;
+                if (!orderBy._collate_argument.empty()) {
+                    ss << " COLLATE " << orderBy._collate_argument;
                 }
                 switch (orderBy.asc_desc) {
                     case 1:
@@ -19028,8 +19028,8 @@ namespace sqlite_orm {
                     }
 
                     ss << entry.name;
-                    if (!entry.collate_argument.empty()) {
-                        ss << " COLLATE " << entry.collate_argument;
+                    if (!entry._collate_argument.empty()) {
+                        ss << " COLLATE " << entry._collate_argument;
                     }
                     switch (entry.asc_desc) {
                         case 1:
@@ -21134,9 +21134,9 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
-                ss << serialize(statement.column_or_expression, context);
-                if (!statement.collation_name.empty()) {
-                    ss << " COLLATE " << statement.collation_name;
+                ss << serialize(statement._column_or_expression, context);
+                if (!statement._collation_name.empty()) {
+                    ss << " COLLATE " << statement._collation_name;
                 }
                 if (statement._order) {
                     switch (statement._order) {

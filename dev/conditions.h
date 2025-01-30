@@ -431,7 +431,7 @@ namespace sqlite_orm {
 
         struct order_by_base {
             int asc_desc = 0;  //  1: asc, -1: desc
-            std::string collate_argument;
+            std::string _collate_argument;
         };
 
         struct order_by_string {
@@ -466,25 +466,25 @@ namespace sqlite_orm {
 
             self collate_binary() const {
                 auto res = *this;
-                res.collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::binary);
+                res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::binary);
                 return res;
             }
 
             self collate_nocase() const {
                 auto res = *this;
-                res.collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::nocase);
+                res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::nocase);
                 return res;
             }
 
             self collate_rtrim() const {
                 auto res = *this;
-                res.collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::rtrim);
+                res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::rtrim);
                 return res;
             }
 
             self collate(std::string name) const {
                 auto res = *this;
-                res.collate_argument = std::move(name);
+                res._collate_argument = std::move(name);
                 return res;
             }
 
@@ -533,7 +533,7 @@ namespace sqlite_orm {
                 auto columnName = serialize(order_by.expression, newContext);
                 this->entries.emplace_back(std::move(columnName),
                                            order_by.asc_desc,
-                                           std::move(order_by.collate_argument));
+                                           std::move(order_by._collate_argument));
             }
 
             const_iterator begin() const {

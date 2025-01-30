@@ -1834,9 +1834,9 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
-                ss << serialize(statement.column_or_expression, context);
-                if (!statement.collation_name.empty()) {
-                    ss << " COLLATE " << statement.collation_name;
+                ss << serialize(statement._column_or_expression, context);
+                if (!statement._collation_name.empty()) {
+                    ss << " COLLATE " << statement._collation_name;
                 }
                 if (statement._order) {
                     switch (statement._order) {
