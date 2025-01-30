@@ -23,14 +23,6 @@ namespace {
             return lhs.id == rhs.id && lhs.attributes == rhs.attributes;
         }
 #endif
-
-#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
-        friend bool operator==(const Item&, const Item&) = default;
-#else
-        friend bool operator==(const Item& lhs, const Item& rhs) {
-            return lhs.id == rhs.id && lhs.attributes == rhs.attributes;
-        }
-#endif
     };
 }
 
