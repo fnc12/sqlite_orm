@@ -11,8 +11,10 @@ namespace sqlite_orm {
 
         struct connection_holder {
 
-            connection_holder(std::string filename_, std::string vfs_name_ = {}) :
-                filename(std::move(filename_)), vfs_name(std::move(vfs_name_)) {}
+            connection_holder(std::string filename_,
+                              std::string vfs_name_ = {},
+                              int open_flags_ = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE) :
+                filename(std::move(filename_)), vfs_name(std::move(vfs_name_)), open_flags(open_flags_) {}
 
             void retain() {
                 // first one opens the connection.
@@ -22,10 +24,7 @@ namespace sqlite_orm {
 
                     const char* vfs = vfs_name.empty() ? nullptr : vfs_name.c_str();
 
-                    auto rc = sqlite3_open_v2(this->filename.c_str(),
-                                              &this->db,
-                                              SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
-                                              vfs);
+                    auto rc = sqlite3_open_v2(this->filename.c_str(), &this->db, open_flags, vfs);
 
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible, but unexpected*/ {
                         throw_translated_sqlite_error(this->db);
@@ -60,6 +59,7 @@ namespace sqlite_orm {
 
             const std::string filename;
             const std::string vfs_name;
+            const int open_flags;
 
           protected:
             sqlite3* db = nullptr;

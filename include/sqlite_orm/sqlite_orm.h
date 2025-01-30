@@ -13653,8 +13653,10 @@ namespace sqlite_orm {
 
         struct connection_holder {
 
-            connection_holder(std::string filename_, std::string vfs_name_ = {}) :
-                filename(std::move(filename_)), vfs_name(std::move(vfs_name_)) {}
+            connection_holder(std::string filename_,
+                              std::string vfs_name_ = {},
+                              int open_flags_ = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE) :
+                filename(std::move(filename_)), vfs_name(std::move(vfs_name_)), open_flags(open_flags_) {}
 
             void retain() {
                 // first one opens the connection.
@@ -13664,10 +13666,7 @@ namespace sqlite_orm {
 
                     const char* vfs = vfs_name.empty() ? nullptr : vfs_name.c_str();
 
-                    auto rc = sqlite3_open_v2(this->filename.c_str(),
-                                              &this->db,
-                                              SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
-                                              vfs);
+                    auto rc = sqlite3_open_v2(this->filename.c_str(), &this->db, open_flags, vfs);
 
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible, but unexpected*/ {
                         throw_translated_sqlite_error(this->db);
@@ -13702,6 +13701,7 @@ namespace sqlite_orm {
 
             const std::string filename;
             const std::string vfs_name;
+            const int open_flags;
 
           protected:
             sqlite3* db = nullptr;
@@ -18064,11 +18064,11 @@ namespace sqlite_orm {
             }
 
           protected:
-            storage_base(std::string filename, int foreignKeysCount) :
+            storage_base(std::string filename, std::string vfs_name, int open_flags, int foreignKeysCount) :
                 pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
                 inMemory(filename.empty() || filename == ":memory:"),
-                connection(std::make_unique<connection_holder>(std::move(filename))),
+                connection(std::make_unique<connection_holder>(std::move(filename), std::move(vfs_name), open_flags)),
                 cachedForeignKeysCount(foreignKeysCount) {
                 if (this->inMemory) {
                     this->connection->retain();
@@ -22159,8 +22159,9 @@ namespace sqlite_orm {
              *  @param filename database filename.
              *  @param dbObjects db_objects_tuple
              */
-            storage_t(std::string filename, db_objects_type dbObjects) :
-                storage_base{std::move(filename), foreign_keys_count(dbObjects)}, db_objects{std::move(dbObjects)} {}
+            storage_t(std::string filename, std::string vfs_name, int open_flags, db_objects_type dbObjects) :
+                storage_base{std::move(filename), std::move(vfs_name), open_flags, foreign_keys_count(dbObjects)},
+                db_objects{std::move(dbObjects)} {}
 
             storage_t(const storage_t&) = default;
 
@@ -23773,8 +23774,19 @@ namespace sqlite_orm {
      *  Factory function for a storage, from a database file and a bunch of database object definitions.
      */
     template<class... DBO>
+    internal::storage_t<DBO...> make_storage(std::string filename, std::string vfs, int open_flags, DBO... dbObjects) {
+        return {std::move(filename),
+                vfs,
+                open_flags,
+                internal::db_objects_tuple<DBO...>{std::forward<DBO>(dbObjects)...}};
+    }
+
+    template<class... DBO>
     internal::storage_t<DBO...> make_storage(std::string filename, DBO... dbObjects) {
-        return {std::move(filename), internal::db_objects_tuple<DBO...>{std::forward<DBO>(dbObjects)...}};
+        return {std::move(filename),
+                {},
+                SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
+                internal::db_objects_tuple<DBO...>{std::forward<DBO>(dbObjects)...}};
     }
 
     /**
