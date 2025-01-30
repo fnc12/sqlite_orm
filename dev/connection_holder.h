@@ -7,6 +7,7 @@
 #include <string>  //  std::string
 #endif
 
+#include "storage_options.h"
 #include "error_code.h"
 
 namespace sqlite_orm {

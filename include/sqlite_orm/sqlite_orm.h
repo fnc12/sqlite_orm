@@ -292,6 +292,15 @@ using std::nullptr_t;
 #define SQLITE_ORM_WITH_CTE
 #endif
 
+#if defined(_WIN32)
+#define SQLITE_ORM_WIN
+#elif defined(__APPLE__)
+#define SQLITE_ORM_APPLE
+#define SQLITE_ORM_UNIX
+#elif defined(__unix__) || defined(__unix) || defined(__linux__) || defined(__FreeBSD__)
+#define SQLITE_ORM_UNIX
+#endif
+
 // define the inline namespace "literals" so that it is available even if it was not introduced by a feature
 namespace sqlite_orm {
     inline namespace literals {}
@@ -14003,6 +14012,57 @@ namespace sqlite_orm {
 #include <string>  //  std::string
 #endif
 
+// #include "storage_options.h"
+
+#include <sqlite3.h>
+#ifdef SQLITE_ORM_IMPORT_STD_MODULE
+#include <version>
+#else
+#include <type_traits>  //  std::is_aggregate
+#include <utility>  //  std::move
+#include <functional>  //  std::function
+#endif
+
+namespace sqlite_orm {
+    namespace internal {
+        template<typename T>
+        using storage_opt_tag_t = typename T::storage_opt_tag;
+
+        struct on_open_spec {
+            using storage_opt_tag = int;
+
+            std::function<void(sqlite3*)> onOpen;
+        };
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /** 
+     *  Database connection control options to be passed to `make_storage()`.
+     */
+    struct connection_control {
+        /// Whether to open the database once and for all.
+        /// Required if using a 'storage' instance from multiple threads.
+        bool open_forever = false;
+
+        using storage_opt_tag = int;
+    };
+#if __cpp_lib_is_aggregate >= 201703L
+    // design choice: must be an aggregate that can be constructed using designated initializers
+    static_assert(std::is_aggregate_v<connection_control>);
+#endif
+
+#ifdef SQLITE_ORM_CTAD_SUPPORTED
+    /** 
+     *  Callback function to be passed to `make_storage()`.
+     *  The provided function is called immdediately after the database connection has been established and set up.
+     */
+    inline internal::on_open_spec on_open(std::function<void(sqlite3*)> onOpen) {
+        return {std::move(onOpen)};
+    }
+#endif
+}
+
 // #include "error_code.h"
 
 namespace sqlite_orm {
@@ -17861,55 +17921,6 @@ namespace sqlite_orm {
 
 // #include "storage_options.h"
 
-#include <sqlite3.h>
-#ifdef SQLITE_ORM_IMPORT_STD_MODULE
-#include <version>
-#else
-#include <type_traits>  //  std::is_aggregate
-#include <utility>  //  std::move
-#include <functional>  //  std::function
-#endif
-
-namespace sqlite_orm {
-    namespace internal {
-        template<typename T>
-        using storage_opt_tag_t = typename T::storage_opt_tag;
-
-        struct on_open_spec {
-            using storage_opt_tag = int;
-
-            std::function<void(sqlite3*)> onOpen;
-        };
-    }
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    /** 
-     *  Database connection control options to be passed to `make_storage()`.
-     */
-    struct connection_control {
-        /// Whether to open the database once and for all.
-        /// Required if using a 'storage' instance from multiple threads.
-        bool open_forever = false;
-
-        using storage_opt_tag = int;
-    };
-#if __cpp_lib_is_aggregate >= 201703L
-    // design choice: must be an aggregate that can be constructed using designated initializers
-    static_assert(std::is_aggregate_v<connection_control>);
-#endif
-
-#ifdef SQLITE_ORM_CTAD_SUPPORTED
-    /** 
-     *  Callback function to be passed to `make_storage()`.
-     *  The provided function is called immdediately after the database connection has been established and set up.
-     */
-    inline internal::on_open_spec on_open(std::function<void(sqlite3*)> onOpen) {
-        return {std::move(onOpen)};
-    }
-#endif
-}
-
 namespace sqlite_orm {
     namespace internal {
 
@@ -18512,6 +18523,29 @@ namespace sqlite_orm {
              */
             bool is_opened() const {
                 return this->connection->retain_count() > 0;
+            }
+
+            /**
+             * Public method for checking the VFS implementation being used by
+             * this storage object. Mostly useful for debug.
+             */
+            sqlite_orm::vfs_object vfs_object() const {
+                return this->connection->options.vfs_option;
+            }
+
+            /**
+             * Return the current open_mode for this storage object. 
+             */
+            sqlite_orm::open_mode open_mode() const {
+                return this->connection->options.open_option;
+            }
+
+            /**
+             * Return true if this database object is opened in a readonly state. 
+             */
+            bool readonly() const {
+                sqlite3* db = this->connection->get();
+                return sqlite3_db_readonly(db, "main");
             }
 
             /*
@@ -24323,6 +24357,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /*
      *  Factory function for a storage instance, from a database file and a bunch of database object definitions.
      */
+    template<class... DBO>
+    internal::storage_t<DBO...> make_storage(std::string filename, storage_options options, DBO... dbObjects) {
+        return {std::move(filename), options, internal::db_objects_tuple<DBO...>{std::forward<DBO>(dbObjects)...}};
+    }
+
     template<class... DBO>
     internal::storage_t<DBO...> make_storage(std::string filename, DBO... dbObjects) {
         return {std::move(filename), {std::forward<DBO>(dbObjects)...}, std::tuple<>{}};

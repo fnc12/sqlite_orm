@@ -1760,6 +1760,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a storage instance, from a database file and a bunch of database object definitions.
      */
     template<class... DBO>
+    internal::storage_t<DBO...> make_storage(std::string filename, storage_options options, DBO... dbObjects) {
+        return {std::move(filename), options, internal::db_objects_tuple<DBO...>{std::forward<DBO>(dbObjects)...}};
+    }
+
+    template<class... DBO>
     internal::storage_t<DBO...> make_storage(std::string filename, DBO... dbObjects) {
         return {std::move(filename), {std::forward<DBO>(dbObjects)...}, std::tuple<>{}};
     }

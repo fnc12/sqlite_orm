@@ -640,6 +640,29 @@ namespace sqlite_orm {
                 return this->connection->retain_count() > 0;
             }
 
+            /**
+             * Public method for checking the VFS implementation being used by
+             * this storage object. Mostly useful for debug.
+             */
+            sqlite_orm::vfs_object vfs_object() const {
+                return this->connection->options.vfs_option;
+            }
+
+            /**
+             * Return the current open_mode for this storage object. 
+             */
+            sqlite_orm::open_mode open_mode() const {
+                return this->connection->options.open_option;
+            }
+
+            /**
+             * Return true if this database object is opened in a readonly state. 
+             */
+            bool readonly() const {
+                sqlite3* db = this->connection->get();
+                return sqlite3_db_readonly(db, "main");
+            }
+
             /*
              * returning false when there is a transaction in place
              * otherwise true; function is not const because it has to call get_connection()

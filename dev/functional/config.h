@@ -86,6 +86,15 @@
 #define SQLITE_ORM_WITH_CTE
 #endif
 
+#if defined(_WIN32)
+#define SQLITE_ORM_WIN
+#elif defined(__APPLE__)
+#define SQLITE_ORM_APPLE
+#define SQLITE_ORM_UNIX
+#elif defined(__unix__) || defined(__unix) || defined(__linux__) || defined(__FreeBSD__)
+#define SQLITE_ORM_UNIX
+#endif
+
 // define the inline namespace "literals" so that it is available even if it was not introduced by a feature
 namespace sqlite_orm {
     inline namespace literals {}
