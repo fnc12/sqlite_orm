@@ -2,7 +2,7 @@
 
 #include <sqlite3.h>
 #ifndef _IMPORT_STD_MODULE
-#include <cassert>  //  assert macro
+#include <assert.h>  //  assert macro
 #include <type_traits>  //  std::true_type, std::false_type
 #include <new>  //  std::bad_alloc
 #include <memory>  //  std::allocator, std::allocator_traits, std::unique_ptr
@@ -15,9 +15,9 @@
 
 namespace sqlite_orm {
     namespace internal {
-        /*
-         *  Returns properly allocated memory space for the specified application-defined function object
-         *  paired with an accompanying deallocation function.
+        /*
+         *  Returns properly allocated memory space for the specified application-defined function object
+         *  paired with an accompanying deallocation function.
          */
         template<class UDF>
         std::pair<void*, xdestroy_fn_t> preallocate_udf_memory() {
@@ -33,8 +33,8 @@ namespace sqlite_orm {
             return {traits::allocate(allocator, 1), deallocate};
         }
 
-        /*
-         *  Returns a pair of functions to allocate/deallocate properly aligned memory space for the specified application-defined function object.
+        /*
+         *  Returns a pair of functions to allocate/deallocate properly aligned memory space for the specified application-defined function object.
          */
         template<class UDF>
         std::pair<void* (*)(), xdestroy_fn_t> obtain_udf_allocator() {
@@ -53,8 +53,8 @@ namespace sqlite_orm {
             return {allocate, deallocate};
         }
 
-        /*
-         *  A deleter that only destroys the application-defined function object.
+        /*
+         *  A deleter that only destroys the application-defined function object.
          */
         struct udf_destruct_only_deleter {
             template<class UDF>
@@ -65,12 +65,12 @@ namespace sqlite_orm {
             }
         };
 
-        /*
-         *  Stores type-erased information in relation to an application-defined scalar or aggregate function object:
-         *  - name and argument count
-         *  - function dispatch (step, final)
-         *  - either preallocated memory with a possibly a priori constructed function object [scalar],
-         *  - or memory allocation/deallocation functions [aggregate]
+        /*
+         *  Stores type-erased information in relation to an application-defined scalar or aggregate function object:
+         *  - name and argument count
+         *  - function dispatch (step, final)
+         *  - either preallocated memory with a possibly a priori constructed function object [scalar],
+         *  - or memory allocation/deallocation functions [aggregate]
          */
         struct udf_proxy {
             using sqlite_func_t = void (*)(sqlite3_context* context, int argsCount, sqlite3_value** values);

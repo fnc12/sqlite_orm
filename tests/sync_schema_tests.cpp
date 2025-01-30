@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <cstdio>  //  std::remove
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 
@@ -27,14 +28,14 @@ TEST_CASE("Sync schema") {
         int id;
         std::string name;
 
-        bool operator==(const UserBefore& userBefore) const {
-            return this->id == userBefore.id && this->name == userBefore.name;
+        bool operator==(const UserBefore& before) const {
+            return this->id == before.id && this->name == before.name;
         }
     };
 
     //  create an old storage
     auto filename = "sync_schema_text.sqlite";
-    ::remove(filename);
+    std::remove(filename);
     auto storage = make_storage(filename,
                                 make_table("users",
                                            make_column("id", &UserBefore::id, primary_key()),
@@ -150,7 +151,7 @@ TEST_CASE("issue521") {
     };
     std::vector<MockDatabasePoco> pocosToInsert;
 
-    ::remove(storagePath);
+    std::remove(storagePath);
     {
         // --- Create the initial database
         auto storage = sqlite_orm::make_storage(
@@ -310,7 +311,7 @@ TEST_CASE("sync_schema") {
         const std::string name = "name";
         const std::string age = "age";
     } columnNames;
-    ::remove(storagePath);
+    std::remove(storagePath);
     {
         auto storage = make_storage(storagePath,
                                     make_table(tableName,
@@ -496,12 +497,16 @@ TEST_CASE("sync_schema with generated columns") {
         User(int id, int hash = 0) : id{id}, hash{hash} {}
 #endif
 
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+        bool operator==(const User& other) const = default;
+#else
         bool operator==(const User& other) const {
             return this->id == other.id && this->hash == other.hash;
         }
+#endif
     };
     auto storagePath = "sync_schema_with_generated.sqlite";
-    ::remove(storagePath);
+    std::remove(storagePath);
     auto storage1 = make_storage(storagePath, make_table("users", make_column("id", &User::id)));
     storage1.sync_schema();
     storage1.insert(User{5});

@@ -98,9 +98,11 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
                 return &other.container == &this->container && other.index == this->index;
             }
 
+#ifndef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
             bool operator!=(const iterator& other) const {
                 return !(*this == other);
             }
+#endif
 
           private:
             const arg_values& container;

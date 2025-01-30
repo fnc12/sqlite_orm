@@ -131,7 +131,7 @@ using std::nullptr_t;
 
 #if __cplusplus >= 202002L
 #define SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
-#define SQLITE_ORM_INIT_RANGE_BASED_FOR_SUPPORTED
+#define SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
 #endif
 
 // #include "cxx_compiler_quirks.h"
@@ -16608,7 +16608,7 @@ namespace sqlite_orm {
             const auto& strings = std::get<1>(tpl);
 
             static constexpr std::array<const char*, 2> sep = {", ", ""};
-#ifdef SQLITE_ORM_INIT_RANGE_BASED_FOR_SUPPORTED
+#ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
             for (bool first = true; auto& s: strings) {
                 ss << sep[std::exchange(first, false)] << s;
             }
@@ -17480,9 +17480,11 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
                 return &other.container == &this->container && other.index == this->index;
             }
 
+#ifndef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
             bool operator!=(const iterator& other) const {
                 return !(*this == other);
             }
+#endif
 
           private:
             const arg_values& container;
@@ -17570,7 +17572,7 @@ namespace sqlite_orm {
 
 #include <sqlite3.h>
 #ifndef _IMPORT_STD_MODULE
-#include <cassert>  //  assert macro
+#include <assert.h>  //  assert macro
 #include <type_traits>  //  std::true_type, std::false_type
 #include <new>  //  std::bad_alloc
 #include <memory>  //  std::allocator, std::allocator_traits, std::unique_ptr
@@ -17584,11 +17586,8 @@ namespace sqlite_orm {
 namespace sqlite_orm {
     namespace internal {
         /*
-
          *  Returns properly allocated memory space for the specified application-defined function object
-
          *  paired with an accompanying deallocation function.
-
          */
         template<class UDF>
         std::pair<void*, xdestroy_fn_t> preallocate_udf_memory() {
@@ -17605,9 +17604,7 @@ namespace sqlite_orm {
         }
 
         /*
-
          *  Returns a pair of functions to allocate/deallocate properly aligned memory space for the specified application-defined function object.
-
          */
         template<class UDF>
         std::pair<void* (*)(), xdestroy_fn_t> obtain_udf_allocator() {
@@ -17627,9 +17624,7 @@ namespace sqlite_orm {
         }
 
         /*
-
          *  A deleter that only destroys the application-defined function object.
-
          */
         struct udf_destruct_only_deleter {
             template<class UDF>
@@ -17641,17 +17636,11 @@ namespace sqlite_orm {
         };
 
         /*
-
          *  Stores type-erased information in relation to an application-defined scalar or aggregate function object:
-
          *  - name and argument count
-
          *  - function dispatch (step, final)
-
          *  - either preallocated memory with a possibly a priori constructed function object [scalar],
-
          *  - or memory allocation/deallocation functions [aggregate]
-
          */
         struct udf_proxy {
             using sqlite_func_t = void (*)(sqlite3_context* context, int argsCount, sqlite3_value** values);
@@ -19358,7 +19347,7 @@ namespace sqlite_orm {
 
             // 3. fill in blanks with numerical column identifiers
             {
-#ifdef SQLITE_ORM_INIT_RANGE_BASED_FOR_SUPPORTED
+#ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
                 for (size_t n = 1; std::string & name: columnNames) {
                     if (name.empty()) {
                         name = std::to_string(n);
@@ -21410,7 +21399,7 @@ namespace sqlite_orm {
                 throw std::system_error{orm_error_code::table_has_no_primary_key_column};
             }
 
-#ifdef SQLITE_ORM_INIT_RANGE_BASED_FOR_SUPPORTED
+#ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
             static constexpr std::array<const char*, 2> sep = {" AND ", ""};
             for (bool first = true; const std::string& pkName: primaryKeyColumnNames) {
                 ss << sep[std::exchange(first, false)] << streaming_identifier(pkName) << " = ?";
@@ -24322,7 +24311,7 @@ namespace sqlite_orm {
                                  column.template is<is_generated_always>());
             });
             auto compositeKeyColumnNames = this->composite_key_columns_names();
-#if defined(SQLITE_ORM_INIT_RANGE_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_CPP20_RANGES_SUPPORTED)
+#if defined(SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_CPP20_RANGES_SUPPORTED)
             for (int n = 1; const std::string& columnName: compositeKeyColumnNames) {
                 if (auto it = std::ranges::find(res, columnName, &table_xinfo::name); it != res.end()) {
                     it->pk = n;

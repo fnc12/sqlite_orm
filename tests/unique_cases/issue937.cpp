@@ -1,5 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <cstdio>  //  std::remove
 
 #if SQLITE_VERSION_NUMBER >= 3006019
 using namespace sqlite_orm;
@@ -32,7 +33,7 @@ TEST_CASE("issue937") {
 
     using namespace sqlite_orm;
 
-    ::remove("SQLCookbook.sqlite");
+    std::remove("SQLCookbook.sqlite");
     auto storage = make_storage("SQLCookbook.sqlite",
                                 make_table("Emp",
                                            make_column("empno", &Employee::m_empno, primary_key().autoincrement()),

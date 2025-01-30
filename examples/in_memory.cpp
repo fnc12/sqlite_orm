@@ -2,7 +2,7 @@
 
 #include <string>
 #include <iostream>
-#include <cassert>
+#include <assert.h>
 
 using namespace sqlite_orm;
 
