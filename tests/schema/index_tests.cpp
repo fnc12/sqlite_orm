@@ -14,6 +14,10 @@ TEST_CASE("index") {
         auto storage = make_storage({}, make_index("id_index", &User::id), table);
         REQUIRE_NOTHROW(storage.sync_schema());
     }
+    SECTION("unspecified") {
+        auto storage = make_storage({}, make_index("id_index", indexed_column(&User::id)), table);
+        REQUIRE_NOTHROW(storage.sync_schema());
+    }
     SECTION("asc") {
         auto storage = make_storage({}, make_index("id_index", indexed_column(&User::id).asc()), table);
         REQUIRE_NOTHROW(storage.sync_schema());

@@ -5179,8 +5179,8 @@ namespace sqlite_orm {
         };
 
         struct order_by_base {
-            int asc_desc = 0;  //  1: asc, -1: desc
             std::string _collate_argument;
+            int _order = 0;  //  -1 = desc, 1 = asc, 0 = unspecified
         };
 
         struct order_by_string {
@@ -5197,19 +5197,19 @@ namespace sqlite_orm {
             using expression_type = O;
             using self = order_by_t<expression_type>;
 
-            expression_type expression;
+            expression_type _expression;
 
-            order_by_t(expression_type expression_) : order_by_base(), expression(std::move(expression_)) {}
+            order_by_t(expression_type expression) : order_by_base(), _expression(std::move(expression)) {}
 
             self asc() const {
                 auto res = *this;
-                res.asc_desc = 1;
+                res._order = 1;
                 return res;
             }
 
             self desc() const {
                 auto res = *this;
-                res.asc_desc = -1;
+                res._order = -1;
                 return res;
             }
 
@@ -5260,8 +5260,8 @@ namespace sqlite_orm {
         struct dynamic_order_by_entry_t : order_by_base {
             std::string name;
 
-            dynamic_order_by_entry_t(decltype(name) name_, int asc_desc_, std::string collate_argument_) :
-                order_by_base{asc_desc_, std::move(collate_argument_)}, name(std::move(name_)) {}
+            dynamic_order_by_entry_t(decltype(name) name_, std::string collate_argument_, int asc_desc_) :
+                order_by_base{std::move(collate_argument_), asc_desc_}, name(std::move(name_)) {}
         };
 
         /**
@@ -5276,13 +5276,11 @@ namespace sqlite_orm {
             dynamic_order_by_t(const context_t& context_) : context(context_) {}
 
             template<class O>
-            void push_back(order_by_t<O> order_by) {
+            void push_back(order_by_t<O> orderBy) {
                 auto newContext = this->context;
                 newContext.skip_table_name = false;
-                auto columnName = serialize(order_by.expression, newContext);
-                this->entries.emplace_back(std::move(columnName),
-                                           order_by.asc_desc,
-                                           std::move(order_by._collate_argument));
+                auto columnName = serialize(orderBy._expression, newContext);
+                this->entries.emplace_back(std::move(columnName), std::move(orderBy._collate_argument), orderBy._order);
             }
 
             const_iterator begin() const {
@@ -11846,7 +11844,7 @@ namespace sqlite_orm {
 
             column_type _column_or_expression;
             std::string _collation_name;
-            int _order = 0;  //  -1 = desc, 1 = asc, 0 = not specified
+            int _order = 0;  //  -1 = desc, 1 = asc, 0 = unspecified
 
             indexed_column_t<column_type> collate(std::string name) {
                 auto res = std::move(*this);
@@ -15639,7 +15637,7 @@ namespace sqlite_orm {
 
             template<class L>
             void operator()(const node_type& node, L& lambda) const {
-                iterate_ast(node.expression, lambda);
+                iterate_ast(node._expression, lambda);
             }
         };
 
@@ -18971,8 +18969,10 @@ namespace sqlite_orm {
 
 // #include "order_by_serializer.h"
 
+#include <array>
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
+#include <utility>  //  std::exchange
 
 namespace sqlite_orm {
 
@@ -18987,6 +18987,20 @@ namespace sqlite_orm {
             return serializer(t, context);
         }
 
+        inline void seralize_collate(std::ostream& ss, const order_by_base& orderBy) {
+            if (!orderBy._collate_argument.empty()) {
+                ss << " COLLATE " << orderBy._collate_argument;
+            }
+            switch (orderBy._order) {
+                case 1:
+                    ss << " ASC";
+                    break;
+                case -1:
+                    ss << " DESC";
+                    break;
+            }
+        }
+
         template<class O>
         struct order_by_serializer<order_by_t<O>, void> {
             using statement_type = order_by_t<O>;
@@ -18997,18 +19011,8 @@ namespace sqlite_orm {
                 auto newContext = context;
                 newContext.skip_table_name = false;
 
-                ss << serialize(orderBy.expression, newContext);
-                if (!orderBy._collate_argument.empty()) {
-                    ss << " COLLATE " << orderBy._collate_argument;
-                }
-                switch (orderBy.asc_desc) {
-                    case 1:
-                        ss << " ASC";
-                        break;
-                    case -1:
-                        ss << " DESC";
-                        break;
-                }
+                ss << serialize(orderBy._expression, newContext);
+                seralize_collate(ss, orderBy);
                 return ss.str();
             }
         };
@@ -19021,30 +19025,22 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& orderBy, const Ctx&) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(orderBy) << " ";
-                int index = 0;
+                static constexpr std::array<const char*, 2> sep = {", ", ""};
+#ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
+                for (bool first = true; const dynamic_order_by_entry_t& entry: orderBy) {
+                    ss << sep[std::exchange(first, false)] << entry.name;
+                    seralize_collate(ss, entry);
+                }
+#else
+                bool first = true;
                 for (const dynamic_order_by_entry_t& entry: orderBy) {
-                    if (index > 0) {
-                        ss << ", ";
-                    }
-
-                    ss << entry.name;
-                    if (!entry._collate_argument.empty()) {
-                        ss << " COLLATE " << entry._collate_argument;
-                    }
-                    switch (entry.asc_desc) {
-                        case 1:
-                            ss << " ASC";
-                            break;
-                        case -1:
-                            ss << " DESC";
-                            break;
-                    }
-                    ++index;
-                };
+                    ss << sep[std::exchange(first, false)] << entry.name;
+                    seralize_collate(ss, entry);
+                }
+#endif
                 return ss.str();
             }
         };
-
     }
 }
 
@@ -21140,14 +21136,12 @@ namespace sqlite_orm {
                 }
                 if (statement._order) {
                     switch (statement._order) {
-                        case -1:
-                            ss << " DESC";
-                            break;
                         case 1:
                             ss << " ASC";
                             break;
-                        default:
-                            throw std::system_error{orm_error_code::incorrect_order};
+                        case -1:
+                            ss << " DESC";
+                            break;
                     }
                 }
                 return ss.str();
