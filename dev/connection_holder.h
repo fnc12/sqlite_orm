@@ -4,6 +4,7 @@
 #include <atomic>
 #include <string>  //  std::string
 
+#include "vfs.h"
 #include "error_code.h"
 
 namespace sqlite_orm {

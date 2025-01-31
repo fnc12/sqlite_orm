@@ -1,14 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 
-#if defined(__unix__) || defined(__unix) || (defined(__APPLE__) && defined(__MACH__))
-#define SQLITE_ORM_UNIX 1
-#elif _WIN32
-#define SQLITE_ORM_WINDOWS 1
-#else
-#error "Unsupported Operating System"
-#endif
-
 struct User {
     std::string id;
 };
@@ -19,18 +11,21 @@ static const auto table = make_table("users", make_column("id", &User::id, prima
 
 TEST_CASE("vfs modes open successfully") {
 
-#if SQLITE_ORM_UNIX
-    std::string vfs = GENERATE("", "unix", "unix-excl", "unix-dotfile", "unix-none");
-#elif SQLITE_ORM_WINDOWS
-    std::string vfs = GENERATE("", "win32", "win32-longpath", "win32-none");
+#ifdef SQLITE_ORM_MAC
+    vfs vfs_enum = GENERATE(vfs::unix, vfs::unix_posix, vfs::unix_dotfile, vfs::unix_afp);
+#elif defined(SQLITE_ORM_UNIX);
+    vfs vfs_enum = GENERATE(vfs::unix, vfs::unix_posix, vfs::unix_dotfile);
+#elif defined(SQLITE_ORM_WINDOWS)
+    vfs vfs_enum = GENERATE(vfs::win32, vfs::win32_longpath);
 #endif
 
+    std::string vfs_string = internal::to_string(vfs_enum);
     int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
 
-    auto storage = make_storage_v2("", vfs, flags, table);
+    auto storage = make_storage_v2("", vfs_string, flags, table);
     storage.open_forever();
 
-    INFO("VFS: " << vfs);
+    INFO("VFS: " << vfs_string);
     REQUIRE(storage.is_opened());
 }
 

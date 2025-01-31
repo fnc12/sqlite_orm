@@ -279,6 +279,15 @@ using std::nullptr_t;
 #define SQLITE_ORM_WITH_CTE
 #endif
 
+#if defined(_WIN32)
+#define SQLITE_ORM_WIN
+#elif defined(__APPLE__)
+#define SQLITE_ORM_MAC
+#define SQLITE_ORM_UNIX
+#elif defined(__unix__) || defined(__unix) || defined(__linux__) || defined(__FreeBSD__)
+#define SQLITE_ORM_UNIX
+#endif
+
 // define the inline namespace "literals" so that it is available even if it was not introduced by a feature
 namespace sqlite_orm {
     inline namespace literals {}
@@ -13645,6 +13654,67 @@ namespace sqlite_orm {
 #include <sqlite3.h>
 #include <atomic>
 #include <string>  //  std::string
+
+// #include "vfs.h"
+#include <sqlite3.h>
+// #include "functional/config.h"
+
+namespace sqlite_orm {
+
+    enum class vfs {
+
+#if defined(SQLITE_ORM_MAC) || defined(SQLITE_ORM_LINUX)
+
+        unix = 0,
+        unix_posix = 0,
+        unix_dotfile = 1
+
+#ifdef SQLITE_ORM_MAC
+        ,
+        unix_afp = 2,
+
+#elif defined(SQLITE_ORM_LINUX)
+
+#endif
+
+#endif
+
+#ifdef SQLITE_ORM_WIN
+        win32 = 0,
+        win32_longpath = 1,
+#endif
+
+    };
+
+    namespace internal {
+        inline const std::string& to_string(vfs v) {
+            static std::string res[] = {
+#if defined(SQLITE_ORM_MAC) || defined(SQLITE_ORM_LINUX)
+
+                "unix",
+                "unix-dotfile"
+
+#ifdef SQLITE_ORM_MAC
+                ,
+                "unix-afp",
+
+#elif defined(SQLITE_ORM_LINUX)
+
+#endif
+
+#endif
+
+#ifdef SQLITE_ORM_WIN
+                "win32",
+                "win32-longpath",
+#endif
+            };
+
+            return res[static_cast<size_t>(v)];
+        }
+    }
+
+}
 
 // #include "error_code.h"
 
