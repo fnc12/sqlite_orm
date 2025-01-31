@@ -23774,7 +23774,8 @@ namespace sqlite_orm {
      *  Factory function for a storage, from a database file and a bunch of database object definitions.
      */
     template<class... DBO>
-    internal::storage_t<DBO...> make_storage(std::string filename, std::string vfs, int open_flags, DBO... dbObjects) {
+    internal::storage_t<DBO...>
+    make_storage_v2(std::string filename, std::string vfs, int open_flags, DBO... dbObjects) {
         return {std::move(filename),
                 vfs,
                 open_flags,
@@ -23783,10 +23784,10 @@ namespace sqlite_orm {
 
     template<class... DBO>
     internal::storage_t<DBO...> make_storage(std::string filename, DBO... dbObjects) {
-        return {std::move(filename),
-                std::string(),
-                SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
-                internal::db_objects_tuple<DBO...>{std::forward<DBO>(dbObjects)...}};
+        return make_storage_v2(std::move(filename),
+                               std::string(),
+                               SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
+                               std::forward<DBO>(dbObjects)...);
     }
 
     /**

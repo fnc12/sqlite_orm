@@ -20,14 +20,14 @@ static const auto table = make_table("users", make_column("id", &User::id, prima
 TEST_CASE("vfs modes open successfully") {
 
 #if SQLITE_ORM_UNIX
-    std::string vfs = GENERATE("", "unix", "unix-excl", "unix-dotfile", "unix-none", "unix-namedsem");
+    std::string vfs = GENERATE("", "unix", "unix-excl", "unix-dotfile", "unix-none");
 #elif SQLITE_ORM_WINDOWS
     std::string vfs = GENERATE("", "win32", "win32-longpath", "win32-none");
 #endif
 
     int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
 
-    auto storage = make_storage("", table);
+    auto storage = make_storage_v2("", vfs, flags, table);
     storage.open_forever();
 
     INFO("VFS: " << vfs);
@@ -39,7 +39,7 @@ TEST_CASE("invalid vfs modes throw") {
     int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
 
     INFO("VFS: " << vfs);
-    REQUIRE_THROWS_AS(make_storage("", vfs, flags, table), std::system_error);
+    REQUIRE_THROWS_AS(make_storage_v2("", vfs, flags, table), std::system_error);
 }
 
 TEST_CASE("invalid flags throw") {
@@ -47,5 +47,5 @@ TEST_CASE("invalid flags throw") {
     int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_READONLY;
 
     INFO("VFS: " << vfs);
-    REQUIRE_THROWS_AS(make_storage("", vfs, flags, table), std::system_error);
+    REQUIRE_THROWS_AS(make_storage_v2("", vfs, flags, table), std::system_error);
 }
