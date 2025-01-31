@@ -13725,7 +13725,7 @@ namespace sqlite_orm {
 
         struct connection_holder {
 
-            connection_holder(std::string filename_, vfs_t vfs_ = {}) : filename(std::move(filename_)), vfs(vfs_) {}
+            connection_holder(std::string filename_, vfs_t vfs_) : filename(std::move(filename_)), vfs(vfs_) {}
 
             void retain() {
                 // first one opens the connection.
@@ -18081,7 +18081,7 @@ namespace sqlite_orm {
             }
 
             backup_t make_backup_to(const std::string& filename) {
-                auto holder = std::make_unique<connection_holder>(filename);
+                auto holder = std::make_unique<connection_holder>(filename, this->connection->vfs);
                 connection_ref conRef{*holder};
                 return {conRef, "main", this->get_connection(), "main", std::move(holder)};
             }
@@ -18091,7 +18091,7 @@ namespace sqlite_orm {
             }
 
             backup_t make_backup_from(const std::string& filename) {
-                auto holder = std::make_unique<connection_holder>(filename);
+                auto holder = std::make_unique<connection_holder>(filename, this->connection->vfs);
                 connection_ref conRef{*holder};
                 return {this->get_connection(), "main", conRef, "main", std::move(holder)};
             }
