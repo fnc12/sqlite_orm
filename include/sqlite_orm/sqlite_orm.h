@@ -21217,14 +21217,12 @@ namespace sqlite_orm {
                 }
                 if (statement._order) {
                     switch (statement._order) {
-                        case -1:
-                            ss << " DESC";
-                            break;
                         case 1:
                             ss << " ASC";
                             break;
-                        default:
-                            throw std::system_error{orm_error_code::incorrect_order};
+                        case -1:
+                            ss << " DESC";
+                            break;
                     }
                 }
                 return ss.str();
