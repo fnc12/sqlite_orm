@@ -24,6 +24,7 @@
 #include "tuple_helper/tuple_transformer.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "type_traits.h"
+#include "vfs.h"
 #include "alias.h"
 #include "error_code.h"
 #include "type_printer.h"
@@ -92,8 +93,8 @@ namespace sqlite_orm {
              *  @param filename database filename.
              *  @param dbObjects db_objects_tuple
              */
-            storage_t(std::string filename, std::string vfs_name, db_objects_type dbObjects) :
-                storage_base{std::move(filename), std::move(vfs_name), foreign_keys_count(dbObjects)},
+            storage_t(std::string filename, vfs_t vfs, db_objects_type dbObjects) :
+                storage_base{std::move(filename), vfs, foreign_keys_count(dbObjects)},
                 db_objects{std::move(dbObjects)} {}
 
             storage_t(const storage_t&) = default;
@@ -1707,13 +1708,13 @@ namespace sqlite_orm {
      *  Factory function for a storage, from a database file and a bunch of database object definitions.
      */
     template<class... DBO>
-    internal::storage_t<DBO...> make_storage_v2(std::string filename, std::string vfs, DBO... dbObjects) {
+    internal::storage_t<DBO...> make_storage_v2(std::string filename, vfs_t vfs, DBO... dbObjects) {
         return {std::move(filename), vfs, internal::db_objects_tuple<DBO...>{std::forward<DBO>(dbObjects)...}};
     }
 
     template<class... DBO>
     internal::storage_t<DBO...> make_storage(std::string filename, DBO... dbObjects) {
-        return make_storage_v2(std::move(filename), std::string(), std::forward<DBO>(dbObjects)...);
+        return make_storage_v2(std::move(filename), static_cast<vfs_t>(0), std::forward<DBO>(dbObjects)...);
     }
 
     /**

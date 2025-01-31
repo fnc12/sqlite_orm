@@ -12,8 +12,7 @@ namespace sqlite_orm {
 
         struct connection_holder {
 
-            connection_holder(std::string filename_, std::string vfs_name_ = {}) :
-                filename(std::move(filename_)), vfs_name(std::move(vfs_name_)) {}
+            connection_holder(std::string filename_, vfs_t vfs_ = {}) : filename(std::move(filename_)), vfs(vfs_) {}
 
             void retain() {
                 // first one opens the connection.
@@ -21,12 +20,12 @@ namespace sqlite_orm {
                 // therefore we can just use an atomic increment but don't need sequencing due to `prevCount > 0`.
                 if (this->_retain_count.fetch_add(1, std::memory_order_relaxed) == 0) {
 
-                    const char* vfs = vfs_name.empty() ? nullptr : vfs_name.c_str();
+                    const std::string vfs_name = internal::to_string(vfs);
 
                     /* default flags used in sqlite.c */
                     int open_flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
 
-                    auto rc = sqlite3_open_v2(this->filename.c_str(), &this->db, open_flags, vfs);
+                    auto rc = sqlite3_open_v2(this->filename.c_str(), &this->db, open_flags, vfs_name.c_str());
 
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible, but unexpected*/ {
                         throw_translated_sqlite_error(this->db);
@@ -60,7 +59,7 @@ namespace sqlite_orm {
             }
 
             const std::string filename;
-            const std::string vfs_name;
+            const vfs_t vfs;
 
           protected:
             sqlite3* db = nullptr;

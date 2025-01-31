@@ -1848,6 +1848,67 @@ namespace sqlite_orm {
 #endif
 }
 
+// #include "vfs.h"
+#include <sqlite3.h>
+// #include "functional/config.h"
+
+namespace sqlite_orm {
+
+    enum class vfs_t {
+
+#if defined(SQLITE_ORM_MAC) || defined(SQLITE_ORM_LINUX)
+
+        unix = 0,
+        unix_posix = 0,
+        unix_dotfile = 1
+
+#ifdef SQLITE_ORM_MAC
+        ,
+        unix_afp = 2,
+
+#elif defined(SQLITE_ORM_LINUX)
+
+#endif
+
+#endif
+
+#ifdef SQLITE_ORM_WIN
+        win32 = 0,
+        win32_longpath = 1,
+#endif
+
+    };
+
+    namespace internal {
+        inline const std::string& to_string(vfs_t v) {
+            static std::string res[] = {
+#if defined(SQLITE_ORM_MAC) || defined(SQLITE_ORM_LINUX)
+
+                "unix",
+                "unix-dotfile"
+
+#ifdef SQLITE_ORM_MAC
+                ,
+                "unix-afp",
+
+#elif defined(SQLITE_ORM_LINUX)
+
+#endif
+
+#endif
+
+#ifdef SQLITE_ORM_WIN
+                "win32",
+                "win32-longpath",
+#endif
+            };
+
+            return res[static_cast<size_t>(v)];
+        }
+    }
+
+}
+
 // #include "alias.h"
 
 #include <type_traits>  //  std::enable_if, std::is_same
@@ -13656,65 +13717,6 @@ namespace sqlite_orm {
 #include <string>  //  std::string
 
 // #include "vfs.h"
-#include <sqlite3.h>
-// #include "functional/config.h"
-
-namespace sqlite_orm {
-
-    enum class vfs_t {
-
-#if defined(SQLITE_ORM_MAC) || defined(SQLITE_ORM_LINUX)
-
-        unix = 0,
-        unix_posix = 0,
-        unix_dotfile = 1
-
-#ifdef SQLITE_ORM_MAC
-        ,
-        unix_afp = 2,
-
-#elif defined(SQLITE_ORM_LINUX)
-
-#endif
-
-#endif
-
-#ifdef SQLITE_ORM_WIN
-        win32 = 0,
-        win32_longpath = 1,
-#endif
-
-    };
-
-    namespace internal {
-        inline const std::string& to_string(vfs_t v) {
-            static std::string res[] = {
-#if defined(SQLITE_ORM_MAC) || defined(SQLITE_ORM_LINUX)
-
-                "unix",
-                "unix-dotfile"
-
-#ifdef SQLITE_ORM_MAC
-                ,
-                "unix-afp",
-
-#elif defined(SQLITE_ORM_LINUX)
-
-#endif
-
-#endif
-
-#ifdef SQLITE_ORM_WIN
-                "win32",
-                "win32-longpath",
-#endif
-            };
-
-            return res[static_cast<size_t>(v)];
-        }
-    }
-
-}
 
 // #include "error_code.h"
 
@@ -13723,8 +13725,7 @@ namespace sqlite_orm {
 
         struct connection_holder {
 
-            connection_holder(std::string filename_, std::string vfs_name_ = {}) :
-                filename(std::move(filename_)), vfs_name(std::move(vfs_name_)) {}
+            connection_holder(std::string filename_, vfs_t vfs_ = {}) : filename(std::move(filename_)), vfs(vfs_) {}
 
             void retain() {
                 // first one opens the connection.
@@ -13732,12 +13733,12 @@ namespace sqlite_orm {
                 // therefore we can just use an atomic increment but don't need sequencing due to `prevCount > 0`.
                 if (this->_retain_count.fetch_add(1, std::memory_order_relaxed) == 0) {
 
-                    const char* vfs = vfs_name.empty() ? nullptr : vfs_name.c_str();
+                    const std::string vfs_name = internal::to_string(vfs);
 
                     /* default flags used in sqlite.c */
                     int open_flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
 
-                    auto rc = sqlite3_open_v2(this->filename.c_str(), &this->db, open_flags, vfs);
+                    auto rc = sqlite3_open_v2(this->filename.c_str(), &this->db, open_flags, vfs_name.c_str());
 
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible, but unexpected*/ {
                         throw_translated_sqlite_error(this->db);
@@ -13771,7 +13772,7 @@ namespace sqlite_orm {
             }
 
             const std::string filename;
-            const std::string vfs_name;
+            const vfs_t vfs;
 
           protected:
             sqlite3* db = nullptr;
@@ -18134,11 +18135,11 @@ namespace sqlite_orm {
             }
 
           protected:
-            storage_base(std::string filename, std::string vfs_name, int foreignKeysCount) :
+            storage_base(std::string filename, vfs_t vfs, int foreignKeysCount) :
                 pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
                 inMemory(filename.empty() || filename == ":memory:"),
-                connection(std::make_unique<connection_holder>(std::move(filename), std::move(vfs_name))),
+                connection(std::make_unique<connection_holder>(std::move(filename), vfs)),
                 cachedForeignKeysCount(foreignKeysCount) {
                 if (this->inMemory) {
                     this->connection->retain();
@@ -18149,7 +18150,7 @@ namespace sqlite_orm {
             storage_base(const storage_base& other) :
                 on_open(other.on_open), pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)), inMemory(other.inMemory),
-                connection(std::make_unique<connection_holder>(other.connection->filename, other.connection->vfs_name)),
+                connection(std::make_unique<connection_holder>(other.connection->filename, other.connection->vfs)),
                 cachedForeignKeysCount(other.cachedForeignKeysCount) {
                 if (this->inMemory) {
                     this->connection->retain();
@@ -22229,8 +22230,8 @@ namespace sqlite_orm {
              *  @param filename database filename.
              *  @param dbObjects db_objects_tuple
              */
-            storage_t(std::string filename, std::string vfs_name, db_objects_type dbObjects) :
-                storage_base{std::move(filename), std::move(vfs_name), foreign_keys_count(dbObjects)},
+            storage_t(std::string filename, vfs_t vfs, db_objects_type dbObjects) :
+                storage_base{std::move(filename), vfs, foreign_keys_count(dbObjects)},
                 db_objects{std::move(dbObjects)} {}
 
             storage_t(const storage_t&) = default;
@@ -23844,13 +23845,13 @@ namespace sqlite_orm {
      *  Factory function for a storage, from a database file and a bunch of database object definitions.
      */
     template<class... DBO>
-    internal::storage_t<DBO...> make_storage_v2(std::string filename, std::string vfs, DBO... dbObjects) {
+    internal::storage_t<DBO...> make_storage_v2(std::string filename, vfs_t vfs, DBO... dbObjects) {
         return {std::move(filename), vfs, internal::db_objects_tuple<DBO...>{std::forward<DBO>(dbObjects)...}};
     }
 
     template<class... DBO>
     internal::storage_t<DBO...> make_storage(std::string filename, DBO... dbObjects) {
-        return make_storage_v2(std::move(filename), std::string(), std::forward<DBO>(dbObjects)...);
+        return make_storage_v2(std::move(filename), static_cast<vfs_t>(0), std::forward<DBO>(dbObjects)...);
     }
 
     /**
