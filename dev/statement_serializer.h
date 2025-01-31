@@ -1836,20 +1836,18 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
-                ss << serialize(statement.column_or_expression, context);
+                ss << serialize(statement._column_or_expression, context);
                 if (!statement._collation_name.empty()) {
                     ss << " COLLATE " << statement._collation_name;
                 }
                 if (statement._order) {
                     switch (statement._order) {
-                        case -1:
-                            ss << " DESC";
-                            break;
                         case 1:
                             ss << " ASC";
                             break;
-                        default:
-                            throw std::system_error{orm_error_code::incorrect_order};
+                        case -1:
+                            ss << " DESC";
+                            break;
                     }
                 }
                 return ss.str();

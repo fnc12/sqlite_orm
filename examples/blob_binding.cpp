@@ -16,11 +16,6 @@ struct Rect {
     int y = 0;
     int width = 0;
     int height = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-    Rect() = default;
-    Rect(int x, int y, int width, int height) : x{x}, y{y}, width{width}, height{height} {}
-#endif
 };
 
 bool operator==(const Rect& lhs, const Rect& rhs) {
@@ -30,11 +25,6 @@ bool operator==(const Rect& lhs, const Rect& rhs) {
 struct Zone {
     int id = 0;
     Rect rect;  //  this member will be mapped as BLOB column
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-    Zone() = default;
-    Zone(int id, Rect rect) : id{id}, rect{rect} {}
-#endif
 };
 
 bool operator==(const Zone& lhs, const Zone& rhs) {

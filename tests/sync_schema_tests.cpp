@@ -17,7 +17,7 @@ TEST_CASE("Sync schema") {
 
     //  this is an old version of user..
     struct UserBefore {
-        int id;
+        int id = 0;
         std::string name;
         std::unique_ptr<int> categoryId;
         std::unique_ptr<std::string> surname;
@@ -25,7 +25,7 @@ TEST_CASE("Sync schema") {
 
     //  this is a new version of user
     struct UserAfter {
-        int id;
+        int id = 0;
         std::string name;
 
         bool operator==(const UserBefore& before) const {
@@ -118,12 +118,12 @@ TEST_CASE("Sync schema") {
 TEST_CASE("issue854") {
     struct Base {
         std::string name;
-        int64_t timestamp;
-        int64_t value;
+        int64_t timestamp = 0;
+        int64_t value = 0;
     };
 
     struct A : public Base {
-        int64_t id;
+        int64_t id = 0;
     };
     auto storage = make_storage({},
                                 make_table("entries",
@@ -138,16 +138,10 @@ TEST_CASE("issue521") {
     auto storagePath = "issue521.sqlite";
 
     struct MockDatabasePoco {
-        int id{-1};
+        int id = 0;
         std::string name;
         std::uint32_t alpha{0};
         float beta{0.0};
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        MockDatabasePoco() = default;
-        MockDatabasePoco(int id, std::string name, uint32_t alpha, float beta) :
-            id{id}, name{std::move(name)}, alpha{alpha}, beta{beta} {}
-#endif
     };
     std::vector<MockDatabasePoco> pocosToInsert;
 
@@ -168,8 +162,8 @@ TEST_CASE("issue521") {
 
         // --- Insert two rows
         pocosToInsert.clear();
-        pocosToInsert.push_back({-1, "Michael", 10, 10.10f});
-        pocosToInsert.push_back({-1, "Joyce", 20, 20.20f});
+        pocosToInsert.push_back({0, "Michael", 10, 10.10f});
+        pocosToInsert.push_back({0, "Joyce", 20, 20.20f});
 
         for (auto& poco: pocosToInsert) {
             auto insertedId = storage.insert(poco);
@@ -477,7 +471,7 @@ TEST_CASE("sync_schema") {
 
 TEST_CASE("sync_schema_simulate") {
     struct Cols {
-        int Col1;
+        int Col1 = 0;
     };
 
     auto storage =
@@ -486,16 +480,12 @@ TEST_CASE("sync_schema_simulate") {
     storage.sync_schema();
     storage.sync_schema_simulate();
 }
+
 #if SQLITE_VERSION_NUMBER >= 3031000
 TEST_CASE("sync_schema with generated columns") {
     struct User {
         int id = 0;
         int hash = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        User() = default;
-        User(int id, int hash = 0) : id{id}, hash{hash} {}
-#endif
 
 #ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
         bool operator==(const User& other) const = default;

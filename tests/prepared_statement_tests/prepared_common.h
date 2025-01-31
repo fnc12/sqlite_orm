@@ -10,11 +10,6 @@ namespace PreparedStatementTests {
         int id = 0;
         std::string name;
 
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        User() = default;
-        User(int id, std::string name) : id{id}, name{std::move(name)} {}
-#endif
-
 #ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
         friend bool operator==(const User&, const User&) = default;
 #else
@@ -30,26 +25,14 @@ namespace PreparedStatementTests {
 
     struct Visit {
         int id = 0;
-        decltype(User::id) userId;
+        decltype(User::id) userId = 0;
         long time = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        Visit() = default;
-        Visit(int id, decltype(Visit::userId) userId, long time) : id{id}, userId{userId}, time{time} {}
-#endif
     };
 
     struct UserAndVisit {
-        decltype(User::id) userId;
-        decltype(Visit::id) visitId;
+        decltype(User::id) userId = 0;
+        decltype(Visit::id) visitId = 0;
         std::string description;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        UserAndVisit() = default;
-        UserAndVisit(decltype(UserAndVisit::userId) userId,
-                     decltype(UserAndVisit::visitId) visitId,
-                     std::string description) : userId{userId}, visitId{visitId}, description{std::move(description)} {}
-#endif
     };
 
     inline void testSerializing(const sqlite_orm::internal::prepared_statement_base& statement) {

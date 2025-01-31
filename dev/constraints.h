@@ -388,9 +388,6 @@ namespace sqlite_orm {
 
         struct collate_constraint_t {
             collate_argument argument = collate_argument::binary;
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            collate_constraint_t(collate_argument argument) : argument{argument} {}
-#endif
 
             operator std::string() const {
                 return "COLLATE " + this->string_from_collate_argument(this->argument);
@@ -426,10 +423,6 @@ namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3031000
             bool full = true;
             storage_type storage = storage_type::not_specified;
-#endif
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            basic_generated_always(bool full, storage_type storage) : full{full}, storage{storage} {}
 #endif
         };
 

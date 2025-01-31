@@ -7,11 +7,6 @@ TEST_CASE("bitwise operators") {
     struct Entry {
         int lhs = 0;
         int rhs = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        Entry() = default;
-        Entry(int lhs, int rhs) : lhs{lhs}, rhs{rhs} {}
-#endif
     };
     auto storage =
         make_storage({}, make_table("entries", make_column("lhs", &Entry::lhs), make_column("rhs", &Entry::rhs)));

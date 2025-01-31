@@ -6,7 +6,7 @@ using namespace sqlite_orm;
 
 TEST_CASE("Iterate mapped") {
     struct Test {
-        int64_t id;
+        int64_t id = 0;
         std::vector<char> key;
 
 #ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
@@ -67,7 +67,7 @@ TEST_CASE("Iterate mapped") {
 #if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)
 TEST_CASE("Iterate select statement") {
     struct Test {
-        int64_t id;
+        int64_t id = 0;
         std::vector<char> key;
 
         bool operator==(const Test&) const = default;

@@ -5,37 +5,22 @@ using namespace sqlite_orm;
 
 TEST_CASE("triggers_basics") {
     struct TestInsert {
-        int id;
+        int id = 0;
         std::string text;
         int x = 0;
         int y = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        TestInsert() = default;
-        TestInsert(int id, std::string text, int x, int y) : id{id}, text{std::move(text)}, x{x}, y{y} {}
-#endif
     };
     struct TestUpdate {
-        int id;
+        int id = 0;
         std::string text;
         int x = 0;
         int y = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        TestUpdate() = default;
-        TestUpdate(int id, std::string text, int x, int y) : id{id}, text{std::move(text)}, x{x}, y{y} {}
-#endif
     };
     struct TestDelete {
-        int id;
+        int id = 0;
         std::string text;
         int x = 0;
         int y = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        TestDelete() = default;
-        TestDelete(int id, std::string text, int x, int y) : id{id}, text{std::move(text)}, x{x}, y{y} {}
-#endif
     };
 
     TestInsert test_insert{4, "test", 1, 2};

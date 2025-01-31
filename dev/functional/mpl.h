@@ -30,12 +30,7 @@
 
 #ifndef _IMPORT_STD_MODULE
 #include <type_traits>  //  std::true_type, std::false_type, std::is_same, std::negation, std::conjunction, std::disjunction
-#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
 #include <initializer_list>
-#else
-#include <array>
-#endif
-#endif
 
 #include "cxx_type_traits_polyfill.h"
 #include "mpl/conditional.h"
@@ -336,7 +331,6 @@ namespace sqlite_orm {
             using bind_front_higherorder_fn =
                 bind_front<higherorder<0>::quote_fn<HigherFn>, quote_fn<BoundFn>, Bound...>;
 
-#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
             constexpr size_t find_first_true_helper(std::initializer_list<bool> values) {
                 size_t i = 0;
                 for (auto first = values.begin(); first != values.end() && !*first; ++first) {
@@ -352,17 +346,6 @@ namespace sqlite_orm {
                 }
                 return n;
             }
-#else
-            template<size_t N>
-            constexpr size_t find_first_true_helper(const std::array<bool, N>& values, size_t i = 0) {
-                return i == N || values[i] ? 0 : 1 + find_first_true_helper(values, i + 1);
-            }
-
-            template<size_t N>
-            constexpr size_t count_true_helper(const std::array<bool, N>& values, size_t i = 0) {
-                return i == N ? 0 : values[i] + count_true_helper(values, i + 1);
-            }
-#endif
 
             /*
              *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list,
@@ -379,11 +362,8 @@ namespace sqlite_orm {
                 template<template<class...> class Pack, class... T, class ProjectQ>
                 struct invoke_this_fn<Pack<T...>, ProjectQ> {
                     // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
-                    static constexpr size_t value = find_first_true_helper
-#ifndef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
-                        <sizeof...(T)>
-#endif
-                        ({PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...});
+                    static constexpr size_t value =
+                        find_first_true_helper({PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...});
                     using type = polyfill::index_constant<value>;
                 };
 
@@ -409,11 +389,8 @@ namespace sqlite_orm {
                 template<template<class...> class Pack, class... T, class ProjectQ>
                 struct invoke_this_fn<Pack<T...>, ProjectQ> {
                     // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
-                    static constexpr size_t value = count_true_helper
-#ifndef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
-                        <sizeof...(T)>
-#endif
-                        ({PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...});
+                    static constexpr size_t value =
+                        count_true_helper({PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...});
                     using type = polyfill::index_constant<value>;
                 };
 
@@ -439,12 +416,8 @@ namespace sqlite_orm {
                 template<template<class...> class Pack, class... T, class ProjectQ>
                 struct invoke_this_fn<Pack<T...>, ProjectQ> {
                     // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
-                    static constexpr size_t value =
-                        static_cast<bool>(count_true_helper
-#ifndef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
-                                          <sizeof...(T)>
-#endif
-                                          ({TraitQ::template fn<typename ProjectQ::template fn<T>>::value...}));
+                    static constexpr size_t value = static_cast<bool>(
+                        count_true_helper({TraitQ::template fn<typename ProjectQ::template fn<T>>::value...}));
                     using type = polyfill::bool_constant<value>;
                 };
 

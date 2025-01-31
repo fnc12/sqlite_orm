@@ -296,11 +296,6 @@ TEST_CASE("custom functions") {
     }
     struct User {
         int id = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        User() = default;
-        User(int id) : id{id} {}
-#endif
     };
     auto storage = make_storage(path, make_table("users", make_column("id", &User::id)));
     storage.sync_schema();

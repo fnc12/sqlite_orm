@@ -20,11 +20,6 @@ namespace sqlite_orm {
         struct object_from_column_builder_base {
             sqlite3_stmt* stmt = nullptr;
             int columnIndex = -1;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            object_from_column_builder_base(sqlite3_stmt* stmt, int columnIndex = -1) :
-                stmt{stmt}, columnIndex{columnIndex} {}
-#endif
         };
 
         /**

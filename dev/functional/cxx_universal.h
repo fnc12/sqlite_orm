@@ -20,5 +20,6 @@ using std::nullptr_t;
 // Hence, sqlite_orm is internally using `std::nullptr_t` instead.
 #endif
 
+#include "cxx_check_prerequisites.h"
 #include "cxx_core_features.h"
 #include "cxx_compiler_quirks.h"

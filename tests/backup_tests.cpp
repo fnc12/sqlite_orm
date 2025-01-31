@@ -9,11 +9,6 @@ namespace {
         int id = 0;
         std::string name;
 
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        User() = default;
-        User(int id, std::string name) : id{id}, name{std::move(name)} {}
-#endif
-
 #ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
         friend bool operator==(const User&, const User&) = default;
 #else
@@ -24,7 +19,7 @@ namespace {
     };
 
     struct MarvelHero {
-        int id;
+        int id = 0;
         std::string name;
         std::string abilities;
     };
@@ -142,16 +137,16 @@ TEST_CASE("Backup crash") {
     storage.remove_all<MarvelHero>();
 
     // --- Insert values
-    storage.insert(MarvelHero{-1, "Tony Stark", "Iron man, playboy, billionaire, philanthropist"});
-    storage.insert(MarvelHero{-1, "Thor", "Storm god"});
-    storage.insert(MarvelHero{-1, "Vision", "Min Stone"});
-    storage.insert(MarvelHero{-1, "Captain America", "Vibranium shield"});
-    storage.insert(MarvelHero{-1, "Hulk", "Strength"});
-    storage.insert(MarvelHero{-1, "Star Lord", "Humor"});
-    storage.insert(MarvelHero{-1, "Peter Parker", "Spiderman"});
-    storage.insert(MarvelHero{-1, "Clint Barton", "Hawkeye"});
-    storage.insert(MarvelHero{-1, "Natasha Romanoff", "Black widow"});
-    storage.insert(MarvelHero{-1, "Groot", "I am Groot!"});
+    storage.insert(MarvelHero{0, "Tony Stark", "Iron man, playboy, billionaire, philanthropist"});
+    storage.insert(MarvelHero{0, "Thor", "Storm god"});
+    storage.insert(MarvelHero{0, "Vision", "Min Stone"});
+    storage.insert(MarvelHero{0, "Captain America", "Vibranium shield"});
+    storage.insert(MarvelHero{0, "Hulk", "Strength"});
+    storage.insert(MarvelHero{0, "Star Lord", "Humor"});
+    storage.insert(MarvelHero{0, "Peter Parker", "Spiderman"});
+    storage.insert(MarvelHero{0, "Clint Barton", "Hawkeye"});
+    storage.insert(MarvelHero{0, "Natasha Romanoff", "Black widow"});
+    storage.insert(MarvelHero{0, "Groot", "I am Groot!"});
     REQUIRE(storage.count<MarvelHero>() == 10);
 
     // --- Create backup file name and verify that the file does not exist
