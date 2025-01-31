@@ -23783,8 +23783,12 @@ namespace sqlite_orm {
 
     template<class... DBO>
     internal::storage_t<DBO...> make_storage(std::string filename, DBO... dbObjects) {
-        return {std::move(filename), {}, internal::db_objects_tuple<DBO...>{std::forward<DBO>(dbObjects)...}};
+        return {std::move(filename),
+                std::string(),
+                SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
+                internal::db_objects_tuple<DBO...>{std::forward<DBO>(dbObjects)...}};
     }
+
     /**
      *  sqlite3_threadsafe() interface.
      */
