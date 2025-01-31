@@ -5,7 +5,7 @@
 
 namespace sqlite_orm {
 
-    enum class vfs {
+    enum class vfs_t {
 
 #if defined(SQLITE_ORM_MAC) || defined(SQLITE_ORM_LINUX)
 
@@ -31,7 +31,7 @@ namespace sqlite_orm {
     };
 
     namespace internal {
-        inline const std::string& to_string(vfs v) {
+        inline const std::string& to_string(vfs_t v) {
             static std::string res[] = {
 #if defined(SQLITE_ORM_MAC) || defined(SQLITE_ORM_LINUX)
 

@@ -12,11 +12,11 @@ static const auto table = make_table("users", make_column("id", &User::id, prima
 TEST_CASE("vfs modes open successfully") {
 
 #ifdef SQLITE_ORM_MAC
-    vfs vfs_enum = GENERATE(vfs::unix, vfs::unix_posix, vfs::unix_dotfile, vfs::unix_afp);
+    vfs_t vfs_enum = GENERATE(vfs_t::unix, vfs_t::unix_posix, vfs_t::unix_dotfile, vfs_t::unix_afp);
 #elif defined(SQLITE_ORM_UNIX);
-    vfs vfs_enum = GENERATE(vfs::unix, vfs::unix_posix, vfs::unix_dotfile);
+    vfs_t vfs_enum = GENERATE(vfs_t::unix, vfs_t::unix_posix, vfs_t::unix_dotfile);
 #elif defined(SQLITE_ORM_WINDOWS)
-    vfs vfs_enum = GENERATE(vfs::win32, vfs::win32_longpath);
+    vfs_t vfs_enum = GENERATE(vfs_t::win32, vfs_t::win32_longpath);
 #endif
 
     std::string vfs_string = internal::to_string(vfs_enum);
