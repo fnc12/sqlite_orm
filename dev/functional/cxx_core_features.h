@@ -82,7 +82,7 @@
 #define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
 #endif
 
-#if __cpp_pack_indexing >= 202311L
+#if __cpp_pack_indexing >= 202311L && __cplusplus > 202302L
 #define SQLITE_ORM_PACK_INDEXING_SUPPORTED
 #endif
 
