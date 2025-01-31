@@ -18079,7 +18079,9 @@ namespace sqlite_orm {
             storage_base(const storage_base& other) :
                 on_open(other.on_open), pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)), inMemory(other.inMemory),
-                connection(std::make_unique<connection_holder>(other.connection->filename)),
+                connection(std::make_unique<connection_holder>(other.connection->filename,
+                                                               other.connection->vfs_name,
+                                                               other.connection->open_flags)),
                 cachedForeignKeysCount(other.cachedForeignKeysCount) {
                 if (this->inMemory) {
                     this->connection->retain();
