@@ -88,10 +88,6 @@ namespace sqlite_orm {
             columns_type columns;
 
             static constexpr int count = std::tuple_size<columns_type>::value;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            columns_t(columns_type columns) : columns{std::move(columns)} {}
-#endif
         };
 
         template<class T>
@@ -112,10 +108,6 @@ namespace sqlite_orm {
             columns_type columns;
 
             static constexpr int count = std::tuple_size<columns_type>::value;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            struct_t(columns_type columns) : columns{std::move(columns)} {}
-#endif
         };
 
         template<class T>
@@ -135,11 +127,6 @@ namespace sqlite_orm {
             return_type col;
             conditions_type conditions;
             bool highest_level = false;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            select_t(return_type col, conditions_type conditions) :
-                col{std::move(col)}, conditions{std::move(conditions)} {}
-#endif
         };
 
         template<class T>
@@ -172,10 +159,6 @@ namespace sqlite_orm {
 
         struct union_base {
             bool all = false;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            union_base(bool all) : all{all} {}
-#endif
 
             operator std::string() const {
                 if (!this->all) {
@@ -339,10 +322,6 @@ namespace sqlite_orm {
             using type = T;
 
             bool defined_order = false;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            asterisk_t(bool definedOrder) : defined_order{definedOrder} {}
-#endif
         };
 
         template<class T>
@@ -350,10 +329,6 @@ namespace sqlite_orm {
             using type = T;
 
             bool defined_order = false;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            object_t(bool definedOrder) : defined_order{definedOrder} {}
-#endif
         };
 
         template<class T>

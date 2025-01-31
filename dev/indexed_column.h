@@ -13,14 +13,9 @@ namespace sqlite_orm {
         struct indexed_column_t {
             using column_type = C;
 
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            indexed_column_t(column_type _column_or_expression) :
-                column_or_expression(std::move(_column_or_expression)) {}
-#endif
-
-            column_type column_or_expression;
+            column_type _column_or_expression;
             std::string _collation_name;
-            int _order = 0;  //  -1 = desc, 1 = asc, 0 = not specified
+            int _order = 0;  //  -1 = desc, 1 = asc, 0 = unspecified
 
             indexed_column_t<column_type> collate(std::string name) {
                 auto res = std::move(*this);

@@ -10,11 +10,6 @@ namespace {
         int id = 0;
         std::string name;
 
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        Object() = default;
-        Object(int id, std::string name) : id{id}, name{std::move(name)} {}
-#endif
-
 #ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
         bool operator==(const Object&) const = default;
 #else

@@ -11,11 +11,6 @@ using std::endl;
 struct DeptMaster {
     int deptId = 0;
     std::string deptName;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-    DeptMaster() = default;
-    DeptMaster(int deptId, std::string deptName) : deptId{deptId}, deptName{std::move(deptName)} {}
-#endif
 };
 
 struct EmpMaster {
@@ -24,16 +19,6 @@ struct EmpMaster {
     std::string lastName;
     long salary;
     decltype(DeptMaster::deptId) deptId;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-    EmpMaster() = default;
-    EmpMaster(int empId,
-              std::string firstName,
-              std::string lastName,
-              long salary,
-              decltype(DeptMaster::deptId) deptId) :
-        empId{empId}, firstName{std::move(firstName)}, lastName{std::move(lastName)}, salary{salary}, deptId{deptId} {}
-#endif
 };
 
 int main() {

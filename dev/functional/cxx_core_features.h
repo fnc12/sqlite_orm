@@ -1,7 +1,7 @@
 #pragma once
 
 /*
- *  This header detects core C++ language features on which sqlite_orm depends.
+ *  This header detects core C++ language features.
  *  May be updated/overwritten by cxx_compiler_quirks.h
  */
 
@@ -15,14 +15,6 @@
 #define SQLITE_ORM_HAS_INCLUDE(file) __has_include(file)
 #else
 #define SQLITE_ORM_HAS_INCLUDE(file) 0L
-#endif
-
-#if __cpp_aggregate_nsdmi >= 201304L
-#define SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-#endif
-
-#if __cpp_constexpr >= 201304L
-#define SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
 #endif
 
 #if __cpp_noexcept_function_type >= 201510L

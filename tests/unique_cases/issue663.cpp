@@ -65,9 +65,9 @@ namespace {
 
 namespace {
     struct User1 {
-        int id;
+        int id = 0;
         std::string name;
-        int age;
+        int age = 0;
         std::string email;
 
 #ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED

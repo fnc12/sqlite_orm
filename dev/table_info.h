@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>  //  std::string
+#include <utility>  //  std::move
 
 namespace sqlite_orm {
 
@@ -12,7 +13,7 @@ namespace sqlite_orm {
         std::string dflt_value;
         int pk = 0;
 
-#if !defined(SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED) || !defined(SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED)
+#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
         table_info(decltype(cid) cid_,
                    decltype(name) name_,
                    decltype(type) type_,
@@ -33,7 +34,7 @@ namespace sqlite_orm {
         int pk = 0;
         int hidden = 0;  // different than 0 => generated_always_as() - TODO verify
 
-#if !defined(SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED) || !defined(SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED)
+#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
         table_xinfo(decltype(cid) cid_,
                     decltype(name) name_,
                     decltype(type) type_,

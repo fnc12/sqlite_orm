@@ -300,7 +300,6 @@ namespace sqlite_orm {
             using func_param_type = std::tuple_element_t<I, FnParams>;
             using call_arg_type = unpacked_arg_t<std::tuple_element_t<I, CallArgs>>;
 
-#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
             constexpr bool valid = validate_pointer_value_type<I,
                                                                std::tuple_element_t<I, FnParams>,
                                                                unpacked_arg_t<std::tuple_element_t<I, CallArgs>>>(
@@ -308,14 +307,6 @@ namespace sqlite_orm {
                 (polyfill::is_specialization_of_v<call_arg_type, pointer_binding>) > {});
 
             return validate_pointer_value_types<FnParams, CallArgs>(polyfill::index_constant<I - 1>{}) && valid;
-#else
-            return validate_pointer_value_types<FnParams, CallArgs>(polyfill::index_constant<I - 1>{}) &&
-                   validate_pointer_value_type<I,
-                                               std::tuple_element_t<I, FnParams>,
-                                               unpacked_arg_t<std::tuple_element_t<I, CallArgs>>>(
-                       polyfill::bool_constant < (polyfill::is_specialization_of_v<func_param_type, pointer_arg>) ||
-                       (polyfill::is_specialization_of_v<call_arg_type, pointer_binding>) > {});
-#endif
         }
 
         /*  
@@ -323,11 +314,7 @@ namespace sqlite_orm {
          *  but other call argument types are not checked against the parameter types of the function.
          */
         template<typename UDF, typename... CallArgs>
-#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
         SQLITE_ORM_CONSTEVAL void check_function_call() {
-#else
-        void check_function_call() {
-#endif
             using call_args_tuple = std::tuple<CallArgs...>;
             using function_params_tuple = typename callable_arguments<UDF>::args_tuple;
             constexpr size_t callArgsCount = std::tuple_size<call_args_tuple>::value;

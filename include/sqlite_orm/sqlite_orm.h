@@ -29,10 +29,24 @@ __pragma(push_macro("max"))
 // actually it should be available when including stddef.h
 using std::nullptr_t;
 
+// #include "cxx_check_prerequisites.h"
+
+/*
+ *  This header detects missing core C++ language features on which sqlite_orm depends, bailing out with a hard error.
+ */
+
+#if __cpp_aggregate_nsdmi < 201304L
+#error A fully C++14-compliant compiler is required.
+#endif
+
+#if __cpp_constexpr < 201304L
+#error A fully C++14-compliant compiler is required.
+#endif
+
 // #include "cxx_core_features.h"
 
 /*
- *  This header detects core C++ language features on which sqlite_orm depends.
+ *  This header detects core C++ language features.
  *  May be updated/overwritten by cxx_compiler_quirks.h
  */
 
@@ -46,14 +60,6 @@ using std::nullptr_t;
 #define SQLITE_ORM_HAS_INCLUDE(file) __has_include(file)
 #else
 #define SQLITE_ORM_HAS_INCLUDE(file) 0L
-#endif
-
-#if __cpp_aggregate_nsdmi >= 201304L
-#define SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-#endif
-
-#if __cpp_constexpr >= 201304L
-#define SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
 #endif
 
 #if __cpp_noexcept_function_type >= 201510L
@@ -776,11 +782,7 @@ namespace sqlite_orm {
  */
 
 #include <type_traits>  //  std::true_type, std::false_type, std::is_same, std::negation, std::conjunction, std::disjunction
-#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
 #include <initializer_list>
-#else
-#include <array>
-#endif
 
 // #include "cxx_type_traits_polyfill.h"
 
@@ -1082,7 +1084,6 @@ namespace sqlite_orm {
             using bind_front_higherorder_fn =
                 bind_front<higherorder<0>::quote_fn<HigherFn>, quote_fn<BoundFn>, Bound...>;
 
-#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
             constexpr size_t find_first_true_helper(std::initializer_list<bool> values) {
                 size_t i = 0;
                 for (auto first = values.begin(); first != values.end() && !*first; ++first) {
@@ -1098,17 +1099,6 @@ namespace sqlite_orm {
                 }
                 return n;
             }
-#else
-            template<size_t N>
-            constexpr size_t find_first_true_helper(const std::array<bool, N>& values, size_t i = 0) {
-                return i == N || values[i] ? 0 : 1 + find_first_true_helper(values, i + 1);
-            }
-
-            template<size_t N>
-            constexpr size_t count_true_helper(const std::array<bool, N>& values, size_t i = 0) {
-                return i == N ? 0 : values[i] + count_true_helper(values, i + 1);
-            }
-#endif
 
             /*
              *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list,
@@ -1125,11 +1115,8 @@ namespace sqlite_orm {
                 template<template<class...> class Pack, class... T, class ProjectQ>
                 struct invoke_this_fn<Pack<T...>, ProjectQ> {
                     // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
-                    static constexpr size_t value = find_first_true_helper
-#ifndef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
-                        <sizeof...(T)>
-#endif
-                        ({PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...});
+                    static constexpr size_t value =
+                        find_first_true_helper({PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...});
                     using type = polyfill::index_constant<value>;
                 };
 
@@ -1155,11 +1142,8 @@ namespace sqlite_orm {
                 template<template<class...> class Pack, class... T, class ProjectQ>
                 struct invoke_this_fn<Pack<T...>, ProjectQ> {
                     // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
-                    static constexpr size_t value = count_true_helper
-#ifndef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
-                        <sizeof...(T)>
-#endif
-                        ({PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...});
+                    static constexpr size_t value =
+                        count_true_helper({PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...});
                     using type = polyfill::index_constant<value>;
                 };
 
@@ -1185,12 +1169,8 @@ namespace sqlite_orm {
                 template<template<class...> class Pack, class... T, class ProjectQ>
                 struct invoke_this_fn<Pack<T...>, ProjectQ> {
                     // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
-                    static constexpr size_t value =
-                        static_cast<bool>(count_true_helper
-#ifndef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
-                                          <sizeof...(T)>
-#endif
-                                          ({TraitQ::template fn<typename ProjectQ::template fn<T>>::value...}));
+                    static constexpr size_t value = static_cast<bool>(
+                        count_true_helper({TraitQ::template fn<typename ProjectQ::template fn<T>>::value...}));
                     using type = polyfill::bool_constant<value>;
                 };
 
@@ -3558,9 +3538,6 @@ namespace sqlite_orm {
 
         struct collate_constraint_t {
             collate_argument argument = collate_argument::binary;
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            collate_constraint_t(collate_argument argument) : argument{argument} {}
-#endif
 
             operator std::string() const {
                 return "COLLATE " + this->string_from_collate_argument(this->argument);
@@ -3596,10 +3573,6 @@ namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3031000
             bool full = true;
             storage_type storage = storage_type::not_specified;
-#endif
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            basic_generated_always(bool full, storage_type storage) : full{full}, storage{storage} {}
 #endif
         };
 
@@ -5144,10 +5117,6 @@ namespace sqlite_orm {
 
         struct in_base {
             bool negative = false;  //  used in not_in
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            in_base(bool negative) : negative{negative} {}
-#endif
         };
 
         /**
@@ -5210,15 +5179,8 @@ namespace sqlite_orm {
         };
 
         struct order_by_base {
-            int asc_desc = 0;  //  1: asc, -1: desc
             std::string _collate_argument;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            order_by_base() = default;
-
-            order_by_base(decltype(asc_desc) asc_desc_, decltype(_collate_argument) _collate_argument_) :
-                asc_desc(asc_desc_), _collate_argument(std::move(_collate_argument_)) {}
-#endif
+            int _order = 0;  //  -1 = desc, 1 = asc, 0 = unspecified
         };
 
         struct order_by_string {
@@ -5235,19 +5197,19 @@ namespace sqlite_orm {
             using expression_type = O;
             using self = order_by_t<expression_type>;
 
-            expression_type expression;
+            expression_type _expression;
 
-            order_by_t(expression_type expression_) : order_by_base(), expression(std::move(expression_)) {}
+            order_by_t(expression_type expression) : order_by_base(), _expression(std::move(expression)) {}
 
             self asc() const {
                 auto res = *this;
-                res.asc_desc = 1;
+                res._order = 1;
                 return res;
             }
 
             self desc() const {
                 auto res = *this;
-                res.asc_desc = -1;
+                res._order = -1;
                 return res;
             }
 
@@ -5298,8 +5260,8 @@ namespace sqlite_orm {
         struct dynamic_order_by_entry_t : order_by_base {
             std::string name;
 
-            dynamic_order_by_entry_t(decltype(name) name_, int asc_desc_, std::string collate_argument_) :
-                order_by_base{asc_desc_, std::move(collate_argument_)}, name(std::move(name_)) {}
+            dynamic_order_by_entry_t(decltype(name) name_, std::string collate_argument_, int asc_desc_) :
+                order_by_base{std::move(collate_argument_), asc_desc_}, name(std::move(name_)) {}
         };
 
         /**
@@ -5314,13 +5276,11 @@ namespace sqlite_orm {
             dynamic_order_by_t(const context_t& context_) : context(context_) {}
 
             template<class O>
-            void push_back(order_by_t<O> order_by) {
+            void push_back(order_by_t<O> orderBy) {
                 auto newContext = this->context;
                 newContext.skip_table_name = false;
-                auto columnName = serialize(order_by.expression, newContext);
-                this->entries.emplace_back(std::move(columnName),
-                                           order_by.asc_desc,
-                                           std::move(order_by._collate_argument));
+                auto columnName = serialize(orderBy._expression, newContext);
+                this->entries.emplace_back(std::move(columnName), std::move(orderBy._collate_argument), orderBy._order);
             }
 
             const_iterator begin() const {
@@ -8641,10 +8601,6 @@ namespace sqlite_orm {
             columns_type columns;
 
             static constexpr int count = std::tuple_size<columns_type>::value;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            columns_t(columns_type columns) : columns{std::move(columns)} {}
-#endif
         };
 
         template<class T>
@@ -8665,10 +8621,6 @@ namespace sqlite_orm {
             columns_type columns;
 
             static constexpr int count = std::tuple_size<columns_type>::value;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            struct_t(columns_type columns) : columns{std::move(columns)} {}
-#endif
         };
 
         template<class T>
@@ -8688,11 +8640,6 @@ namespace sqlite_orm {
             return_type col;
             conditions_type conditions;
             bool highest_level = false;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            select_t(return_type col, conditions_type conditions) :
-                col{std::move(col)}, conditions{std::move(conditions)} {}
-#endif
         };
 
         template<class T>
@@ -8725,10 +8672,6 @@ namespace sqlite_orm {
 
         struct union_base {
             bool all = false;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            union_base(bool all) : all{all} {}
-#endif
 
             operator std::string() const {
                 if (!this->all) {
@@ -8892,10 +8835,6 @@ namespace sqlite_orm {
             using type = T;
 
             bool defined_order = false;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            asterisk_t(bool definedOrder) : defined_order{definedOrder} {}
-#endif
         };
 
         template<class T>
@@ -8903,10 +8842,6 @@ namespace sqlite_orm {
             using type = T;
 
             bool defined_order = false;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            object_t(bool definedOrder) : defined_order{definedOrder} {}
-#endif
         };
 
         template<class T>
@@ -11111,7 +11046,6 @@ namespace sqlite_orm {
             using func_param_type = std::tuple_element_t<I, FnParams>;
             using call_arg_type = unpacked_arg_t<std::tuple_element_t<I, CallArgs>>;
 
-#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
             constexpr bool valid = validate_pointer_value_type<I,
                                                                std::tuple_element_t<I, FnParams>,
                                                                unpacked_arg_t<std::tuple_element_t<I, CallArgs>>>(
@@ -11119,14 +11053,6 @@ namespace sqlite_orm {
                 (polyfill::is_specialization_of_v<call_arg_type, pointer_binding>) > {});
 
             return validate_pointer_value_types<FnParams, CallArgs>(polyfill::index_constant<I - 1>{}) && valid;
-#else
-            return validate_pointer_value_types<FnParams, CallArgs>(polyfill::index_constant<I - 1>{}) &&
-                   validate_pointer_value_type<I,
-                                               std::tuple_element_t<I, FnParams>,
-                                               unpacked_arg_t<std::tuple_element_t<I, CallArgs>>>(
-                       polyfill::bool_constant < (polyfill::is_specialization_of_v<func_param_type, pointer_arg>) ||
-                       (polyfill::is_specialization_of_v<call_arg_type, pointer_binding>) > {});
-#endif
         }
 
         /*  
@@ -11134,11 +11060,7 @@ namespace sqlite_orm {
          *  but other call argument types are not checked against the parameter types of the function.
          */
         template<typename UDF, typename... CallArgs>
-#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
         SQLITE_ORM_CONSTEVAL void check_function_call() {
-#else
-        void check_function_call() {
-#endif
             using call_args_tuple = std::tuple<CallArgs...>;
             using function_params_tuple = typename callable_arguments<UDF>::args_tuple;
             constexpr size_t callArgsCount = std::tuple_size<call_args_tuple>::value;
@@ -11775,6 +11697,7 @@ namespace sqlite_orm {
 // #include "table_info.h"
 
 #include <string>  //  std::string
+#include <utility>  //  std::move
 
 namespace sqlite_orm {
 
@@ -11786,7 +11709,7 @@ namespace sqlite_orm {
         std::string dflt_value;
         int pk = 0;
 
-#if !defined(SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED) || !defined(SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED)
+#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
         table_info(decltype(cid) cid_,
                    decltype(name) name_,
                    decltype(type) type_,
@@ -11807,7 +11730,7 @@ namespace sqlite_orm {
         int pk = 0;
         int hidden = 0;  // different than 0 => generated_always_as() - TODO verify
 
-#if !defined(SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED) || !defined(SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED)
+#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
         table_xinfo(decltype(cid) cid_,
                     decltype(name) name_,
                     decltype(type) type_,
@@ -11919,14 +11842,9 @@ namespace sqlite_orm {
         struct indexed_column_t {
             using column_type = C;
 
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            indexed_column_t(column_type _column_or_expression) :
-                column_or_expression(std::move(_column_or_expression)) {}
-#endif
-
-            column_type column_or_expression;
+            column_type _column_or_expression;
             std::string _collation_name;
-            int _order = 0;  //  -1 = desc, 1 = asc, 0 = not specified
+            int _order = 0;  //  -1 = desc, 1 = asc, 0 = unspecified
 
             indexed_column_t<column_type> collate(std::string name) {
                 auto res = std::move(*this);
@@ -11982,10 +11900,6 @@ namespace sqlite_orm {
         struct index_base {
             std::string name;
             bool unique = false;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            index_base(std::string name, bool unique) : name{std::move(name)}, unique{unique} {}
-#endif
         };
 
         template<class T, class... Els>
@@ -13395,11 +13309,6 @@ namespace sqlite_orm {
         struct object_from_column_builder_base {
             sqlite3_stmt* stmt = nullptr;
             int columnIndex = -1;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            object_from_column_builder_base(sqlite3_stmt* stmt, int columnIndex = -1) :
-                stmt{stmt}, columnIndex{columnIndex} {}
-#endif
         };
 
         /**
@@ -14165,10 +14074,6 @@ namespace sqlite_orm {
             sqlite3_stmt* stmt = nullptr;
             connection_ref con;
 
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            prepared_statement_base(sqlite3_stmt* stmt, connection_ref con) : stmt{stmt}, con{std::move(con)} {}
-#endif
-
             ~prepared_statement_base() {
                 sqlite3_finalize(this->stmt);
             }
@@ -14451,10 +14356,6 @@ namespace sqlite_orm {
 
         struct insert_constraint {
             conflict_action action = conflict_action::abort;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            insert_constraint(conflict_action action) : action{action} {}
-#endif
         };
 
         template<class T>
@@ -15736,7 +15637,7 @@ namespace sqlite_orm {
 
             template<class L>
             void operator()(const node_type& node, L& lambda) const {
-                iterate_ast(node.expression, lambda);
+                iterate_ast(node._expression, lambda);
             }
         };
 
@@ -19068,8 +18969,10 @@ namespace sqlite_orm {
 
 // #include "order_by_serializer.h"
 
+#include <array>
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
+#include <utility>  //  std::exchange
 
 namespace sqlite_orm {
 
@@ -19084,6 +18987,20 @@ namespace sqlite_orm {
             return serializer(t, context);
         }
 
+        inline void seralize_collate(std::ostream& ss, const order_by_base& orderBy) {
+            if (!orderBy._collate_argument.empty()) {
+                ss << " COLLATE " << orderBy._collate_argument;
+            }
+            switch (orderBy._order) {
+                case 1:
+                    ss << " ASC";
+                    break;
+                case -1:
+                    ss << " DESC";
+                    break;
+            }
+        }
+
         template<class O>
         struct order_by_serializer<order_by_t<O>, void> {
             using statement_type = order_by_t<O>;
@@ -19094,18 +19011,8 @@ namespace sqlite_orm {
                 auto newContext = context;
                 newContext.skip_table_name = false;
 
-                ss << serialize(orderBy.expression, newContext);
-                if (!orderBy._collate_argument.empty()) {
-                    ss << " COLLATE " << orderBy._collate_argument;
-                }
-                switch (orderBy.asc_desc) {
-                    case 1:
-                        ss << " ASC";
-                        break;
-                    case -1:
-                        ss << " DESC";
-                        break;
-                }
+                ss << serialize(orderBy._expression, newContext);
+                seralize_collate(ss, orderBy);
                 return ss.str();
             }
         };
@@ -19118,30 +19025,22 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& orderBy, const Ctx&) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(orderBy) << " ";
-                int index = 0;
+                static constexpr std::array<const char*, 2> sep = {", ", ""};
+#ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
+                for (bool first = true; const dynamic_order_by_entry_t& entry: orderBy) {
+                    ss << sep[std::exchange(first, false)] << entry.name;
+                    seralize_collate(ss, entry);
+                }
+#else
+                bool first = true;
                 for (const dynamic_order_by_entry_t& entry: orderBy) {
-                    if (index > 0) {
-                        ss << ", ";
-                    }
-
-                    ss << entry.name;
-                    if (!entry._collate_argument.empty()) {
-                        ss << " COLLATE " << entry._collate_argument;
-                    }
-                    switch (entry.asc_desc) {
-                        case 1:
-                            ss << " ASC";
-                            break;
-                        case -1:
-                            ss << " DESC";
-                            break;
-                    }
-                    ++index;
-                };
+                    ss << sep[std::exchange(first, false)] << entry.name;
+                    seralize_collate(ss, entry);
+                }
+#endif
                 return ss.str();
             }
         };
-
     }
 }
 
@@ -19364,10 +19263,6 @@ namespace sqlite_orm {
 
             type_t type = type_t::ignore;
             std::string message;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            raise_t(type_t type, std::string message) : type{type}, message{std::move(message)} {}
-#endif
         };
 
         template<class T>
@@ -21235,20 +21130,18 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
-                ss << serialize(statement.column_or_expression, context);
+                ss << serialize(statement._column_or_expression, context);
                 if (!statement._collation_name.empty()) {
                     ss << " COLLATE " << statement._collation_name;
                 }
                 if (statement._order) {
                     switch (statement._order) {
-                        case -1:
-                            ss << " DESC";
-                            break;
                         case 1:
                             ss << " ASC";
                             break;
-                        default:
-                            throw std::system_error{orm_error_code::incorrect_order};
+                        case -1:
+                            ss << " DESC";
+                            break;
                     }
                 }
                 return ss.str();

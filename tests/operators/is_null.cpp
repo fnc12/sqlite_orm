@@ -7,11 +7,6 @@ TEST_CASE("Is null") {
     struct User {
         int id = 0;
         std::unique_ptr<std::string> name;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        User() = default;
-        User(int id, decltype(name) name = nullptr) : id{id}, name{std::move(name)} {}
-#endif
     };
     auto storage = make_storage(
         "",
