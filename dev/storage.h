@@ -92,8 +92,8 @@ namespace sqlite_orm {
              *  @param filename database filename.
              *  @param dbObjects db_objects_tuple
              */
-            storage_t(std::string filename, std::string vfs_name, int open_flags, db_objects_type dbObjects) :
-                storage_base{std::move(filename), std::move(vfs_name), open_flags, foreign_keys_count(dbObjects)},
+            storage_t(std::string filename, std::string vfs_name, db_objects_type dbObjects) :
+                storage_base{std::move(filename), std::move(vfs_name), foreign_keys_count(dbObjects)},
                 db_objects{std::move(dbObjects)} {}
 
             storage_t(const storage_t&) = default;
@@ -1707,20 +1707,13 @@ namespace sqlite_orm {
      *  Factory function for a storage, from a database file and a bunch of database object definitions.
      */
     template<class... DBO>
-    internal::storage_t<DBO...>
-    make_storage_v2(std::string filename, std::string vfs, int open_flags, DBO... dbObjects) {
-        return {std::move(filename),
-                vfs,
-                open_flags,
-                internal::db_objects_tuple<DBO...>{std::forward<DBO>(dbObjects)...}};
+    internal::storage_t<DBO...> make_storage_v2(std::string filename, std::string vfs, DBO... dbObjects) {
+        return {std::move(filename), vfs, internal::db_objects_tuple<DBO...>{std::forward<DBO>(dbObjects)...}};
     }
 
     template<class... DBO>
     internal::storage_t<DBO...> make_storage(std::string filename, DBO... dbObjects) {
-        return make_storage_v2(std::move(filename),
-                               std::string(),
-                               SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
-                               std::forward<DBO>(dbObjects)...);
+        return make_storage_v2(std::move(filename), std::string(), std::forward<DBO>(dbObjects)...);
     }
 
     /**
