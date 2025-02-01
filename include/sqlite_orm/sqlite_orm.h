@@ -1877,19 +1877,12 @@ namespace sqlite_orm {
     namespace internal {
         inline const std::string& to_string(vfs_t v) {
             static std::string res[] = {
-#if defined(SQLITE_ORM_MAC) || defined(SQLITE_ORM_LINUX)
-
+#ifdef SQLITE_ORM_UNIX
                 "unix",
-                "unix-dotfile"
-
+                "unix-dotfile",
 #ifdef SQLITE_ORM_MAC
-                ,
                 "unix-afp",
-
-#elif defined(SQLITE_ORM_LINUX)
-
 #endif
-
 #endif
 
 #ifdef SQLITE_ORM_WIN
