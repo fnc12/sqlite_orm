@@ -281,7 +281,7 @@ using std::nullptr_t;
 
 #if defined(_WIN32)
 #define SQLITE_ORM_WIN
-#elif defined(__APPLE__)
+#elif defined(__APPLE__) && defined(__MACH__)
 #define SQLITE_ORM_MAC
 #define SQLITE_ORM_UNIX
 #elif defined(__unix__) || defined(__unix) || defined(__linux__) || defined(__FreeBSD__)
@@ -1856,20 +1856,13 @@ namespace sqlite_orm {
 
     enum class vfs_t {
 
-#if defined(SQLITE_ORM_MAC) || defined(SQLITE_ORM_LINUX)
-
+#ifdef SQLITE_ORM_UNIX
         unix = 0,
         unix_posix = 0,
-        unix_dotfile = 1
-
+        unix_dotfile = 1,
 #ifdef SQLITE_ORM_MAC
-        ,
         unix_afp = 2,
-
-#elif defined(SQLITE_ORM_LINUX)
-
 #endif
-
 #endif
 
 #ifdef SQLITE_ORM_WIN
