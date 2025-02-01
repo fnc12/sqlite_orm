@@ -28,9 +28,9 @@ TEST_CASE("vfs string conversion returns expected strings") {
 
 TEST_CASE("vfs modes open successfully") {
 
-#ifdef SQLITE_ORM_MAC
+#if defined(SQLITE_ORM_MAC)
     vfs_t vfs_enum = GENERATE(vfs_t::unix, vfs_t::unix_posix, vfs_t::unix_dotfile, vfs_t::unix_afp);
-#elif defined(SQLITE_ORM_UNIX);
+#elif defined(SQLITE_ORM_UNIX)
     vfs_t vfs_enum = GENERATE(vfs_t::unix, vfs_t::unix_posix, vfs_t::unix_dotfile);
 #elif defined(SQLITE_ORM_WINDOWS)
     vfs_t vfs_enum = GENERATE(vfs_t::win32, vfs_t::win32_longpath);
