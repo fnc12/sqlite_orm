@@ -44,4 +44,5 @@ TEST_CASE("vfs modes open successfully") {
     std::string vfs_string = internal::to_string(vfs_enum);
     UNSCOPED_INFO("FAILED VFS: " << vfs_string);
     REQUIRE(storage.is_opened());
+    REQUIRE(storage.vfs_type() == vfs_enum);
 }
