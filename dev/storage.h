@@ -1708,13 +1708,13 @@ namespace sqlite_orm {
      *  Factory function for a storage, from a database file and a bunch of database object definitions.
      */
     template<class... DBO>
-    internal::storage_t<DBO...> make_storage_v2(std::string filename, vfs_t vfs, DBO... dbObjects) {
+    internal::storage_t<DBO...> make_storage(std::string filename, vfs_t vfs, DBO... dbObjects) {
         return {std::move(filename), vfs, internal::db_objects_tuple<DBO...>{std::forward<DBO>(dbObjects)...}};
     }
 
     template<class... DBO>
     internal::storage_t<DBO...> make_storage(std::string filename, DBO... dbObjects) {
-        return make_storage_v2(std::move(filename), vfs_default, std::forward<DBO>(dbObjects)...);
+        return make_storage(std::move(filename), vfs_default, std::forward<DBO>(dbObjects)...);
     }
 
     /**

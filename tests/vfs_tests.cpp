@@ -38,7 +38,7 @@ TEST_CASE("vfs modes open successfully") {
 
     int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
 
-    auto storage = make_storage_v2("", vfs_enum, flags, table);
+    auto storage = make_storage("", vfs_enum, flags, table);
     storage.open_forever();
 
     std::string vfs_string = internal::to_string(vfs_enum);
