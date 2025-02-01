@@ -639,6 +639,14 @@ namespace sqlite_orm {
                 return this->connection->retain_count() > 0;
             }
 
+            /**
+             * Public method for checking the VFS implementation being used by
+             * this storage object. Mostly useful for debug.
+             */
+            vfs_t vfs_type() const {
+                return this->connection->vfs;
+            }
+
             /*
              * returning false when there is a transaction in place
              * otherwise true; function is not const because it has to call get_connection()

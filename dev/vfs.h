@@ -30,6 +30,8 @@ namespace sqlite_orm {
 
     };
 
+    constexpr static vfs_t default_vfs = static_cast<vfs_t>(0);
+
     namespace internal {
         inline const std::string& to_string(vfs_t v) {
             static std::string res[] = {

@@ -1879,6 +1879,8 @@ namespace sqlite_orm {
 
     };
 
+    constexpr static vfs_t default_vfs = static_cast<vfs_t>(0);
+
     namespace internal {
         inline const std::string& to_string(vfs_t v) {
             static std::string res[] = {
@@ -18110,6 +18112,14 @@ namespace sqlite_orm {
              */
             bool is_opened() const {
                 return this->connection->retain_count() > 0;
+            }
+
+            /**
+             * Public method for checking the VFS implementation being used by
+             * this storage object. Mostly useful for debug.
+             */
+            vfs_t vfs_type() const {
+                return this->connection->vfs;
             }
 
             /*
