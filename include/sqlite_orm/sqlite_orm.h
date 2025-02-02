@@ -13660,7 +13660,7 @@ namespace sqlite_orm {
                 if (1 == ++this->_retain_count) {
                     auto rc = sqlite3_open(this->filename.c_str(), &this->db);
                     if (rc != SQLITE_OK) {
-                        throw_translated_sqlite_error(db);
+                        throw_translated_sqlite_error(rc);
                     }
                 }
             }
