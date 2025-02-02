@@ -5,6 +5,8 @@ FetchContent_MakeAvailable(Catch2)
 
 option(SQLITE_ORM_OMITS_CODECVT "Omits codec testing" OFF)
 
+include(ucm)
+
 
 # Consuming the standard library as C++ named module is a C++23 standard library feature and additionally requires support from build systems.
 # At the time of adding support for sqlite_orm as a C++ named module, CMake has still only experimental features to
@@ -44,6 +46,7 @@ endif()
 
 # Glob all .cpp files recursively in the current directory
 file(GLOB_RECURSE UNIT_TEST_SOURCES "*.cpp")
+ucm_remove_files(named_module.cpp FROM UNIT_TEST_SOURCES)
 
 add_executable(unit_tests ${UNIT_TEST_SOURCES})
 
