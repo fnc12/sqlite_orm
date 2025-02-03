@@ -1848,7 +1848,7 @@ namespace sqlite_orm {
 #endif
 }
 
-// #include "vfs.h"
+// #include "vfs_mode.h"
 #include <sqlite3.h>
 // #include "functional/config.h"
 
@@ -13703,7 +13703,7 @@ namespace sqlite_orm {
 #include <atomic>
 #include <string>  //  std::string
 
-// #include "vfs.h"
+// #include "vfs_mode.h"
 
 // #include "open_mode.h"
 #include <sqlite3.h>
@@ -13722,7 +13722,6 @@ namespace sqlite_orm {
             switch (open) {
                 case open_mode::readonly:
                     return SQLITE_OPEN_READONLY;
-                default:
                 case open_mode::create_readwrite:
                     return SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE;
             };
