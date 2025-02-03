@@ -1856,6 +1856,7 @@ namespace sqlite_orm {
 
     enum class vfs_t {
 
+        default_vfs = 0,
 #ifdef SQLITE_ORM_UNIX
         unix = 0,
         unix_posix = 0,
@@ -1871,8 +1872,6 @@ namespace sqlite_orm {
 #endif
 
     };
-
-    constexpr static vfs_t vfs_default = static_cast<vfs_t>(0);
 
     namespace internal {
         inline const std::string& to_string(vfs_t v) {
@@ -23872,7 +23871,7 @@ namespace sqlite_orm {
 
     template<class... DBO>
     internal::storage_t<DBO...> make_storage(std::string filename, DBO... dbObjects) {
-        return make_storage(std::move(filename), vfs_default, std::forward<DBO>(dbObjects)...);
+        return make_storage(std::move(filename), vfs_t::default_vfs, std::forward<DBO>(dbObjects)...);
     }
 
     /**
