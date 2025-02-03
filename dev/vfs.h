@@ -12,7 +12,7 @@ namespace sqlite_orm {
         unix = 0,
         unix_posix = 0,
         unix_dotfile = 1,
-#ifdef SQLITE_ORM_MAC
+#ifdef SQLITE_ORM_APPLE
         unix_afp = 2,
 #endif
 #endif
@@ -30,7 +30,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_UNIX
                 "unix",
                 "unix-dotfile",
-#ifdef SQLITE_ORM_MAC
+#ifdef SQLITE_ORM_APPLE
                 "unix-afp",
 #endif
 #endif

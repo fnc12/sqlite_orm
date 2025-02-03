@@ -281,8 +281,8 @@ using std::nullptr_t;
 
 #if defined(_WIN32)
 #define SQLITE_ORM_WIN
-#elif defined(__APPLE__) && defined(__MACH__)
-#define SQLITE_ORM_MAC
+#elif defined(__APPLE__)
+#define SQLITE_ORM_APPLE
 #define SQLITE_ORM_UNIX
 #elif defined(__unix__) || defined(__unix) || defined(__linux__) || defined(__FreeBSD__)
 #define SQLITE_ORM_UNIX
@@ -1861,7 +1861,7 @@ namespace sqlite_orm {
         unix = 0,
         unix_posix = 0,
         unix_dotfile = 1,
-#ifdef SQLITE_ORM_MAC
+#ifdef SQLITE_ORM_APPLE
         unix_afp = 2,
 #endif
 #endif
@@ -1879,7 +1879,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_UNIX
                 "unix",
                 "unix-dotfile",
-#ifdef SQLITE_ORM_MAC
+#ifdef SQLITE_ORM_APPLE
                 "unix-afp",
 #endif
 #endif

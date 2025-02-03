@@ -82,10 +82,10 @@
 
 #if defined(_WIN32)
 #define SQLITE_ORM_WIN
-#elif defined(__APPLE__) && defined(__MACH__)
-#define SQLITE_ORM_MAC
+#elif defined(__APPLE__)
+#define SQLITE_ORM_APPLE
 #define SQLITE_ORM_UNIX
-#elif defined(__unix__) || defined(__unix) || defined(__linux__) || defined (__FreeBSD__) 
+#elif defined(__unix__) || defined(__unix) || defined(__linux__) || defined(__FreeBSD__)
 #define SQLITE_ORM_UNIX
 #endif
 
