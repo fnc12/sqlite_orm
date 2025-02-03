@@ -4,7 +4,7 @@
 #include <atomic>
 #include <string>  //  std::string
 
-#include "vfs.h"
+#include "vfs_mode.h"
 #include "open_mode.h"
 #include "error_code.h"
 

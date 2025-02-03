@@ -24,7 +24,7 @@
 #include "tuple_helper/tuple_transformer.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "type_traits.h"
-#include "vfs.h"
+#include "vfs_mode.h"
 #include "alias.h"
 #include "error_code.h"
 #include "type_printer.h"
