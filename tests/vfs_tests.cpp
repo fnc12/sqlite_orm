@@ -32,7 +32,7 @@ TEST_CASE("vfs modes open successfully") {
     vfs_t vfs_enum = GENERATE(vfs_t::unix, vfs_t::unix_posix, vfs_t::unix_dotfile, vfs_t::unix_afp);
 #elif defined(SQLITE_ORM_UNIX)
     vfs_t vfs_enum = GENERATE(vfs_t::unix, vfs_t::unix_posix, vfs_t::unix_dotfile);
-#elif defined(SQLITE_ORM_WINDOWS)
+#elif defined(SQLITE_ORM_WIN)
     vfs_t vfs_enum = GENERATE(vfs_t::win32, vfs_t::win32_longpath);
 #endif
 
