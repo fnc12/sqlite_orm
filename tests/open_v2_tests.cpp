@@ -16,17 +16,17 @@ static const auto default_table = make_table("users", make_column("id", &User::i
 TEST_CASE("vfs string conversion returns expected strings") {
 
 #ifdef SQLITE_ORM_UNIX
-    REQUIRE(internal::to_string(vfs_t::unix) == "unix");
-    REQUIRE(internal::to_string(vfs_t::unix_posix) == "unix");
-    REQUIRE(internal::to_string(vfs_t::unix_dotfile) == "unix-dotfile");
+    REQUIRE(internal::to_string(vfs_mode::unix) == "unix");
+    REQUIRE(internal::to_string(vfs_mode::unix_posix) == "unix");
+    REQUIRE(internal::to_string(vfs_mode::unix_dotfile) == "unix-dotfile");
 #ifdef SQLITE_ORM_MAC
-    REQUIRE(internal::to_string(vfs_t::unix_afp) == "unix-afp");
+    REQUIRE(internal::to_string(vfs_mode::unix_afp) == "unix-afp");
 #endif
 #endif
 
 #ifdef SQLITE_ORM_WIN
-    REQUIRE(internal::to_string(vfs_t::win32) == "win32");
-    REQUIRE(internal::to_string(vfs_t::win32_longpath) == "win32-longpath");
+    REQUIRE(internal::to_string(vfs_mode::win32) == "win32");
+    REQUIRE(internal::to_string(vfs_mode::win32_longpath) == "win32-longpath");
 #endif
 }
 
@@ -44,11 +44,11 @@ TEST_CASE("open_mode flag conversion returns expected flags") {
 TEST_CASE("vfs modes open successfully") {
 
 #if defined(SQLITE_ORM_MAC)
-    vfs_t vfs_enum = GENERATE(vfs_t::unix, vfs_t::unix_posix, vfs_t::unix_dotfile, vfs_t::unix_afp);
+    vfs_mode vfs_enum = GENERATE(vfs_mode::unix, vfs_mode::unix_posix, vfs_mode::unix_dotfile, vfs_mode::unix_afp);
 #elif defined(SQLITE_ORM_UNIX)
-    vfs_t vfs_enum = GENERATE(vfs_t::unix, vfs_t::unix_posix, vfs_t::unix_dotfile);
+    vfs_mode vfs_enum = GENERATE(vfs_mode::unix, vfs_mode::unix_posix, vfs_mode::unix_dotfile);
 #elif defined(SQLITE_ORM_WIN)
-    vfs_t vfs_enum = GENERATE(vfs_t::win32, vfs_t::win32_longpath);
+    vfs_mode vfs_enum = GENERATE(vfs_mode::win32, vfs_mode::win32_longpath);
 #endif
 
     auto storage = make_storage("", vfs_enum, open_mode_t::default_mode, default_table);
@@ -57,13 +57,13 @@ TEST_CASE("vfs modes open successfully") {
     std::string vfs_string = internal::to_string(vfs_enum);
     UNSCOPED_INFO("FAILED VFS: " << vfs_string);
     REQUIRE(storage.is_opened());
-    REQUIRE(storage.vfs_type() == vfs_enum);
+    REQUIRE(storage.vfs_modeype() == vfs_enum);
 }
 
 TEST_CASE("open modes open successfully") {
     open_mode_t open_mode_flags = GENERATE(open_mode_t::create_readwrite, open_mode_t::readonly);
 
-    auto storage = make_storage("", vfs_t::default_vfs, open_mode_flags, default_table);
+    auto storage = make_storage("", vfs_mode::default_vfs, open_mode_flags, default_table);
     REQUIRE_NOTHROW(storage.open_forever());
     REQUIRE(storage.is_opened());
     REQUIRE(storage.open_mode() == open_mode_flags);

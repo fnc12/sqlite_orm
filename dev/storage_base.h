@@ -645,7 +645,7 @@ namespace sqlite_orm {
              * Public method for checking the VFS implementation being used by
              * this storage object. Mostly useful for debug.
              */
-            vfs_t vfs_type() const {
+            vfs_mode vfs_modeype() const {
                 return this->connection->vfs;
             }
 
@@ -679,7 +679,7 @@ namespace sqlite_orm {
             }
 
           protected:
-            storage_base(std::string filename, vfs_t vfs, open_mode_t open_mode, int foreignKeysCount) :
+            storage_base(std::string filename, vfs_mode vfs, open_mode_t open_mode, int foreignKeysCount) :
                 pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
                 inMemory(filename.empty() || filename == ":memory:"),

@@ -5,7 +5,7 @@
 
 namespace sqlite_orm {
 
-    enum class vfs_t {
+    enum class vfs_mode {
 
         default_vfs = 0,
 #ifdef SQLITE_ORM_UNIX
@@ -25,7 +25,7 @@ namespace sqlite_orm {
     };
 
     namespace internal {
-        inline const std::string& to_string(vfs_t v) {
+        inline const std::string& to_string(vfs_mode v) {
             static std::string res[] = {
 #ifdef SQLITE_ORM_UNIX
                 "unix",
