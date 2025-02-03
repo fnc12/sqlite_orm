@@ -13,8 +13,8 @@ namespace sqlite_orm {
 
         struct connection_holder {
 
-            connection_holder(std::string filename_, vfs_mode vfs_, open_mode_t open_mode_) :
-                filename(std::move(filename_)), vfs(vfs_), open_mode(open_mode_) {}
+            connection_holder(std::string filename_, vfs_mode vfs_, open_mode_t open_) :
+                filename(std::move(filename_)), vfs(vfs_), open_mode(open_) {}
 
             void retain() {
                 // first one opens the connection.

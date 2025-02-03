@@ -13716,9 +13716,9 @@ namespace sqlite_orm {
     };
 
     namespace internal {
-        inline constexpr int to_int_flags(open_mode_t open_mode) {
+        inline constexpr int to_int_flags(open_mode_t open) {
 
-            switch (open_mode) {
+            switch (open) {
                 case open_mode_t::readonly:
                     return SQLITE_OPEN_READONLY;
                 default:
@@ -13737,8 +13737,8 @@ namespace sqlite_orm {
 
         struct connection_holder {
 
-            connection_holder(std::string filename_, vfs_mode vfs_, open_mode_t open_mode_) :
-                filename(std::move(filename_)), vfs(vfs_), open_mode(open_mode_) {}
+            connection_holder(std::string filename_, vfs_mode vfs_, open_mode_t open_) :
+                filename(std::move(filename_)), vfs(vfs_), open_mode(open_) {}
 
             void retain() {
                 // first one opens the connection.
@@ -18164,11 +18164,11 @@ namespace sqlite_orm {
             }
 
           protected:
-            storage_base(std::string filename, vfs_mode vfs, open_mode_t open_mode, int foreignKeysCount) :
+            storage_base(std::string filename, vfs_mode vfs, open_mode_t open, int foreignKeysCount) :
                 pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
                 inMemory(filename.empty() || filename == ":memory:"),
-                connection(std::make_unique<connection_holder>(std::move(filename), vfs, open_mode)),
+                connection(std::make_unique<connection_holder>(std::move(filename), vfs, open)),
                 cachedForeignKeysCount(foreignKeysCount) {
                 if (this->inMemory) {
                     this->connection->retain();
@@ -22261,8 +22261,8 @@ namespace sqlite_orm {
              *  @param filename database filename.
              *  @param dbObjects db_objects_tuple
              */
-            storage_t(std::string filename, vfs_mode vfs, open_mode_t open_mode, db_objects_type dbObjects) :
-                storage_base{std::move(filename), vfs, open_mode, foreign_keys_count(dbObjects)},
+            storage_t(std::string filename, vfs_mode vfs, open_mode_t open, db_objects_type dbObjects) :
+                storage_base{std::move(filename), vfs, open, foreign_keys_count(dbObjects)},
                 db_objects{std::move(dbObjects)} {}
 
             storage_t(const storage_t&) = default;
@@ -23876,12 +23876,8 @@ namespace sqlite_orm {
      *  Factory function for a storage, from a database file and a bunch of database object definitions.
      */
     template<class... DBO>
-    internal::storage_t<DBO...>
-    make_storage(std::string filename, vfs_mode vfs, open_mode_t open_mode, DBO... dbObjects) {
-        return {std::move(filename),
-                vfs,
-                open_mode,
-                internal::db_objects_tuple<DBO...>{std::forward<DBO>(dbObjects)...}};
+    internal::storage_t<DBO...> make_storage(std::string filename, vfs_mode vfs, open_mode_t open, DBO... dbObjects) {
+        return {std::move(filename), vfs, open, internal::db_objects_tuple<DBO...>{std::forward<DBO>(dbObjects)...}};
     }
 
     template<class... DBO>

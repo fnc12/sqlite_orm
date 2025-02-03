@@ -10,9 +10,9 @@ namespace sqlite_orm {
     };
 
     namespace internal {
-        inline constexpr int to_int_flags(open_mode_t open_mode) {
+        inline constexpr int to_int_flags(open_mode_t open) {
 
-            switch (open_mode) {
+            switch (open) {
                 case open_mode_t::readonly:
                     return SQLITE_OPEN_READONLY;
                 default:

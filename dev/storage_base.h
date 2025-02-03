@@ -679,11 +679,11 @@ namespace sqlite_orm {
             }
 
           protected:
-            storage_base(std::string filename, vfs_mode vfs, open_mode_t open_mode, int foreignKeysCount) :
+            storage_base(std::string filename, vfs_mode vfs, open_mode_t open, int foreignKeysCount) :
                 pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
                 inMemory(filename.empty() || filename == ":memory:"),
-                connection(std::make_unique<connection_holder>(std::move(filename), vfs, open_mode)),
+                connection(std::make_unique<connection_holder>(std::move(filename), vfs, open)),
                 cachedForeignKeysCount(foreignKeysCount) {
                 if (this->inMemory) {
                     this->connection->retain();
