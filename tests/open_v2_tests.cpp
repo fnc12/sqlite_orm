@@ -31,10 +31,9 @@ TEST_CASE("vfs string conversion returns expected strings") {
 }
 
 TEST_CASE("open_mode flag conversion returns expected flags") {
-    STATIC_REQUIRE(internal::to_int_flags(open_mode_t::default_mode) == (SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE));
-    STATIC_REQUIRE(internal::to_int_flags(open_mode_t::create_readwrite) ==
-                   (SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE));
-    STATIC_REQUIRE(internal::to_int_flags(open_mode_t::readonly) == (SQLITE_OPEN_READONLY));
+    STATIC_REQUIRE(internal::to_int_flags(open_mode::default_mode) == (SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE));
+    STATIC_REQUIRE(internal::to_int_flags(open_mode::create_readwrite) == (SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE));
+    STATIC_REQUIRE(internal::to_int_flags(open_mode::readonly) == (SQLITE_OPEN_READONLY));
 }
 
 /******************************************************************************/
@@ -51,7 +50,7 @@ TEST_CASE("vfs modes open successfully") {
     vfs_mode vfs_enum = GENERATE(vfs_mode::win32, vfs_mode::win32_longpath);
 #endif
 
-    auto storage = make_storage("", vfs_enum, open_mode_t::default_mode, default_table);
+    auto storage = make_storage("", vfs_enum, open_mode::default_mode, default_table);
     REQUIRE_NOTHROW(storage.open_forever());
 
     std::string vfs_string = internal::to_string(vfs_enum);
@@ -61,7 +60,7 @@ TEST_CASE("vfs modes open successfully") {
 }
 
 TEST_CASE("open modes open successfully") {
-    open_mode_t open_mode_flags = GENERATE(open_mode_t::create_readwrite, open_mode_t::readonly);
+    open_mode open_mode_flags = GENERATE(open_mode::create_readwrite, open_mode::readonly);
 
     auto storage = make_storage("", vfs_mode::default_vfs, open_mode_flags, default_table);
     REQUIRE_NOTHROW(storage.open_forever());

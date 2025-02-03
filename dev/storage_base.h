@@ -652,7 +652,7 @@ namespace sqlite_orm {
             /**
              * Return the current open_mode for this storage object. 
              */
-            open_mode_t open_mode() const {
+            sqlite_orm::open_mode open_mode() const {
                 return this->connection->open_mode;
             }
 
@@ -679,7 +679,7 @@ namespace sqlite_orm {
             }
 
           protected:
-            storage_base(std::string filename, vfs_mode vfs, open_mode_t open, int foreignKeysCount) :
+            storage_base(std::string filename, vfs_mode vfs, sqlite_orm::open_mode open, int foreignKeysCount) :
                 pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
                 inMemory(filename.empty() || filename == ":memory:"),

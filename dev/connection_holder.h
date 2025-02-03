@@ -13,7 +13,7 @@ namespace sqlite_orm {
 
         struct connection_holder {
 
-            connection_holder(std::string filename_, vfs_mode vfs_, open_mode_t open_) :
+            connection_holder(std::string filename_, vfs_mode vfs_, sqlite_orm::open_mode open_) :
                 filename(std::move(filename_)), vfs(vfs_), open_mode(open_) {}
 
             void retain() {
@@ -60,7 +60,7 @@ namespace sqlite_orm {
 
             const std::string filename;
             const vfs_mode vfs;
-            const open_mode_t open_mode;
+            const open_mode open_mode;
 
           protected:
             sqlite3* db = nullptr;
