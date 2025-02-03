@@ -59,11 +59,35 @@ TEST_CASE("vfs modes open successfully") {
     REQUIRE(storage.vfs_mode() == vfs_enum);
 }
 
-TEST_CASE("open modes open successfully") {
-    open_mode open_mode_flags = GENERATE(open_mode::create_readwrite, open_mode::readonly);
+TEST_CASE("create/readwrite open mode behaves as expected") {
 
-    auto storage = make_storage("", vfs_mode::default_vfs, open_mode_flags, default_table);
-    REQUIRE_NOTHROW(storage.open_forever());
-    REQUIRE(storage.is_opened());
-    REQUIRE(storage.open_mode() == open_mode_flags);
+    char tmp_filename[L_tmpnam];
+    REQUIRE(std::tmpnam(tmp_filename) != nullptr);
+
+    {
+        auto storage = make_storage(tmp_filename, vfs_mode::default_vfs, open_mode::create_readwrite, default_table);
+
+        CHECK_NOTHROW(storage.open_forever());
+
+        CHECK(storage.is_opened());
+        CHECK(storage.open_mode() == open_mode::create_readwrite);
+        CHECK(!storage.readonly());
+
+        SECTION("readonly open mode behaves as expected") {
+            auto readonly_storage =
+                make_storage(tmp_filename, vfs_mode::default_vfs, open_mode::readonly, default_table);
+            CHECK_NOTHROW(readonly_storage.open_forever());
+
+            CHECK(readonly_storage.is_opened());
+            CHECK(readonly_storage.open_mode() == open_mode::readonly);
+            CHECK(readonly_storage.readonly());
+        }
+    }
+
+    REQUIRE(std::remove(tmp_filename) == 0);
+
+    SECTION("Readonly fails with deleted files") {
+        auto readonly_storage = make_storage(tmp_filename, vfs_mode::default_vfs, open_mode::readonly, default_table);
+        REQUIRE_THROWS(readonly_storage.open_forever());
+    }
 }

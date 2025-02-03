@@ -656,6 +656,14 @@ namespace sqlite_orm {
                 return this->connection->open_mode;
             }
 
+            /**
+             * Return true if this database object is opened in a readonly state. 
+             */
+            bool readonly() const {
+                sqlite3* db = this->connection->get();
+                return sqlite3_db_readonly(db, "");
+            }
+
             /*
              * returning false when there is a transaction in place
              * otherwise true; function is not const because it has to call get_connection()
