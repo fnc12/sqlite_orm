@@ -9,6 +9,10 @@ using namespace sqlite_orm;
 
 static const auto table = make_table("users", make_column("id", &User::id, primary_key()));
 
+/******************************************************************************/
+/******************************  STATIC CHECKS  *******************************/
+/******************************************************************************/
+
 TEST_CASE("vfs string conversion returns expected strings") {
 
 #ifdef SQLITE_ORM_UNIX
@@ -25,6 +29,17 @@ TEST_CASE("vfs string conversion returns expected strings") {
     REQUIRE(internal::to_string(vfs_t::win32_longpath) == "win32-longpath");
 #endif
 }
+
+TEST_CASE("open_mode flag conversion returns expected flags") {
+    STATIC_REQUIRE(internal::to_int_flags(open_mode_t::default_mode) == (SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE));
+    STATIC_REQUIRE(internal::to_int_flags(open_mode_t::create_readwrite) ==
+                   (SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE));
+    STATIC_REQUIRE(internal::to_int_flags(open_mode_t::create_readonly) == (SQLITE_OPEN_CREATE | SQLITE_OPEN_READONLY));
+}
+
+/******************************************************************************/
+/*****************************  RUNTIME CHECKS  *******************************/
+/******************************************************************************/
 
 TEST_CASE("vfs modes open successfully") {
 
@@ -46,3 +61,5 @@ TEST_CASE("vfs modes open successfully") {
     REQUIRE(storage.is_opened());
     REQUIRE(storage.vfs_type() == vfs_enum);
 }
+
+TEST_CASE("open modes open successfully") {}

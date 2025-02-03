@@ -13716,7 +13716,7 @@ namespace sqlite_orm {
     };
 
     namespace internal {
-        inline const int to_int_flags(open_mode_t open_mode) {
+        inline constexpr int to_int_flags(open_mode_t open_mode) {
 
             switch (open_mode) {
                 case open_mode_t::create_readonly:
