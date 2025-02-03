@@ -7,6 +7,7 @@ namespace sqlite_orm {
 
     enum class vfs_t {
 
+        default_vfs = 0,
 #ifdef SQLITE_ORM_UNIX
         unix = 0,
         unix_posix = 0,
@@ -22,8 +23,6 @@ namespace sqlite_orm {
 #endif
 
     };
-
-    constexpr static vfs_t vfs_default = static_cast<vfs_t>(0);
 
     namespace internal {
         inline const std::string& to_string(vfs_t v) {

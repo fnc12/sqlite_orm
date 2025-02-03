@@ -1714,7 +1714,7 @@ namespace sqlite_orm {
 
     template<class... DBO>
     internal::storage_t<DBO...> make_storage(std::string filename, DBO... dbObjects) {
-        return make_storage(std::move(filename), vfs_default, std::forward<DBO>(dbObjects)...);
+        return make_storage(std::move(filename), vfs_t::default_vfs, std::forward<DBO>(dbObjects)...);
     }
 
     /**
