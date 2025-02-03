@@ -16,7 +16,6 @@ namespace sqlite_orm {
             switch (open) {
                 case open_mode::readonly:
                     return SQLITE_OPEN_READONLY;
-                default:
                 case open_mode::create_readwrite:
                     return SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE;
             };
