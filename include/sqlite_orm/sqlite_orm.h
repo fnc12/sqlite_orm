@@ -18147,7 +18147,7 @@ namespace sqlite_orm {
              */
             bool readonly() const {
                 sqlite3* db = this->connection->get();
-                return sqlite3_db_readonly(db, "") == 1;
+                return sqlite3_db_readonly(db, "main");
             }
 
             /*
