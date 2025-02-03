@@ -5,6 +5,7 @@
 #include <string>  //  std::string
 
 #include "vfs.h"
+#include "open_mode.h"
 #include "error_code.h"
 
 namespace sqlite_orm {
