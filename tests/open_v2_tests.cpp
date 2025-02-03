@@ -61,8 +61,8 @@ TEST_CASE("vfs modes open successfully") {
 
 TEST_CASE("create/readwrite open mode behaves as expected") {
 
-    char tmp_filename[L_tmpnam];
-    REQUIRE(std::tmpnam(tmp_filename) != nullptr);
+    const char* tmp_filename = "open_mode.sqlite";
+    std::remove(tmp_filename);
 
     {
         auto storage = make_storage(tmp_filename, vfs_mode::default_vfs, open_mode::create_readwrite, default_table);
@@ -88,6 +88,6 @@ TEST_CASE("create/readwrite open mode behaves as expected") {
 
     SECTION("Readonly fails with deleted files") {
         auto readonly_storage = make_storage(tmp_filename, vfs_mode::default_vfs, open_mode::readonly, default_table);
-        REQUIRE_THROWS(readonly_storage.open_forever());
+        REQUIRE_THROWS_AS(readonly_storage.open_forever(), std::system_error);
     }
 }
