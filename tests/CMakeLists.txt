@@ -17,7 +17,7 @@ include(ucm)
 # "Build ISO C++23 Standard Library Modules", MSBuild property `BuildStlModules`.
 if(SQLITE_ORM_ENABLE_CXX_23 AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.28.2 AND MSVC AND MSVC_VERSION GREATER_EQUAL 1930)
     add_executable(module_tests
-        named_module.cpp
+        named_module/named_module.cpp
     )
 
     target_sources(module_tests
@@ -46,7 +46,7 @@ endif()
 
 # Glob all .cpp files recursively in the current directory
 file(GLOB_RECURSE UNIT_TEST_SOURCES "*.cpp")
-ucm_remove_files(named_module.cpp FROM UNIT_TEST_SOURCES)
+ucm_remove_directories(named_module FROM UNIT_TEST_SOURCES)
 
 add_executable(unit_tests ${UNIT_TEST_SOURCES})
 
