@@ -86,10 +86,11 @@ TEST_CASE("create/readwrite open mode behaves as expected") {
             CHECK(readonly_storage.open_mode() == open_mode::readonly);
             CHECK(readonly_storage.readonly());
         }
+    }
 
-        if (!in_memory) {
-            REQUIRE(std::remove(tmp_filename) == 0);
-        }
+    if (!in_memory) {
+        INFO(tmp_filename);
+        REQUIRE(std::remove(tmp_filename) == 0);
     }
 
     if (!in_memory) {
