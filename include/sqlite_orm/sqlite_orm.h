@@ -13725,6 +13725,8 @@ namespace sqlite_orm {
                 case open_mode::create_readwrite:
                     return SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE;
             };
+
+            return -1;
         }
     }
 
