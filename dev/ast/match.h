@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>
 #endif
 
@@ -17,7 +17,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T, class X>
     internal::match_t<T, X> match(X argument) {
         return {std::move(argument)};

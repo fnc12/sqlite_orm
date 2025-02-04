@@ -1,14 +1,14 @@
 #pragma once
 
 #include <sqlite3.h>
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <utility>  //  std::move
 #endif
 
 #include "error_code.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /** 
      *  Escape the provided character in the given string by doubling it.

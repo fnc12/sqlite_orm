@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
 #endif
 
@@ -21,7 +21,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  EXISTS(condition).
      *  Example: storage.select(columns(&Agent::code, &Agent::name, &Agent::workingArea, &Agent::comission),

@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <set>  //  std::set
 #include <string>  //  std::string
 #include <utility>  //  std::pair, std::move

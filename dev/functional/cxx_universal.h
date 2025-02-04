@@ -10,7 +10,7 @@
  */
 
 #include <iso646.h>  //  alternative operator representations
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <cstddef>  //  sqlite_orm is using ::size_t, ::ptrdiff_t, std::nullptr_t everywhere, pull it in early
 // earlier libcxx versions didn't make std::nullptr_t available in the global namespace via stddef.h,
 // though it should have according to C++ documentation (see https://en.cppreference.com/w/cpp/types/std::nullptr_t#Notes).

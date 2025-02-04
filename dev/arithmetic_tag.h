@@ -1,12 +1,12 @@
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  // std::is_integral
 #endif
 
 #include "functional/mpl/conditional.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Helper classes used by statement_binder and row_extractor.

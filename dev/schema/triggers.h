@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <memory>
 #include <sstream>
 #include <string>
@@ -223,7 +223,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  NEW.expression function used within TRIGGER expressions
      */

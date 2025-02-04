@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::remove_const, std::type_identity
 #endif
 
@@ -37,7 +37,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     /** @short Specifies that a type is a reference of a concrete table, especially of a derived class.
      *

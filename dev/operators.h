@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::false_type, std::true_type
 #include <utility>  //  std::move
 #endif
@@ -213,7 +213,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Public interface for || concatenation operator. Example: `select(conc(&User::name, "@gmail.com"));` => SELECT
      * name || '@gmail.com' FROM users

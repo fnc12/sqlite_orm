@@ -1,7 +1,7 @@
 #pragma once
 
 #include <sqlite3.h>
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::enable_if
 #include <cstdlib>  //  ::atof, ::atoi, ::atoll
 #include <cstring>  //  ::strlen
@@ -32,7 +32,7 @@
 #include "is_std_ptr.h"
 #include "type_traits.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Helper for casting values originating from SQL to C++ typed values, usually from rows of a result set.
@@ -122,7 +122,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class R>
     int extract_single_value(void* data, int argc, char** argv, char**) {
         auto& res = *(R*)data;

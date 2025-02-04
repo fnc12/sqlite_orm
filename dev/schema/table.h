@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <type_traits>  //  std::remove_const, std::is_member_pointer, std::true_type, std::false_type
 #include <vector>  //  std::vector
@@ -419,7 +419,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3009000
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::using_fts5_t<T, Cs...> using_fts5(Cs... columns) {

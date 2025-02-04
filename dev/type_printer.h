@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <memory>  //  std::shared_ptr, std::unique_ptr
 #include <vector>  //  std::vector
@@ -11,7 +11,7 @@
 #include "type_traits.h"
 #include "is_std_ptr.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  This class transforms a C++ type to a sqlite type name (int -> INTEGER, ...)

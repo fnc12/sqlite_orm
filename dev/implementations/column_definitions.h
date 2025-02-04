@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <memory>  //  std::make_unique
 #endif
 

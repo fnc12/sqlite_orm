@@ -28,7 +28,7 @@
  *  - "higher order" denotes a metafunction that operates on another metafunction (i.e. takes it as an argument).
  */
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::true_type, std::false_type, std::is_same, std::negation, std::conjunction, std::disjunction
 #include <initializer_list>
 #endif

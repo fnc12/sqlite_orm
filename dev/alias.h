@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_same
 #include <utility>  //  std::make_index_sequence, std::move
 #include <string>  //  std::string
@@ -189,7 +189,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Using a column pointer, create a column reference to an aliased table column.
      *  

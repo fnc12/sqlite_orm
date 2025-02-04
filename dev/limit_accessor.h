@@ -1,7 +1,7 @@
 #pragma once
 
 #include <sqlite3.h>
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <map>  //  std::map
 #include <functional>  //  std::function
 #include <memory>  //  std::shared_ptr

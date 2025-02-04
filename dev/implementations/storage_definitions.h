@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_same
 #include <sstream>  //  std::stringstream
 #include <iomanip>  //  std::flush

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <sqlite3.h>
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <system_error>  // std::error_code, std::system_error
 #include <string>  //  std::string
 #include <stdexcept>
@@ -9,7 +9,7 @@
 #include <type_traits>
 #endif
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /** @short Enables classifying sqlite error codes.
 
@@ -52,7 +52,7 @@ namespace std {
     struct is_error_code_enum<::sqlite_orm::orm_error_code> : true_type {};
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     class orm_error_category : public std::error_category {
       public:
@@ -136,7 +136,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<typename... T>
-    std::string get_error_message(sqlite3 * db, T && ... args) {
+    std::string get_error_message(sqlite3* db, T&&... args) {
         std::ostringstream stream;
         using unpack = int[];
         (void)unpack{0, (stream << args, 0)...};
@@ -145,7 +145,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<typename... T>
-    [[noreturn]] void throw_error(sqlite3 * db, T && ... args) {
+    [[noreturn]] void throw_error(sqlite3* db, T&&... args) {
         throw std::system_error{sqlite_errc(sqlite3_errcode(db)), get_error_message(db, std::forward<T>(args)...)};
     }
 
@@ -153,7 +153,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         return {sqlite_errc(ev)};
     }
 
-    inline std::system_error sqlite_to_system_error(sqlite3 * db) {
+    inline std::system_error sqlite_to_system_error(sqlite3* db) {
         return {sqlite_errc(sqlite3_errcode(db)), sqlite3_errmsg(db)};
     }
 
@@ -161,11 +161,11 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         throw sqlite_to_system_error(ev);
     }
 
-    [[noreturn]] inline void throw_translated_sqlite_error(sqlite3 * db) {
+    [[noreturn]] inline void throw_translated_sqlite_error(sqlite3* db) {
         throw sqlite_to_system_error(db);
     }
 
-    [[noreturn]] inline void throw_translated_sqlite_error(sqlite3_stmt * stmt) {
+    [[noreturn]] inline void throw_translated_sqlite_error(sqlite3_stmt* stmt) {
         throw sqlite_to_system_error(sqlite3_db_handle(stmt));
     }
 }

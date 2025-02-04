@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple
 #include <string>  //  std::string
 #include <memory>  //  std::unique_ptr
@@ -145,14 +145,13 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Factory function for a column definition from a member object pointer of the object to be mapped.
      */
     template<class M, class... Op, internal::satisfies<std::is_member_object_pointer, M> = true>
-    internal::column_t<M, internal::empty_setter, Op...> make_column(std::string name,
-                                                                     M memberPointer,
-                                                                     Op... constraints) {
+    internal::column_t<M, internal::empty_setter, Op...>
+    make_column(std::string name, M memberPointer, Op... constraints) {
         static_assert(polyfill::conjunction_v<internal::is_column_constraint<Op>...>, "Incorrect constraints pack");
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,

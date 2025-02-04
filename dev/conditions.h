@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <type_traits>  //  std::enable_if, std::is_same, std::remove_const
 #include <vector>  //  std::vector
@@ -813,7 +813,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Explicit FROM function. Usage:
      *  `storage.select(&User::id, from<User>());`
@@ -1227,8 +1227,8 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  }
      */
     template<class S>
-    internal::dynamic_order_by_t<internal::serializer_context<typename S::db_objects_type>> dynamic_order_by(
-        const S& storage) {
+    internal::dynamic_order_by_t<internal::serializer_context<typename S::db_objects_type>>
+    dynamic_order_by(const S& storage) {
         internal::serializer_context_builder<S> builder(storage);
         return builder();
     }

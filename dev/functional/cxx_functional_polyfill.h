@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef _IMPORT_STD_MODULE
+#ifdef SQLITE_ORM_IMPORT_STD_MODULE
 #include <version>
 #else
 #include <functional>

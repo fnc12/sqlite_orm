@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>
 #include <type_traits>  //  std::enable_if
 #include <utility>  //  std::move, std::forward, std::declval
@@ -94,7 +94,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Public interface for syntax sugar for columns. Example: `where(c(&User::id) == 5)` or
      * `storage.update(set(c(&User::name) = "Dua Lipa"));

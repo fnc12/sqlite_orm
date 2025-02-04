@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::remove_pointer, std::remove_reference, std::remove_cvref, std::disjunction
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string

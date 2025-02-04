@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_member_function_pointer, std::is_function, std::remove_const, std::decay, std::is_convertible, std::is_same, std::false_type, std::true_type
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #include <concepts>  //  std::copy_constructible
@@ -64,7 +64,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /** @short Specifies that a type is a function signature (i.e. a function in the C++ type system).
      */
@@ -483,7 +483,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** @short Call a user-defined function.
      *  
      *  Note: Currently the number of call arguments is checked and whether the types of pointer values match,

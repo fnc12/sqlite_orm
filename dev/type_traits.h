@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_same, std::is_empty, std::is_aggregate
 #if __cpp_lib_unwrap_ref >= 201811L
 #include <utility>  //  std::reference_wrapper
@@ -140,7 +140,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     template<class T>
     concept orm_names_type = requires { typename T::type; };

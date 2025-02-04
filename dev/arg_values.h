@@ -4,7 +4,7 @@
 
 #include "row_extractor.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /** @short Wrapper around a dynamically typed value object.
      */

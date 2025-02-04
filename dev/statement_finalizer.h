@@ -1,12 +1,12 @@
 #pragma once
 
 #include <sqlite3.h>
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <memory>  // std::unique_ptr
 #include <type_traits>  // std::integral_constant
 #endif
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Guard class which finalizes `sqlite3_stmt` in dtor

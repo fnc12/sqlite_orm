@@ -1,7 +1,7 @@
 #pragma once
 
 #include <sqlite3.h>
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::true_type, std::false_type, std::make_index_sequence, std::index_sequence
 #include <memory>  //  std::default_delete
 #include <string>  //  std::string, std::wstring
@@ -27,7 +27,7 @@
 #include "xdestroy_handling.h"
 #include "pointer_value.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Helper class used for binding fields to sqlite3 statements.

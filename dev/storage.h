@@ -1,7 +1,7 @@
 #pragma once
 
 #include <sqlite3.h>
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <memory>  //  std::unique_ptr/shared_ptr, std::make_unique
 #include <system_error>  //  std::system_error
 #include <string>  //  std::string
@@ -1705,7 +1705,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /*
      *  Factory function for a storage, from a database file and a bunch of database object definitions.
      */

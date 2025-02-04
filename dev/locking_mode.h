@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <array>  //  std::array
 #include <string>  //  std::string
 #include <utility>  //  std::pair
@@ -10,7 +10,7 @@
 
 #include "serialize_result_type.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     enum class locking_mode : signed char {
         NORMAL = 0,
         EXCLUSIVE = 1,

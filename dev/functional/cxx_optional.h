@@ -2,7 +2,7 @@
 
 #include "cxx_core_features.h"
 
-#ifdef _IMPORT_STD_MODULE
+#ifdef SQLITE_ORM_IMPORT_STD_MODULE
 #include <version>
 #else
 #if SQLITE_ORM_HAS_INCLUDE(<optional>)

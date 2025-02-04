@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if SQLITE_VERSION_NUMBER >= 3024000
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::forward, std::move
@@ -55,7 +55,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3024000
     /**
      *  ON CONFLICT upsert clause builder function.

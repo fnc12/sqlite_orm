@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
 #include <vector>  //  std::vector
@@ -16,7 +16,7 @@
 #include "is_std_ptr.h"
 #include "type_traits.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Is used to print members mapped to objects in storage_t::dump member function.

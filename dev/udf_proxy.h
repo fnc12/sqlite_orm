@@ -1,7 +1,7 @@
 #pragma once
 
 #include <sqlite3.h>
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <assert.h>  //  assert macro
 #include <type_traits>  //  std::true_type, std::false_type
 #include <new>  //  std::bad_alloc

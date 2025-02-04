@@ -15,7 +15,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T>
     internal::into_t<T> into() {
         return {};

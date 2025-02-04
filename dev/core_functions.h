@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <tuple>  //  std::make_tuple, std::tuple_size
 #include <type_traits>  //  std::forward, std::is_base_of, std::enable_if
@@ -630,7 +630,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     using int64 = sqlite_int64;
     using uint64 = sqlite_uint64;
@@ -1888,10 +1888,8 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  The return type is the type of the first argument.
      */
     template<class X, class Y, class... Rest>
-    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X, Y, Rest...> max(
-        X x,
-        Y y,
-        Rest... rest) {
+    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X, Y, Rest...>
+    max(X x, Y y, Rest... rest) {
         return {std::tuple<X, Y, Rest...>{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
     }
 
@@ -1900,10 +1898,8 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  The return type is the type of the first argument.
      */
     template<class X, class Y, class... Rest>
-    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X, Y, Rest...> min(
-        X x,
-        Y y,
-        Rest... rest) {
+    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X, Y, Rest...>
+    min(X x, Y y, Rest... rest) {
         return {std::tuple<X, Y, Rest...>{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
     }
 

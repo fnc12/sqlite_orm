@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::remove_reference
 #include <utility>  //  std::move
 #include <algorithm>  //  std::find_if, std::ranges::find

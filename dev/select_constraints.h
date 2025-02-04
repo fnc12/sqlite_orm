@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <concepts>
 #endif
@@ -411,7 +411,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
     internal::as_optional_t<T> as_optional(T value) {
@@ -685,9 +685,8 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  @note The use of RECURSIVE does not force common table expressions to be recursive.
      */
     template<class Compound, class... CTEs, internal::satisfies<internal::is_compound_operator, Compound> = true>
-    internal::with_t<internal::select_t<Compound>, CTEs...> with_recursive(
-        internal::common_table_expressions<CTEs...> ctes,
-        Compound sel) {
+    internal::with_t<internal::select_t<Compound>, CTEs...>
+    with_recursive(internal::common_table_expressions<CTEs...> ctes, Compound sel) {
         return {true, std::move(ctes), sqlite_orm::select(std::move(sel))};
     }
 

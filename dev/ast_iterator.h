@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <vector>  //  std::vector
 #include <functional>  //  std::reference_wrapper
 #endif

@@ -1,17 +1,17 @@
 // In a module-file, the optional `module;` must appear first; see [cpp.pre].
 module;
 
-#define _BUILD_SQLITE_ORM_MODULE
-#define _IMPORT_STD_MODULE
+#define BUILD_SQLITE_ORM_MODULE
+#define SQLITE_ORM_IMPORT_STD_MODULE
 
-#ifdef _IMPORT_STD_MODULE
+#ifdef SQLITE_ORM_IMPORT_STD_MODULE
 // Including assert.h when using `import std;` below doesn't work (as it leads to multiple defined symbols), hence we include it here
 #include <assert.h>  //  assert macro
 #endif
 
 export module sqlite_orm;
 
-#ifdef _IMPORT_STD_MODULE
+#ifdef SQLITE_ORM_IMPORT_STD_MODULE
 import std.compat;
 #endif
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
 #include <system_error>  //  std::system_error
 #include <ostream>  //  std::ostream
@@ -510,7 +510,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3031000
     template<class T>
     internal::generated_always_t<T> generated_always_as(T expression) {

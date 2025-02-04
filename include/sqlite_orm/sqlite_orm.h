@@ -23,7 +23,7 @@ __pragma(push_macro("max"))
  */
 
 #include <iso646.h>  //  alternative operator representations
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <cstddef>  //  sqlite_orm is using ::size_t, ::ptrdiff_t, std::nullptr_t everywhere, pull it in early
 // earlier libcxx versions didn't make std::nullptr_t available in the global namespace via stddef.h,
 // though it should have according to C++ documentation (see https://en.cppreference.com/w/cpp/types/std::nullptr_t#Notes).
@@ -205,10 +205,10 @@ using std::nullptr_t;
 #define SQLITE_ORM_BROKEN_NONTEMPLATE_CONCEPTS
 #endif
 
-#ifdef _BUILD_SQLITE_ORM_MODULE
-#define _EXPORT_SQLITE_ORM export
+#ifdef BUILD_SQLITE_ORM_MODULE
+#define SQLITE_ORM_EXPORT export
 #else
-#define _EXPORT_SQLITE_ORM
+#define SQLITE_ORM_EXPORT
 #endif
 
 #if SQLITE_ORM_HAS_INCLUDE(<version>)
@@ -296,7 +296,7 @@ namespace sqlite_orm {
 #pragma once
 
 #include <sqlite3.h>
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <memory>  //  std::unique_ptr/shared_ptr, std::make_unique
 #include <system_error>  //  std::system_error
 #include <string>  //  std::string
@@ -314,7 +314,7 @@ namespace sqlite_orm {
 
 // #include "cxx_core_features.h"
 
-#ifdef _IMPORT_STD_MODULE
+#ifdef SQLITE_ORM_IMPORT_STD_MODULE
 #include <version>
 #else
 #if SQLITE_ORM_HAS_INCLUDE(<optional>)
@@ -328,7 +328,7 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
-#ifdef _IMPORT_STD_MODULE
+#ifdef SQLITE_ORM_IMPORT_STD_MODULE
 #include <version>
 #else
 #include <type_traits>
@@ -519,7 +519,7 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_functional_polyfill.h"
 
-#ifdef _IMPORT_STD_MODULE
+#ifdef SQLITE_ORM_IMPORT_STD_MODULE
 #include <version>
 #else
 #include <functional>
@@ -533,7 +533,7 @@ namespace sqlite_orm {
 
 // #include "../member_traits/member_traits.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_function, std::true_type, std::false_type
 #endif
 
@@ -699,7 +699,7 @@ namespace sqlite_orm {
 
 // #include "functional/static_magic.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifndef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
 #include <type_traits>  //  std::false_type, std::true_type, std::integral_constant
 #endif
@@ -809,7 +809,7 @@ namespace sqlite_orm {
  *  - "higher order" denotes a metafunction that operates on another metafunction (i.e. takes it as an argument).
  */
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::true_type, std::false_type, std::is_same, std::negation, std::conjunction, std::disjunction
 #include <initializer_list>
 #endif
@@ -1364,7 +1364,7 @@ namespace sqlite_orm {
 
 // #include "tuple_helper/tuple_filter.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::integral_constant, std::index_sequence, std::conditional, std::declval
 #include <tuple>  //  std::tuple, std::tuple_cat, std::tuple_element
 #endif
@@ -1373,7 +1373,7 @@ namespace sqlite_orm {
 
 // #include "../functional/index_sequence_util.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::index_sequence
 #endif
 
@@ -1531,7 +1531,7 @@ namespace sqlite_orm {
 
 // #include "tuple_helper/tuple_transformer.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::remove_reference, std::common_type, std::index_sequence, std::make_index_sequence, std::forward, std::move, std::integral_constant, std::declval
 #include <tuple>  //  std::tuple_size, std::get
 #endif
@@ -1650,7 +1650,7 @@ namespace sqlite_orm {
 
 // #include "tuple_helper/tuple_iteration.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::get, std::tuple_element, std::tuple_size
 #include <type_traits>  //  std::index_sequence, std::make_index_sequence
 #include <utility>  //  std::forward, std::move
@@ -1740,7 +1740,7 @@ namespace sqlite_orm {
 
 // #include "type_traits.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_same, std::is_empty, std::is_aggregate
 #if __cpp_lib_unwrap_ref >= 201811L
 #include <utility>  //  std::reference_wrapper
@@ -1881,7 +1881,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     template<class T>
     concept orm_names_type = requires { typename T::type; };
@@ -1890,7 +1890,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "alias.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_same
 #include <utility>  //  std::make_index_sequence, std::move
 #include <string>  //  std::string
@@ -1906,7 +1906,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "functional/cstring_literal.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <utility>  //  std::index_sequence
 #include <algorithm>  //  std::copy_n
@@ -1946,7 +1946,7 @@ namespace sqlite_orm::internal {
 
 // #include "alias_traits.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_base_of, std::is_same
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <concepts>
@@ -1959,7 +1959,7 @@ namespace sqlite_orm::internal {
 
 // #include "table_reference.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::remove_const, std::type_identity
 #endif
 
@@ -1998,7 +1998,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     /** @short Specifies that a type is a reference of a concrete table, especially of a derived class.
 
@@ -2014,7 +2014,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 #endif
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /** @short Base class for a custom table alias, column alias or expression alias.
      */
@@ -2074,7 +2074,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<class A>
     concept orm_alias = std::derived_from<A, alias_tag>;
@@ -2134,7 +2134,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "table_type_of.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_convertible
 #endif
 
@@ -2232,7 +2232,7 @@ namespace sqlite_orm {
 
 // #include "column_pointer.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_convertible
 #include <utility>  // std::move
 #endif
@@ -2281,7 +2281,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Explicitly refer to a column, used in contexts
      *  where the automatic object mapping deduction needs to be overridden.
@@ -2572,7 +2572,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Using a column pointer, create a column reference to an aliased table column.
      *  
@@ -2881,7 +2881,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 // #include "error_code.h"
 
 #include <sqlite3.h>
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <system_error>  // std::error_code, std::system_error
 #include <string>  //  std::string
 #include <stdexcept>
@@ -2889,7 +2889,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 #include <type_traits>
 #endif
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /** @short Enables classifying sqlite error codes.
 
@@ -2932,7 +2932,7 @@ namespace std {
     struct is_error_code_enum<::sqlite_orm::orm_error_code> : true_type {};
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     class orm_error_category : public std::error_category {
       public:
@@ -3016,7 +3016,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<typename... T>
-    std::string get_error_message(sqlite3 * db, T && ... args) {
+    std::string get_error_message(sqlite3* db, T&&... args) {
         std::ostringstream stream;
         using unpack = int[];
         (void)unpack{0, (stream << args, 0)...};
@@ -3025,7 +3025,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<typename... T>
-    [[noreturn]] void throw_error(sqlite3 * db, T && ... args) {
+    [[noreturn]] void throw_error(sqlite3* db, T&&... args) {
         throw std::system_error{sqlite_errc(sqlite3_errcode(db)), get_error_message(db, std::forward<T>(args)...)};
     }
 
@@ -3033,7 +3033,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         return {sqlite_errc(ev)};
     }
 
-    inline std::system_error sqlite_to_system_error(sqlite3 * db) {
+    inline std::system_error sqlite_to_system_error(sqlite3* db) {
         return {sqlite_errc(sqlite3_errcode(db)), sqlite3_errmsg(db)};
     }
 
@@ -3041,18 +3041,18 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
         throw sqlite_to_system_error(ev);
     }
 
-    [[noreturn]] inline void throw_translated_sqlite_error(sqlite3 * db) {
+    [[noreturn]] inline void throw_translated_sqlite_error(sqlite3* db) {
         throw sqlite_to_system_error(db);
     }
 
-    [[noreturn]] inline void throw_translated_sqlite_error(sqlite3_stmt * stmt) {
+    [[noreturn]] inline void throw_translated_sqlite_error(sqlite3_stmt* stmt) {
         throw sqlite_to_system_error(sqlite3_db_handle(stmt));
     }
 }
 
 // #include "type_printer.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <memory>  //  std::shared_ptr, std::unique_ptr
 #include <vector>  //  std::vector
@@ -3065,12 +3065,12 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "is_std_ptr.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>
 #include <memory>
 #endif
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Specialization for optional type (std::shared_ptr / std::unique_ptr).
@@ -3097,7 +3097,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     };
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  This class transforms a C++ type to a sqlite type name (int -> INTEGER, ...)
@@ -3171,7 +3171,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "constraints.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
 #include <system_error>  //  std::system_error
 #include <ostream>  //  std::ostream
@@ -3185,7 +3185,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "tuple_helper/same_or_void.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::common_type
 #endif
 
@@ -3750,7 +3750,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3031000
     template<class T>
     internal::generated_always_t<T> generated_always_as(T expression) {
@@ -3888,7 +3888,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "field_printer.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
 #include <vector>  //  std::vector
@@ -3907,7 +3907,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "type_traits.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Is used to print members mapped to objects in storage_t::dump member function.
@@ -4063,7 +4063,7 @@ namespace sqlite_orm {
 
 // #include "rowid.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #endif
 
@@ -4106,7 +4106,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     inline internal::rowid_t rowid() {
         return {};
     }
@@ -4137,7 +4137,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "operators.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::false_type, std::true_type
 #include <utility>  //  std::move
 #endif
@@ -4146,7 +4146,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "is_base_of_template.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::true_type, std::false_type, std::declval
 #endif
 
@@ -4193,7 +4193,7 @@ namespace sqlite_orm {
 
 // #include "cxx_core_features.h"
 
-#ifdef _IMPORT_STD_MODULE
+#ifdef SQLITE_ORM_IMPORT_STD_MODULE
 #include <version>
 #else
 #if SQLITE_ORM_HAS_INCLUDE(<string_view>)
@@ -4205,7 +4205,7 @@ namespace sqlite_orm {
 #define SQLITE_ORM_STRING_VIEW_SUPPORTED
 #endif
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <string>  //  std::string
 #endif
@@ -4426,7 +4426,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Public interface for || concatenation operator. Example: `select(conc(&User::name, "@gmail.com"));` => SELECT
      * name || '@gmail.com' FROM users
@@ -4516,7 +4516,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "select_constraints.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <concepts>
 #endif
@@ -4573,7 +4573,7 @@ namespace sqlite_orm {
 
 // #include "ast/where.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::false_type, std::true_type
 #include <utility>  //  std::move
 #endif
@@ -4613,7 +4613,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  WHERE clause. Use it to add WHERE conditions wherever you like.
      *  C is expression type. Can be any expression like: is_equal_t, is_null_t, exists_t etc
@@ -4631,7 +4631,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "ast/group_by.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple, std::make_tuple
 #include <type_traits>  //  std::true_type, std::false_type
 #include <utility>  //  std::forward, std::move
@@ -4672,7 +4672,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  GROUP BY column.
      *  Example: storage.get_all<Employee>(group_by(&Employee::name))
@@ -4685,7 +4685,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "core_functions.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <tuple>  //  std::make_tuple, std::tuple_size
 #include <type_traits>  //  std::forward, std::is_base_of, std::enable_if
@@ -4703,7 +4703,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "conditions.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <type_traits>  //  std::enable_if, std::is_same, std::remove_const
 #include <vector>  //  std::vector
@@ -4774,7 +4774,7 @@ namespace sqlite_orm {
 
 // #include "expression.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>
 #include <type_traits>  //  std::enable_if
 #include <utility>  //  std::move, std::forward, std::declval
@@ -4870,7 +4870,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Public interface for syntax sugar for columns. Example: `where(c(&User::id) == 5)` or
      * `storage.update(set(c(&User::name) = "Dua Lipa"));
@@ -5691,7 +5691,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Explicit FROM function. Usage:
      *  `storage.select(&User::id, from<User>());`
@@ -6105,8 +6105,8 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  }
      */
     template<class S>
-    internal::dynamic_order_by_t<internal::serializer_context<typename S::db_objects_type>> dynamic_order_by(
-        const S& storage) {
+    internal::dynamic_order_by_t<internal::serializer_context<typename S::db_objects_type>>
+    dynamic_order_by(const S& storage) {
         internal::serializer_context_builder<S> builder(storage);
         return builder();
     }
@@ -6182,7 +6182,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T>
     internal::into_t<T> into() {
         return {};
@@ -6800,7 +6800,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     using int64 = sqlite_int64;
     using uint64 = sqlite_uint64;
@@ -8058,10 +8058,8 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  The return type is the type of the first argument.
      */
     template<class X, class Y, class... Rest>
-    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X, Y, Rest...> max(
-        X x,
-        Y y,
-        Rest... rest) {
+    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X, Y, Rest...>
+    max(X x, Y y, Rest... rest) {
         return {std::tuple<X, Y, Rest...>{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
     }
 
@@ -8070,10 +8068,8 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  The return type is the type of the first argument.
      */
     template<class X, class Y, class... Rest>
-    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X, Y, Rest...> min(
-        X x,
-        Y y,
-        Rest... rest) {
+    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X, Y, Rest...>
+    min(X x, Y y, Rest... rest) {
         return {std::tuple<X, Y, Rest...>{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
     }
 
@@ -8344,7 +8340,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "cte_moniker.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <concepts>
@@ -8412,7 +8408,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     inline namespace literals {
         /**
          *  cte_moniker<'n'> from a numeric literal.
@@ -8439,7 +8435,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "schema/column.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple
 #include <string>  //  std::string
 #include <memory>  //  std::unique_ptr
@@ -8459,7 +8455,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "../type_is_nullable.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::false_type, std::true_type, std::enable_if
 #include <memory>  //  std::shared_ptr, std::unique_ptr
 #endif
@@ -8467,7 +8463,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  This is class that tells `sqlite_orm` that type is nullable. Nullable types
@@ -8631,14 +8627,13 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Factory function for a column definition from a member object pointer of the object to be mapped.
      */
     template<class M, class... Op, internal::satisfies<std::is_member_object_pointer, M> = true>
-    internal::column_t<M, internal::empty_setter, Op...> make_column(std::string name,
-                                                                     M memberPointer,
-                                                                     Op... constraints) {
+    internal::column_t<M, internal::empty_setter, Op...>
+    make_column(std::string name, M memberPointer, Op... constraints) {
         static_assert(polyfill::conjunction_v<internal::is_column_constraint<Op>...>, "Incorrect constraints pack");
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
@@ -9073,7 +9068,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
     internal::as_optional_t<T> as_optional(T value) {
@@ -9347,9 +9342,8 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  @note The use of RECURSIVE does not force common table expressions to be recursive.
      */
     template<class Compound, class... CTEs, internal::satisfies<internal::is_compound_operator, Compound> = true>
-    internal::with_t<internal::select_t<Compound>, CTEs...> with_recursive(
-        internal::common_table_expressions<CTEs...> ctes,
-        Compound sel) {
+    internal::with_t<internal::select_t<Compound>, CTEs...>
+    with_recursive(internal::common_table_expressions<CTEs...> ctes, Compound sel) {
         return {true, std::move(ctes), sqlite_orm::select(std::move(sel))};
     }
 
@@ -9456,7 +9450,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 // #include "statement_binder.h"
 
 #include <sqlite3.h>
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::true_type, std::false_type, std::make_index_sequence, std::index_sequence
 #include <memory>  //  std::default_delete
 #include <string>  //  std::string, std::wstring
@@ -9487,13 +9481,13 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "arithmetic_tag.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  // std::is_integral
 #endif
 
 // #include "functional/mpl/conditional.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Helper classes used by statement_binder and row_extractor.
@@ -9513,7 +9507,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "xdestroy_handling.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  // std::integral_constant
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #include <concepts>
@@ -9522,7 +9516,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     using xdestroy_fn_t = void (*)(void*);
     using null_xdestroy_t = std::integral_constant<xdestroy_fn_t, nullptr>;
@@ -9687,7 +9681,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     /**
@@ -9765,7 +9759,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "pointer_value.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if SQLITE_VERSION_NUMBER >= 3020000
 #include <type_traits>
 #include <memory>
@@ -9793,7 +9787,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     inline namespace literals {
         template<internal::cstring_literal tag>
@@ -9956,7 +9950,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 #endif
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Wrap a pointer, its type and its deleter function for binding it to a statement.
      *  
@@ -9965,7 +9959,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  the deleter when the statement finishes.
      */
     template<class T, class P, class D>
-    auto bind_pointer(P * p, D d) noexcept -> pointer_binding<P, T, D> {
+    auto bind_pointer(P* p, D d) noexcept -> pointer_binding<P, T, D> {
         return {p, std::move(d)};
     }
 
@@ -9975,27 +9969,25 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<typename B>
-    auto bind_pointer(typename B::qualified_type * p, typename B::deleter_type d = {}) noexcept -> B {
+    auto bind_pointer(typename B::qualified_type* p, typename B::deleter_type d = {}) noexcept -> B {
         return B{p, std::move(d)};
     }
 
     template<class T, class P, class D>
-    [[deprecated("Use the better named function `bind_pointer(...)`")]] pointer_binding<P, T, D> bindable_pointer(
-        P * p,
-        D d) noexcept {
+    [[deprecated("Use the better named function `bind_pointer(...)`")]] pointer_binding<P, T, D>
+    bindable_pointer(P* p, D d) noexcept {
         return bind_pointer<T>(p, std::move(d));
     }
 
     template<class T, class P, class D>
-    [[deprecated("Use the better named function `bind_pointer(...)`")]] pointer_binding<P, T, D> bindable_pointer(
-        std::unique_ptr<P, D> p) noexcept {
+    [[deprecated("Use the better named function `bind_pointer(...)`")]] pointer_binding<P, T, D>
+    bindable_pointer(std::unique_ptr<P, D> p) noexcept {
         return bind_pointer<T>(p.release(), p.get_deleter());
     }
 
     template<typename B>
-    [[deprecated("Use the better named function `bind_pointer(...)`")]] B bindable_pointer(
-        typename B::qualified_type * p,
-        typename B::deleter_type d = {}) noexcept {
+    [[deprecated("Use the better named function `bind_pointer(...)`")]] B
+    bindable_pointer(typename B::qualified_type* p, typename B::deleter_type d = {}) noexcept {
         return bind_pointer<B>(p, std::move(d));
     }
 
@@ -10008,7 +10000,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  the deleter when the statement finishes.
      */
     template<orm_pointer_type auto tag, class P, class D>
-    auto bind_pointer(P * p, D d) noexcept -> pointer_binding<P, decltype(tag), D> {
+    auto bind_pointer(P* p, D d) noexcept -> pointer_binding<P, decltype(tag), D> {
         return {p, std::move(d)};
     }
 
@@ -10025,26 +10017,26 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  and sqlite assumes the object pointed to is valid throughout the lifetime of a statement.
      */
     template<class T, class P>
-    auto bind_pointer_statically(P * p) noexcept -> static_pointer_binding<P, T> {
+    auto bind_pointer_statically(P* p) noexcept -> static_pointer_binding<P, T> {
         return bind_pointer<T>(p, null_xdestroy_f);
     }
 
     template<typename B>
-    B bind_pointer_statically(typename B::qualified_type * p,
+    B bind_pointer_statically(typename B::qualified_type* p,
                               typename B::deleter_type* /*exposition*/ = nullptr) noexcept {
         return bind_pointer<B>(p);
     }
 
     template<class T, class P>
     [[deprecated("Use the better named function `bind_pointer_statically(...)`")]] static_pointer_binding<P, T>
-    statically_bindable_pointer(P * p) noexcept {
+    statically_bindable_pointer(P* p) noexcept {
         return bind_pointer<T>(p, null_xdestroy_f);
     }
 
     template<typename B>
-    [[deprecated("Use the better named function `bind_pointer_statically(...)`")]] B statically_bindable_pointer(
-        typename B::qualified_type * p,
-        typename B::deleter_type* /*exposition*/ = nullptr) noexcept {
+    [[deprecated("Use the better named function `bind_pointer_statically(...)`")]] B
+    statically_bindable_pointer(typename B::qualified_type* p,
+                                typename B::deleter_type* /*exposition*/ = nullptr) noexcept {
         return bind_pointer<B>(p);
     }
 
@@ -10056,7 +10048,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  and sqlite assumes the object pointed to is valid throughout the lifetime of a statement.
      */
     template<orm_pointer_type auto tag, class P>
-    auto bind_pointer_statically(P * p) noexcept -> static_pointer_binding<P, decltype(tag)> {
+    auto bind_pointer_statically(P* p) noexcept -> static_pointer_binding<P, decltype(tag)> {
         return bind_pointer<tag>(p, null_xdestroy_f);
     }
 #endif
@@ -10071,7 +10063,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 }
 #endif
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Helper class used for binding fields to sqlite3 statements.
@@ -10418,7 +10410,7 @@ namespace sqlite_orm {
 
 // #include "column_result.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_same, std::decay, std::is_arithmetic, std::is_base_of
 #include <functional>  //  std::reference_wrapper
 #endif
@@ -10431,7 +10423,7 @@ namespace sqlite_orm {
 
 // #include "tuple_helper/tuple_fy.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>
 #endif
 
@@ -10465,7 +10457,7 @@ namespace sqlite_orm {
 
 // #include "mapped_type_proxy.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::remove_const
 #endif
 
@@ -10554,7 +10546,7 @@ namespace sqlite_orm {
 
 // #include "cte_types.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #include <type_traits>
 #include <tuple>
@@ -10620,7 +10612,7 @@ namespace sqlite_orm {
 
 // #include "storage_traits.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple
 #endif
 
@@ -10634,7 +10626,7 @@ namespace sqlite_orm {
 
 // #include "storage_lookup.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::true_type, std::false_type, std::remove_const, std::enable_if, std::is_base_of, std::is_void
 #include <tuple>
 #include <utility>  //  std::index_sequence, std::make_index_sequence
@@ -10840,7 +10832,7 @@ namespace sqlite_orm {
 
 // #include "function.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_member_function_pointer, std::is_function, std::remove_const, std::decay, std::is_convertible, std::is_same, std::false_type, std::true_type
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #include <concepts>  //  std::copy_constructible
@@ -10992,7 +10984,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /** @short Specifies that a type is a function signature (i.e. a function in the C++ type system).
      */
@@ -11411,7 +11403,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** @short Call a user-defined function.
      *  
      *  Note: Currently the number of call arguments is checked and whether the types of pointer values match,
@@ -11484,7 +11476,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     inline internal::current_time_t current_time() {
         return {};
     }
@@ -11826,11 +11818,11 @@ namespace sqlite_orm {
 
 // #include "sync_schema_result.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <ostream>
 #endif
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     enum class sync_schema_result {
 
@@ -11890,12 +11882,12 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "table_info.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <utility>  //  std::move
 #endif
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     struct table_info {
         int cid = 0;
@@ -11942,7 +11934,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "storage_impl.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #endif
 
@@ -11966,7 +11958,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "schema/table.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <type_traits>  //  std::remove_const, std::is_member_pointer, std::true_type, std::false_type
 #include <vector>  //  std::vector
@@ -12021,7 +12013,7 @@ namespace sqlite_orm {
 
 // #include "index.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple, std::make_tuple, std::declval, std::tuple_element_t
 #include <string>  //  std::string
 #include <utility>  //  std::forward
@@ -12031,7 +12023,7 @@ namespace sqlite_orm {
 
 // #include "../indexed_column.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <utility>  //  std::move
 #endif
@@ -12086,7 +12078,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      * Use this function to specify indexed column inside `make_index` function call.
      * Example: make_index("index_name", indexed_column(&User::id).asc())
@@ -12124,7 +12116,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T, class... Cols>
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
                                                                                                       Cols... cols) {
@@ -12553,7 +12545,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3009000
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::using_fts5_t<T, Cs...> using_fts5(Cs... columns) {
@@ -12731,7 +12723,7 @@ namespace sqlite_orm {
 
 // #include "journal_mode.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <array>  //  std::array
 #include <string>  //  std::string
 #include <utility>  //  std::pair
@@ -12747,7 +12739,7 @@ namespace sqlite_orm {
 #undef DELETE
 #endif
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Caps case because of:
@@ -12823,7 +12815,7 @@ namespace sqlite_orm {
 
 // #include "mapped_view.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <sqlite3.h>
 #include <utility>  //  std::forward, std::move
 #endif
@@ -12831,7 +12823,7 @@ namespace sqlite_orm {
 // #include "row_extractor.h"
 
 #include <sqlite3.h>
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::enable_if
 #include <cstdlib>  //  ::atof, ::atoi, ::atoll
 #include <cstring>  //  ::strlen
@@ -12866,7 +12858,7 @@ namespace sqlite_orm {
 
 // #include "locking_mode.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <array>  //  std::array
 #include <string>  //  std::string
 #include <utility>  //  std::pair
@@ -12876,7 +12868,7 @@ namespace sqlite_orm {
 
 // #include "serialize_result_type.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     enum class locking_mode : signed char {
         NORMAL = 0,
         EXCLUSIVE = 1,
@@ -12931,7 +12923,7 @@ namespace sqlite_orm {
 
 // #include "type_traits.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Helper for casting values originating from SQL to C++ typed values, usually from rows of a result set.
@@ -13021,7 +13013,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class R>
     int extract_single_value(void* data, int argc, char** argv, char**) {
         auto& res = *(R*)data;
@@ -13489,7 +13481,7 @@ namespace sqlite_orm {
 // #include "mapped_iterator.h"
 
 #include <sqlite3.h>
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <memory>  //  std::shared_ptr, std::make_shared
 #include <utility>  //  std::move
 #include <iterator>  //  std::input_iterator_tag
@@ -13500,12 +13492,12 @@ namespace sqlite_orm {
 // #include "statement_finalizer.h"
 
 #include <sqlite3.h>
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <memory>  // std::unique_ptr
 #include <type_traits>  // std::integral_constant
 #endif
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Guard class which finalizes `sqlite3_stmt` in dtor
@@ -13519,7 +13511,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 // #include "object_from_column_builder.h"
 
 #include <sqlite3.h>
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_member_object_pointer
 #include <utility>  //  std::move
 #endif
@@ -13607,14 +13599,14 @@ namespace sqlite_orm {
 // #include "util.h"
 
 #include <sqlite3.h>
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <utility>  //  std::move
 #endif
 
 // #include "error_code.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /** 
      *  Escape the provided character in the given string by doubling it.
@@ -13845,7 +13837,7 @@ namespace sqlite_orm {
 
 // #include "ast_iterator.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <vector>  //  std::vector
 #include <functional>  //  std::reference_wrapper
 #endif
@@ -13867,7 +13859,7 @@ namespace sqlite_orm {
 // #include "prepared_statement.h"
 
 #include <sqlite3.h>
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <memory>  //  std::unique_ptr
 #include <iterator>  //  std::iterator_traits
 #include <string>  //  std::string
@@ -13885,7 +13877,7 @@ namespace sqlite_orm {
 // #include "connection_holder.h"
 
 #include <sqlite3.h>
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <atomic>
 #include <string>  //  std::string
 #endif
@@ -13971,7 +13963,7 @@ namespace sqlite_orm {
 
 // #include "values.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::forward, std::move
@@ -14004,7 +13996,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class... Args>
     internal::values_t<Args...> values(Args... args) {
         return {{std::forward<Args>(args)...}};
@@ -14022,7 +14014,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "ast/upsert_clause.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if SQLITE_VERSION_NUMBER >= 3024000
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::forward, std::move
@@ -14077,7 +14069,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3024000
     /**
      *  ON CONFLICT upsert clause builder function.
@@ -14100,7 +14092,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "ast/set.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple, std::tuple_size
 #include <string>  //  std::string
 #include <vector>  //  std::vector
@@ -14112,7 +14104,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "../table_name_collector.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <set>  //  std::set
 #include <string>  //  std::string
 #include <utility>  //  std::pair, std::move
@@ -14300,7 +14292,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  SET keyword used in UPDATE ... SET queries.
      *  Args must have `assign_t` type. E.g. set(assign(&User::id, 5)) or set(c(&User::id) = 5)
@@ -14621,7 +14613,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     inline internal::insert_constraint or_rollback() {
         return {internal::conflict_action::rollback};
     }
@@ -15049,7 +15041,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     template<orm_refers_to_table auto mapped,
              class R = std::vector<internal::mapped_type_proxy_t<decltype(mapped)>>,
              class... Args>
-    auto get_all(Args && ... conditions) {
+    auto get_all(Args&&... conditions) {
         return get_all<internal::auto_decay_table_ref_t<mapped>, R>(std::forward<Args>(conditions)...);
     }
 #endif
@@ -15119,7 +15111,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     template<orm_table_reference auto table,
              class R = std::vector<internal::auto_decay_table_ref_t<table>>,
              class... Args>
-    auto get_all_optional(Args && ... conditions) {
+    auto get_all_optional(Args&&... conditions) {
         return get_all_optional<internal::auto_decay_table_ref_t<table>, R>(std::forward<Args>(conditions)...);
     }
 #endif
@@ -15131,7 +15123,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "ast/excluded.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
 #endif
 
@@ -15147,7 +15139,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T>
     internal::excluded_t<T> excluded(T expression) {
         return {std::move(expression)};
@@ -15164,7 +15156,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "ast/exists.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
 #endif
 
@@ -15185,7 +15177,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  EXISTS(condition).
      *  Example: storage.select(columns(&Agent::code, &Agent::name, &Agent::workingArea, &Agent::comission),
@@ -15204,7 +15196,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "ast/match.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>
 #endif
 
@@ -15221,7 +15213,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T, class X>
     internal::match_t<T, X> match(X argument) {
         return {std::move(argument)};
@@ -15994,7 +15986,7 @@ inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::m
 // #include "result_set_view.h"
 
 #include <sqlite3.h>
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move, std::remove_cvref
 #include <functional>  //  std::reference_wrapper
 #if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED) &&           \
@@ -16010,7 +16002,7 @@ inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::m
 // #include "result_set_iterator.h"
 
 #include <sqlite3.h>
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
 #include <iterator>  //  std::input_iterator_tag, std::default_sentinel_t
 #include <functional>  //  std::reference_wrapper
@@ -16178,7 +16170,7 @@ inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::r
 // #include "storage_base.h"
 
 #include <sqlite3.h>
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <cstdlib>  // atoi
 #include <memory>  //  std::allocator
 #include <functional>  //  std::function, std::bind, std::bind_front
@@ -16197,7 +16189,7 @@ inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::r
 
 // #include "functional/cxx_tuple_polyfill.h"
 
-#ifdef _IMPORT_STD_MODULE
+#ifdef SQLITE_ORM_IMPORT_STD_MODULE
 #include <version>
 #else
 #include <tuple>  //  std::apply; std::tuple_size
@@ -16239,7 +16231,7 @@ namespace sqlite_orm {
 // #include "pragma.h"
 
 #include <sqlite3.h>
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <functional>  //  std::function
 #include <memory>  // std::shared_ptr
@@ -16262,7 +16254,7 @@ namespace sqlite_orm {
 
 // #include "serializing_util.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::index_sequence, std::remove_cvref
 #include <tuple>
 #include <array>
@@ -16962,7 +16954,7 @@ namespace sqlite_orm {
 // #include "limit_accessor.h"
 
 #include <sqlite3.h>
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <map>  //  std::map
 #include <functional>  //  std::function
 #include <memory>  //  std::shared_ptr
@@ -17103,7 +17095,7 @@ namespace sqlite_orm {
 
 // #include "transaction_guard.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <functional>  //  std::function
 #include <utility>  //  std::move
 #endif
@@ -17191,7 +17183,7 @@ namespace sqlite_orm {
 // #include "backup.h"
 
 #include <sqlite3.h>
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <system_error>  //  std::system_error
 #include <string>  //  std::string
 #include <memory>
@@ -17270,7 +17262,7 @@ namespace sqlite_orm {
 // #include "values_to_tuple.h"
 
 #include <sqlite3.h>
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_same, std::index_sequence, std::make_index_sequence
 #include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
 #endif
@@ -17287,7 +17279,7 @@ namespace sqlite_orm {
 
 // #include "row_extractor.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /** @short Wrapper around a dynamically typed value object.
      */
@@ -17472,7 +17464,7 @@ namespace sqlite_orm {
 // #include "udf_proxy.h"
 
 #include <sqlite3.h>
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <assert.h>  //  assert macro
 #include <type_traits>  //  std::true_type, std::false_type
 #include <new>  //  std::bad_alloc
@@ -18705,7 +18697,7 @@ namespace sqlite_orm {
 
 // #include "expression_object_type.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::decay, std::remove_reference
 #include <functional>  //  std::reference_wrapper
 #endif
@@ -18824,7 +18816,7 @@ namespace sqlite_orm {
 
 // #include "statement_serializer.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::remove_pointer, std::remove_reference, std::remove_cvref, std::disjunction
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string
@@ -18867,7 +18859,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     inline internal::rank_t rank() {
         return {};
     }
@@ -18903,7 +18895,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "column_names_getter.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_base_of
 #include <string>  //  std::string
 #include <vector>  //  std::vector
@@ -19045,7 +19037,7 @@ namespace sqlite_orm {
 
 // #include "cte_column_names_collector.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #include <string>
 #include <vector>
@@ -19272,7 +19264,7 @@ namespace sqlite_orm {
 
 // #include "order_by_serializer.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <array>
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
@@ -19365,7 +19357,7 @@ namespace sqlite_orm {
 
 // #include "schema/triggers.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <memory>
 #include <sstream>
 #include <string>
@@ -19588,7 +19580,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  NEW.expression function used within TRIGGER expressions
      */
@@ -21965,7 +21957,7 @@ namespace sqlite_orm {
 
 // #include "cte_storage.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #include <type_traits>
 #include <tuple>
@@ -21992,7 +21984,7 @@ namespace sqlite_orm {
 
 // #include "column_expression.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_same, std::decay, std::is_arithmetic
 #include <tuple>  //  std::tuple
 #include <functional>  //  std::reference_wrapper
@@ -24062,7 +24054,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /*
      *  Factory function for a storage, from a database file and a bunch of database object definitions.
      */
@@ -24090,7 +24082,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
  *  this file is also used to provide definitions of interface methods 'hitting the database'.
  */
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <memory>  //  std::make_unique
 #endif
 
@@ -24100,7 +24092,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "../default_value_extractor.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #endif
 
@@ -24159,7 +24151,7 @@ namespace sqlite_orm {
  *  this file is also used to provide definitions of interface methods 'hitting the database'.
  */
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::remove_reference
 #include <utility>  //  std::move
 #include <algorithm>  //  std::find_if, std::ranges::find
@@ -24234,7 +24226,7 @@ namespace sqlite_orm {
  *  e.g. usage of the dbstat table.
  */
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_same
 #include <sstream>  //  std::stringstream
 #include <iomanip>  //  std::flush
@@ -24246,7 +24238,7 @@ namespace sqlite_orm {
 
 // #include "../sqlite_schema_table.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #endif
 
@@ -24258,7 +24250,7 @@ namespace sqlite_orm {
 
 // #include "alias.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** 
      *  SQLite's "schema table" that stores the schema for a database.
      *  
@@ -24297,7 +24289,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "../eponymous_vtabs/dbstat.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
 #include <string>  //  std::string
 #endif
@@ -24309,7 +24301,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 // #include "../column_pointer.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
     struct dbstat {
         std::string name;
@@ -24486,7 +24478,7 @@ namespace sqlite_orm {
 
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_same, std::remove_reference, std::remove_cvref
 #include <tuple>  //  std::get
 #endif
@@ -24503,7 +24495,7 @@ namespace sqlite_orm {
 
 // #include "node_tuple.h"
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::pair
@@ -24780,10 +24772,10 @@ namespace sqlite_orm {
 
 // #include "expression_object_type.h"
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     template<int N, class It, class L, class O>
-    auto& get(internal::prepared_statement_t<internal::insert_range_t<It, L, O>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::insert_range_t<It, L, O>>& statement) {
         return std::get<N>(statement.expression.range);
     }
 
@@ -24793,7 +24785,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<int N, class It, class L, class O>
-    auto& get(internal::prepared_statement_t<internal::replace_range_t<It, L, O>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::replace_range_t<It, L, O>>& statement) {
         return std::get<N>(statement.expression.range);
     }
 
@@ -24803,7 +24795,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<int N, class T, class... Ids>
-    auto& get(internal::prepared_statement_t<internal::get_t<T, Ids...>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::get_t<T, Ids...>>& statement) {
         return internal::get_ref(std::get<N>(statement.expression.ids));
     }
 
@@ -24813,7 +24805,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<int N, class T, class... Ids>
-    auto& get(internal::prepared_statement_t<internal::get_pointer_t<T, Ids...>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::get_pointer_t<T, Ids...>>& statement) {
         return internal::get_ref(std::get<N>(statement.expression.ids));
     }
 
@@ -24824,7 +24816,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<int N, class T, class... Ids>
-    auto& get(internal::prepared_statement_t<internal::get_optional_t<T, Ids...>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::get_optional_t<T, Ids...>>& statement) {
         return internal::get_ref(std::get<N>(statement.expression.ids));
     }
 
@@ -24835,7 +24827,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<int N, class T, class... Ids>
-    auto& get(internal::prepared_statement_t<internal::remove_t<T, Ids...>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::remove_t<T, Ids...>>& statement) {
         return internal::get_ref(std::get<N>(statement.expression.ids));
     }
 
@@ -24845,7 +24837,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<int N, class T>
-    auto& get(internal::prepared_statement_t<internal::update_t<T>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::update_t<T>>& statement) {
         static_assert(N == 0, "get<> works only with 0 argument for update statement");
         return internal::get_ref(statement.expression.object);
     }
@@ -24857,7 +24849,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<int N, class T, class... Cols>
-    auto& get(internal::prepared_statement_t<internal::insert_explicit<T, Cols...>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::insert_explicit<T, Cols...>>& statement) {
         static_assert(N == 0, "get<> works only with 0 argument for insert statement");
         return internal::get_ref(statement.expression.obj);
     }
@@ -24869,7 +24861,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<int N, class T>
-    auto& get(internal::prepared_statement_t<internal::replace_t<T>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::replace_t<T>>& statement) {
         static_assert(N == 0, "get<> works only with 0 argument for replace statement");
         return internal::get_ref(statement.expression.object);
     }
@@ -24881,7 +24873,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<int N, class T>
-    auto& get(internal::prepared_statement_t<internal::insert_t<T>> & statement) {
+    auto& get(internal::prepared_statement_t<internal::insert_t<T>>& statement) {
         static_assert(N == 0, "get<> works only with 0 argument for insert statement");
         return internal::get_ref(statement.expression.object);
     }
@@ -24918,7 +24910,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
     }
 
     template<int N, class T>
-    auto& get(internal::prepared_statement_t<T> & statement) {
+    auto& get(internal::prepared_statement_t<T>& statement) {
         using statement_type = std::remove_reference_t<decltype(statement)>;
         using expression_type = internal::expression_type_t<statement_type>;
         using node_tuple = internal::node_tuple_t<expression_type>;
@@ -24951,7 +24943,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
  *  Hence we make it only available for compilers supporting inline variables.
  */
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if SQLITE_VERSION_NUMBER >= 3020000
 #ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 #include <utility>  //  std::move
@@ -24966,7 +24958,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
 
 #if SQLITE_VERSION_NUMBER >= 3020000
 #ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     inline constexpr orm_pointer_type auto carray_pointer_tag = "carray"_pointer_type;
@@ -24988,12 +24980,12 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  the deleter when the statement finishes.
      */
     template<class P, class D>
-    carray_pointer_binding<P, D> bind_carray_pointer(P * p, D d) noexcept {
+    carray_pointer_binding<P, D> bind_carray_pointer(P* p, D d) noexcept {
         return bind_pointer<carray_pointer_tag>(p, std::move(d));
     }
 
     template<class P>
-    static_carray_pointer_binding<P> bind_carray_pointer_statically(P * p) noexcept {
+    static_carray_pointer_binding<P> bind_carray_pointer_statically(P* p) noexcept {
         return bind_pointer_statically<carray_pointer_tag>(p);
     }
 
@@ -25005,14 +24997,14 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      */
     template<class P, class D>
     [[deprecated("Use the better named function `bind_carray_pointer(...)`")]] carray_pointer_binding<P, D>
-    bindable_carray_pointer(P * p, D d) noexcept {
+    bindable_carray_pointer(P* p, D d) noexcept {
         return bind_pointer<carray_pointer_tag>(p, std::move(d));
     }
 
     template<class P>
     [[deprecated(
         "Use the better named function `bind_carray_pointer_statically(...)` ")]] static_carray_pointer_binding<P>
-    statically_bindable_carray_pointer(P * p) noexcept {
+    statically_bindable_carray_pointer(P* p) noexcept {
         return bind_pointer_statically<carray_pointer_tag>(p);
     }
 #else
@@ -25036,7 +25028,7 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  the deleter when the statement finishes.
      */
     template<class P, class D>
-    carray_pointer_binding<P, D> bind_carray_pointer(P * p, D d) noexcept {
+    carray_pointer_binding<P, D> bind_carray_pointer(P* p, D d) noexcept {
         return bind_pointer<carray_pointer_type>(p, std::move(d));
     }
 
@@ -25047,20 +25039,20 @@ _EXPORT_SQLITE_ORM namespace sqlite_orm {
      *  and sqlite assumes the object pointed to is valid throughout the lifetime of a statement.
      */
     template<class P>
-    static_carray_pointer_binding<P> bind_carray_pointer_statically(P * p) noexcept {
+    static_carray_pointer_binding<P> bind_carray_pointer_statically(P* p) noexcept {
         return bind_pointer_statically<carray_pointer_type>(p);
     }
 
     template<class P, class D>
     [[deprecated("Use the better named function `bind_carray_pointer(...)`")]] carray_pointer_binding<P, D>
-    bindable_carray_pointer(P * p, D d) noexcept {
+    bindable_carray_pointer(P* p, D d) noexcept {
         return bind_carray_pointer(p, std::move(d));
     }
 
     template<class P>
     [[deprecated(
         "Use the better named function `bind_carray_pointer_statically(...)` ")]] static_carray_pointer_binding<P>
-    statically_bindable_carray_pointer(P * p) noexcept {
+    statically_bindable_carray_pointer(P* p) noexcept {
         return bind_carray_pointer_statically(p);
     }
 #endif

@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple, std::make_tuple
 #include <type_traits>  //  std::true_type, std::false_type
 #include <utility>  //  std::forward, std::move
@@ -41,7 +41,7 @@ namespace sqlite_orm {
     }
 }
 
-_EXPORT_SQLITE_ORM namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  GROUP BY column.
      *  Example: storage.get_all<Employee>(group_by(&Employee::name))

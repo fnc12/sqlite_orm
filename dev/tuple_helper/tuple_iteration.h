@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef _IMPORT_STD_MODULE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::get, std::tuple_element, std::tuple_size
 #include <type_traits>  //  std::index_sequence, std::make_index_sequence
 #include <utility>  //  std::forward, std::move
