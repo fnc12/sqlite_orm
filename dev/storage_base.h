@@ -609,7 +609,7 @@ namespace sqlite_orm {
 
             backup_t make_backup_to(const std::string& filename) {
                 auto holder =
-                    std::make_unique<connection_holder>(filename, this->connection->vfs, this->connection->open_mode);
+                    std::make_unique<connection_holder>(filename, this->connection->vfs, this->connection->open);
                 connection_ref conRef{*holder};
                 return {conRef, "main", this->get_connection(), "main", std::move(holder)};
             }
@@ -620,7 +620,7 @@ namespace sqlite_orm {
 
             backup_t make_backup_from(const std::string& filename) {
                 auto holder =
-                    std::make_unique<connection_holder>(filename, this->connection->vfs, this->connection->open_mode);
+                    std::make_unique<connection_holder>(filename, this->connection->vfs, this->connection->open);
                 connection_ref conRef{*holder};
                 return {this->get_connection(), "main", conRef, "main", std::move(holder)};
             }
@@ -653,7 +653,7 @@ namespace sqlite_orm {
              * Return the current open_mode for this storage object. 
              */
             sqlite_orm::open_mode open_mode() const {
-                return this->connection->open_mode;
+                return this->connection->open;
             }
 
             /**
@@ -707,7 +707,7 @@ namespace sqlite_orm {
                 limit(std::bind(&storage_base::get_connection, this)), inMemory(other.inMemory),
                 connection(std::make_unique<connection_holder>(other.connection->filename,
                                                                other.connection->vfs,
-                                                               other.connection->open_mode)),
+                                                               other.connection->open)),
                 cachedForeignKeysCount(other.cachedForeignKeysCount) {
                 if (this->inMemory) {
                     this->connection->retain();
