@@ -80,6 +80,23 @@ TEST_CASE("statement_serializer insert/replace") {
                 expected =
                     R"(REPLACE INTO "users" SELECT "users_backup"."id", "users_backup"."name" FROM "users_backup")";
             }
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            SECTION("With clause") {
+                constexpr orm_cte_moniker auto data = "data"_cte;
+                constexpr auto cteExpression = cte<data>().as(select(asterisk<UserBackup>()));
+                auto dbObjects2 =
+                    internal::db_objects_cat(dbObjects, internal::make_cte_table(dbObjects, cteExpression));
+                using context_t = internal::serializer_context<decltype(dbObjects2)>;
+                context_t context2{dbObjects2};
+
+                auto expression = with(cteExpression, replace(into<User>(), select(asterisk<data>())));
+                value = serialize(expression, context2);
+                expected =
+                    R"(WITH "data"("id", "name") AS (SELECT "users_backup".* FROM "users_backup") REPLACE INTO "users" SELECT "data".* FROM "data")";
+            }
+#endif
+#endif
         }
         SECTION("range") {
             context.replace_bindable_with_question = false;
@@ -355,6 +372,23 @@ TEST_CASE("statement_serializer insert/replace") {
                     expected =
                         R"(INSERT OR ROLLBACK INTO "users" SELECT "users_backup"."id", "users_backup"."name" FROM "users_backup")";
                 }
+            }
+            SECTION("With clause") {
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+                constexpr orm_cte_moniker auto data = "data"_cte;
+                constexpr auto cteExpression = cte<data>().as(select(asterisk<UserBackup>()));
+                auto dbObjects2 =
+                    internal::db_objects_cat(dbObjects, internal::make_cte_table(dbObjects, cteExpression));
+                using context_t = internal::serializer_context<decltype(dbObjects2)>;
+                context_t context2{dbObjects2};
+
+                auto expression = with(cteExpression, insert(into<User>(), select(asterisk<data>())));
+                value = serialize(expression, context2);
+                expected =
+                    R"(WITH "data"("id", "name") AS (SELECT "users_backup".* FROM "users_backup") INSERT INTO "users" SELECT "data".* FROM "data")";
+#endif
+#endif
             }
         }
         SECTION("range") {

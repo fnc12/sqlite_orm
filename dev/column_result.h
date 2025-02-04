@@ -3,7 +3,6 @@
 #include <type_traits>  //  std::enable_if, std::is_same, std::decay, std::is_arithmetic, std::is_base_of
 #include <functional>  //  std::reference_wrapper
 
-#include "functional/cxx_universal.h"  //  ::nullptr_t
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/mpl.h"
 #include "tuple_helper/tuple_traits.h"
@@ -150,6 +149,11 @@ namespace sqlite_orm {
             using type = std::string;
         };
 
+        template<class DBOs, class T>
+        struct column_result_t<DBOs, unary_minus_t<T>, void> {
+            using type = double;
+        };
+
         template<class DBOs, class L, class R>
         struct column_result_t<DBOs, add_t<L, R>, void> {
             using type = double;
@@ -236,7 +240,7 @@ namespace sqlite_orm {
         template<class DBOs, class T, class F>
         struct column_result_t<DBOs, column_pointer<T, F>, void> : column_result_t<DBOs, F> {};
 
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         template<class DBOs, class Moniker, class ColAlias>
         struct column_result_t<DBOs, column_pointer<Moniker, alias_holder<ColAlias>>, void> {
             using table_type = storage_pick_table_t<Moniker, DBOs>;

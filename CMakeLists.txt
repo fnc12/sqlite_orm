@@ -5,7 +5,7 @@ cmake_minimum_required (VERSION 3.16)
 # PACKAGE_VERSION is used by cpack scripts currently
 # Both sqlite_orm_VERSION and PACKAGE_VERSION should be the same for now
 
-set(sqlite_orm_VERSION "1.8.0")
+set(sqlite_orm_VERSION "1.9.1")
 set(PACKAGE_VERSION ${sqlite_orm_VERSION})
 
 project("sqlite_orm" VERSION ${PACKAGE_VERSION})

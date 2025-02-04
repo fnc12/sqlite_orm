@@ -33,9 +33,9 @@ TEST_CASE("function static") {
                 std::string operator()(const arg_values& args) const {
                     std::string res;
                     res.reserve(args.size());
-                    for(auto value: args) {
+                    for (auto value: args) {
                         auto stringValue = value.get<std::string>();
-                        if(!stringValue.empty()) {
+                        if (!stringValue.empty()) {
                             res += stringValue.front();
                         }
                     }

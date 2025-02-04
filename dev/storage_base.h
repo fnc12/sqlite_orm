@@ -1,10 +1,12 @@
 #pragma once
 
 #include <sqlite3.h>
+#include <cstdlib>  // atoi
 #include <memory>  //  std::allocator
 #include <functional>  //  std::function, std::bind, std::bind_front
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
+#include <iomanip>  //  std::flush
 #include <utility>  //  std::move
 #include <system_error>  //  std::system_error
 #include <vector>  //  std::vector
@@ -14,7 +16,6 @@
 #include <type_traits>  //  std::is_same
 #include <algorithm>  //  std::find_if, std::ranges::find
 
-#include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/cxx_tuple_polyfill.h"  //  std::apply
 #include "tuple_helper/tuple_iteration.h"
 #include "pragma.h"
@@ -30,6 +31,7 @@
 #include "xdestroy_handling.h"
 #include "udf_proxy.h"
 #include "serializing_util.h"
+#include "table_info.h"
 
 namespace sqlite_orm {
 
@@ -70,27 +72,66 @@ namespace sqlite_orm {
                         std::bind(&storage_base::rollback, this)};
             }
 
+            /**
+             *  Drops index with given name. 
+             *  Calls `DROP INDEX indexName`.
+             *  More info: https://www.sqlite.org/lang_dropindex.html
+             */
             void drop_index(const std::string& indexName) {
-                std::stringstream ss;
-                ss << "DROP INDEX " << quote_identifier(indexName) << std::flush;
-                perform_void_exec(this->get_connection().get(), ss.str());
+                this->drop_index_internal(indexName, false);
             }
 
+            /**
+             *  Drops trigger with given name if trigger exists. 
+             *  Calls `DROP INDEX IF EXISTS indexName`.
+             *  More info: https://www.sqlite.org/lang_dropindex.html
+             */
+            void drop_index_if_exists(const std::string& indexName) {
+                this->drop_index_internal(indexName, true);
+            }
+
+            /**
+             *  Drops trigger with given name. 
+             *  Calls `DROP TRIGGER triggerName`.
+             *  More info: https://www.sqlite.org/lang_droptrigger.html
+             */
             void drop_trigger(const std::string& triggerName) {
-                std::stringstream ss;
-                ss << "DROP TRIGGER " << quote_identifier(triggerName) << std::flush;
-                perform_void_exec(this->get_connection().get(), ss.str());
+                this->drop_trigger_internal(triggerName, false);
             }
 
+            /**
+             *  Drops trigger with given name if trigger exists. 
+             *  Calls `DROP TRIGGER IF EXISTS triggerName`.
+             *  More info: https://www.sqlite.org/lang_droptrigger.html
+             */
+            void drop_trigger_if_exists(const std::string& triggerName) {
+                this->drop_trigger_internal(triggerName, true);
+            }
+
+            /**
+             *  `VACUUM` query.
+             *  More info: https://www.sqlite.org/lang_vacuum.html
+             */
             void vacuum() {
                 perform_void_exec(this->get_connection().get(), "VACUUM");
             }
 
             /**
-             *  Drops table with given name.
+             *  Drops table with given name. 
+             *  Calls `DROP TABLE tableName`.
+             *  More info: https://www.sqlite.org/lang_droptable.html
              */
             void drop_table(const std::string& tableName) {
-                this->drop_table_internal(this->get_connection().get(), tableName);
+                this->drop_table_internal(this->get_connection().get(), tableName, false);
+            }
+
+            /**
+             *  Drops table with given name if table exists. 
+             *  Calls `DROP TABLE IF EXISTS tableName`.
+             *  More info: https://www.sqlite.org/lang_droptable.html
+             */
+            void drop_table_if_exists(const std::string& tableName) {
+                this->drop_table_internal(this->get_connection().get(), tableName, true);
             }
 
             /**
@@ -128,8 +169,8 @@ namespace sqlite_orm {
                     ss.str(),
                     [](void* data, int argc, char** argv, char** /*azColName*/) -> int {
                         auto& res = *(bool*)data;
-                        if(argc) {
-                            res = !!std::atoi(argv[0]);
+                        if (argc) {
+                            res = !!atoi(argv[0]);
                         }
                         return 0;
                     },
@@ -140,8 +181,8 @@ namespace sqlite_orm {
             void add_generated_cols(std::vector<const table_xinfo*>& columnsToAdd,
                                     const std::vector<table_xinfo>& storageTableInfo) {
                 //  iterate through storage columns
-                for(const table_xinfo& storageColumnInfo: storageTableInfo) {
-                    if(storageColumnInfo.hidden) {
+                for (const table_xinfo& storageColumnInfo: storageTableInfo) {
+                    if (storageColumnInfo.hidden) {
                         columnsToAdd.push_back(&storageColumnInfo);
                     }
                 }
@@ -228,8 +269,8 @@ namespace sqlite_orm {
                     "SELECT name FROM sqlite_master WHERE type='table'",
                     [](void* data, int argc, char** argv, char** /*columnName*/) -> int {
                         auto& tableNames_ = *(data_t*)data;
-                        for(int i = 0; i < argc; ++i) {
-                            if(argv[i]) {
+                        for (int i = 0; i < argc; ++i) {
+                            if (argv[i]) {
                                 tableNames_.emplace_back(argv[i]);
                             }
                         }
@@ -252,7 +293,7 @@ namespace sqlite_orm {
             void open_forever() {
                 this->isOpenedForever = true;
                 this->connection->retain();
-                if(1 == this->connection->retain_count()) {
+                if (1 == this->connection->retain_count()) {
                     this->on_open_internal(this->connection->get());
                 }
             }
@@ -349,7 +390,7 @@ namespace sqlite_orm {
                     nullptr,
                     std::pair{nullptr, null_xdestroy_f});
 
-                if(this->connection->retain_count() > 0) {
+                if (this->connection->retain_count() > 0) {
                     sqlite3* db = this->connection->get();
                     try_to_create_scalar_function(db, this->scalarFunctions.back());
                 }
@@ -483,24 +524,24 @@ namespace sqlite_orm {
             void create_collation(const std::string& name, collating_function f) {
                 const auto functionExists = bool(f);
                 collating_function* function = nullptr;
-                if(functionExists) {
+                if (functionExists) {
                     function = &(collatingFunctions[name] = std::move(f));
                 }
 
                 //  create collations if db is open
-                if(this->connection->retain_count() > 0) {
+                if (this->connection->retain_count() > 0) {
                     sqlite3* db = this->connection->get();
                     int rc = sqlite3_create_collation(db,
                                                       name.c_str(),
                                                       SQLITE_UTF8,
                                                       function,
                                                       functionExists ? collate_callback : nullptr);
-                    if(rc != SQLITE_OK) {
+                    if (rc != SQLITE_OK) {
                         throw_translated_sqlite_error(db);
                     }
                 }
 
-                if(!functionExists) {
+                if (!functionExists) {
                     collatingFunctions.erase(name);
                 }
             }
@@ -532,7 +573,7 @@ namespace sqlite_orm {
                 sqlite3* db = this->connection->get();
                 perform_void_exec(db, "COMMIT");
                 this->connection->release();
-                if(this->connection->retain_count() < 0) {
+                if (this->connection->retain_count() < 0) {
                     throw std::system_error{orm_error_code::no_active_transaction};
                 }
             }
@@ -541,7 +582,7 @@ namespace sqlite_orm {
                 sqlite3* db = this->connection->get();
                 perform_void_exec(db, "ROLLBACK");
                 this->connection->release();
-                if(this->connection->retain_count() < 0) {
+                if (this->connection->retain_count() < 0) {
                     throw std::system_error{orm_error_code::no_active_transaction};
                 }
             }
@@ -609,8 +650,8 @@ namespace sqlite_orm {
 
             int busy_handler(std::function<int(int)> handler) {
                 _busy_handler = std::move(handler);
-                if(this->is_opened()) {
-                    if(_busy_handler) {
+                if (this->is_opened()) {
+                    if (_busy_handler) {
                         return sqlite3_busy_handler(this->connection->get(), busy_handler_callback, this);
                     } else {
                         return sqlite3_busy_handler(this->connection->get(), nullptr, nullptr);
@@ -627,7 +668,7 @@ namespace sqlite_orm {
                 inMemory(filename.empty() || filename == ":memory:"),
                 connection(std::make_unique<connection_holder>(std::move(filename))),
                 cachedForeignKeysCount(foreignKeysCount) {
-                if(this->inMemory) {
+                if (this->inMemory) {
                     this->connection->retain();
                     this->on_open_internal(this->connection->get());
                 }
@@ -638,24 +679,24 @@ namespace sqlite_orm {
                 limit(std::bind(&storage_base::get_connection, this)), inMemory(other.inMemory),
                 connection(std::make_unique<connection_holder>(other.connection->filename)),
                 cachedForeignKeysCount(other.cachedForeignKeysCount) {
-                if(this->inMemory) {
+                if (this->inMemory) {
                     this->connection->retain();
                     this->on_open_internal(this->connection->get());
                 }
             }
 
             ~storage_base() {
-                if(this->isOpenedForever) {
+                if (this->isOpenedForever) {
                     this->connection->release();
                 }
-                if(this->inMemory) {
+                if (this->inMemory) {
                     this->connection->release();
                 }
             }
 
             void begin_transaction_internal(const std::string& query) {
                 this->connection->retain();
-                if(1 == this->connection->retain_count()) {
+                if (1 == this->connection->retain_count()) {
                     this->on_open_internal(this->connection->get());
                 }
                 sqlite3* db = this->connection->get();
@@ -664,7 +705,7 @@ namespace sqlite_orm {
 
             connection_ref get_connection() {
                 connection_ref res{*this->connection};
-                if(1 == this->connection->retain_count()) {
+                if (1 == this->connection->retain_count()) {
                     this->on_open_internal(this->connection->get());
                 }
                 return res;
@@ -687,42 +728,42 @@ namespace sqlite_orm {
             void on_open_internal(sqlite3* db) {
 
 #if SQLITE_VERSION_NUMBER >= 3006019
-                if(this->cachedForeignKeysCount) {
+                if (this->cachedForeignKeysCount) {
                     this->foreign_keys(db, true);
                 }
 #endif
-                if(this->pragma._synchronous != -1) {
-                    this->pragma.synchronous(this->pragma._synchronous);
+                if (this->pragma.synchronous_ != -1) {
+                    this->pragma.synchronous(this->pragma.synchronous_);
                 }
 
-                if(this->pragma._journal_mode != -1) {
-                    this->pragma.set_pragma("journal_mode", static_cast<journal_mode>(this->pragma._journal_mode), db);
+                if (this->pragma.journal_mode_ != -1) {
+                    this->pragma.set_pragma("journal_mode", static_cast<journal_mode>(this->pragma.journal_mode_), db);
                 }
 
-                for(auto& p: this->collatingFunctions) {
+                for (auto& p: this->collatingFunctions) {
                     int rc = sqlite3_create_collation(db, p.first.c_str(), SQLITE_UTF8, &p.second, collate_callback);
-                    if(rc != SQLITE_OK) {
+                    if (rc != SQLITE_OK) {
                         throw_translated_sqlite_error(db);
                     }
                 }
 
-                for(auto& p: this->limit.limits) {
+                for (auto& p: this->limit.limits) {
                     sqlite3_limit(db, p.first, p.second);
                 }
 
-                if(_busy_handler) {
+                if (_busy_handler) {
                     sqlite3_busy_handler(this->connection->get(), busy_handler_callback, this);
                 }
 
-                for(auto& udfProxy: this->scalarFunctions) {
+                for (auto& udfProxy: this->scalarFunctions) {
                     try_to_create_scalar_function(db, udfProxy);
                 }
 
-                for(auto& udfProxy: this->aggregateFunctions) {
+                for (auto& udfProxy: this->aggregateFunctions) {
                     try_to_create_aggregate_function(db, udfProxy);
                 }
 
-                if(this->on_open) {
+                if (this->on_open) {
                     this->on_open(db);
                 }
             }
@@ -736,7 +777,7 @@ namespace sqlite_orm {
                                                : int(std::tuple_size<args_tuple>::value);
                 using is_stateless = std::is_empty<F>;
                 auto udfMemorySpace = preallocate_udf_memory<F>();
-                if SQLITE_ORM_CONSTEXPR_IF(is_stateless::value) {
+                if SQLITE_ORM_CONSTEXPR_IF (is_stateless::value) {
                     constructAt(udfMemorySpace.first);
                 }
                 this->scalarFunctions.emplace_back(
@@ -754,7 +795,7 @@ namespace sqlite_orm {
                     },
                     udfMemorySpace);
 
-                if(this->connection->retain_count() > 0) {
+                if (this->connection->retain_count() > 0) {
                     sqlite3* db = this->connection->get();
                     try_to_create_scalar_function(db, this->scalarFunctions.back());
                 }
@@ -779,7 +820,7 @@ namespace sqlite_orm {
                         F* udfPointer;
                         try {
                             udfPointer = proxy_get_aggregate_step_udf<F>(context, argsCount);
-                        } catch(const std::bad_alloc&) {
+                        } catch (const std::bad_alloc&) {
                             sqlite3_result_error_nomem(context);
                             return;
                         }
@@ -802,7 +843,7 @@ namespace sqlite_orm {
                     },
                     obtain_udf_allocator<F>());
 
-                if(this->connection->retain_count() > 0) {
+                if (this->connection->retain_count() > 0) {
                     sqlite3* db = this->connection->get();
                     try_to_create_aggregate_function(db, this->aggregateFunctions.back());
                 }
@@ -816,8 +857,8 @@ namespace sqlite_orm {
                     return udfProxy.name == name;
                 });
 #endif
-                if(it != functions.end()) {
-                    if(this->connection->retain_count() > 0) {
+                if (it != functions.end()) {
+                    if (this->connection->retain_count() > 0) {
                         sqlite3* db = this->connection->get();
                         int rc = sqlite3_create_function_v2(db,
                                                             name.c_str(),
@@ -828,7 +869,7 @@ namespace sqlite_orm {
                                                             nullptr,
                                                             nullptr,
                                                             nullptr);
-                        if(rc != SQLITE_OK) {
+                        if (rc != SQLITE_OK) {
                             throw_translated_sqlite_error(db);
                         }
                     }
@@ -848,7 +889,7 @@ namespace sqlite_orm {
                                                     nullptr,
                                                     nullptr,
                                                     nullptr);
-                if(rc != SQLITE_OK) {
+                if (rc != SQLITE_OK) {
                     throw_translated_sqlite_error(db);
                 }
             }
@@ -862,7 +903,7 @@ namespace sqlite_orm {
                                                  nullptr,
                                                  udfProxy.func,
                                                  aggregate_function_final_callback);
-                if(rc != SQLITE_OK) {
+                if (rc != SQLITE_OK) {
                     throw_translated_sqlite_error(rc);
                 }
             }
@@ -885,20 +926,45 @@ namespace sqlite_orm {
                 return result;
             }
 
-            void drop_table_internal(sqlite3* db, const std::string& tableName) {
+            void drop_table_internal(sqlite3* db, const std::string& tableName, bool ifExists) {
                 std::stringstream ss;
-                ss << "DROP TABLE " << streaming_identifier(tableName) << std::flush;
+                ss << "DROP TABLE";
+                if (ifExists) {
+                    ss << " IF EXISTS";
+                }
+                ss << ' ' << streaming_identifier(tableName) << std::flush;
                 perform_void_exec(db, ss.str());
             }
 
-            static int collate_callback(void* arg, int leftLen, const void* lhs, int rightLen, const void* rhs) {
-                auto& f = *(collating_function*)arg;
-                return f(leftLen, lhs, rightLen, rhs);
+            void drop_index_internal(const std::string& indexName, bool ifExists) {
+                std::stringstream ss;
+                ss << "DROP INDEX";
+                if (ifExists) {
+                    ss << " IF EXISTS";
+                }
+                ss << ' ' << quote_identifier(indexName) << std::flush;
+                perform_void_exec(this->get_connection().get(), ss.str());
+            }
+
+            void drop_trigger_internal(const std::string& triggerName, bool ifExists) {
+                std::stringstream ss;
+                ss << "DROP TRIGGER";
+                if (ifExists) {
+                    ss << " IF EXISTS";
+                }
+                ss << ' ' << quote_identifier(triggerName) << std::flush;
+                perform_void_exec(this->get_connection().get(), ss.str());
+            }
+
+            static int
+            collate_callback(void* argument, int leftLength, const void* lhs, int rightLength, const void* rhs) {
+                auto& function = *(collating_function*)argument;
+                return function(leftLength, lhs, rightLength, rhs);
             }
 
             static int busy_handler_callback(void* selfPointer, int triesCount) {
                 auto& storage = *static_cast<storage_base*>(selfPointer);
-                if(storage._busy_handler) {
+                if (storage._busy_handler) {
                     return storage._busy_handler(triesCount);
                 } else {
                     return 0;
@@ -911,8 +977,8 @@ namespace sqlite_orm {
                 bool notEqual = false;
 
                 //  iterate through storage columns
-                for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size();
-                    ++storageColumnInfoIndex) {
+                for (size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size();
+                     ++storageColumnInfoIndex) {
 
                     //  get storage's column info
                     table_xinfo& storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
@@ -926,7 +992,7 @@ namespace sqlite_orm {
                         return ti.name == columnName;
                     });
 #endif
-                    if(dbColumnInfoIt != dbTableInfo.end()) {
+                    if (dbColumnInfoIt != dbTableInfo.end()) {
                         auto& dbColumnInfo = *dbColumnInfoIt;
                         auto columnsAreEqual =
                             dbColumnInfo.name == storageColumnInfo.name &&
@@ -934,7 +1000,7 @@ namespace sqlite_orm {
                             (!dbColumnInfo.dflt_value.empty()) == (!storageColumnInfo.dflt_value.empty()) &&
                             dbColumnInfo.pk == storageColumnInfo.pk &&
                             (dbColumnInfo.hidden == 0) == (storageColumnInfo.hidden == 0);
-                        if(!columnsAreEqual) {
+                        if (!columnsAreEqual) {
                             notEqual = true;
                             break;
                         }

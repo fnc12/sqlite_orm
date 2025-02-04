@@ -48,7 +48,7 @@ TEST_CASE("Glob") {
     }
 
     auto expectIds = [](const std::vector<Employee>& employees, const std::vector<decltype(Employee::id)> ids) {
-        for(auto expectedId: ids) {
+        for (auto expectedId: ids) {
             REQUIRE(find_if(employees.begin(), employees.end(), [expectedId](auto& employee) {
                         return employee.id == expectedId;
                     }) != employees.end());
@@ -78,19 +78,19 @@ TEST_CASE("Glob") {
     {
         auto rows = storage.select(glob(&Employee::firstName, "S*"));
         REQUIRE(rows.size() == 9);
-        auto trueValuesCount = std::count(rows.begin(), rows.end(), true);
+        auto trueValuesCount = count(rows.begin(), rows.end(), true);
         REQUIRE(trueValuesCount == 3);
     }
     {
-        auto rows = storage.select(glob(distinct(&Employee::firstName), "S*"));
+        auto rows = storage.select(distinct(glob(&Employee::firstName, "S*")));
         REQUIRE(rows.size() == 2);
-        auto trueValuesCount = std::count(rows.begin(), rows.end(), true);
+        auto trueValuesCount = count(rows.begin(), rows.end(), true);
         REQUIRE(trueValuesCount == 1);
     }
     {
         auto rows = storage.select(columns(not glob(&Employee::firstName, "S*")));
         REQUIRE(rows.size() == 9);
-        auto trueValuesCount = std::count(rows.begin(), rows.end(), std::tuple<bool>{true});
+        auto trueValuesCount = count(rows.begin(), rows.end(), std::tuple<bool>{true});
         REQUIRE(trueValuesCount == 6);
     }
 }

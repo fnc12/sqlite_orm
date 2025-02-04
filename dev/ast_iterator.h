@@ -71,7 +71,7 @@ namespace sqlite_orm {
 
             template<class L>
             void operator()(const node_type& node, L& lambda) const {
-                iterate_ast(node.value, lambda);
+                iterate_ast(node.expression, lambda);
             }
         };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -210,7 +210,7 @@ namespace sqlite_orm {
 
             template<class L>
             void operator()(const node_type& vec, L& lambda) const {
-                for(auto& i: vec) {
+                for (auto& i: vec) {
                     iterate_ast(i, lambda);
                 }
             }
@@ -226,7 +226,7 @@ namespace sqlite_orm {
             }
         };
 
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         template<class CTE>
         struct ast_iterator<CTE, match_specialization_of<CTE, common_table_expression>> {
             using node_type = CTE;
@@ -637,7 +637,7 @@ namespace sqlite_orm {
 
             template<class L>
             void operator()(const node_type& a, L& lambda) const {
-                iterate_ast(a.value, lambda);
+                iterate_ast(a.expression, lambda);
             }
         };
 
@@ -647,7 +647,7 @@ namespace sqlite_orm {
 
             template<class L>
             void operator()(const node_type& a, L& lambda) const {
-                iterate_ast(a.value, lambda);
+                iterate_ast(a.expression, lambda);
             }
         };
 

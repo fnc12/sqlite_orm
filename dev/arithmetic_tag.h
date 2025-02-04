@@ -1,4 +1,5 @@
 #pragma once
+
 #include <type_traits>  // std::is_integral
 
 #include "functional/mpl/conditional.h"

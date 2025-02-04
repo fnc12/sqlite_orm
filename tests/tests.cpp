@@ -110,7 +110,7 @@ TEST_CASE("Custom collate") {
 
     struct OtotoCollation {
         int operator()(int leftLength, const void* lhs, int rightLength, const void* rhs) const {
-            if(leftLength == rightLength) {
+            if (leftLength == rightLength) {
                 return ::strncmp((const char*)lhs, (const char*)rhs, leftLength);
             } else {
                 return 1;
@@ -150,9 +150,9 @@ TEST_CASE("Custom collate") {
     storage.remove_all<Item>();
     storage.insert(Item{0, "Mercury"});
     storage.insert(Item{0, "Mars"});
-    if(useLegacyScript) {
+    if (useLegacyScript) {
         storage.create_collation("ototo", [](int leftLength, const void* lhs, int rightLength, const void* rhs) {
-            if(leftLength == rightLength) {
+            if (leftLength == rightLength) {
                 return ::strncmp((const char*)lhs, (const char*)rhs, leftLength);
             } else {
                 return 1;
@@ -181,7 +181,7 @@ TEST_CASE("Custom collate") {
                           where(is_equal(&Item::name, "Mercury").collate<AlwaysEqualCollation>()),
                           order_by(&Item::name).collate<OtotoCollation>());
 
-    if(useLegacyScript) {
+    if (useLegacyScript) {
         storage.create_collation("ototo", {});
     } else {
         storage.delete_collation<OtotoCollation>();

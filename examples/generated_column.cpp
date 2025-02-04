@@ -6,12 +6,17 @@
 #include <iostream>
 
 #if SQLITE_VERSION_NUMBER >= 3031000
+#define ENABLE_THIS_EXAMPLE
+#endif
 
+#ifdef ENABLE_THIS_EXAMPLE
 using namespace sqlite_orm;
 using std::cout;
 using std::endl;
+#endif  //  ENABLE_THIS_EXAMPLE
 
 int main() {
+#ifdef ENABLE_THIS_EXAMPLE
     struct Product {
         int id = 0;
         std::string name;
@@ -43,7 +48,7 @@ int main() {
     storage.replace(Product{5, "Bandage", 70, 120.00f});
 
     cout << "Products:" << endl;
-    for(auto& product: storage.iterate<Product>()) {
+    for (auto& product: storage.iterate<Product>()) {
         cout << storage.dump(product) << endl;
     }
     cout << endl;
@@ -53,12 +58,10 @@ int main() {
     storage.update_all(set(c(&Product::quantity) = 5), where(c(&Product::id) == 1));
 
     cout << "Products after update:" << endl;
-    for(auto& product: storage.iterate<Product>()) {
+    for (auto& product: storage.iterate<Product>()) {
         cout << storage.dump(product) << endl;
     }
     cout << endl;
-
+#endif  //  ENABLE_THIS_EXAMPLE
     return 0;
 }
-
-#endif  //  SQLITE_VERSION_NUMBER >= 3031000

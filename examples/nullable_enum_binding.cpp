@@ -1,4 +1,4 @@
-
+#include <sqlite3.h>
 #include <sqlite_orm/sqlite_orm.h>
 #include <iostream>
 #include <memory>
@@ -20,7 +20,7 @@ enum class Gender {
 };
 
 std::unique_ptr<std::string> GenderToString(Gender gender) {
-    switch(gender) {
+    switch (gender) {
         case Gender::Female:
             return std::make_unique<std::string>("female");
         case Gender::Male:
@@ -32,9 +32,9 @@ std::unique_ptr<std::string> GenderToString(Gender gender) {
 }
 
 std::unique_ptr<Gender> GenderFromString(const std::string& s) {
-    if(s == "female") {
+    if (s == "female") {
         return std::make_unique<Gender>(Gender::Female);
-    } else if(s == "male") {
+    } else if (s == "male") {
         return std::make_unique<Gender>(Gender::Male);
     }
     return nullptr;
@@ -55,7 +55,7 @@ namespace sqlite_orm {
     struct statement_binder<Gender> {
 
         int bind(sqlite3_stmt* stmt, int index, const Gender& value) {
-            if(auto str = GenderToString(value)) {
+            if (auto str = GenderToString(value)) {
                 return statement_binder<std::string>().bind(stmt, index, *str);
             } else {
                 return statement_binder<std::nullptr_t>().bind(stmt, index, nullptr);
@@ -66,7 +66,7 @@ namespace sqlite_orm {
     template<>
     struct field_printer<Gender> {
         std::string operator()(const Gender& t) const {
-            if(auto res = GenderToString(t)) {
+            if (auto res = GenderToString(t)) {
                 return *res;
             } else {
                 return "None";
@@ -77,8 +77,8 @@ namespace sqlite_orm {
     template<>
     struct row_extractor<Gender> {
         Gender extract(const char* columnText) const {
-            if(columnText) {
-                if(auto gender = GenderFromString(columnText)) {
+            if (columnText) {
+                if (auto gender = GenderFromString(columnText)) {
                     return *gender;
                 } else {
                     throw std::runtime_error("incorrect gender string (" + std::string(columnText) + ")");
@@ -135,19 +135,19 @@ int main(int, char**) {
     });
 
     cout << "All users :" << endl;
-    for(auto& user: storage.iterate<User>()) {
+    for (auto& user: storage.iterate<User>()) {
         cout << storage.dump(user) << endl;
     }
 
     auto allWithNoneGender = storage.get_all<User>(where(is_null(&User::gender)));
     cout << "allWithNoneGender = " << allWithNoneGender.size() << endl;
-    for(auto& user: allWithNoneGender) {
+    for (auto& user: allWithNoneGender) {
         cout << storage.dump(user) << endl;
     }
 
     auto allWithGender = storage.get_all<User>(where(is_not_null(&User::gender)));
     cout << "allWithGender = " << allWithGender.size() << endl;
-    for(auto& user: allWithGender) {
+    for (auto& user: allWithGender) {
         cout << storage.dump(user) << endl;
     }
 

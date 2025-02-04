@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 
@@ -57,7 +58,7 @@ TEST_CASE("Sync schema") {
     usersToInsert.push_back({-1, "Brad", std::make_unique<int>(65), nullptr});
     usersToInsert.push_back({-1, "Paul", std::make_unique<int>(65), nullptr});
 
-    for(auto& user: usersToInsert) {
+    for (auto& user: usersToInsert) {
         auto insertedId = storage.insert(user);
         user.id = insertedId;
     }
@@ -96,7 +97,7 @@ TEST_CASE("Sync schema") {
 
         REQUIRE(usersFromDb.size() == usersToInsert.size());
 
-        for(size_t i = 0; i < usersFromDb.size(); ++i) {
+        for (size_t i = 0; i < usersFromDb.size(); ++i) {
             auto& userFromDb = usersFromDb[i];
             auto& oldUser = usersToInsert[i];
             REQUIRE(userFromDb == oldUser);
@@ -138,7 +139,7 @@ TEST_CASE("issue521") {
     struct MockDatabasePoco {
         int id{-1};
         std::string name;
-        uint32_t alpha{0};
+        std::uint32_t alpha{0};
         float beta{0.0};
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
@@ -169,7 +170,7 @@ TEST_CASE("issue521") {
         pocosToInsert.push_back({-1, "Michael", 10, 10.10f});
         pocosToInsert.push_back({-1, "Joyce", 20, 20.20f});
 
-        for(auto& poco: pocosToInsert) {
+        for (auto& poco: pocosToInsert) {
             auto insertedId = storage.insert(poco);
             poco.id = insertedId;
         }
@@ -179,7 +180,7 @@ TEST_CASE("issue521") {
 
         using namespace sqlite_orm;
         auto pocosFromDb = storage.get_all<MockDatabasePoco>(order_by(&MockDatabasePoco::id));
-        for(size_t i = 0; i < pocosFromDb.size(); ++i) {
+        for (size_t i = 0; i < pocosFromDb.size(); ++i) {
             auto& pocoFromDb = pocosFromDb[i];
             auto& oldPoco = pocosToInsert[i];
 
@@ -203,7 +204,7 @@ TEST_CASE("issue521") {
         REQUIRE(static_cast<size_t>(storage.count<MockDatabasePoco>()) == pocosToInsert.size());
 
         auto pocosFromDb = storage.get_all<MockDatabasePoco>(order_by(&MockDatabasePoco::id));
-        for(size_t i = 0; i < pocosFromDb.size(); ++i) {
+        for (size_t i = 0; i < pocosFromDb.size(); ++i) {
             auto& pocoFromDb = pocosFromDb[i];
             auto& oldPoco = pocosToInsert[i];
             REQUIRE(pocoFromDb.id == oldPoco.id);
@@ -228,7 +229,7 @@ TEST_CASE("issue521") {
         REQUIRE(static_cast<size_t>(storage.count<MockDatabasePoco>()) == pocosToInsert.size());
 
         auto pocosFromDb = storage.get_all<MockDatabasePoco>(order_by(&MockDatabasePoco::id));
-        for(size_t i = 0; i < pocosFromDb.size(); ++i) {
+        for (size_t i = 0; i < pocosFromDb.size(); ++i) {
             auto& pocoFromDb = pocosFromDb[i];
             auto& oldPoco = pocosToInsert[i];
             REQUIRE(pocoFromDb.id == oldPoco.id);
@@ -255,7 +256,7 @@ TEST_CASE("issue521") {
         REQUIRE(static_cast<size_t>(storage.count<MockDatabasePoco>()) == pocosToInsert.size());
 
         auto pocosFromDb = storage.get_all<MockDatabasePoco>(order_by(&MockDatabasePoco::id));
-        for(size_t i = 0; i < pocosFromDb.size(); ++i) {
+        for (size_t i = 0; i < pocosFromDb.size(); ++i) {
             auto& pocoFromDb = pocosFromDb[i];
             auto& oldPoco = pocosToInsert[i];
 
@@ -267,10 +268,10 @@ TEST_CASE("issue521") {
 }
 
 bool compareUniquePointers(const std::unique_ptr<int>& lhs, const std::unique_ptr<int>& rhs) {
-    if(!lhs && !rhs) {
+    if (!lhs && !rhs) {
         return true;
     } else {
-        if(lhs && rhs) {
+        if (lhs && rhs) {
             return *lhs == *rhs;
         } else {
             return false;

@@ -56,7 +56,7 @@ namespace sqlite_orm {
             template<class T>
             void operator()(const count_asterisk_t<T>&) {
                 auto tableName = lookup_table_name<T>(this->db_objects);
-                if(!tableName.empty()) {
+                if (!tableName.empty()) {
                     this->table_names.emplace(std::move(tableName), "");
                 }
             }

@@ -50,9 +50,7 @@ TEST_CASE("Like operator") {
     {
         auto rows = storage.select(like(&User::name, "S%a"));
         REQUIRE(rows.size() == 3);
-        REQUIRE(count_if(rows.begin(), rows.end(), [](bool arg) {
-                    return arg == true;
-                }) == 1);
+        REQUIRE(count(rows.begin(), rows.end(), true) == 1);
     }
 
     storage.insert(Pattern{"o%o"});

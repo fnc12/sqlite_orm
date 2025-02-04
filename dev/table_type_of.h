@@ -1,4 +1,5 @@
 #pragma once
+
 #include <type_traits>  //  std::enable_if, std::is_convertible
 
 namespace sqlite_orm {

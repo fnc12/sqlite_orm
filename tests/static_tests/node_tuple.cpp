@@ -189,25 +189,46 @@ TEST_CASE("Node tuple") {
         using namespace internal;
 
         using CondTuple = node_tuple_t<conc_t<std::string, decltype(&User::name)>>;
-        static_assert(is_same<CondTuple, tuple<std::string, decltype(&User::name)>>::value, "conc_t");
+        STATIC_REQUIRE(is_same<CondTuple, tuple<std::string, decltype(&User::name)>>::value);
+
+        using MinusTuple = node_tuple_t<unary_minus_t<decltype(&User::id)>>;
+        STATIC_REQUIRE(is_same<MinusTuple, tuple<decltype(&User::id)>>::value);
 
         using AddTuple = node_tuple_t<add_t<int, decltype(&User::id)>>;
-        static_assert(is_same<AddTuple, tuple<int, decltype(&User::id)>>::value, "add_t");
+        STATIC_REQUIRE(is_same<AddTuple, tuple<int, decltype(&User::id)>>::value);
 
         using SubTuple = node_tuple_t<sub_t<float, double>>;
-        static_assert(is_same<SubTuple, tuple<float, double>>::value, "sub_t");
+        STATIC_REQUIRE(is_same<SubTuple, tuple<float, double>>::value);
 
         using MulTuple = node_tuple_t<mul_t<double, decltype(&User::id)>>;
-        static_assert(is_same<MulTuple, tuple<double, decltype(&User::id)>>::value, "mul_t");
+        STATIC_REQUIRE(is_same<MulTuple, tuple<double, decltype(&User::id)>>::value);
 
         using DivTuple = node_tuple_t<sqlite_orm::internal::div_t<int, float>>;
-        static_assert(is_same<DivTuple, tuple<int, float>>::value, "div_t");
+        STATIC_REQUIRE(is_same<DivTuple, tuple<int, float>>::value);
 
         using ModTuple = node_tuple_t<mod_t<decltype(&User::id), int>>;
-        static_assert(is_same<ModTuple, tuple<decltype(&User::id), int>>::value, "mod_t");
+        STATIC_REQUIRE(is_same<ModTuple, tuple<decltype(&User::id), int>>::value);
 
         using AssignTuple = node_tuple_t<assign_t<decltype(&User::name), std::string>>;
-        static_assert(is_same<AssignTuple, tuple<decltype(&User::name), std::string>>::value, "assign_t");
+        STATIC_REQUIRE(is_same<AssignTuple, tuple<decltype(&User::name), std::string>>::value);
+    }
+    SECTION("bitwise operator") {
+        using namespace internal;
+
+        using BitwiseNotTuple = node_tuple_t<bitwise_not_t<decltype(&User::id)>>;
+        STATIC_REQUIRE(is_same<BitwiseNotTuple, tuple<decltype(&User::id)>>::value);
+
+        using BitwiseShiftLeftTuple = node_tuple_t<bitwise_shift_left_t<int, decltype(&User::id)>>;
+        STATIC_REQUIRE(is_same<BitwiseShiftLeftTuple, tuple<int, decltype(&User::id)>>::value);
+
+        using BitwiseShiftRightTuple = node_tuple_t<bitwise_shift_right_t<int, decltype(&User::id)>>;
+        STATIC_REQUIRE(is_same<BitwiseShiftRightTuple, tuple<int, decltype(&User::id)>>::value);
+
+        using BitwiseAndTuple = node_tuple_t<bitwise_and_t<int, decltype(&User::id)>>;
+        STATIC_REQUIRE(is_same<BitwiseAndTuple, tuple<int, decltype(&User::id)>>::value);
+
+        using BitwiseOrTuple = node_tuple_t<bitwise_or_t<int, decltype(&User::id)>>;
+        STATIC_REQUIRE(is_same<BitwiseOrTuple, tuple<int, decltype(&User::id)>>::value);
     }
     SECTION("columns") {
         auto cols = columns(&User::id, &User::name);
@@ -250,7 +271,7 @@ TEST_CASE("Node tuple") {
             using Expected = tuple<decltype(node)>;
             static_assert(is_same<Tuple, Expected>::value, "count(*)");
         }
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         SECTION("count(*) cte") {
             auto node = count<decltype(1_ctealias)>();
             using Node = decltype(node);
@@ -976,7 +997,7 @@ TEST_CASE("Node tuple") {
         using ExpectedTuple = tuple<decltype(&User::name), decltype(&User::name), const char*>;
         STATIC_REQUIRE(std::is_same<Tuple, ExpectedTuple>::value);
     }
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     SECTION("with ordinary") {
         using cte_1 = decltype(1_ctealias);
         auto expression = with(1_ctealias().as(select(1)), select(column<cte_1>(1_colalias)));

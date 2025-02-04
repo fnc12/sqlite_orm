@@ -35,7 +35,6 @@
 #include <array>
 #endif
 
-#include "cxx_universal.h"  //  ::size_t
 #include "cxx_type_traits_polyfill.h"
 #include "mpl/conditional.h"
 
@@ -330,8 +329,7 @@ namespace sqlite_orm {
              *  Bind a metafunction and arguments at the front of a higher-order metafunction.
              */
             template<template<template<class...> class Fn, class... Args2> class HigherFn,
-                     template<class...>
-                     class BoundFn,
+                     template<class...> class BoundFn,
                      class... Bound>
             using bind_front_higherorder_fn =
                 bind_front<higherorder<0>::quote_fn<HigherFn>, quote_fn<BoundFn>, Bound...>;
@@ -339,7 +337,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
             constexpr size_t find_first_true_helper(std::initializer_list<bool> values) {
                 size_t i = 0;
-                for(auto first = values.begin(); first != values.end() && !*first; ++first) {
+                for (auto first = values.begin(); first != values.end() && !*first; ++first) {
                     ++i;
                 }
                 return i;
@@ -347,7 +345,7 @@ namespace sqlite_orm {
 
             constexpr size_t count_true_helper(std::initializer_list<bool> values) {
                 size_t n = 0;
-                for(auto first = values.begin(); first != values.end(); ++first) {
+                for (auto first = values.begin(); first != values.end(); ++first) {
                     n += *first;
                 }
                 return n;

@@ -127,7 +127,7 @@ namespace sqlite_orm {
         template<class T>
         struct node_tuple<T, match_if<is_compound_operator, T>> : node_tuple<typename T::expressions_tuple> {};
 
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         template<class CTE>
         struct node_tuple<CTE, match_specialization_of<CTE, common_table_expression>>
             : node_tuple<typename CTE::expression_type> {};
@@ -198,6 +198,12 @@ namespace sqlite_orm {
 
         template<class C>
         struct node_tuple<negated_condition_t<C>, void> : node_tuple<C> {};
+
+        template<class T>
+        struct node_tuple<unary_minus_t<T>, void> : node_tuple<T> {};
+
+        template<class T>
+        struct node_tuple<bitwise_not_t<T>, void> : node_tuple<T> {};
 
         template<class R, class S, class... Args>
         struct node_tuple<built_in_function_t<R, S, Args...>, void> : node_tuple_for<Args...> {};

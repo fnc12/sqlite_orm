@@ -1,4 +1,5 @@
 #pragma once
+
 #include <type_traits>  //  std::common_type
 
 namespace sqlite_orm {

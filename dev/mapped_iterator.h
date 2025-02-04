@@ -7,7 +7,6 @@
 #include <system_error>  //  std::system_error
 #include <functional>  //  std::bind
 
-#include "functional/cxx_universal.h"  //  ::ptrdiff_t
 #include "statement_finalizer.h"
 #include "error_code.h"
 #include "object_from_column_builder.h"
@@ -59,7 +58,7 @@ namespace sqlite_orm {
 
             void step() {
                 perform_step(this->stmt.get(), std::bind(&mapped_iterator::extract_object, this));
-                if(!this->current) {
+                if (!this->current) {
                     this->stmt.reset();
                 }
             }
@@ -83,7 +82,7 @@ namespace sqlite_orm {
             mapped_iterator& operator=(mapped_iterator&&) = default;
 
             value_type& operator*() const {
-                if(!this->stmt) SQLITE_ORM_CPP_UNLIKELY {
+                if (!this->stmt) SQLITE_ORM_CPP_UNLIKELY {
                     throw std::system_error{orm_error_code::trying_to_dereference_null_iterator};
                 }
                 return *this->current;

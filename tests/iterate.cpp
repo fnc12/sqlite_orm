@@ -28,7 +28,7 @@ TEST_CASE("Iterate mapped") {
     db.replace(expected);
 
     SECTION("range-based for") {
-        for(Test& obj: db.iterate<Test>()) {
+        for (Test& obj: db.iterate<Test>()) {
             REQUIRE(obj == expected);
         }
     }
@@ -53,6 +53,11 @@ TEST_CASE("Iterate mapped") {
         REQUIRE(std::vector<Test>{std::from_range, view} == expected_vec);
     }
 #endif
+
+    SECTION("with conditions") {
+        auto view = db.iterate<Test>(where(c(&Test::id) == 5), order_by(&Test::id));
+        REQUIRE(std::vector<Test>{view.begin(), view.end()} == expected_vec);
+    }
 }
 
 #if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)
@@ -77,7 +82,7 @@ TEST_CASE("Iterate select statement") {
     std::vector<Test> expected_vec{expected};
 
     SECTION("range-based for") {
-        for(Test&& obj: db.iterate(select(object<Test>()))) {
+        for (Test&& obj: db.iterate(select(object<Test>()))) {
             REQUIRE(obj == expected);
         }
     }
@@ -97,7 +102,7 @@ TEST_CASE("Iterate select statement") {
     }
 #endif
 
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     constexpr auto x = "x"_cte;
     std::input_iterator auto begin =

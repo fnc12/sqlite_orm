@@ -1,6 +1,6 @@
 #pragma once
 
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <concepts>
 #include <utility>  //  std::make_index_sequence
@@ -10,11 +10,10 @@
 #include <string>
 #endif
 
-#include "functional/cxx_universal.h"
 #include "functional/cstring_literal.h"
 #include "alias.h"
 
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 namespace sqlite_orm {
 
     namespace internal {
@@ -47,11 +46,11 @@ namespace sqlite_orm {
              */
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
             template<class... ExplicitCols>
-                requires((is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
-                          std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
-                          std::convertible_to<ExplicitCols, std::string>) &&
-                         ...)
-            auto operator()(ExplicitCols... explicitColumns) const;
+                requires ((is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
+                           std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
+                           std::convertible_to<ExplicitCols, std::string>) &&
+                          ...)
+            constexpr auto operator()(ExplicitCols... explicitColumns) const;
 #else
             template<class... ExplicitCols,
                      std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
@@ -60,7 +59,7 @@ namespace sqlite_orm {
                                           std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
                                           std::is_convertible<ExplicitCols, std::string>>...>,
                                       bool> = true>
-            auto operator()(ExplicitCols... explicitColumns) const;
+            constexpr auto operator()(ExplicitCols... explicitColumns) const;
 #endif
         };
     }

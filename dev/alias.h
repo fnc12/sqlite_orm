@@ -1,10 +1,10 @@
 #pragma once
 
-#include <type_traits>  //  std::enable_if, std::is_same, std::conditional
+#include <type_traits>  //  std::enable_if, std::is_same
 #include <utility>  //  std::make_index_sequence, std::move
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #include <array>
 #endif
 
@@ -101,7 +101,7 @@ namespace sqlite_orm {
                 return alias_extractor::extract();
             }
 
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             // for CTE monikers -> empty
             template<class T = A, satisfies<std::is_same, polyfill::detected_t<type_t, T>, A> = true>
             static std::string as_alias() {
@@ -168,11 +168,11 @@ namespace sqlite_orm {
         };
 #endif
 
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         template<size_t n, char... C>
         SQLITE_ORM_CONSTEVAL auto n_to_colalias() {
             constexpr column_alias<'1' + n % 10, C...> colalias{};
-            if constexpr(n > 10) {
+            if constexpr (n > 10) {
                 return n_to_colalias<n / 10, '1' + n % 10, C...>();
             } else {
                 return colalias;
@@ -223,7 +223,7 @@ namespace sqlite_orm {
                  polyfill::conjunction<internal::is_table_alias<A>,
                                        polyfill::negation<internal::is_cte_moniker<internal::type_t<A>>>>::value,
                  bool> = true>
-    constexpr auto alias_column(F O::*field) {
+    constexpr auto alias_column(F O::* field) {
         using namespace ::sqlite_orm::internal;
         using aliased_type = type_t<A>;
         static_assert(is_field_of_v<F O::*, aliased_type>, "Column must be from aliased table");
@@ -244,16 +244,16 @@ namespace sqlite_orm {
      *  select(alias_column<als>(&User::id))
      */
     template<orm_table_alias auto als, class C>
-        requires(!orm_cte_moniker<internal::auto_type_t<als>>)
+        requires (!orm_cte_moniker<internal::auto_type_t<als>>)
     constexpr auto alias_column(C field) {
         using namespace ::sqlite_orm::internal;
         using A = decltype(als);
         using aliased_type = type_t<A>;
         static_assert(is_field_of_v<C, aliased_type>, "Column must be from aliased table");
 
-        if constexpr(is_column_pointer_v<C>) {
+        if constexpr (is_column_pointer_v<C>) {
             return alias_column_t<A, C>{std::move(field)};
-        } else if constexpr(std::is_same_v<member_object_type_t<C>, aliased_type>) {
+        } else if constexpr (std::is_same_v<member_object_type_t<C>, aliased_type>) {
             return alias_column_t<A, C>{field};
         } else {
             // wrap in column_pointer
@@ -275,13 +275,13 @@ namespace sqlite_orm {
      *  select(als->*&User::id)
      */
     template<orm_table_alias A, class F>
-        requires(!orm_cte_moniker<internal::type_t<A>>)
+        requires (!orm_cte_moniker<internal::type_t<A>>)
     constexpr auto operator->*(const A& /*tableAlias*/, F field) {
         return alias_column<A>(std::move(field));
     }
 #endif
 
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     /**
      *  Create a column reference to an aliased CTE column.
      */
@@ -291,10 +291,10 @@ namespace sqlite_orm {
                  polyfill::conjunction_v<internal::is_table_alias<A>, internal::is_cte_moniker<internal::type_t<A>>>,
                  bool> = true>
     constexpr auto alias_column(C c) {
-        using namespace internal;
+        using namespace ::sqlite_orm::internal;
         using cte_moniker_t = type_t<A>;
 
-        if constexpr(is_column_pointer_v<C>) {
+        if constexpr (is_column_pointer_v<C>) {
             static_assert(std::is_same<table_type_of_t<C>, cte_moniker_t>::value,
                           "Column pointer must match aliased CTE");
             return alias_column_t<A, C>{c};
@@ -312,7 +312,7 @@ namespace sqlite_orm {
      *  because recordset aliases are derived from `sqlite_orm::alias_tag`
      */
     template<orm_table_alias A, class C>
-        requires(orm_cte_moniker<internal::type_t<A>>)
+        requires (orm_cte_moniker<internal::type_t<A>>)
     constexpr auto operator->*(const A& /*tableAlias*/, C c) {
         return alias_column<A>(std::move(c));
     }
@@ -321,7 +321,7 @@ namespace sqlite_orm {
      *  Create a column reference to an aliased CTE column.
      */
     template<orm_table_alias auto als, class C>
-        requires(orm_cte_moniker<internal::auto_type_t<als>>)
+        requires (orm_cte_moniker<internal::auto_type_t<als>>)
     constexpr auto alias_column(C c) {
         using A = std::remove_const_t<decltype(als)>;
         return alias_column<A>(std::move(c));
@@ -474,7 +474,7 @@ namespace sqlite_orm {
     }
 #endif
 
-#if(SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     inline namespace literals {
         /**
          *  column_alias<'1'[, ...]> from a numeric literal.
