@@ -13738,7 +13738,7 @@ namespace sqlite_orm {
         struct connection_holder {
 
             connection_holder(std::string filename_, vfs_mode vfs_, sqlite_orm::open_mode open_) :
-                filename(std::move(filename_)), vfs(vfs_), open_mode(open_) {}
+                filename(std::move(filename_)), vfs(vfs_), open(open_) {}
 
             void retain() {
                 // first one opens the connection.
@@ -13747,7 +13747,7 @@ namespace sqlite_orm {
                 if (this->_retain_count.fetch_add(1, std::memory_order_relaxed) == 0) {
 
                     const std::string vfs_name = internal::to_string(vfs);
-                    const int open_flags = internal::to_int_flags(open_mode);
+                    const int open_flags = internal::to_int_flags(open);
 
                     auto rc = sqlite3_open_v2(this->filename.c_str(), &this->db, open_flags, vfs_name.c_str());
 
@@ -13784,7 +13784,7 @@ namespace sqlite_orm {
 
             const std::string filename;
             const vfs_mode vfs;
-            const open_mode open_mode;
+            const sqlite_orm::open_mode open;
 
           protected:
             sqlite3* db = nullptr;
