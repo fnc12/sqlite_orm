@@ -609,7 +609,7 @@ namespace sqlite_orm {
 
             backup_t make_backup_to(const std::string& filename) {
                 auto holder =
-                    std::make_unique<connection_holder>(filename, this->connection->vfs, this->connection->open_flags);
+                    std::make_unique<connection_holder>(filename, this->connection->vfs, this->connection->open_mode);
                 connection_ref conRef{*holder};
                 return {conRef, "main", this->get_connection(), "main", std::move(holder)};
             }
@@ -620,7 +620,7 @@ namespace sqlite_orm {
 
             backup_t make_backup_from(const std::string& filename) {
                 auto holder =
-                    std::make_unique<connection_holder>(filename, this->connection->vfs, this->connection->open_flags);
+                    std::make_unique<connection_holder>(filename, this->connection->vfs, this->connection->open_mode);
                 connection_ref conRef{*holder};
                 return {this->get_connection(), "main", conRef, "main", std::move(holder)};
             }
@@ -653,7 +653,7 @@ namespace sqlite_orm {
              * Return the current open_mode for this storage object. 
              */
             open_mode open_mode() const {
-                return this->connection->open_flags;
+                return this->connection->open_mode;
             }
 
             /**
@@ -687,11 +687,11 @@ namespace sqlite_orm {
             }
 
           protected:
-            storage_base(std::string filename, enum vfs_mode vfs, enum open_mode open_flags, int foreignKeysCount) :
+            storage_base(std::string filename, enum vfs_mode vfs, enum open_mode open_mode, int foreignKeysCount) :
                 pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
                 inMemory(filename.empty() || filename == ":memory:"),
-                connection(std::make_unique<connection_holder>(std::move(filename), vfs, open_flags)),
+                connection(std::make_unique<connection_holder>(std::move(filename), vfs, open_mode)),
                 cachedForeignKeysCount(foreignKeysCount) {
                 if (this->inMemory) {
                     this->connection->retain();
@@ -704,7 +704,7 @@ namespace sqlite_orm {
                 limit(std::bind(&storage_base::get_connection, this)), inMemory(other.inMemory),
                 connection(std::make_unique<connection_holder>(other.connection->filename,
                                                                other.connection->vfs,
-                                                               other.connection->open_flags)),
+                                                               other.connection->open_mode)),
                 cachedForeignKeysCount(other.cachedForeignKeysCount) {
                 if (this->inMemory) {
                     this->connection->retain();
