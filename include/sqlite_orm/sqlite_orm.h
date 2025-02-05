@@ -1849,6 +1849,7 @@ namespace sqlite_orm {
 }
 
 // #include "vfs_mode.h"
+
 #include <sqlite3.h>
 // #include "functional/config.h"
 
@@ -13706,6 +13707,7 @@ namespace sqlite_orm {
 // #include "vfs_mode.h"
 
 // #include "open_mode.h"
+
 #include <sqlite3.h>
 
 namespace sqlite_orm {
@@ -13717,7 +13719,7 @@ namespace sqlite_orm {
     };
 
     namespace internal {
-        inline constexpr int to_int_flags(sqlite_orm::open_mode open) {
+        constexpr int to_int_flags(sqlite_orm::open_mode open) {
 
             switch (open) {
                 case open_mode::readonly:
