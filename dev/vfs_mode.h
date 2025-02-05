@@ -23,26 +23,25 @@ namespace sqlite_orm {
 #endif
 
     };
+}
 
-    namespace internal {
-        inline const std::string& to_string(vfs_mode v) {
-            static std::string res[] = {
+namespace sqlite_orm::internal {
+    inline const std::string& to_string(vfs_mode v) {
+        static std::string res[] = {
 #ifdef SQLITE_ORM_UNIX
-                "unix",
-                "unix-dotfile",
+            "unix",
+            "unix-dotfile",
 #ifdef SQLITE_ORM_APPLE
-                "unix-afp",
+            "unix-afp",
 #endif
 #endif
 
 #ifdef SQLITE_ORM_WIN
-                "win32",
-                "win32-longpath",
+            "win32",
+            "win32-longpath",
 #endif
-            };
+        };
 
-            return res[static_cast<size_t>(v)];
-        }
+        return res[static_cast<size_t>(v)];
     }
-
 }

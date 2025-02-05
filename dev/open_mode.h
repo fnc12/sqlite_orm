@@ -9,19 +9,18 @@ namespace sqlite_orm {
         create_readwrite = 0,
         readonly = 1,
     };
+}
 
-    namespace internal {
-        constexpr int to_int_flags(sqlite_orm::open_mode open) {
+namespace sqlite_orm::internal {
+    constexpr int to_int_flags(sqlite_orm::open_mode open) {
 
-            switch (open) {
-                case open_mode::readonly:
-                    return SQLITE_OPEN_READONLY;
-                case open_mode::create_readwrite:
-                    return SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE;
-            };
+        switch (open) {
+            case open_mode::readonly:
+                return SQLITE_OPEN_READONLY;
+            case open_mode::create_readwrite:
+                return SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE;
+        };
 
-            return -1;
-        }
+        return -1;
     }
-
 }
