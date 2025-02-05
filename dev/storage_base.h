@@ -27,6 +27,8 @@
 #include "function.h"
 #include "values_to_tuple.h"
 #include "arg_values.h"
+#include "vfs_mode.h"
+#include "open_mode.h"
 #include "util.h"
 #include "xdestroy_handling.h"
 #include "udf_proxy.h"
@@ -34,6 +36,14 @@
 #include "table_info.h"
 
 namespace sqlite_orm {
+
+    /**
+     * Struct used to pass options into your storage object that will be maintained over its lifetime.
+     */
+    struct storage_options {
+        vfs_mode vfs_mode = vfs_mode::default_vfs;
+        open_mode open_mode = open_mode::default_mode;
+    };
 
     namespace internal {
 
@@ -687,11 +697,12 @@ namespace sqlite_orm {
             }
 
           protected:
-            storage_base(std::string filename, enum vfs_mode vfs, enum open_mode open_mode, int foreignKeysCount) :
+            storage_base(std::string filename, storage_options options, int foreignKeysCount) :
                 pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
                 inMemory(filename.empty() || filename == ":memory:"),
-                connection(std::make_unique<connection_holder>(std::move(filename), vfs, open_mode)),
+                connection(
+                    std::make_unique<connection_holder>(std::move(filename), options.vfs_mode, options.open_mode)),
                 cachedForeignKeysCount(foreignKeysCount) {
                 if (this->inMemory) {
                     this->connection->retain();

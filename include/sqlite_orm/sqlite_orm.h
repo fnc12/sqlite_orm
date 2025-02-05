@@ -1848,120 +1848,6 @@ namespace sqlite_orm {
 #endif
 }
 
-// #include "vfs_mode.h"
-
-#include <sqlite3.h>
-// #include "functional/config.h"
-
-// #include "serialize_result_type.h"
-
-// #include "functional/cxx_string_view.h"
-
-// #include "cxx_core_features.h"
-
-#if SQLITE_ORM_HAS_INCLUDE(<string_view>)
-#include <string_view>
-#endif
-
-#if __cpp_lib_string_view >= 201606L
-#define SQLITE_ORM_STRING_VIEW_SUPPORTED
-#endif
-
-#ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
-#include <string>  //  std::string
-#endif
-
-namespace sqlite_orm {
-    namespace internal {
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-        using serialize_result_type = std::string_view;
-        using serialize_arg_type = std::string_view;
-#else
-        using serialize_result_type = std::string;
-        using serialize_arg_type = const std::string&;
-#endif
-    }
-}
-
-namespace sqlite_orm {
-
-    enum class vfs_mode {
-
-        default_vfs = 0,
-#ifdef SQLITE_ORM_UNIX
-        unix = 0,
-        unix_posix = 0,
-        unix_dotfile = 1,
-#ifdef SQLITE_ORM_APPLE
-        unix_afp = 2,
-#endif
-#endif
-
-#ifdef SQLITE_ORM_WIN
-        win32 = 0,
-        win32_longpath = 1,
-#endif
-        num_vfs_modes
-
-    };
-
-}
-
-namespace sqlite_orm::internal {
-
-    inline const serialize_result_type& vfs_mode_to_string(vfs_mode v) {
-        static constexpr size_t num_vfs_modes = static_cast<size_t>(vfs_mode::num_vfs_modes);
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-        static const std::array<serialize_result_type, num_vfs_modes> idx2str = {
-#else
-        static const std::array<serialize_result_type, num_vfs_modes> idx2str = {
-#endif
-
-#ifdef SQLITE_ORM_UNIX
-            "unix",
-            "unix-dotfile",
-#ifdef SQLITE_ORM_APPLE
-            "unix-afp",
-#endif
-#endif
-
-#ifdef SQLITE_ORM_WIN
-            "win32",
-            "win32-longpath",
-#endif
-        };
-
-        return idx2str.at(static_cast<size_t>(v));
-    }
-}
-
-// #include "open_mode.h"
-
-#include <sqlite3.h>
-
-namespace sqlite_orm {
-
-    enum class open_mode {
-        default_mode = 0,
-        create_readwrite = 0,
-        readonly = 1,
-    };
-}
-
-namespace sqlite_orm::internal {
-    constexpr int open_mode_to_int_flags(open_mode open) {
-
-        switch (open) {
-            case open_mode::readonly:
-                return SQLITE_OPEN_READONLY;
-            case open_mode::create_readwrite:
-                return SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE;
-        };
-
-        return -1;
-    }
-}
-
 // #include "alias.h"
 
 #include <type_traits>  //  std::enable_if, std::is_same
@@ -4206,6 +4092,34 @@ namespace sqlite_orm {
 // #include "tags.h"
 
 // #include "serialize_result_type.h"
+
+// #include "functional/cxx_string_view.h"
+
+// #include "cxx_core_features.h"
+
+#if SQLITE_ORM_HAS_INCLUDE(<string_view>)
+#include <string_view>
+#endif
+
+#if __cpp_lib_string_view >= 201606L
+#define SQLITE_ORM_STRING_VIEW_SUPPORTED
+#endif
+
+#ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
+#include <string>  //  std::string
+#endif
+
+namespace sqlite_orm {
+    namespace internal {
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+        using serialize_result_type = std::string_view;
+        using serialize_arg_type = std::string_view;
+#else
+        using serialize_result_type = std::string;
+        using serialize_arg_type = const std::string&;
+#endif
+    }
+}
 
 namespace sqlite_orm {
 
@@ -13743,7 +13657,89 @@ namespace sqlite_orm {
 
 // #include "vfs_mode.h"
 
+#include <sqlite3.h>
+// #include "functional/config.h"
+
+// #include "serialize_result_type.h"
+
+namespace sqlite_orm {
+
+    enum class vfs_mode {
+
+        default_vfs = 0,
+#ifdef SQLITE_ORM_UNIX
+        unix = 0,
+        unix_posix = 0,
+        unix_dotfile = 1,
+#ifdef SQLITE_ORM_APPLE
+        unix_afp = 2,
+#endif
+#endif
+
+#ifdef SQLITE_ORM_WIN
+        win32 = 0,
+        win32_longpath = 1,
+#endif
+        num_vfs_modes
+
+    };
+
+}
+
+namespace sqlite_orm::internal {
+
+    inline const serialize_result_type& vfs_mode_to_string(vfs_mode v) {
+        static constexpr size_t num_vfs_modes = static_cast<size_t>(vfs_mode::num_vfs_modes);
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+        static const std::array<serialize_result_type, num_vfs_modes> idx2str = {
+#else
+        static const std::array<serialize_result_type, num_vfs_modes> idx2str = {
+#endif
+
+#ifdef SQLITE_ORM_UNIX
+            "unix",
+            "unix-dotfile",
+#ifdef SQLITE_ORM_APPLE
+            "unix-afp",
+#endif
+#endif
+
+#ifdef SQLITE_ORM_WIN
+            "win32",
+            "win32-longpath",
+#endif
+        };
+
+        return idx2str.at(static_cast<size_t>(v));
+    }
+}
+
 // #include "open_mode.h"
+
+#include <sqlite3.h>
+
+namespace sqlite_orm {
+
+    enum class open_mode {
+        default_mode = 0,
+        create_readwrite = 0,
+        readonly = 1,
+    };
+}
+
+namespace sqlite_orm::internal {
+    constexpr int open_mode_to_int_flags(open_mode open) {
+
+        switch (open) {
+            case open_mode::readonly:
+                return SQLITE_OPEN_READONLY;
+            case open_mode::create_readwrite:
+                return SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE;
+        };
+
+        return -1;
+    }
+}
 
 // #include "error_code.h"
 
@@ -17293,6 +17289,10 @@ namespace sqlite_orm {
 
 // #include "arg_values.h"
 
+// #include "vfs_mode.h"
+
+// #include "open_mode.h"
+
 // #include "util.h"
 
 // #include "xdestroy_handling.h"
@@ -17534,6 +17534,14 @@ namespace sqlite_orm {
 // #include "table_info.h"
 
 namespace sqlite_orm {
+
+    /**
+     * Struct used to pass options into your storage object that will be maintained over its lifetime.
+     */
+    struct storage_options {
+        vfs_mode vfs_mode = vfs_mode::default_vfs;
+        open_mode open_mode = open_mode::default_mode;
+    };
 
     namespace internal {
 
@@ -18187,11 +18195,12 @@ namespace sqlite_orm {
             }
 
           protected:
-            storage_base(std::string filename, enum vfs_mode vfs, enum open_mode open_mode, int foreignKeysCount) :
+            storage_base(std::string filename, storage_options options, int foreignKeysCount) :
                 pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
                 inMemory(filename.empty() || filename == ":memory:"),
-                connection(std::make_unique<connection_holder>(std::move(filename), vfs, open_mode)),
+                connection(
+                    std::make_unique<connection_holder>(std::move(filename), options.vfs_mode, options.open_mode)),
                 cachedForeignKeysCount(foreignKeysCount) {
                 if (this->inMemory) {
                     this->connection->retain();
@@ -22284,8 +22293,8 @@ namespace sqlite_orm {
              *  @param filename database filename.
              *  @param dbObjects db_objects_tuple
              */
-            storage_t(std::string filename, enum vfs_mode vfs, enum open_mode open_mode, db_objects_type dbObjects) :
-                storage_base{std::move(filename), vfs, open_mode, foreign_keys_count(dbObjects)},
+            storage_t(std::string filename, storage_options options, db_objects_type dbObjects) :
+                storage_base{std::move(filename), options, foreign_keys_count(dbObjects)},
                 db_objects{std::move(dbObjects)} {}
 
             storage_t(const storage_t&) = default;
@@ -23899,20 +23908,13 @@ namespace sqlite_orm {
      *  Factory function for a storage, from a database file and a bunch of database object definitions.
      */
     template<class... DBO>
-    internal::storage_t<DBO...>
-    make_storage(std::string filename, enum vfs_mode vfs, enum open_mode open_mode, DBO... dbObjects) {
-        return {std::move(filename),
-                vfs,
-                open_mode,
-                internal::db_objects_tuple<DBO...>{std::forward<DBO>(dbObjects)...}};
+    internal::storage_t<DBO...> make_storage(std::string filename, storage_options options, DBO... dbObjects) {
+        return {std::move(filename), options, internal::db_objects_tuple<DBO...>{std::forward<DBO>(dbObjects)...}};
     }
 
     template<class... DBO>
     internal::storage_t<DBO...> make_storage(std::string filename, DBO... dbObjects) {
-        return make_storage(std::move(filename),
-                            vfs_mode::default_vfs,
-                            open_mode::default_mode,
-                            std::forward<DBO>(dbObjects)...);
+        return make_storage(std::move(filename), storage_options{}, std::forward<DBO>(dbObjects)...);
     }
 
     /**
