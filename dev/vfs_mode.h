@@ -1,7 +1,7 @@
+#pragma once
+
 #include <sqlite3.h>
 #include "functional/config.h"
-
-#pragma once
 
 namespace sqlite_orm {
 
