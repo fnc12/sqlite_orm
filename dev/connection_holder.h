@@ -25,7 +25,7 @@ namespace sqlite_orm {
                     const serialize_result_type& vfs_name = internal::vfs_mode_to_string(vfs);
                     const int open_flags = internal::open_mode_to_int_flags(open_mode);
 
-                    auto rc = sqlite3_open_v2(this->filename.c_str(), &this->db, open_flags, vfs_name.c_str());
+                    int rc = sqlite3_open_v2(this->filename.c_str(), &this->db, open_flags, vfs_name.c_str());
 
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible, but unexpected*/ {
                         throw_translated_sqlite_error(this->db);
