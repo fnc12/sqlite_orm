@@ -13657,7 +13657,7 @@ namespace sqlite_orm {
 
 // #include "storage_options.h"
 
-// #include "vfs_mode.h"
+// #include "vfs_object.h"
 
 #include <sqlite3.h>
 // #include "functional/config.h"
@@ -13666,7 +13666,7 @@ namespace sqlite_orm {
 
 namespace sqlite_orm {
 
-    enum class vfs_mode_t {
+    enum class vfs_object {
 
         default_vfs = 0,
 #ifdef SQLITE_ORM_UNIX
@@ -13682,37 +13682,39 @@ namespace sqlite_orm {
         win32 = 0,
         win32_longpath = 1,
 #endif
-        num_vfs_modes
+        num_vfs_objects
 
     };
 
 }
 
-namespace sqlite_orm::internal {
+namespace sqlite_orm {
+    namespace internal {
 
-    inline const serialize_result_type& vfs_mode_to_string(vfs_mode_t v) {
-        static constexpr size_t num_vfs_modes = static_cast<size_t>(vfs_mode_t::num_vfs_modes);
+        inline const serialize_result_type& vfs_object_to_string(vfs_object v) {
+            static constexpr size_t num_vfs_objects = static_cast<size_t>(vfs_object::num_vfs_objects);
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-        static const std::array<serialize_result_type, num_vfs_modes> idx2str = {
+            static const std::array<serialize_result_type, num_vfs_objects> idx2str = {
 #else
-        static const std::array<serialize_result_type, num_vfs_modes> idx2str = {
+            static const std::array<serialize_result_type, num_vfs_objects> idx2str = {
 #endif
 
 #ifdef SQLITE_ORM_UNIX
-            "unix",
-            "unix-dotfile",
+                "unix",
+                "unix-dotfile",
 #ifdef SQLITE_ORM_APPLE
-            "unix-afp",
+                "unix-afp",
 #endif
 #endif
 
 #ifdef SQLITE_ORM_WIN
-            "win32",
-            "win32-longpath",
+                "win32",
+                "win32-longpath",
 #endif
-        };
+            };
 
-        return idx2str.at(static_cast<size_t>(v));
+            return idx2str.at(static_cast<size_t>(v));
+        }
     }
 }
 
@@ -13722,24 +13724,26 @@ namespace sqlite_orm::internal {
 
 namespace sqlite_orm {
 
-    enum class open_mode_t {
+    enum class open_mode {
         default_mode = 0,
         create_readwrite = 0,
         readonly = 1,
     };
 }
 
-namespace sqlite_orm::internal {
-    constexpr int open_mode_to_int_flags(open_mode_t open) {
+namespace sqlite_orm {
+    namespace internal {
+        constexpr int open_mode_to_int_flags(open_mode open) {
 
-        switch (open) {
-            case open_mode_t::readonly:
-                return SQLITE_OPEN_READONLY;
-            case open_mode_t::create_readwrite:
-                return SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE;
-        };
+            switch (open) {
+                case open_mode::readonly:
+                    return SQLITE_OPEN_READONLY;
+                case open_mode::create_readwrite:
+                    return SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE;
+            };
 
-        return -1;
+            return -1;
+        }
     }
 }
 
@@ -13749,8 +13753,8 @@ namespace sqlite_orm {
      * Struct used to pass options into your storage object that will be maintained over its lifetime.
      */
     struct storage_options {
-        vfs_mode_t vfs_mode = vfs_mode_t::default_vfs;
-        open_mode_t open_mode = open_mode_t::default_mode;
+        vfs_object vfs_option = vfs_object::default_vfs;
+        open_mode open_option = open_mode::default_mode;
     };
 
 }
@@ -13771,8 +13775,8 @@ namespace sqlite_orm {
                 // therefore we can just use an atomic increment but don't need sequencing due to `prevCount > 0`.
                 if (this->_retain_count.fetch_add(1, std::memory_order_relaxed) == 0) {
 
-                    const serialize_result_type& vfs_name = internal::vfs_mode_to_string(options.vfs_mode);
-                    const int open_flags = internal::open_mode_to_int_flags(options.open_mode);
+                    const serialize_result_type& vfs_name = internal::vfs_object_to_string(options.vfs_option);
+                    const int open_flags = internal::open_mode_to_int_flags(options.open_option);
 
                     int rc = sqlite3_open_v2(this->filename.c_str(), &this->db, open_flags, vfs_name.c_str());
 
@@ -17302,8 +17306,6 @@ namespace sqlite_orm {
 
 // #include "arg_values.h"
 
-// #include "storage_options.h"
-
 // #include "util.h"
 
 // #include "xdestroy_handling.h"
@@ -18154,15 +18156,15 @@ namespace sqlite_orm {
              * Public method for checking the VFS implementation being used by
              * this storage object. Mostly useful for debug.
              */
-            vfs_mode_t vfs_mode() const {
-                return this->connection->options.vfs_mode;
+            sqlite_orm::vfs_object vfs_object() const {
+                return this->connection->options.vfs_option;
             }
 
             /**
              * Return the current open_mode for this storage object. 
              */
-            open_mode_t open_mode() const {
-                return this->connection->options.open_mode;
+            sqlite_orm::open_mode open_mode() const {
+                return this->connection->options.open_option;
             }
 
             /**

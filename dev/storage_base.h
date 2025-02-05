@@ -27,7 +27,6 @@
 #include "function.h"
 #include "values_to_tuple.h"
 #include "arg_values.h"
-#include "storage_options.h"
 #include "util.h"
 #include "xdestroy_handling.h"
 #include "udf_proxy.h"
@@ -644,15 +643,15 @@ namespace sqlite_orm {
              * Public method for checking the VFS implementation being used by
              * this storage object. Mostly useful for debug.
              */
-            vfs_mode_t vfs_mode() const {
-                return this->connection->options.vfs_mode;
+            sqlite_orm::vfs_object vfs_object() const {
+                return this->connection->options.vfs_option;
             }
 
             /**
              * Return the current open_mode for this storage object. 
              */
-            open_mode_t open_mode() const {
-                return this->connection->options.open_mode;
+            sqlite_orm::open_mode open_mode() const {
+                return this->connection->options.open_option;
             }
 
             /**
