@@ -55,7 +55,7 @@ TEST_CASE("vfs modes open successfully") {
     auto storage = make_storage("", vfs_enum, open_mode::default_mode, default_table);
     REQUIRE_NOTHROW(storage.open_forever());
 
-    std::string vfs_string = internal::vfs_mode_to_string(vfs_enum);
+    internal::serialize_result_type vfs_string = internal::vfs_mode_to_string(vfs_enum);
     UNSCOPED_INFO("FAILED VFS: " << vfs_string);
     REQUIRE(storage.is_opened());
     REQUIRE(storage.vfs_mode() == vfs_enum);
