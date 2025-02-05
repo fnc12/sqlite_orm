@@ -12,7 +12,7 @@ namespace sqlite_orm {
 }
 
 namespace sqlite_orm::internal {
-    constexpr int open_mode_to_int_flags(sqlite_orm::open_mode open) {
+    constexpr int open_mode_to_int_flags(open_mode open) {
 
         switch (open) {
             case open_mode::readonly:

@@ -94,11 +94,8 @@ namespace sqlite_orm {
              *  @param filename database filename.
              *  @param dbObjects db_objects_tuple
              */
-            storage_t(std::string filename,
-                      sqlite_orm::vfs_mode vfs,
-                      sqlite_orm::open_mode open,
-                      db_objects_type dbObjects) :
-                storage_base{std::move(filename), vfs, open, foreign_keys_count(dbObjects)},
+            storage_t(std::string filename, enum vfs_mode vfs, enum open_mode open_flags, db_objects_type dbObjects) :
+                storage_base{std::move(filename), vfs, open_flags, foreign_keys_count(dbObjects)},
                 db_objects{std::move(dbObjects)} {}
 
             storage_t(const storage_t&) = default;
@@ -1713,8 +1710,11 @@ namespace sqlite_orm {
      */
     template<class... DBO>
     internal::storage_t<DBO...>
-    make_storage(std::string filename, sqlite_orm::vfs_mode vfs, sqlite_orm::open_mode open, DBO... dbObjects) {
-        return {std::move(filename), vfs, open, internal::db_objects_tuple<DBO...>{std::forward<DBO>(dbObjects)...}};
+    make_storage(std::string filename, enum vfs_mode vfs, enum open_mode open_flags, DBO... dbObjects) {
+        return {std::move(filename),
+                vfs,
+                open_flags,
+                internal::db_objects_tuple<DBO...>{std::forward<DBO>(dbObjects)...}};
     }
 
     template<class... DBO>
