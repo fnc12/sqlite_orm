@@ -13655,6 +13655,8 @@ namespace sqlite_orm {
 #include <atomic>
 #include <string>  //  std::string
 
+// #include "storage_options.h"
+
 // #include "vfs_mode.h"
 
 #include <sqlite3.h>
@@ -13741,6 +13743,18 @@ namespace sqlite_orm::internal {
     }
 }
 
+namespace sqlite_orm {
+
+    /**
+     * Struct used to pass options into your storage object that will be maintained over its lifetime.
+     */
+    struct storage_options {
+        vfs_mode vfs_mode = vfs_mode::default_vfs;
+        open_mode open_mode = open_mode::default_mode;
+    };
+
+}
+
 // #include "error_code.h"
 
 namespace sqlite_orm {
@@ -13748,8 +13762,8 @@ namespace sqlite_orm {
 
         struct connection_holder {
 
-            connection_holder(std::string filename_, vfs_mode vfs_, open_mode open_mode_) :
-                filename(std::move(filename_)), vfs(vfs_), open_mode(open_mode_) {}
+            connection_holder(std::string filename_, const storage_options options_) :
+                filename(std::move(filename_)), options(std::move(options_)) {}
 
             void retain() {
                 // first one opens the connection.
@@ -13757,10 +13771,10 @@ namespace sqlite_orm {
                 // therefore we can just use an atomic increment but don't need sequencing due to `prevCount > 0`.
                 if (this->_retain_count.fetch_add(1, std::memory_order_relaxed) == 0) {
 
-                    const serialize_result_type& vfs_name = internal::vfs_mode_to_string(vfs);
-                    const int open_flags = internal::open_mode_to_int_flags(open_mode);
+                    const serialize_result_type& vfs_name = internal::vfs_mode_to_string(options.vfs_mode);
+                    const int open_flags = internal::open_mode_to_int_flags(options.open_mode);
 
-                    auto rc = sqlite3_open_v2(this->filename.c_str(), &this->db, open_flags, vfs_name.c_str());
+                    int rc = sqlite3_open_v2(this->filename.c_str(), &this->db, open_flags, vfs_name.c_str());
 
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible, but unexpected*/ {
                         throw_translated_sqlite_error(this->db);
@@ -13794,8 +13808,7 @@ namespace sqlite_orm {
             }
 
             const std::string filename;
-            const vfs_mode vfs;
-            const open_mode open_mode;
+            const storage_options options;
 
           protected:
             sqlite3* db = nullptr;
@@ -17289,9 +17302,7 @@ namespace sqlite_orm {
 
 // #include "arg_values.h"
 
-// #include "vfs_mode.h"
-
-// #include "open_mode.h"
+// #include "storage_options.h"
 
 // #include "util.h"
 
@@ -17534,14 +17545,6 @@ namespace sqlite_orm {
 // #include "table_info.h"
 
 namespace sqlite_orm {
-
-    /**
-     * Struct used to pass options into your storage object that will be maintained over its lifetime.
-     */
-    struct storage_options {
-        vfs_mode vfs_mode = vfs_mode::default_vfs;
-        open_mode open_mode = open_mode::default_mode;
-    };
 
     namespace internal {
 
@@ -18116,8 +18119,7 @@ namespace sqlite_orm {
             }
 
             backup_t make_backup_to(const std::string& filename) {
-                auto holder =
-                    std::make_unique<connection_holder>(filename, this->connection->vfs, this->connection->open_mode);
+                auto holder = std::make_unique<connection_holder>(filename, this->connection->options);
                 connection_ref conRef{*holder};
                 return {conRef, "main", this->get_connection(), "main", std::move(holder)};
             }
@@ -18127,8 +18129,7 @@ namespace sqlite_orm {
             }
 
             backup_t make_backup_from(const std::string& filename) {
-                auto holder =
-                    std::make_unique<connection_holder>(filename, this->connection->vfs, this->connection->open_mode);
+                auto holder = std::make_unique<connection_holder>(filename, this->connection->options);
                 connection_ref conRef{*holder};
                 return {this->get_connection(), "main", conRef, "main", std::move(holder)};
             }
@@ -18154,14 +18155,14 @@ namespace sqlite_orm {
              * this storage object. Mostly useful for debug.
              */
             vfs_mode vfs_mode() const {
-                return this->connection->vfs;
+                return this->connection->options.vfs_mode;
             }
 
             /**
              * Return the current open_mode for this storage object. 
              */
             open_mode open_mode() const {
-                return this->connection->open_mode;
+                return this->connection->options.open_mode;
             }
 
             /**
@@ -18199,8 +18200,7 @@ namespace sqlite_orm {
                 pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
                 inMemory(filename.empty() || filename == ":memory:"),
-                connection(
-                    std::make_unique<connection_holder>(std::move(filename), options.vfs_mode, options.open_mode)),
+                connection(std::make_unique<connection_holder>(std::move(filename), std::move(options))),
                 cachedForeignKeysCount(foreignKeysCount) {
                 if (this->inMemory) {
                     this->connection->retain();
@@ -18211,9 +18211,7 @@ namespace sqlite_orm {
             storage_base(const storage_base& other) :
                 on_open(other.on_open), pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)), inMemory(other.inMemory),
-                connection(std::make_unique<connection_holder>(other.connection->filename,
-                                                               other.connection->vfs,
-                                                               other.connection->open_mode)),
+                connection(std::make_unique<connection_holder>(other.connection->filename, other.connection->options)),
                 cachedForeignKeysCount(other.cachedForeignKeysCount) {
                 if (this->inMemory) {
                     this->connection->retain();
