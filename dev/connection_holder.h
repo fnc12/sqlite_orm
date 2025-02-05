@@ -46,15 +46,17 @@ namespace sqlite_orm {
                 const maybe_lock maybeLock{this->_sync, !this->_openedForeverHint};
 
                 // `maybeLock.isSynced`: the lock above already synchronized everything, so we can just atomically increment the counter
-                // `!maybeLock.isSynced`: we presume that this the connection is opened once in a single-threaded context [open forever].
-                //                        so we can just use an atomic operation but don't need sequencing due to `prevCount > 0`.
-                const int prevCount = this->_retain_count.fetch_add(1, std::memory_order_relaxed);
+                // `!maybeLock.isSynced`: we presume that the connection is opened once in a single-threaded context [open forever].
+                //                        so we can just use an atomic increment but don't need sequencing due to always `prevCount > 0`.
+                if (int prevCount = this->_retain_count.fetch_add(1, std::memory_order_relaxed); prevCount > 0) {
+                    return;
+                }
 
-                if (prevCount == 0 || (maybeLock.isSynced && !this->db)) {
-                    if (int rc = sqlite3_open(this->filename.c_str(), &this->db); rc != SQLITE_OK)
-                        [[unlikely]] /*unexpected*/ {
-                        throw_translated_sqlite_error(this->db);
-                    }
+                // first one opens the connection.
+
+                if (int rc = sqlite3_open(this->filename.c_str(), &this->db); rc != SQLITE_OK)
+                    [[unlikely]] /*possible, but unexpected*/ {
+                    throw_translated_sqlite_error(this->db);
                 }
             }
 
@@ -71,6 +73,8 @@ namespace sqlite_orm {
                     prevCount > 1) {
                     return;
                 }
+
+                // last one closes the connection.
 
                 if (int rc = sqlite3_close(this->db); rc != SQLITE_OK) [[unlikely]] {
                     throw_translated_sqlite_error(this->db);
@@ -108,11 +112,11 @@ namespace sqlite_orm {
             void retain() {
                 // first one opens the connection.
                 // we presume that this the connection is opened once in a single-threaded context [also open forever].
-                // so we can just use an atomic read but don't need sequencing due to `prevCount > 0`.
+                // so we can just use an atomic increment but don't need sequencing due to `prevCount > 0`.
                 if (this->_retain_count.fetch_add(1, std::memory_order_relaxed) == 0) {
-                    auto rc = sqlite3_open(this->filename.c_str(), &this->db);
+                    int rc = sqlite3_open(this->filename.c_str(), &this->db);
                     if (rc != SQLITE_OK) {
-                        throw_translated_sqlite_error(rc);
+                        throw_translated_sqlite_error(this->db);
                     }
                 }
             }
@@ -121,7 +125,7 @@ namespace sqlite_orm {
                 // last one closes the connection.
                 // we assume that this might happen by any thread.
                 if (this->_retain_count.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-                    auto rc = sqlite3_close(this->db);
+                    int rc = sqlite3_close(this->db);
                     if (rc != SQLITE_OK) {
                         throw_translated_sqlite_error(this->db);
                     } else {
