@@ -1853,6 +1853,36 @@ namespace sqlite_orm {
 #include <sqlite3.h>
 // #include "functional/config.h"
 
+// #include "serialize_result_type.h"
+
+// #include "functional/cxx_string_view.h"
+
+// #include "cxx_core_features.h"
+
+#if SQLITE_ORM_HAS_INCLUDE(<string_view>)
+#include <string_view>
+#endif
+
+#if __cpp_lib_string_view >= 201606L
+#define SQLITE_ORM_STRING_VIEW_SUPPORTED
+#endif
+
+#ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
+#include <string>  //  std::string
+#endif
+
+namespace sqlite_orm {
+    namespace internal {
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+        using serialize_result_type = std::string_view;
+        using serialize_arg_type = std::string_view;
+#else
+        using serialize_result_type = std::string;
+        using serialize_arg_type = const std::string&;
+#endif
+    }
+}
+
 namespace sqlite_orm {
 
     enum class vfs_mode {
@@ -1871,13 +1901,22 @@ namespace sqlite_orm {
         win32 = 0,
         win32_longpath = 1,
 #endif
+        num_vfs_modes
 
     };
+
 }
 
 namespace sqlite_orm::internal {
-    inline const std::string& to_string(vfs_mode v) {
-        static std::string res[] = {
+
+    inline const serialize_result_type& vfs_mode_to_string(vfs_mode v) {
+        static constexpr size_t num_vfs_modes = static_cast<size_t>(vfs_mode::num_vfs_modes);
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+        static const std::array<serialize_result_type, num_vfs_modes> idx2str = {
+#else
+        static const std::array<serialize_result_type, num_vfs_modes> idx2str = {
+#endif
+
 #ifdef SQLITE_ORM_UNIX
             "unix",
             "unix-dotfile",
@@ -1892,7 +1931,7 @@ namespace sqlite_orm::internal {
 #endif
         };
 
-        return res[static_cast<size_t>(v)];
+        return idx2str.at(static_cast<size_t>(v));
     }
 }
 
@@ -4140,34 +4179,6 @@ namespace sqlite_orm {
 // #include "tags.h"
 
 // #include "serialize_result_type.h"
-
-// #include "functional/cxx_string_view.h"
-
-// #include "cxx_core_features.h"
-
-#if SQLITE_ORM_HAS_INCLUDE(<string_view>)
-#include <string_view>
-#endif
-
-#if __cpp_lib_string_view >= 201606L
-#define SQLITE_ORM_STRING_VIEW_SUPPORTED
-#endif
-
-#ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
-#include <string>  //  std::string
-#endif
-
-namespace sqlite_orm {
-    namespace internal {
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-        using serialize_result_type = std::string_view;
-        using serialize_arg_type = std::string_view;
-#else
-        using serialize_result_type = std::string;
-        using serialize_arg_type = const std::string&;
-#endif
-    }
-}
 
 namespace sqlite_orm {
 
@@ -13719,7 +13730,7 @@ namespace sqlite_orm {
 }
 
 namespace sqlite_orm::internal {
-    constexpr int to_int_flags(sqlite_orm::open_mode open) {
+    constexpr int open_mode_to_int_flags(sqlite_orm::open_mode open) {
 
         switch (open) {
             case open_mode::readonly:
@@ -13748,8 +13759,8 @@ namespace sqlite_orm {
                 // therefore we can just use an atomic increment but don't need sequencing due to `prevCount > 0`.
                 if (this->_retain_count.fetch_add(1, std::memory_order_relaxed) == 0) {
 
-                    const std::string vfs_name = internal::to_string(vfs);
-                    const int open_flags = internal::to_int_flags(open);
+                    const std::string vfs_name = internal::vfs_mode_to_string(vfs);
+                    const int open_flags = internal::open_mode_to_int_flags(open);
 
                     auto rc = sqlite3_open_v2(this->filename.c_str(), &this->db, open_flags, vfs_name.c_str());
 

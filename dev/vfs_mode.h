@@ -2,6 +2,7 @@
 
 #include <sqlite3.h>
 #include "functional/config.h"
+#include "serialize_result_type.h"
 
 namespace sqlite_orm {
 
@@ -21,13 +22,22 @@ namespace sqlite_orm {
         win32 = 0,
         win32_longpath = 1,
 #endif
+        num_vfs_modes
 
     };
+
 }
 
 namespace sqlite_orm::internal {
-    inline const std::string& to_string(vfs_mode v) {
-        static std::string res[] = {
+
+    inline const serialize_result_type& vfs_mode_to_string(vfs_mode v) {
+        static constexpr size_t num_vfs_modes = static_cast<size_t>(vfs_mode::num_vfs_modes);
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+        static const std::array<serialize_result_type, num_vfs_modes> idx2str = {
+#else
+        static const std::array<serialize_result_type, num_vfs_modes> idx2str = {
+#endif
+
 #ifdef SQLITE_ORM_UNIX
             "unix",
             "unix-dotfile",
@@ -42,6 +52,6 @@ namespace sqlite_orm::internal {
 #endif
         };
 
-        return res[static_cast<size_t>(v)];
+        return idx2str.at(static_cast<size_t>(v));
     }
 }

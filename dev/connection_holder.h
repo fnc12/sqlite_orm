@@ -22,8 +22,8 @@ namespace sqlite_orm {
                 // therefore we can just use an atomic increment but don't need sequencing due to `prevCount > 0`.
                 if (this->_retain_count.fetch_add(1, std::memory_order_relaxed) == 0) {
 
-                    const std::string vfs_name = internal::to_string(vfs);
-                    const int open_flags = internal::to_int_flags(open);
+                    const std::string vfs_name = internal::vfs_mode_to_string(vfs);
+                    const int open_flags = internal::open_mode_to_int_flags(open);
 
                     auto rc = sqlite3_open_v2(this->filename.c_str(), &this->db, open_flags, vfs_name.c_str());
 
