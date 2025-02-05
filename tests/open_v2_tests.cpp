@@ -16,26 +16,26 @@ static const auto default_table = make_table("users", make_column("id", &User::i
 TEST_CASE("vfs string conversion returns expected strings") {
 
 #ifdef SQLITE_ORM_UNIX
-    REQUIRE(internal::vfs_mode_to_string(vfs_mode::unix) == "unix");
-    REQUIRE(internal::vfs_mode_to_string(vfs_mode::unix_posix) == "unix");
-    REQUIRE(internal::vfs_mode_to_string(vfs_mode::unix_dotfile) == "unix-dotfile");
+    REQUIRE(internal::vfs_mode_to_string(vfs_mode_t::unix) == "unix");
+    REQUIRE(internal::vfs_mode_to_string(vfs_mode_t::unix_posix) == "unix");
+    REQUIRE(internal::vfs_mode_to_string(vfs_mode_t::unix_dotfile) == "unix-dotfile");
 #ifdef SQLITE_ORM_APPLE
-    REQUIRE(internal::vfs_mode_to_string(vfs_mode::unix_afp) == "unix-afp");
+    REQUIRE(internal::vfs_mode_to_string(vfs_mode_t::unix_afp) == "unix-afp");
 #endif
 #endif
 
 #ifdef SQLITE_ORM_WIN
-    REQUIRE(internal::vfs_mode_to_string(vfs_mode::win32) == "win32");
-    REQUIRE(internal::vfs_mode_to_string(vfs_mode::win32_longpath) == "win32-longpath");
+    REQUIRE(internal::vfs_mode_to_string(vfs_mode_t::win32) == "win32");
+    REQUIRE(internal::vfs_mode_to_string(vfs_mode_t::win32_longpath) == "win32-longpath");
 #endif
 }
 
 TEST_CASE("open_mode flag conversion returns expected flags") {
-    STATIC_REQUIRE(internal::open_mode_to_int_flags(open_mode::default_mode) ==
+    STATIC_REQUIRE(internal::open_mode_to_int_flags(open_mode_t::default_mode) ==
                    (SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE));
-    STATIC_REQUIRE(internal::open_mode_to_int_flags(open_mode::create_readwrite) ==
+    STATIC_REQUIRE(internal::open_mode_to_int_flags(open_mode_t::create_readwrite) ==
                    (SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE));
-    STATIC_REQUIRE(internal::open_mode_to_int_flags(open_mode::readonly) == (SQLITE_OPEN_READONLY));
+    STATIC_REQUIRE(internal::open_mode_to_int_flags(open_mode_t::readonly) == (SQLITE_OPEN_READONLY));
 }
 
 /******************************************************************************/
@@ -45,11 +45,11 @@ TEST_CASE("open_mode flag conversion returns expected flags") {
 TEST_CASE("vfs modes open successfully") {
 
 #if defined(SQLITE_ORM_APPLE)
-    vfs_mode vfs = GENERATE(vfs_mode::unix, vfs_mode::unix_posix, vfs_mode::unix_dotfile, vfs_mode::unix_afp);
+    vfs_mode_t vfs = GENERATE(vfs_mode_t::unix, vfs_mode_t::unix_posix, vfs_mode_t::unix_dotfile, vfs_mode_t::unix_afp);
 #elif defined(SQLITE_ORM_UNIX)
-    vfs_mode vfs = GENERATE(vfs_mode::unix, vfs_mode::unix_posix, vfs_mode::unix_dotfile);
+    vfs_mode_t vfs = GENERATE(vfs_mode_t::unix, vfs_mode_t::unix_posix, vfs_mode_t::unix_dotfile);
 #elif defined(SQLITE_ORM_WIN)
-    vfs_mode vfs = GENERATE(vfs_mode::win32, vfs_mode::win32_longpath);
+    vfs_mode_t vfs = GENERATE(vfs_mode_t::win32, vfs_mode_t::win32_longpath);
 #endif
 
     storage_options options;
@@ -71,8 +71,8 @@ TEST_CASE("create/readwrite open mode behaves as expected") {
     const char* tmp_filename = in_memory ? ":memory:" : "open_mode.sqlite";
 
     storage_options options, readonly_options;
-    options.open_mode = open_mode::create_readwrite;
-    readonly_options.open_mode = open_mode::readonly;
+    options.open_mode = open_mode_t::create_readwrite;
+    readonly_options.open_mode = open_mode_t::readonly;
 
     if (!in_memory) {
         std::remove(tmp_filename);
@@ -84,7 +84,7 @@ TEST_CASE("create/readwrite open mode behaves as expected") {
         CHECK_NOTHROW(storage.open_forever());
 
         CHECK(storage.is_opened());
-        CHECK(storage.open_mode() == open_mode::create_readwrite);
+        CHECK(storage.open_mode() == open_mode_t::create_readwrite);
         CHECK(!storage.readonly());
 
         SECTION("readonly open mode behaves as expected") {
@@ -92,7 +92,7 @@ TEST_CASE("create/readwrite open mode behaves as expected") {
             CHECK_NOTHROW(readonly_storage.open_forever());
 
             CHECK(readonly_storage.is_opened());
-            CHECK(readonly_storage.open_mode() == open_mode::readonly);
+            CHECK(readonly_storage.open_mode() == open_mode_t::readonly);
             CHECK(readonly_storage.readonly());
         }
     }

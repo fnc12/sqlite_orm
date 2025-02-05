@@ -644,14 +644,14 @@ namespace sqlite_orm {
              * Public method for checking the VFS implementation being used by
              * this storage object. Mostly useful for debug.
              */
-            vfs_mode vfs_mode() const {
+            vfs_mode_t vfs_mode() const {
                 return this->connection->options.vfs_mode;
             }
 
             /**
              * Return the current open_mode for this storage object. 
              */
-            open_mode open_mode() const {
+            open_mode_t open_mode() const {
                 return this->connection->options.open_mode;
             }
 

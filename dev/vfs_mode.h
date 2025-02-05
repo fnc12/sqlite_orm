@@ -6,7 +6,7 @@
 
 namespace sqlite_orm {
 
-    enum class vfs_mode {
+    enum class vfs_mode_t {
 
         default_vfs = 0,
 #ifdef SQLITE_ORM_UNIX
@@ -30,8 +30,8 @@ namespace sqlite_orm {
 
 namespace sqlite_orm::internal {
 
-    inline const serialize_result_type& vfs_mode_to_string(vfs_mode v) {
-        static constexpr size_t num_vfs_modes = static_cast<size_t>(vfs_mode::num_vfs_modes);
+    inline const serialize_result_type& vfs_mode_to_string(vfs_mode_t v) {
+        static constexpr size_t num_vfs_modes = static_cast<size_t>(vfs_mode_t::num_vfs_modes);
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
         static const std::array<serialize_result_type, num_vfs_modes> idx2str = {
 #else

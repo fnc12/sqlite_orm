@@ -13666,7 +13666,7 @@ namespace sqlite_orm {
 
 namespace sqlite_orm {
 
-    enum class vfs_mode {
+    enum class vfs_mode_t {
 
         default_vfs = 0,
 #ifdef SQLITE_ORM_UNIX
@@ -13690,8 +13690,8 @@ namespace sqlite_orm {
 
 namespace sqlite_orm::internal {
 
-    inline const serialize_result_type& vfs_mode_to_string(vfs_mode v) {
-        static constexpr size_t num_vfs_modes = static_cast<size_t>(vfs_mode::num_vfs_modes);
+    inline const serialize_result_type& vfs_mode_to_string(vfs_mode_t v) {
+        static constexpr size_t num_vfs_modes = static_cast<size_t>(vfs_mode_t::num_vfs_modes);
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
         static const std::array<serialize_result_type, num_vfs_modes> idx2str = {
 #else
@@ -13722,7 +13722,7 @@ namespace sqlite_orm::internal {
 
 namespace sqlite_orm {
 
-    enum class open_mode {
+    enum class open_mode_t {
         default_mode = 0,
         create_readwrite = 0,
         readonly = 1,
@@ -13730,12 +13730,12 @@ namespace sqlite_orm {
 }
 
 namespace sqlite_orm::internal {
-    constexpr int open_mode_to_int_flags(open_mode open) {
+    constexpr int open_mode_to_int_flags(open_mode_t open) {
 
         switch (open) {
-            case open_mode::readonly:
+            case open_mode_t::readonly:
                 return SQLITE_OPEN_READONLY;
-            case open_mode::create_readwrite:
+            case open_mode_t::create_readwrite:
                 return SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE;
         };
 
@@ -13749,8 +13749,8 @@ namespace sqlite_orm {
      * Struct used to pass options into your storage object that will be maintained over its lifetime.
      */
     struct storage_options {
-        vfs_mode vfs_mode = vfs_mode::default_vfs;
-        open_mode open_mode = open_mode::default_mode;
+        vfs_mode_t vfs_mode = vfs_mode_t::default_vfs;
+        open_mode_t open_mode = open_mode_t::default_mode;
     };
 
 }
@@ -18154,14 +18154,14 @@ namespace sqlite_orm {
              * Public method for checking the VFS implementation being used by
              * this storage object. Mostly useful for debug.
              */
-            vfs_mode vfs_mode() const {
+            vfs_mode_t vfs_mode() const {
                 return this->connection->options.vfs_mode;
             }
 
             /**
              * Return the current open_mode for this storage object. 
              */
-            open_mode open_mode() const {
+            open_mode_t open_mode() const {
                 return this->connection->options.open_mode;
             }
 
