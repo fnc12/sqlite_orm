@@ -1,5 +1,6 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if SQLITE_VERSION_NUMBER >= 3020000
 #include <type_traits>
 #include <memory>
@@ -8,21 +9,26 @@
 #include <concepts>
 #endif
 #endif
+#endif
 
 #include "functional/cstring_literal.h"
 #include "xdestroy_handling.h"
 
 #if SQLITE_VERSION_NUMBER >= 3020000
 namespace sqlite_orm {
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     namespace internal {
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         template<char... C>
         struct pointer_type {
             using value_type = const char[sizeof...(C) + 1];
             static inline constexpr value_type value = {C..., '\0'};
         };
+#endif
     }
+}
 
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     inline namespace literals {
         template<internal::cstring_literal tag>
         [[nodiscard]] consteval auto operator"" _pointer_type() {
@@ -184,7 +190,7 @@ namespace sqlite_orm {
 #endif
 }
 
-namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Wrap a pointer, its type and its deleter function for binding it to a statement.
      *  

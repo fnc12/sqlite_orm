@@ -1,5 +1,10 @@
 #pragma once
+
+#ifdef SQLITE_ORM_IMPORT_STD_MODULE
+#include <version>
+#else
 #include <type_traits>
+#endif
 
 #include "mpl/conditional.h"
 

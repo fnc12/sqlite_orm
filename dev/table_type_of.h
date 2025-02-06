@@ -1,6 +1,8 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_convertible
+#endif
 
 namespace sqlite_orm {
 

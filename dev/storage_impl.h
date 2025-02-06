@@ -1,6 +1,8 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
+#endif
 
 #include "functional/static_magic.h"
 #include "functional/index_sequence_util.h"

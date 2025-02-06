@@ -1,7 +1,9 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_convertible
 #include <utility>  // std::move
+#endif
 
 #include "functional/cxx_core_features.h"
 #include "functional/cxx_type_traits_polyfill.h"
@@ -40,7 +42,9 @@ namespace sqlite_orm {
         struct alias_holder;
 #endif
     }
+}
 
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Explicitly refer to a column, used in contexts
      *  where the automatic object mapping deduction needs to be overridden.

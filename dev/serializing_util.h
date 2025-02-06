@@ -1,11 +1,13 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::index_sequence, std::remove_cvref
 #include <tuple>
 #include <array>
 #include <string>
 #include <ostream>
 #include <utility>  //  std::exchange, std::tuple_size, std::make_index_sequence
+#endif
 
 #include "functional/cxx_type_traits_polyfill.h"  // std::remove_cvref, polyfill::is_detected
 #include "functional/cxx_functional_polyfill.h"

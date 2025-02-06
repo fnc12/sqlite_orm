@@ -1,9 +1,11 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <array>
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
 #include <utility>  //  std::exchange
+#endif
 
 namespace sqlite_orm {
 

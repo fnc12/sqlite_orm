@@ -1,10 +1,12 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <tuple>  //  std::make_tuple, std::tuple_size
 #include <type_traits>  //  std::forward, std::is_base_of, std::enable_if
 #include <memory>  //  std::unique_ptr
 #include <vector>  //  std::vector
+#endif
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/mpl/conditional.h"
@@ -18,10 +20,6 @@
 #include "ast/into.h"
 
 namespace sqlite_orm {
-
-    using int64 = sqlite_int64;
-    using uint64 = sqlite_uint64;
-
     namespace internal {
 
         template<class T>
@@ -630,9 +628,14 @@ namespace sqlite_orm {
                 argument0(std::move(argument0)), argument1(std::move(argument1)), argument2(std::move(argument2)) {}
         };
     }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+
+    using int64 = sqlite_int64;
+    using uint64 = sqlite_uint64;
 
 #ifdef SQLITE_ENABLE_MATH_FUNCTIONS
-
     /**
      *  ACOS(X) function https://www.sqlite.org/lang_mathfunc.html#acos
      *

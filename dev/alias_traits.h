@@ -1,20 +1,24 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_base_of, std::is_same
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <concepts>
+#endif
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"
 #include "table_reference.h"
 
-namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /** @short Base class for a custom table alias, column alias or expression alias.
      */
     struct alias_tag {};
+}
 
+namespace sqlite_orm {
     namespace internal {
 
         template<class A>
@@ -65,7 +69,9 @@ namespace sqlite_orm {
         template<class A>
         using is_cte_moniker = polyfill::bool_constant<is_cte_moniker_v<A>>;
     }
+}
 
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<class A>
     concept orm_alias = std::derived_from<A, alias_tag>;

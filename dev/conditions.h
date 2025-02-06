@@ -1,5 +1,6 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <type_traits>  //  std::enable_if, std::is_same, std::remove_const
 #include <vector>  //  std::vector
@@ -7,6 +8,7 @@
 #include <utility>  //  std::move, std::forward
 #include <sstream>  //  std::stringstream
 #include <iomanip>  //  std::flush
+#endif
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "is_base_of_template.h"
@@ -809,7 +811,9 @@ namespace sqlite_orm {
         template<class T>
         using is_constrained_join = polyfill::is_detected<on_type_t, T>;
     }
+}
 
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Explicit FROM function. Usage:
      *  `storage.select(&User::id, from<User>());`

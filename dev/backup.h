@@ -1,10 +1,12 @@
 #pragma once
 
 #include <sqlite3.h>
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <system_error>  //  std::system_error
 #include <string>  //  std::string
 #include <memory>
 #include <utility>  //  std::move, std::exchange
+#endif
 
 #include "error_code.h"
 #include "connection_holder.h"

@@ -1,10 +1,12 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple, std::tuple_size
 #include <string>  //  std::string
 #include <vector>  //  std::vector
 #include <sstream>  //  std::stringstream
 #include <type_traits>  //  std::false_type, std::true_type
+#endif
 
 #include "../tuple_helper/tuple_traits.h"
 #include "../table_name_collector.h"
@@ -85,7 +87,9 @@ namespace sqlite_orm {
         template<class C>
         struct is_dynamic_set<dynamic_set_t<C>> : std::true_type {};
     }
+}
 
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  SET keyword used in UPDATE ... SET queries.
      *  Args must have `assign_t` type. E.g. set(assign(&User::id, 5)) or set(c(&User::id) = 5)

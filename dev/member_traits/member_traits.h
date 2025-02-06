@@ -1,6 +1,8 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_function, std::true_type, std::false_type
+#endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
 

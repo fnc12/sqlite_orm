@@ -1,7 +1,9 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::false_type, std::true_type
 #include <utility>  //  std::move
+#endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../serialize_result_type.h"
@@ -35,7 +37,9 @@ namespace sqlite_orm {
         template<class T>
         struct is_where : polyfill::bool_constant<is_where_v<T>> {};
     }
+}
 
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  WHERE clause. Use it to add WHERE conditions wherever you like.
      *  C is expression type. Can be any expression like: is_equal_t, is_null_t, exists_t etc

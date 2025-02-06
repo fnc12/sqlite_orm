@@ -1,11 +1,13 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_base_of
 #include <string>  //  std::string
 #include <vector>  //  std::vector
 #include <functional>  //  std::reference_wrapper
 #include <system_error>
 #include <utility>  //  std::move
+#endif
 
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_iteration.h"

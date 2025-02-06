@@ -1,10 +1,12 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <array>  //  std::array
 #include <string>  //  std::string
 #include <utility>  //  std::pair
 #include <algorithm>  //  std::ranges::transform
 #include <cctype>  // std::toupper
+#endif
 
 #include "serialize_result_type.h"
 
@@ -14,7 +16,7 @@
 #undef DELETE
 #endif
 
-namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Caps case because of:
@@ -31,7 +33,9 @@ namespace sqlite_orm {
         WAL = 4,
         OFF = 5,
     };
+}
 
+namespace sqlite_orm {
     namespace internal {
 
         inline const serialize_result_type& journal_mode_to_string(journal_mode value) {

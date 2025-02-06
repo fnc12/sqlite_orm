@@ -4,11 +4,13 @@
  */
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_same
 #include <sstream>  //  std::stringstream
 #include <iomanip>  //  std::flush
 #include <functional>  //  std::reference_wrapper, std::cref
 #include <algorithm>  //  std::find_if, std::ranges::find
+#endif
 
 #include "../type_traits.h"
 #include "../sqlite_schema_table.h"

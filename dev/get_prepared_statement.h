@@ -1,7 +1,9 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_same, std::remove_reference, std::remove_cvref
 #include <tuple>  //  std::get
+#endif
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/static_magic.h"
@@ -11,7 +13,7 @@
 #include "node_tuple.h"
 #include "expression_object_type.h"
 
-namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     template<int N, class It, class L, class O>
     auto& get(internal::prepared_statement_t<internal::insert_range_t<It, L, O>>& statement) {

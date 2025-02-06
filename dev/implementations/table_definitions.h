@@ -4,9 +4,11 @@
  */
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::remove_reference
 #include <utility>  //  std::move
 #include <algorithm>  //  std::find_if, std::ranges::find
+#endif
 
 #include "../tuple_helper/tuple_filter.h"
 #include "../type_traits.h"

@@ -1,7 +1,9 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_same, std::decay, std::is_arithmetic, std::is_base_of
 #include <functional>  //  std::reference_wrapper
+#endif
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/mpl.h"
@@ -129,8 +131,8 @@ namespace sqlite_orm {
         };
 
         template<class DBOs>
-        struct column_result_t<DBOs, nullptr_t, void> {
-            using type = nullptr_t;
+        struct column_result_t<DBOs, std::nullptr_t, void> {
+            using type = std::nullptr_t;
         };
 
         template<class DBOs>

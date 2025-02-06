@@ -1,9 +1,10 @@
 #pragma once
 
 #include <sqlite3.h>
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::enable_if
-#include <cstdlib>  //  atof, atoi, atoll
-#include <cstring>  //  strlen
+#include <cstdlib>  //  ::atof, ::atoi, ::atoll
+#include <cstring>  //  ::strlen
 #include <system_error>  //  std::system_error
 #include <string>  //  std::string, std::wstring
 #ifndef SQLITE_ORM_OMITS_CODECVT
@@ -16,6 +17,7 @@
 #include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #include <concepts>
+#endif
 #endif
 
 #include "functional/cxx_functional_polyfill.h"
@@ -30,7 +32,7 @@
 #include "is_std_ptr.h"
 #include "type_traits.h"
 
-namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Helper for casting values originating from SQL to C++ typed values, usually from rows of a result set.
@@ -81,7 +83,9 @@ namespace sqlite_orm {
         { extractor.extract(value) } -> std::same_as<T>;
     };
 #endif
+}
 
+namespace sqlite_orm {
     namespace internal {
         /*  
          *  Make a row extractor to be used for casting SQL column text to a C++ typed value.
@@ -116,7 +120,9 @@ namespace sqlite_orm {
             return {};
         }
     }
+}
 
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class R>
     int extract_single_value(void* data, int argc, char** argv, char**) {
         auto& res = *(R*)data;
@@ -126,7 +132,9 @@ namespace sqlite_orm {
         }
         return 0;
     }
+}
 
+namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3020000
     /**
      *  Specialization for the 'pointer-passing interface'.
@@ -370,16 +378,16 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<>
-    struct row_extractor<nullptr_t, void> {
-        nullptr_t extract(const char* /*columnText*/) const {
+    struct row_extractor<std::nullptr_t, void> {
+        std::nullptr_t extract(const char* /*columnText*/) const {
             return nullptr;
         }
 
-        nullptr_t extract(sqlite3_stmt*, int /*columnIndex*/) const {
+        std::nullptr_t extract(sqlite3_stmt*, int /*columnIndex*/) const {
             return nullptr;
         }
 
-        nullptr_t extract(sqlite3_value*) const {
+        std::nullptr_t extract(sqlite3_value*) const {
             return nullptr;
         }
     };

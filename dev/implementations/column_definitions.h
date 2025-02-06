@@ -4,7 +4,9 @@
  */
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <memory>  //  std::make_unique
+#endif
 
 #include "../functional/static_magic.h"
 #include "../tuple_helper/tuple_traits.h"

@@ -1,5 +1,6 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::remove_pointer, std::remove_reference, std::remove_cvref, std::disjunction
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string
@@ -11,6 +12,7 @@
 #include <memory>
 #include <array>
 #include <list>  //  std::list
+#endif
 #include "functional/cxx_string_view.h"
 #include "functional/cxx_optional.h"
 
@@ -138,7 +140,7 @@ namespace sqlite_orm {
             template<class P, class PT, class D>
             std::string do_serialize(const pointer_binding<P, PT, D>&) const {
                 // always serialize null (security reasons)
-                return field_printer<nullptr_t>{}(nullptr);
+                return field_printer<std::nullptr_t>{}(nullptr);
             }
 #endif
         };
