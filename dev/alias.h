@@ -1,11 +1,13 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_same
 #include <utility>  //  std::make_index_sequence, std::move
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #include <array>
+#endif
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
@@ -185,7 +187,9 @@ namespace sqlite_orm {
         inline constexpr bool is_builtin_numeric_column_alias_v<column_alias<C...>> = ((C >= '0' && C <= '9') && ...);
 #endif
     }
+}
 
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Using a column pointer, create a column reference to an aliased table column.
      *  

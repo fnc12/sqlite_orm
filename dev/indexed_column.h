@@ -1,7 +1,9 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <utility>  //  std::move
+#endif
 
 #include "ast/where.h"
 
@@ -51,7 +53,9 @@ namespace sqlite_orm {
             return std::move(col);
         }
     }
+}
 
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      * Use this function to specify indexed column inside `make_index` function call.
      * Example: make_index("index_name", indexed_column(&User::id).asc())

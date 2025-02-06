@@ -1,8 +1,10 @@
 #pragma once
 
 #include <sqlite3.h>
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_same, std::index_sequence, std::make_index_sequence
 #include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
+#endif
 
 #include "functional/cxx_functional_polyfill.h"
 #include "type_traits.h"

@@ -1,8 +1,10 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>
 #include <type_traits>  //  std::enable_if
 #include <utility>  //  std::move, std::forward, std::declval
+#endif
 #include "functional/cxx_optional.h"
 
 #include "functional/cxx_type_traits_polyfill.h"
@@ -34,7 +36,7 @@ namespace sqlite_orm {
                 return {this->value, std::move(r)};
             }
 
-            assign_t<T, nullptr_t> operator=(nullptr_t) const {
+            assign_t<T, std::nullptr_t> operator=(std::nullptr_t) const {
                 return {this->value, nullptr};
             }
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -90,7 +92,9 @@ namespace sqlite_orm {
         template<class T>
         using unwrap_expression_t = decltype(get_from_expression(std::declval<T>()));
     }
+}
 
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Public interface for syntax sugar for columns. Example: `where(c(&User::id) == 5)` or
      * `storage.update(set(c(&User::name) = "Dua Lipa"));

@@ -1,13 +1,15 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
+#endif
 
 #include "schema/column.h"
 #include "schema/table.h"
 #include "column_pointer.h"
 #include "alias.h"
 
-namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** 
      *  SQLite's "schema table" that stores the schema for a database.
      *  

@@ -1,8 +1,10 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <set>  //  std::set
 #include <string>  //  std::string
 #include <utility>  //  std::pair, std::move
+#endif
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"

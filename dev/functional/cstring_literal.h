@@ -1,8 +1,10 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <utility>  //  std::index_sequence
 #include <algorithm>  //  std::copy_n
+#endif
 #endif
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES

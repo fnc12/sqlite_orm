@@ -1,10 +1,12 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
 #include <system_error>  //  std::system_error
 #include <ostream>  //  std::ostream
 #include <string>  //  std::string
 #include <tuple>  //  std::tuple
+#endif
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/mpl.h"
@@ -506,7 +508,9 @@ namespace sqlite_orm {
                                                                     check_if_is_type<unindexed_t>>,
                                                    T>;
     }
+}
 
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3031000
     template<class T>
     internal::generated_always_t<T> generated_always_as(T expression) {

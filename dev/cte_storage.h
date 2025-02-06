@@ -1,10 +1,12 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #include <type_traits>
 #include <tuple>
 #include <string>
 #include <vector>
+#endif
 #endif
 
 #include "tuple_helper/tuple_fy.h"
@@ -61,7 +63,7 @@ namespace sqlite_orm {
 
         // aliased column expressions, explicit or implicitly numbered
         template<typename F, typename ColRef, satisfies_is_specialization_of<ColRef, alias_holder> = true>
-        static auto make_cte_column(std::string name, const ColRef& /*finalColRef*/) {
+        auto make_cte_column(std::string name, const ColRef& /*finalColRef*/) {
             using object_type = aliased_field<type_t<ColRef>, F>;
 
             return sqlite_orm::make_column<>(std::move(name), &object_type::field);
@@ -69,7 +71,7 @@ namespace sqlite_orm {
 
         // F O::*
         template<typename F, typename ColRef, satisfies<std::is_member_pointer, ColRef> = true>
-        static auto make_cte_column(std::string name, const ColRef& finalColRef) {
+        auto make_cte_column(std::string name, const ColRef& finalColRef) {
             using object_type = table_type_of_t<ColRef>;
             using column_type = column_t<ColRef, empty_setter>;
 

@@ -1,12 +1,14 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::false_type, std::true_type, std::enable_if
 #include <memory>  //  std::shared_ptr, std::unique_ptr
+#endif
 #include "functional/cxx_optional.h"
 
 #include "functional/cxx_type_traits_polyfill.h"
 
-namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  This is class that tells `sqlite_orm` that type is nullable. Nullable types

@@ -1,7 +1,9 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <functional>  //  std::function
 #include <utility>  //  std::move
+#endif
 
 #include "connection_holder.h"
 

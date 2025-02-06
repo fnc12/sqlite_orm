@@ -1,7 +1,9 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::false_type, std::true_type
 #include <utility>  //  std::move
+#endif
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "is_base_of_template.h"
@@ -209,7 +211,9 @@ namespace sqlite_orm {
         template<class L, class R>
         struct is_assign_t<assign_t<L, R>> : public std::true_type {};
     }
+}
 
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Public interface for || concatenation operator. Example: `select(conc(&User::name, "@gmail.com"));` => SELECT
      * name || '@gmail.com' FROM users

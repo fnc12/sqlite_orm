@@ -1,8 +1,10 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple, std::make_tuple
 #include <type_traits>  //  std::true_type, std::false_type
 #include <utility>  //  std::forward, std::move
+#endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
 
@@ -37,7 +39,9 @@ namespace sqlite_orm {
         using is_group_by = polyfill::disjunction<polyfill::is_specialization_of<T, group_by_t>,
                                                   polyfill::is_specialization_of<T, group_by_with_having>>;
     }
+}
 
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  GROUP BY column.
      *  Example: storage.get_all<Employee>(group_by(&Employee::name))

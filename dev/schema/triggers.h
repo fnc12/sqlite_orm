@@ -1,9 +1,11 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <memory>
 #include <sstream>
 #include <string>
 #include <tuple>
+#endif
 
 #include "../optional_container.h"
 
@@ -218,8 +220,10 @@ namespace sqlite_orm {
 
             expression_type expression;
         };
-    }  // NAMESPACE internal
+    }
+}
 
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  NEW.expression function used within TRIGGER expressions
      */

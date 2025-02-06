@@ -1,9 +1,11 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>
 #include <memory>
+#endif
 
-namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Specialization for optional type (std::shared_ptr / std::unique_ptr).

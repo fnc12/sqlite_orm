@@ -1,13 +1,15 @@
 #pragma once
 
 #include <sqlite3.h>
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <system_error>  // std::error_code, std::system_error
 #include <string>  //  std::string
 #include <stdexcept>
 #include <sstream>  //  std::ostringstream
 #include <type_traits>
+#endif
 
-namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /** @short Enables classifying sqlite error codes.
 
@@ -50,7 +52,7 @@ namespace std {
     struct is_error_code_enum<::sqlite_orm::orm_error_code> : true_type {};
 }
 
-namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     class orm_error_category : public std::error_category {
       public:
