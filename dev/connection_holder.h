@@ -6,6 +6,7 @@
 #ifdef SQLITE_ORM_CPP20_SEMAPHORE_SUPPORTED
 #include <semaphore>
 #endif
+#include <functional>  //  std::function
 #include <string>  //  std::string
 #endif
 
@@ -42,7 +43,15 @@ namespace sqlite_orm {
                 std::binary_semaphore& sync;
             };
 
-            connection_holder(std::string filename) : filename(std::move(filename)) {}
+            connection_holder(std::string filename, bool openedForeverHint, std::function<void(sqlite3*)> onAfterOpen) :
+                filename(std::move(filename)), _openedForeverHint{openedForeverHint},
+                _onAfterOpen{std::move(onAfterOpen)} {}
+
+            connection_holder(const connection_holder&) = delete;
+
+            connection_holder(const connection_holder& other, std::function<void(sqlite3*)> onAfterOpen) :
+                filename{other.filename}, _openedForeverHint{other._openedForeverHint},
+                _onAfterOpen{std::move(onAfterOpen)} {}
 
             void retain() {
                 const maybe_lock maybeLock{this->_sync, !this->_openedForeverHint};
@@ -54,11 +63,15 @@ namespace sqlite_orm {
                     return;
                 }
 
-                // first one opens the connection.
+                // first one opens and sets up the connection.
 
                 if (int rc = sqlite3_open(this->filename.c_str(), &this->db); rc != SQLITE_OK)
                     [[unlikely]] /*possible, but unexpected*/ {
                     throw_translated_sqlite_error(this->db);
+                }
+
+                if (this->_onAfterOpen) {
+                    this->_onAfterOpen(this->db);
                 }
             }
 
@@ -103,13 +116,21 @@ namespace sqlite_orm {
             sqlite3* db = nullptr;
 
           private:
-            std::binary_semaphore _sync{1};
             const bool _openedForeverHint = false;
+            const std::function<void(sqlite3* db)> _onAfterOpen;
+            std::binary_semaphore _sync{1};
             std::atomic_int _retain_count{};
         };
 #else
         struct connection_holder {
-            connection_holder(std::string filename) : filename(std::move(filename)) {}
+            connection_holder(std::string filename,
+                              bool /*openedForeverHint*/,
+                              std::function<void(sqlite3*)> onAfterOpen) :
+                filename(std::move(filename)), _onAfterOpen{std::move(onAfterOpen)} {}
+
+            connection_holder(const connection_holder&) = delete;
+            connection_holder(const connection_holder& other, std::function<void(sqlite3*)> onAfterOpen) :
+                filename{other.filename}, _onAfterOpen{std::move(onAfterOpen)} {}
 
             void retain() {
                 // first one opens the connection.
@@ -120,6 +141,10 @@ namespace sqlite_orm {
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible, but unexpected*/ {
                         throw_translated_sqlite_error(this->db);
                     }
+                }
+
+                if (this->_onAfterOpen) {
+                    this->_onAfterOpen(this->db);
                 }
             }
 
@@ -154,6 +179,7 @@ namespace sqlite_orm {
             sqlite3* db = nullptr;
 
           private:
+            const std::function<void(sqlite3* db)> _onAfterOpen;
             std::atomic_int _retain_count{};
         };
 #endif

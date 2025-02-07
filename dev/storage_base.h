@@ -295,9 +295,6 @@ namespace sqlite_orm {
             void open_forever() {
                 this->isOpenedForever = true;
                 this->connection->retain();
-                if (1 == this->connection->retain_count()) {
-                    this->on_open_internal(this->connection->get());
-                }
             }
 
             /**
@@ -610,7 +607,7 @@ namespace sqlite_orm {
             }
 
             backup_t make_backup_to(const std::string& filename) {
-                auto holder = std::make_unique<connection_holder>(filename);
+                auto holder = std::make_unique<connection_holder>(filename, true, nullptr);
                 connection_ref conRef{*holder};
                 return {conRef, "main", this->get_connection(), "main", std::move(holder)};
             }
@@ -620,7 +617,7 @@ namespace sqlite_orm {
             }
 
             backup_t make_backup_from(const std::string& filename) {
-                auto holder = std::make_unique<connection_holder>(filename);
+                auto holder = std::make_unique<connection_holder>(filename, true, nullptr);
                 connection_ref conRef{*holder};
                 return {this->get_connection(), "main", conRef, "main", std::move(holder)};
             }
@@ -668,22 +665,25 @@ namespace sqlite_orm {
                 pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
                 inMemory(filename.empty() || filename == ":memory:"),
-                connection(std::make_unique<connection_holder>(std::move(filename))),
+                connection(std::make_unique<connection_holder>(
+                    std::move(filename),
+                    inMemory,
+                    std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))),
                 cachedForeignKeysCount(foreignKeysCount) {
                 if (this->inMemory) {
                     this->connection->retain();
-                    this->on_open_internal(this->connection->get());
                 }
             }
 
             storage_base(const storage_base& other) :
                 on_open(other.on_open), pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)), inMemory(other.inMemory),
-                connection(std::make_unique<connection_holder>(other.connection->filename)),
+                connection(std::make_unique<connection_holder>(
+                    *other.connection,
+                    std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))),
                 cachedForeignKeysCount(other.cachedForeignKeysCount) {
                 if (this->inMemory) {
                     this->connection->retain();
-                    this->on_open_internal(this->connection->get());
                 }
             }
 
@@ -698,18 +698,12 @@ namespace sqlite_orm {
 
             void begin_transaction_internal(const std::string& query) {
                 this->connection->retain();
-                if (1 == this->connection->retain_count()) {
-                    this->on_open_internal(this->connection->get());
-                }
                 sqlite3* db = this->connection->get();
                 perform_void_exec(db, query);
             }
 
             connection_ref get_connection() {
                 connection_ref res{*this->connection};
-                if (1 == this->connection->retain_count()) {
-                    this->on_open_internal(this->connection->get());
-                }
                 return res;
             }
 
@@ -735,7 +729,7 @@ namespace sqlite_orm {
                 }
 #endif
                 if (this->pragma.synchronous_ != -1) {
-                    this->pragma.synchronous(this->pragma.synchronous_);
+                    this->pragma.set_pragma("synchronous", this->pragma.synchronous_, db);
                 }
 
                 if (this->pragma.journal_mode_ != -1) {
