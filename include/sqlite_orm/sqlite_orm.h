@@ -98,9 +98,12 @@ using std::nullptr_t;
 #define SQLITE_ORM_STRUCTURED_BINDINGS_SUPPORTED
 #endif
 
+#if __cpp_aligned_new >= 201606L
+#define SQLITE_ORM_ALIGNED_NEW_SUPPORTED
+#endif
+
 #if __cpp_generic_lambdas >= 201707L
 #define SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
-#else
 #endif
 
 #if __cpp_init_captures >= 201803L
@@ -13887,6 +13890,30 @@ namespace sqlite_orm {
 #include <string>  //  std::string
 #endif
 
+// #include "functional/cxx_new.h"
+
+#ifdef SQLITE_ORM_IMPORT_STD_MODULE
+#include <version>
+#else
+#include <new>
+#endif
+
+namespace sqlite_orm {
+    namespace internal {
+        namespace polyfill {
+#if __cpp_lib_hardware_interference_size >= 201703L
+            using std::hardware_constructive_interference_size;
+            using std::hardware_destructive_interference_size;
+#else
+            constexpr size_t hardware_constructive_interference_size = 64;
+            constexpr size_t hardware_destructive_interference_size = 64;
+#endif
+        }
+    }
+
+    namespace polyfill = internal::polyfill;
+}
+
 // #include "error_code.h"
 
 namespace sqlite_orm {
@@ -13921,8 +13948,8 @@ namespace sqlite_orm {
             };
 
             connection_holder(std::string filename, bool openedForeverHint, std::function<void(sqlite3*)> onAfterOpen) :
-                filename(std::move(filename)), _openedForeverHint{openedForeverHint},
-                _onAfterOpen{std::move(onAfterOpen)} {}
+                _openedForeverHint{openedForeverHint}, _onAfterOpen{std::move(onAfterOpen)},
+                filename(std::move(filename)) {}
 
             connection_holder(const connection_holder&) = delete;
 
@@ -13936,7 +13963,7 @@ namespace sqlite_orm {
                 // `maybeLock.isSynced`: the lock above already synchronized everything, so we can just atomically increment the counter
                 // `!maybeLock.isSynced`: we presume that the connection is opened once in a single-threaded context [also open forever].
                 //                        therefore we can just use an atomic increment but don't need sequencing due to `prevCount > 0`.
-                if (int prevCount = _retain_count.fetch_add(1, std::memory_order_relaxed); prevCount > 0) {
+                if (int prevCount = _retainCount.fetch_add(1, std::memory_order_relaxed); prevCount > 0) {
                     return;
                 }
 
@@ -13955,7 +13982,7 @@ namespace sqlite_orm {
             void release() {
                 const maybe_lock maybeLock{_sync, !_openedForeverHint};
 
-                if (int prevCount = _retain_count.fetch_sub(
+                if (int prevCount = _retainCount.fetch_sub(
                         1,
                         maybeLock.isSynced
                             // the lock above already synchronized everything, so we can just atomically decrement the counter
@@ -13984,36 +14011,41 @@ namespace sqlite_orm {
              *  @attention While retrieving the reference count value is atomic it makes only sense at single-threaded points in code.
              */
             int retain_count() const {
-                return _retain_count.load(std::memory_order_relaxed);
+                return _retainCount.load(std::memory_order_relaxed);
             }
 
-            const std::string filename;
-
           protected:
-            sqlite3* db = nullptr;
+            alignas(polyfill::hardware_destructive_interference_size) sqlite3* db = nullptr;
 
           private:
+            std::atomic_int _retainCount{};
             const bool _openedForeverHint = false;
-            const std::function<void(sqlite3* db)> _onAfterOpen;
             std::binary_semaphore _sync{1};
-            std::atomic_int _retain_count{};
+
+          private:
+            alignas(
+                polyfill::hardware_destructive_interference_size) const std::function<void(sqlite3* db)> _onAfterOpen;
+
+          public:
+            const std::string filename;
         };
 #else
         struct connection_holder {
             connection_holder(std::string filename,
                               bool /*openedForeverHint*/,
                               std::function<void(sqlite3*)> onAfterOpen) :
-                filename(std::move(filename)), _onAfterOpen{std::move(onAfterOpen)} {}
+                _onAfterOpen{std::move(onAfterOpen)}, filename(std::move(filename)) {}
 
             connection_holder(const connection_holder&) = delete;
+
             connection_holder(const connection_holder& other, std::function<void(sqlite3*)> onAfterOpen) :
-                filename{other.filename}, _onAfterOpen{std::move(onAfterOpen)} {}
+                _onAfterOpen{std::move(onAfterOpen)}, filename{other.filename} {}
 
             void retain() {
                 // first one opens the connection.
                 // we presume that the connection is opened once in a single-threaded context [also open forever].
                 // therefore we can just use an atomic increment but don't need sequencing due to `prevCount > 0`.
-                if (_retain_count.fetch_add(1, std::memory_order_relaxed) == 0) {
+                if (_retainCount.fetch_add(1, std::memory_order_relaxed) == 0) {
                     int rc = sqlite3_open(this->filename.c_str(), &this->db);
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible, but unexpected*/ {
                         throw_translated_sqlite_error(this->db);
@@ -14028,7 +14060,7 @@ namespace sqlite_orm {
             void release() {
                 // last one closes the connection.
                 // we assume that this might happen by any thread, therefore the counter must serve as a synchronization point.
-                if (_retain_count.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+                if (_retainCount.fetch_sub(1, std::memory_order_acq_rel) == 1) {
                     int rc = sqlite3_close(this->db);
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY {
                         throw_translated_sqlite_error(this->db);
@@ -14047,17 +14079,26 @@ namespace sqlite_orm {
              *  @attention While retrieving the reference count value is atomic it makes only sense at single-threaded points in code.
              */
             int retain_count() const {
-                return _retain_count.load(std::memory_order_relaxed);
+                return _retainCount.load(std::memory_order_relaxed);
             }
 
-            const std::string filename;
-
           protected:
-            sqlite3* db = nullptr;
+#if SQLITE_ORM_ALIGNED_NEW_SUPPORTED
+            alignas(polyfill::hardware_destructive_interference_size)
+#endif
+                sqlite3* db = nullptr;
 
           private:
-            const std::function<void(sqlite3* db)> _onAfterOpen;
-            std::atomic_int _retain_count{};
+            std::atomic_int _retainCount{};
+
+          private:
+#if SQLITE_ORM_ALIGNED_NEW_SUPPORTED
+            alignas(polyfill::hardware_destructive_interference_size)
+#endif
+                const std::function<void(sqlite3* db)> _onAfterOpen;
+
+          public:
+            const std::string filename;
         };
 #endif
 
