@@ -4,6 +4,26 @@
 
 using namespace sqlite_orm;
 
+#ifdef SQLITE_ORM_CTAD_SUPPORTED
+TEST_CASE("connection control") {
+    const auto openForever = GENERATE(false, true);
+    SECTION("") {
+        SECTION("empty") {
+            auto storage = make_storage("", connection_control{openForever}, on_open([](sqlite3*) {}));
+            REQUIRE(storage.is_opened());
+        }
+        SECTION("memory") {
+            auto storage = make_storage(":memory:", connection_control{openForever}, on_open([](sqlite3*) {}));
+            REQUIRE(storage.is_opened());
+        }
+        SECTION("file name") {
+            auto storage = make_storage("myDatabase.sqlite", connection_control{openForever}, on_open([](sqlite3*) {}));
+            REQUIRE(storage.is_opened() == openForever);
+        }
+    }
+}
+#endif
+
 TEST_CASE("Current time/date/timestamp") {
     auto storage = make_storage("");
     SECTION("time") {

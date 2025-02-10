@@ -35,8 +35,26 @@
 #include "serializing_util.h"
 #include "table_info.h"
 
-namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    struct on_open {
+        using storage_prop_tag = int;
 
+#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
+        on_open() = default;
+        on_open(std::function<void(sqlite3*)> onOpen) : onOpen{std::move(onOpen)} {}
+#endif
+
+        std::function<void(sqlite3*)> onOpen;
+    };
+
+    struct connection_control {
+        using storage_prop_tag = int;
+
+        bool openForever = false;
+    };
+}
+
+namespace sqlite_orm {
     namespace internal {
 
         struct storage_base {
@@ -289,17 +307,19 @@ namespace sqlite_orm {
              *  needed and closes when it is not needed. This function breaks this rule. In memory storage always
              *  keeps connection opened so calling this for in-memory storage changes nothing.
              *  Note about multithreading: in multithreading context avoiding using this function for not in-memory
-             *  storage may lead to data races. If you have data races in such a configuration try to call `open_forever`
+             *  storage may lead to data races. If you have data races in such a configuration try to call `open_forever()`
              *  before accessing your storage - it may fix data races.
              */
             void open_forever() {
-                this->isOpenedForever = true;
-                this->connection->retain();
+                if (!this->isOpenedForever) {
+                    this->isOpenedForever = true;
+                    this->connection->retain();
+                }
             }
 
             /**
              * Create an application-defined scalar SQL function.
-             * Can be called at any time no matter whether the database connection is opened or not.
+             * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
              * 
              * Note: `create_scalar_function()` merely creates a closure to generate an instance of the scalar function object,
              * together with a copy of the passed initialization arguments.
@@ -342,7 +362,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
             /**
              * Create an application-defined scalar function.
-             * Can be called at any time no matter whether the database connection is opened or not.
+             * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
              * 
              * Note: `create_scalar_function()` merely creates a closure to generate an instance of the scalar function object,
              * together with a copy of the passed initialization arguments.
@@ -357,7 +377,7 @@ namespace sqlite_orm {
 
             /**
              * Create an application-defined scalar function.
-             * Can be called at any time no matter whether the database connection is opened or not.
+             * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
              *
              * If `quotedF` contains a freestanding function, stateless lambda or stateless function object,
              * `quoted_scalar_function::callable()` uses the original function object, assuming it is free of side effects;
@@ -398,7 +418,7 @@ namespace sqlite_orm {
 
             /**
              * Create an application-defined aggregate SQL function.
-             * Can be called at any time no matter whether the database connection is opened or not.
+             * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
              * 
              * Note: `create_aggregate_function()` merely creates a closure to generate an instance of the aggregate function object,
              * together with a copy of the passed initialization arguments.
@@ -447,7 +467,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
             /**
              * Create an application-defined aggregate function.
-             * Can be called at any time no matter whether the database connection is opened or not.
+             * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
              * 
              * Note: `create_aggregate_function()` merely creates a closure to generate an instance of the aggregate function object,
              * together with a copy of the passed initialization arguments.
@@ -462,7 +482,7 @@ namespace sqlite_orm {
 
             /**
              *  Delete a scalar function you created before.
-             *  Can be called at any time no matter whether the database connection is open or not.
+             *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
              */
             template<class F>
             void delete_scalar_function() {
@@ -474,7 +494,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
             /**
              *  Delete a scalar function you created before.
-             *  Can be called at any time no matter whether the database connection is open or not.
+             *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
              */
             template<orm_scalar_function auto f>
             void delete_scalar_function() {
@@ -483,7 +503,7 @@ namespace sqlite_orm {
 
             /**
              *  Delete a quoted scalar function you created before.
-             *  Can be called at any time no matter whether the database connection is open or not.
+             *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
              */
             template<orm_quoted_scalar_function auto quotedF>
             void delete_scalar_function() {
@@ -493,7 +513,7 @@ namespace sqlite_orm {
 
             /**
              *  Delete aggregate function you created before.
-             *  Can be called at any time no matter whether the database connection is open or not.
+             *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
              */
             template<class F>
             void delete_aggregate_function() {
@@ -661,16 +681,23 @@ namespace sqlite_orm {
             }
 
           protected:
-            storage_base(std::string filename, int foreignKeysCount) :
+            storage_base(std::string filename,
+                         sqlite_orm::on_open onOpenSpec,
+                         connection_control connectionCtrl,
+                         int foreignKeysCount) :
+                on_open{std::move(onOpenSpec.onOpen)}, isOpenedForever{connectionCtrl.openForever},
                 pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
                 inMemory(filename.empty() || filename == ":memory:"),
                 connection(std::make_unique<connection_holder>(
                     std::move(filename),
-                    inMemory,
+                    inMemory || isOpenedForever,
                     std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))),
                 cachedForeignKeysCount(foreignKeysCount) {
                 if (this->inMemory) {
+                    this->connection->retain();
+                }
+                if (this->isOpenedForever) {
                     this->connection->retain();
                 }
             }
@@ -678,11 +705,15 @@ namespace sqlite_orm {
             storage_base(const storage_base& other) :
                 on_open(other.on_open), pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)), inMemory(other.inMemory),
+                isOpenedForever{other.isOpenedForever},
                 connection(std::make_unique<connection_holder>(
                     *other.connection,
                     std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))),
                 cachedForeignKeysCount(other.cachedForeignKeysCount) {
                 if (this->inMemory) {
+                    this->connection->retain();
+                }
+                if (this->isOpenedForever) {
                     this->connection->retain();
                 }
             }
@@ -719,15 +750,15 @@ namespace sqlite_orm {
                 perform_exec(db, "PRAGMA foreign_keys", extract_single_value<bool>, &result);
                 return result;
             }
-
 #endif
-            void on_open_internal(sqlite3* db) {
 
+            void on_open_internal(sqlite3* db) {
 #if SQLITE_VERSION_NUMBER >= 3006019
                 if (this->cachedForeignKeysCount) {
                     this->foreign_keys(db, true);
                 }
 #endif
+
                 if (this->pragma.synchronous_ != -1) {
                     this->pragma.set_pragma("synchronous", this->pragma.synchronous_, db);
                 }

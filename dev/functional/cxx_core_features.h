@@ -53,6 +53,10 @@
 #define SQLITE_ORM_ALIGNED_NEW_SUPPORTED
 #endif
 
+#if __cpp_deduction_guides >= 201703L
+#define SQLITE_ORM_CTAD_SUPPORTED
+#endif
+
 #if __cpp_generic_lambdas >= 201707L
 #define SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
 #endif

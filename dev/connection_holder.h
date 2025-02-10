@@ -66,8 +66,11 @@ namespace sqlite_orm {
 
                 // first one opens and sets up the connection.
 
-                if (int rc = sqlite3_open(this->filename.c_str(), &this->db); rc != SQLITE_OK)
-                    [[unlikely]] /*possible, but unexpected*/ {
+                if (int rc = sqlite3_open_v2(this->filename.c_str(),
+                                             &this->db,
+                                             SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
+                                             nullptr);
+                    rc != SQLITE_OK) [[unlikely]] /*possible, but unexpected*/ {
                     throw_translated_sqlite_error(this->db);
                 }
 
@@ -143,7 +146,10 @@ namespace sqlite_orm {
                 // we presume that the connection is opened once in a single-threaded context [also open forever].
                 // therefore we can just use an atomic increment but don't need sequencing due to `prevCount > 0`.
                 if (_retainCount.fetch_add(1, std::memory_order_relaxed) == 0) {
-                    int rc = sqlite3_open(this->filename.c_str(), &this->db);
+                    int rc = sqlite3_open_v2(this->filename.c_str(),
+                                             &this->db,
+                                             SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
+                                             nullptr);
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible, but unexpected*/ {
                         throw_translated_sqlite_error(this->db);
                     }

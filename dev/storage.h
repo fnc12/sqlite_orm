@@ -81,21 +81,56 @@ namespace sqlite_orm {
             polyfill::void_t<indirectly_test_preparable<decltype(std::declval<S>().prepare(std::declval<E>()))>>> =
             true;
 
+#ifdef SQLITE_ORM_CTAD_SUPPORTED
+        template<class PropsTpl>
+        on_open on_open_spec_or_default(PropsTpl& properties) {
+            if constexpr (tuple_has_type<PropsTpl, on_open>::value) {
+                return std::move(std::get<on_open>(properties));
+            } else {
+                return {};
+            }
+        }
+
+        template<class PropsTpl>
+        connection_control connection_control_or_default(PropsTpl& properties) {
+            if constexpr (tuple_has_type<PropsTpl, connection_control>::value) {
+                return std::move(std::get<connection_control>(properties));
+            } else {
+                return {};
+            }
+        }
+#else
+        template<class PropsTpl>
+        on_open on_open_spec_or_default(PropsTpl&) {
+            return {};
+        }
+
+        template<class PropsTpl>
+        connection_control connection_control_or_default(PropsTpl&) {
+            return {};
+        }
+#endif
+
         /**
          *  Storage class itself. Create an instanse to use it as an interfacto to sqlite db by calling `make_storage`
          *  function.
          */
         template<class... DBO>
         struct storage_t : storage_base {
-            using self = storage_t<DBO...>;
+            using self = storage_t;
             using db_objects_type = db_objects_tuple<DBO...>;
 
             /**
              *  @param filename database filename.
              *  @param dbObjects db_objects_tuple
              */
-            storage_t(std::string filename, db_objects_type dbObjects) :
-                storage_base{std::move(filename), foreign_keys_count(dbObjects)}, db_objects{std::move(dbObjects)} {}
+            template<class PropsTpl>
+            storage_t(std::string filename, db_objects_type dbObjects, PropsTpl properties) :
+                storage_base{std::move(filename),
+                             on_open_spec_or_default(properties),
+                             connection_control_or_default(properties),
+                             foreign_keys_count(dbObjects)},
+                db_objects{std::move(dbObjects)} {}
 
             storage_t(const storage_t&) = default;
 
@@ -1702,17 +1737,45 @@ namespace sqlite_orm {
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
         };  // struct storage_t
+
+#ifdef SQLITE_ORM_CTAD_SUPPORTED
+        template<typename T>
+        using storage_prop_tag_t = typename T::storage_prop_tag;
+
+        template<class Elements>
+        using prop_index_sequence = filter_tuple_sequence_t<Elements, check_if_names<storage_prop_tag_t>::template fn>;
+
+        template<class Elements>
+        using dbo_index_sequence = filter_tuple_sequence_t<Elements, check_if_lacks<storage_prop_tag_t>::template fn>;
+
+        template<class... DBO, class PropsTpl>
+        storage_t<DBO...> make_storage(std::string filename, std::tuple<DBO...> dbObjects, PropsTpl properties) {
+            return {std::move(filename), std::move(dbObjects), std::move(properties)};
+        }
+#endif
     }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
+#ifdef SQLITE_ORM_CTAD_SUPPORTED
     /*
      *  Factory function for a storage, from a database file and a bunch of database object definitions.
      */
+    template<class... Spec>
+    auto make_storage(std::string filename, Spec... arguments) {
+        using namespace ::sqlite_orm::internal;
+
+        std::tuple args{std::forward<Spec>(arguments)...};
+        return make_storage(std::move(filename),
+                            create_from_tuple<std::tuple>(std::move(args), dbo_index_sequence<decltype(args)>{}),
+                            create_from_tuple<std::tuple>(std::move(args), prop_index_sequence<decltype(args)>{}));
+    }
+#else
     template<class... DBO>
     internal::storage_t<DBO...> make_storage(std::string filename, DBO... dbObjects) {
-        return {std::move(filename), internal::db_objects_tuple<DBO...>{std::forward<DBO>(dbObjects)...}};
+        return {std::move(filename), {std::forward<DBO>(dbObjects)...}, std::tuple<>{}};
     }
+#endif
 
     /**
      *  sqlite3_threadsafe() interface.
