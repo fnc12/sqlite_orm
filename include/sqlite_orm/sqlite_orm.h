@@ -14123,7 +14123,7 @@ namespace sqlite_orm {
             }
 
           protected:
-#if SQLITE_ORM_ALIGNED_NEW_SUPPORTED
+#ifdef SQLITE_ORM_ALIGNED_NEW_SUPPORTED
             alignas(polyfill::hardware_destructive_interference_size)
 #endif
                 sqlite3* db = nullptr;
@@ -14132,7 +14132,7 @@ namespace sqlite_orm {
             std::atomic_int _retainCount{};
 
           private:
-#if SQLITE_ORM_ALIGNED_NEW_SUPPORTED
+#ifdef SQLITE_ORM_ALIGNED_NEW_SUPPORTED
             alignas(polyfill::hardware_destructive_interference_size)
 #endif
                 const std::function<void(sqlite3* db)> _onAfterOpen;
