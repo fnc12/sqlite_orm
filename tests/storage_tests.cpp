@@ -8,17 +8,40 @@ using namespace sqlite_orm;
 TEST_CASE("connection control") {
     const auto openForever = GENERATE(false, true);
     SECTION("") {
+        bool onOpenCalled = false;
         SECTION("empty") {
-            auto storage = make_storage("", connection_control{openForever}, on_open([](sqlite3*) {}));
+            auto storage = make_storage("", connection_control{openForever}, on_open([&onOpenCalled](sqlite3* db) {
+                                            onOpenCalled = db || false;
+                                        }));
             REQUIRE(storage.is_opened());
+            REQUIRE(onOpenCalled);
         }
-        SECTION("memory") {
-            auto storage = make_storage(":memory:", connection_control{openForever}, on_open([](sqlite3*) {}));
+#if __cpp_designated_initializers >= 201707L
+        SECTION("empty C++20") {
+            auto storage =
+                make_storage("", connection_control{.open_forever = openForever}, on_open([&onOpenCalled](sqlite3* db) {
+                                 onOpenCalled = db || false;
+                             }));
             REQUIRE(storage.is_opened());
+            REQUIRE(onOpenCalled);
+        }
+#endif
+        SECTION("memory") {
+            auto storage =
+                make_storage(":memory:", connection_control{openForever}, on_open([&onOpenCalled](sqlite3* db) {
+                                 onOpenCalled = db || false;
+                             }));
+            REQUIRE(storage.is_opened());
+            REQUIRE(onOpenCalled);
         }
         SECTION("file name") {
-            auto storage = make_storage("myDatabase.sqlite", connection_control{openForever}, on_open([](sqlite3*) {}));
+            auto storage = make_storage("myDatabase.sqlite",
+                                        connection_control{openForever},
+                                        on_open([&onOpenCalled](sqlite3* db) {
+                                            onOpenCalled = db || false;
+                                        }));
             REQUIRE(storage.is_opened() == openForever);
+            REQUIRE(onOpenCalled == openForever);
         }
     }
 }

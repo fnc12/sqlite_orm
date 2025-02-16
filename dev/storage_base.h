@@ -14,7 +14,7 @@
 #include <list>  //  std::list
 #include <memory>  //  std::make_unique, std::unique_ptr
 #include <map>  //  std::map
-#include <type_traits>  //  std::is_same
+#include <type_traits>  //  std::is_same, std::is_aggregate
 #include <algorithm>  //  std::find_if, std::ranges::find
 #endif
 
@@ -34,25 +34,7 @@
 #include "udf_proxy.h"
 #include "serializing_util.h"
 #include "table_info.h"
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    struct on_open {
-        using storage_prop_tag = int;
-
-#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
-        on_open() = default;
-        on_open(std::function<void(sqlite3*)> onOpen) : onOpen{std::move(onOpen)} {}
-#endif
-
-        std::function<void(sqlite3*)> onOpen;
-    };
-
-    struct connection_control {
-        using storage_prop_tag = int;
-
-        bool openForever = false;
-    };
-}
+#include "storage_options.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -682,10 +664,10 @@ namespace sqlite_orm {
 
           protected:
             storage_base(std::string filename,
-                         sqlite_orm::on_open onOpenSpec,
                          connection_control connectionCtrl,
+                         on_open_spec onOpenSpec,
                          int foreignKeysCount) :
-                on_open{std::move(onOpenSpec.onOpen)}, isOpenedForever{connectionCtrl.openForever},
+                on_open{std::move(onOpenSpec.onOpen)}, isOpenedForever{connectionCtrl.open_forever},
                 pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
                 inMemory(filename.empty() || filename == ":memory:"),
@@ -1020,8 +1002,8 @@ namespace sqlite_orm {
                     });
 #endif
                     if (dbColumnInfoIt != dbTableInfo.end()) {
-                        auto& dbColumnInfo = *dbColumnInfoIt;
-                        auto columnsAreEqual =
+                        table_xinfo& dbColumnInfo = *dbColumnInfoIt;
+                        bool columnsAreEqual =
                             dbColumnInfo.name == storageColumnInfo.name &&
                             dbColumnInfo.notnull == storageColumnInfo.notnull &&
                             (!dbColumnInfo.dflt_value.empty()) == (!storageColumnInfo.dflt_value.empty()) &&
@@ -1032,8 +1014,7 @@ namespace sqlite_orm {
                             break;
                         }
                         dbTableInfo.erase(dbColumnInfoIt);
-                        storageTableInfo.erase(storageTableInfo.begin() +
-                                               static_cast<ptrdiff_t>(storageColumnInfoIndex));
+                        storageTableInfo.erase(storageTableInfo.begin() + storageColumnInfoIndex);
                         --storageColumnInfoIndex;
                     } else {
                         columnsToAdd.push_back(&storageColumnInfo);
