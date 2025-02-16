@@ -13919,20 +13919,20 @@ namespace sqlite_orm {
     namespace internal {
 
         struct connection_holder {
-            connection_holder(std::string fileName, std::function<void(sqlite3*)> onAfterOpen) :
-                _onAfterOpen{std::move(onAfterOpen)}, fileName(std::move(fileName)) {}
+            connection_holder(std::string filename, std::function<void(sqlite3*)> onAfterOpen) :
+                _onAfterOpen{std::move(onAfterOpen)}, filename(std::move(filename)) {}
 
             connection_holder(const connection_holder&) = delete;
 
             connection_holder(const connection_holder& other, std::function<void(sqlite3*)> onAfterOpen) :
-                _onAfterOpen{std::move(onAfterOpen)}, fileName{other.fileName} {}
+                _onAfterOpen{std::move(onAfterOpen)}, filename{other.filename} {}
 
             void retain() {
                 // first one opens the connection.
                 // we presume that the connection is opened once in a single-threaded context [also open forever].
                 // therefore we can just use an atomic increment but don't need sequencing due to `prevCount > 0`.
                 if (_retainCount.fetch_add(1, std::memory_order_relaxed) == 0) {
-                    int rc = sqlite3_open_v2(this->fileName.c_str(),
+                    int rc = sqlite3_open_v2(this->filename.c_str(),
                                              &this->db,
                                              SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
                                              nullptr);
@@ -13981,7 +13981,7 @@ namespace sqlite_orm {
             const std::function<void(sqlite3* db)> _onAfterOpen;
 
           public:
-            const std::string fileName;
+            const std::string filename;
         };
 
         struct connection_ref {
