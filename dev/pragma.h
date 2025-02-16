@@ -258,11 +258,12 @@ namespace sqlite_orm {
             }
 
             void set_pragma_impl(const std::string& query, sqlite3* db = nullptr) {
-                auto con = this->get_connection();
-                if (db == nullptr) {
-                    db = con.get();
+                if (db) {
+                    perform_void_exec(db, query);
+                } else {
+                    auto con = this->get_connection();
+                    perform_void_exec(con.get(), query);
                 }
-                perform_void_exec(db, query);
             }
         };
     }
