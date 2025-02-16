@@ -51,8 +51,6 @@ TEST_CASE("tuple_helper static") {
                        std::array<int, 2>{1, 2});
         STATIC_REQUIRE(create_from_tuple<std::tuple>(std::make_tuple(1, 2), polyfill::identity{}) ==
                        std::tuple<int, int>{1, 2});
-        STATIC_REQUIRE(create_from_tuple<std::array>(std::make_tuple(1, 2), polyfill::identity{}) ==
-                       std::array<int, 2>{1, 2});
 #endif
 #if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && (__cpp_lib_constexpr_functional >= 201907L)
         STATIC_REQUIRE(recombine_tuple(tuple_maker{}, std::make_tuple(1, 2), polyfill::identity{}, 3) ==
