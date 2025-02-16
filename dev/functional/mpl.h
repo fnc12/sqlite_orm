@@ -453,7 +453,7 @@ namespace sqlite_orm {
          *  Commonly used named abbreviation for `check_if<std::is_same, Type>`.
          */
         template<class Type>
-        using check_if_is_type = mpl::bind_front_fn<std::is_same, Type>;
+        using check_if_is_type = check_if<std::is_same, Type>;
 
         /*
          *  Quoted trait metafunction that checks if a type's template matches the specified template
@@ -462,6 +462,18 @@ namespace sqlite_orm {
         template<template<class...> class Template>
         using check_if_is_template =
             mpl::pass_extracted_fn_to<mpl::bind_front_fn<std::is_same, mpl::quote_fn<Template>>>;
+
+        /*
+         *  Quoted trait metafunction that checks if a type names a nested type determined by `Op`.
+         */
+        template<template<typename...> class Op>
+        using check_if_names = mpl::bind_front_higherorder_fn<polyfill::is_detected, Op>;
+
+        /*
+         *  Quoted trait metafunction that checks if a type does not name a nested type determined by `Op`.
+         */
+        template<template<typename...> class Op>
+        using check_if_lacks = mpl::not_<check_if_names<Op>>;
 
         /*
          *  Quoted metafunction that finds the index of the given type in a tuple.

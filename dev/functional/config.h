@@ -64,6 +64,10 @@
 #define SQLITE_ORM_CPP20_RANGES_SUPPORTED
 #endif
 
+#if __cpp_lib_semaphore >= 201907L
+#define SQLITE_ORM_CPP20_SEMAPHORE_SUPPORTED
+#endif
+
 // C++20 or later (unfortunately there's no feature test macro).
 // Stupidly, clang says C++20, but `std::default_sentinel_t` was only implemented in libc++ 13 and libstd++-v3 10
 // (the latter is used on Linux).
