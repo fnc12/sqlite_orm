@@ -70,17 +70,15 @@ namespace sqlite_orm {
         constexpr decltype(auto) materialize_column_pointer(const DBOs&,
                                                             const column_pointer<Moniker, alias_holder<ColAlias>>&) {
             using table_type = storage_pick_table_t<Moniker, DBOs>;
-            using cte_mapper_type = cte_mapper_type_t<table_type>;
+            using cte_colrefs_tuple = typename cte_mapper_type_t<table_type>::final_colrefs_tuple;
+            using cte_fields_type = typename cte_mapper_type_t<table_type>::fields_type;
 
             // lookup ColAlias in the final column references
-            using colalias_index =
-                find_tuple_type<typename cte_mapper_type::final_colrefs_tuple, alias_holder<ColAlias>>;
-            static_assert(colalias_index::value < std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
+            using colalias_index = find_tuple_type<cte_colrefs_tuple, alias_holder<ColAlias>>;
+            static_assert(colalias_index::value < std::tuple_size_v<cte_colrefs_tuple>,
                           "No such column mapped into the CTE.");
 
-            return &aliased_field<
-                ColAlias,
-                std::tuple_element_t<colalias_index::value, typename cte_mapper_type::fields_type>>::field;
+            return &aliased_field<ColAlias, std::tuple_element_t<colalias_index::value, cte_fields_type>>::field;
         }
 #endif
 
@@ -104,14 +102,13 @@ namespace sqlite_orm {
         constexpr decltype(auto) find_column_name(const DBOs& dboObjects,
                                                   const column_pointer<Moniker, alias_holder<ColAlias>>&) {
             using table_type = storage_pick_table_t<Moniker, DBOs>;
-            using cte_mapper_type = cte_mapper_type_t<table_type>;
+            using cte_colrefs_tuple = typename cte_mapper_type_t<table_type>::final_colrefs_tuple;
             using column_index_sequence = filter_tuple_sequence_t<elements_type_t<table_type>, is_column>;
 
             // note: even though the columns contain the [`aliased_field<>::*`] we perform the lookup using the column references.
             // lookup ColAlias in the final column references
-            using colalias_index =
-                find_tuple_type<typename cte_mapper_type::final_colrefs_tuple, alias_holder<ColAlias>>;
-            static_assert(colalias_index::value < std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
+            using colalias_index = find_tuple_type<cte_colrefs_tuple, alias_holder<ColAlias>>;
+            static_assert(colalias_index::value < std::tuple_size_v<cte_colrefs_tuple>,
                           "No such column mapped into the CTE.");
 
             // note: we could "materialize" the alias to an `aliased_field<>::*` and use the regular `table_t<>::find_column_name()` mechanism;
