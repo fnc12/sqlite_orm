@@ -9,39 +9,51 @@ TEST_CASE("connection control") {
     const auto openForever = GENERATE(false, true);
     SECTION("") {
         bool onOpenCalled = false;
+        int nOnOpenCalled = 0;
         SECTION("empty") {
-            auto storage = make_storage("", connection_control{openForever}, on_open([&onOpenCalled](sqlite3* db) {
-                                            onOpenCalled = db || false;
-                                        }));
+            auto storage =
+                make_storage("", connection_control{openForever}, on_open([&onOpenCalled, &nOnOpenCalled](sqlite3* db) {
+                                 onOpenCalled = db || false;
+                                 ++nOnOpenCalled;
+                             }));
             REQUIRE(storage.is_opened());
             REQUIRE(onOpenCalled);
+            REQUIRE(nOnOpenCalled == 1);
         }
 #if __cpp_designated_initializers >= 201707L
         SECTION("empty C++20") {
-            auto storage =
-                make_storage("", connection_control{.open_forever = openForever}, on_open([&onOpenCalled](sqlite3* db) {
-                                 onOpenCalled = db || false;
-                             }));
+            auto storage = make_storage("",
+                                        connection_control{.open_forever = openForever},
+                                        on_open([&onOpenCalled, &nOnOpenCalled](sqlite3* db) {
+                                            onOpenCalled = db || false;
+                                            ++nOnOpenCalled;
+                                        }));
             REQUIRE(storage.is_opened());
             REQUIRE(onOpenCalled);
+            REQUIRE(nOnOpenCalled == 1);
         }
 #endif
         SECTION("memory") {
-            auto storage =
-                make_storage(":memory:", connection_control{openForever}, on_open([&onOpenCalled](sqlite3* db) {
-                                 onOpenCalled = db || false;
-                             }));
+            auto storage = make_storage(":memory:",
+                                        connection_control{openForever},
+                                        on_open([&onOpenCalled, &nOnOpenCalled](sqlite3* db) {
+                                            onOpenCalled = db || false;
+                                            ++nOnOpenCalled;
+                                        }));
             REQUIRE(storage.is_opened());
             REQUIRE(onOpenCalled);
+            REQUIRE(nOnOpenCalled == 1);
         }
         SECTION("file name") {
             auto storage = make_storage("myDatabase.sqlite",
                                         connection_control{openForever},
-                                        on_open([&onOpenCalled](sqlite3* db) {
+                                        on_open([&onOpenCalled, &nOnOpenCalled](sqlite3* db) {
                                             onOpenCalled = db || false;
+                                            ++nOnOpenCalled;
                                         }));
             REQUIRE(storage.is_opened() == openForever);
             REQUIRE(onOpenCalled == openForever);
+            REQUIRE(nOnOpenCalled == int(openForever));
         }
     }
 }

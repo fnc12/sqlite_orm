@@ -13939,10 +13939,10 @@ namespace sqlite_orm {
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible, but unexpected*/ {
                         throw_translated_sqlite_error(this->db);
                     }
-                }
 
-                if (_onAfterOpen) {
-                    _onAfterOpen(this->db);
+                    if (_onAfterOpen) {
+                        _onAfterOpen(this->db);
+                    }
                 }
             }
 
