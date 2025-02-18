@@ -6,20 +6,28 @@
 #include <string>  //  std::string
 #endif
 
+#include "storage_options.h"
 #include "error_code.h"
 
 namespace sqlite_orm {
     namespace internal {
 
         struct connection_holder {
-            connection_holder(std::string filename) : filename(std::move(filename)) {}
+
+            connection_holder(std::string filename_, const storage_options options_) :
+                filename(std::move(filename_)), options(std::move(options_)) {}
 
             void retain() {
                 // first one opens the connection.
                 // we presume that the connection is opened once in a single-threaded context [also open forever].
                 // therefore we can just use an atomic increment but don't need sequencing due to `prevCount > 0`.
                 if (this->_retain_count.fetch_add(1, std::memory_order_relaxed) == 0) {
-                    int rc = sqlite3_open(this->filename.c_str(), &this->db);
+
+                    const std::string vfs_name(internal::vfs_object_to_string(options.vfs_option));
+                    const int open_flags = internal::open_mode_to_int_flags(options.open_option);
+
+                    int rc = sqlite3_open_v2(this->filename.c_str(), &this->db, open_flags, vfs_name.c_str());
+
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible, but unexpected*/ {
                         throw_translated_sqlite_error(this->db);
                     }
@@ -30,7 +38,7 @@ namespace sqlite_orm {
                 // last one closes the connection.
                 // we assume that this might happen by any thread, therefore the counter must serve as a synchronization point.
                 if (this->_retain_count.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-                    int rc = sqlite3_close(this->db);
+                    int rc = sqlite3_close_v2(this->db);
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY {
                         throw_translated_sqlite_error(this->db);
                     } else {
@@ -52,6 +60,7 @@ namespace sqlite_orm {
             }
 
             const std::string filename;
+            const storage_options options;
 
           protected:
             sqlite3* db = nullptr;

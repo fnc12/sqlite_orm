@@ -610,7 +610,7 @@ namespace sqlite_orm {
             }
 
             backup_t make_backup_to(const std::string& filename) {
-                auto holder = std::make_unique<connection_holder>(filename);
+                auto holder = std::make_unique<connection_holder>(filename, this->connection->options);
                 connection_ref conRef{*holder};
                 return {conRef, "main", this->get_connection(), "main", std::move(holder)};
             }
@@ -620,7 +620,7 @@ namespace sqlite_orm {
             }
 
             backup_t make_backup_from(const std::string& filename) {
-                auto holder = std::make_unique<connection_holder>(filename);
+                auto holder = std::make_unique<connection_holder>(filename, this->connection->options);
                 connection_ref conRef{*holder};
                 return {this->get_connection(), "main", conRef, "main", std::move(holder)};
             }
@@ -639,6 +639,29 @@ namespace sqlite_orm {
              */
             bool is_opened() const {
                 return this->connection->retain_count() > 0;
+            }
+
+            /**
+             * Public method for checking the VFS implementation being used by
+             * this storage object. Mostly useful for debug.
+             */
+            sqlite_orm::vfs_object vfs_object() const {
+                return this->connection->options.vfs_option;
+            }
+
+            /**
+             * Return the current open_mode for this storage object. 
+             */
+            sqlite_orm::open_mode open_mode() const {
+                return this->connection->options.open_option;
+            }
+
+            /**
+             * Return true if this database object is opened in a readonly state. 
+             */
+            bool readonly() const {
+                sqlite3* db = this->connection->get();
+                return sqlite3_db_readonly(db, "main");
             }
 
             /*
@@ -664,11 +687,11 @@ namespace sqlite_orm {
             }
 
           protected:
-            storage_base(std::string filename, int foreignKeysCount) :
+            storage_base(std::string filename, storage_options options, int foreignKeysCount) :
                 pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
                 inMemory(filename.empty() || filename == ":memory:"),
-                connection(std::make_unique<connection_holder>(std::move(filename))),
+                connection(std::make_unique<connection_holder>(std::move(filename), std::move(options))),
                 cachedForeignKeysCount(foreignKeysCount) {
                 if (this->inMemory) {
                     this->connection->retain();
@@ -679,7 +702,7 @@ namespace sqlite_orm {
             storage_base(const storage_base& other) :
                 on_open(other.on_open), pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)), inMemory(other.inMemory),
-                connection(std::make_unique<connection_holder>(other.connection->filename)),
+                connection(std::make_unique<connection_holder>(other.connection->filename, other.connection->options)),
                 cachedForeignKeysCount(other.cachedForeignKeysCount) {
                 if (this->inMemory) {
                     this->connection->retain();
