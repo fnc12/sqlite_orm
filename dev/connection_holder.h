@@ -13,13 +13,13 @@ namespace sqlite_orm {
     namespace internal {
 
         struct connection_holder {
-            connection_holder(std::string filename, std::function<void(sqlite3*)> onAfterOpen) :
-                _onAfterOpen{std::move(onAfterOpen)}, filename(std::move(filename)) {}
+            connection_holder(std::string filename, std::function<void(sqlite3*)> didOpenDb) :
+                _didOpenDb{std::move(didOpenDb)}, filename(std::move(filename)) {}
 
             connection_holder(const connection_holder&) = delete;
 
-            connection_holder(const connection_holder& other, std::function<void(sqlite3*)> onAfterOpen) :
-                _onAfterOpen{std::move(onAfterOpen)}, filename{other.filename} {}
+            connection_holder(const connection_holder& other, std::function<void(sqlite3*)> didOpenDb) :
+                _didOpenDb{std::move(didOpenDb)}, filename{other.filename} {}
 
             void retain() {
                 // first one opens the connection.
@@ -34,8 +34,8 @@ namespace sqlite_orm {
                         throw_translated_sqlite_error(this->db);
                     }
 
-                    if (_onAfterOpen) {
-                        _onAfterOpen(this->db);
+                    if (_didOpenDb) {
+                        _didOpenDb(this->db);
                     }
                 }
             }
@@ -72,7 +72,7 @@ namespace sqlite_orm {
             std::atomic_int _retainCount{};
 
           private:
-            const std::function<void(sqlite3* db)> _onAfterOpen;
+            const std::function<void(sqlite3* db)> _didOpenDb;
 
           public:
             const std::string filename;
