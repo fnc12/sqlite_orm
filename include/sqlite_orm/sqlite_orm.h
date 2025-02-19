@@ -12704,17 +12704,15 @@ namespace sqlite_orm {
         constexpr decltype(auto) materialize_column_pointer(const DBOs&,
                                                             const column_pointer<Moniker, alias_holder<ColAlias>>&) {
             using table_type = storage_pick_table_t<Moniker, DBOs>;
-            using cte_mapper_type = cte_mapper_type_t<table_type>;
+            using cte_colrefs_tuple = typename cte_mapper_type_t<table_type>::final_colrefs_tuple;
+            using cte_fields_type = typename cte_mapper_type_t<table_type>::fields_type;
 
             // lookup ColAlias in the final column references
-            using colalias_index =
-                find_tuple_type<typename cte_mapper_type::final_colrefs_tuple, alias_holder<ColAlias>>;
-            static_assert(colalias_index::value < std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
+            using colalias_index = find_tuple_type<cte_colrefs_tuple, alias_holder<ColAlias>>;
+            static_assert(colalias_index::value < std::tuple_size_v<cte_colrefs_tuple>,
                           "No such column mapped into the CTE.");
 
-            return &aliased_field<
-                ColAlias,
-                std::tuple_element_t<colalias_index::value, typename cte_mapper_type::fields_type>>::field;
+            return &aliased_field<ColAlias, std::tuple_element_t<colalias_index::value, cte_fields_type>>::field;
         }
 #endif
 
@@ -12738,14 +12736,13 @@ namespace sqlite_orm {
         constexpr decltype(auto) find_column_name(const DBOs& dboObjects,
                                                   const column_pointer<Moniker, alias_holder<ColAlias>>&) {
             using table_type = storage_pick_table_t<Moniker, DBOs>;
-            using cte_mapper_type = cte_mapper_type_t<table_type>;
+            using cte_colrefs_tuple = typename cte_mapper_type_t<table_type>::final_colrefs_tuple;
             using column_index_sequence = filter_tuple_sequence_t<elements_type_t<table_type>, is_column>;
 
             // note: even though the columns contain the [`aliased_field<>::*`] we perform the lookup using the column references.
             // lookup ColAlias in the final column references
-            using colalias_index =
-                find_tuple_type<typename cte_mapper_type::final_colrefs_tuple, alias_holder<ColAlias>>;
-            static_assert(colalias_index::value < std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
+            using colalias_index = find_tuple_type<cte_colrefs_tuple, alias_holder<ColAlias>>;
+            static_assert(colalias_index::value < std::tuple_size_v<cte_colrefs_tuple>,
                           "No such column mapped into the CTE.");
 
             // note: we could "materialize" the alias to an `aliased_field<>::*` and use the regular `table_t<>::find_column_name()` mechanism;
@@ -13981,15 +13978,15 @@ namespace sqlite_orm {
                 std::binary_semaphore& sync;
             };
 
-            connection_holder(std::string filename, bool openedForeverHint, std::function<void(sqlite3*)> onAfterOpen) :
-                _openedForeverHint{openedForeverHint}, _onAfterOpen{std::move(onAfterOpen)},
-                filename(std::move(filename)) {}
+            connection_holder(std::string filename, bool openedForeverHint, std::function<void(sqlite3*)> didOpenDb) :
+                _openedForeverHint{openedForeverHint}, _didOpenDb{std::move(didOpenDb)}, filename(std::move(filename)) {
+            }
 
             connection_holder(const connection_holder&) = delete;
 
-            connection_holder(const connection_holder& other, std::function<void(sqlite3*)> onAfterOpen) :
-                filename{other.filename}, _openedForeverHint{other._openedForeverHint},
-                _onAfterOpen{std::move(onAfterOpen)} {}
+            connection_holder(const connection_holder& other, std::function<void(sqlite3*)> didOpenDb) :
+                _openedForeverHint{other._openedForeverHint}, _didOpenDb{std::move(didOpenDb)},
+                filename{other.filename} {}
 
             void retain() {
                 const maybe_lock maybeLock{_sync, !_openedForeverHint};
@@ -14011,8 +14008,8 @@ namespace sqlite_orm {
                     throw_translated_sqlite_error(this->db);
                 }
 
-                if (_onAfterOpen) {
-                    _onAfterOpen(this->db);
+                if (_didOpenDb) {
+                    _didOpenDb(this->db);
                 }
             }
 
@@ -14032,7 +14029,7 @@ namespace sqlite_orm {
 
                 // last one closes the connection.
 
-                if (int rc = sqlite3_close(this->db); rc != SQLITE_OK) [[unlikely]] {
+                if (int rc = sqlite3_close_v2(this->db); rc != SQLITE_OK) [[unlikely]] {
                     throw_translated_sqlite_error(this->db);
                 } else {
                     this->db = nullptr;
@@ -14060,8 +14057,7 @@ namespace sqlite_orm {
             std::binary_semaphore _sync{1};
 
           private:
-            alignas(
-                polyfill::hardware_destructive_interference_size) const std::function<void(sqlite3* db)> _onAfterOpen;
+            alignas(polyfill::hardware_destructive_interference_size) const std::function<void(sqlite3* db)> _didOpenDb;
 
           public:
             const std::string filename;
@@ -14070,13 +14066,13 @@ namespace sqlite_orm {
         struct connection_holder {
             connection_holder(std::string filename,
                               bool /*openedForeverHint*/,
-                              std::function<void(sqlite3*)> onAfterOpen) :
-                _onAfterOpen{std::move(onAfterOpen)}, filename(std::move(filename)) {}
+                              std::function<void(sqlite3*)> didOpenDb) :
+                _didOpenDb{std::move(didOpenDb)}, filename(std::move(filename)) {}
 
             connection_holder(const connection_holder&) = delete;
 
-            connection_holder(const connection_holder& other, std::function<void(sqlite3*)> onAfterOpen) :
-                _onAfterOpen{std::move(onAfterOpen)}, filename{other.filename} {}
+            connection_holder(const connection_holder& other, std::function<void(sqlite3*)> didOpenDb) :
+                _didOpenDb{std::move(didOpenDb)}, filename{other.filename} {}
 
             void retain() {
                 // first one opens the connection.
@@ -14090,10 +14086,10 @@ namespace sqlite_orm {
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible, but unexpected*/ {
                         throw_translated_sqlite_error(this->db);
                     }
-                }
 
-                if (_onAfterOpen) {
-                    _onAfterOpen(this->db);
+                    if (_didOpenDb) {
+                        _didOpenDb(this->db);
+                    }
                 }
             }
 
@@ -14101,7 +14097,7 @@ namespace sqlite_orm {
                 // last one closes the connection.
                 // we assume that this might happen by any thread, therefore the counter must serve as a synchronization point.
                 if (_retainCount.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-                    int rc = sqlite3_close(this->db);
+                    int rc = sqlite3_close_v2(this->db);
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY {
                         throw_translated_sqlite_error(this->db);
                     } else {
@@ -14135,7 +14131,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_ALIGNED_NEW_SUPPORTED
             alignas(polyfill::hardware_destructive_interference_size)
 #endif
-                const std::function<void(sqlite3* db)> _onAfterOpen;
+                const std::function<void(sqlite3* db)> _didOpenDb;
 
           public:
             const std::string filename;
@@ -24362,7 +24358,11 @@ namespace sqlite_orm {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_CTAD_SUPPORTED
     /*
-     *  Factory function for a storage, from a database file and a bunch of database object definitions.
+     *  Factory function for a storage instance, from a database file, a set of database object definitions
+     *  and option storage options like connection control options and an 'on open' callback.
+     *  
+     *  E.g.
+     *  auto storage = make_storage("", connection_control{.open_forever = true}, on_open([](sqlite3* db) {}));
      */
     template<class... Spec>
     auto make_storage(std::string filename, Spec... specifications) {

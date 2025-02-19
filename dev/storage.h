@@ -1739,7 +1739,11 @@ namespace sqlite_orm {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_CTAD_SUPPORTED
     /*
-     *  Factory function for a storage, from a database file and a bunch of database object definitions.
+     *  Factory function for a storage instance, from a database file, a set of database object definitions
+     *  and option storage options like connection control options and an 'on open' callback.
+     *  
+     *  E.g.
+     *  auto storage = make_storage("", connection_control{.open_forever = true}, on_open([](sqlite3* db) {}));
      */
     template<class... Spec>
     auto make_storage(std::string filename, Spec... specifications) {

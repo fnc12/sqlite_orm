@@ -44,15 +44,15 @@ namespace sqlite_orm {
                 std::binary_semaphore& sync;
             };
 
-            connection_holder(std::string filename, bool openedForeverHint, std::function<void(sqlite3*)> onAfterOpen) :
-                _openedForeverHint{openedForeverHint}, _onAfterOpen{std::move(onAfterOpen)},
-                filename(std::move(filename)) {}
+            connection_holder(std::string filename, bool openedForeverHint, std::function<void(sqlite3*)> didOpenDb) :
+                _openedForeverHint{openedForeverHint}, _didOpenDb{std::move(didOpenDb)}, filename(std::move(filename)) {
+            }
 
             connection_holder(const connection_holder&) = delete;
 
-            connection_holder(const connection_holder& other, std::function<void(sqlite3*)> onAfterOpen) :
-                filename{other.filename}, _openedForeverHint{other._openedForeverHint},
-                _onAfterOpen{std::move(onAfterOpen)} {}
+            connection_holder(const connection_holder& other, std::function<void(sqlite3*)> didOpenDb) :
+                _openedForeverHint{other._openedForeverHint}, _didOpenDb{std::move(didOpenDb)},
+                filename{other.filename} {}
 
             void retain() {
                 const maybe_lock maybeLock{_sync, !_openedForeverHint};
@@ -74,8 +74,8 @@ namespace sqlite_orm {
                     throw_translated_sqlite_error(this->db);
                 }
 
-                if (_onAfterOpen) {
-                    _onAfterOpen(this->db);
+                if (_didOpenDb) {
+                    _didOpenDb(this->db);
                 }
             }
 
@@ -95,7 +95,7 @@ namespace sqlite_orm {
 
                 // last one closes the connection.
 
-                if (int rc = sqlite3_close(this->db); rc != SQLITE_OK) [[unlikely]] {
+                if (int rc = sqlite3_close_v2(this->db); rc != SQLITE_OK) [[unlikely]] {
                     throw_translated_sqlite_error(this->db);
                 } else {
                     this->db = nullptr;
@@ -123,8 +123,7 @@ namespace sqlite_orm {
             std::binary_semaphore _sync{1};
 
           private:
-            alignas(
-                polyfill::hardware_destructive_interference_size) const std::function<void(sqlite3* db)> _onAfterOpen;
+            alignas(polyfill::hardware_destructive_interference_size) const std::function<void(sqlite3* db)> _didOpenDb;
 
           public:
             const std::string filename;
@@ -133,13 +132,13 @@ namespace sqlite_orm {
         struct connection_holder {
             connection_holder(std::string filename,
                               bool /*openedForeverHint*/,
-                              std::function<void(sqlite3*)> onAfterOpen) :
-                _onAfterOpen{std::move(onAfterOpen)}, filename(std::move(filename)) {}
+                              std::function<void(sqlite3*)> didOpenDb) :
+                _didOpenDb{std::move(didOpenDb)}, filename(std::move(filename)) {}
 
             connection_holder(const connection_holder&) = delete;
 
-            connection_holder(const connection_holder& other, std::function<void(sqlite3*)> onAfterOpen) :
-                _onAfterOpen{std::move(onAfterOpen)}, filename{other.filename} {}
+            connection_holder(const connection_holder& other, std::function<void(sqlite3*)> didOpenDb) :
+                _didOpenDb{std::move(didOpenDb)}, filename{other.filename} {}
 
             void retain() {
                 // first one opens the connection.
@@ -153,10 +152,10 @@ namespace sqlite_orm {
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible, but unexpected*/ {
                         throw_translated_sqlite_error(this->db);
                     }
-                }
 
-                if (_onAfterOpen) {
-                    _onAfterOpen(this->db);
+                    if (_didOpenDb) {
+                        _didOpenDb(this->db);
+                    }
                 }
             }
 
@@ -164,7 +163,7 @@ namespace sqlite_orm {
                 // last one closes the connection.
                 // we assume that this might happen by any thread, therefore the counter must serve as a synchronization point.
                 if (_retainCount.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-                    int rc = sqlite3_close(this->db);
+                    int rc = sqlite3_close_v2(this->db);
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY {
                         throw_translated_sqlite_error(this->db);
                     } else {
@@ -198,7 +197,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_ALIGNED_NEW_SUPPORTED
             alignas(polyfill::hardware_destructive_interference_size)
 #endif
-                const std::function<void(sqlite3* db)> _onAfterOpen;
+                const std::function<void(sqlite3* db)> _didOpenDb;
 
           public:
             const std::string filename;
