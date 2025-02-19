@@ -103,7 +103,7 @@ namespace sqlite_orm {
         }
 
         /*
-         *  Like `std::make_from_tuple`, but using a projection on the tuple elements.
+         *  Like `std::make_from_tuple()`, but using a projection on the tuple elements.
          */
         template<class R, class Tpl, class Projection = polyfill::identity>
         constexpr R create_from_tuple(Tpl&& tpl, Projection project = {}) {
@@ -112,5 +112,23 @@ namespace sqlite_orm {
                 std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
                 std::forward<Projection>(project));
         }
+
+#ifdef SQLITE_ORM_CTAD_SUPPORTED
+        template<template<typename...> class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
+        constexpr auto create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, Projection project = {}) {
+            return R{polyfill::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
+        }
+
+        /*
+         *  Similar to `create_from_tuple()`, but the result type is specified as a template class.
+         */
+        template<template<typename...> class R, class Tpl, class Projection = polyfill::identity>
+        constexpr auto create_from_tuple(Tpl&& tpl, Projection project = {}) {
+            return create_from_tuple<R>(
+                std::forward<Tpl>(tpl),
+                std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
+                std::forward<Projection>(project));
+        }
+#endif
     }
 }

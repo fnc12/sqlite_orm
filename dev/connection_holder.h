@@ -3,6 +3,7 @@
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <atomic>
+#include <functional>  //  std::function
 #include <string>  //  std::string
 #endif
 
@@ -12,16 +13,29 @@ namespace sqlite_orm {
     namespace internal {
 
         struct connection_holder {
-            connection_holder(std::string filename) : filename(std::move(filename)) {}
+            connection_holder(std::string filename, std::function<void(sqlite3*)> didOpenDb) :
+                _didOpenDb{std::move(didOpenDb)}, filename(std::move(filename)) {}
+
+            connection_holder(const connection_holder&) = delete;
+
+            connection_holder(const connection_holder& other, std::function<void(sqlite3*)> didOpenDb) :
+                _didOpenDb{std::move(didOpenDb)}, filename{other.filename} {}
 
             void retain() {
                 // first one opens the connection.
                 // we presume that the connection is opened once in a single-threaded context [also open forever].
                 // therefore we can just use an atomic increment but don't need sequencing due to `prevCount > 0`.
-                if (this->_retain_count.fetch_add(1, std::memory_order_relaxed) == 0) {
-                    int rc = sqlite3_open(this->filename.c_str(), &this->db);
+                if (_retainCount.fetch_add(1, std::memory_order_relaxed) == 0) {
+                    int rc = sqlite3_open_v2(this->filename.c_str(),
+                                             &this->db,
+                                             SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
+                                             nullptr);
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible, but unexpected*/ {
                         throw_translated_sqlite_error(this->db);
+                    }
+
+                    if (_didOpenDb) {
+                        _didOpenDb(this->db);
                     }
                 }
             }
@@ -29,8 +43,8 @@ namespace sqlite_orm {
             void release() {
                 // last one closes the connection.
                 // we assume that this might happen by any thread, therefore the counter must serve as a synchronization point.
-                if (this->_retain_count.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-                    int rc = sqlite3_close(this->db);
+                if (_retainCount.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+                    int rc = sqlite3_close_v2(this->db);
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY {
                         throw_translated_sqlite_error(this->db);
                     } else {
@@ -48,16 +62,20 @@ namespace sqlite_orm {
              *  @attention While retrieving the reference count value is atomic it makes only sense at single-threaded points in code.
              */
             int retain_count() const {
-                return this->_retain_count.load(std::memory_order_relaxed);
+                return _retainCount.load(std::memory_order_relaxed);
             }
-
-            const std::string filename;
 
           protected:
             sqlite3* db = nullptr;
 
           private:
-            std::atomic_int _retain_count{};
+            std::atomic_int _retainCount{};
+
+          private:
+            const std::function<void(sqlite3* db)> _didOpenDb;
+
+          public:
+            const std::string filename;
         };
 
         struct connection_ref {

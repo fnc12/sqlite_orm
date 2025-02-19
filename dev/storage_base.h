@@ -14,7 +14,7 @@
 #include <list>  //  std::list
 #include <memory>  //  std::make_unique, std::unique_ptr
 #include <map>  //  std::map
-#include <type_traits>  //  std::is_same
+#include <type_traits>  //  std::is_same, std::is_aggregate
 #include <algorithm>  //  std::find_if, std::ranges::find
 #endif
 
@@ -34,9 +34,9 @@
 #include "udf_proxy.h"
 #include "serializing_util.h"
 #include "table_info.h"
+#include "storage_options.h"
 
 namespace sqlite_orm {
-
     namespace internal {
 
         struct storage_base {
@@ -289,20 +289,19 @@ namespace sqlite_orm {
              *  needed and closes when it is not needed. This function breaks this rule. In memory storage always
              *  keeps connection opened so calling this for in-memory storage changes nothing.
              *  Note about multithreading: in multithreading context avoiding using this function for not in-memory
-             *  storage may lead to data races. If you have data races in such a configuration try to call `open_forever`
+             *  storage may lead to data races. If you have data races in such a configuration try to call `open_forever()`
              *  before accessing your storage - it may fix data races.
              */
             void open_forever() {
-                this->isOpenedForever = true;
-                this->connection->retain();
-                if (1 == this->connection->retain_count()) {
-                    this->on_open_internal(this->connection->get());
+                if (!this->isOpenedForever) {
+                    this->isOpenedForever = true;
+                    this->connection->retain();
                 }
             }
 
             /**
              * Create an application-defined scalar SQL function.
-             * Can be called at any time no matter whether the database connection is opened or not.
+             * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
              * 
              * Note: `create_scalar_function()` merely creates a closure to generate an instance of the scalar function object,
              * together with a copy of the passed initialization arguments.
@@ -345,7 +344,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
             /**
              * Create an application-defined scalar function.
-             * Can be called at any time no matter whether the database connection is opened or not.
+             * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
              * 
              * Note: `create_scalar_function()` merely creates a closure to generate an instance of the scalar function object,
              * together with a copy of the passed initialization arguments.
@@ -360,7 +359,7 @@ namespace sqlite_orm {
 
             /**
              * Create an application-defined scalar function.
-             * Can be called at any time no matter whether the database connection is opened or not.
+             * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
              *
              * If `quotedF` contains a freestanding function, stateless lambda or stateless function object,
              * `quoted_scalar_function::callable()` uses the original function object, assuming it is free of side effects;
@@ -401,7 +400,7 @@ namespace sqlite_orm {
 
             /**
              * Create an application-defined aggregate SQL function.
-             * Can be called at any time no matter whether the database connection is opened or not.
+             * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
              * 
              * Note: `create_aggregate_function()` merely creates a closure to generate an instance of the aggregate function object,
              * together with a copy of the passed initialization arguments.
@@ -450,7 +449,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
             /**
              * Create an application-defined aggregate function.
-             * Can be called at any time no matter whether the database connection is opened or not.
+             * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
              * 
              * Note: `create_aggregate_function()` merely creates a closure to generate an instance of the aggregate function object,
              * together with a copy of the passed initialization arguments.
@@ -465,7 +464,7 @@ namespace sqlite_orm {
 
             /**
              *  Delete a scalar function you created before.
-             *  Can be called at any time no matter whether the database connection is open or not.
+             *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
              */
             template<class F>
             void delete_scalar_function() {
@@ -477,7 +476,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
             /**
              *  Delete a scalar function you created before.
-             *  Can be called at any time no matter whether the database connection is open or not.
+             *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
              */
             template<orm_scalar_function auto f>
             void delete_scalar_function() {
@@ -486,7 +485,7 @@ namespace sqlite_orm {
 
             /**
              *  Delete a quoted scalar function you created before.
-             *  Can be called at any time no matter whether the database connection is open or not.
+             *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
              */
             template<orm_quoted_scalar_function auto quotedF>
             void delete_scalar_function() {
@@ -496,7 +495,7 @@ namespace sqlite_orm {
 
             /**
              *  Delete aggregate function you created before.
-             *  Can be called at any time no matter whether the database connection is open or not.
+             *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
              */
             template<class F>
             void delete_aggregate_function() {
@@ -610,7 +609,7 @@ namespace sqlite_orm {
             }
 
             backup_t make_backup_to(const std::string& filename) {
-                auto holder = std::make_unique<connection_holder>(filename);
+                auto holder = std::make_unique<connection_holder>(filename, nullptr);
                 connection_ref conRef{*holder};
                 return {conRef, "main", this->get_connection(), "main", std::move(holder)};
             }
@@ -620,7 +619,7 @@ namespace sqlite_orm {
             }
 
             backup_t make_backup_from(const std::string& filename) {
-                auto holder = std::make_unique<connection_holder>(filename);
+                auto holder = std::make_unique<connection_holder>(filename, nullptr);
                 connection_ref conRef{*holder};
                 return {this->get_connection(), "main", conRef, "main", std::move(holder)};
             }
@@ -664,26 +663,39 @@ namespace sqlite_orm {
             }
 
           protected:
-            storage_base(std::string filename, int foreignKeysCount) :
+            storage_base(std::string filename,
+                         connection_control connectionCtrl,
+                         on_open_spec onOpenSpec,
+                         int foreignKeysCount) :
+                on_open{std::move(onOpenSpec.onOpen)}, isOpenedForever{connectionCtrl.open_forever},
                 pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
                 inMemory(filename.empty() || filename == ":memory:"),
-                connection(std::make_unique<connection_holder>(std::move(filename))),
+                connection(std::make_unique<connection_holder>(
+                    std::move(filename),
+                    std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))),
                 cachedForeignKeysCount(foreignKeysCount) {
                 if (this->inMemory) {
                     this->connection->retain();
-                    this->on_open_internal(this->connection->get());
+                }
+                if (this->isOpenedForever) {
+                    this->connection->retain();
                 }
             }
 
             storage_base(const storage_base& other) :
                 on_open(other.on_open), pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)), inMemory(other.inMemory),
-                connection(std::make_unique<connection_holder>(other.connection->filename)),
+                isOpenedForever{other.isOpenedForever},
+                connection(std::make_unique<connection_holder>(
+                    *other.connection,
+                    std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))),
                 cachedForeignKeysCount(other.cachedForeignKeysCount) {
                 if (this->inMemory) {
                     this->connection->retain();
-                    this->on_open_internal(this->connection->get());
+                }
+                if (this->isOpenedForever) {
+                    this->connection->retain();
                 }
             }
 
@@ -698,18 +710,12 @@ namespace sqlite_orm {
 
             void begin_transaction_internal(const std::string& query) {
                 this->connection->retain();
-                if (1 == this->connection->retain_count()) {
-                    this->on_open_internal(this->connection->get());
-                }
                 sqlite3* db = this->connection->get();
                 perform_void_exec(db, query);
             }
 
             connection_ref get_connection() {
                 connection_ref res{*this->connection};
-                if (1 == this->connection->retain_count()) {
-                    this->on_open_internal(this->connection->get());
-                }
                 return res;
             }
 
@@ -725,17 +731,17 @@ namespace sqlite_orm {
                 perform_exec(db, "PRAGMA foreign_keys", extract_single_value<bool>, &result);
                 return result;
             }
-
 #endif
-            void on_open_internal(sqlite3* db) {
 
+            void on_open_internal(sqlite3* db) {
 #if SQLITE_VERSION_NUMBER >= 3006019
                 if (this->cachedForeignKeysCount) {
                     this->foreign_keys(db, true);
                 }
 #endif
+
                 if (this->pragma.synchronous_ != -1) {
-                    this->pragma.synchronous(this->pragma.synchronous_);
+                    this->pragma.set_pragma("synchronous", this->pragma.synchronous_, db);
                 }
 
                 if (this->pragma.journal_mode_ != -1) {
@@ -995,8 +1001,8 @@ namespace sqlite_orm {
                     });
 #endif
                     if (dbColumnInfoIt != dbTableInfo.end()) {
-                        auto& dbColumnInfo = *dbColumnInfoIt;
-                        auto columnsAreEqual =
+                        table_xinfo& dbColumnInfo = *dbColumnInfoIt;
+                        bool columnsAreEqual =
                             dbColumnInfo.name == storageColumnInfo.name &&
                             dbColumnInfo.notnull == storageColumnInfo.notnull &&
                             (!dbColumnInfo.dflt_value.empty()) == (!storageColumnInfo.dflt_value.empty()) &&
@@ -1007,8 +1013,7 @@ namespace sqlite_orm {
                             break;
                         }
                         dbTableInfo.erase(dbColumnInfoIt);
-                        storageTableInfo.erase(storageTableInfo.begin() +
-                                               static_cast<ptrdiff_t>(storageColumnInfoIndex));
+                        storageTableInfo.erase(storageTableInfo.begin() + storageColumnInfoIndex);
                         --storageColumnInfoIndex;
                     } else {
                         columnsToAdd.push_back(&storageColumnInfo);
