@@ -21,15 +21,24 @@ TEST_CASE("vfs modes open successfully") {
     vfs_object vfs = GENERATE(vfs_object::win32, vfs_object::win32_longpath);
 #endif
 
-    auto storage = make_storage(":memory:", connection_control{.vfs_mode = vfs}, default_table);
+    connection_control options;
+    options.vfs_mode = vfs;
+    auto storage = make_storage(":memory:", options, default_table);
     storage.sync_schema();
     REQUIRE_NOTHROW(storage.open_forever());
 
     internal::serialize_result_type vfs_string = internal::vfs_object_to_string(vfs);
     UNSCOPED_INFO("FAILED VFS: " << vfs_string);
-    REQUIRE(storage.is_opened());
-    REQUIRE(storage.vfs() == vfs);
-    REQUIRE(storage.open_flags() == open_mode::default_mode);
+    CHECK(storage.is_opened());
+    CHECK(storage.vfs() == vfs);
+    CHECK(storage.open_flags() == open_mode::default_mode);
+
+    SECTION("Storage copy operator carries over vfs option") {
+        auto storage_copy = storage;
+        CHECK(storage_copy.is_opened());
+        CHECK(storage_copy.vfs() == vfs);
+        CHECK(storage_copy.open_flags() == open_mode::default_mode);
+    }
 }
 
 TEST_CASE("create/readwrite open mode behaves as expected") {
