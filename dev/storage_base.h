@@ -644,15 +644,15 @@ namespace sqlite_orm {
              * Public method for checking the VFS implementation being used by
              * this storage object. Mostly useful for debug.
              */
-            sqlite_orm::vfs_object vfs_object() const {
-                return this->connection->options.vfs_option;
+            vfs_object vfs() const {
+                return this->connection->vfs();
             }
 
             /**
              * Return the current open_mode for this storage object. 
              */
-            sqlite_orm::open_mode open_mode() const {
-                return this->connection->options.open_option;
+            open_mode open_flags() const {
+                return this->connection->open_flags();
             }
 
             /**
@@ -696,7 +696,9 @@ namespace sqlite_orm {
                 inMemory(filename.empty() || filename == ":memory:"),
                 connection(std::make_unique<connection_holder>(
                     std::move(filename),
-                    std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))),
+                    std::bind(&storage_base::on_open_internal, this, std::placeholders::_1),
+                    connectionCtrl.vfs_mode,
+                    connectionCtrl.open_flags)),
                 cachedForeignKeysCount(foreignKeysCount) {
                 if (this->inMemory) {
                     this->connection->retain();

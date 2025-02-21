@@ -7,30 +7,38 @@
 #include <string>  //  std::string
 #endif
 
-#include "storage_options.h"
 #include "error_code.h"
+#include "vfs_object.h"
+#include "open_mode.h"
 
 namespace sqlite_orm {
     namespace internal {
 
         struct connection_holder {
-            connection_holder(std::string filename, std::function<void(sqlite3*)> didOpenDb) :
-                _didOpenDb{std::move(didOpenDb)}, filename(std::move(filename)) {}
+            connection_holder(std::string filename,
+                              std::function<void(sqlite3*)> didOpenDb,
+                              vfs_object vfsObject = vfs_object::default_vfs,
+                              open_mode openMode = open_mode::default_mode) :
+                _didOpenDb{std::move(didOpenDb)}, filename(std::move(filename)), _vfsObject(vfsObject),
+                _openMode(openMode) {}
 
             connection_holder(const connection_holder&) = delete;
 
             connection_holder(const connection_holder& other, std::function<void(sqlite3*)> didOpenDb) :
-                _didOpenDb{std::move(didOpenDb)}, filename{other.filename} {}
+                _didOpenDb{std::move(didOpenDb)}, filename{other.filename}, _vfsObject{other._vfsObject},
+                _openMode{other._openMode} {}
 
             void retain() {
                 // first one opens the connection.
                 // we presume that the connection is opened once in a single-threaded context [also open forever].
                 // therefore we can just use an atomic increment but don't need sequencing due to `prevCount > 0`.
                 if (_retainCount.fetch_add(1, std::memory_order_relaxed) == 0) {
-                    int rc = sqlite3_open_v2(this->filename.c_str(),
-                                             &this->db,
-                                             SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
-                                             nullptr);
+
+                    const std::string vfs_name(internal::vfs_object_to_string(_vfsObject));
+                    const int open_flags = internal::open_mode_to_int_flags(_openMode);
+
+                    int rc = sqlite3_open_v2(this->filename.c_str(), &this->db, open_flags, vfs_name.c_str());
+
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible, but unexpected*/ {
                         throw_translated_sqlite_error(this->db);
                     }
@@ -66,6 +74,14 @@ namespace sqlite_orm {
                 return _retainCount.load(std::memory_order_relaxed);
             }
 
+            vfs_object vfs() {
+                return _vfsObject;
+            }
+
+            sqlite_orm::open_mode open_flags() {
+                return _openMode;
+            }
+
           protected:
             sqlite3* db = nullptr;
 
@@ -74,6 +90,8 @@ namespace sqlite_orm {
 
           private:
             const std::function<void(sqlite3* db)> _didOpenDb;
+            const vfs_object _vfsObject;
+            const open_mode _openMode;
 
           public:
             const std::string filename;

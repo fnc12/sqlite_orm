@@ -14012,80 +14012,126 @@ namespace sqlite_orm {
 #include <string>  //  std::string
 #endif
 
-// #include "storage_options.h"
+// #include "error_code.h"
+
+// #include "vfs_object.h"
 
 #include <sqlite3.h>
-#ifdef SQLITE_ORM_IMPORT_STD_MODULE
-#include <version>
-#else
-#include <type_traits>  //  std::is_aggregate
-#include <utility>  //  std::move
-#include <functional>  //  std::function
+// #include "functional/config.h"
+
+// #include "serialize_result_type.h"
+
+namespace sqlite_orm {
+
+    enum class vfs_object {
+
+        default_vfs = 0,
+#ifdef SQLITE_ORM_UNIX
+        unix = 0,
+        unix_posix = 0,
+        unix_dotfile = 1,
+#ifdef SQLITE_ORM_APPLE
+        unix_afp = 2,
 #endif
+#endif
+
+#ifdef SQLITE_ORM_WIN
+        win32 = 0,
+        win32_longpath = 1,
+#endif
+        num_vfs_objects
+
+    };
+
+}
 
 namespace sqlite_orm {
     namespace internal {
-        template<typename T>
-        using storage_opt_tag_t = typename T::storage_opt_tag;
 
-        struct on_open_spec {
-            using storage_opt_tag = int;
+        inline const serialize_result_type& vfs_object_to_string(vfs_object v) {
+            static constexpr size_t num_vfs_objects = static_cast<size_t>(vfs_object::num_vfs_objects);
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+            static const std::array<serialize_result_type, num_vfs_objects> idx2str = {
+#else
+            static const std::array<serialize_result_type, num_vfs_objects> idx2str = {
+#endif
 
-            std::function<void(sqlite3*)> onOpen;
-        };
+#ifdef SQLITE_ORM_UNIX
+                "unix",
+                "unix-dotfile",
+#ifdef SQLITE_ORM_APPLE
+                "unix-afp",
+#endif
+#endif
+
+#ifdef SQLITE_ORM_WIN
+                "win32",
+                "win32-longpath",
+#endif
+            };
+
+            return idx2str.at(static_cast<size_t>(v));
+        }
     }
 }
 
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    /** 
-     *  Database connection control options to be passed to `make_storage()`.
-     */
-    struct connection_control {
-        /// Whether to open the database once and for all.
-        /// Required if using a 'storage' instance from multiple threads.
-        bool open_forever = false;
+// #include "open_mode.h"
 
-        using storage_opt_tag = int;
+#include <sqlite3.h>
+
+namespace sqlite_orm {
+
+    enum class open_mode {
+        default_mode = 0,
+        create_readwrite = 0,
+        readonly = 1,
     };
-#if __cpp_lib_is_aggregate >= 201703L
-    // design choice: must be an aggregate that can be constructed using designated initializers
-    static_assert(std::is_aggregate_v<connection_control>);
-#endif
-
-#ifdef SQLITE_ORM_CTAD_SUPPORTED
-    /** 
-     *  Callback function to be passed to `make_storage()`.
-     *  The provided function is called immdediately after the database connection has been established and set up.
-     */
-    inline internal::on_open_spec on_open(std::function<void(sqlite3*)> onOpen) {
-        return {std::move(onOpen)};
-    }
-#endif
 }
 
-// #include "error_code.h"
+namespace sqlite_orm {
+    namespace internal {
+        constexpr int open_mode_to_int_flags(open_mode open) {
+
+            switch (open) {
+                case open_mode::readonly:
+                    return SQLITE_OPEN_READONLY;
+                case open_mode::create_readwrite:
+                    return SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE;
+            };
+
+            return -1;
+        }
+    }
+}
 
 namespace sqlite_orm {
     namespace internal {
 
         struct connection_holder {
-            connection_holder(std::string filename, std::function<void(sqlite3*)> didOpenDb) :
-                _didOpenDb{std::move(didOpenDb)}, filename(std::move(filename)) {}
+            connection_holder(std::string filename,
+                              std::function<void(sqlite3*)> didOpenDb,
+                              vfs_object vfsObject = vfs_object::default_vfs,
+                              open_mode openMode = open_mode::default_mode) :
+                _didOpenDb{std::move(didOpenDb)}, filename(std::move(filename)), _vfsObject(vfsObject),
+                _openMode(openMode) {}
 
             connection_holder(const connection_holder&) = delete;
 
             connection_holder(const connection_holder& other, std::function<void(sqlite3*)> didOpenDb) :
-                _didOpenDb{std::move(didOpenDb)}, filename{other.filename} {}
+                _didOpenDb{std::move(didOpenDb)}, filename{other.filename}, _vfsObject{other._vfsObject},
+                _openMode{other._openMode} {}
 
             void retain() {
                 // first one opens the connection.
                 // we presume that the connection is opened once in a single-threaded context [also open forever].
                 // therefore we can just use an atomic increment but don't need sequencing due to `prevCount > 0`.
                 if (_retainCount.fetch_add(1, std::memory_order_relaxed) == 0) {
-                    int rc = sqlite3_open_v2(this->filename.c_str(),
-                                             &this->db,
-                                             SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
-                                             nullptr);
+
+                    const std::string vfs_name(internal::vfs_object_to_string(_vfsObject));
+                    const int open_flags = internal::open_mode_to_int_flags(_openMode);
+
+                    int rc = sqlite3_open_v2(this->filename.c_str(), &this->db, open_flags, vfs_name.c_str());
+
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible, but unexpected*/ {
                         throw_translated_sqlite_error(this->db);
                     }
@@ -14121,6 +14167,14 @@ namespace sqlite_orm {
                 return _retainCount.load(std::memory_order_relaxed);
             }
 
+            vfs_object vfs() {
+                return _vfsObject;
+            }
+
+            sqlite_orm::open_mode open_flags() {
+                return _openMode;
+            }
+
           protected:
             sqlite3* db = nullptr;
 
@@ -14129,6 +14183,8 @@ namespace sqlite_orm {
 
           private:
             const std::function<void(sqlite3* db)> _didOpenDb;
+            const vfs_object _vfsObject;
+            const open_mode _openMode;
 
           public:
             const std::string filename;
@@ -17921,6 +17977,57 @@ namespace sqlite_orm {
 
 // #include "storage_options.h"
 
+#include <sqlite3.h>
+#ifdef SQLITE_ORM_IMPORT_STD_MODULE
+#include <version>
+#else
+#include <type_traits>  //  std::is_aggregate
+#include <utility>  //  std::move
+#include <functional>  //  std::function
+#endif
+
+namespace sqlite_orm {
+    namespace internal {
+        template<typename T>
+        using storage_opt_tag_t = typename T::storage_opt_tag;
+
+        struct on_open_spec {
+            using storage_opt_tag = int;
+
+            std::function<void(sqlite3*)> onOpen;
+        };
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /** 
+     *  Database connection control options to be passed to `make_storage()`.
+     */
+    struct connection_control {
+        /// Whether to open the database once and for all.
+        /// Required if using a 'storage' instance from multiple threads.
+        bool open_forever = false;
+        vfs_object vfs_mode = vfs_object::default_vfs;
+        open_mode open_flags = open_mode::default_mode;
+
+        using storage_opt_tag = int;
+    };
+#if __cpp_lib_is_aggregate >= 201703L
+    // design choice: must be an aggregate that can be constructed using designated initializers
+    static_assert(std::is_aggregate_v<connection_control>);
+#endif
+
+#ifdef SQLITE_ORM_CTAD_SUPPORTED
+    /** 
+     *  Callback function to be passed to `make_storage()`.
+     *  The provided function is called immdediately after the database connection has been established and set up.
+     */
+    inline internal::on_open_spec on_open(std::function<void(sqlite3*)> onOpen) {
+        return {std::move(onOpen)};
+    }
+#endif
+}
+
 namespace sqlite_orm {
     namespace internal {
 
@@ -18529,15 +18636,15 @@ namespace sqlite_orm {
              * Public method for checking the VFS implementation being used by
              * this storage object. Mostly useful for debug.
              */
-            sqlite_orm::vfs_object vfs_object() const {
-                return this->connection->options.vfs_option;
+            vfs_object vfs() const {
+                return this->connection->vfs();
             }
 
             /**
              * Return the current open_mode for this storage object. 
              */
-            sqlite_orm::open_mode open_mode() const {
-                return this->connection->options.open_option;
+            open_mode open_flags() const {
+                return this->connection->open_flags();
             }
 
             /**
@@ -18581,7 +18688,9 @@ namespace sqlite_orm {
                 inMemory(filename.empty() || filename == ":memory:"),
                 connection(std::make_unique<connection_holder>(
                     std::move(filename),
-                    std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))),
+                    std::bind(&storage_base::on_open_internal, this, std::placeholders::_1),
+                    connectionCtrl.vfs_mode,
+                    connectionCtrl.open_flags)),
                 cachedForeignKeysCount(foreignKeysCount) {
                 if (this->inMemory) {
                     this->connection->retain();
@@ -24357,11 +24466,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /*
      *  Factory function for a storage instance, from a database file and a bunch of database object definitions.
      */
-    template<class... DBO>
-    internal::storage_t<DBO...> make_storage(std::string filename, storage_options options, DBO... dbObjects) {
-        return {std::move(filename), options, internal::db_objects_tuple<DBO...>{std::forward<DBO>(dbObjects)...}};
-    }
-
     template<class... DBO>
     internal::storage_t<DBO...> make_storage(std::string filename, DBO... dbObjects) {
         return {std::move(filename), {std::forward<DBO>(dbObjects)...}, std::tuple<>{}};

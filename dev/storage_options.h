@@ -30,6 +30,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         /// Whether to open the database once and for all.
         /// Required if using a 'storage' instance from multiple threads.
         bool open_forever = false;
+        vfs_object vfs_mode = vfs_object::default_vfs;
+        open_mode open_flags = open_mode::default_mode;
 
         using storage_opt_tag = int;
     };
