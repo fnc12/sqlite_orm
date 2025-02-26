@@ -46,8 +46,9 @@ TEST_CASE("create/readwrite open mode behaves as expected") {
     const bool in_memory = GENERATE(true, false);
     const char* tmp_filename = in_memory ? ":memory:" : "open_mode.sqlite";
 
-    connection_control options = {.open_flags = open_mode::create_readwrite};
-    connection_control readonly_options = {.open_flags = open_mode::readonly};
+    connection_control options, readonly_options;
+    options.open_flags = open_mode::create_readwrite;
+    readonly_options.open_flags = open_mode::readonly;
 
     if (!in_memory) {
         std::remove(tmp_filename);
