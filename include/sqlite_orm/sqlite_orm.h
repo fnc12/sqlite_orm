@@ -3290,6 +3290,8 @@ namespace sqlite_orm {
 
 // #include "column_pointer.h"
 
+// #include "table_reference.h"
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -3574,7 +3576,7 @@ namespace sqlite_orm {
                 return res;
             }
 
-            operator bool() const {
+            explicit operator bool() const {
                 return this->_action != foreign_key_action::none;
             }
         };
@@ -3588,7 +3590,6 @@ namespace sqlite_orm {
         struct foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> {
             using columns_type = std::tuple<Cs...>;
             using references_type = std::tuple<Rs...>;
-            using self = foreign_key_t<columns_type, references_type>;
 
             /**
              * Holds obect type of all referenced columns.
@@ -3603,8 +3604,8 @@ namespace sqlite_orm {
             columns_type columns;
             references_type references;
 
-            on_update_delete_t<self> on_update;
-            on_update_delete_t<self> on_delete;
+            on_update_delete_t<foreign_key_t> on_update;
+            on_update_delete_t<foreign_key_t> on_delete;
 
             static_assert(std::tuple_size<columns_type>::value == std::tuple_size<references_type>::value,
                           "Columns size must be equal to references tuple");
@@ -3614,11 +3615,11 @@ namespace sqlite_orm {
                 columns(std::move(columns_)), references(std::move(references_)),
                 on_update(*this, true, foreign_key_action::none), on_delete(*this, false, foreign_key_action::none) {}
 
-            foreign_key_t(const self& other) :
+            foreign_key_t(const foreign_key_t& other) :
                 columns(other.columns), references(other.references), on_update(*this, true, other.on_update._action),
                 on_delete(*this, false, other.on_delete._action) {}
 
-            self& operator=(const self& other) {
+            foreign_key_t& operator=(const foreign_key_t& other) {
                 this->columns = other.columns;
                 this->references = other.references;
                 this->on_update = {*this, true, other.on_update._action};
@@ -3642,17 +3643,25 @@ namespace sqlite_orm {
         struct foreign_key_intermediate_t {
             using tuple_type = std::tuple<Cs...>;
 
-            tuple_type columns;
+            tuple_type _columns;
 
             template<class... Rs>
-            foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> references(Rs... refs) {
-                return {std::move(this->columns), {std::forward<Rs>(refs)...}};
+            foreign_key_t<tuple_type, std::tuple<Rs...>> references(Rs... refs) {
+                return {std::move(_columns), {std::forward<Rs>(refs)...}};
             }
 
             template<class T, class... Rs>
-            foreign_key_t<std::tuple<Cs...>, std::tuple<internal::column_pointer<T, Rs>...>> references(Rs... refs) {
-                return {std::move(this->columns), {sqlite_orm::column<T>(refs)...}};
+            foreign_key_t<tuple_type, std::tuple<column_pointer<T, Rs>...>> references(Rs... refs) {
+                return {std::move(_columns), {{refs}...}};
             }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            template<orm_table_reference auto table, class... Rs>
+            auto references(Rs... refs) {
+                using fk_type = foreign_key_t<tuple_type, std::tuple<column_pointer<auto_type_t<table>, Rs>...>>;
+                return fk_type{std::move(_columns), {{refs}...}};
+            }
+#endif
         };
 #endif
 
@@ -3795,13 +3804,35 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #if SQLITE_VERSION_NUMBER >= 3006019
     /**
-     *  FOREIGN KEY constraint construction function that takes member pointer as argument
+     *  FOREIGN KEY constraint construction function that takes a member pointer as argument
      *  Available in SQLite 3.6.19 or higher
      */
     template<class... Cs>
     internal::foreign_key_intermediate_t<Cs...> foreign_key(Cs... columns) {
         return {{std::forward<Cs>(columns)...}};
     }
+
+    /**
+     *  FOREIGN KEY constraint construction function that takes member pointer of a derived class as argument.
+     *  Available in SQLite 3.6.19 or higher
+     */
+    template<class T, class... Cs>
+    internal::foreign_key_intermediate_t<internal::column_pointer<T, Cs>...> foreign_key(Cs... columns) {
+        return {{{columns}...}};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  FOREIGN KEY constraint construction function that takes member pointer of a derived class as argument.
+     *  Available in SQLite 3.6.19 or higher
+     */
+    template<orm_table_reference auto table, class... Cs>
+    auto foreign_key(Cs... columns) {
+        using namespace ::sqlite_orm::internal;
+        using builder_type = foreign_key_intermediate_t<column_pointer<auto_type_t<table>, Cs>...>;
+        return builder_type{{{columns}...}};
+    }
+#endif
 #endif
 
     /**

@@ -40,6 +40,15 @@ TEST_CASE("foreign key static") {
         bool is_global;
         std::string file_path;
     };
+    struct Base {
+        int id;
+        int parentId;
+    };
+    struct Derived : Base {};
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    constexpr orm_table_reference auto derived = c<Derived>();
+#endif
+
     auto cppInclusionIncluderPathFk = foreign_key(&CppInclusion::includer_path).references(&File::path);
     STATIC_REQUIRE(std::is_same<decltype(cppInclusionIncluderPathFk)::target_type, File>::value);
     STATIC_REQUIRE(std::is_same<decltype(cppInclusionIncluderPathFk)::source_type, CppInclusion>::value);
@@ -64,6 +73,20 @@ TEST_CASE("foreign key static") {
         foreign_key(&FunctionCall::parent_function_name).references(&FunctionDef::function_name);
     STATIC_REQUIRE(std::is_same<decltype(functionCallParentFunctionName)::target_type, FunctionDef>::value);
     STATIC_REQUIRE(std::is_same<decltype(functionCallParentFunctionName)::source_type, FunctionCall>::value);
+
+    auto selfRefFk1 = foreign_key(column<Derived>(&Derived::parentId)).references(column<Derived>(&Derived::id));
+    STATIC_REQUIRE(std::is_same<decltype(selfRefFk1)::target_type, Derived>::value);
+    STATIC_REQUIRE(std::is_same<decltype(selfRefFk1)::source_type, Derived>::value);
+
+    auto selfRefFk2 = foreign_key<Derived>(&Derived::parentId).references<Derived>(&Derived::id);
+    STATIC_REQUIRE(std::is_same<decltype(selfRefFk2)::target_type, Derived>::value);
+    STATIC_REQUIRE(std::is_same<decltype(selfRefFk2)::source_type, Derived>::value);
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    auto selfRefFk3 = foreign_key<derived>(&Derived::parentId).references<derived>(&Derived::id);
+    STATIC_REQUIRE(std::is_same<decltype(selfRefFk3)::target_type, Derived>::value);
+    STATIC_REQUIRE(std::is_same<decltype(selfRefFk3)::source_type, Derived>::value);
+#endif
 
     auto storage = make_storage({},
                                 make_table("files", make_column("path", &File::path, primary_key())),
