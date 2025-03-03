@@ -59,6 +59,7 @@ TEST_CASE("create/readwrite open mode behaves as expected") {
         REQUIRE_NOTHROW(storage.sync_schema());
 
         CHECK_NOTHROW(storage.open_forever());
+        REQUIRE(!storage.table_names().empty());
 
         CHECK(storage.is_opened());
         CHECK(storage.open_flags() == open_mode::create_readwrite);
@@ -75,9 +76,16 @@ TEST_CASE("create/readwrite open mode behaves as expected") {
             CHECK(readonly_storage.is_opened());
             CHECK(readonly_storage.open_flags() == open_mode::readonly);
             CHECK(readonly_storage.readonly());
-            CHECK_THROWS_AS(readonly_storage.replace(dummy), std::system_error);
-            CHECK(storage.get_pointer<User>(dummy.id) != nullptr);
+
+            if (!in_memory) {
+                CHECK(!readonly_storage.table_names().empty());
+                CHECK_THROWS_AS(readonly_storage.remove<User>(dummy.id), std::system_error);
+                CHECK(readonly_storage.get_pointer<User>(dummy.id) != nullptr);
+            }
         }
+
+        CHECK_NOTHROW(storage.remove<User>(dummy.id));
+        CHECK(storage.get_pointer<User>(dummy.id) == nullptr);
     }
 
     if (!in_memory) {
