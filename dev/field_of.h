@@ -4,6 +4,8 @@
 #include <type_traits>  //  std::enable_if, std::is_convertible, std::bool_constant
 #endif
 
+#include "member_traits/member_traits.h"
+
 namespace sqlite_orm {
     namespace internal {
         template<class T, class F>

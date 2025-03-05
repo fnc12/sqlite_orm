@@ -2184,6 +2184,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <type_traits>  //  std::enable_if, std::is_convertible, std::bool_constant
 #endif
 
+// #include "member_traits/member_traits.h"
+
 namespace sqlite_orm {
     namespace internal {
         template<class T, class F>
@@ -3371,7 +3373,7 @@ namespace sqlite_orm {
                 return *this;
             }
 #ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            primary_key_with_autoincrement(primary_key_type primary_key) : primary_key_type{primary_key} {}
+            constexpr primary_key_with_autoincrement(primary_key_type primary_key) : primary_key_type{primary_key} {}
 #endif
         };
 
@@ -3382,59 +3384,58 @@ namespace sqlite_orm {
          */
         template<class... Cs>
         struct primary_key_t : primary_key_base {
-            using self = primary_key_t<Cs...>;
             using order_by = primary_key_base::order_by;
             using columns_tuple = std::tuple<Cs...>;
 
             columns_tuple columns;
 
-            primary_key_t(columns_tuple columns) : columns(std::move(columns)) {}
+            constexpr primary_key_t(columns_tuple columns) : columns(std::move(columns)) {}
 
-            self asc() const {
+            constexpr primary_key_t asc() const {
                 auto res = *this;
                 res.options.asc_option = order_by::ascending;
                 return res;
             }
 
-            self desc() const {
+            constexpr primary_key_t desc() const {
                 auto res = *this;
                 res.options.asc_option = order_by::descending;
                 return res;
             }
 
-            primary_key_with_autoincrement<self> autoincrement() const {
+            constexpr primary_key_with_autoincrement<primary_key_t> autoincrement() const {
                 return {*this};
             }
 
-            self on_conflict_rollback() const {
+            constexpr primary_key_t on_conflict_rollback() const {
                 auto res = *this;
                 res.options.conflict_clause_is_on = true;
                 res.options.conflict_clause = conflict_clause_t::rollback;
                 return res;
             }
 
-            self on_conflict_abort() const {
+            constexpr primary_key_t on_conflict_abort() const {
                 auto res = *this;
                 res.options.conflict_clause_is_on = true;
                 res.options.conflict_clause = conflict_clause_t::abort;
                 return res;
             }
 
-            self on_conflict_fail() const {
+            constexpr primary_key_t on_conflict_fail() const {
                 auto res = *this;
                 res.options.conflict_clause_is_on = true;
                 res.options.conflict_clause = conflict_clause_t::fail;
                 return res;
             }
 
-            self on_conflict_ignore() const {
+            constexpr primary_key_t on_conflict_ignore() const {
                 auto res = *this;
                 res.options.conflict_clause_is_on = true;
                 res.options.conflict_clause = conflict_clause_t::ignore;
                 return res;
             }
 
-            self on_conflict_replace() const {
+            constexpr primary_key_t on_conflict_replace() const {
                 auto res = *this;
                 res.options.conflict_clause_is_on = true;
                 res.options.conflict_clause = conflict_clause_t::replace;
@@ -3853,7 +3854,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #if SQLITE_VERSION_NUMBER >= 3006019
     /**
-     *  FOREIGN KEY constraint builder function taking one or more fields [member pointer or column pointer] as argument.
+     *  Composite FOREIGN KEY constraint builder function taking one or more fields [member pointer or column pointer] as argument.
      *  Available since SQLite 3.6.19
      */
     template<class... Cs>
@@ -3862,7 +3863,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 
     /**
-     *  FOREIGN KEY constraint builder function taking one or more fields from a derived class as a member pointer of a base class as argument.
+     *  Composite FOREIGN KEY constraint builder function taking one or more fields from a derived class as a member pointer of a base class as argument.
      *  Available since SQLite 3.6.19
      */
     template<class O, class... Base, class... F>
@@ -3874,7 +3875,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
-     *  FOREIGN KEY constraint builder function taking one or more fields from a derived class as a member pointer of a base class as argument.
+     *  Composite FOREIGN KEY constraint builder function taking one or more fields from a derived class as a member pointer of a base class as argument.
      *  Available since SQLite 3.6.19
      */
     template<orm_table_reference auto table, class... Base, class... F>
@@ -3954,14 +3955,34 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  PRIMARY KEY table constraint builder function.
      */
     template<class... Cs>
-    internal::primary_key_t<Cs...> primary_key(Cs... cs) {
+    constexpr internal::primary_key_t<Cs...> primary_key(Cs... cs) {
         return {{std::forward<Cs>(cs)...}};
     }
 
     /**
-     *  PRIMARY KEY column constraint builder function.
+     *  Composite PRIMARY KEY table constraint builder function taking one or more fields from a derived class as a member pointer of a base class as argument.
      */
-    inline internal::primary_key_t<> primary_key() {
+    template<class O, class... Base, class... F>
+    constexpr internal::primary_key_t<F O::*...> primary_key(F Base::*... columns) {
+        static_assert(std::conjunction<internal::is_field_of<F Base::*, O>...>::value,
+                      "Fields must be from explicitly specified derived class");
+        return {{columns...}};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Composite PRIMARY KEY table constraint builder function taking one or more fields from a derived class as a member pointer of a base class as argument.
+     */
+    template<orm_table_reference auto table, class... Base, class... F>
+    constexpr auto primary_key(F Base::*... columns) {
+        return primary_key<internal::auto_decay_table_ref_t<table>>(columns...);
+    }
+#endif
+
+    /**
+     *  PRIMARY KEY column constraint builder function (used at a single column).
+     */
+    inline constexpr internal::primary_key_t<> primary_key() {
         return {{}};
     }
 
@@ -12715,10 +12736,11 @@ namespace sqlite_orm {
         using tables_index_sequence = filter_tuple_sequence_t<DBOs, is_table>;
 
         template<class DBOs, satisfies<is_db_objects, DBOs> = true>
-        int foreign_keys_count(const DBOs& dbObjects) {
+        constexpr int foreign_keys_count() {
             int res = 0;
-            iterate_tuple<true>(dbObjects, tables_index_sequence<DBOs>{}, [&res](const auto& table) {
-                res += table.template count_of<is_foreign_key>();
+            iterate_tuple<DBOs>(tables_index_sequence<DBOs>{}, [&res](const auto* dummy) {
+                using table_type = std::remove_pointer_t<decltype(dummy)>;
+                res += table_type::template count_of<is_foreign_key>();
             });
             return res;
         }
@@ -20820,7 +20842,7 @@ namespace sqlite_orm {
                     ss << " ON CONFLICT " << serialize(statement.options.conflict_clause, context);
                 }
                 using columns_tuple = typename statement_type::columns_tuple;
-                const size_t columnsCount = std::tuple_size<columns_tuple>::value;
+                constexpr size_t columnsCount = std::tuple_size<columns_tuple>::value;
                 if (columnsCount) {
                     ss << "(" << streaming_mapped_columns_expressions(statement.columns, context) << ")";
                 }
@@ -22638,7 +22660,7 @@ namespace sqlite_orm {
                 storage_base{std::move(filename),
                              storage_opt_or_default<connection_control>(options),
                              storage_opt_or_default<on_open_spec>(options),
-                             foreign_keys_count(dbObjects)},
+                             foreign_keys_count<db_objects_type>()},
                 db_objects{std::move(dbObjects)} {}
 
             storage_t(const storage_t&) = default;
