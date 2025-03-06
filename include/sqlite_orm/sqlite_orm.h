@@ -3698,7 +3698,7 @@ namespace sqlite_orm {
              */
             template<class O, class... Base, class... F>
             foreign_key_t<tuple_type, std::tuple<F O::*...>> references(F Base::*... refs) {
-                static_assert(std::conjunction<is_field_of<F Base::*, O>...>::value,
+                static_assert(polyfill::conjunction<is_field_of<F Base::*, O>...>::value,
                               "Referenced fields must be from explicitly specified derived class");
                 return {std::move(_columns), {refs...}};
             }
@@ -3868,7 +3868,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class O, class... Base, class... F>
     internal::foreign_key_intermediate_t<F O::*...> foreign_key(F Base::*... columns) {
-        static_assert(std::conjunction<internal::is_field_of<F Base::*, O>...>::value,
+        static_assert(polyfill::conjunction<internal::is_field_of<F Base::*, O>...>::value,
                       "Fields must be from explicitly specified derived class");
         return {{columns...}};
     }
@@ -3964,7 +3964,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class O, class... Base, class... F>
     constexpr internal::primary_key_t<F O::*...> primary_key(F Base::*... columns) {
-        static_assert(std::conjunction<internal::is_field_of<F Base::*, O>...>::value,
+        static_assert(polyfill::conjunction<internal::is_field_of<F Base::*, O>...>::value,
                       "Fields must be from explicitly specified derived class");
         return {{columns...}};
     }
