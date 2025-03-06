@@ -367,7 +367,7 @@ namespace sqlite_orm {
             tuple_type _columns;
 
             /**
-             *  Specify one or more target fields, which can either be class member pointers or column pointers.
+             *  Specify one or more target fields, which can either be pointers to class members or column pointers.
              */
             template<class... Rs>
             foreign_key_t<tuple_type, std::tuple<Rs...>> references(Rs... refs) {
@@ -375,7 +375,8 @@ namespace sqlite_orm {
             }
 
             /**
-             *  Specify one or more target fields, which are class member pointers of base classes.
+             *  Specify one or more target fields that are member pointers of base classes,
+             *  specifying the derived class as an explicit template argument.
              */
             template<class O, class... Base, class... F>
             foreign_key_t<tuple_type, std::tuple<F O::*...>> references(F Base::*... refs) {
@@ -386,7 +387,8 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
             /**
-             *  Specify one or more target fields, which are class member pointers of base classes.
+             *  Specify one or more target fields that are member pointers of base classes,
+             *  specifying the derived class as an explicit template argument.
              */
             template<orm_table_reference auto table, class... Base, class... F>
             auto references(F Base::*... refs) {
@@ -535,7 +537,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #if SQLITE_VERSION_NUMBER >= 3006019
     /**
-     *  Composite FOREIGN KEY constraint builder function taking one or more fields [member pointer or column pointer] as argument.
+     *  FOREIGN KEY constraint builder function taking one or more fields, which can either be pointers to class members or column pointers.
      *  Available since SQLite 3.6.19
      */
     template<class... Cs>
@@ -544,7 +546,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 
     /**
-     *  Composite FOREIGN KEY constraint builder function taking one or more fields from a derived class as a member pointer of a base class as argument.
+     *  FOREIGN KEY constraint builder function taking one or more fields that are member pointers of base classes,
+     *  specifying the derived class as an explicit template argument.
      *  Available since SQLite 3.6.19
      */
     template<class O, class... Base, class... F>
@@ -556,7 +559,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
-     *  Composite FOREIGN KEY constraint builder function taking one or more fields from a derived class as a member pointer of a base class as argument.
+     *  FOREIGN KEY constraint builder function taking one or more fields that are member pointers of base classes,
+     *  specifying the derived class as an explicit template argument.
      *  Available since SQLite 3.6.19
      */
     template<orm_table_reference auto table, class... Base, class... F>
@@ -633,7 +637,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 
     /**
-     *  PRIMARY KEY table constraint builder function.
+     *  PRIMARY KEY constraint builder function taking one or more fields, which can either be pointers to class members or column pointers.
      */
     template<class... Cs>
     constexpr internal::primary_key_t<Cs...> primary_key(Cs... cs) {
@@ -641,7 +645,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 
     /**
-     *  Composite PRIMARY KEY table constraint builder function taking one or more fields from a derived class as a member pointer of a base class as argument.
+     *  PRIMARY KEY constraint builder function taking one or more fields that are member pointers of base classes,
+     *  specifying the derived class as an explicit template argument.
      */
     template<class O, class... Base, class... F>
     constexpr internal::primary_key_t<F O::*...> primary_key(F Base::*... columns) {
@@ -652,7 +657,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
-     *  Composite PRIMARY KEY table constraint builder function taking one or more fields from a derived class as a member pointer of a base class as argument.
+     *  PRIMARY KEY constraint builder function taking one or more fields that are member pointers of base classes,
+     *  specifying the derived class as an explicit template argument.
      */
     template<orm_table_reference auto table, class... Base, class... F>
     constexpr auto primary_key(F Base::*... columns) {
