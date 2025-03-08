@@ -1048,7 +1048,7 @@ namespace sqlite_orm {
                     ss << " ON CONFLICT " << serialize(statement.options.conflict_clause, context);
                 }
                 using columns_tuple = typename statement_type::columns_tuple;
-                const size_t columnsCount = std::tuple_size<columns_tuple>::value;
+                constexpr size_t columnsCount = std::tuple_size<columns_tuple>::value;
                 if (columnsCount) {
                     ss << "(" << streaming_mapped_columns_expressions(statement.columns, context) << ")";
                 }

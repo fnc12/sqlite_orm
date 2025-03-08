@@ -18,7 +18,7 @@
 #include "../tuple_helper/tuple_iteration.h"
 #include "../tuple_helper/tuple_transformer.h"
 #include "../member_traits/member_traits.h"
-#include "../typed_comparator.h"
+#include "../field_of.h"
 #include "../type_traits.h"
 #include "../alias_traits.h"
 #include "../constraints.h"
@@ -143,7 +143,7 @@ namespace sqlite_orm {
                 iterate_tuple(this->elements,
                               col_index_sequence_with_field_type<elements_type, field_type>{},
                               call_as_template_base<column_field>([&res, &memberPointer, &object](const auto& column) {
-                                  if (compare_any(column.setter, memberPointer)) {
+                                  if (compare_fields(column.setter, memberPointer)) {
                                       res = &polyfill::invoke(column.member_pointer, object);
                                   }
                               }));
@@ -237,7 +237,7 @@ namespace sqlite_orm {
                 iterate_tuple(this->elements,
                               col_index_sequence_with_field_type<elements_type, field_type>{},
                               [&res, m](auto& c) {
-                                  if (compare_any(c.member_pointer, m) || compare_any(c.setter, m)) {
+                                  if (compare_fields(c.member_pointer, m) || compare_fields(c.setter, m)) {
                                       res = &c.name;
                                   }
                               });
@@ -402,8 +402,8 @@ namespace sqlite_orm {
                                             check_if_is_type<member_field_type_t<G>>::template fn,
                                             member_field_type_t>;
                 iterate_tuple(primaryKey.columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
-                    if (compare_any(memberPointer, column.member_pointer) ||
-                        compare_any(memberPointer, column.setter)) {
+                    if (compare_fields(memberPointer, column.member_pointer) ||
+                        compare_fields(memberPointer, column.setter)) {
                         res = true;
                     }
                 });

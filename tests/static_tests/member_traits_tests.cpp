@@ -4,6 +4,8 @@
 using namespace sqlite_orm;
 
 TEST_CASE("member_traits_tests") {
+    using internal::as_field_of;
+    using internal::as_field_of_t;
     using internal::getter_field_type_t;
     using internal::is_getter;
     using internal::is_setter;
@@ -104,6 +106,8 @@ TEST_CASE("member_traits_tests") {
             this->id = id;
         }
     };
+
+    struct DerivedUser : User {};
 
     STATIC_REQUIRE_FALSE(is_getter<decltype(&User::id)>::value);
     STATIC_REQUIRE(is_getter<decltype(&User::getIdByValConst)>::value);
@@ -291,4 +295,7 @@ TEST_CASE("member_traits_tests") {
     STATIC_REQUIRE(is_same_v<setter_field_type_t<decltype(&User::setIdByConstRefNoexcept)>, int>);
     STATIC_REQUIRE(is_same_v<member_field_type_t<decltype(&User::setIdByConstRefNoexcept)>, int>);
 #endif
+
+    STATIC_REQUIRE(is_same<member_object_type_t<decltype(as_field_of<DerivedUser>(&User::id))>, DerivedUser>::value);
+    STATIC_REQUIRE(is_same<member_object_type_t<as_field_of_t<DerivedUser, decltype(&User::id)>>, DerivedUser>::value);
 }
