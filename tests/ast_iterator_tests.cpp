@@ -183,6 +183,22 @@ TEST_CASE("ast_iterator") {
             auto node = order_by(1);
             iterate_ast(node, lambda);
         }
+        SECTION("normal") {
+            auto node = order_by(&User::id);
+            expected.push_back(typeid(&User::id));
+            iterate_ast(node, lambda);
+        }
+        SECTION("multi, single") {
+            auto node = multi_order_by(order_by(&User::id));
+            expected.push_back(typeid(&User::id));
+            iterate_ast(node, lambda);
+        }
+        SECTION("multi, several") {
+            auto node = multi_order_by(order_by(&User::id), order_by(&User::name));
+            expected.push_back(typeid(&User::id));
+            expected.push_back(typeid(&User::name));
+            iterate_ast(node, lambda);
+        }
         SECTION("sole column alias") {
             auto node = order_by(get<colalias_a>());
             iterate_ast(node, lambda);
