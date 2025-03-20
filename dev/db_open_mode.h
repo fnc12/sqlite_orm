@@ -1,6 +1,8 @@
 #pragma once
 
-namespace sqlite_orm {
+#include "functional/config.h"
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     enum class db_open_mode {
         default_ = 0,
@@ -9,7 +11,7 @@ namespace sqlite_orm {
     };
 }
 
-namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     namespace internal {
         constexpr int db_open_mode_to_int_flags(db_open_mode open) {
 
