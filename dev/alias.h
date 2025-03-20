@@ -15,6 +15,7 @@
 #include "functional/cstring_literal.h"
 #include "type_traits.h"
 #include "alias_traits.h"
+#include "field_of.h"
 #include "table_type_of.h"
 #include "tags.h"
 #include "column_pointer.h"

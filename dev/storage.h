@@ -112,7 +112,7 @@ namespace sqlite_orm {
                 storage_base{std::move(filename),
                              storage_opt_or_default<connection_control>(options),
                              storage_opt_or_default<on_open_spec>(options),
-                             foreign_keys_count(dbObjects)},
+                             foreign_keys_count<db_objects_type>()},
                 db_objects{std::move(dbObjects)} {}
 
             storage_t(const storage_t&) = default;

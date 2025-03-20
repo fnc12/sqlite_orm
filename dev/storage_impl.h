@@ -24,10 +24,11 @@ namespace sqlite_orm {
         using tables_index_sequence = filter_tuple_sequence_t<DBOs, is_table>;
 
         template<class DBOs, satisfies<is_db_objects, DBOs> = true>
-        int foreign_keys_count(const DBOs& dbObjects) {
+        constexpr int foreign_keys_count() {
             int res = 0;
-            iterate_tuple<true>(dbObjects, tables_index_sequence<DBOs>{}, [&res](const auto& table) {
-                res += table.template count_of<is_foreign_key>();
+            iterate_tuple<DBOs>(tables_index_sequence<DBOs>{}, [&res](const auto* dummy) {
+                using table_type = std::remove_pointer_t<decltype(dummy)>;
+                res += table_type::template count_of<is_foreign_key>();
             });
             return res;
         }

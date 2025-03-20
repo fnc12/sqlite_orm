@@ -9,6 +9,8 @@
 
 #if SQLITE_VERSION_NUMBER >= 3006019
 using namespace sqlite_orm;
+using internal::as_field_of_t;
+using internal::column_pointer;
 
 TEST_CASE("foreign key static") {
     struct FunctionDecl {
@@ -40,6 +42,19 @@ TEST_CASE("foreign key static") {
         bool is_global;
         std::string file_path;
     };
+    struct Base {
+        // Note: `long` was chosen as a different type than `int` for the primary key columns to ensure that the following static asserts work as expected.
+        long id;
+        long id2;
+
+        int parentId;
+        int parentId2;
+    };
+    struct Derived : Base {};
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    constexpr orm_table_reference auto derived = c<Derived>();
+#endif
+
     auto cppInclusionIncluderPathFk = foreign_key(&CppInclusion::includer_path).references(&File::path);
     STATIC_REQUIRE(std::is_same<decltype(cppInclusionIncluderPathFk)::target_type, File>::value);
     STATIC_REQUIRE(std::is_same<decltype(cppInclusionIncluderPathFk)::source_type, CppInclusion>::value);
@@ -64,6 +79,72 @@ TEST_CASE("foreign key static") {
         foreign_key(&FunctionCall::parent_function_name).references(&FunctionDef::function_name);
     STATIC_REQUIRE(std::is_same<decltype(functionCallParentFunctionName)::target_type, FunctionDef>::value);
     STATIC_REQUIRE(std::is_same<decltype(functionCallParentFunctionName)::source_type, FunctionCall>::value);
+
+    SECTION("inheritance, single fk") {
+        using selfRefFk1 =
+            decltype(foreign_key(column<Derived>(&Derived::parentId)).references(column<Derived>(&Derived::id)));
+        STATIC_REQUIRE(std::is_same<selfRefFk1::columns_type,
+                                    std::tuple<column_pointer<Derived, decltype(&Derived::parentId)>>>::value);
+        STATIC_REQUIRE(std::is_same<selfRefFk1::references_type,
+                                    std::tuple<column_pointer<Derived, decltype(&Derived::id)>>>::value);
+        STATIC_REQUIRE(std::is_same<selfRefFk1::target_type, Derived>::value);
+        STATIC_REQUIRE(std::is_same<selfRefFk1::source_type, Derived>::value);
+
+        using selfRefFk2 = decltype(foreign_key<Derived>(&Derived::parentId).references<Derived>(&Derived::id));
+        STATIC_REQUIRE(std::is_same<selfRefFk2::columns_type,
+                                    std::tuple<as_field_of_t<Derived, decltype(&Derived::parentId)>>>::value);
+        STATIC_REQUIRE(std::is_same<selfRefFk2::references_type,
+                                    std::tuple<as_field_of_t<Derived, decltype(&Derived::id)>>>::value);
+        STATIC_REQUIRE(std::is_same<selfRefFk2::target_type, Derived>::value);
+        STATIC_REQUIRE(std::is_same<selfRefFk2::source_type, Derived>::value);
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        using selfRefFk3 = decltype(foreign_key<derived>(&Derived::parentId).references<derived>(&Derived::id));
+        STATIC_REQUIRE(std::is_same<selfRefFk3::columns_type,
+                                    std::tuple<as_field_of_t<Derived, decltype(&Derived::parentId)>>>::value);
+        STATIC_REQUIRE(std::is_same<selfRefFk3::references_type,
+                                    std::tuple<as_field_of_t<Derived, decltype(&Derived::id)>>>::value);
+        STATIC_REQUIRE(std::is_same_v<selfRefFk3::target_type, Derived>);
+        STATIC_REQUIRE(std::is_same_v<selfRefFk3::source_type, Derived>);
+#endif
+    }
+    SECTION("inheritance, composite fk") {
+        using selfRefMultiFk1 =
+            decltype(foreign_key(column<Derived>(&Derived::parentId), column<Derived>(&Derived::parentId2))
+                         .references(column<Derived>(&Derived::id), column<Derived>(&Derived::id2)));
+        STATIC_REQUIRE(std::is_same<selfRefMultiFk1::columns_type,
+                                    std::tuple<column_pointer<Derived, decltype(&Derived::parentId)>,
+                                               column_pointer<Derived, decltype(&Derived::parentId2)>>>::value);
+        STATIC_REQUIRE(std::is_same<selfRefMultiFk1::references_type,
+                                    std::tuple<column_pointer<Derived, decltype(&Derived::id)>,
+                                               column_pointer<Derived, decltype(&Derived::id2)>>>::value);
+        STATIC_REQUIRE(std::is_same<selfRefMultiFk1::target_type, Derived>::value);
+        STATIC_REQUIRE(std::is_same<selfRefMultiFk1::source_type, Derived>::value);
+
+        using selfRefMultiFk2 = decltype(foreign_key<Derived>(&Derived::parentId, &Derived::parentId2)
+                                             .references<Derived>(&Derived::id, &Derived::id2));
+        STATIC_REQUIRE(std::is_same<selfRefMultiFk2::columns_type,
+                                    std::tuple<as_field_of_t<Derived, decltype(&Derived::parentId)>,
+                                               as_field_of_t<Derived, decltype(&Derived::parentId2)>>>::value);
+        STATIC_REQUIRE(std::is_same<selfRefMultiFk2::references_type,
+                                    std::tuple<as_field_of_t<Derived, decltype(&Derived::id)>,
+                                               as_field_of_t<Derived, decltype(&Derived::id2)>>>::value);
+        STATIC_REQUIRE(std::is_same<selfRefMultiFk2::target_type, Derived>::value);
+        STATIC_REQUIRE(std::is_same<selfRefMultiFk2::source_type, Derived>::value);
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        using selfRefMultiFk3 = decltype(foreign_key<derived>(&Derived::parentId, &Derived::parentId2)
+                                             .references<derived>(&Derived::id, &Derived::id2));
+        STATIC_REQUIRE(std::is_same<selfRefMultiFk3::columns_type,
+                                    std::tuple<as_field_of_t<Derived, decltype(&Derived::parentId)>,
+                                               as_field_of_t<Derived, decltype(&Derived::parentId2)>>>::value);
+        STATIC_REQUIRE(std::is_same<selfRefMultiFk3::references_type,
+                                    std::tuple<as_field_of_t<Derived, decltype(&Derived::id)>,
+                                               as_field_of_t<Derived, decltype(&Derived::id2)>>>::value);
+        STATIC_REQUIRE(std::is_same_v<selfRefMultiFk3::target_type, Derived>);
+        STATIC_REQUIRE(std::is_same_v<selfRefMultiFk3::source_type, Derived>);
+#endif
+    }
 
     auto storage = make_storage({},
                                 make_table("files", make_column("path", &File::path, primary_key())),
