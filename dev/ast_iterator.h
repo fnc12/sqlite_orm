@@ -707,6 +707,16 @@ namespace sqlite_orm {
             }
         };
 
+        template<class... Args>
+        struct ast_iterator<multi_order_by_t<Args...>, void> {
+            using node_type = multi_order_by_t<Args...>;
+
+            template<class L>
+            void operator()(const node_type& node, L& lambda) const {
+                iterate_ast(node.args, lambda);
+            }
+        };
+
         template<class T>
         struct ast_iterator<collate_t<T>, void> {
             using node_type = collate_t<T>;
