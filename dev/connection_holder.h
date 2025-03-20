@@ -9,7 +9,7 @@
 
 #include "error_code.h"
 #include "vfs_object.h"
-#include "open_mode.h"
+#include "db_open_mode.h"
 
 namespace sqlite_orm {
     namespace internal {
