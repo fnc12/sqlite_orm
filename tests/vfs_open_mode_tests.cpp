@@ -1,5 +1,10 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <cstdio>  //  std::remove
+#if SQLITE_ORM_HAS_INCLUDE(<filesystem>)
+#include <filesystem>
+#endif
+#include "catch_matchers.h"
 
 #ifdef SQLITE_ORM_CTAD_SUPPORTED
 
@@ -20,18 +25,15 @@ TEST_CASE("vfs modes open successfully") {
 #elif defined(SQLITE_ORM_WIN)
     vfs_object vfs = GENERATE(vfs_object::win32, vfs_object::win32_longpath);
 #endif
+    internal::serialize_result_type vfs_string = internal::vfs_object_to_string(vfs);
 
-    connection_control options;
-    options.vfs_mode = vfs;
+    connection_control options{true, vfs};
     auto storage = make_storage(":memory:", options, default_table);
-    storage.sync_schema();
+    UNSCOPED_INFO("FAILED VFS: " << vfs_string);
     REQUIRE_NOTHROW(storage.open_forever());
 
-    internal::serialize_result_type vfs_string = internal::vfs_object_to_string(vfs);
-    UNSCOPED_INFO("FAILED VFS: " << vfs_string);
-    CHECK(storage.is_opened());
-    CHECK(storage.vfs() == vfs);
-    CHECK(storage.open_flags() == open_mode::default_mode);
+    REQUIRE(storage.vfs() == vfs);
+    REQUIRE(storage.open_flags() == open_mode::default_mode);
 
     SECTION("Storage copy operator carries over vfs option") {
         auto storage_copy = storage;
@@ -41,12 +43,11 @@ TEST_CASE("vfs modes open successfully") {
     }
 }
 
-TEST_CASE("create/readwrite open mode behaves as expected") {
-
+TEST_CASE("readwrite/readonly open modes behaves as expected") {
     const bool in_memory = GENERATE(true, false);
     const char* tmp_filename = in_memory ? ":memory:" : "open_mode.sqlite";
 
-    connection_control options, readonly_options;
+    connection_control options{true}, readonly_options{true};
     options.open_flags = open_mode::create_readwrite;
     readonly_options.open_flags = open_mode::readonly;
 
@@ -54,51 +55,45 @@ TEST_CASE("create/readwrite open mode behaves as expected") {
         std::remove(tmp_filename);
     }
 
-    {
+    SECTION("rw+ro") {
         auto storage = make_storage(tmp_filename, default_table, options);
-        REQUIRE_NOTHROW(storage.sync_schema());
-
-        CHECK_NOTHROW(storage.open_forever());
-        REQUIRE(!storage.table_names().empty());
-
         CHECK(storage.is_opened());
-        CHECK(storage.open_flags() == open_mode::create_readwrite);
-        CHECK(!storage.readonly());
+        REQUIRE(storage.open_flags() == open_mode::create_readwrite);
+        REQUIRE_FALSE(storage.readonly());
 
-        User dummy{"dummy"};
-        CHECK_NOTHROW(storage.replace(dummy));
-        CHECK(storage.get_pointer<User>(dummy.id) != nullptr);
+        storage.sync_schema();
+        const User dummy{"dummy"};
+        storage.replace(dummy);
 
         SECTION("readonly open mode behaves as expected") {
             auto readonly_storage = make_storage(tmp_filename, readonly_options, default_table);
-            REQUIRE_NOTHROW(readonly_storage.open_forever());
-
             CHECK(readonly_storage.is_opened());
-            CHECK(readonly_storage.open_flags() == open_mode::readonly);
-            CHECK(readonly_storage.readonly());
+            REQUIRE(readonly_storage.open_flags() == open_mode::readonly);
+            REQUIRE(readonly_storage.readonly());
 
-            if (!in_memory) {
-                CHECK(!readonly_storage.table_names().empty());
-                CHECK_THROWS_AS(readonly_storage.remove<User>(dummy.id), std::system_error);
-                CHECK(readonly_storage.get_pointer<User>(dummy.id) != nullptr);
+            if (in_memory) {
+                SKIP("skipped for in-memory");
             }
+            REQUIRE_NOTHROW(readonly_storage.sync_schema());
+            CHECK_NOTHROW(readonly_storage.get<User>(dummy.id));
+            const ErrorCodeExceptionMatcher readOnlyExceptionMatcher(sqlite_errc{SQLITE_READONLY});
+            REQUIRE_THROWS_MATCHES(readonly_storage.remove<User>(dummy.id),
+                                   std::system_error,
+                                   readOnlyExceptionMatcher);
+        }
+    }
+    SECTION("readonly fails with non-existing files") {
+        if (in_memory) {
+            SKIP("skipped for in-memory");
         }
 
-        CHECK_NOTHROW(storage.remove<User>(dummy.id));
-        CHECK(storage.get_pointer<User>(dummy.id) == nullptr);
-    }
-
-    if (!in_memory) {
-        INFO(tmp_filename);
-        REQUIRE(std::remove(tmp_filename) == 0);
-    }
-
-    if (!in_memory) {
-        SECTION("readonly fails with deleted files") {
-            auto readonly_storage = make_storage(tmp_filename, readonly_options, default_table);
-            REQUIRE_THROWS_AS(readonly_storage.open_forever(), std::system_error);
-        }
+#if __cpp_lib_filesystem >= 201703L
+        CHECK_FALSE(std::filesystem::exists(tmp_filename));
+#endif
+        const ErrorCodeExceptionMatcher cantOpenExceptionMatcher(sqlite_errc{SQLITE_CANTOPEN});
+        REQUIRE_THROWS_MATCHES(make_storage(tmp_filename, readonly_options, default_table),
+                               std::system_error,
+                               cantOpenExceptionMatcher);
     }
 }
-
 #endif
