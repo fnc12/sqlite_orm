@@ -116,19 +116,19 @@ namespace sqlite_orm {
 
         template<class L>
         void perform_steps(sqlite3_stmt* stmt, L&& lambda) {
-            int rc;
-            do {
-                switch (rc = sqlite3_step(stmt)) {
-                    case SQLITE_ROW: {
-                        lambda(stmt);
-                    } break;
-                    case SQLITE_DONE:
-                        break;
-                    default: {
-                        throw_translated_sqlite_error(stmt);
-                    }
+            // note: maximum efficient loop with `goto`
+        step:
+            switch (int rc = sqlite3_step(stmt)) {
+                case SQLITE_ROW: {
+                    lambda(stmt);
                 }
-            } while (rc != SQLITE_DONE);
+                    goto step;
+                case SQLITE_DONE:
+                    break;
+                default: {
+                    throw_translated_sqlite_error(stmt);
+                }
+            }
         }
     }
 }
