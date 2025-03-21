@@ -1,7 +1,5 @@
 #pragma once
 
-#include "functional/config.h"
-
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     enum class db_open_mode {

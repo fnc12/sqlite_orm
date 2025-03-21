@@ -1,6 +1,5 @@
 #pragma once
 
-#include "functional/config.h"
 #include "serialize_result_type.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -12,7 +11,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_APPLE
     SQLITE_ORM_INLINE_VAR constexpr internal::string_constant_type unix_afp_vfs_name = "unix-afp";
 #endif
-    SQLITE_ORM_INLINE_VAR constexpr internal::string_constant_type default_vfs_name = "unix";
+    SQLITE_ORM_INLINE_VAR constexpr internal::string_constant_type default_vfs_name = unix_vfs_name;
 #endif
 
 #ifdef SQLITE_ORM_WIN

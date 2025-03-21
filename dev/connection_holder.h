@@ -1,5 +1,7 @@
 #pragma once
 
+#include <sqlite3.h>
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <atomic>
 #include <functional>  //  std::function
@@ -33,9 +35,10 @@ namespace sqlite_orm {
                 // therefore we can just use an atomic increment but don't need sequencing due to `prevCount > 0`.
                 if (_retainCount.fetch_add(1, std::memory_order_relaxed) == 0) {
 
-                    const int open_flags = internal::db_open_mode_to_int_flags(open_mode);
-
-                    int rc = sqlite3_open_v2(this->filename.c_str(), &this->db, open_flags, vfs_name.c_str());
+                    int rc = sqlite3_open_v2(this->filename.c_str(),
+                                             &this->db,
+                                             internal::db_open_mode_to_int_flags(this->open_mode),
+                                             this->vfs_name.c_str());
 
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible, but unexpected*/ {
                         throw_translated_sqlite_error(this->db);

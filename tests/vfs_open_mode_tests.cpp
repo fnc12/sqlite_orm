@@ -59,7 +59,7 @@ TEST_CASE("readwrite/readonly open modes behaves as expected") {
         auto storage = make_storage(tmp_filename, default_table, options);
         CHECK(storage.is_opened());
         REQUIRE(storage.open_mode() == db_open_mode::create_readwrite);
-        REQUIRE_FALSE(storage.readonly());
+        REQUIRE_FALSE(storage.db_readonly());
 
         storage.sync_schema();
         const User dummy{"dummy"};
@@ -69,7 +69,7 @@ TEST_CASE("readwrite/readonly open modes behaves as expected") {
             auto readonly_storage = make_storage(tmp_filename, readonly_options, default_table);
             CHECK(readonly_storage.is_opened());
             REQUIRE(readonly_storage.open_mode() == db_open_mode::readonly);
-            REQUIRE(readonly_storage.readonly());
+            REQUIRE(readonly_storage.db_readonly());
 
             if (in_memory) {
                 SKIP("skipped for in-memory");

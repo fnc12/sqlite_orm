@@ -657,9 +657,9 @@ namespace sqlite_orm {
             /**
              * Return true if this database object is opened in a readonly state. 
              */
-            bool readonly() {
-                sqlite3* db = this->get_connection().get();
-                return static_cast<bool>(sqlite3_db_readonly(db, "main"));
+            bool db_readonly() {
+                auto con = this->get_connection();
+                return static_cast<bool>(sqlite3_db_readonly(con.get(), "main"));
             }
 
             /*
