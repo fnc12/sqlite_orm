@@ -3078,8 +3078,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             return "SQLite error";
         }
 
-        std::string message(int c) const override final {
-            return sqlite3_errstr(c);
+        std::string message(int ev) const override final {
+            return sqlite3_errstr(ev);
         }
     };
 
@@ -14095,7 +14095,12 @@ namespace sqlite_orm {
 
                 if (int rc = sqlite3_open_v2(this->filename.c_str(),
                                              &this->db,
-                                             SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
+                                             SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE
+#if SQLITE_VERSION_NUMBER >= 3008008
+                                                 | SQLITE_OPEN_EXRESCODE,
+#else
+                                                 | 0,
+#endif
                                              nullptr);
                     rc != SQLITE_OK) [[unlikely]] /*possible, but unexpected*/ {
                     throw_translated_sqlite_error(this->db);
@@ -14174,7 +14179,12 @@ namespace sqlite_orm {
                 if (_retainCount.fetch_add(1, std::memory_order_relaxed) == 0) {
                     int rc = sqlite3_open_v2(this->filename.c_str(),
                                              &this->db,
-                                             SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
+                                             SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE
+#if SQLITE_VERSION_NUMBER >= 3008008
+                                                 | SQLITE_OPEN_EXRESCODE,
+#else
+                                                 | 0,
+#endif
                                              nullptr);
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible, but unexpected*/ {
                         throw_translated_sqlite_error(this->db);
@@ -24326,8 +24336,8 @@ namespace sqlite_orm {
                 return std::move(res).value();
 #else
                 auto& table = this->get_table<T>();
-                auto stepRes = sqlite3_step(stmt);
-                switch (stepRes) {
+                int rc = sqlite3_step(stmt);
+                switch (rc) {
                     case SQLITE_ROW: {
                         T res;
                         object_from_column_builder<T> builder{res, stmt};

@@ -112,8 +112,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             return "SQLite error";
         }
 
-        std::string message(int c) const override final {
-            return sqlite3_errstr(c);
+        std::string message(int ev) const override final {
+            return sqlite3_errstr(ev);
         }
     };
 
