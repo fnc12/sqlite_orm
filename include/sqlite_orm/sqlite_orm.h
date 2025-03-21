@@ -14025,6 +14025,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_UNIX
     SQLITE_ORM_INLINE_VAR constexpr internal::string_constant_type unix_vfs_name = "unix";
+    SQLITE_ORM_INLINE_VAR constexpr internal::string_constant_type unix_posix_vfs_name = unix_vfs_name;
     SQLITE_ORM_INLINE_VAR constexpr internal::string_constant_type unix_dotfile_vfs_name = "unix-dotfile";
 #ifdef SQLITE_ORM_APPLE
     SQLITE_ORM_INLINE_VAR constexpr internal::string_constant_type unix_afp_vfs_name = "unix-afp";

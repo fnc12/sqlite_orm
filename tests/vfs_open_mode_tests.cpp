@@ -19,27 +19,27 @@ static const auto default_table = make_table("users", make_column("id", &User::i
 TEST_CASE("vfs modes open successfully") {
 
 #if defined(SQLITE_ORM_APPLE)
-    vfs_object vfs = GENERATE(vfs_object::unix, vfs_object::unix_posix, vfs_object::unix_dotfile, vfs_object::unix_afp);
+    internal::string_constant_type vfs =
+        GENERATE(unix_vfs_name, unix_posix_vfs_name, unix_dotfile_vfs_name, unix_afp_vfs_name);
 #elif defined(SQLITE_ORM_UNIX)
-    vfs_object vfs = GENERATE(vfs_object::unix, vfs_object::unix_posix, vfs_object::unix_dotfile);
+    internal::string_constant_type vfs = GENERATE(unix_vfs_name, unix_posix_vfs_name, unix_dotfile_vfs_name);
 #elif defined(SQLITE_ORM_WIN)
-    vfs_object vfs = GENERATE(vfs_object::win32, vfs_object::win32_longpath);
+    internal::string_constant_type vfs = GENERATE(win32_vfs_name, win32_longpath_vfs_name);
 #endif
-    internal::serialize_result_type vfs_string = internal::vfs_object_to_string(vfs);
 
-    connection_control options{true, vfs};
+    connection_control options{true, std::string(vfs)};
     auto storage = make_storage(":memory:", options, default_table);
-    UNSCOPED_INFO("FAILED VFS: " << vfs_string);
+    UNSCOPED_INFO("FAILED VFS: " << vfs);
     REQUIRE_NOTHROW(storage.open_forever());
 
-    REQUIRE(storage.vfs() == vfs);
-    REQUIRE(storage.open_flags() == open_mode::default_mode);
+    REQUIRE(storage.vfs_name() == vfs);
+    REQUIRE(storage.open_mode() == db_open_mode::default_);
 
     SECTION("Storage copy operator carries over vfs option") {
         auto storage_copy = storage;
         CHECK(storage_copy.is_opened());
-        CHECK(storage_copy.vfs() == vfs);
-        CHECK(storage_copy.open_flags() == open_mode::default_mode);
+        CHECK(storage_copy.vfs_name() == vfs);
+        CHECK(storage_copy.open_mode() == db_open_mode::default_);
     }
 }
 
@@ -48,8 +48,8 @@ TEST_CASE("readwrite/readonly open modes behaves as expected") {
     const char* tmp_filename = in_memory ? ":memory:" : "open_mode.sqlite";
 
     connection_control options{true}, readonly_options{true};
-    options.open_flags = open_mode::create_readwrite;
-    readonly_options.open_flags = open_mode::readonly;
+    options.open_mode = db_open_mode::create_readwrite;
+    readonly_options.open_mode = db_open_mode::readonly;
 
     if (!in_memory) {
         std::remove(tmp_filename);
@@ -58,7 +58,7 @@ TEST_CASE("readwrite/readonly open modes behaves as expected") {
     SECTION("rw+ro") {
         auto storage = make_storage(tmp_filename, default_table, options);
         CHECK(storage.is_opened());
-        REQUIRE(storage.open_flags() == open_mode::create_readwrite);
+        REQUIRE(storage.open_mode() == db_open_mode::create_readwrite);
         REQUIRE_FALSE(storage.readonly());
 
         storage.sync_schema();
@@ -68,7 +68,7 @@ TEST_CASE("readwrite/readonly open modes behaves as expected") {
         SECTION("readonly open mode behaves as expected") {
             auto readonly_storage = make_storage(tmp_filename, readonly_options, default_table);
             CHECK(readonly_storage.is_opened());
-            REQUIRE(readonly_storage.open_flags() == open_mode::readonly);
+            REQUIRE(readonly_storage.open_mode() == db_open_mode::readonly);
             REQUIRE(readonly_storage.readonly());
 
             if (in_memory) {
