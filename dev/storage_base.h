@@ -641,26 +641,25 @@ namespace sqlite_orm {
             }
 
             /**
-             * Public method for checking the VFS implementation being used by
-             * this storage object. Mostly useful for debug.
+             * Return the name of the VFS object used by the database connection.
              */
-            vfs_object vfs() const {
-                return this->connection->vfs();
+            const std::string& vfs_name() const {
+                return this->connection->vfs_name;
             }
 
             /**
              * Return the current open_mode for this storage object. 
              */
-            open_mode open_flags() const {
-                return this->connection->open_flags();
+            db_open_mode open_mode() const {
+                return this->connection->open_mode;
             }
 
             /**
              * Return true if this database object is opened in a readonly state. 
              */
-            bool readonly() const {
-                sqlite3* db = this->connection->get();
-                return sqlite3_db_readonly(db, "main");
+            bool readonly() {
+                sqlite3* db = this->get_connection().get();
+                return static_cast<bool>(sqlite3_db_readonly(db, "main"));
             }
 
             /*
@@ -697,8 +696,7 @@ namespace sqlite_orm {
                 connection(std::make_unique<connection_holder>(
                     std::move(filename),
                     std::bind(&storage_base::on_open_internal, this, std::placeholders::_1),
-                    connectionCtrl.vfs_mode,
-                    connectionCtrl.open_flags)),
+                    connectionCtrl)),
                 cachedForeignKeysCount(foreignKeysCount) {
                 if (this->inMemory) {
                     this->connection->retain();
