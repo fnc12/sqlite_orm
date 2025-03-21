@@ -14008,7 +14008,6 @@ namespace sqlite_orm {
 // #include "connection_holder.h"
 
 #include <sqlite3.h>
-
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <atomic>
 #include <functional>  //  std::function

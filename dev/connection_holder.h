@@ -1,7 +1,6 @@
 #pragma once
 
 #include <sqlite3.h>
-
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <atomic>
 #include <functional>  //  std::function
