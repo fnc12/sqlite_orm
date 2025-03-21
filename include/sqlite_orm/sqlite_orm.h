@@ -14129,7 +14129,7 @@ namespace sqlite_orm {
         struct connection_holder {
             connection_holder(std::string filename,
                               std::function<void(sqlite3*)> didOpenDb,
-                              connection_control options = {}) :
+                              const connection_control& options = {}) :
                 _didOpenDb{std::move(didOpenDb)}, filename(std::move(filename)), vfs_name(options.vfs_name),
                 open_mode(options.open_mode) {}
 
@@ -18559,7 +18559,7 @@ namespace sqlite_orm {
             }
 
             backup_t make_backup_to(const std::string& filename) {
-                auto holder = std::make_unique<connection_holder>(filename, nullptr);
+                auto holder = std::make_unique<connection_holder>(filename, nullptr, connection_control{});
                 connection_ref conRef{*holder};
                 return {conRef, "main", this->get_connection(), "main", std::move(holder)};
             }
@@ -18569,7 +18569,7 @@ namespace sqlite_orm {
             }
 
             backup_t make_backup_from(const std::string& filename) {
-                auto holder = std::make_unique<connection_holder>(filename, nullptr);
+                auto holder = std::make_unique<connection_holder>(filename, nullptr, connection_control{});
                 connection_ref conRef{*holder};
                 return {this->get_connection(), "main", conRef, "main", std::move(holder)};
             }

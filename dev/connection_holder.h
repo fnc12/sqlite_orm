@@ -17,7 +17,7 @@ namespace sqlite_orm {
         struct connection_holder {
             connection_holder(std::string filename,
                               std::function<void(sqlite3*)> didOpenDb,
-                              connection_control options = {}) :
+                              const connection_control& options = {}) :
                 _didOpenDb{std::move(didOpenDb)}, filename(std::move(filename)), vfs_name(options.vfs_name),
                 open_mode(options.open_mode) {}
 
