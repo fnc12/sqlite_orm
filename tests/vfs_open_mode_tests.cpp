@@ -84,7 +84,7 @@ TEST_CASE("readwrite/readonly open modes behaves as expected") {
     }
     SECTION("readonly fails with non-existing files") {
         if (in_memory) {
-            SKIP();
+            SKIP("skipped for in-memory");
         }
 
 #if __cpp_lib_filesystem >= 201703L
