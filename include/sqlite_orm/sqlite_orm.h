@@ -13825,7 +13825,7 @@ namespace sqlite_orm {
                     lambda(stmt);
                 } break;
                 case SQLITE_DONE:
-                    break;
+                    return;
                 default: {
                     throw_translated_sqlite_error(stmt);
                 }
@@ -13834,19 +13834,18 @@ namespace sqlite_orm {
 
         template<class L>
         void perform_steps(sqlite3_stmt* stmt, L&& lambda) {
-            int rc;
-            do {
-                switch (rc = sqlite3_step(stmt)) {
+            for (;;) {
+                switch (int rc = sqlite3_step(stmt)) {
                     case SQLITE_ROW: {
                         lambda(stmt);
                     } break;
                     case SQLITE_DONE:
-                        break;
+                        return;
                     default: {
                         throw_translated_sqlite_error(stmt);
                     }
                 }
-            } while (rc != SQLITE_DONE);
+            }
         }
     }
 }
