@@ -1604,8 +1604,8 @@ namespace sqlite_orm {
                 return std::move(res).value();
 #else
                 auto& table = this->get_table<T>();
-                auto stepRes = sqlite3_step(stmt);
-                switch (stepRes) {
+                int rc = sqlite3_step(stmt);
+                switch (rc) {
                     case SQLITE_ROW: {
                         T res;
                         object_from_column_builder<T> builder{res, stmt};

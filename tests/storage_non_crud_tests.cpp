@@ -2,6 +2,7 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 #include <cstring>  //  std::strcmp
+#include "catch_matchers.h"
 
 using namespace sqlite_orm;
 
@@ -504,7 +505,11 @@ TEST_CASE("Remove all") {
 }
 
 TEST_CASE("Explicit insert") {
-    using Catch::Matchers::ContainsSubstring;
+#if SQLITE_VERSION_NUMBER >= 3008008
+    const ErrorCodeExceptionMatcher notNullExceptionMatcher(sqlite_errc(SQLITE_CONSTRAINT_NOTNULL));
+#else
+    const ErrorCodeExceptionMatcher notNullExceptionMatcher(sqlite_errc(SQLITE_CONSTRAINT));
+#endif
 
     struct User {
         int id;
@@ -593,8 +598,9 @@ TEST_CASE("Explicit insert") {
         SECTION("one column") {
             User user4;
             user4.name = "Egor";
-            REQUIRE_THROWS_WITH(storage.insert(user4, columns(&User::name)),
-                                ContainsSubstring("NOT NULL constraint failed"));
+            REQUIRE_THROWS_MATCHES(storage.insert(user4, columns(&User::name)),
+                                   std::system_error,
+                                   notNullExceptionMatcher);
         }
     }
     SECTION("visit") {
@@ -626,8 +632,9 @@ TEST_CASE("Explicit insert") {
             Visit visit3;
             visit3.setId(10);
             SECTION("getter") {
-                REQUIRE_THROWS_WITH(storage.insert(visit3, columns(&Visit::id)),
-                                    ContainsSubstring("NOT NULL constraint failed"));
+                REQUIRE_THROWS_MATCHES(storage.insert(visit3, columns(&Visit::id)),
+                                       std::system_error,
+                                       notNullExceptionMatcher);
             }
         }
     }
