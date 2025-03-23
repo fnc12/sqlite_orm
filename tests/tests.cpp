@@ -4,6 +4,7 @@
 #include <vector>  //  std::vector
 #include <string>  //  std::string
 #include <cstdio>  //  std::remove
+#include <cstring>  //  std::strncmp
 
 using namespace sqlite_orm;
 
@@ -111,7 +112,7 @@ TEST_CASE("Custom collate") {
     struct OtotoCollation {
         int operator()(int leftLength, const void* lhs, int rightLength, const void* rhs) const {
             if (leftLength == rightLength) {
-                return ::strncmp((const char*)lhs, (const char*)rhs, leftLength);
+                return std::strncmp((const char*)lhs, (const char*)rhs, leftLength);
             } else {
                 return 1;
             }
@@ -153,7 +154,7 @@ TEST_CASE("Custom collate") {
     if (useLegacyScript) {
         storage.create_collation("ototo", [](int leftLength, const void* lhs, int rightLength, const void* rhs) {
             if (leftLength == rightLength) {
-                return ::strncmp((const char*)lhs, (const char*)rhs, leftLength);
+                return std::strncmp((const char*)lhs, (const char*)rhs, leftLength);
             } else {
                 return 1;
             }
