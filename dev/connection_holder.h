@@ -36,7 +36,7 @@ namespace sqlite_orm {
 #endif
                                              nullptr);
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible, but unexpected*/ {
-                        throw_translated_sqlite_error(this->db);
+                        throw_translated_sqlite_error(rc);
                     }
 
                     if (_didOpenDb) {

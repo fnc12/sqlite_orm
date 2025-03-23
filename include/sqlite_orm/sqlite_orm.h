@@ -10474,7 +10474,7 @@ namespace sqlite_orm {
             void operator()(const T& t) {
                 int rc = statement_binder<T>{}.bind(this->stmt, this->index++, t);
                 if (SQLITE_OK != rc) {
-                    throw_translated_sqlite_error(this->stmt);
+                    throw_translated_sqlite_error(rc);
                 }
             }
 
@@ -10528,7 +10528,7 @@ namespace sqlite_orm {
             void bind(const T& t, size_t idx) const {
                 int rc = statement_binder<T>{}.bind(this->stmt, int(idx + 1), t);
                 if (SQLITE_OK != rc) {
-                    throw_translated_sqlite_error(this->stmt);
+                    throw_translated_sqlite_error(rc);
                 }
             }
 
@@ -13781,8 +13781,9 @@ namespace sqlite_orm {
         // note: query is deliberately taken by value, such that it is thrown away early
         inline sqlite3_stmt* prepare_stmt(sqlite3* db, std::string query) {
             sqlite3_stmt* stmt;
-            if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
-                throw_translated_sqlite_error(db);
+            int rc = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
+            if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
+                throw_translated_sqlite_error(rc);
             }
             return stmt;
         }
@@ -13790,7 +13791,7 @@ namespace sqlite_orm {
         inline void perform_void_exec(sqlite3* db, const std::string& query) {
             int rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
             if (rc != SQLITE_OK) {
-                throw_translated_sqlite_error(db);
+                throw_translated_sqlite_error(rc);
             }
         }
 
@@ -13800,7 +13801,7 @@ namespace sqlite_orm {
                                  void* user_data) {
             int rc = sqlite3_exec(db, query, callback, user_data, nullptr);
             if (rc != SQLITE_OK) {
-                throw_translated_sqlite_error(db);
+                throw_translated_sqlite_error(rc);
             }
         }
 
@@ -13815,7 +13816,7 @@ namespace sqlite_orm {
         void perform_step(sqlite3_stmt* stmt) {
             int rc = sqlite3_step(stmt);
             if (rc != expected) {
-                throw_translated_sqlite_error(stmt);
+                throw_translated_sqlite_error(rc);
             }
         }
 
@@ -13828,7 +13829,7 @@ namespace sqlite_orm {
                 case SQLITE_DONE:
                     return;
                 default: {
-                    throw_translated_sqlite_error(stmt);
+                    throw_translated_sqlite_error(rc);
                 }
             }
         }
@@ -13843,7 +13844,7 @@ namespace sqlite_orm {
                     case SQLITE_DONE:
                         return;
                     default: {
-                        throw_translated_sqlite_error(stmt);
+                        throw_translated_sqlite_error(rc);
                     }
                 }
             }
@@ -14033,7 +14034,7 @@ namespace sqlite_orm {
 #endif
                                              nullptr);
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible, but unexpected*/ {
-                        throw_translated_sqlite_error(this->db);
+                        throw_translated_sqlite_error(rc);
                     }
 
                     if (_didOpenDb) {
@@ -18429,7 +18430,7 @@ namespace sqlite_orm {
                                                       function,
                                                       functionExists ? collate_callback : nullptr);
                     if (rc != SQLITE_OK) {
-                        throw_translated_sqlite_error(db);
+                        throw_translated_sqlite_error(rc);
                     }
                 }
 
@@ -18642,7 +18643,7 @@ namespace sqlite_orm {
                 for (auto& p: this->collatingFunctions) {
                     int rc = sqlite3_create_collation(db, p.first.c_str(), SQLITE_UTF8, &p.second, collate_callback);
                     if (rc != SQLITE_OK) {
-                        throw_translated_sqlite_error(db);
+                        throw_translated_sqlite_error(rc);
                     }
                 }
 
@@ -18769,7 +18770,7 @@ namespace sqlite_orm {
                                                             nullptr,
                                                             nullptr);
                         if (rc != SQLITE_OK) {
-                            throw_translated_sqlite_error(db);
+                            throw_translated_sqlite_error(rc);
                         }
                     }
                     it = functions.erase(it);
@@ -18789,7 +18790,7 @@ namespace sqlite_orm {
                                                     nullptr,
                                                     nullptr);
                 if (rc != SQLITE_OK) {
-                    throw_translated_sqlite_error(db);
+                    throw_translated_sqlite_error(rc);
                 }
             }
 
@@ -24231,8 +24232,7 @@ namespace sqlite_orm {
                 return std::move(res).value();
 #else
                 auto& table = this->get_table<T>();
-                int rc = sqlite3_step(stmt);
-                switch (rc) {
+                switch (int rc = sqlite3_step(stmt)) {
                     case SQLITE_ROW: {
                         T res;
                         object_from_column_builder<T> builder{res, stmt};
@@ -24243,7 +24243,7 @@ namespace sqlite_orm {
                         throw std::system_error{orm_error_code::not_found};
                     } break;
                     default: {
-                        throw_translated_sqlite_error(stmt);
+                        throw_translated_sqlite_error(rc);
                     }
                 }
 #endif

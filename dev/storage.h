@@ -1650,8 +1650,7 @@ namespace sqlite_orm {
                 return std::move(res).value();
 #else
                 auto& table = this->get_table<T>();
-                int rc = sqlite3_step(stmt);
-                switch (rc) {
+                switch (int rc = sqlite3_step(stmt)) {
                     case SQLITE_ROW: {
                         T res;
                         object_from_column_builder<T> builder{res, stmt};
@@ -1662,7 +1661,7 @@ namespace sqlite_orm {
                         throw std::system_error{orm_error_code::not_found};
                     } break;
                     default: {
-                        throw_translated_sqlite_error(stmt);
+                        throw_translated_sqlite_error(rc);
                     }
                 }
 #endif
