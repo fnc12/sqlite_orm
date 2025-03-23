@@ -1,6 +1,7 @@
 #include <sqlite3.h>
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <cstring>  //  std::strcmp
 #include "catch_matchers.h"
 
 using namespace sqlite_orm;
@@ -269,9 +270,9 @@ TEST_CASE("Select") {
             throw std::runtime_error(sqlite3_errmsg(db));
         }
         REQUIRE(sqlite3_column_int(stmt, 0) == firstId);
-        REQUIRE(::strcmp((const char*)sqlite3_column_text(stmt, 1), "best") == 0);
-        REQUIRE(::strcmp((const char*)sqlite3_column_text(stmt, 2), "behaviour") == 0);
-        REQUIRE(::strcmp((const char*)sqlite3_column_text(stmt, 3), "hey") == 0);
+        REQUIRE(std::strcmp((const char*)sqlite3_column_text(stmt, 1), "best") == 0);
+        REQUIRE(std::strcmp((const char*)sqlite3_column_text(stmt, 2), "behaviour") == 0);
+        REQUIRE(std::strcmp((const char*)sqlite3_column_text(stmt, 3), "hey") == 0);
         REQUIRE(sqlite3_column_int(stmt, 4) == 5);
         sqlite3_finalize(stmt);
     }
