@@ -24102,14 +24102,14 @@ namespace sqlite_orm {
                 iterate_ast(statement.expression, conditional_binder{stmt});
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
                 const std::string sql = statement.sql();
-                if (this->will_run_query) {
-                    this->will_run_query(sql);
+                if (this->executor.will_run_query) {
+                    this->executor.will_run_query(sql);
                 }
 #endif
                 perform_step(stmt);
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                if (this->did_run_query) {
-                    this->did_run_query(sql);
+                if (this->executor.did_run_query) {
+                    this->executor.did_run_query(sql);
                 }
 #endif
             }
@@ -24402,14 +24402,14 @@ namespace sqlite_orm {
                 auto& table = this->get_table<T>();
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
                 const std::string sql = statement.sql();
-                if (this->will_run_query) {
-                    this->will_run_query(sql);
+                if (this->executor.will_run_query) {
+                    this->executor.will_run_query(sql);
                 }
 #endif
                 const auto stepRes = sqlite3_step(stmt);
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                if (this->did_run_query) {
-                    this->did_run_query(sql);
+                if (this->executor.did_run_query) {
+                    this->executor.did_run_query(sql);
                 }
 #endif
                 switch (stepRes) {
