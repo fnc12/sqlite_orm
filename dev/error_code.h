@@ -41,6 +41,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         index_is_out_of_bounds,
         value_is_null,
         no_tables_specified,
+        empty_range,
     };
 }
 

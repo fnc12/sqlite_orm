@@ -1,5 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include "../catch_matchers.h"
 
 #include "prepared_common.h"
 
@@ -9,6 +10,7 @@ using namespace sqlite_orm;
 TEST_CASE("Prepared replace range") {
     using namespace PreparedStatementTests;
     using Catch::Matchers::UnorderedEquals;
+    const ErrorCodeExceptionMatcher emptyRangeExceptionMatcher(orm_error_code::empty_range);
 
     const int defaultVisitTime = 50;
 
@@ -42,20 +44,20 @@ TEST_CASE("Prepared replace range") {
     std::vector<std::unique_ptr<User>> userPointers;
     std::vector<User> expected;
     SECTION("empty") {
-        using Catch::Matchers::ContainsSubstring;
-
         expected.push_back(User{1, "Team BS"});
         expected.push_back(User{2, "Shy'm"});
         expected.push_back(User{3, "Maître Gims"});
         SECTION("straight") {
-            REQUIRE_THROWS_WITH(storage.prepare(replace_range(users.begin(), users.end())),
-                                ContainsSubstring("incomplete input"));
+            REQUIRE_THROWS_MATCHES(storage.prepare(replace_range(users.begin(), users.end())),
+                                   std::system_error,
+                                   emptyRangeExceptionMatcher);
         }
         SECTION("pointers") {
-            REQUIRE_THROWS_WITH(
+            REQUIRE_THROWS_MATCHES(
                 storage.prepare(
                     replace_range<User>(userPointers.begin(), userPointers.end(), &std::unique_ptr<User>::operator*)),
-                ContainsSubstring("incomplete input"));
+                std::system_error,
+                emptyRangeExceptionMatcher);
         }
     }
     SECTION("one existing") {

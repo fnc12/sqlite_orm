@@ -2999,6 +2999,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         index_is_out_of_bounds,
         value_is_null,
         no_tables_specified,
+        empty_range,
     };
 }
 
@@ -13957,6 +13958,7 @@ namespace sqlite_orm {
 // #include "ast_iterator.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::is_invocable
 #include <vector>  //  std::vector
 #include <functional>  //  std::reference_wrapper
 #endif
@@ -15385,7 +15387,7 @@ namespace sqlite_orm {
          *  ast_iterator is used in finding literals to be bound to
          *  a statement, and to collect table names.
          *  
-         *  Note that not all leaves of the expression tree are always visited:
+         *  Note that not all leaves of the expression tree are visited:
          *  Column expressions can be more complex, but are passed as a whole to the callable.
          *  Examples are `column_pointer<>` and `alias_column_t<>`.
          *  
@@ -15401,17 +15403,28 @@ namespace sqlite_orm {
              *  L is a callable type. Mostly is a templated lambda
              */
             template<class L>
-            void operator()(const T& t, L& lambda) const {
-                lambda(t);
+            void operator()(const node_type& leaf, L& lambda) const {
+                lambda(leaf);
             }
         };
 
         /**
-         *  Simplified API
+         *  Simplified API.
+         *  
+         *  @param lambda Callable invoked with each leaf expression.
+         *  The callable can opt in to be invoked for a node expression.
          */
         template<class T, class L>
         void iterate_ast(const T& t, L&& lambda) {
             ast_iterator<T> iterator;
+
+#if defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED) && __cpp_lib_is_invocable >= 201703L
+            // possibly invoke lambda with node itself
+            if constexpr (std::is_invocable<L, polyfill::bool_constant<true>, const T&>::value) {
+                lambda(polyfill::bool_constant<true>{}, t);
+            }
+#endif
+
             iterator(t, lambda);
         }
 
@@ -18739,7 +18752,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
                 auto it = std::ranges::find(functions, name, &udf_proxy::name);
 #else
-                auto it = std::find_if(functions.begin(), functions.end(), [&name](auto& udfProxy) {
+                auto it = std::find_if(functions.begin(), functions.end(), [&name](const udf_proxy& udfProxy) {
                     return udfProxy.name == name;
                 });
 #endif
@@ -22662,6 +22675,42 @@ namespace sqlite_orm {
 #endif
         }
 
+#if defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED) && __cpp_lib_is_invocable >= 201703L
+        /*
+         *  AST iteration callable that matches function call node expressions and throws a `orm_error_code::function_not_found` exception
+         *  if an application-defined function is not found among the registered application-defined scalar or aggregate functions.
+         */
+        struct udf_presence_checker {
+            const std::list<udf_proxy>& _scalarFunctions;
+            const std::list<udf_proxy>& _aggregateFunctions;
+
+            // examine `function_call` node expressions
+            template<class UDF, class... CallArgs>
+            void operator()(polyfill::bool_constant<true>, const function_call<UDF, CallArgs...>& udfCall) const {
+                auto&& name = udfCall.name();
+                if (!_contains(_scalarFunctions, name) && !_contains(_aggregateFunctions, name))
+                    SQLITE_ORM_CPP_UNLIKELY {
+                    throw std::system_error{orm_error_code::function_not_found, std::string(name)};
+                }
+            }
+
+            // swallow leaf expressions
+            template<class T>
+            void operator()(const T&) const {}
+
+            static bool _contains(const std::list<udf_proxy>& functions, const std::string_view& name) {
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+                auto it = std::ranges::find(functions, name, &udf_proxy::name);
+#else
+                auto it = std::find_if(functions.begin(), functions.end(), [&name](const udf_proxy& udfProxy) {
+                    return udfProxy.name == name;
+                });
+#endif
+                return it != functions.end();
+            }
+        };
+#endif
+
         /**
          *  Storage class itself. Create an instanse to use it as an interfacto to sqlite db by calling `make_storage`
          *  function.
@@ -23770,6 +23819,10 @@ namespace sqlite_orm {
 
             template<typename S>
             prepared_statement_t<S> prepare_impl(S statement) {
+#if defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED) && __cpp_lib_is_invocable >= 201703L
+                iterate_ast(statement, udf_presence_checker{this->scalarFunctions, this->aggregateFunctions});
+#endif
+
                 const auto& exprDBOs = db_objects_for_expression(this->db_objects, statement);
                 using context_t = serializer_context<polyfill::remove_cvref_t<decltype(exprDBOs)>>;
                 context_t context{exprDBOs};
@@ -23779,7 +23832,7 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 std::string sql = serialize(statement, context);
                 sqlite3_stmt* stmt = prepare_stmt(con.get(), std::move(sql));
-                return prepared_statement_t<S>{std::forward<S>(statement), stmt, con};
+                return prepared_statement_t<S>{std::forward<S>(statement), stmt, std::move(con)};
             }
 
           public:
@@ -23947,6 +24000,9 @@ namespace sqlite_orm {
                 using object_type = expression_object_type_t<decltype(statement)>;
                 this->assert_mapped_type<object_type>();
                 this->assert_insertable_type<object_type>();
+                if (statement.range.first == statement.range.second) {
+                    throw std::system_error{orm_error_code::empty_range};
+                }
                 return this->prepare_impl(std::move(statement));
             }
 
@@ -23954,6 +24010,9 @@ namespace sqlite_orm {
             prepared_statement_t<E> prepare(E statement) {
                 using object_type = expression_object_type_t<decltype(statement)>;
                 this->assert_mapped_type<object_type>();
+                if (statement.range.first == statement.range.second) {
+                    throw std::system_error{orm_error_code::empty_range};
+                }
                 return this->prepare_impl(std::move(statement));
             }
 
