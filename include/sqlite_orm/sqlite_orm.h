@@ -13756,7 +13756,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     inline std::string quote_blob_literal(std::string v) {
         constexpr char quoteChar = '\'';
-        return std::string{char('x'), quoteChar} + std::move(v) + quoteChar;
+        return std::string{'x', quoteChar} + std::move(v) + quoteChar;
     }
 
     /** 
