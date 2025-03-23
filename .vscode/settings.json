@@ -74,6 +74,19 @@
         "type_traits": "cpp",
         "utility": "cpp",
         "__config": "cpp",
-        "any": "cpp"
+        "any": "cpp",
+        "__threading_support": "cpp",
+        "condition_variable": "cpp",
+        "thread": "cpp",
+        "future": "cpp",
+        "complex": "cpp",
+        "execution": "cpp",
+        "fstream": "cpp",
+        "iostream": "cpp",
+        "numbers": "cpp",
+        "queue": "cpp",
+        "semaphore": "cpp",
+        "stack": "cpp",
+        "unordered_set": "cpp"
     }
 }

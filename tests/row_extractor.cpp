@@ -149,7 +149,8 @@ TEST_CASE("Custom row extractors") {
     SECTION("column text") {
         auto firstGender = select(distinct(&SuperHero::gender), order_by(&SuperHero::gender), limit(1));
         Gender gender = Gender::Invalid;
-        internal::perform_exec(db, storage.dump(firstGender), &extract_single_value<Gender>, &gender);
+        internal::sqlite_executor executor;
+        executor.perform_exec(db, storage.dump(firstGender), &extract_single_value<Gender>, &gender);
         REQUIRE(gender == Gender::Female);
     }
     SECTION("udf") {

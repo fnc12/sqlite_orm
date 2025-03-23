@@ -22,6 +22,7 @@ namespace sqlite_orm {
 
     namespace internal {
         struct storage_base;
+        struct sqlite_executor;
 
         template<class T>
         int getPragmaCallback(void* data, int argc, char** argv, char** x) {
@@ -42,7 +43,8 @@ namespace sqlite_orm {
         struct pragma_t {
             using get_connection_t = std::function<internal::connection_ref()>;
 
-            pragma_t(get_connection_t get_connection_) : get_connection(std::move(get_connection_)) {}
+            pragma_t(get_connection_t get_connection_, const sqlite_executor& executor) :
+                get_connection(std::move(get_connection_)), executor(executor) {}
 
             std::vector<std::string> module_list() {
                 return this->get_pragma<std::vector<std::string>>("module_list");
@@ -156,13 +158,17 @@ namespace sqlite_orm {
                 auto connection = this->get_connection();
 
                 std::vector<sqlite_orm::table_xinfo> result;
-                std::ostringstream ss;
-                ss << "PRAGMA "
-                      "table_xinfo("
-                   << streaming_identifier(tableName) << ")" << std::flush;
-                perform_exec(
+                std::string sql;
+                {
+                    std::ostringstream ss;
+                    ss << "PRAGMA "
+                          "table_xinfo("
+                       << streaming_identifier(tableName) << ")" << std::flush;
+                    sql = ss.str();
+                }
+                this->executor.perform_exec(
                     connection.get(),
-                    ss.str(),
+                    sql,
                     [](void* data, int argc, char** argv, char**) -> int {
                         auto& res = *(std::vector<sqlite_orm::table_xinfo>*)data;
                         if (argc) {
@@ -192,14 +198,18 @@ namespace sqlite_orm {
             std::vector<sqlite_orm::table_info> table_info(const std::string& tableName) const {
                 auto connection = this->get_connection();
 
-                std::ostringstream ss;
-                ss << "PRAGMA "
-                      "table_info("
-                   << streaming_identifier(tableName) << ")" << std::flush;
+                std::string sql;
+                {
+                    std::ostringstream ss;
+                    ss << "PRAGMA "
+                          "table_info("
+                       << streaming_identifier(tableName) << ")" << std::flush;
+                    sql = ss.str();
+                }
                 std::vector<sqlite_orm::table_info> result;
-                perform_exec(
+                this->executor.perform_exec(
                     connection.get(),
-                    ss.str(),
+                    sql,
                     [](void* data, int argc, char** argv, char**) -> int {
                         auto& res = *(std::vector<sqlite_orm::table_info>*)data;
                         if (argc) {
@@ -225,12 +235,14 @@ namespace sqlite_orm {
             int synchronous_ = -1;
             signed char journal_mode_ = -1;  //  if != -1 stores static_cast<sqlite_orm::journal_mode>(journal_mode)
             get_connection_t get_connection;
+            const sqlite_executor& executor;
 
             template<class T>
             T get_pragma(const std::string& name) {
                 auto connection = this->get_connection();
                 T result;
-                perform_exec(connection.get(), "PRAGMA " + name, getPragmaCallback<T>, &result);
+                const std::string sql = "PRAGMA " + name;
+                this->executor.perform_exec(connection.get(), sql, getPragmaCallback<T>, &result);
                 return result;
             }
 
@@ -257,12 +269,12 @@ namespace sqlite_orm {
                 this->set_pragma_impl(ss.str(), db);
             }
 
-            void set_pragma_impl(const std::string& query, sqlite3* db = nullptr) {
+            void set_pragma_impl(const std::string& sql, sqlite3* db = nullptr) {
                 if (db) {
-                    perform_void_exec(db, query);
+                    this->executor.perform_void_exec(db, sql);
                 } else {
                     auto con = this->get_connection();
-                    perform_void_exec(con.get(), query);
+                    this->executor.perform_void_exec(con.get(), sql);
                 }
             }
         };

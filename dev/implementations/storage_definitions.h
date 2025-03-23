@@ -142,12 +142,16 @@ namespace sqlite_orm {
                 }
             });
 
-            std::stringstream ss;
-            ss << "INSERT INTO " << streaming_identifier(destinationTableName) << " ("
-               << streaming_identifiers(columnNames) << ") "
-               << "SELECT " << streaming_identifiers(columnNames) << " FROM " << streaming_identifier(sourceTableName)
-               << std::flush;
-            perform_void_exec(db, ss.str());
+            std::string sql;
+            {
+                std::stringstream ss;
+                ss << "INSERT INTO " << streaming_identifier(destinationTableName) << " ("
+                   << streaming_identifiers(columnNames) << ") "
+                   << "SELECT " << streaming_identifiers(columnNames) << " FROM "
+                   << streaming_identifier(sourceTableName) << std::flush;
+                sql = ss.str();
+            }
+            this->executor.perform_void_exec(db, sql);
         }
     }
 }
