@@ -18,6 +18,11 @@ TEST_CASE("table name collector") {
     internal::serializer_context<db_objects_t> context{dbObjects};
     auto collector = internal::make_table_name_collector(context.db_objects);
 
+    SECTION("static tests") {
+        STATIC_REQUIRE(polyfill::is_invocable<internal::table_name_collector<std::tuple<>>,
+                                              polyfill::bool_constant<true>,
+                                              internal::highlight_t<User, int, int, int>>::value);
+    }
     SECTION("from table") {
         SECTION("regular column") {
             auto expression = &User::id;

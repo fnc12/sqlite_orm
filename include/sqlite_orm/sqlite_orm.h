@@ -710,6 +710,22 @@ namespace sqlite_orm {
                 return std::forward<Callable>(callable)(std::forward<Args>(args)...);
             }
 #endif
+
+#if __cpp_lib_is_invocable >= 201703L
+            using std::is_invocable;
+#else
+            template<class T, class SFINAE = void>
+            struct is_invocable_impl : std::false_type {};
+
+            template<class F, class... Ts>
+            struct is_invocable_impl<
+                F(Ts...),
+                polyfill::void_t<decltype(polyfill::invoke(std::declval<F>(), std::declval<Ts>()...))>>
+                : std::true_type {};
+
+            template<class Callable, class... Args>
+            struct is_invocable : is_invocable_impl<Callable && (Args && ...)>::type {};
+#endif
         }
     }
 
@@ -6928,12 +6944,9 @@ namespace sqlite_orm {
             using argument1_type = Y;
             using argument2_type = Z;
 
-            argument0_type argument0;
-            argument1_type argument1;
-            argument2_type argument2;
-
-            highlight_t(argument0_type argument0, argument1_type argument1, argument2_type argument2) :
-                argument0(std::move(argument0)), argument1(std::move(argument1)), argument2(std::move(argument2)) {}
+            argument0_type argument0{};
+            argument1_type argument1{};
+            argument2_type argument2{};
         };
     }
 }
@@ -13964,7 +13977,11 @@ namespace sqlite_orm {
 #include <functional>  //  std::reference_wrapper
 #endif
 
+// #include "functional/cxx_functional_polyfill.h"
+//  std::is_invocable
 // #include "tuple_helper/tuple_iteration.h"
+
+// #include "functional/static_magic.h"
 
 // #include "type_traits.h"
 
@@ -14296,8 +14313,6 @@ namespace sqlite_orm {
 
             const db_objects_type& db_objects;
 
-            table_name_collector() = default;
-
             table_name_collector(const db_objects_type& dbObjects) : db_objects{dbObjects} {}
 
             template<class T>
@@ -14356,7 +14371,7 @@ namespace sqlite_orm {
             }
 
             template<class T, class X, class Y, class Z>
-            void operator()(const highlight_t<T, X, Y, Z>&) {
+            void operator()(polyfill::bool_constant<true>, const highlight_t<T, X, Y, Z>&) {
                 this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
             }
         };
@@ -15419,12 +15434,11 @@ namespace sqlite_orm {
         void iterate_ast(const T& t, L&& lambda) {
             ast_iterator<T> iterator;
 
-#if defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED) && __cpp_lib_is_invocable >= 201703L
             // possibly invoke lambda with node itself
-            if constexpr (std::is_invocable<L, polyfill::bool_constant<true>, const T&>::value) {
-                lambda(polyfill::bool_constant<true>{}, t);
-            }
-#endif
+            call_if_constexpr<polyfill::is_invocable<L, polyfill::bool_constant<true>, const T&>::value>(
+                lambda,
+                polyfill::bool_constant<true>{},
+                t);
 
             iterator(t, lambda);
         }
@@ -15477,7 +15491,6 @@ namespace sqlite_orm {
 
             template<class L>
             void operator()(const node_type& expression, L& lambda) const {
-                lambda(expression);
                 iterate_ast(expression.argument0, lambda);
                 iterate_ast(expression.argument1, lambda);
                 iterate_ast(expression.argument2, lambda);
@@ -22676,14 +22689,17 @@ namespace sqlite_orm {
 #endif
         }
 
-#if defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED) && __cpp_lib_is_invocable >= 201703L
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
         /*
-         *  AST iteration callable that matches function call node expressions and throws a `orm_error_code::function_not_found` exception
-         *  if an application-defined function is not found among the registered application-defined scalar or aggregate functions.
+         *  AST iteration callable that matches function call node expressions.
+         *  * Throws a `orm_error_code::function_not_found` exception
+         *    if an application-defined scalar or aggregate function was not registered.
+         *  * Throws a `sqlite_errc(SQLITE_ERROR_MISSING_COLLSEQ)` if a named collation function was not registered.
          */
         struct udf_presence_checker {
             const std::list<udf_proxy>& _scalarFunctions;
             const std::list<udf_proxy>& _aggregateFunctions;
+            const std::map<std::string, storage_base::collating_function>& _collatingFunctions;
 
             // examine `function_call` node expressions
             template<class UDF, class... CallArgs>
@@ -22692,6 +22708,17 @@ namespace sqlite_orm {
                 if (!_contains(_scalarFunctions, name) && !_contains(_aggregateFunctions, name))
                     SQLITE_ORM_CPP_UNLIKELY {
                     throw std::system_error{orm_error_code::function_not_found, std::string(name)};
+                }
+            }
+
+            // examine `named_collate` node expressions
+            void operator()(polyfill::bool_constant<true>, const named_collate_base& collateCall) const {
+                if (_collatingFunctions.find(collateCall.name) == _collatingFunctions.end()) SQLITE_ORM_CPP_UNLIKELY {
+#if SQLITE_VERSION_NUMBER >= 3008008
+                    throw std::system_error{sqlite_errc(SQLITE_ERROR_MISSING_COLLSEQ), std::string(collateCall.name)};
+#else
+                    throw std::system_error{sqlite_errc(SQLITE_ERROR), std::string(collateCall.name)};
+#endif
                 }
             }
 
@@ -23820,8 +23847,10 @@ namespace sqlite_orm {
 
             template<typename S>
             prepared_statement_t<S> prepare_impl(S statement) {
-#if defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED) && __cpp_lib_is_invocable >= 201703L
-                iterate_ast(statement, udf_presence_checker{this->scalarFunctions, this->aggregateFunctions});
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+                iterate_ast(
+                    statement,
+                    udf_presence_checker{this->scalarFunctions, this->aggregateFunctions, this->collatingFunctions});
 #endif
 
                 const auto& exprDBOs = db_objects_for_expression(this->db_objects, statement);

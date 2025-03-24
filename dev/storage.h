@@ -94,14 +94,17 @@ namespace sqlite_orm {
 #endif
         }
 
-#if defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED) && __cpp_lib_is_invocable >= 201703L
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
         /*
-         *  AST iteration callable that matches function call node expressions and throws a `orm_error_code::function_not_found` exception
-         *  if an application-defined function is not found among the registered application-defined scalar or aggregate functions.
+         *  AST iteration callable that matches function call node expressions.
+         *  * Throws a `orm_error_code::function_not_found` exception
+         *    if an application-defined scalar or aggregate function was not registered.
+         *  * Throws a `sqlite_errc(SQLITE_ERROR_MISSING_COLLSEQ)` if a named collation function was not registered.
          */
         struct udf_presence_checker {
             const std::list<udf_proxy>& _scalarFunctions;
             const std::list<udf_proxy>& _aggregateFunctions;
+            const std::map<std::string, storage_base::collating_function>& _collatingFunctions;
 
             // examine `function_call` node expressions
             template<class UDF, class... CallArgs>
@@ -110,6 +113,17 @@ namespace sqlite_orm {
                 if (!_contains(_scalarFunctions, name) && !_contains(_aggregateFunctions, name))
                     SQLITE_ORM_CPP_UNLIKELY {
                     throw std::system_error{orm_error_code::function_not_found, std::string(name)};
+                }
+            }
+
+            // examine `named_collate` node expressions
+            void operator()(polyfill::bool_constant<true>, const named_collate_base& collateCall) const {
+                if (_collatingFunctions.find(collateCall.name) == _collatingFunctions.end()) SQLITE_ORM_CPP_UNLIKELY {
+#if SQLITE_VERSION_NUMBER >= 3008008
+                    throw std::system_error{sqlite_errc(SQLITE_ERROR_MISSING_COLLSEQ), std::string(collateCall.name)};
+#else
+                    throw std::system_error{sqlite_errc(SQLITE_ERROR), std::string(collateCall.name)};
+#endif
                 }
             }
 
@@ -1238,8 +1252,10 @@ namespace sqlite_orm {
 
             template<typename S>
             prepared_statement_t<S> prepare_impl(S statement) {
-#if defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED) && __cpp_lib_is_invocable >= 201703L
-                iterate_ast(statement, udf_presence_checker{this->scalarFunctions, this->aggregateFunctions});
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+                iterate_ast(
+                    statement,
+                    udf_presence_checker{this->scalarFunctions, this->aggregateFunctions, this->collatingFunctions});
 #endif
 
                 const auto& exprDBOs = db_objects_for_expression(this->db_objects, statement);

@@ -280,7 +280,7 @@ struct NonDefaultCtorAggregateFunction {
 
 TEST_CASE("custom functions") {
     const ErrorCodeExceptionMatcher noMemExceptionMatcher(sqlite_errc(SQLITE_NOMEM));
-#if defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED) && __cpp_lib_is_invocable >= 201703L
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
     const ErrorCodeExceptionMatcher notFoundExceptionMatcher(orm_error_code::function_not_found);
 #else
     const ErrorCodeExceptionMatcher notFoundExceptionMatcher(sqlite_errc(SQLITE_ERROR));

@@ -78,6 +78,22 @@ namespace sqlite_orm {
                 return std::forward<Callable>(callable)(std::forward<Args>(args)...);
             }
 #endif
+
+#if __cpp_lib_is_invocable >= 201703L
+            using std::is_invocable;
+#else
+            template<class T, class SFINAE = void>
+            struct is_invocable_impl : std::false_type {};
+
+            template<class F, class... Ts>
+            struct is_invocable_impl<
+                F(Ts...),
+                polyfill::void_t<decltype(polyfill::invoke(std::declval<F>(), std::declval<Ts>()...))>>
+                : std::true_type {};
+
+            template<class Callable, class... Args>
+            struct is_invocable : is_invocable_impl<Callable && (Args && ...)>::type {};
+#endif
         }
     }
 

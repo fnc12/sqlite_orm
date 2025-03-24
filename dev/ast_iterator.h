@@ -6,7 +6,9 @@
 #include <functional>  //  std::reference_wrapper
 #endif
 
+#include "functional/cxx_functional_polyfill.h"  //  std::is_invocable
 #include "tuple_helper/tuple_iteration.h"
+#include "functional/static_magic.h"
 #include "type_traits.h"
 #include "conditions.h"
 #include "alias.h"
@@ -68,12 +70,11 @@ namespace sqlite_orm {
         void iterate_ast(const T& t, L&& lambda) {
             ast_iterator<T> iterator;
 
-#if defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED) && __cpp_lib_is_invocable >= 201703L
             // possibly invoke lambda with node itself
-            if constexpr (std::is_invocable<L, polyfill::bool_constant<true>, const T&>::value) {
-                lambda(polyfill::bool_constant<true>{}, t);
-            }
-#endif
+            call_if_constexpr<polyfill::is_invocable<L, polyfill::bool_constant<true>, const T&>::value>(
+                lambda,
+                polyfill::bool_constant<true>{},
+                t);
 
             iterator(t, lambda);
         }
@@ -126,7 +127,6 @@ namespace sqlite_orm {
 
             template<class L>
             void operator()(const node_type& expression, L& lambda) const {
-                lambda(expression);
                 iterate_ast(expression.argument0, lambda);
                 iterate_ast(expression.argument1, lambda);
                 iterate_ast(expression.argument2, lambda);

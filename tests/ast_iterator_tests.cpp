@@ -10,16 +10,41 @@ using internal::column_alias;
 using internal::column_pointer;
 using internal::iterate_ast;
 
+#if __cpp_generic_lambdas >= 201707L
+template<class... L>
+struct overload : L... {
+    using L::operator()...;
+};
+#endif
+
 TEST_CASE("ast_iterator") {
     struct User {
         int id = 0;
         std::string name;
     };
+
     std::vector<std::type_index> typeIndexes;
     decltype(typeIndexes) expected;
-    auto lambda = [&typeIndexes](auto& value) {
+    const auto lambda = [&typeIndexes](auto& value) {
         typeIndexes.push_back(typeid(value));
     };
+#if __cpp_generic_lambdas >= 201707L
+    const auto nodeLambda = overload(
+        [&typeIndexes]<class UDF, class... CallArgs>(polyfill::bool_constant<true>,
+                                                     const internal::function_call<UDF, CallArgs...>& udfCall) {
+            typeIndexes.push_back(typeid(udfCall.name));
+        },
+        [&typeIndexes](polyfill::bool_constant<true>, const internal::named_collate_base& collateCall) {
+            typeIndexes.push_back(typeid(collateCall));
+        },
+        [&typeIndexes]<class T, class X, class Y, class Z>(polyfill::bool_constant<true>,
+                                                           const internal::highlight_t<T, X, Y, Z>&) {
+            typeIndexes.push_back(typeid(T));
+        },
+        // swallow leaf expressions
+        [](auto&) {});
+#endif
+
     SECTION("bindables") {
         auto node = select(1);
         expected.push_back(typeid(int));
@@ -411,11 +436,25 @@ TEST_CASE("ast_iterator") {
 #endif
     SECTION("highlight") {
         auto expression = highlight<User>(0, std::string("<b>"), std::string("</b>"));
-        expected.push_back(typeid(expression));
         expected.push_back(typeid(int));
         expected.push_back(typeid(std::string));
         expected.push_back(typeid(std::string));
         iterate_ast(expression, lambda);
     }
+#if __cpp_generic_lambdas >= 201707L
+    SECTION("node expressions") {
+        struct Func {
+            static const char* name();
+            const std::string& operator()(const std::string& value) const;
+        };
+        auto expression1 = func<Func>(&User::name);
+        auto expression2 = is_equal("", "").collate("");
+        auto expression3 = highlight<User>(0, std::string("<b>"), std::string("</b>"));
+        expected.assign({typeid(internal::udf_holder<Func>), typeid(internal::named_collate_base), typeid(User)});
+        iterate_ast(expression1, nodeLambda);
+        iterate_ast(expression2, nodeLambda);
+        iterate_ast(expression3, nodeLambda);
+    }
+#endif
     REQUIRE(typeIndexes == expected);
 }
