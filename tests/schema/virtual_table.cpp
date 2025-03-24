@@ -23,7 +23,7 @@ TEST_CASE("virtual table") {
     auto virtualTable =
         make_virtual_table("posts", using_fts5(make_column("title", &Post::title), make_column("body", &Post::body)));
     {
-        auto compareColumnName = [](const std::string* foundValue, std::string expectedValue) {
+        const auto compareColumnName = [](const std::string* foundValue, std::string expectedValue) {
             if (!foundValue) {
                 return false;
             }
