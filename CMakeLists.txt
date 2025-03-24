@@ -55,11 +55,12 @@ target_sources(sqlite_orm INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/incl
 
 target_include_directories(sqlite_orm INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>)
 
-# Enable reorder-ctor warning and make it an error
-target_compile_options(sqlite_orm INTERFACE
-    -Wreorder-ctor
-    -Werror=reorder-ctor
-)
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    target_compile_options(sqlite_orm INTERFACE
+        -Wreorder-ctor
+        -Werror=reorder-ctor
+    )
+endif()
 
 include(ucm)
 
