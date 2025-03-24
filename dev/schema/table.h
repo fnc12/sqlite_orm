@@ -401,12 +401,14 @@ namespace sqlite_orm {
                 using field_type = member_field_type_t<M>;
 
                 const std::string* res = nullptr;
-                iterate_tuple(this->columns, [&res, memberPointer](auto& column) {
-                    if (compare_fields(column.member_pointer, memberPointer) ||
-                        compare_fields(column.setter, memberPointer)) {
-                        res = &column.name;
-                    }
-                });
+                iterate_tuple(this->columns,
+                              col_index_sequence_with_field_type<columns_type, field_type>{},
+                              [&res, memberPointer](auto& column) {
+                                  if (compare_fields(column.member_pointer, memberPointer) ||
+                                      compare_fields(column.setter, memberPointer)) {
+                                      res = &column.name;
+                                  }
+                              });
                 return res;
             }
         };

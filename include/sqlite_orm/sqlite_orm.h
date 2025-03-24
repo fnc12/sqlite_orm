@@ -12649,12 +12649,14 @@ namespace sqlite_orm {
                 using field_type = member_field_type_t<M>;
 
                 const std::string* res = nullptr;
-                iterate_tuple(this->columns, [&res, memberPointer](auto& column) {
-                    if (compare_fields(column.member_pointer, memberPointer) ||
-                        compare_fields(column.setter, memberPointer)) {
-                        res = &column.name;
-                    }
-                });
+                iterate_tuple(this->columns,
+                              col_index_sequence_with_field_type<columns_type, field_type>{},
+                              [&res, memberPointer](auto& column) {
+                                  if (compare_fields(column.member_pointer, memberPointer) ||
+                                      compare_fields(column.setter, memberPointer)) {
+                                      res = &column.name;
+                                  }
+                              });
                 return res;
             }
         };
@@ -18562,10 +18564,9 @@ namespace sqlite_orm {
                          connection_control connectionCtrl,
                          on_open_spec onOpenSpec,
                          int foreignKeysCount) :
-                on_open{std::move(onOpenSpec.onOpen)}, isOpenedForever{connectionCtrl.open_forever},
-                pragma(std::bind(&storage_base::get_connection, this)),
+                on_open{std::move(onOpenSpec.onOpen)}, pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
-                inMemory(filename.empty() || filename == ":memory:"),
+                inMemory(filename.empty() || filename == ":memory:"), isOpenedForever{connectionCtrl.open_forever},
                 connection(std::make_unique<connection_holder>(
                     std::move(filename),
                     std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))),

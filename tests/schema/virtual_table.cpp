@@ -113,12 +113,13 @@ TEST_CASE("issue1410") {
 
                      make_virtual_table("search_table",
                                         using_fts5(make_column("text", &SearchTable::text),
-                                                   make_column("normal_table_id", &SearchTable::normal_table_id))));
+                                                   make_column("normal_table_id", &SearchTable::normal_table_id),
+                                                   tokenize("trigram"))));
     storage.sync_schema();
     auto rows = storage.iterate<NormalTable>(
         where(eq(&NormalTable::id, select(&SearchTable::normal_table_id, where(match<SearchTable>("Some Text"))))));
 
     for (const auto& row: rows) {
-    }
+    }  //  has to be compiled
 }
 #endif
