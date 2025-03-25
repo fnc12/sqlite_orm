@@ -10,11 +10,15 @@ using internal::column_alias;
 using internal::column_pointer;
 using internal::iterate_ast;
 
-#if __cpp_generic_lambdas >= 201707L
+#ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
 template<class... L>
-struct overload : L... {
+struct overloaded : L... {
     using L::operator()...;
 };
+#if __cpp_deduction_guides < 201907L
+template<class... L>
+overloaded(L...) -> overloaded<L...>;
+#endif
 #endif
 
 TEST_CASE("ast_iterator") {
@@ -28,8 +32,8 @@ TEST_CASE("ast_iterator") {
     const auto lambda = [&typeIndexes](auto& value) {
         typeIndexes.push_back(typeid(value));
     };
-#if __cpp_generic_lambdas >= 201707L
-    const auto nodeLambda = overload(
+#ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
+    const auto nodeLambda = overloaded(
         [&typeIndexes]<class UDF, class... CallArgs>(polyfill::bool_constant<true>,
                                                      const internal::function_call<UDF, CallArgs...>& udfCall) {
             typeIndexes.push_back(typeid(udfCall.name));
@@ -441,7 +445,7 @@ TEST_CASE("ast_iterator") {
         expected.push_back(typeid(std::string));
         iterate_ast(expression, lambda);
     }
-#if __cpp_generic_lambdas >= 201707L
+#ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
     SECTION("node expressions") {
         struct Func {
             static const char* name();
