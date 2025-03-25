@@ -684,10 +684,9 @@ namespace sqlite_orm {
                          connection_control connectionCtrl,
                          on_open_spec onOpenSpec,
                          int foreignKeysCount) :
-                on_open{std::move(onOpenSpec.onOpen)}, isOpenedForever{connectionCtrl.open_forever},
-                pragma(std::bind(&storage_base::get_connection, this), executor),
+                on_open{std::move(onOpenSpec.onOpen)}, pragma(std::bind(&storage_base::get_connection, this), executor),
                 limit(std::bind(&storage_base::get_connection, this)),
-                inMemory(filename.empty() || filename == ":memory:"),
+                inMemory(filename.empty() || filename == ":memory:"), isOpenedForever{connectionCtrl.open_forever},
                 connection(std::make_unique<connection_holder>(
                     std::move(filename),
                     std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))),
