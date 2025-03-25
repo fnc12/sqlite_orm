@@ -33,7 +33,7 @@ TEST_CASE("ast_iterator") {
         typeIndexes.push_back(typeid(value));
     };
 #ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
-    const auto nodeLambda = overloaded(
+    const auto nodeLambda = overloaded{
         [&typeIndexes]<class UDF, class... CallArgs>(polyfill::bool_constant<true>,
                                                      const internal::function_call<UDF, CallArgs...>& udfCall) {
             typeIndexes.push_back(typeid(udfCall.name));
@@ -46,7 +46,7 @@ TEST_CASE("ast_iterator") {
             typeIndexes.push_back(typeid(T));
         },
         // swallow leaf expressions
-        [](auto&) {});
+        [](auto&) {}};
 #endif
 
     SECTION("bindables") {
