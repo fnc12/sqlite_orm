@@ -595,14 +595,14 @@ TEST_CASE("Node tuple") {
             using Like = decltype(lk);
             using NodeTuple = node_tuple_t<Like>;
             using Expected = tuple<decltype(&User::name), const char*>;
-            static_assert(is_same<NodeTuple, Expected>::value, "like(&User::name, \"S%\") type 0");
+            static_assert(is_same<NodeTuple, Expected>::value, R"(like(&User::name, "S%") type 0)");
         }
         SECTION("like(&User::name, std::string('pattern'), '%')") {
             auto lk = like(&User::name, std::string("pattern"), "%");
             using Like = decltype(lk);
             using NodeTuple = node_tuple_t<Like>;
             using Expected = tuple<decltype(&User::name), std::string, const char*>;
-            static_assert(is_same<NodeTuple, Expected>::value, "like(&User::name, std::string(\"pattern\"), \"%\")");
+            static_assert(is_same<NodeTuple, Expected>::value, R"(like(&User::name, std::string("pattern"), "%"))");
         }
         SECTION("like(&User::name, std::string('pattern')).escape('%')") {
             auto lk = like(&User::name, std::string("pattern")).escape("%");
@@ -610,7 +610,7 @@ TEST_CASE("Node tuple") {
             using NodeTuple = node_tuple_t<Like>;
             using Expected = tuple<decltype(&User::name), std::string, const char*>;
             static_assert(is_same<NodeTuple, Expected>::value,
-                          "like(&User::name, std::string(\"pattern\")).escape(\"%\")");
+                          R"(like(&User::name, std::string("pattern")).escape("%"))");
         }
     }
     SECTION("order_by_t") {
@@ -630,12 +630,16 @@ TEST_CASE("Node tuple") {
         SECTION("column alias in expression") {
             STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(get<colalias_a>() > 1))>, tuple<int>>::value);
         }
+        SECTION("multi") {
+            STATIC_REQUIRE(is_same<node_tuple_t<decltype(multi_order_by(order_by(""), order_by("")))>,
+                                   tuple<const char*, const char*>>::value);
+        }
     }
     SECTION("glob_t") {
         auto gl = glob(&User::name, "H*");
         using Glob = decltype(gl);
         using Tuple = node_tuple_t<Glob>;
-        static_assert(is_same<Tuple, tuple<decltype(&User::name), const char*>>::value, "glob(&User::name, \"H*\")");
+        static_assert(is_same<Tuple, tuple<decltype(&User::name), const char*>>::value, R"(glob(&User::name, "H*"))");
     }
     SECTION("between_t") {
         auto bet = between(&User::id, 10, 20);
@@ -656,7 +660,7 @@ TEST_CASE("Node tuple") {
             using Con = decltype(c);
             using Tuple = node_tuple_t<Con>;
             using Expected = tuple<int, const char*>;
-            static_assert(is_same<Tuple, Expected>::value, "not is_equal(20, \"20\")");
+            static_assert(is_same<Tuple, Expected>::value, R"(not is_equal(20, "20"))");
         }
         SECTION("not is_not_equal(&User::id, 15.0)") {
             auto c = not is_not_equal(&User::id, 15.0);
@@ -684,7 +688,7 @@ TEST_CASE("Node tuple") {
             using Con = decltype(c);
             using Tuple = node_tuple_t<Con>;
             using Expected = tuple<decltype(&User::id), std::string>;
-            static_assert(is_same<Tuple, Expected>::value, "not less_than(&User::id, std::string(\"6\"))");
+            static_assert(is_same<Tuple, Expected>::value, R"(not less_than(&User::id, std::string("6")))");
         }
         SECTION("not less_or_equal(&User::id, 10)") {
             auto c = not less_or_equal(&User::id, 10);
@@ -719,14 +723,14 @@ TEST_CASE("Node tuple") {
             using Con = decltype(c);
             using Tuple = node_tuple_t<Con>;
             using Expected = tuple<decltype(&User::name), const char*>;
-            static_assert(is_same<Tuple, Expected>::value, "not like(&User::name, \"*D*\")");
+            static_assert(is_same<Tuple, Expected>::value, R"(not like(&User::name, "*D*"))");
         }
         SECTION("not glob(&User::name, std::string('_A_'))") {
             auto c = not glob(&User::name, std::string("_A_"));
             using Con = decltype(c);
             using Tuple = node_tuple_t<Con>;
             using Expected = tuple<decltype(&User::name), std::string>;
-            static_assert(is_same<Tuple, Expected>::value, "not glob(&User::name, std::string(\"_A_\"))");
+            static_assert(is_same<Tuple, Expected>::value, R"(not glob(&User::name, std::string("_A_")))");
         }
         SECTION("not exists(select(&User::name, where(in(&User::id, {6, 7, 9}))))") {
             auto c = not exists(select(&User::name, where(in(&User::id, {6, 7, 9}))));
