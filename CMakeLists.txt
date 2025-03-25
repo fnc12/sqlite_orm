@@ -55,6 +55,13 @@ target_sources(sqlite_orm INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/incl
 
 target_include_directories(sqlite_orm INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>)
 
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+    target_compile_options(sqlite_orm INTERFACE
+        -Wreorder
+        -Werror=reorder
+    )
+endif()
+
 include(ucm)
 
 if (MSVC)
