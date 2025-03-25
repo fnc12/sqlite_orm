@@ -10,7 +10,6 @@
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/cxx_functional_polyfill.h"
-#include "../functional/static_magic.h"
 #include "../functional/mpl.h"
 #include "../functional/index_sequence_util.h"
 #include "../tuple_helper/tuple_filter.h"
@@ -192,7 +191,7 @@ namespace sqlite_orm {
             std::vector<std::string> primary_key_column_names() const {
                 using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
 
-                if (pkcol_index_sequence::size() > 0) {
+                if constexpr (pkcol_index_sequence::size() > 0) {
                     return create_from_tuple<std::vector<std::string>>(this->elements,
                                                                        pkcol_index_sequence{},
                                                                        &column_identifier::name);

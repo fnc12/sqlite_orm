@@ -1,9 +1,5 @@
 #pragma once
 
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <utility>  //  std::forward
-#endif
-
 namespace sqlite_orm {
 
     //  got from here
@@ -21,31 +17,6 @@ namespace sqlite_orm {
         };
         template<class R = void>
         constexpr empty_callable_t<R> empty_callable{};
-
-        template<bool B, typename T, typename F>
-        decltype(auto) static_if([[maybe_unused]] T&& trueFn, [[maybe_unused]] F&& falseFn) {
-            if constexpr (B) {
-                return std::forward<T>(trueFn);
-            } else {
-                return std::forward<F>(falseFn);
-            }
-        }
-
-        template<bool B, typename T>
-        decltype(auto) static_if([[maybe_unused]] T&& trueFn) {
-            if constexpr (B) {
-                return std::forward<T>(trueFn);
-            } else {
-                return empty_callable<>;
-            }
-        }
-
-        template<bool B, typename L, typename... Args>
-        void call_if_constexpr([[maybe_unused]] L&& lambda, [[maybe_unused]] Args&&... args) {
-            if constexpr (B) {
-                lambda(std::forward<Args>(args)...);
-            }
-        }
     }
 
 }

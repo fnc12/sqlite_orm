@@ -21,7 +21,6 @@
 #endif
 
 #include "functional/cxx_functional_polyfill.h"
-#include "functional/static_magic.h"
 #include "tuple_helper/tuple_transformer.h"
 #include "column_result_proxy.h"
 #include "arithmetic_tag.h"

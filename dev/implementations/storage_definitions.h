@@ -22,18 +22,23 @@
 
 namespace sqlite_orm {
     namespace internal {
-
         template<class... DBO>
         template<class Table, satisfies<is_table, Table>>
         sync_schema_result storage_t<DBO...>::sync_table(const Table& table, sqlite3* db, bool preserve) {
-            if (std::is_same<object_type_t<Table>, sqlite_master>::value) {
-                return sync_schema_result::already_in_sync;
-            }
+            if constexpr (
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
-            if (std::is_same<object_type_t<Table>, dbstat>::value) {
+                std::is_same<object_type_t<Table>, dbstat>::value ||
+#endif
+                std::is_same<object_type_t<Table>, sqlite_master>::value) {
                 return sync_schema_result::already_in_sync;
+            } else {
+                return this->_sync_normal_table(table, db, preserve);
             }
-#endif  //  SQLITE_ENABLE_DBSTAT_VTAB
+        }
+
+        template<class... DBO>
+        template<class Table, satisfies<is_table, Table>>
+        sync_schema_result storage_t<DBO...>::_sync_normal_table(const Table& table, sqlite3* db, bool preserve) {
             auto res = sync_schema_result::already_in_sync;
             bool attempt_to_preserve = true;
 
