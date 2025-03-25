@@ -103,7 +103,7 @@ TEST_CASE("Limits") {
 }
 
 TEST_CASE("Custom collate") {
-#if defined(SQLITE_ORM_STRING_VIEW_SUPPORTED) && SQLITE_VERSION_NUMBER >= 3008008
+#if defined(SQLITE_ORM_STRING_VIEW_SUPPORTED) || SQLITE_VERSION_NUMBER >= 3008008
     const ErrorCodeExceptionMatcher collSequExceptionMatcher(sqlite_errc(SQLITE_ERROR_MISSING_COLLSEQ));
 #else
     const ErrorCodeExceptionMatcher collSequExceptionMatcher(sqlite_errc(SQLITE_ERROR));

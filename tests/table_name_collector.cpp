@@ -21,7 +21,7 @@ TEST_CASE("table name collector") {
     SECTION("static tests") {
         STATIC_REQUIRE(polyfill::is_invocable<internal::table_name_collector<std::tuple<>>,
                                               polyfill::bool_constant<true>,
-                                              internal::highlight_t<User, int, int, int>>::value);
+                                              const internal::highlight_t<User, int, int, int>&>::value);
     }
     SECTION("from table") {
         SECTION("regular column") {
