@@ -731,11 +731,11 @@ namespace sqlite_orm {
 
                 std::stringstream ss;
                 ss << expression.serialize();
-                if SQLITE_ORM_CONSTEXPR_IF (parenthesize) {
+                if constexpr (parenthesize) {
                     ss << "(";
                 }
                 ss << serialize(get_from_expression(expression.argument), subCtx);
-                if SQLITE_ORM_CONSTEXPR_IF (parenthesize) {
+                if constexpr (parenthesize) {
                     ss << ")";
                 }
                 return ss.str();
@@ -757,11 +757,11 @@ namespace sqlite_orm {
 
                 std::stringstream ss;
                 ss << static_cast<std::string>(expression) << " ";
-                if SQLITE_ORM_CONSTEXPR_IF (parenthesize) {
+                if constexpr (parenthesize) {
                     ss << "(";
                 }
                 ss << serialize(get_from_expression(expression.c), subCtx);
-                if SQLITE_ORM_CONSTEXPR_IF (parenthesize) {
+                if constexpr (parenthesize) {
                     ss << ")";
                 }
                 return ss.str();
@@ -786,19 +786,19 @@ namespace sqlite_orm {
                                                    is_binary_operator<right_type_t<statement_type>>::value;
 
                 std::stringstream ss;
-                if SQLITE_ORM_CONSTEXPR_IF (parenthesizeLeft) {
+                if constexpr (parenthesizeLeft) {
                     ss << "(";
                 }
                 ss << serialize(statement.lhs, subCtx);
-                if SQLITE_ORM_CONSTEXPR_IF (parenthesizeLeft) {
+                if constexpr (parenthesizeLeft) {
                     ss << ")";
                 }
                 ss << " " << statement.serialize() << " ";
-                if SQLITE_ORM_CONSTEXPR_IF (parenthesizeRight) {
+                if constexpr (parenthesizeRight) {
                     ss << "(";
                 }
                 ss << serialize(statement.rhs, subCtx);
-                if SQLITE_ORM_CONSTEXPR_IF (parenthesizeRight) {
+                if constexpr (parenthesizeRight) {
                     ss << ")";
                 }
                 return ss.str();

@@ -24,12 +24,6 @@
 #define SQLITE_ORM_INLINE_VAR
 #endif
 
-#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
-#define SQLITE_ORM_CONSTEXPR_IF constexpr
-#else
-#define SQLITE_ORM_CONSTEXPR_IF
-#endif
-
 #if __cpp_lib_constexpr_functional >= 201907L
 #define SQLITE_ORM_CONSTEXPR_CPP20 constexpr
 #else
@@ -82,7 +76,7 @@
 #define SQLITE_ORM_WITH_CPP20_ALIASES
 #endif
 
-#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
+#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
 #define SQLITE_ORM_WITH_CTE
 #endif
 
