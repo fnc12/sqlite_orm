@@ -1,11 +1,14 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::is_invocable
 #include <vector>  //  std::vector
 #include <functional>  //  std::reference_wrapper
 #endif
 
+#include "functional/cxx_functional_polyfill.h"  //  std::is_invocable
 #include "tuple_helper/tuple_iteration.h"
+#include "functional/static_magic.h"
 #include "type_traits.h"
 #include "conditions.h"
 #include "alias.h"
@@ -36,7 +39,7 @@ namespace sqlite_orm {
          *  ast_iterator is used in finding literals to be bound to
          *  a statement, and to collect table names.
          *  
-         *  Note that not all leaves of the expression tree are always visited:
+         *  Note that not all leaves of the expression tree are visited:
          *  Column expressions can be more complex, but are passed as a whole to the callable.
          *  Examples are `column_pointer<>` and `alias_column_t<>`.
          *  
@@ -52,17 +55,27 @@ namespace sqlite_orm {
              *  L is a callable type. Mostly is a templated lambda
              */
             template<class L>
-            void operator()(const T& t, L& lambda) const {
-                lambda(t);
+            void operator()(const node_type& leaf, L& lambda) const {
+                lambda(leaf);
             }
         };
 
         /**
-         *  Simplified API
+         *  Simplified API.
+         *  
+         *  @param lambda Callable invoked with each leaf expression.
+         *  The callable can opt in to be invoked for a node expression.
          */
         template<class T, class L>
         void iterate_ast(const T& t, L&& lambda) {
             ast_iterator<T> iterator;
+
+            // possibly invoke lambda with node itself
+            call_if_constexpr<polyfill::is_invocable<L, polyfill::bool_constant<true>, const T&>::value>(
+                lambda,
+                polyfill::bool_constant<true>{},
+                t);
+
             iterator(t, lambda);
         }
 
@@ -114,7 +127,6 @@ namespace sqlite_orm {
 
             template<class L>
             void operator()(const node_type& expression, L& lambda) const {
-                lambda(expression);
                 iterate_ast(expression.argument0, lambda);
                 iterate_ast(expression.argument1, lambda);
                 iterate_ast(expression.argument2, lambda);

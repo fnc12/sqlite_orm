@@ -620,12 +620,9 @@ namespace sqlite_orm {
             using argument1_type = Y;
             using argument2_type = Z;
 
-            argument0_type argument0;
-            argument1_type argument1;
-            argument2_type argument2;
-
-            highlight_t(argument0_type argument0, argument1_type argument1, argument2_type argument2) :
-                argument0(std::move(argument0)), argument1(std::move(argument1)), argument2(std::move(argument2)) {}
+            argument0_type argument0{};
+            argument1_type argument1{};
+            argument2_type argument2{};
         };
     }
 }

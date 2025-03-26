@@ -64,6 +64,9 @@ TEST_CASE("begin_transaction") {
 }
 
 TEST_CASE("Transaction guard") {
+    const ErrorCodeExceptionMatcher notFoundExceptionMatcher(orm_error_code::not_found);
+    const ErrorCodeExceptionMatcher busyExceptionMatcher(sqlite_errc(SQLITE_BUSY));
+
     std::remove("guard.sqlite");
     auto table =
         make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name));
@@ -74,7 +77,6 @@ TEST_CASE("Transaction guard") {
 
     storage.insert(Object{0, "Jack"});
 
-    const ErrorCodeExceptionMatcher notFoundExceptionMatcher(orm_error_code::not_found);
     SECTION("insert, call make a storage to call an exception and check that rollback was fired") {
         auto countBefore = storage.count<Object>();
         SECTION("transaction_guard") {
@@ -329,8 +331,6 @@ TEST_CASE("Transaction guard") {
         REQUIRE(storage.count<Object>() == countBefore);
     }
     SECTION("exception propagated from dtor") {
-        using Catch::Matchers::ContainsSubstring;
-
         // create a second database connection
         auto storage2 = make_storage("guard.sqlite", table);
         auto guard2 = storage2.transaction_guard();
@@ -340,7 +340,7 @@ TEST_CASE("Transaction guard") {
         auto guard = new (&buffer) internal::transaction_guard_t{storage.transaction_guard()};
         storage.insert<Object>({});
         guard->commit_on_destroy = true;
-        REQUIRE_THROWS_WITH(guard->~transaction_guard_t(), ContainsSubstring("database is locked"));
+        REQUIRE_THROWS_MATCHES(guard->~transaction_guard_t(), std::system_error, busyExceptionMatcher);
     }
     std::remove("guard.sqlite");
 }

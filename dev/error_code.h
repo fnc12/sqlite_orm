@@ -41,6 +41,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         index_is_out_of_bounds,
         value_is_null,
         no_tables_specified,
+        empty_range,
     };
 }
 
@@ -112,8 +113,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             return "SQLite error";
         }
 
-        std::string message(int c) const override final {
-            return sqlite3_errstr(c);
+        std::string message(int ev) const override final {
+            return sqlite3_errstr(ev);
         }
     };
 

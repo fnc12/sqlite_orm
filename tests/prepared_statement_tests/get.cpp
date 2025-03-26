@@ -1,5 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include "../catch_matchers.h"
 
 #include "prepared_common.h"
 
@@ -8,8 +9,8 @@ using namespace sqlite_orm;
 
 TEST_CASE("Prepared get") {
     using namespace PreparedStatementTests;
-    using Catch::Matchers::ContainsSubstring;
     using Catch::Matchers::UnorderedEquals;
+    const ErrorCodeExceptionMatcher notFoundExceptionMatcher(orm_error_code::not_found);
 
     const int defaultVisitTime = 50;
 
@@ -73,7 +74,7 @@ TEST_CASE("Prepared get") {
             }
             {
                 get<0>(statement) = 4;
-                REQUIRE_THROWS_WITH(storage.execute(statement), ContainsSubstring("Not found"));
+                REQUIRE_THROWS_MATCHES(storage.execute(statement), std::system_error, notFoundExceptionMatcher);
             }
         }
     }
@@ -95,7 +96,7 @@ TEST_CASE("Prepared get") {
             //..
         }
         SECTION("execute") {
-            REQUIRE_THROWS_WITH(storage.execute(statement), ContainsSubstring("Not found"));
+            REQUIRE_THROWS_MATCHES(storage.execute(statement), std::system_error, notFoundExceptionMatcher);
         }
     }
     {
