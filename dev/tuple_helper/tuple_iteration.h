@@ -39,9 +39,6 @@ namespace sqlite_orm {
 
         template<template<class...> class Base, class L>
         struct lambda_as_template_base : L {
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            lambda_as_template_base(L&& lambda) : L{std::move(lambda)} {}
-#endif
             template<class... T>
             decltype(auto) operator()(const Base<T...>& object) {
                 return L::operator()(object);

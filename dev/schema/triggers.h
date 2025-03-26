@@ -72,11 +72,6 @@ namespace sqlite_orm {
              * Statements of the triggers (to be executed when the trigger fires)
              */
             elements_type elements;
-
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            trigger_t(std::string name, T trigger_base, elements_type statements) :
-                base_trigger{std::move(name)}, base(std::move(trigger_base)), elements(std::move(statements)) {}
-#endif
         };
 
         /**

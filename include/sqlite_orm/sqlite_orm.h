@@ -43,7 +43,8 @@ using std::nullptr_t;
 #error A fully C++17-compliant compiler is required.
 #endif
 
-#if __cpp_noexcept_function_type < 201510L || __cpp_fold_expressions < 201603L || __cpp_if_constexpr < 201606L
+#if (__cpp_noexcept_function_type < 201510L) ||                                                                        \
+    (__cpp_fold_expressions < 201603L || __cpp_aggregate_bases < 201603L) || (__cpp_if_constexpr < 201606L)
 #error A fully C++17-compliant compiler is required.
 #endif
 
@@ -64,10 +65,6 @@ using std::nullptr_t;
 #define SQLITE_ORM_HAS_INCLUDE(file) __has_include(file)
 #else
 #define SQLITE_ORM_HAS_INCLUDE(file) 0L
-#endif
-
-#if __cpp_aggregate_bases >= 201603L
-#define SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
 #endif
 
 #if __cpp_constexpr >= 201603L
@@ -1639,9 +1636,6 @@ namespace sqlite_orm {
 
         template<template<class...> class Base, class L>
         struct lambda_as_template_base : L {
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            lambda_as_template_base(L&& lambda) : L{std::move(lambda)} {}
-#endif
             template<class... T>
             decltype(auto) operator()(const Base<T...>& object) {
                 return L::operator()(object);
@@ -3252,9 +3246,6 @@ namespace sqlite_orm {
             const primary_key_type& as_base() const {
                 return *this;
             }
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            constexpr primary_key_with_autoincrement(primary_key_type primary_key) : primary_key_type{primary_key} {}
-#endif
         };
 
         /**
@@ -8593,13 +8584,7 @@ namespace sqlite_orm {
          *  It is a composition of orthogonal information stored in different base classes.
          */
         template<class G, class S, class... Op>
-        struct column_t : column_identifier, column_field<G, S>, column_constraints<Op...> {
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            column_t(std::string name, G memberPointer, S setter, std::tuple<Op...> op) :
-                column_identifier{std::move(name)}, column_field<G, S>{memberPointer, setter},
-                column_constraints<Op...>{std::move(op)} {}
-#endif
-        };
+        struct column_t : column_identifier, column_field<G, S>, column_constraints<Op...> {};
 
         template<class T, class SFINAE = void>
         struct column_field_expression {
@@ -12091,11 +12076,6 @@ namespace sqlite_orm {
             using object_type = void;
             using table_mapped_type = T;
 
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            index_t(std::string name_, bool unique_, elements_type elements_) :
-                index_base{std::move(name_), unique_}, elements(std::move(elements_)) {}
-#endif
-
             elements_type elements;
         };
     }
@@ -12198,11 +12178,6 @@ namespace sqlite_orm {
             using is_without_rowid = polyfill::bool_constant<is_without_rowid_v>;
 
             elements_type elements;
-
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            table_t(std::string name_, elements_type elements_) :
-                basic_table{std::move(name_)}, elements{std::move(elements_)} {}
-#endif
 
             table_t<O, true, Cs...> without_rowid() const {
                 return {this->name, this->elements};
@@ -12424,11 +12399,6 @@ namespace sqlite_orm {
             using is_without_rowid = polyfill::bool_constant<is_without_rowid_v>;
 
             module_details_type module_details;
-
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            virtual_table_t(std::string name, module_details_type module_details) :
-                basic_table{std::move(name)}, module_details{std::move(module_details)} {}
-#endif
 
             /**
              *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
@@ -19530,11 +19500,6 @@ namespace sqlite_orm {
              * Statements of the triggers (to be executed when the trigger fires)
              */
             elements_type elements;
-
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            trigger_t(std::string name, T trigger_base, elements_type statements) :
-                base_trigger{std::move(name)}, base(std::move(trigger_base)), elements(std::move(statements)) {}
-#endif
         };
 
         /**

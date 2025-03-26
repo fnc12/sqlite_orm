@@ -97,13 +97,7 @@ namespace sqlite_orm {
          *  It is a composition of orthogonal information stored in different base classes.
          */
         template<class G, class S, class... Op>
-        struct column_t : column_identifier, column_field<G, S>, column_constraints<Op...> {
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            column_t(std::string name, G memberPointer, S setter, std::tuple<Op...> op) :
-                column_identifier{std::move(name)}, column_field<G, S>{memberPointer, setter},
-                column_constraints<Op...>{std::move(op)} {}
-#endif
-        };
+        struct column_t : column_identifier, column_field<G, S>, column_constraints<Op...> {};
 
         template<class T, class SFINAE = void>
         struct column_field_expression {
