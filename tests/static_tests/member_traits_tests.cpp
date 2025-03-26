@@ -115,14 +115,14 @@ TEST_CASE("member_traits_tests") {
     STATIC_REQUIRE(is_getter<decltype(&User::getIdByRef)>::value);
     STATIC_REQUIRE(is_getter<decltype(&User::getIdByConstRefConst)>::value);
     STATIC_REQUIRE(is_getter<decltype(&User::getIdByConstRef)>::value);
-#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
+
     STATIC_REQUIRE(is_getter<decltype(&User::getIdByValConstNoexcept)>::value);
     STATIC_REQUIRE(is_getter<decltype(&User::getIdByValNoexcept)>::value);
     STATIC_REQUIRE(is_getter<decltype(&User::getIdByRefConstNoexcept)>::value);
     STATIC_REQUIRE(is_getter<decltype(&User::getIdByRefNoexcept)>::value);
     STATIC_REQUIRE(is_getter<decltype(&User::getIdByConstRefConstNoexcept)>::value);
     STATIC_REQUIRE(is_getter<decltype(&User::getIdByConstRefNoExcept)>::value);
-#endif
+
     STATIC_REQUIRE_FALSE(is_getter<decltype(&User::setIdByVal)>::value);
     STATIC_REQUIRE_FALSE(is_getter<decltype(&User::setIdByRef)>::value);
     STATIC_REQUIRE_FALSE(is_getter<decltype(&User::setIdByConstRef)>::value);
@@ -145,11 +145,10 @@ TEST_CASE("member_traits_tests") {
     STATIC_REQUIRE(is_setter<decltype(&User::setIdByVal)>::value);
     STATIC_REQUIRE(is_setter<decltype(&User::setIdByRef)>::value);
     STATIC_REQUIRE(is_setter<decltype(&User::setIdByConstRef)>::value);
-#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
+
     STATIC_REQUIRE(is_setter<decltype(&User::setIdByValueNoexcept)>::value);
     STATIC_REQUIRE(is_setter<decltype(&User::setIdByRefNoExcept)>::value);
     STATIC_REQUIRE(is_setter<decltype(&User::setIdByConstRefNoexcept)>::value);
-#endif
 
     STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::getIdByValConst)>, User>::value);
     STATIC_REQUIRE(is_same<getter_field_type_t<decltype(&User::getIdByValConst)>, int>::value);
@@ -170,7 +169,7 @@ TEST_CASE("member_traits_tests") {
     STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::getIdByConstRef)>, User>::value);
     STATIC_REQUIRE(is_same<getter_field_type_t<decltype(&User::getIdByConstRef)>, int>::value);
     STATIC_REQUIRE(is_same<member_field_type_t<decltype(&User::getIdByConstRef)>, int>::value);
-#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
+
     STATIC_REQUIRE(is_same_v<member_object_type_t<decltype(&User::getIdByValConstNoexcept)>, User>);
     STATIC_REQUIRE(is_same_v<getter_field_type_t<decltype(&User::getIdByValConstNoexcept)>, int>);
     STATIC_REQUIRE(is_same_v<member_field_type_t<decltype(&User::getIdByValConstNoexcept)>, int>);
@@ -194,7 +193,7 @@ TEST_CASE("member_traits_tests") {
     STATIC_REQUIRE(is_same_v<member_object_type_t<decltype(&User::getIdByConstRefNoExcept)>, User>);
     STATIC_REQUIRE(is_same_v<getter_field_type_t<decltype(&User::getIdByConstRefNoExcept)>, int>);
     STATIC_REQUIRE(is_same_v<member_field_type_t<decltype(&User::getIdByConstRefNoExcept)>, int>);
-#endif
+
     STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::setIdByVal)>, User>::value);
     STATIC_REQUIRE(is_same<setter_field_type_t<decltype(&User::setIdByVal)>, int>::value);
     STATIC_REQUIRE(is_same<member_field_type_t<decltype(&User::setIdByVal)>, int>::value);
@@ -206,7 +205,7 @@ TEST_CASE("member_traits_tests") {
     STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::setIdByConstRef)>, User>::value);
     STATIC_REQUIRE(is_same<setter_field_type_t<decltype(&User::setIdByConstRef)>, int>::value);
     STATIC_REQUIRE(is_same<member_field_type_t<decltype(&User::setIdByConstRef)>, int>::value);
-#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
+
     STATIC_REQUIRE(is_same_v<member_object_type_t<decltype(&User::setIdByValueNoexcept)>, User>);
     STATIC_REQUIRE(is_same_v<setter_field_type_t<decltype(&User::setIdByValueNoexcept)>, int>);
     STATIC_REQUIRE(is_same_v<member_field_type_t<decltype(&User::setIdByValueNoexcept)>, int>);
@@ -218,7 +217,7 @@ TEST_CASE("member_traits_tests") {
     STATIC_REQUIRE(is_same_v<member_object_type_t<decltype(&User::setIdByConstRefNoexcept)>, User>);
     STATIC_REQUIRE(is_same_v<setter_field_type_t<decltype(&User::setIdByConstRefNoexcept)>, int>);
     STATIC_REQUIRE(is_same_v<member_field_type_t<decltype(&User::setIdByConstRefNoexcept)>, int>);
-#endif
+
     STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::id)>, User>::value);
     STATIC_REQUIRE(is_same<object_field_type_t<decltype(&User::id)>, int>::value);
     STATIC_REQUIRE(is_same<member_field_type_t<decltype(&User::id)>, int>::value);
@@ -246,7 +245,7 @@ TEST_CASE("member_traits_tests") {
     STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::getIdByConstRef)>, User>::value);
     STATIC_REQUIRE(is_same<member_field_type_t<decltype(&User::getIdByConstRef)>, int>::value);
     STATIC_REQUIRE(is_same<getter_field_type_t<decltype(&User::getIdByConstRef)>, int>::value);
-#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
+
     STATIC_REQUIRE(is_same_v<member_object_type_t<decltype(&User::getIdByValConstNoexcept)>, User>);
     STATIC_REQUIRE(is_same_v<member_field_type_t<decltype(&User::getIdByValConstNoexcept)>, int>);
     STATIC_REQUIRE(is_same_v<getter_field_type_t<decltype(&User::getIdByValConstNoexcept)>, int>);
@@ -270,7 +269,7 @@ TEST_CASE("member_traits_tests") {
     STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::getIdByConstRefNoExcept)>, User>::value);
     STATIC_REQUIRE(is_same<getter_field_type_t<decltype(&User::getIdByConstRefNoExcept)>, int>::value);
     STATIC_REQUIRE(is_same<member_field_type_t<decltype(&User::getIdByConstRefNoExcept)>, int>::value);
-#endif
+
     STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::setIdByVal)>, User>::value);
     STATIC_REQUIRE(is_same<setter_field_type_t<decltype(&User::setIdByVal)>, int>::value);
     STATIC_REQUIRE(is_same<member_field_type_t<decltype(&User::setIdByVal)>, int>::value);
@@ -282,7 +281,7 @@ TEST_CASE("member_traits_tests") {
     STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::setIdByConstRef)>, User>::value);
     STATIC_REQUIRE(is_same<member_field_type_t<decltype(&User::setIdByConstRef)>, int>::value);
     STATIC_REQUIRE(is_same<setter_field_type_t<decltype(&User::setIdByConstRef)>, int>::value);
-#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
+
     STATIC_REQUIRE(is_same_v<member_object_type_t<decltype(&User::setIdByValueNoexcept)>, User>);
     STATIC_REQUIRE(is_same_v<setter_field_type_t<decltype(&User::setIdByValueNoexcept)>, int>);
     STATIC_REQUIRE(is_same_v<member_field_type_t<decltype(&User::setIdByValueNoexcept)>, int>);
@@ -294,7 +293,6 @@ TEST_CASE("member_traits_tests") {
     STATIC_REQUIRE(is_same_v<member_object_type_t<decltype(&User::setIdByConstRefNoexcept)>, User>);
     STATIC_REQUIRE(is_same_v<setter_field_type_t<decltype(&User::setIdByConstRefNoexcept)>, int>);
     STATIC_REQUIRE(is_same_v<member_field_type_t<decltype(&User::setIdByConstRefNoexcept)>, int>);
-#endif
 
     STATIC_REQUIRE(is_same<member_object_type_t<decltype(as_field_of<DerivedUser>(&User::id))>, DerivedUser>::value);
     STATIC_REQUIRE(is_same<member_object_type_t<as_field_of_t<DerivedUser, decltype(&User::id)>>, DerivedUser>::value);

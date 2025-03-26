@@ -34,13 +34,11 @@ namespace sqlite_orm {
         template<class F>
         struct getter_field_type<F(void)> : polyfill::remove_cvref<F> {};
 
-#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
         template<class F>
         struct getter_field_type<F(void) const noexcept> : polyfill::remove_cvref<F> {};
 
         template<class F>
         struct getter_field_type<F(void) noexcept> : polyfill::remove_cvref<F> {};
-#endif
 
         // SFINAE friendly trait to get a member function pointer's field type (i.e. unqualified parameter type)
         template<class T>
@@ -55,10 +53,8 @@ namespace sqlite_orm {
         template<class F>
         struct setter_field_type<void(F)> : polyfill::remove_cvref<F> {};
 
-#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
         template<class F>
         struct setter_field_type<void(F) noexcept> : polyfill::remove_cvref<F> {};
-#endif
 
         template<class T, class SFINAE = void>
         struct is_getter : std::false_type {};

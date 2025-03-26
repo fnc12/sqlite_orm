@@ -43,7 +43,7 @@ using std::nullptr_t;
 #error A fully C++17-compliant compiler is required.
 #endif
 
-#if __cpp_if_constexpr < 201606L || __cpp_fold_expressions < 201603L
+#if __cpp_noexcept_function_type < 201510L || __cpp_fold_expressions < 201603L || __cpp_if_constexpr < 201606L
 #error A fully C++17-compliant compiler is required.
 #endif
 
@@ -64,10 +64,6 @@ using std::nullptr_t;
 #define SQLITE_ORM_HAS_INCLUDE(file) __has_include(file)
 #else
 #define SQLITE_ORM_HAS_INCLUDE(file) 0L
-#endif
-
-#if __cpp_noexcept_function_type >= 201510L
-#define SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
 #endif
 
 #if __cpp_aggregate_bases >= 201603L
@@ -554,13 +550,11 @@ namespace sqlite_orm {
         template<class F>
         struct getter_field_type<F(void)> : polyfill::remove_cvref<F> {};
 
-#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
         template<class F>
         struct getter_field_type<F(void) const noexcept> : polyfill::remove_cvref<F> {};
 
         template<class F>
         struct getter_field_type<F(void) noexcept> : polyfill::remove_cvref<F> {};
-#endif
 
         // SFINAE friendly trait to get a member function pointer's field type (i.e. unqualified parameter type)
         template<class T>
@@ -575,10 +569,8 @@ namespace sqlite_orm {
         template<class F>
         struct setter_field_type<void(F)> : polyfill::remove_cvref<F> {};
 
-#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
         template<class F>
         struct setter_field_type<void(F) noexcept> : polyfill::remove_cvref<F> {};
-#endif
 
         template<class T, class SFINAE = void>
         struct is_getter : std::false_type {};
@@ -10914,7 +10906,6 @@ namespace sqlite_orm {
             using signature_type = R(Args...) const;
         };
 
-#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
         template<class R, class... Args>
         struct function_traits<R(Args...) noexcept> : function_traits<R(Args...)> {
             using signature_type = R(Args...) noexcept;
@@ -10924,7 +10915,6 @@ namespace sqlite_orm {
         struct function_traits<R(Args...) const noexcept> : function_traits<R(Args...)> {
             using signature_type = R(Args...) const noexcept;
         };
-#endif
 
         /*
          *  Pick signature of function pointer

@@ -17,10 +17,6 @@
 #define SQLITE_ORM_HAS_INCLUDE(file) 0L
 #endif
 
-#if __cpp_noexcept_function_type >= 201510L
-#define SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
-#endif
-
 #if __cpp_aggregate_bases >= 201603L
 #define SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
 #endif
