@@ -160,7 +160,7 @@ namespace sqlite_orm {
 
             // 2. override column names from cte expression
             constexpr size_t nExplicitColumns = std::tuple_size_v<ExplicitColRefs>;
-            if constexpr (nExplicitColumns) {
+            if constexpr (nExplicitColumns > 0) {
                 if (nExplicitColumns != columnNames.size()) {
                     throw std::system_error{orm_error_code::column_not_found};
                 }

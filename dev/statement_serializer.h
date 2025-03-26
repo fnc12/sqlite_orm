@@ -1050,7 +1050,7 @@ namespace sqlite_orm {
                 }
                 using columns_tuple = typename statement_type::columns_tuple;
                 constexpr size_t columnsCount = std::tuple_size<columns_tuple>::value;
-                if constexpr (columnsCount) {
+                if constexpr (columnsCount > 0) {
                     ss << "(" << streaming_mapped_columns_expressions(statement.columns, context) << ")";
                 }
                 return ss.str();
@@ -1067,7 +1067,7 @@ namespace sqlite_orm {
                 ss << static_cast<std::string>(c);
                 using columns_tuple = typename statement_type::columns_tuple;
                 const size_t columnsCount = std::tuple_size<columns_tuple>::value;
-                if constexpr (columnsCount) {
+                if constexpr (columnsCount > 0) {
                     ss << "(" << streaming_mapped_columns_expressions(c.columns, context) << ")";
                 }
                 return ss.str();

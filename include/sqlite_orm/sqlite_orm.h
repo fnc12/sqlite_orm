@@ -19369,7 +19369,7 @@ namespace sqlite_orm {
 
             // 2. override column names from cte expression
             constexpr size_t nExplicitColumns = std::tuple_size_v<ExplicitColRefs>;
-            if constexpr (nExplicitColumns) {
+            if constexpr (nExplicitColumns > 0) {
                 if (nExplicitColumns != columnNames.size()) {
                     throw std::system_error{orm_error_code::column_not_found};
                 }
@@ -20811,7 +20811,7 @@ namespace sqlite_orm {
                 }
                 using columns_tuple = typename statement_type::columns_tuple;
                 constexpr size_t columnsCount = std::tuple_size<columns_tuple>::value;
-                if constexpr (columnsCount) {
+                if constexpr (columnsCount > 0) {
                     ss << "(" << streaming_mapped_columns_expressions(statement.columns, context) << ")";
                 }
                 return ss.str();
@@ -20828,7 +20828,7 @@ namespace sqlite_orm {
                 ss << static_cast<std::string>(c);
                 using columns_tuple = typename statement_type::columns_tuple;
                 const size_t columnsCount = std::tuple_size<columns_tuple>::value;
-                if constexpr (columnsCount) {
+                if constexpr (columnsCount > 0) {
                     ss << "(" << streaming_mapped_columns_expressions(c.columns, context) << ")";
                 }
                 return ss.str();
@@ -24627,7 +24627,9 @@ namespace sqlite_orm {
     namespace internal {
         template<class... DBO>
         template<class Table, satisfies<is_table, Table>>
-        sync_schema_result storage_t<DBO...>::sync_table(const Table& table, sqlite3* db, bool preserve) {
+        sync_schema_result storage_t<DBO...>::sync_table([[maybe_unused]] const Table& table,
+                                                         [[maybe_unused]] sqlite3* db,
+                                                         [[maybe_unused]] bool preserve) {
             if constexpr (
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
                 std::is_same<object_type_t<Table>, dbstat>::value ||

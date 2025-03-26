@@ -24,7 +24,9 @@ namespace sqlite_orm {
     namespace internal {
         template<class... DBO>
         template<class Table, satisfies<is_table, Table>>
-        sync_schema_result storage_t<DBO...>::sync_table(const Table& table, sqlite3* db, bool preserve) {
+        sync_schema_result storage_t<DBO...>::sync_table([[maybe_unused]] const Table& table,
+                                                         [[maybe_unused]] sqlite3* db,
+                                                         [[maybe_unused]] bool preserve) {
             if constexpr (
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
                 std::is_same<object_type_t<Table>, dbstat>::value ||
