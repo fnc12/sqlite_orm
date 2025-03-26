@@ -1,10 +1,15 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include "../catch_matchers.h"
 
 using namespace sqlite_orm;
 
 TEST_CASE("Unique") {
-    using Catch::Matchers::ContainsSubstring;
+#if SQLITE_VERSION_NUMBER >= 3008008
+    const ErrorCodeExceptionMatcher uniqueExceptionMatcher(sqlite_errc(SQLITE_CONSTRAINT_UNIQUE));
+#else
+    const ErrorCodeExceptionMatcher uniqueExceptionMatcher(sqlite_errc(SQLITE_CONSTRAINT));
+#endif
 
     struct Contact {
         int id = 0;
@@ -39,12 +44,13 @@ TEST_CASE("Unique") {
 
     storage.insert(Contact{0, "John", "Doe", "john.doe@gmail.com"});
 
-    REQUIRE_THROWS_WITH(storage.insert(Contact{0, "Johnny", "Doe", "john.doe@gmail.com"}),
-                        ContainsSubstring("constraint failed"));
+    REQUIRE_THROWS_MATCHES(storage.insert(Contact{0, "Johnny", "Doe", "john.doe@gmail.com"}),
+                           std::system_error,
+                           uniqueExceptionMatcher);
 
     storage.insert(Shape{0, "red", "green"});
     storage.insert(Shape{0, "red", "blue"});
-    REQUIRE_THROWS_WITH(storage.insert(Shape{0, "red", "green"}), ContainsSubstring("constraint failed"));
+    REQUIRE_THROWS_MATCHES(storage.insert(Shape{0, "red", "green"}), std::system_error, uniqueExceptionMatcher);
 
     std::vector<List> lists(2);
     REQUIRE_NOTHROW(storage.insert_range(lists.begin(), lists.end()));

@@ -33,14 +33,15 @@ namespace sqlite_orm {
                 // we presume that the connection is opened once in a single-threaded context [also open forever].
                 // therefore we can just use an atomic increment but don't need sequencing due to `prevCount > 0`.
                 if (_retainCount.fetch_add(1, std::memory_order_relaxed) == 0) {
+                    int open_flags = internal::db_open_mode_to_int_flags(this->open_mode);
+#if SQLITE_VERSION_NUMBER >= 3008008
+                    open_flags |= SQLITE_OPEN_EXRESCODE;
+#endif
 
-                    int rc = sqlite3_open_v2(this->filename.c_str(),
-                                             &this->db,
-                                             internal::db_open_mode_to_int_flags(this->open_mode),
-                                             this->vfs_name.c_str());
+                    int rc = sqlite3_open_v2(this->filename.c_str(), &this->db, open_flags, this->vfs_name.c_str());
 
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible, but unexpected*/ {
-                        throw_translated_sqlite_error(this->db);
+                        throw_translated_sqlite_error(rc);
                     }
 
                     if (_didOpenDb) {

@@ -231,14 +231,16 @@ namespace sqlite_orm {
              *  @return column name or empty string if nothing found.
              */
             template<class M, satisfies<std::is_member_pointer, M> = true>
-            const std::string* find_column_name(M m) const {
-                const std::string* res = nullptr;
+            const std::string* find_column_name(M memberPointer) const {
                 using field_type = member_field_type_t<M>;
+
+                const std::string* res = nullptr;
                 iterate_tuple(this->elements,
                               col_index_sequence_with_field_type<elements_type, field_type>{},
-                              [&res, m](auto& c) {
-                                  if (compare_fields(c.member_pointer, m) || compare_fields(c.setter, m)) {
-                                      res = &c.name;
+                              [&res, memberPointer](auto& column) {
+                                  if (compare_fields(column.member_pointer, memberPointer) ||
+                                      compare_fields(column.setter, memberPointer)) {
+                                      res = &column.name;
                                   }
                               });
                 return res;
@@ -343,6 +345,11 @@ namespace sqlite_orm {
             void for_each_column(L&& lambda) const {
                 this->module_details.for_each_column(lambda);
             }
+
+            template<class MP, satisfies<std::is_member_pointer, MP> = true>
+            const std::string* find_column_name(MP memberPointer) const {
+                return this->module_details.find_column_name(memberPointer);
+            }
         };
 
         template<class T>
@@ -387,6 +394,22 @@ namespace sqlite_orm {
             void for_each_column(L&& lambda) const {
                 using col_index_sequence = filter_tuple_sequence_t<columns_type, is_column>;
                 iterate_tuple(this->columns, col_index_sequence{}, lambda);
+            }
+
+            template<class M, satisfies<std::is_member_pointer, M> = true>
+            const std::string* find_column_name(M memberPointer) const {
+                using field_type = member_field_type_t<M>;
+
+                const std::string* res = nullptr;
+                iterate_tuple(this->columns,
+                              col_index_sequence_with_field_type<columns_type, field_type>{},
+                              [&res, memberPointer](auto& column) {
+                                  if (compare_fields(column.member_pointer, memberPointer) ||
+                                      compare_fields(column.setter, memberPointer)) {
+                                      res = &column.name;
+                                  }
+                              });
+                return res;
             }
         };
 #endif

@@ -1,5 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include "../catch_matchers.h"
 
 #include "prepared_common.h"
 
@@ -9,6 +10,7 @@ using namespace sqlite_orm;
 TEST_CASE("Prepared replace range") {
     using namespace PreparedStatementTests;
     using Catch::Matchers::UnorderedEquals;
+    const ErrorCodeExceptionMatcher emptyRangeExceptionMatcher(orm_error_code::empty_range);
 
     const int defaultVisitTime = 50;
 
@@ -41,22 +43,21 @@ TEST_CASE("Prepared replace range") {
     std::vector<User> users;
     std::vector<std::unique_ptr<User>> userPointers;
     std::vector<User> expected;
-    auto lambda = [](const std::unique_ptr<User>& pointer) -> const User& {
-        return *pointer;
-    };
     SECTION("empty") {
-        using Catch::Matchers::ContainsSubstring;
-
         expected.push_back(User{1, "Team BS"});
         expected.push_back(User{2, "Shy'm"});
         expected.push_back(User{3, "Maître Gims"});
         SECTION("straight") {
-            REQUIRE_THROWS_WITH(storage.prepare(replace_range(users.begin(), users.end())),
-                                ContainsSubstring("incomplete input"));
+            REQUIRE_THROWS_MATCHES(storage.prepare(replace_range(users.begin(), users.end())),
+                                   std::system_error,
+                                   emptyRangeExceptionMatcher);
         }
         SECTION("pointers") {
-            REQUIRE_THROWS_WITH(storage.prepare(replace_range<User>(userPointers.begin(), userPointers.end(), lambda)),
-                                ContainsSubstring("incomplete input"));
+            REQUIRE_THROWS_MATCHES(
+                storage.prepare(
+                    replace_range<User>(userPointers.begin(), userPointers.end(), &std::unique_ptr<User>::operator*)),
+                std::system_error,
+                emptyRangeExceptionMatcher);
         }
     }
     SECTION("one existing") {
@@ -73,7 +74,8 @@ TEST_CASE("Prepared replace range") {
         }
         SECTION("pointers") {
             userPointers.push_back(std::make_unique<User>(user));
-            auto statement = storage.prepare(replace_range<User>(userPointers.begin(), userPointers.end(), lambda));
+            auto statement = storage.prepare(
+                replace_range<User>(userPointers.begin(), userPointers.end(), &std::unique_ptr<User>::operator*));
             REQUIRE(get<0>(statement) == userPointers.begin());
             REQUIRE(get<1>(statement) == userPointers.end());
             storage.execute(statement);
@@ -97,7 +99,8 @@ TEST_CASE("Prepared replace range") {
         SECTION("pointers") {
             userPointers.push_back(std::make_unique<User>(user));
             userPointers.push_back(std::make_unique<User>(user2));
-            auto statement = storage.prepare(replace_range<User>(userPointers.begin(), userPointers.end(), lambda));
+            auto statement = storage.prepare(
+                replace_range<User>(userPointers.begin(), userPointers.end(), &std::unique_ptr<User>::operator*));
             REQUIRE(get<0>(statement) == userPointers.begin());
             REQUIRE(get<1>(statement) == userPointers.end());
             storage.execute(statement);
@@ -121,7 +124,8 @@ TEST_CASE("Prepared replace range") {
             userPointers.push_back(std::make_unique<User>(user));
             userPointers.push_back(std::make_unique<User>(user2));
             userPointers.push_back(std::make_unique<User>(user3));
-            auto statement = storage.prepare(replace_range<User>(userPointers.begin(), userPointers.end(), lambda));
+            auto statement = storage.prepare(
+                replace_range<User>(userPointers.begin(), userPointers.end(), &std::unique_ptr<User>::operator*));
             REQUIRE(get<0>(statement) == userPointers.begin());
             REQUIRE(get<1>(statement) == userPointers.end());
             storage.execute(statement);

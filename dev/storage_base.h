@@ -538,7 +538,7 @@ namespace sqlite_orm {
                                                       function,
                                                       functionExists ? collate_callback : nullptr);
                     if (rc != SQLITE_OK) {
-                        throw_translated_sqlite_error(db);
+                        throw_translated_sqlite_error(rc);
                     }
                 }
 
@@ -689,10 +689,9 @@ namespace sqlite_orm {
                          connection_control connectionCtrl,
                          on_open_spec onOpenSpec,
                          int foreignKeysCount) :
-                on_open{std::move(onOpenSpec.onOpen)}, isOpenedForever{connectionCtrl.open_forever},
-                pragma(std::bind(&storage_base::get_connection, this)),
+                on_open{std::move(onOpenSpec.onOpen)}, pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
-                inMemory(filename.empty() || filename == ":memory:"),
+                inMemory(filename.empty() || filename == ":memory:"), isOpenedForever{connectionCtrl.open_forever},
                 connection(std::make_unique<connection_holder>(
                     std::move(filename),
                     std::bind(&storage_base::on_open_internal, this, std::placeholders::_1),
@@ -774,7 +773,7 @@ namespace sqlite_orm {
                 for (auto& p: this->collatingFunctions) {
                     int rc = sqlite3_create_collation(db, p.first.c_str(), SQLITE_UTF8, &p.second, collate_callback);
                     if (rc != SQLITE_OK) {
-                        throw_translated_sqlite_error(db);
+                        throw_translated_sqlite_error(rc);
                     }
                 }
 
@@ -884,7 +883,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
                 auto it = std::ranges::find(functions, name, &udf_proxy::name);
 #else
-                auto it = std::find_if(functions.begin(), functions.end(), [&name](auto& udfProxy) {
+                auto it = std::find_if(functions.begin(), functions.end(), [&name](const udf_proxy& udfProxy) {
                     return udfProxy.name == name;
                 });
 #endif
@@ -901,7 +900,7 @@ namespace sqlite_orm {
                                                             nullptr,
                                                             nullptr);
                         if (rc != SQLITE_OK) {
-                            throw_translated_sqlite_error(db);
+                            throw_translated_sqlite_error(rc);
                         }
                     }
                     it = functions.erase(it);
@@ -921,7 +920,7 @@ namespace sqlite_orm {
                                                     nullptr,
                                                     nullptr);
                 if (rc != SQLITE_OK) {
-                    throw_translated_sqlite_error(db);
+                    throw_translated_sqlite_error(rc);
                 }
             }
 

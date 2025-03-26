@@ -279,7 +279,12 @@ struct NonDefaultCtorAggregateFunction {
 };
 
 TEST_CASE("custom functions") {
-    using Catch::Matchers::ContainsSubstring;
+    const ErrorCodeExceptionMatcher noMemExceptionMatcher(sqlite_errc(SQLITE_NOMEM));
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+    const ErrorCodeExceptionMatcher notFoundExceptionMatcher(orm_error_code::function_not_found);
+#else
+    const ErrorCodeExceptionMatcher notFoundExceptionMatcher(sqlite_errc(SQLITE_ERROR));
+#endif
 
     SqrtFunction::callsCount = 0;
     StatelessHasPrefixFunction::callsCount = 0;
@@ -309,11 +314,11 @@ TEST_CASE("custom functions") {
     // test w/o a result set, i.e when the final aggregate call is the first to require the aggregate function
     REQUIRE_THROWS_MATCHES(storage.select(func<NonAllocatableAggregateFunction>(&User::id)),
                            std::system_error,
-                           ErrorCodeExceptionMatcher(sqlite_errc(SQLITE_NOMEM)));
+                           noMemExceptionMatcher);
     storage.delete_aggregate_function<NonAllocatableAggregateFunction>();
 
     //   call before creation
-    REQUIRE_THROWS_WITH(storage.select(func<SqrtFunction>(4)), ContainsSubstring("no such function"));
+    REQUIRE_THROWS_MATCHES(storage.select(func<SqrtFunction>(4)), std::system_error, notFoundExceptionMatcher);
 
     //  create function
     REQUIRE(SqrtFunction::callsCount == 0);
@@ -425,7 +430,7 @@ TEST_CASE("custom functions") {
     storage.create_aggregate_function<NonAllocatableAggregateFunction>();
     REQUIRE_THROWS_MATCHES(storage.select(func<NonAllocatableAggregateFunction>(&User::id)),
                            std::system_error,
-                           ErrorCodeExceptionMatcher(sqlite_errc(SQLITE_NOMEM)));
+                           noMemExceptionMatcher);
     storage.delete_aggregate_function<NonAllocatableAggregateFunction>();
 
     storage.create_scalar_function<FirstFunction>();
