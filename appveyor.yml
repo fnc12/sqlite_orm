@@ -26,14 +26,14 @@ environment:
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_23=ON"
 
     - job_name: clang, C++23
-      appveyor_build_worker_image: Ubuntu
+      appveyor_build_worker_image: Ubuntu2204
       CC: clang
       CXX: clang++
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_23=ON"
       cmake_build_parallel: ""
 
     - job_name: gcc, C++23
-      appveyor_build_worker_image: Ubuntu
+      appveyor_build_worker_image: Ubuntu2204
       CC: gcc
       CXX: g++
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_23=ON"
@@ -132,6 +132,7 @@ for:
   matrix:
     only:
       - appveyor_build_worker_image: Ubuntu
+      - appveyor_build_worker_image: Ubuntu2204
   init:
     - |-
       echo $appveyor_build_worker_image
