@@ -1486,6 +1486,10 @@ namespace sqlite_orm {
                 perform_step(stmt);
             }
 
+            /** 
+             *  @return The rowid of the last inserted row.
+             *  @note The returned rowid is only meaningful in single-thread contexts.
+             */
             template<class T, class... Cols>
             int64 execute(const prepared_statement_t<insert_explicit<T, Cols...>>& statement) {
                 using object_type = statement_object_type_t<decltype(statement)>;
@@ -1539,6 +1543,10 @@ namespace sqlite_orm {
                 perform_step(stmt);
             }
 
+            /** 
+             *  @return The rowid of the last inserted row.
+             *  @note The returned rowid is only meaningful in single-thread contexts.
+             */
             template<class T,
                      std::enable_if_t<polyfill::disjunction<is_insert<T>, is_insert_range<T>>::value, bool> = true>
             int64 execute(const prepared_statement_t<T>& statement) {
