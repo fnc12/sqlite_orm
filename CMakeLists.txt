@@ -61,7 +61,9 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
         -Werror=reorder
     )
 elseif(MSVC)
-    target_compile_options(/we5038)
+    target_compile_options(sqlite_orm INTERFACE
+        /we5038
+    )
 endif()
 
 include(ucm)
