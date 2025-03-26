@@ -44,7 +44,8 @@ using std::nullptr_t;
 #endif
 
 #if (__cpp_noexcept_function_type < 201510L) ||                                                                        \
-    (__cpp_fold_expressions < 201603L || __cpp_aggregate_bases < 201603L) || (__cpp_if_constexpr < 201606L)
+    (__cpp_fold_expressions < 201603L || __cpp_constexpr < 201603L || __cpp_aggregate_bases < 201603L) ||              \
+    (__cpp_if_constexpr < 201606L)
 #error A fully C++17-compliant compiler is required.
 #endif
 
@@ -65,10 +66,6 @@ using std::nullptr_t;
 #define SQLITE_ORM_HAS_INCLUDE(file) __has_include(file)
 #else
 #define SQLITE_ORM_HAS_INCLUDE(file) 0L
-#endif
-
-#if __cpp_constexpr >= 201603L
-#define SQLITE_ORM_CONSTEXPR_LAMBDAS_SUPPORTED
 #endif
 
 #if __cpp_range_based_for >= 201603L
@@ -201,12 +198,6 @@ using std::nullptr_t;
 
 #if SQLITE_ORM_HAS_INCLUDE(<version>)
 #include <version>
-#endif
-
-#ifdef SQLITE_ORM_CONSTEXPR_LAMBDAS_SUPPORTED
-#define SQLITE_ORM_CONSTEXPR_LAMBDA_CPP17 constexpr
-#else
-#define SQLITE_ORM_CONSTEXPR_LAMBDA_CPP17
 #endif
 
 #ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
@@ -690,7 +681,7 @@ namespace sqlite_orm {
             template<class Void, class... X>
             struct is_invocable_impl : std::false_type {};
 
-#if __cplusplus >= 201703
+#if __cplusplus >= 201703L
             template<class... Ts>
             struct is_invocable_impl<polyfill::void_t<decltype(polyfill::invoke(std::declval<Ts>()...))>, Ts...>
                 : std::true_type {};
@@ -17482,7 +17473,7 @@ namespace sqlite_orm {
             std::allocator<UDF> allocator;
             using traits = std::allocator_traits<decltype(allocator)>;
 
-            SQLITE_ORM_CONSTEXPR_LAMBDA_CPP17 auto deallocate = [](void* location) noexcept {
+            constexpr auto deallocate = [](void* location) noexcept {
                 std::allocator<UDF> allocator;
                 using traits = std::allocator_traits<decltype(allocator)>;
                 traits::deallocate(allocator, (UDF*)location, 1);
@@ -17496,13 +17487,13 @@ namespace sqlite_orm {
          */
         template<class UDF>
         std::pair<void* (*)(), xdestroy_fn_t> obtain_udf_allocator() {
-            SQLITE_ORM_CONSTEXPR_LAMBDA_CPP17 auto allocate = []() {
+            constexpr auto allocate = []() {
                 std::allocator<UDF> allocator;
                 using traits = std::allocator_traits<decltype(allocator)>;
                 return (void*)traits::allocate(allocator, 1);
             };
 
-            SQLITE_ORM_CONSTEXPR_LAMBDA_CPP17 auto deallocate = [](void* location) noexcept {
+            constexpr auto deallocate = [](void* location) noexcept {
                 std::allocator<UDF> allocator;
                 using traits = std::allocator_traits<decltype(allocator)>;
                 traits::deallocate(allocator, (UDF*)location, 1);
