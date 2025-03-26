@@ -39,15 +39,11 @@ using std::nullptr_t;
  *  This header detects missing core C++ language features on which sqlite_orm depends, bailing out with a hard error.
  */
 
-#if __cpp_aggregate_nsdmi < 201304L
+#if __cpp_aggregate_nsdmi < 201304L || __cpp_constexpr < 201304L
 #error A fully C++17-compliant compiler is required.
 #endif
 
-#if __cpp_constexpr < 201304L
-#error A fully C++17-compliant compiler is required.
-#endif
-
-#if __cpp_if_constexpr < 201606L
+#if __cpp_if_constexpr < 201606L || __cpp_fold_expressions < 201603L
 #error A fully C++17-compliant compiler is required.
 #endif
 
@@ -76,10 +72,6 @@ using std::nullptr_t;
 
 #if __cpp_aggregate_bases >= 201603L
 #define SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-#endif
-
-#if __cpp_fold_expressions >= 201603L
-#define SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
 #endif
 
 #if __cpp_constexpr >= 201603L
@@ -282,9 +274,7 @@ using std::nullptr_t;
 #define SQLITE_ORM_WITH_CPP20_ALIASES
 #endif
 
-#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
 #define SQLITE_ORM_WITH_CTE
-#endif
 
 // define the inline namespace "literals" so that it is available even if it was not introduced by a feature
 namespace sqlite_orm {
@@ -1355,7 +1345,7 @@ namespace sqlite_orm {
         SQLITE_ORM_CONSTEVAL auto index_sequence_value_at(std::index_sequence<Idx...>) {
             return Idx...[Pos];
         }
-#elif defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
+#else
         /**
 
          *  Get the index value of an `index_sequence` at a specific position.
@@ -1373,19 +1363,6 @@ namespace sqlite_orm {
             // note: `(void)` cast silences warning 'expression result unused'
             (void)((result = Idx, i++ == Pos) || ...);
             return result;
-        }
-#else
-        /**
-
-         *  Get the index value of an `index_sequence` at a specific position.
-
-         *  `Pos` must always be `0`.
-
-         */
-        template<size_t Pos, size_t I, size_t... Idx>
-        SQLITE_ORM_CONSTEVAL size_t index_sequence_value_at(std::index_sequence<I, Idx...>) {
-            static_assert(Pos == 0, "");
-            return I;
         }
 #endif
 
@@ -1527,8 +1504,6 @@ namespace sqlite_orm {
         template<class Pack, template<class...> class Op>
         using transform_tuple_t = typename tuple_transformer<Pack, Op>::type;
 
-        //  note: applying a combiner like `plus_fold_integrals` needs fold expressions
-#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
         /*
          *  Apply a projection to a tuple's elements filtered by the specified indexes, and combine the results.
          *  
@@ -1594,7 +1569,6 @@ namespace sqlite_orm {
                                                                  IdxSeq{},
                                                                  project_nested_tuple_size<NestedProject>{},
                                                                  std::integral_constant<size_t, 0u>{}));
-#endif
 
         template<class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
         constexpr R create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, Projection project = {}) {
@@ -1642,7 +1616,6 @@ namespace sqlite_orm {
 
 namespace sqlite_orm {
     namespace internal {
-#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
         template<bool reversed = false, class Tpl, size_t... Idx, class L>
         constexpr void iterate_tuple(Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
             if constexpr (reversed) {
@@ -1654,21 +1627,7 @@ namespace sqlite_orm {
                 (lambda(std::get<Idx>(tpl)), ...);
             }
         }
-#else
-        template<bool reversed = false, class Tpl, class L>
-        void iterate_tuple(Tpl& /*tpl*/, std::index_sequence<>, L&& /*lambda*/) {}
 
-        template<bool reversed = false, class Tpl, size_t I, size_t... Idx, class L>
-        void iterate_tuple(Tpl& tpl, std::index_sequence<I, Idx...>, L&& lambda) {
-            if constexpr (reversed) {
-                iterate_tuple<reversed>(tpl, std::index_sequence<Idx...>{}, std::forward<L>(lambda));
-                lambda(std::get<I>(tpl));
-            } else {
-                lambda(std::get<I>(tpl));
-                iterate_tuple<reversed>(tpl, std::index_sequence<Idx...>{}, std::forward<L>(lambda));
-            }
-        }
-#endif
         template<bool reversed = false, class Tpl, class L>
         constexpr void iterate_tuple(Tpl&& tpl, L&& lambda) {
             iterate_tuple<reversed>(tpl,
@@ -1676,18 +1635,11 @@ namespace sqlite_orm {
                                     std::forward<L>(lambda));
         }
 
-#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
         template<class Tpl, size_t... Idx, class L>
         void iterate_tuple(std::index_sequence<Idx...>, L&& lambda) {
             (lambda((std::tuple_element_t<Idx, Tpl>*)nullptr), ...);
         }
-#else
-        template<class Tpl, size_t... Idx, class L>
-        void iterate_tuple(std::index_sequence<Idx...>, L&& lambda) {
-            using Sink = int[sizeof...(Idx)];
-            (void)Sink{(lambda((std::tuple_element_t<Idx, Tpl>*)nullptr), 0)...};
-        }
-#endif
+
         template<class Tpl, class L>
         void iterate_tuple(L&& lambda) {
             iterate_tuple<Tpl>(std::make_index_sequence<std::tuple_size<Tpl>::value>{}, std::forward<L>(lambda));
@@ -10443,18 +10395,10 @@ namespace sqlite_orm {
             }
 
           private:
-#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
             template<class Tpl, size_t... Idx, class Projection>
             void operator()(const Tpl& tpl, std::index_sequence<Idx...>, Projection project) const {
                 (this->bind(polyfill::invoke(project, std::get<Idx>(tpl)), Idx), ...);
             }
-#else
-            template<class Tpl, size_t... Idx, class Projection>
-            void operator()(const Tpl& tpl, std::index_sequence<Idx...>, Projection project) const {
-                using Sink = int[sizeof...(Idx)];
-                (void)Sink{(this->bind(polyfill::invoke(project, std::get<Idx>(tpl)), Idx), 0)...};
-            }
-#endif
 
             template<class T>
             void bind(const T& t, size_t idx) const {
@@ -22774,9 +22718,8 @@ namespace sqlite_orm {
 
             template<class O>
             void assert_updatable_type() const {
-#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
-                using Table = storage_pick_table_t<O, db_objects_type>;
-                using elements_type = elements_type_t<Table>;
+                using table_type = storage_pick_table_t<O, db_objects_type>;
+                using elements_type = elements_type_t<table_type>;
                 using col_index_sequence = filter_tuple_sequence_t<elements_type, is_column>;
                 using pk_index_sequence = filter_tuple_sequence_t<elements_type, is_primary_key>;
                 using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
@@ -22790,7 +22733,6 @@ namespace sqlite_orm {
                 static_assert(
                     nonPrimaryKeysColumnsCount > 0,
                     "A table with only primary keys cannot be updated. You need at least 1 non-primary key column");
-#endif
             }
 
             template<class O,

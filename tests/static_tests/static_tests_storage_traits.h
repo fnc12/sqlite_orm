@@ -51,18 +51,10 @@ namespace sqlite_orm {
             template<class DBOs, class Lookup>
             struct storage_foreign_keys_count_impl : std::integral_constant<int, 0> {};
 
-#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
             template<class... DBO, class Lookup>
             struct storage_foreign_keys_count_impl<db_objects_tuple<DBO...>, Lookup> {
                 static constexpr int value = (table_foreign_keys_count<DBO, Lookup>::value + ...);
             };
-#else
-            template<class H, class... DBO, class Lookup>
-            struct storage_foreign_keys_count_impl<db_objects_tuple<H, DBO...>, Lookup> {
-                static constexpr int value = table_foreign_keys_count<H, Lookup>::value +
-                                             storage_foreign_keys_count_impl<db_objects_tuple<DBO...>, Lookup>::value;
-            };
-#endif
 
             /**
              * S - storage class
