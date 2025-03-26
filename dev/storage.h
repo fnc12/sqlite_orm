@@ -1209,7 +1209,7 @@ namespace sqlite_orm {
             sync_schema_result sync_table(const Table& table, sqlite3* db, bool preserve);
 
             template<class Table, satisfies<is_table, Table> = true>
-            sync_schema_result _sync_normal_table(const Table& table, sqlite3* db, bool preserve);
+            sync_schema_result sync_regular_table(const Table& table, sqlite3* db, bool preserve);
 
             template<class C>
             void add_column(sqlite3* db, const std::string& tableName, const C& column) const {
