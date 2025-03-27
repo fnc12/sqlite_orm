@@ -3199,6 +3199,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::common_type
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#include <concepts>  //  std::same_as
+#endif
 #endif
 
 namespace sqlite_orm {
@@ -3212,6 +3215,15 @@ namespace sqlite_orm {
             using type = void;
         };
 
+        template<class... Args>
+        using same_or_void_t = typename same_or_void<Args...>::type;
+
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+        template<class A, std::same_as<A>... Rest>
+        struct same_or_void<A, Rest...> {
+            using type = A;
+        };
+#else
         template<class A>
         struct same_or_void<A> {
             using type = A;
@@ -3222,11 +3234,9 @@ namespace sqlite_orm {
             using type = A;
         };
 
-        template<class... Args>
-        using same_or_void_t = typename same_or_void<Args...>::type;
-
         template<class A, class... Args>
         struct same_or_void<A, A, Args...> : same_or_void<A, Args...> {};
+#endif
 
         template<class Pack>
         struct common_type_of;
