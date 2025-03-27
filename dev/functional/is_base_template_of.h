@@ -14,7 +14,7 @@ namespace sqlite_orm {
          */
 #ifdef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
         template<template<typename...> class Base>
-        struct is_base_of_template_impl {
+        struct is_base_template_of_impl {
             template<typename... Ts>
             static constexpr std::true_type test(const Base<Ts...>&);
 
@@ -22,19 +22,19 @@ namespace sqlite_orm {
         };
 
         template<typename T, template<typename...> class C>
-        using is_base_of_template = decltype(is_base_of_template_impl<C>::test(std::declval<T>()));
+        using is_base_template_of = decltype(is_base_template_of_impl<C>::test(std::declval<T>()));
 #else
         template<template<typename...> class C, typename... Ts>
-        std::true_type is_base_of_template_impl(const C<Ts...>&);
+        std::true_type is_base_template_of_impl(const C<Ts...>&);
 
         template<template<typename...> class C>
-        std::false_type is_base_of_template_impl(...);
+        std::false_type is_base_template_of_impl(...);
 
         template<typename T, template<typename...> class C>
-        using is_base_of_template = decltype(is_base_of_template_impl<C>(std::declval<T>()));
+        using is_base_template_of = decltype(is_base_template_of_impl<C>(std::declval<T>()));
 #endif
 
         template<typename T, template<typename...> class C>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_base_of_template_v = is_base_of_template<T, C>::value;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_base_template_of_v = is_base_template_of<T, C>::value;
     }
 }

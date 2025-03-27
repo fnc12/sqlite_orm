@@ -12,7 +12,7 @@
 #include "functional/cxx_optional.h"
 
 #include "functional/cxx_type_traits_polyfill.h"
-#include "is_base_of_template.h"
+#include "functional/is_base_template_of.h"
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_transformer.h"
 #include "tuple_helper/tuple_iteration.h"
@@ -154,7 +154,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_compound_operator_v = is_base_of_template<T, compound_operator>::value;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_compound_operator_v = is_base_template_of<T, compound_operator>::value;
 
         template<class T>
         using is_compound_operator = polyfill::bool_constant<is_compound_operator_v<T>>;
