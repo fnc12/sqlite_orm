@@ -2,6 +2,7 @@
 #include <catch2/catch_all.hpp>
 
 #include <type_traits>  //  std::is_same
+#include <ctime>  //  std::time_t
 
 #include "../../static_tests/static_tests_storage_traits.h"
 
@@ -338,7 +339,7 @@ TEST_CASE("statement_serializer foreign key") {
         struct UserVisit {
             int userId = 0;
             std::string userFirstName;
-            time_t time = 0;
+            std::time_t time = 0;
         };
 
         auto fk = foreign_key(&UserVisit::userId, &UserVisit::userFirstName).references(&User::id, &User::firstName);

@@ -1,6 +1,8 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 
+#include <ctime>  //  std::time_t
+
 using namespace sqlite_orm;
 
 namespace {
@@ -227,7 +229,7 @@ namespace {
     struct Visit1 {
         int id = 0;
         int userId = 0;
-        time_t time = 0;
+        std::time_t time = 0;
     };
 }
 #if SQLITE_VERSION_NUMBER >= 3006019

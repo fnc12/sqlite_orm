@@ -2,6 +2,8 @@
 #include <catch2/catch_all.hpp>
 
 #include <type_traits>  //  std::is_same
+#include <cstdint>  //  std::uint8_t
+#include <ctime>  //  std::time_t, std::time
 
 #include "../static_tests/static_tests_storage_traits.h"
 
@@ -22,8 +24,8 @@ TEST_CASE("Foreign key") {
         int id;
         std::unique_ptr<int> location;
         std::unique_ptr<int> user;
-        int visited_at;
-        uint8_t mark;
+        std::time_t visited_at;
+        std::uint8_t mark;
     };
 
     //  this case didn't compile on linux until `typedef constraints_type` was added to `foreign_key_t`
@@ -56,8 +58,8 @@ TEST_CASE("Foreign key") {
     }
     storage.sync_schema();
 
-    int fromDate = int(std::time(nullptr));
-    int toDate = int(std::time(nullptr));
+    std::time_t fromDate = std::time(nullptr);
+    std::time_t toDate = std::time(nullptr);
     int toDistance = 100;
     auto id = 10;
     storage.select(columns(&Visit::mark, &Visit::visited_at, &Location::place),
