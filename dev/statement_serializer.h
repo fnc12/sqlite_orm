@@ -18,7 +18,7 @@
 
 #include "functional/cxx_type_traits_polyfill.h"  // std::remove_cvref, std::disjunction
 #include "functional/cxx_functional_polyfill.h"  // std::identity, std::invoke
-#include "functional/static_magic.h"
+#include "functional/always_default.h"
 #include "functional/mpl.h"
 #include "tuple_helper/tuple_filter.h"
 #include "ast/upsert_clause.h"

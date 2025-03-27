@@ -18978,7 +18978,7 @@ namespace sqlite_orm {
 // std::remove_cvref, std::disjunction
 // #include "functional/cxx_functional_polyfill.h"
 // std::identity, std::invoke
-// #include "functional/static_magic.h"
+// #include "functional/always_default.h"
 
 namespace sqlite_orm {
 
