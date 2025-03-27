@@ -18993,14 +18993,14 @@ namespace sqlite_orm {
         // note: this is a class template accompanied with a variable template because older compilers (e.g. VC 2017)
         // cannot handle a static lambda variable inside a template function
         template<class R>
-        struct empty_callable_t {
+        struct always_default_t {
             template<class... Args>
             R operator()(Args&&...) const {
                 return R();
             }
         };
         template<class R = void>
-        constexpr empty_callable_t<R> empty_callable{};
+        constexpr always_default_t<R> always_default{};
     }
 
 }
@@ -21033,7 +21033,7 @@ namespace sqlite_orm {
                    << streaming_non_generated_column_names(table) << ")"
                    << " VALUES ("
                    << streaming_field_values_excluding(check_if<is_generated_always>{},
-                                                       empty_callable<std::false_type>,  //  don't exclude
+                                                       always_default<std::false_type>,  //  don't exclude
                                                        context,
                                                        get_ref(statement.object))
                    << ")";

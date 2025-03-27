@@ -2,21 +2,23 @@
 
 namespace sqlite_orm {
 
-    //  got from here
-    //  https://stackoverflow.com/questions/37617677/implementing-a-compile-time-static-if-logic-for-different-string-types-in-a-co
     namespace internal {
 
-        // note: this is a class template accompanied with a variable template because older compilers (e.g. VC 2017)
-        // cannot handle a static lambda variable inside a template function
+        /*  
+         *  Function object whose variadic call operator always returns the default constructed value of its template parameter type.
+         */
         template<class R>
-        struct empty_callable_t {
+        struct always_default_of {
             template<class... Args>
-            R operator()(Args&&...) const {
+            constexpr R operator()(Args&&...) const {
                 return R();
             }
+
+            using is_transparent = int;
         };
-        template<class R = void>
-        constexpr empty_callable_t<R> empty_callable{};
+
+        template<class R>
+        constexpr always_default_of<R> always_default{};
     }
 
 }
