@@ -257,7 +257,7 @@ namespace sqlite_orm {
             return valid;
         }
 
-#if __cplusplus >= 201703L  // C++17 or later
+#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR
         template<size_t I, const char* PointerArg, const char* Binding>
         SQLITE_ORM_CONSTEVAL bool assert_same_pointer_tag() {
             constexpr bool valid = Binding == PointerArg;

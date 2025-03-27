@@ -72,8 +72,8 @@ environment:
       cmake_build_parallel: ""
 
     # Representative for C++17
-    - job_name: Visual Studio 2019, x64, C++17
-      appveyor_build_worker_image: Visual Studio 2019
+    - job_name: Visual Studio 2017, x64, C++17
+      appveyor_build_worker_image: Visual Studio 2017
       platform: x64
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
 
@@ -95,7 +95,7 @@ for:
   # Windows
   matrix:
     only:
-      - appveyor_build_worker_image: Visual Studio 2019
+      - appveyor_build_worker_image: Visual Studio 2017
       - appveyor_build_worker_image: Visual Studio 2022
   init:
     - |-
@@ -104,7 +104,7 @@ for:
       if "%platform%"=="x64" (set architecture=-A x64)
       if "%platform%"=="x86" (set architecture=-A Win32)
       if "%appveyor_build_worker_image%"=="Visual Studio 2022" (set generator="Visual Studio 17 2022" %architecture%)
-      if "%appveyor_build_worker_image%"=="Visual Studio 2019" (set generator="Visual Studio 16 2019" %architecture%)
+      if "%appveyor_build_worker_image%"=="Visual Studio 2017" (set generator="Visual Studio 15 2017" %architecture%)
   install:
     - |-
       cd C:\Tools\vcpkg

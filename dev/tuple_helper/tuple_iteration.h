@@ -13,7 +13,7 @@ namespace sqlite_orm {
         constexpr void iterate_tuple(Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
             if constexpr (reversed) {
                 // nifty fold expression trick: make use of guaranteed right-to-left evaluation order when folding over operator=
-                int sink;
+                [[maybe_unused]] int sink;
                 // note: `(void)` cast silences warning 'expression result unused'
                 (void)((lambda(std::get<Idx>(tpl)), sink) = ... = 0);
             } else {
@@ -44,18 +44,18 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
         template<class Tpl, size_t... Idx, class L>
-        void iterate_tuple(std::index_sequence<Idx...>, L&& lambda) {
+        constexpr void iterate_tuple(std::index_sequence<Idx...>, L&& lambda) {
             (lambda((std::tuple_element_t<Idx, Tpl>*)nullptr), ...);
         }
 #else
         template<class Tpl, size_t... Idx, class L>
-        void iterate_tuple(std::index_sequence<Idx...>, L&& lambda) {
+        constexpr void iterate_tuple(std::index_sequence<Idx...>, L&& lambda) {
             using Sink = int[sizeof...(Idx)];
             (void)Sink{(lambda((std::tuple_element_t<Idx, Tpl>*)nullptr), 0)...};
         }
 #endif
         template<class Tpl, class L>
-        void iterate_tuple(L&& lambda) {
+        constexpr void iterate_tuple(L&& lambda) {
             iterate_tuple<Tpl>(std::make_index_sequence<std::tuple_size<Tpl>::value>{}, std::forward<L>(lambda));
         }
 

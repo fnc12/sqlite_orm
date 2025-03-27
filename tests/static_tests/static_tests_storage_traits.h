@@ -33,45 +33,6 @@ namespace sqlite_orm {
             struct storage_columns_count
                 : storage_columns_count_impl<storage_find_table_t<Lookup, typename S::db_objects_type>> {};
 
-            /**
-             *  Table A `table_t<>`
-             *  Lookup is object type which is the reference target (e.g. foreign_key(&Visit::userId).references(&User::id) has Lookup = User)
-             */
-            template<class Table, class Lookup>
-            struct table_foreign_keys_count
-                : count_filtered_tuple<elements_type_t<Table>,
-                                       check_if_is_type<Lookup>::template fn,
-                                       filter_tuple_sequence_t<elements_type_t<Table>, is_foreign_key>,
-                                       target_type_t> {};
-
-            /**
-             *  DBOs - db_objects_tuple
-             *  Lookup - type mapped to storage
-             */
-            template<class DBOs, class Lookup>
-            struct storage_foreign_keys_count_impl : std::integral_constant<int, 0> {};
-
-#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
-            template<class... DBO, class Lookup>
-            struct storage_foreign_keys_count_impl<db_objects_tuple<DBO...>, Lookup> {
-                static constexpr int value = (table_foreign_keys_count<DBO, Lookup>::value + ...);
-            };
-#else
-            template<class H, class... DBO, class Lookup>
-            struct storage_foreign_keys_count_impl<db_objects_tuple<H, DBO...>, Lookup> {
-                static constexpr int value = table_foreign_keys_count<H, Lookup>::value +
-                                             storage_foreign_keys_count_impl<db_objects_tuple<DBO...>, Lookup>::value;
-            };
-#endif
-
-            /**
-             * S - storage class
-             * Lookup - type mapped to storage
-             * This class tells how many types mapped to DBOs have foreign keys to Lookup
-             */
-            template<class S, class Lookup>
-            struct storage_foreign_keys_count : storage_foreign_keys_count_impl<typename S::db_objects_type, Lookup> {};
-
             template<class Table, class Lookup>
             using table_foreign_keys_t =
                 filter_tuple_t<elements_type_t<Table>,
@@ -82,7 +43,7 @@ namespace sqlite_orm {
             /*
              *  Implementation note: must be a struct instead of an alias template because the foreign keys tuple
              *  must be hoisted into a named alias, otherwise type replacement may fail for legacy compilers
-             *  if an alias template has a dependent expression in it [SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION].
+             *  if a template template has a dependent expression in it [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
              */
             template<class Table, class Lookup>
             struct table_fk_references {
@@ -119,6 +80,32 @@ namespace sqlite_orm {
 
             template<class S, class Lookup>
             struct storage_foreign_keys : storage_foreign_keys_impl<typename S::db_objects_type, Lookup> {};
+
+            template<class Table, class Target>
+            constexpr int table_foreign_keys_target_count() {
+                using namespace sqlite_orm::internal;
+
+                using elements_type = elements_type_t<Table>;
+                using fk_index_sequence = filter_tuple_sequence_t<elements_type, is_foreign_key>;
+                using filtered_index_sequence = filter_tuple_sequence_t<elements_type,
+                                                                        check_if_is_type<Target>::template fn,
+                                                                        target_type_t,
+                                                                        fk_index_sequence>;
+
+                return int(filtered_index_sequence::size());
+            }
+
+            template<class DBOs, class Target>
+            constexpr int storage_foreign_keys_target_count() {
+                using namespace sqlite_orm::internal;
+
+                int res = 0;
+                iterate_tuple<DBOs>(tables_index_sequence<DBOs>{}, [&res](const auto* dummy) {
+                    using table_type = std::remove_pointer_t<decltype(dummy)>;
+                    res += table_foreign_keys_target_count<table_type, Target>();
+                });
+                return res;
+            }
         }
     }
 }

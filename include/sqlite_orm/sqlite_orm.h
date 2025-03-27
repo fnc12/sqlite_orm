@@ -782,7 +782,7 @@ namespace sqlite_orm {
              *  Determines whether a class template has a nested metafunction `fn`.
              * 
              *  Implementation note: the technique of specialiazing on the inline variable must come first because
-             *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
+             *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR].
              */
             template<class T, class SFINAE = void>
             SQLITE_ORM_INLINE_VAR constexpr bool is_quoted_metafuntion_v = false;
@@ -1647,7 +1647,7 @@ namespace sqlite_orm {
         constexpr void iterate_tuple(Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
             if constexpr (reversed) {
                 // nifty fold expression trick: make use of guaranteed right-to-left evaluation order when folding over operator=
-                int sink;
+                [[maybe_unused]] int sink;
                 // note: `(void)` cast silences warning 'expression result unused'
                 (void)((lambda(std::get<Idx>(tpl)), sink) = ... = 0);
             } else {
@@ -1678,18 +1678,18 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
         template<class Tpl, size_t... Idx, class L>
-        void iterate_tuple(std::index_sequence<Idx...>, L&& lambda) {
+        constexpr void iterate_tuple(std::index_sequence<Idx...>, L&& lambda) {
             (lambda((std::tuple_element_t<Idx, Tpl>*)nullptr), ...);
         }
 #else
         template<class Tpl, size_t... Idx, class L>
-        void iterate_tuple(std::index_sequence<Idx...>, L&& lambda) {
+        constexpr void iterate_tuple(std::index_sequence<Idx...>, L&& lambda) {
             using Sink = int[sizeof...(Idx)];
             (void)Sink{(lambda((std::tuple_element_t<Idx, Tpl>*)nullptr), 0)...};
         }
 #endif
         template<class Tpl, class L>
-        void iterate_tuple(L&& lambda) {
+        constexpr void iterate_tuple(L&& lambda) {
             iterate_tuple<Tpl>(std::make_index_sequence<std::tuple_size<Tpl>::value>{}, std::forward<L>(lambda));
         }
 
@@ -11253,7 +11253,7 @@ namespace sqlite_orm {
             return valid;
         }
 
-#if __cplusplus >= 201703L  // C++17 or later
+#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR
         template<size_t I, const char* PointerArg, const char* Binding>
         SQLITE_ORM_CONSTEVAL bool assert_same_pointer_tag() {
             constexpr bool valid = Binding == PointerArg;
