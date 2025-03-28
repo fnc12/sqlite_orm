@@ -12,7 +12,11 @@ namespace sqlite_orm {
         constexpr void iterate_tuple(Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
             if constexpr (reversed) {
                 // nifty fold expression trick: make use of guaranteed right-to-left evaluation order when folding over operator=
+#ifdef SQLITE_ORM_CONSTEVAL_SUPPORTED
                 [[maybe_unused]] int sink;
+#else
+                [[maybe_unused]] int sink = 0;
+#endif
                 // note: `(void)` cast silences warning 'expression result unused'
                 (void)((lambda(std::get<Idx>(tpl)), sink) = ... = 0);
             } else {
