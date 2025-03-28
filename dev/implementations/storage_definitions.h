@@ -34,13 +34,13 @@ namespace sqlite_orm {
                 std::is_same<object_type_t<Table>, sqlite_master>::value) {
                 return sync_schema_result::already_in_sync;
             } else {
-                return this->_sync_normal_table(table, db, preserve);
+                return this->sync_regular_table(table, db, preserve);
             }
         }
 
         template<class... DBO>
         template<class Table, satisfies<is_table, Table>>
-        sync_schema_result storage_t<DBO...>::_sync_normal_table(const Table& table, sqlite3* db, bool preserve) {
+        sync_schema_result storage_t<DBO...>::sync_regular_table(const Table& table, sqlite3* db, bool preserve) {
             auto res = sync_schema_result::already_in_sync;
             bool attempt_to_preserve = true;
 

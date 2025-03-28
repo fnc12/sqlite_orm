@@ -26,14 +26,14 @@ environment:
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_23=ON"
 
     - job_name: clang, C++23
-      appveyor_build_worker_image: Ubuntu
-      CC: clang
-      CXX: clang++
+      appveyor_build_worker_image: Ubuntu2204
+      CC: clang-18
+      CXX: clang++-18
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_23=ON"
       cmake_build_parallel: ""
 
     - job_name: gcc, C++23
-      appveyor_build_worker_image: Ubuntu
+      appveyor_build_worker_image: Ubuntu2204
       CC: gcc
       CXX: g++
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_23=ON"
@@ -72,8 +72,8 @@ environment:
       cmake_build_parallel: ""
 
     # Representative for C++17
-    - job_name: Visual Studio 2019, x64, C++17
-      appveyor_build_worker_image: Visual Studio 2019
+    - job_name: Visual Studio 2017, x64, C++17
+      appveyor_build_worker_image: Visual Studio 2017
       platform: x64
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
 
@@ -95,7 +95,7 @@ for:
   # Windows
   matrix:
     only:
-      - appveyor_build_worker_image: Visual Studio 2019
+      - appveyor_build_worker_image: Visual Studio 2017
       - appveyor_build_worker_image: Visual Studio 2022
   init:
     - |-
@@ -132,6 +132,7 @@ for:
   matrix:
     only:
       - appveyor_build_worker_image: Ubuntu
+      - appveyor_build_worker_image: Ubuntu2204
   init:
     - |-
       echo $appveyor_build_worker_image

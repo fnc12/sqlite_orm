@@ -10,7 +10,7 @@
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/mpl/conditional.h"
-#include "is_base_of_template.h"
+#include "functional/is_base_template_of.h"
 #include "tuple_helper/tuple_traits.h"
 #include "conditions.h"
 #include "serialize_result_type.h"
@@ -46,7 +46,7 @@ namespace sqlite_orm {
 
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_built_in_function_v =
-            is_base_of_template<T, built_in_function_t>::value;
+            is_base_template_of<built_in_function_t, T>::value;
 
         template<class T>
         struct is_built_in_function : polyfill::bool_constant<is_built_in_function_v<T>> {};

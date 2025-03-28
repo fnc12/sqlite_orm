@@ -72,8 +72,8 @@ concept can_view_mapped = requires(V view) {
 
 template<class S, class O, class DBOs = typename S::db_objects_type>
 concept storage_iterate_mapped = requires(S& storage_type) {
-    { storage_type.iterate<O>() } -> std::same_as<mapped_view<O, S>>;
-    { storage_type.iterate<O>() } -> can_view_mapped<O, DBOs>;
+    { storage_type.template iterate<O>() } -> std::same_as<mapped_view<O, S>>;
+    { storage_type.template iterate<O>() } -> can_view_mapped<O, DBOs>;
 };
 #endif
 

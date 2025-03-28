@@ -39,6 +39,8 @@ using std::nullptr_t;
  *  This header detects missing core C++ language features on which sqlite_orm depends, bailing out with a hard error.
  */
 
+// note: Before the C++17 language standard was made the baseline, the library had workarounds for these specific missing C++14 language features,
+// so they are kept here as explicit checks for reference.
 #if __cpp_aggregate_nsdmi < 201304L || __cpp_constexpr < 201304L
 #error A fully C++17-compliant compiler is required.
 #endif
@@ -752,7 +754,7 @@ namespace sqlite_orm {
              *  Determines whether a class template has a nested metafunction `fn`.
              * 
              *  Implementation note: the technique of specialiazing on the inline variable must come first because
-             *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
+             *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR].
              */
             template<class T, class SFINAE = void>
             SQLITE_ORM_INLINE_VAR constexpr bool is_quoted_metafuntion_v = false;
@@ -1317,9 +1319,7 @@ namespace sqlite_orm {
     namespace internal {
 #if defined(SQLITE_ORM_PACK_INDEXING_SUPPORTED)
         /**
-
          *  Get the index value of an `index_sequence` at a specific position.
-
          */
         template<size_t Pos, size_t... Idx>
         SQLITE_ORM_CONSTEVAL auto index_sequence_value_at(std::index_sequence<Idx...>) {
@@ -1327,9 +1327,7 @@ namespace sqlite_orm {
         }
 #else
         /**
-
          *  Get the index value of an `index_sequence` at a specific position.
-
          */
         template<size_t Pos, size_t... Idx>
         SQLITE_ORM_CONSTEVAL size_t index_sequence_value_at(std::index_sequence<Idx...>) {
@@ -1600,7 +1598,7 @@ namespace sqlite_orm {
         constexpr void iterate_tuple(Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
             if constexpr (reversed) {
                 // nifty fold expression trick: make use of guaranteed right-to-left evaluation order when folding over operator=
-                int sink;
+                [[maybe_unused]] int sink;
                 // note: `(void)` cast silences warning 'expression result unused'
                 (void)((lambda(std::get<Idx>(tpl)), sink) = ... = 0);
             } else {
@@ -1616,12 +1614,12 @@ namespace sqlite_orm {
         }
 
         template<class Tpl, size_t... Idx, class L>
-        void iterate_tuple(std::index_sequence<Idx...>, L&& lambda) {
+        constexpr void iterate_tuple(std::index_sequence<Idx...>, L&& lambda) {
             (lambda((std::tuple_element_t<Idx, Tpl>*)nullptr), ...);
         }
 
         template<class Tpl, class L>
-        void iterate_tuple(L&& lambda) {
+        constexpr void iterate_tuple(L&& lambda) {
             iterate_tuple<Tpl>(std::make_index_sequence<std::tuple_size<Tpl>::value>{}, std::forward<L>(lambda));
         }
 
@@ -2178,8 +2176,6 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::enable_if, std::is_convertible
 #include <utility>  // std::move
 #endif
-
-// #include "functional/cxx_core_features.h"
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
@@ -3130,6 +3126,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::common_type
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#include <concepts>  //  std::same_as
+#endif
 #endif
 
 namespace sqlite_orm {
@@ -3143,6 +3142,15 @@ namespace sqlite_orm {
             using type = void;
         };
 
+        template<class... Args>
+        using same_or_void_t = typename same_or_void<Args...>::type;
+
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+        template<class A, std::same_as<A>... Rest>
+        struct same_or_void<A, Rest...> {
+            using type = A;
+        };
+#else
         template<class A>
         struct same_or_void<A> {
             using type = A;
@@ -3153,11 +3161,9 @@ namespace sqlite_orm {
             using type = A;
         };
 
-        template<class... Args>
-        using same_or_void_t = typename same_or_void<Args...>::type;
-
         template<class A, class... Args>
         struct same_or_void<A, A, Args...> : same_or_void<A, Args...> {};
+#endif
 
         template<class Pack>
         struct common_type_of;
@@ -4143,7 +4149,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
-// #include "is_base_of_template.h"
+// #include "functional/is_base_template_of.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::true_type, std::false_type, std::declval
@@ -4159,28 +4165,28 @@ namespace sqlite_orm {
          */
 #ifdef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
         template<template<typename...> class Base>
-        struct is_base_of_template_impl {
+        struct is_base_template_of_impl {
             template<typename... Ts>
             static constexpr std::true_type test(const Base<Ts...>&);
 
             static constexpr std::false_type test(...);
         };
 
-        template<typename T, template<typename...> class C>
-        using is_base_of_template = decltype(is_base_of_template_impl<C>::test(std::declval<T>()));
+        template<template<typename...> class Base, typename T>
+        using is_base_template_of = decltype(is_base_template_of_impl<Base>::test(std::declval<T>()));
 #else
-        template<template<typename...> class C, typename... Ts>
-        std::true_type is_base_of_template_impl(const C<Ts...>&);
+        template<template<typename...> class Base, typename... Ts>
+        std::true_type is_base_template_of_impl(const Base<Ts...>&);
 
-        template<template<typename...> class C>
-        std::false_type is_base_of_template_impl(...);
+        template<template<typename...> class Base>
+        std::false_type is_base_template_of_impl(...);
 
-        template<typename T, template<typename...> class C>
-        using is_base_of_template = decltype(is_base_of_template_impl<C>(std::declval<T>()));
+        template<template<typename...> class Base, typename T>
+        using is_base_template_of = decltype(is_base_template_of_impl<Base>(std::declval<T>()));
 #endif
 
-        template<typename T, template<typename...> class C>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_base_of_template_v = is_base_of_template<T, C>::value;
+        template<template<typename...> class Base, typename T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_base_template_of_v = is_base_template_of<Base, T>::value;
     }
 }
 
@@ -4238,7 +4244,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_binary_operator_v = is_base_of_template<T, binary_operator>::value;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_binary_operator_v = is_base_template_of<binary_operator, T>::value;
 
         template<class T>
         using is_binary_operator = polyfill::bool_constant<is_binary_operator_v<T>>;
@@ -4528,7 +4534,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
-// #include "is_base_of_template.h"
+// #include "functional/is_base_template_of.h"
 
 // #include "tuple_helper/tuple_traits.h"
 
@@ -4696,7 +4702,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "functional/mpl/conditional.h"
 
-// #include "is_base_of_template.h"
+// #include "functional/is_base_template_of.h"
 
 // #include "tuple_helper/tuple_traits.h"
 
@@ -4714,7 +4720,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
-// #include "is_base_of_template.h"
+// #include "functional/is_base_template_of.h"
 
 // #include "type_traits.h"
 
@@ -5019,7 +5025,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_binary_condition_v = is_base_of_template_v<T, binary_condition>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_binary_condition_v = is_base_template_of_v<binary_condition, T>;
 
         template<class T>
         struct is_binary_condition : polyfill::bool_constant<is_binary_condition_v<T>> {};
@@ -6215,7 +6221,7 @@ namespace sqlite_orm {
 
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_built_in_function_v =
-            is_base_of_template<T, built_in_function_t>::value;
+            is_base_template_of<built_in_function_t, T>::value;
 
         template<class T>
         struct is_built_in_function : polyfill::bool_constant<is_built_in_function_v<T>> {};
@@ -8801,7 +8807,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_compound_operator_v = is_base_of_template<T, compound_operator>::value;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_compound_operator_v = is_base_template_of<compound_operator, T>::value;
 
         template<class T>
         using is_compound_operator = polyfill::bool_constant<is_compound_operator_v<T>>;
@@ -10535,8 +10541,6 @@ namespace sqlite_orm {
 #endif
 #endif
 
-// #include "functional/cxx_core_features.h"
-
 // #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "tuple_helper/tuple_fy.h"
@@ -11157,7 +11161,7 @@ namespace sqlite_orm {
             return valid;
         }
 
-#if __cplusplus >= 201703L  // C++17 or later
+#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR
         template<size_t I, const char* PointerArg, const char* Binding>
         SQLITE_ORM_CONSTEVAL bool assert_same_pointer_tag() {
             constexpr bool valid = Binding == PointerArg;
@@ -18877,25 +18881,27 @@ namespace sqlite_orm {
 // std::remove_cvref, std::disjunction
 // #include "functional/cxx_functional_polyfill.h"
 // std::identity, std::invoke
-// #include "functional/static_magic.h"
+// #include "functional/always_default.h"
 
 namespace sqlite_orm {
 
-    //  got from here
-    //  https://stackoverflow.com/questions/37617677/implementing-a-compile-time-static-if-logic-for-different-string-types-in-a-co
     namespace internal {
 
-        // note: this is a class template accompanied with a variable template because older compilers (e.g. VC 2017)
-        // cannot handle a static lambda variable inside a template function
+        /*  
+         *  Function object whose variadic call operator always returns the default constructed value of its template parameter type.
+         */
         template<class R>
-        struct empty_callable_t {
+        struct always_default_of {
             template<class... Args>
-            R operator()(Args&&...) const {
+            constexpr R operator()(Args&&...) const {
                 return R();
             }
+
+            using is_transparent = int;
         };
-        template<class R = void>
-        constexpr empty_callable_t<R> empty_callable{};
+
+        template<class R>
+        constexpr always_default_of<R> always_default{};
     }
 
 }
@@ -20923,7 +20929,7 @@ namespace sqlite_orm {
                    << streaming_non_generated_column_names(table) << ")"
                    << " VALUES ("
                    << streaming_field_values_excluding(check_if<is_generated_always>{},
-                                                       empty_callable<std::false_type>,  //  don't exclude
+                                                       always_default<std::false_type>,  //  don't exclude
                                                        context,
                                                        get_ref(statement.object))
                    << ")";
@@ -22208,7 +22214,6 @@ namespace sqlite_orm {
         // F O::*
         template<typename F, typename ColRef, satisfies<std::is_member_pointer, ColRef> = true>
         auto make_cte_column(std::string name, const ColRef& finalColRef) {
-            using object_type = table_type_of_t<ColRef>;
             using column_type = column_t<ColRef, empty_setter>;
 
             return column_type{std::move(name), finalColRef, empty_setter{}};
@@ -23613,7 +23618,7 @@ namespace sqlite_orm {
             sync_schema_result sync_table(const Table& table, sqlite3* db, bool preserve);
 
             template<class Table, satisfies<is_table, Table> = true>
-            sync_schema_result _sync_normal_table(const Table& table, sqlite3* db, bool preserve);
+            sync_schema_result sync_regular_table(const Table& table, sqlite3* db, bool preserve);
 
             template<class C>
             void add_column(sqlite3* db, const std::string& tableName, const C& column) const {
@@ -24525,13 +24530,13 @@ namespace sqlite_orm {
                 std::is_same<object_type_t<Table>, sqlite_master>::value) {
                 return sync_schema_result::already_in_sync;
             } else {
-                return this->_sync_normal_table(table, db, preserve);
+                return this->sync_regular_table(table, db, preserve);
             }
         }
 
         template<class... DBO>
         template<class Table, satisfies<is_table, Table>>
-        sync_schema_result storage_t<DBO...>::_sync_normal_table(const Table& table, sqlite3* db, bool preserve) {
+        sync_schema_result storage_t<DBO...>::sync_regular_table(const Table& table, sqlite3* db, bool preserve) {
             auto res = sync_schema_result::already_in_sync;
             bool attempt_to_preserve = true;
 
