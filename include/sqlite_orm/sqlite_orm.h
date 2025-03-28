@@ -11412,7 +11412,7 @@ namespace sqlite_orm {
 
         template<size_t N>
         struct quoted_function_builder : cstring_literal<N> {
-            using cstring_literal<N>::cstring_literal;
+            constexpr quoted_function_builder(const char (&cstr)[N]) : cstring_literal<N>{cstr} {}
 
             /*
              *  From a freestanding function, possibly overloaded.
