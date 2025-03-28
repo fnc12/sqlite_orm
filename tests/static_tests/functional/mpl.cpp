@@ -110,5 +110,5 @@ TEST_CASE("mpl") {
     STATIC_REQUIRE(mpl::invoke_t<internal::counts_if_has<std::is_null_pointer>, std::tuple<nullptr_t, int>>::value ==
                    1);
 
-    STATIC_REQUIRE(internal::always_default<std::true_type>() value);
+    STATIC_REQUIRE(internal::always_default<std::true_type>()());
 }
