@@ -21,20 +21,20 @@ namespace sqlite_orm {
             static constexpr std::false_type test(...);
         };
 
-        template<typename T, template<typename...> class C>
-        using is_base_template_of = decltype(is_base_template_of_impl<C>::test(std::declval<T>()));
+        template<template<typename...> class Base, typename T>
+        using is_base_template_of = decltype(is_base_template_of_impl<Base>::test(std::declval<T>()));
 #else
-        template<template<typename...> class C, typename... Ts>
-        std::true_type is_base_template_of_impl(const C<Ts...>&);
+        template<template<typename...> class Base, typename... Ts>
+        std::true_type is_base_template_of_impl(const Base<Ts...>&);
 
-        template<template<typename...> class C>
+        template<template<typename...> class Base>
         std::false_type is_base_template_of_impl(...);
 
-        template<typename T, template<typename...> class C>
-        using is_base_template_of = decltype(is_base_template_of_impl<C>(std::declval<T>()));
+        template<template<typename...> class Base, typename T>
+        using is_base_template_of = decltype(is_base_template_of_impl<Base>(std::declval<T>()));
 #endif
 
-        template<typename T, template<typename...> class C>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_base_template_of_v = is_base_template_of<T, C>::value;
+        template<template<typename...> class Base, typename T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_base_template_of_v = is_base_template_of<Base, T>::value;
     }
 }

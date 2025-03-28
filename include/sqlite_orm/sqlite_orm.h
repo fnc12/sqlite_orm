@@ -4239,21 +4239,21 @@ namespace sqlite_orm {
             static constexpr std::false_type test(...);
         };
 
-        template<typename T, template<typename...> class C>
-        using is_base_template_of = decltype(is_base_template_of_impl<C>::test(std::declval<T>()));
+        template<template<typename...> class Base, typename T>
+        using is_base_template_of = decltype(is_base_template_of_impl<Base>::test(std::declval<T>()));
 #else
-        template<template<typename...> class C, typename... Ts>
-        std::true_type is_base_template_of_impl(const C<Ts...>&);
+        template<template<typename...> class Base, typename... Ts>
+        std::true_type is_base_template_of_impl(const Base<Ts...>&);
 
-        template<template<typename...> class C>
+        template<template<typename...> class Base>
         std::false_type is_base_template_of_impl(...);
 
-        template<typename T, template<typename...> class C>
-        using is_base_template_of = decltype(is_base_template_of_impl<C>(std::declval<T>()));
+        template<template<typename...> class Base, typename T>
+        using is_base_template_of = decltype(is_base_template_of_impl<Base>(std::declval<T>()));
 #endif
 
-        template<typename T, template<typename...> class C>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_base_template_of_v = is_base_template_of<T, C>::value;
+        template<template<typename...> class Base, typename T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_base_template_of_v = is_base_template_of<Base, T>::value;
     }
 }
 
@@ -4311,7 +4311,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_binary_operator_v = is_base_template_of<T, binary_operator>::value;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_binary_operator_v = is_base_template_of<binary_operator, T>::value;
 
         template<class T>
         using is_binary_operator = polyfill::bool_constant<is_binary_operator_v<T>>;
@@ -5092,7 +5092,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_binary_condition_v = is_base_template_of_v<T, binary_condition>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_binary_condition_v = is_base_template_of_v<binary_condition, T>;
 
         template<class T>
         struct is_binary_condition : polyfill::bool_constant<is_binary_condition_v<T>> {};
@@ -6288,7 +6288,7 @@ namespace sqlite_orm {
 
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_built_in_function_v =
-            is_base_template_of<T, built_in_function_t>::value;
+            is_base_template_of<built_in_function_t, T>::value;
 
         template<class T>
         struct is_built_in_function : polyfill::bool_constant<is_built_in_function_v<T>> {};
@@ -8880,7 +8880,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_compound_operator_v = is_base_template_of<T, compound_operator>::value;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_compound_operator_v = is_base_template_of<compound_operator, T>::value;
 
         template<class T>
         using is_compound_operator = polyfill::bool_constant<is_compound_operator_v<T>>;
