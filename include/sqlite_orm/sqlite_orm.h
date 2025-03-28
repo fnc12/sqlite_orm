@@ -22317,7 +22317,6 @@ namespace sqlite_orm {
         // F O::*
         template<typename F, typename ColRef, satisfies<std::is_member_pointer, ColRef> = true>
         auto make_cte_column(std::string name, const ColRef& finalColRef) {
-            using object_type = table_type_of_t<ColRef>;
             using column_type = column_t<ColRef, empty_setter>;
 
             return column_type{std::move(name), finalColRef, empty_setter{}};
