@@ -1944,9 +1944,7 @@ namespace sqlite_orm::internal {
 namespace sqlite_orm {
     namespace internal {
         /*
-
          *  Identity wrapper around a mapped object, facilitating uniform column pointer expressions.
-
          */
         template<class O>
         struct table_reference : polyfill::type_identity<O> {};
