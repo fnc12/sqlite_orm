@@ -94,6 +94,56 @@ namespace sqlite_orm {
 #endif
         }
 
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+        /*
+         *  AST iteration callable that matches function call node expressions.
+         *  * Throws a `orm_error_code::function_not_found` exception
+         *    if an application-defined scalar or aggregate function was not registered.
+         *  * Throws a `sqlite_errc(SQLITE_ERROR_MISSING_COLLSEQ)` if a named collation function was not registered.
+         */
+        struct udf_presence_checker {
+            const std::list<udf_proxy>& _scalarFunctions;
+            const std::list<udf_proxy>& _aggregateFunctions;
+            const std::map<std::string, storage_base::collating_function>& _collatingFunctions;
+
+            // examine `function_call` node expressions
+            template<class UDF, class... CallArgs>
+            void operator()(polyfill::bool_constant<true>, const function_call<UDF, CallArgs...>& udfCall) const {
+                auto&& name = udfCall.name();
+                SQLITE_ORM_CPP_UNLIKELY {
+                if (!_contains(_scalarFunctions, name) && !_contains(_aggregateFunctions, name))
+                    throw std::system_error{orm_error_code::function_not_found, std::string(name)};
+                }
+            }
+
+            // examine `named_collate` node expressions
+            void operator()(polyfill::bool_constant<true>, const named_collate_base& collateCall) const {
+                if (_collatingFunctions.find(collateCall.name) == _collatingFunctions.end()) SQLITE_ORM_CPP_UNLIKELY {
+#if SQLITE_VERSION_NUMBER >= 3008008
+                    throw std::system_error{sqlite_errc(SQLITE_ERROR_MISSING_COLLSEQ), std::string(collateCall.name)};
+#else
+                    throw std::system_error{sqlite_errc(SQLITE_ERROR), std::string(collateCall.name)};
+#endif
+                }
+            }
+
+            // swallow leaf expressions
+            template<class T>
+            void operator()(const T&) const {}
+
+            static bool _contains(const std::list<udf_proxy>& functions, const std::string_view& name) {
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+                auto it = std::ranges::find(functions, name, &udf_proxy::name);
+#else
+                auto it = std::find_if(functions.begin(), functions.end(), [&name](const udf_proxy& udfProxy) {
+                    return udfProxy.name == name;
+                });
+#endif
+                return it != functions.end();
+            }
+        };
+#endif
+
         /**
          *  Storage class itself. Create an instanse to use it as an interfacto to sqlite db by calling `make_storage`
          *  function.
@@ -1218,6 +1268,12 @@ namespace sqlite_orm {
 
             template<typename S>
             prepared_statement_t<S> prepare_impl(S statement) {
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+                iterate_ast(
+                    statement,
+                    udf_presence_checker{this->scalarFunctions, this->aggregateFunctions, this->collatingFunctions});
+#endif
+
                 const auto& exprDBOs = db_objects_for_expression(this->db_objects, statement);
 
                 using context_t = serializer_context<polyfill::remove_cvref_t<decltype(exprDBOs)>>;
@@ -1226,10 +1282,10 @@ namespace sqlite_orm {
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
 
-                auto con = this->get_connection();
+                auto conection = this->get_connection();
                 const std::string sql = serialize(statement, context);
-                sqlite3_stmt* stmt = prepare_stmt(con.get(), sql);
-                return prepared_statement_t<S>{std::forward<S>(statement), stmt, con};
+                sqlite3_stmt* stmt = prepare_stmt(conection.get(), sql);
+                return prepared_statement_t<S>{std::forward<S>(statement), stmt, std::move(con)};
             }
 
           public:
@@ -1397,6 +1453,9 @@ namespace sqlite_orm {
                 using object_type = expression_object_type_t<decltype(statement)>;
                 this->assert_mapped_type<object_type>();
                 this->assert_insertable_type<object_type>();
+                if (statement.range.first == statement.range.second) {
+                    throw std::system_error{orm_error_code::empty_range};
+                }
                 return this->prepare_impl(std::move(statement));
             }
 
@@ -1404,6 +1463,9 @@ namespace sqlite_orm {
             prepared_statement_t<E> prepare(E statement) {
                 using object_type = expression_object_type_t<decltype(statement)>;
                 this->assert_mapped_type<object_type>();
+                if (statement.range.first == statement.range.second) {
+                    throw std::system_error{orm_error_code::empty_range};
+                }
                 return this->prepare_impl(std::move(statement));
             }
 
@@ -1475,6 +1537,10 @@ namespace sqlite_orm {
 #endif
             }
 
+            /** 
+             *  @return The rowid of the last inserted row.
+             *  @note The returned rowid is only meaningful in single-thread contexts.
+             */
             template<class T, class... Cols>
             int64 execute(const prepared_statement_t<insert_explicit<T, Cols...>>& statement) {
                 using object_type = statement_object_type_t<decltype(statement)>;
@@ -1551,6 +1617,10 @@ namespace sqlite_orm {
 #endif
             }
 
+            /** 
+             *  @return The rowid of the last inserted row.
+             *  @note The returned rowid is only meaningful in single-thread contexts.
+             */
             template<class T,
                      std::enable_if_t<polyfill::disjunction<is_insert<T>, is_insert_range<T>>::value, bool> = true>
             int64 execute(const prepared_statement_t<T>& statement) {
@@ -1721,39 +1791,31 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                 std::optional<T> res;
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
                 const std::string sql = statement.sql();
                 if (this->executor.will_run_query) {
                     this->executor.will_run_query(sql);
                 }
-#endif
                 perform_step(stmt, [&table = this->get_table<T>(), &res](sqlite3_stmt* stmt) {
                     object_from_column_builder<T> builder{res.emplace(), stmt};
                     table.for_each_column(builder);
                 });
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
                 if (this->executor.did_run_query) {
                     this->executor.did_run_query(sql);
                 }
-#endif
                 if (!res.has_value()) {
                     throw std::system_error{orm_error_code::not_found};
                 }
                 return std::move(res).value();
 #else
                 auto& table = this->get_table<T>();
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
                 const std::string sql = statement.sql();
                 if (this->executor.will_run_query) {
                     this->executor.will_run_query(sql);
                 }
-#endif
                 const auto stepRes = sqlite3_step(stmt);
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
                 if (this->executor.did_run_query) {
                     this->executor.did_run_query(sql);
                 }
-#endif
                 switch (stepRes) {
                     case SQLITE_ROW: {
                         T res;
@@ -1765,7 +1827,7 @@ namespace sqlite_orm {
                         throw std::system_error{orm_error_code::not_found};
                     } break;
                     default: {
-                        throw_translated_sqlite_error(stmt);
+                        throw_translated_sqlite_error(rc);
                     }
                 }
 #endif

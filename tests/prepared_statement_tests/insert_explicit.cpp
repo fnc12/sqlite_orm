@@ -1,5 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include "../catch_matchers.h"
 
 #include "prepared_common.h"
 
@@ -8,8 +9,12 @@ using namespace sqlite_orm;
 
 TEST_CASE("Prepared insert explicit") {
     using namespace PreparedStatementTests;
-    using Catch::Matchers::ContainsSubstring;
     using Catch::Matchers::UnorderedEquals;
+#if SQLITE_VERSION_NUMBER >= 3008008
+    const ErrorCodeExceptionMatcher primaryKeyExceptionMatcher(sqlite_errc(SQLITE_CONSTRAINT_PRIMARYKEY));
+#else
+    const ErrorCodeExceptionMatcher primaryKeyExceptionMatcher(sqlite_errc(SQLITE_CONSTRAINT));
+#endif
 
     const int defaultVisitTime = 50;
 
@@ -68,7 +73,7 @@ TEST_CASE("Prepared insert explicit") {
             {
                 user.id = 6;
                 user.name = "Nate Dogg";
-                REQUIRE_THROWS_WITH(storage.execute(statement), ContainsSubstring("constraint failed"));
+                REQUIRE_THROWS_MATCHES(storage.execute(statement), std::system_error, primaryKeyExceptionMatcher);
 
                 get<0>(statement) = user;
                 auto insertedId = storage.execute(statement);

@@ -43,7 +43,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     inline std::string quote_blob_literal(std::string v) {
         constexpr char quoteChar = '\'';
-        return std::string{char('x'), quoteChar} + std::move(v) + quoteChar;
+        return std::string{'x', quoteChar} + std::move(v) + quoteChar;
     }
 
     /** 
@@ -64,13 +64,12 @@ namespace sqlite_orm {
             std::function<void(serialize_arg_type sql)> did_run_query;
 
             inline void perform_void_exec(sqlite3* db, serialize_arg_type sql) const {
-
                 if (this->will_run_query) {
                     this->will_run_query(sql);
                 }
                 const int rc = sqlite3_exec(db, sql.data(), nullptr, nullptr, nullptr);
                 if (rc != SQLITE_OK) {
-                    throw_translated_sqlite_error(db);
+                    throw_translated_sqlite_error(rc);
                 }
                 if (this->did_run_query) {
                     this->did_run_query(sql);
@@ -86,7 +85,7 @@ namespace sqlite_orm {
                 }
                 const int rc = sqlite3_exec(db, sql, callback, user_data, nullptr);
                 if (rc != SQLITE_OK) {
-                    throw_translated_sqlite_error(db);
+                    throw_translated_sqlite_error(rc);
                 }
                 if (this->did_run_query) {
                     this->did_run_query(sql);
@@ -115,7 +114,7 @@ namespace sqlite_orm {
                         case SQLITE_DONE:
                             break;
                         default: {
-                            throw_translated_sqlite_error(stmt);
+                            throw_translated_sqlite_error(rc);
                         }
                     }
                 } while (rc != SQLITE_DONE);
@@ -134,8 +133,9 @@ namespace sqlite_orm {
         // note: query is deliberately taken by value, such that it is thrown away early
         inline sqlite3_stmt* prepare_stmt(sqlite3* db, serialize_arg_type query) {
             sqlite3_stmt* stmt;
-            if (sqlite3_prepare_v2(db, query.data(), -1, &stmt, nullptr) != SQLITE_OK) {
-                throw_translated_sqlite_error(db);
+            const int rc = sqlite3_prepare_v2(db, query.data(), -1, &stmt, nullptr);
+            if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
+                throw_translated_sqlite_error(rc);
             }
             return stmt;
         }
@@ -144,7 +144,7 @@ namespace sqlite_orm {
         void perform_step(sqlite3_stmt* stmt) {
             const int rc = sqlite3_step(stmt);
             if (rc != expected) {
-                throw_translated_sqlite_error(stmt);
+                throw_translated_sqlite_error(rc);
             }
         }
 
@@ -155,9 +155,9 @@ namespace sqlite_orm {
                     lambda(stmt);
                 } break;
                 case SQLITE_DONE:
-                    break;
+                    return;
                 default: {
-                    throw_translated_sqlite_error(stmt);
+                    throw_translated_sqlite_error(rc);
                 }
             }
         }
