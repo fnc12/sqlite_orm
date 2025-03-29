@@ -1285,7 +1285,7 @@ namespace sqlite_orm {
                 auto conection = this->get_connection();
                 const std::string sql = serialize(statement, context);
                 sqlite3_stmt* stmt = prepare_stmt(conection.get(), sql);
-                return prepared_statement_t<S>{std::forward<S>(statement), stmt, std::move(con)};
+                return prepared_statement_t<S>{std::forward<S>(statement), stmt, std::move(conection)};
             }
 
           public:
