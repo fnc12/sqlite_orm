@@ -2638,7 +2638,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         requires (!orm_cte_moniker<internal::auto_type_t<als>>)
     constexpr auto alias_column(C field) {
         using namespace ::sqlite_orm::internal;
-        using A = decltype(als);
+        using A = std::remove_const_t<decltype(als)>;
         using aliased_type = type_t<A>;
         static_assert(is_field_of_v<C, aliased_type>, "Column must be from aliased table");
 
@@ -2734,7 +2734,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<orm_column_alias auto als, class E>
     auto as(E expression) {
-        return internal::as_t<decltype(als), E>{std::move(expression)};
+        return internal::as_t<std::remove_const_t<decltype(als)>, E>{std::move(expression)};
     }
 
     /**
@@ -2766,7 +2766,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<orm_column_alias auto als>
     auto get() {
-        return internal::alias_holder<decltype(als)>{};
+        return internal::alias_holder<std::remove_const_t<decltype(als)>>{};
     }
 #endif
 
@@ -8998,33 +8998,28 @@ namespace sqlite_orm {
 
         template<typename Moniker, class ExplicitCols>
         struct cte_builder {
-            using moniker_type = std::remove_const_t<Moniker>;
-
             ExplicitCols _explicitColumns;
 
 #if SQLITE_VERSION_NUMBER >= 3035000 && defined(SQLITE_ORM_WITH_CPP20_ALIASES)
             template<auto... hints, class Select, satisfies<is_select, Select> = true>
-            constexpr common_table_expression<moniker_type, ExplicitCols, std::tuple<decltype(hints)...>, Select>
+            constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<decltype(hints)...>, Select>
             as(Select sel) && {
                 return {std::move(_explicitColumns), std::move(sel)};
             }
 
             template<auto... hints, class Compound, satisfies<is_compound_operator, Compound> = true>
-            constexpr common_table_expression<moniker_type,
-                                              ExplicitCols,
-                                              std::tuple<decltype(hints)...>,
-                                              select_t<Compound>>
+            constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<decltype(hints)...>, select_t<Compound>>
             as(Compound sel) && {
                 return {std::move(_explicitColumns), {std::move(sel)}};
             }
 #else
             template<class Select, satisfies<is_select, Select> = true>
-            constexpr common_table_expression<moniker_type, ExplicitCols, std::tuple<>, Select> as(Select sel) && {
+            constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<>, Select> as(Select sel) && {
                 return {std::move(_explicitColumns), std::move(sel)};
             }
 
             template<class Compound, satisfies<is_compound_operator, Compound> = true>
-            constexpr common_table_expression<moniker_type, ExplicitCols, std::tuple<>, select_t<Compound>>
+            constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<>, select_t<Compound>>
             as(Compound sel) && {
                 return {std::move(_explicitColumns), {std::move(sel)}};
             }
@@ -9315,8 +9310,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         static_assert((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
 
-        using builder_type =
-            cte_builder<decltype(moniker), transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
+        using builder_type = cte_builder<std::remove_const_t<decltype(moniker)>,
+                                         transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
         return builder_type{{std::move(explicitColumns)...}};
     }
 #endif
