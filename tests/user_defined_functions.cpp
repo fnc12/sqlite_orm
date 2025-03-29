@@ -617,15 +617,14 @@ TEST_CASE("generalized scalar udf") {
     SECTION("non-copyable function object") {
         // note: unlike msvc, gcc+clang require the constant template parameter to be copyable (and probably rightly so);
         // so we have to go through the builder to create/delete the quoted function.
-        constexpr auto idfunc_builder = "idfunc"_scalar;
-        constexpr auto idfunc_f = idfunc_builder.quote<noncopyable_scalar>();
-        storage.create_scalar_function<idfunc_builder.quote<noncopyable_scalar>()>();
+        static constexpr auto idfunc_f = "idfunc"_scalar.quote<noncopyable_scalar>();
+        storage.create_scalar_function<(idfunc_f)>();
         {
             auto rows = storage.select(idfunc_f(1));
             decltype(rows) expected{1};
             REQUIRE(rows == expected);
         }
-        storage.delete_scalar_function<idfunc_builder.quote<noncopyable_scalar>()>();
+        storage.delete_scalar_function<(idfunc_f)>();
     }
     SECTION("stateful function object") {
         constexpr auto offset0_f = "offset0"_scalar.quote(offset0);

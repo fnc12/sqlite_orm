@@ -365,9 +365,10 @@ namespace sqlite_orm {
              * `quoted_scalar_function::callable()` uses the original function object, assuming it is free of side effects;
              * otherwise, it repeatedly uses a copy of the contained function object, assuming possible side effects.
              */
-            template<orm_quoted_scalar_function auto quotedF>
+            template<decltype(auto) quotedF>
+                requires (orm_quoted_scalar_function<decltype(quotedF)>)
             void create_scalar_function() {
-                using Sig = auto_udf_type_t<quotedF>;
+                using Sig = auto_udf_type_t<(quotedF)>;
                 using args_tuple = typename callable_arguments<Sig>::args_tuple;
                 using return_type = typename callable_arguments<Sig>::return_type;
                 constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
@@ -487,7 +488,8 @@ namespace sqlite_orm {
              *  Delete a quoted scalar function you created before.
              *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
              */
-            template<orm_quoted_scalar_function auto quotedF>
+            template<decltype(auto) quotedF>
+                requires (orm_quoted_scalar_function<decltype(quotedF)>)
             void delete_scalar_function() {
                 this->delete_function_impl(quotedF.name(), this->scalarFunctions);
             }
