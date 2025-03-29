@@ -9000,30 +9000,35 @@ namespace sqlite_orm {
 
         template<typename Moniker, class ExplicitCols>
         struct cte_builder {
-            ExplicitCols explicitColumns;
+            using moniker_type = std::remove_const_t<Moniker>;
+
+            ExplicitCols _explicitColumns;
 
 #if SQLITE_VERSION_NUMBER >= 3035000 && defined(SQLITE_ORM_WITH_CPP20_ALIASES)
             template<auto... hints, class Select, satisfies<is_select, Select> = true>
-            constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<decltype(hints)...>, Select>
+            constexpr common_table_expression<moniker_type, ExplicitCols, std::tuple<decltype(hints)...>, Select>
             as(Select sel) && {
-                return {std::move(this->explicitColumns), std::move(sel)};
+                return {std::move(_explicitColumns), std::move(sel)};
             }
 
             template<auto... hints, class Compound, satisfies<is_compound_operator, Compound> = true>
-            constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<decltype(hints)...>, select_t<Compound>>
+            constexpr common_table_expression<moniker_type,
+                                              ExplicitCols,
+                                              std::tuple<decltype(hints)...>,
+                                              select_t<Compound>>
             as(Compound sel) && {
-                return {std::move(this->explicitColumns), {std::move(sel)}};
+                return {std::move(_explicitColumns), {std::move(sel)}};
             }
 #else
             template<class Select, satisfies<is_select, Select> = true>
-            constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<>, Select> as(Select sel) && {
-                return {std::move(this->explicitColumns), std::move(sel)};
+            constexpr common_table_expression<moniker_type, ExplicitCols, std::tuple<>, Select> as(Select sel) && {
+                return {std::move(_explicitColumns), std::move(sel)};
             }
 
             template<class Compound, satisfies<is_compound_operator, Compound> = true>
-            constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<>, select_t<Compound>>
+            constexpr common_table_expression<moniker_type, ExplicitCols, std::tuple<>, select_t<Compound>>
             as(Compound sel) && {
-                return {std::move(this->explicitColumns), {std::move(sel)}};
+                return {std::move(_explicitColumns), {std::move(sel)}};
             }
 #endif
         };
@@ -10621,12 +10626,9 @@ namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-#include <type_traits>
 #include <tuple>
 #endif
 #endif
-
-// #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "tuple_helper/tuple_fy.h"
 
@@ -22128,7 +22130,7 @@ namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-#include <type_traits>
+#include <type_traits>  //  std::remove_const
 #include <tuple>
 #include <string>
 #include <vector>
@@ -22306,9 +22308,12 @@ namespace sqlite_orm {
                  typename SubselectColRefs,
                  typename FinalColRefs,
                  typename Result>
-        using create_cte_mapper_t =
-            typename create_cte_mapper<Moniker, ExplicitColRefs, Expression, SubselectColRefs, FinalColRefs, Result>::
-                type;
+        using create_cte_mapper_t = typename create_cte_mapper<std::remove_const_t<Moniker>,
+                                                               ExplicitColRefs,
+                                                               Expression,
+                                                               SubselectColRefs,
+                                                               FinalColRefs,
+                                                               Result>::type;
 
         // aliased column expressions, explicit or implicitly numbered
         template<typename F, typename ColRef, satisfies_is_specialization_of<ColRef, alias_holder> = true>
