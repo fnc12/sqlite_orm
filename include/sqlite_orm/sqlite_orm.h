@@ -2355,7 +2355,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  storage.with(cte<cte_1>()(select(as<colalias_a>(&Object::id))), select(column<cte_1>(get<colalias_a>())));
      */
     template<class Moniker, class F, internal::satisfies<internal::is_recordset_alias, Moniker> = true>
-    constexpr auto column(F field) {
+    constexpr auto column([[maybe_unused]] F field) {
         using namespace ::sqlite_orm::internal;
 
         static_assert(is_cte_moniker_v<Moniker>, "`Moniker' must be a CTE moniker");
@@ -2368,7 +2368,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         } else {
             return column_pointer<Moniker, F>{std::move(field)};
         }
-        (void)field;
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -12324,7 +12323,7 @@ namespace sqlite_orm {
             }
 
             const basic_generated_always::storage_type*
-            find_column_generated_storage_type(const std::string& name) const {
+            find_column_generated_storage_type([[maybe_unused]] const std::string& name) const {
                 const basic_generated_always::storage_type* result = nullptr;
 #if SQLITE_VERSION_NUMBER >= 3031000
                 iterate_tuple(this->elements,
@@ -12339,8 +12338,6 @@ namespace sqlite_orm {
                                   constexpr size_t opIndex = index_sequence_value_at<0>(generated_op_index_sequence{});
                                   result = &std::get<opIndex>(column.constraints).storage;
                               });
-#else
-                (void)name;
 #endif
                 return result;
             }
@@ -17692,19 +17689,16 @@ namespace sqlite_orm {
         };
 
         // safety net of doing a triple check at runtime
-        inline void assert_args_count(const udf_proxy* proxy, int argsCount) {
+        inline void assert_args_count([[maybe_unused]] const udf_proxy* proxy, [[maybe_unused]] int argsCount) {
             assert((proxy->argumentsCount == -1) || (proxy->argumentsCount == argsCount ||
                                                      /*check fin call*/ argsCount == -1));
-            (void)proxy;
-            (void)argsCount;
         }
 
         // safety net of doing a triple check at runtime
-        inline void proxy_assert_args_count(sqlite3_context* context, int argsCount) {
+        inline void proxy_assert_args_count([[maybe_unused]] sqlite3_context* context, int argsCount) {
             udf_proxy* proxy;
             assert((proxy = static_cast<udf_proxy*>(sqlite3_user_data(context))) != nullptr);
             assert_args_count(proxy, argsCount);
-            (void)context;
         }
 
         // note: may throw `std::bad_alloc` in case memory space for the aggregate function object cannot be allocated

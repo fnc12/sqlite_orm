@@ -150,7 +150,7 @@ namespace sqlite_orm {
             }
 
             const basic_generated_always::storage_type*
-            find_column_generated_storage_type(const std::string& name) const {
+            find_column_generated_storage_type([[maybe_unused]] const std::string& name) const {
                 const basic_generated_always::storage_type* result = nullptr;
 #if SQLITE_VERSION_NUMBER >= 3031000
                 iterate_tuple(this->elements,
@@ -165,8 +165,6 @@ namespace sqlite_orm {
                                   constexpr size_t opIndex = index_sequence_value_at<0>(generated_op_index_sequence{});
                                   result = &std::get<opIndex>(column.constraints).storage;
                               });
-#else
-                (void)name;
 #endif
                 return result;
             }
