@@ -683,6 +683,8 @@ namespace sqlite_orm {
             storage_base(std::string filename,
                          connection_control connectionCtrl,
                          on_open_spec onOpenSpec,
+                         will_run_query_spec willRunQuerySpec,
+                         did_run_query_spec didRunQuerySpec,
                          int foreignKeysCount) :
                 on_open{std::move(onOpenSpec.onOpen)}, pragma(std::bind(&storage_base::get_connection, this), executor),
                 limit(std::bind(&storage_base::get_connection, this)),
@@ -690,7 +692,8 @@ namespace sqlite_orm {
                 connection(std::make_unique<connection_holder>(
                     std::move(filename),
                     std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))),
-                cachedForeignKeysCount(foreignKeysCount) {
+                cachedForeignKeysCount(foreignKeysCount),
+                executor{std::move(willRunQuerySpec.willRunQuery), std::move(didRunQuerySpec.didRunQuery)} {
                 if (this->inMemory) {
                     this->connection->retain();
                 }
@@ -706,7 +709,8 @@ namespace sqlite_orm {
                 connection(std::make_unique<connection_holder>(
                     *other.connection,
                     std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))),
-                cachedForeignKeysCount(other.cachedForeignKeysCount) {
+                cachedForeignKeysCount(other.cachedForeignKeysCount),
+                executor{std::move(other.executor.will_run_query), std::move(other.executor.did_run_query)} {
                 if (this->inMemory) {
                     this->connection->retain();
                 }

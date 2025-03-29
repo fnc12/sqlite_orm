@@ -60,45 +60,37 @@ namespace sqlite_orm {
     namespace internal {
 
         struct sqlite_executor {
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-            std::function<void(std::string_view sql)> will_run_query;
-            std::function<void(std::string_view sql)> did_run_query;
-#endif
-            inline void perform_void_exec(sqlite3* db, const serialize_result_type& sql) const {
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+            std::function<void(serialize_arg_type sql)> will_run_query;
+            std::function<void(serialize_arg_type sql)> did_run_query;
+
+            inline void perform_void_exec(sqlite3* db, serialize_arg_type sql) const {
+
                 if (this->will_run_query) {
                     this->will_run_query(sql);
                 }
-#endif
                 const int rc = sqlite3_exec(db, sql.data(), nullptr, nullptr, nullptr);
                 if (rc != SQLITE_OK) {
                     throw_translated_sqlite_error(db);
                 }
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
                 if (this->did_run_query) {
                     this->did_run_query(sql);
                 }
-#endif
             }
 
             inline void perform_exec(sqlite3* db,
                                      const char* sql,
                                      int (*callback)(void* data, int argc, char** argv, char**),
                                      void* user_data) const {
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
                 if (this->will_run_query) {
                     this->will_run_query(sql);
                 }
-#endif
                 const int rc = sqlite3_exec(db, sql, callback, user_data, nullptr);
                 if (rc != SQLITE_OK) {
                     throw_translated_sqlite_error(db);
                 }
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
                 if (this->did_run_query) {
                     this->did_run_query(sql);
                 }
-#endif
             }
 
             inline void perform_exec(sqlite3* db,
@@ -110,12 +102,10 @@ namespace sqlite_orm {
 
             template<class L>
             void perform_steps(sqlite3_stmt* stmt, L&& lambda) {
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                const std::string_view sql = sqlite3_sql(stmt);
+                const auto sql = sqlite3_sql(stmt);
                 if (this->will_run_query) {
                     this->will_run_query(sql);
                 }
-#endif
                 int rc;
                 do {
                     switch (rc = sqlite3_step(stmt)) {
@@ -129,11 +119,9 @@ namespace sqlite_orm {
                         }
                     }
                 } while (rc != SQLITE_DONE);
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
                 if (this->did_run_query) {
                     this->did_run_query(sql);
                 }
-#endif
             }
         };
 
@@ -144,7 +132,7 @@ namespace sqlite_orm {
         }
 
         // note: query is deliberately taken by value, such that it is thrown away early
-        inline sqlite3_stmt* prepare_stmt(sqlite3* db, const serialize_result_type& query) {
+        inline sqlite3_stmt* prepare_stmt(sqlite3* db, serialize_arg_type query) {
             sqlite3_stmt* stmt;
             if (sqlite3_prepare_v2(db, query.data(), -1, &stmt, nullptr) != SQLITE_OK) {
                 throw_translated_sqlite_error(db);

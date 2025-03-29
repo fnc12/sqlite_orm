@@ -13802,45 +13802,37 @@ namespace sqlite_orm {
     namespace internal {
 
         struct sqlite_executor {
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-            std::function<void(std::string_view sql)> will_run_query;
-            std::function<void(std::string_view sql)> did_run_query;
-#endif
-            inline void perform_void_exec(sqlite3* db, const serialize_result_type& sql) const {
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+            std::function<void(serialize_arg_type sql)> will_run_query;
+            std::function<void(serialize_arg_type sql)> did_run_query;
+
+            inline void perform_void_exec(sqlite3* db, serialize_arg_type sql) const {
+
                 if (this->will_run_query) {
                     this->will_run_query(sql);
                 }
-#endif
                 const int rc = sqlite3_exec(db, sql.data(), nullptr, nullptr, nullptr);
                 if (rc != SQLITE_OK) {
                     throw_translated_sqlite_error(db);
                 }
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
                 if (this->did_run_query) {
                     this->did_run_query(sql);
                 }
-#endif
             }
 
             inline void perform_exec(sqlite3* db,
                                      const char* sql,
                                      int (*callback)(void* data, int argc, char** argv, char**),
                                      void* user_data) const {
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
                 if (this->will_run_query) {
                     this->will_run_query(sql);
                 }
-#endif
                 const int rc = sqlite3_exec(db, sql, callback, user_data, nullptr);
                 if (rc != SQLITE_OK) {
                     throw_translated_sqlite_error(db);
                 }
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
                 if (this->did_run_query) {
                     this->did_run_query(sql);
                 }
-#endif
             }
 
             inline void perform_exec(sqlite3* db,
@@ -13852,12 +13844,10 @@ namespace sqlite_orm {
 
             template<class L>
             void perform_steps(sqlite3_stmt* stmt, L&& lambda) {
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                const std::string_view sql = sqlite3_sql(stmt);
+                const auto sql = sqlite3_sql(stmt);
                 if (this->will_run_query) {
                     this->will_run_query(sql);
                 }
-#endif
                 int rc;
                 do {
                     switch (rc = sqlite3_step(stmt)) {
@@ -13871,11 +13861,9 @@ namespace sqlite_orm {
                         }
                     }
                 } while (rc != SQLITE_DONE);
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
                 if (this->did_run_query) {
                     this->did_run_query(sql);
                 }
-#endif
             }
         };
 
@@ -13886,7 +13874,7 @@ namespace sqlite_orm {
         }
 
         // note: query is deliberately taken by value, such that it is thrown away early
-        inline sqlite3_stmt* prepare_stmt(sqlite3* db, const serialize_result_type& query) {
+        inline sqlite3_stmt* prepare_stmt(sqlite3* db, serialize_arg_type query) {
             sqlite3_stmt* stmt;
             if (sqlite3_prepare_v2(db, query.data(), -1, &stmt, nullptr) != SQLITE_OK) {
                 throw_translated_sqlite_error(db);
@@ -17953,6 +17941,8 @@ namespace sqlite_orm {
 #include <functional>  //  std::function
 #endif
 
+// #include "serialize_result_type.h"
+
 namespace sqlite_orm {
     namespace internal {
         template<typename T>
@@ -17962,6 +17952,16 @@ namespace sqlite_orm {
             using storage_opt_tag = int;
 
             std::function<void(sqlite3*)> onOpen;
+        };
+        struct will_run_query_spec {
+            using storage_opt_tag = int;
+
+            std::function<void(serialize_arg_type)> willRunQuery;
+        };
+        struct did_run_query_spec {
+            using storage_opt_tag = int;
+
+            std::function<void(serialize_arg_type)> didRunQuery;
         };
     }
 }
@@ -17991,6 +17991,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(onOpen)};
     }
 #endif
+    inline internal::will_run_query_spec
+    will_run_query(std::function<void(internal::serialize_arg_type)> willRunQuery) {
+        return {std::move(willRunQuery)};
+    }
+
+    inline internal::did_run_query_spec did_run_query(std::function<void(internal::serialize_arg_type)> didRunQuery) {
+        return {std::move(didRunQuery)};
+    }
 }
 
 namespace sqlite_orm {
@@ -18640,6 +18648,8 @@ namespace sqlite_orm {
             storage_base(std::string filename,
                          connection_control connectionCtrl,
                          on_open_spec onOpenSpec,
+                         will_run_query_spec willRunQuerySpec,
+                         did_run_query_spec didRunQuerySpec,
                          int foreignKeysCount) :
                 on_open{std::move(onOpenSpec.onOpen)}, pragma(std::bind(&storage_base::get_connection, this), executor),
                 limit(std::bind(&storage_base::get_connection, this)),
@@ -18647,7 +18657,8 @@ namespace sqlite_orm {
                 connection(std::make_unique<connection_holder>(
                     std::move(filename),
                     std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))),
-                cachedForeignKeysCount(foreignKeysCount) {
+                cachedForeignKeysCount(foreignKeysCount),
+                executor{std::move(willRunQuerySpec.willRunQuery), std::move(didRunQuerySpec.didRunQuery)} {
                 if (this->inMemory) {
                     this->connection->retain();
                 }
@@ -18663,7 +18674,8 @@ namespace sqlite_orm {
                 connection(std::make_unique<connection_holder>(
                     *other.connection,
                     std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))),
-                cachedForeignKeysCount(other.cachedForeignKeysCount) {
+                cachedForeignKeysCount(other.cachedForeignKeysCount),
+                executor{std::move(other.executor.will_run_query), std::move(other.executor.did_run_query)} {
                 if (this->inMemory) {
                     this->connection->retain();
                 }
@@ -22794,6 +22806,8 @@ namespace sqlite_orm {
                 storage_base{std::move(filename),
                              storage_opt_or_default<connection_control>(options),
                              storage_opt_or_default<on_open_spec>(options),
+                             storage_opt_or_default<will_run_query_spec>(options),
+                             storage_opt_or_default<did_run_query_spec>(options),
                              foreign_keys_count<db_objects_type>()},
                 db_objects{std::move(dbObjects)} {}
 

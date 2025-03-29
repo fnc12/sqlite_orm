@@ -112,6 +112,8 @@ namespace sqlite_orm {
                 storage_base{std::move(filename),
                              storage_opt_or_default<connection_control>(options),
                              storage_opt_or_default<on_open_spec>(options),
+                             storage_opt_or_default<will_run_query_spec>(options),
+                             storage_opt_or_default<did_run_query_spec>(options),
                              foreign_keys_count<db_objects_type>()},
                 db_objects{std::move(dbObjects)} {}
 
