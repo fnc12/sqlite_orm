@@ -111,8 +111,8 @@ namespace sqlite_orm {
             void operator()(polyfill::bool_constant<true>, const function_call<UDF, CallArgs...>& udfCall) const {
                 auto&& name = udfCall.name();
                 SQLITE_ORM_CPP_UNLIKELY {
-                if (!_contains(_scalarFunctions, name) && !_contains(_aggregateFunctions, name))
-                    throw std::system_error{orm_error_code::function_not_found, std::string(name)};
+                    if (!_contains(_scalarFunctions, name) && !_contains(_aggregateFunctions, name))
+                        throw std::system_error{orm_error_code::function_not_found, std::string(name)};
                 }
             }
 
