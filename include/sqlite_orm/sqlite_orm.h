@@ -14106,7 +14106,7 @@ namespace sqlite_orm {
                     int rc = sqlite3_open_v2(this->filename.c_str(),
                                              &this->db,
                                              SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE
-#if SQLITE_VERSION_NUMBER >= 3008008
+#if SQLITE_VERSION_NUMBER >= 3037002
                                                  | SQLITE_OPEN_EXRESCODE,
 #else
                                                  | 0,

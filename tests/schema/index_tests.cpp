@@ -67,7 +67,7 @@ TEST_CASE("index") {
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 TEST_CASE("filtered index") {
-#if SQLITE_VERSION_NUMBER >= 3008008
+#if SQLITE_VERSION_NUMBER >= 3037002
     const ErrorCodeExceptionMatcher uniqueExceptionMatcher(sqlite_errc(SQLITE_CONSTRAINT_UNIQUE));
 #else
     const ErrorCodeExceptionMatcher uniqueExceptionMatcher(sqlite_errc(SQLITE_CONSTRAINT));
