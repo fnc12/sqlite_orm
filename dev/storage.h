@@ -1479,7 +1479,7 @@ namespace sqlite_orm {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
                 iterate_ast(statement.expression, conditional_binder{stmt});
                 std::string sql;
-                if (this->executor.will_run_query || this->executor.will_run_query) {
+                if (this->executor.will_run_query || this->executor.did_run_query) {
                     sql = statement.sql();
                 }
                 if (this->executor.will_run_query) {
@@ -1502,7 +1502,7 @@ namespace sqlite_orm {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
                 iterate_ast(statement.expression, conditional_binder{stmt});
                 std::string sql;
-                if (this->executor.will_run_query || this->executor.will_run_query) {
+                if (this->executor.will_run_query || this->executor.did_run_query) {
                     sql = statement.sql();
                 }
                 if (this->executor.will_run_query) {
@@ -1520,7 +1520,7 @@ namespace sqlite_orm {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
                 iterate_ast(statement.expression, conditional_binder{stmt});
                 std::string sql;
-                if (this->executor.will_run_query || this->executor.will_run_query) {
+                if (this->executor.will_run_query || this->executor.did_run_query) {
                     sql = statement.sql();
                 }
                 if (this->executor.will_run_query) {
@@ -1548,7 +1548,7 @@ namespace sqlite_orm {
                         return table.object_field_value(object, memberPointer);
                     });
                 std::string sql;
-                if (this->executor.will_run_query || this->executor.will_run_query) {
+                if (this->executor.will_run_query || this->executor.did_run_query) {
                     sql = statement.sql();
                 }
                 if (this->executor.will_run_query) {
@@ -1596,7 +1596,7 @@ namespace sqlite_orm {
                     processObject(object);
                 };
                 std::string sql;
-                if (this->executor.will_run_query || this->executor.will_run_query) {
+                if (this->executor.will_run_query || this->executor.did_run_query) {
                     sql = statement.sql();
                 }
                 if (this->executor.will_run_query) {
@@ -1653,7 +1653,7 @@ namespace sqlite_orm {
                     processObject(object);
                 }
                 std::string sql;
-                if (this->executor.will_run_query || this->executor.will_run_query) {
+                if (this->executor.will_run_query || this->executor.did_run_query) {
                     sql = statement.sql();
                 }
                 if (this->executor.will_run_query) {
@@ -1671,7 +1671,7 @@ namespace sqlite_orm {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
                 iterate_ast(statement.expression.ids, conditional_binder{stmt});
                 std::string sql;
-                if (this->executor.will_run_query || this->executor.will_run_query) {
+                if (this->executor.will_run_query || this->executor.did_run_query) {
                     sql = statement.sql();
                 }
                 if (this->executor.will_run_query) {
@@ -1704,7 +1704,7 @@ namespace sqlite_orm {
                     }
                 });
                 std::string sql;
-                if (this->executor.will_run_query || this->executor.will_run_query) {
+                if (this->executor.will_run_query || this->executor.did_run_query) {
                     sql = statement.sql();
                 }
                 if (this->executor.will_run_query) {
@@ -1724,7 +1724,7 @@ namespace sqlite_orm {
 
                 std::unique_ptr<T> res;
                 std::string sql;
-                if (this->executor.will_run_query || this->executor.will_run_query) {
+                if (this->executor.will_run_query || this->executor.did_run_query) {
                     sql = statement.sql();
                 }
                 if (this->executor.will_run_query) {
@@ -1750,7 +1750,7 @@ namespace sqlite_orm {
 
                 std::optional<T> res;
                 std::string sql;
-                if (this->executor.will_run_query || this->executor.will_run_query) {
+                if (this->executor.will_run_query || this->executor.did_run_query) {
                     sql = statement.sql();
                 }
                 if (this->executor.will_run_query) {
@@ -1776,7 +1776,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                 std::optional<T> res;
                 std::string sql;
-                if (this->executor.will_run_query || this->executor.will_run_query) {
+                if (this->executor.will_run_query || this->executor.did_run_query) {
                     sql = statement.sql();
                 }
                 if (this->executor.will_run_query) {
@@ -1796,7 +1796,7 @@ namespace sqlite_orm {
 #else
                 auto& table = this->get_table<T>();
                 std::string sql;
-                if (this->executor.will_run_query || this->executor.will_run_query) {
+                if (this->executor.will_run_query || this->executor.did_run_query) {
                     sql = statement.sql();
                 }
                 if (this->executor.will_run_query) {
@@ -1828,7 +1828,7 @@ namespace sqlite_orm {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
                 iterate_ast(statement.expression.conditions, conditional_binder{stmt});
                 std::string sql;
-                if (this->executor.will_run_query || this->executor.will_run_query) {
+                if (this->executor.will_run_query || this->executor.did_run_query) {
                     sql = statement.sql();
                 }
                 if (this->executor.will_run_query) {
@@ -1847,7 +1847,7 @@ namespace sqlite_orm {
                 iterate_ast(statement.expression.set, bindNode);
                 iterate_ast(statement.expression.conditions, bindNode);
                 std::string sql;
-                if (this->executor.will_run_query || this->executor.will_run_query) {
+                if (this->executor.will_run_query || this->executor.did_run_query) {
                     sql = statement.sql();
                 }
                 if (this->executor.will_run_query) {
