@@ -7,16 +7,14 @@ using namespace sqlite_orm;
 using internal::create_from_tuple;
 using internal::field_type_t;
 using internal::literal_holder;
-using internal::transform_tuple_t;
-#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
 using internal::nested_tuple_size_for_t;
 using internal::recombine_tuple;
-#endif
+using internal::transform_tuple_t;
 
 template<class T>
 using make_literal_holder = literal_holder<T>;
 
-#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && (__cpp_lib_constexpr_functional >= 201907L)
+#if __cpp_lib_constexpr_functional >= 201907L
 struct tuple_maker {
     template<class... Types>
     constexpr auto operator()(Types&&... types) const {
@@ -52,7 +50,7 @@ TEST_CASE("tuple_helper static") {
         STATIC_REQUIRE(create_from_tuple<std::tuple>(std::make_tuple(1, 2), polyfill::identity{}) ==
                        std::tuple<int, int>{1, 2});
 #endif
-#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && (__cpp_lib_constexpr_functional >= 201907L)
+#if __cpp_lib_constexpr_functional >= 201907L
         STATIC_REQUIRE(recombine_tuple(tuple_maker{}, std::make_tuple(1, 2), polyfill::identity{}, 3) ==
                        std::make_tuple(3, 1, 2));
 

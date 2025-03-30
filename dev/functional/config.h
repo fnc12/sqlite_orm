@@ -12,12 +12,6 @@
 #include <version>
 #endif
 
-#ifdef SQLITE_ORM_CONSTEXPR_LAMBDAS_SUPPORTED
-#define SQLITE_ORM_CONSTEXPR_LAMBDA_CPP17 constexpr
-#else
-#define SQLITE_ORM_CONSTEXPR_LAMBDA_CPP17
-#endif
-
 #ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 #define SQLITE_ORM_INLINE_VAR inline
 #else
@@ -76,9 +70,7 @@
 #define SQLITE_ORM_WITH_CPP20_ALIASES
 #endif
 
-#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
 #define SQLITE_ORM_WITH_CTE
-#endif
 
 // define the inline namespace "literals" so that it is available even if it was not introduced by a feature
 namespace sqlite_orm {

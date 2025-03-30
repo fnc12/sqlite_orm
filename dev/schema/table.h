@@ -87,11 +87,6 @@ namespace sqlite_orm {
 
             elements_type elements;
 
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            table_t(std::string name_, elements_type elements_) :
-                basic_table{std::move(name_)}, elements{std::move(elements_)} {}
-#endif
-
             table_t<O, true, Cs...> without_rowid() const {
                 return {this->name, this->elements};
             }
@@ -310,11 +305,6 @@ namespace sqlite_orm {
             using is_without_rowid = polyfill::bool_constant<is_without_rowid_v>;
 
             module_details_type module_details;
-
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            virtual_table_t(std::string name, module_details_type module_details) :
-                basic_table{std::move(name)}, module_details{std::move(module_details)} {}
-#endif
 
             /**
              *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.

@@ -8,7 +8,6 @@
 
 namespace sqlite_orm {
     namespace internal {
-#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
         template<bool reversed = false, class Tpl, size_t... Idx, class L>
         constexpr void iterate_tuple(Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
             if constexpr (reversed) {
@@ -24,21 +23,7 @@ namespace sqlite_orm {
                 (lambda(std::get<Idx>(tpl)), ...);
             }
         }
-#else
-        template<bool reversed = false, class Tpl, class L>
-        void iterate_tuple(Tpl& /*tpl*/, std::index_sequence<>, L&& /*lambda*/) {}
 
-        template<bool reversed = false, class Tpl, size_t I, size_t... Idx, class L>
-        void iterate_tuple(Tpl& tpl, std::index_sequence<I, Idx...>, L&& lambda) {
-            if constexpr (reversed) {
-                iterate_tuple<reversed>(tpl, std::index_sequence<Idx...>{}, std::forward<L>(lambda));
-                lambda(std::get<I>(tpl));
-            } else {
-                lambda(std::get<I>(tpl));
-                iterate_tuple<reversed>(tpl, std::index_sequence<Idx...>{}, std::forward<L>(lambda));
-            }
-        }
-#endif
         template<bool reversed = false, class Tpl, class L>
         constexpr void iterate_tuple(Tpl&& tpl, L&& lambda) {
             iterate_tuple<reversed>(tpl,
@@ -46,18 +31,11 @@ namespace sqlite_orm {
                                     std::forward<L>(lambda));
         }
 
-#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
         template<class Tpl, size_t... Idx, class L>
         constexpr void iterate_tuple(std::index_sequence<Idx...>, L&& lambda) {
             (lambda((std::tuple_element_t<Idx, Tpl>*)nullptr), ...);
         }
-#else
-        template<class Tpl, size_t... Idx, class L>
-        constexpr void iterate_tuple(std::index_sequence<Idx...>, L&& lambda) {
-            using Sink = int[sizeof...(Idx)];
-            (void)Sink{(lambda((std::tuple_element_t<Idx, Tpl>*)nullptr), 0)...};
-        }
-#endif
+
         template<class Tpl, class L>
         constexpr void iterate_tuple(L&& lambda) {
             iterate_tuple<Tpl>(std::make_index_sequence<std::tuple_size<Tpl>::value>{}, std::forward<L>(lambda));
@@ -65,9 +43,6 @@ namespace sqlite_orm {
 
         template<template<class...> class Base, class L>
         struct lambda_as_template_base : L {
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            lambda_as_template_base(L&& lambda) : L{std::move(lambda)} {}
-#endif
             template<class... T>
             decltype(auto) operator()(const Base<T...>& object) {
                 return L::operator()(object);

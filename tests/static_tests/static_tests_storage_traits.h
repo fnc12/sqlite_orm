@@ -43,7 +43,7 @@ namespace sqlite_orm {
             /*
              *  Implementation note: must be a struct instead of an alias template because the foreign keys tuple
              *  must be hoisted into a named alias, otherwise type replacement may fail for legacy compilers
-             *  if a template template has a dependent expression in it [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
+             *  if an alias template has a dependent expression in it [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
              */
             template<class Table, class Lookup>
             struct table_fk_references {
