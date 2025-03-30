@@ -120,6 +120,7 @@ TEST_CASE("issue1410") {
         where(eq(&NormalTable::id, select(&SearchTable::normal_table_id, where(match<SearchTable>("Some Text"))))));
 
     for (const auto& row: rows) {
+        std::ignore = row;
     }  //  has to be compiled
 }
 #endif

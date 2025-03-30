@@ -21,7 +21,6 @@
 #endif
 
 #include "functional/cxx_functional_polyfill.h"
-#include "functional/static_magic.h"
 #include "tuple_helper/tuple_transformer.h"
 #include "column_result_proxy.h"
 #include "arithmetic_tag.h"
@@ -473,7 +472,6 @@ namespace sqlite_orm {
         template<class R, class DBOs>
         struct struct_extractor;
 
-#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
         /*  
          *  Returns a value-based row extractor for an unmapped type,
          *  returns a structure extractor for a table reference, tuple or named struct.
@@ -487,34 +485,6 @@ namespace sqlite_orm {
                 return row_value_extractor<R>();
             }
         }
-#else
-        /*  
-         *  Overload for an unmapped type returns a common row extractor.
-         */
-        template<
-            class R,
-            class DBOs,
-            std::enable_if_t<polyfill::negation<polyfill::disjunction<polyfill::is_specialization_of<R, std::tuple>,
-                                                                      polyfill::is_specialization_of<R, structure>,
-                                                                      is_table_reference<R>>>::value,
-                             bool> = true>
-        auto make_row_extractor(const DBOs& /*dbObjects*/) {
-            return row_value_extractor<R>();
-        }
-
-        /*  
-         *  Overload for a table reference, tuple or aggregate of column results returns a structure extractor.
-         */
-        template<class R,
-                 class DBOs,
-                 std::enable_if_t<polyfill::disjunction<polyfill::is_specialization_of<R, std::tuple>,
-                                                        polyfill::is_specialization_of<R, structure>,
-                                                        is_table_reference<R>>::value,
-                                  bool> = true>
-        struct_extractor<R, DBOs> make_row_extractor(const DBOs& dbObjects) {
-            return {dbObjects};
-        }
-#endif
 
         /**
          *  Specialization for a tuple of top-level column results.

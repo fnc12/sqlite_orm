@@ -62,19 +62,19 @@ concept storage_field_callable = requires(S& storage, C field) {
     { storage.group_concat(field, 42) } -> same_as<std::string>;
 };
 
-template<orm_refers_to_recordset auto recordset, typename T = decltype(recordset)>
-concept refers_to_recordset_callable = requires {
+template<auto recordset, typename T = decltype(recordset)>
+concept refers_to_recordset_callable = orm_refers_to_recordset<T> && requires {
     { count<recordset>() } -> same_as<count_asterisk_t<decay_table_ref_t<T>>>;
 };
 
-template<orm_refers_to_table auto mapped, typename T = decltype(mapped), typename O = internal::type_t<T>>
-concept refers_to_table_callable = requires {
+template<auto mapped, typename T = decltype(mapped), typename O = internal::type_t<T>>
+concept refers_to_table_callable = orm_refers_to_table<T> && requires {
     { get_all<mapped>() } -> same_as<get_all_t<decay_table_ref_t<T>, std::vector<O>>>;
     { count<mapped>() } -> same_as<count_asterisk_t<decay_table_ref_t<T>>>;
 };
 
-template<orm_table_reference auto table, typename O = internal::auto_decay_table_ref_t<table>>
-concept table_reference_callable = requires {
+template<auto table, typename T = decltype(table), typename O = internal::auto_decay_table_ref_t<table>>
+concept table_reference_callable = orm_table_reference<T> && requires {
     { get<table>(42) } -> same_as<get_t<O, int>>;
     { get_pointer<table>(42) } -> same_as<get_pointer_t<O, int>>;
     { get_optional<table>(42) } -> same_as<get_optional_t<O, int>>;
@@ -86,25 +86,25 @@ concept table_reference_callable = requires {
     { count<table>() } -> same_as<count_asterisk_t<O>>;
 };
 
-template<class S, orm_refers_to_table auto mapped, typename O = internal::type_t<decltype(mapped)>>
-concept storage_refers_to_table_callable = requires(S& storage) {
-    { storage.get_all<mapped>() } -> same_as<std::vector<O>>;
-    { storage.count<mapped>() } -> same_as<int>;
-    { storage.iterate<mapped>() } -> same_as<mapped_view<O, S>>;
+template<class S, auto mapped, typename T = decltype(mapped), typename O = internal::type_t<T>>
+concept storage_refers_to_table_callable = orm_refers_to_table<T> && requires(S& storage) {
+    { storage.template get_all<mapped>() } -> same_as<std::vector<O>>;
+    { storage.template count<mapped>() } -> same_as<int>;
+    { storage.template iterate<mapped>() } -> same_as<mapped_view<O, S>>;
 };
 
-template<class S, orm_table_reference auto table, typename O = internal::type_t<decltype(table)>>
-concept storage_table_reference_callable = requires(S& storage) {
-    { storage.get<table>(42) } -> same_as<O>;
-    { storage.get_pointer<table>(42) } -> same_as<std::unique_ptr<O>>;
-    { storage.get_optional<table>(42) } -> same_as<std::optional<O>>;
-    { storage.get_all<table>() } -> same_as<std::vector<O>>;
-    { storage.get_all_pointer<table>() } -> same_as<std::vector<std::unique_ptr<O>>>;
-    { storage.get_all_optional<table>() } -> same_as<std::vector<std::optional<O>>>;
-    { storage.remove<table>(42) } -> same_as<void>;
-    { storage.remove_all<table>() } -> same_as<void>;
-    { storage.count<table>() } -> same_as<int>;
-    { storage.iterate<table>() } -> same_as<mapped_view<O, S>>;
+template<class S, auto table, typename T = decltype(table), typename O = internal::type_t<T>>
+concept storage_table_reference_callable = orm_table_reference<T> && requires(S& storage) {
+    { storage.template get<table>(42) } -> same_as<O>;
+    { storage.template get_pointer<table>(42) } -> same_as<std::unique_ptr<O>>;
+    { storage.template get_optional<table>(42) } -> same_as<std::optional<O>>;
+    { storage.template get_all<table>() } -> same_as<std::vector<O>>;
+    { storage.template get_all_pointer<table>() } -> same_as<std::vector<std::unique_ptr<O>>>;
+    { storage.template get_all_optional<table>() } -> same_as<std::vector<std::optional<O>>>;
+    { storage.template remove<table>(42) } -> same_as<void>;
+    { storage.template remove_all<table>() } -> same_as<void>;
+    { storage.template count<table>() } -> same_as<int>;
+    { storage.template iterate<table>() } -> same_as<mapped_view<O, S>>;
 };
 #endif
 

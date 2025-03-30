@@ -69,8 +69,6 @@ if (MSVC)
         target_compile_options(unit_tests PUBLIC
             # warning-level 4
             /W4
-            # C4127: conditional expression is constant
-            /wd4127
             # C4456: declaration of 'symbol' hides previous local declaration
             /wd4456
             # C4458: declaration of 'symbol' hides class member

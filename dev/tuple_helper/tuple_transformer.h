@@ -28,8 +28,6 @@ namespace sqlite_orm {
         template<class Pack, template<class...> class Op>
         using transform_tuple_t = typename tuple_transformer<Pack, Op>::type;
 
-        //  note: applying a combiner like `plus_fold_integrals` needs fold expressions
-#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
         /*
          *  Apply a projection to a tuple's elements filtered by the specified indexes, and combine the results.
          *  
@@ -95,7 +93,6 @@ namespace sqlite_orm {
                                                                  IdxSeq{},
                                                                  project_nested_tuple_size<NestedProject>{},
                                                                  std::integral_constant<size_t, 0u>{}));
-#endif
 
         template<class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
         constexpr R create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, Projection project = {}) {

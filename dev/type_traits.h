@@ -114,8 +114,8 @@ namespace sqlite_orm {
         template<class T>
         using udf_type_t = typename T::udf_type;
 
-        template<auto a>
-        using auto_udf_type_t = typename decltype(a)::udf_type;
+        template<decltype(auto) a>
+        using auto_udf_type_t = typename std::remove_reference_t<decltype(a)>::udf_type;
 #endif
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
