@@ -270,30 +270,30 @@ namespace sqlite_orm {
 
         template<typename Moniker, class ExplicitCols>
         struct cte_builder {
-            ExplicitCols explicitColumns;
+            ExplicitCols _explicitColumns;
 
 #if SQLITE_VERSION_NUMBER >= 3035000 && defined(SQLITE_ORM_WITH_CPP20_ALIASES)
             template<auto... hints, class Select, satisfies<is_select, Select> = true>
             constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<decltype(hints)...>, Select>
             as(Select sel) && {
-                return {std::move(this->explicitColumns), std::move(sel)};
+                return {std::move(_explicitColumns), std::move(sel)};
             }
 
             template<auto... hints, class Compound, satisfies<is_compound_operator, Compound> = true>
             constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<decltype(hints)...>, select_t<Compound>>
             as(Compound sel) && {
-                return {std::move(this->explicitColumns), {std::move(sel)}};
+                return {std::move(_explicitColumns), {std::move(sel)}};
             }
 #else
             template<class Select, satisfies<is_select, Select> = true>
             constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<>, Select> as(Select sel) && {
-                return {std::move(this->explicitColumns), std::move(sel)};
+                return {std::move(_explicitColumns), std::move(sel)};
             }
 
             template<class Compound, satisfies<is_compound_operator, Compound> = true>
             constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<>, select_t<Compound>>
             as(Compound sel) && {
-                return {std::move(this->explicitColumns), {std::move(sel)}};
+                return {std::move(_explicitColumns), {std::move(sel)}};
             }
 #endif
         };
@@ -582,8 +582,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         static_assert((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
 
-        using builder_type =
-            cte_builder<decltype(moniker), transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
+        using builder_type = cte_builder<std::remove_const_t<decltype(moniker)>,
+                                         transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
         return builder_type{{std::move(explicitColumns)...}};
     }
 #endif

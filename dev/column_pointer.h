@@ -113,7 +113,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  storage.with(cte<cte_1>()(select(as<colalias_a>(&Object::id))), select(column<cte_1>(get<colalias_a>())));
      */
     template<class Moniker, class F, internal::satisfies<internal::is_recordset_alias, Moniker> = true>
-    constexpr auto column(F field) {
+    constexpr auto column([[maybe_unused]] F field) {
         using namespace ::sqlite_orm::internal;
 
         static_assert(is_cte_moniker_v<Moniker>, "`Moniker' must be a CTE moniker");
@@ -126,7 +126,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         } else {
             return column_pointer<Moniker, F>{std::move(field)};
         }
-        (void)field;
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES

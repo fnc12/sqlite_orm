@@ -31,7 +31,10 @@ void runTest(ColAlias /*colRef*/) {
 }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-template<auto als, typename A = decltype(als), typename O = internal::auto_type_t<als>>
+template<auto als,
+         /*note: gcc until v13.3 had the bad habit to deduce a constant template parameter as const; remove it*/
+         typename A = std::remove_const_t<decltype(als)>,
+         typename O = internal::auto_type_t<als>>
 concept table_alias_callable = orm_table_alias<A> && requires {
     { get_all<als>() } -> same_as<get_all_t<A, std::vector<O>>>;
     { count<als>() } -> same_as<count_asterisk_t<A>>;

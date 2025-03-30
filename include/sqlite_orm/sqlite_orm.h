@@ -1598,7 +1598,11 @@ namespace sqlite_orm {
         constexpr void iterate_tuple(Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
             if constexpr (reversed) {
                 // nifty fold expression trick: make use of guaranteed right-to-left evaluation order when folding over operator=
+#ifdef SQLITE_ORM_CONSTEVAL_SUPPORTED
                 [[maybe_unused]] int sink;
+#else
+                [[maybe_unused]] int sink = 0;
+#endif
                 // note: `(void)` cast silences warning 'expression result unused'
                 (void)((lambda(std::get<Idx>(tpl)), sink) = ... = 0);
             } else {
@@ -1766,8 +1770,8 @@ namespace sqlite_orm {
         template<class T>
         using udf_type_t = typename T::udf_type;
 
-        template<auto a>
-        using auto_udf_type_t = typename decltype(a)::udf_type;
+        template<decltype(auto) a>
+        using auto_udf_type_t = typename std::remove_reference_t<decltype(a)>::udf_type;
 #endif
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
@@ -1876,9 +1880,7 @@ namespace sqlite_orm::internal {
 namespace sqlite_orm {
     namespace internal {
         /*
-
          *  Identity wrapper around a mapped object, facilitating uniform column pointer expressions.
-
          */
         template<class O>
         struct table_reference : polyfill::type_identity<O> {};
@@ -1909,13 +1911,9 @@ namespace sqlite_orm {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     /** @short Specifies that a type is a reference of a concrete table, especially of a derived class.
-
      *
-
      *  A concrete table reference has the following traits:
-
      *  - specialization of `table_reference`, whose `type` typename references a mapped object.
-
      */
     template<class R>
     concept orm_table_reference = polyfill::is_specialization_of_v<std::remove_const_t<R>, internal::table_reference>;
@@ -2289,7 +2287,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  storage.with(cte<cte_1>()(select(as<colalias_a>(&Object::id))), select(column<cte_1>(get<colalias_a>())));
      */
     template<class Moniker, class F, internal::satisfies<internal::is_recordset_alias, Moniker> = true>
-    constexpr auto column(F field) {
+    constexpr auto column([[maybe_unused]] F field) {
         using namespace ::sqlite_orm::internal;
 
         static_assert(is_cte_moniker_v<Moniker>, "`Moniker' must be a CTE moniker");
@@ -2302,7 +2300,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         } else {
             return column_pointer<Moniker, F>{std::move(field)};
         }
-        (void)field;
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -2572,7 +2569,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         requires (!orm_cte_moniker<internal::auto_type_t<als>>)
     constexpr auto alias_column(C field) {
         using namespace ::sqlite_orm::internal;
-        using A = decltype(als);
+        using A = std::remove_const_t<decltype(als)>;
         using aliased_type = type_t<A>;
         static_assert(is_field_of_v<C, aliased_type>, "Column must be from aliased table");
 
@@ -2668,7 +2665,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<orm_column_alias auto als, class E>
     auto as(E expression) {
-        return internal::as_t<decltype(als), E>{std::move(expression)};
+        return internal::as_t<std::remove_const_t<decltype(als)>, E>{std::move(expression)};
     }
 
     /**
@@ -2700,7 +2697,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<orm_column_alias auto als>
     auto get() {
-        return internal::alias_holder<decltype(als)>{};
+        return internal::alias_holder<std::remove_const_t<decltype(als)>>{};
     }
 #endif
 
@@ -8923,30 +8920,30 @@ namespace sqlite_orm {
 
         template<typename Moniker, class ExplicitCols>
         struct cte_builder {
-            ExplicitCols explicitColumns;
+            ExplicitCols _explicitColumns;
 
 #if SQLITE_VERSION_NUMBER >= 3035000 && defined(SQLITE_ORM_WITH_CPP20_ALIASES)
             template<auto... hints, class Select, satisfies<is_select, Select> = true>
             constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<decltype(hints)...>, Select>
             as(Select sel) && {
-                return {std::move(this->explicitColumns), std::move(sel)};
+                return {std::move(_explicitColumns), std::move(sel)};
             }
 
             template<auto... hints, class Compound, satisfies<is_compound_operator, Compound> = true>
             constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<decltype(hints)...>, select_t<Compound>>
             as(Compound sel) && {
-                return {std::move(this->explicitColumns), {std::move(sel)}};
+                return {std::move(_explicitColumns), {std::move(sel)}};
             }
 #else
             template<class Select, satisfies<is_select, Select> = true>
             constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<>, Select> as(Select sel) && {
-                return {std::move(this->explicitColumns), std::move(sel)};
+                return {std::move(_explicitColumns), std::move(sel)};
             }
 
             template<class Compound, satisfies<is_compound_operator, Compound> = true>
             constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<>, select_t<Compound>>
             as(Compound sel) && {
-                return {std::move(this->explicitColumns), {std::move(sel)}};
+                return {std::move(_explicitColumns), {std::move(sel)}};
             }
 #endif
         };
@@ -9235,8 +9232,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         static_assert((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
 
-        using builder_type =
-            cte_builder<decltype(moniker), transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
+        using builder_type = cte_builder<std::remove_const_t<decltype(moniker)>,
+                                         transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
         return builder_type{{std::move(explicitColumns)...}};
     }
 #endif
@@ -10536,12 +10533,9 @@ namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-#include <type_traits>
 #include <tuple>
 #endif
 #endif
-
-// #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "tuple_helper/tuple_fy.h"
 
@@ -11329,7 +11323,7 @@ namespace sqlite_orm {
 
         template<size_t N>
         struct quoted_function_builder : cstring_literal<N> {
-            using cstring_literal<N>::cstring_literal;
+            constexpr quoted_function_builder(const char (&cstr)[N]) : cstring_literal<N>{cstr} {}
 
             /*
              *  From a freestanding function, possibly overloaded.
@@ -12232,7 +12226,7 @@ namespace sqlite_orm {
             }
 
             const basic_generated_always::storage_type*
-            find_column_generated_storage_type(const std::string& name) const {
+            find_column_generated_storage_type([[maybe_unused]] const std::string& name) const {
                 const basic_generated_always::storage_type* result = nullptr;
 #if SQLITE_VERSION_NUMBER >= 3031000
                 iterate_tuple(this->elements,
@@ -12247,8 +12241,6 @@ namespace sqlite_orm {
                                   constexpr size_t opIndex = index_sequence_value_at<0>(generated_op_index_sequence{});
                                   result = &std::get<opIndex>(column.constraints).storage;
                               });
-#else
-                (void)name;
 #endif
                 return result;
             }
@@ -17595,19 +17587,16 @@ namespace sqlite_orm {
         };
 
         // safety net of doing a triple check at runtime
-        inline void assert_args_count(const udf_proxy* proxy, int argsCount) {
+        inline void assert_args_count([[maybe_unused]] const udf_proxy* proxy, [[maybe_unused]] int argsCount) {
             assert((proxy->argumentsCount == -1) || (proxy->argumentsCount == argsCount ||
                                                      /*check fin call*/ argsCount == -1));
-            (void)proxy;
-            (void)argsCount;
         }
 
         // safety net of doing a triple check at runtime
-        inline void proxy_assert_args_count(sqlite3_context* context, int argsCount) {
+        inline void proxy_assert_args_count([[maybe_unused]] sqlite3_context* context, int argsCount) {
             udf_proxy* proxy;
             assert((proxy = static_cast<udf_proxy*>(sqlite3_user_data(context))) != nullptr);
             assert_args_count(proxy, argsCount);
-            (void)context;
         }
 
         // note: may throw `std::bad_alloc` in case memory space for the aggregate function object cannot be allocated
@@ -18069,9 +18058,10 @@ namespace sqlite_orm {
              * `quoted_scalar_function::callable()` uses the original function object, assuming it is free of side effects;
              * otherwise, it repeatedly uses a copy of the contained function object, assuming possible side effects.
              */
-            template<orm_quoted_scalar_function auto quotedF>
+            template<decltype(auto) quotedF>
+                requires (orm_quoted_scalar_function<decltype(quotedF)>)
             void create_scalar_function() {
-                using Sig = auto_udf_type_t<quotedF>;
+                using Sig = auto_udf_type_t<(quotedF)>;
                 using args_tuple = typename callable_arguments<Sig>::args_tuple;
                 using return_type = typename callable_arguments<Sig>::return_type;
                 constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
@@ -18191,7 +18181,8 @@ namespace sqlite_orm {
              *  Delete a quoted scalar function you created before.
              *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
              */
-            template<orm_quoted_scalar_function auto quotedF>
+            template<decltype(auto) quotedF>
+                requires (orm_quoted_scalar_function<decltype(quotedF)>)
             void delete_scalar_function() {
                 this->delete_function_impl(quotedF.name(), this->scalarFunctions);
             }
@@ -22021,7 +22012,7 @@ namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-#include <type_traits>
+#include <type_traits>  //  std::remove_const
 #include <tuple>
 #include <string>
 #include <vector>
@@ -22199,9 +22190,12 @@ namespace sqlite_orm {
                  typename SubselectColRefs,
                  typename FinalColRefs,
                  typename Result>
-        using create_cte_mapper_t =
-            typename create_cte_mapper<Moniker, ExplicitColRefs, Expression, SubselectColRefs, FinalColRefs, Result>::
-                type;
+        using create_cte_mapper_t = typename create_cte_mapper<std::remove_const_t<Moniker>,
+                                                               ExplicitColRefs,
+                                                               Expression,
+                                                               SubselectColRefs,
+                                                               FinalColRefs,
+                                                               Result>::type;
 
         // aliased column expressions, explicit or implicitly numbered
         template<typename F, typename ColRef, satisfies_is_specialization_of<ColRef, alias_holder> = true>
