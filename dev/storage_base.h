@@ -577,7 +577,6 @@ namespace sqlite_orm {
             }
 
             void begin_deferred_transaction() {
-                ;
                 this->begin_transaction_internal("BEGIN DEFERRED TRANSACTION");
             }
 
