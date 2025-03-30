@@ -111,17 +111,5 @@ TEST_CASE("is_bindable") {
     {
         auto func = datetime("now");
         STATIC_REQUIRE_FALSE(is_bindable_v<decltype(func)>);
-        bool trueCalled = false;
-        bool falseCalled = false;
-        auto dummy = 5;  //  for gcc compilation
-        internal::static_if<is_bindable_v<decltype(func)>>(
-            [&trueCalled](int&) {
-                trueCalled = true;
-            },
-            [&falseCalled](int&) {
-                falseCalled = true;
-            })(dummy);
-        REQUIRE_FALSE(trueCalled);
-        REQUIRE(falseCalled);
     }
 }

@@ -459,7 +459,7 @@ TEST_CASE("nullif") {
         REQUIRE(rows.size() == 1);
         REQUIRE(rows[0] == true);
     }
-#if defined(SQLITE_ORM_OPTIONAL_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
+#if defined(SQLITE_ORM_OPTIONAL_SUPPORTED)
     SECTION("common return type") {
         auto rows = storage.select(&Foo::field, where(nullif(&Foo::field, false)));
         REQUIRE(rows.size() == 1);

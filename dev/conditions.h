@@ -11,7 +11,7 @@
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
-#include "is_base_of_template.h"
+#include "functional/is_base_template_of.h"
 #include "type_traits.h"
 #include "collate_argument.h"
 #include "constraints.h"
@@ -142,7 +142,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_binary_condition_v = is_base_of_template_v<T, binary_condition>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_binary_condition_v = is_base_template_of_v<binary_condition, T>;
 
         template<class T>
         struct is_binary_condition : polyfill::bool_constant<is_binary_condition_v<T>> {};

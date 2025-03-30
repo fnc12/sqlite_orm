@@ -12,7 +12,7 @@ TEST_CASE("tuple iteration") {
     std::vector<std::type_index> expected;
     std::vector<std::type_index> types;
     SECTION("iterate_tuple with tuple instance") {
-        auto lambda = [&types](const auto& item) {
+        const auto lambda = [&types](const auto& item) {
             types.emplace_back(typeid(item));
         };
         SECTION("empty") {
@@ -29,15 +29,25 @@ TEST_CASE("tuple iteration") {
             iterate_tuple(tuple, lambda);
             expected = {typeid(std::string), typeid(long)};
         }
+        SECTION("std::string, long, reversed") {
+            std::tuple<std::string, long> tuple;
+            iterate_tuple<true>(tuple, lambda);
+            expected = {typeid(long), typeid(std::string)};
+        }
         SECTION("index selection") {
             constexpr size_t selectedIdx = 1;
-            std::tuple<std::string, long> tuple;
+            std::tuple<std::string, long, int> tuple;
             iterate_tuple(tuple, std::index_sequence<selectedIdx>{}, lambda);
             expected = {typeid(long)};
         }
+        SECTION("index selection, reversed") {
+            std::tuple<std::string, long, int> tuple;
+            iterate_tuple<true>(tuple, std::index_sequence<1, 2>{}, lambda);
+            expected = {typeid(int), typeid(long)};
+        }
     }
     SECTION("iterate_tuple with no tuple instance") {
-        auto lambda = [&types](auto* itemPointer) {
+        const auto lambda = [&types](auto* itemPointer) {
             using Item = std::remove_pointer_t<decltype(itemPointer)>;
             types.emplace_back(typeid(Item));
         };
