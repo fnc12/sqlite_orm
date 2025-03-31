@@ -37,15 +37,21 @@ TEST_CASE("vfs modes open successfully") {
 
     SECTION("Storage copy operator carries over vfs option") {
         auto storage_copy = storage;
-        CHECK(storage_copy.is_opened());
-        CHECK(storage_copy.vfs_name() == vfs);
-        CHECK(storage_copy.open_mode() == db_open_mode::default_);
+        REQUIRE(storage_copy.is_opened());
+        REQUIRE(storage_copy.vfs_name() == vfs);
+        REQUIRE(storage_copy.open_mode() == db_open_mode::default_);
     }
 }
 
 TEST_CASE("readwrite/readonly open modes behaves as expected") {
     const bool in_memory = GENERATE(true, false);
-    const char* tmp_filename = in_memory ? ":memory:" : "open_mode.sqlite";
+
+    const char* tmp_filename;
+    if (in_memory) {
+        tmp_filename = ":memory:";
+    } else {
+        tmp_filename = "open_mode.sqlite";
+    }
 
     connection_control options{true}, readonly_options{true};
     options.open_mode = db_open_mode::create_readwrite;
