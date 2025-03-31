@@ -89,8 +89,8 @@ TEST_CASE("logger") {
                      make_table("visits_log",
                                 make_column("id", &VisitLog::id, primary_key()),
                                 make_column("message", &VisitLog::message)),
-                     will_run_query(std::move(willRunQuery)),
-                     did_run_query(std::move(didRunQuery)));
+                     will_run_query(willRunQuery),
+                     did_run_query(didRunQuery));
     storage.sync_schema();
 
     WillLogsCollector::logs.clear();
