@@ -425,7 +425,7 @@ namespace sqlite_orm {
                 constexpr bool hasExplicitNullableConstraint =
                     mpl::invoke_t<mpl::disjunction<check_if_has_type<null_t>, check_if_has_type<not_null_t>>,
                                   constraints_tuple>::value;
-                if SQLITE_ORM_CONSTEXPR_IF (!hasExplicitNullableConstraint) {
+                if constexpr (!hasExplicitNullableConstraint) {
                     if (isNotNull) {
                         ss << " NOT NULL";
                     } else {

@@ -31,17 +31,20 @@ void runTest(ColAlias /*colRef*/) {
 }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-template<orm_table_alias auto als, typename A = decltype(als), typename O = internal::type_t<A>>
-concept table_alias_callable = requires {
+template<auto als,
+         /*note: gcc until v13.3 had the bad habit to deduce a constant template parameter as const; remove it*/
+         typename A = std::remove_const_t<decltype(als)>,
+         typename O = internal::auto_type_t<als>>
+concept table_alias_callable = orm_table_alias<A> && requires {
     { get_all<als>() } -> same_as<get_all_t<A, std::vector<O>>>;
     { count<als>() } -> same_as<count_asterisk_t<A>>;
 };
 
-template<class S, orm_table_alias auto als, typename O = internal::type_t<decltype(als)>>
-concept storage_table_alias_callable = requires(S& storage) {
-    { storage.get_all<als>() } -> same_as<std::vector<O>>;
-    { storage.count<als>() } -> same_as<int>;
-    { storage.iterate<als>() } -> same_as<mapped_view<O, S>>;
+template<class S, auto als, typename A = decltype(als), typename O = internal::auto_type_t<als>>
+concept storage_table_alias_callable = orm_table_alias<A> && requires(S& storage) {
+    { storage.template get_all<als>() } -> same_as<std::vector<O>>;
+    { storage.template count<als>() } -> same_as<int>;
+    { storage.template iterate<als>() } -> same_as<mapped_view<O, S>>;
 };
 #endif
 

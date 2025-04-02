@@ -15,14 +15,14 @@ using internal::quoted_scalar_function;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 template<class S, auto f>
 concept storage_scalar_callable = requires(S& storage) {
-    { storage.create_scalar_function<f>() };
-    { storage.delete_scalar_function<f>() };
+    { storage.template create_scalar_function<f>() };
+    { storage.template delete_scalar_function<f>() };
 };
 
 template<class S, auto f>
 concept storage_aggregate_callable = requires(S& storage) {
-    { storage.create_aggregate_function<f>() };
-    { storage.delete_aggregate_function<f>() };
+    { storage.template create_aggregate_function<f>() };
+    { storage.template delete_aggregate_function<f>() };
 };
 #endif
 

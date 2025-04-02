@@ -25,11 +25,6 @@ namespace sqlite_orm {
             using object_type = void;
             using table_mapped_type = T;
 
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            index_t(std::string name_, bool unique_, elements_type elements_) :
-                index_base{std::move(name_), unique_}, elements(std::move(elements_)) {}
-#endif
-
             elements_type elements;
         };
     }

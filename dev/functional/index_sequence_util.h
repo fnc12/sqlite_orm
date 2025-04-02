@@ -7,16 +7,16 @@
 namespace sqlite_orm {
     namespace internal {
 #if defined(SQLITE_ORM_PACK_INDEXING_SUPPORTED)
-        /**
-         *  Get the index value of an `index_sequence` at a specific position.
+        /**
+         *  Get the index value of an `index_sequence` at a specific position.
          */
         template<size_t Pos, size_t... Idx>
         SQLITE_ORM_CONSTEVAL auto index_sequence_value_at(std::index_sequence<Idx...>) {
             return Idx...[Pos];
         }
-#elif defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED)
-        /**
-         *  Get the index value of an `index_sequence` at a specific position.
+#else
+        /**
+         *  Get the index value of an `index_sequence` at a specific position.
          */
         template<size_t Pos, size_t... Idx>
         SQLITE_ORM_CONSTEVAL size_t index_sequence_value_at(std::index_sequence<Idx...>) {
@@ -30,16 +30,6 @@ namespace sqlite_orm {
             // note: `(void)` cast silences warning 'expression result unused'
             (void)((result = Idx, i++ == Pos) || ...);
             return result;
-        }
-#else
-        /**
-         *  Get the index value of an `index_sequence` at a specific position.
-         *  `Pos` must always be `0`.
-         */
-        template<size_t Pos, size_t I, size_t... Idx>
-        SQLITE_ORM_CONSTEVAL size_t index_sequence_value_at(std::index_sequence<I, Idx...>) {
-            static_assert(Pos == 0, "");
-            return I;
         }
 #endif
 

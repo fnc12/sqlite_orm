@@ -6,7 +6,6 @@
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
-#include "functional/static_magic.h"
 #include "type_traits.h"
 #include "prepared_statement.h"
 #include "ast_iterator.h"
@@ -135,16 +134,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         const result_type* result = nullptr;
         internal::iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
             using node_type = polyfill::remove_cvref_t<decltype(node)>;
-            if (internal::is_bindable<node_type>::value) {
+            if constexpr (internal::is_bindable<node_type>::value) {
                 ++index;
-            }
-            if (index == N) {
-                internal::call_if_constexpr<std::is_same<result_type, node_type>::value>(
-                    [](auto& r, auto& n) {
-                        r = &n;
-                    },
-                    result,
-                    node);
+                if constexpr (std::is_same<result_type, node_type>::value) {
+                    if (index == N) {
+                        result = &node;
+                    }
+                }
             }
         });
         return internal::get_ref(*result);
@@ -161,16 +157,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         internal::iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
             using node_type = polyfill::remove_cvref_t<decltype(node)>;
-            if (internal::is_bindable<node_type>::value) {
+            if constexpr (internal::is_bindable<node_type>::value) {
                 ++index;
-            }
-            if (index == N) {
-                internal::call_if_constexpr<std::is_same<result_type, node_type>::value>(
-                    [](auto& r, auto& n) {
-                        r = const_cast<std::remove_reference_t<decltype(r)>>(&n);
-                    },
-                    result,
-                    node);
+                if constexpr (std::is_same<result_type, node_type>::value) {
+                    if (index == N) {
+                        result = const_cast<result_type*>(&node);
+                    }
+                }
             }
         });
         return internal::get_ref(*result);

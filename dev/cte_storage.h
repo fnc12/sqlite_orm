@@ -2,7 +2,7 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-#include <type_traits>
+#include <type_traits>  //  std::remove_const
 #include <tuple>
 #include <string>
 #include <vector>
@@ -57,9 +57,12 @@ namespace sqlite_orm {
                  typename SubselectColRefs,
                  typename FinalColRefs,
                  typename Result>
-        using create_cte_mapper_t =
-            typename create_cte_mapper<Moniker, ExplicitColRefs, Expression, SubselectColRefs, FinalColRefs, Result>::
-                type;
+        using create_cte_mapper_t = typename create_cte_mapper<std::remove_const_t<Moniker>,
+                                                               ExplicitColRefs,
+                                                               Expression,
+                                                               SubselectColRefs,
+                                                               FinalColRefs,
+                                                               Result>::type;
 
         // aliased column expressions, explicit or implicitly numbered
         template<typename F, typename ColRef, satisfies_is_specialization_of<ColRef, alias_holder> = true>
@@ -72,7 +75,6 @@ namespace sqlite_orm {
         // F O::*
         template<typename F, typename ColRef, satisfies<std::is_member_pointer, ColRef> = true>
         auto make_cte_column(std::string name, const ColRef& finalColRef) {
-            using object_type = table_type_of_t<ColRef>;
             using column_type = column_t<ColRef, empty_setter>;
 
             return column_type{std::move(name), finalColRef, empty_setter{}};

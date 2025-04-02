@@ -85,7 +85,7 @@ namespace sqlite_orm {
             template<class Void, class... X>
             struct is_invocable_impl : std::false_type {};
 
-#if __cplusplus >= 201703
+#if __cplusplus >= 201703L
             template<class... Ts>
             struct is_invocable_impl<polyfill::void_t<decltype(polyfill::invoke(std::declval<Ts>()...))>, Ts...>
                 : std::true_type {};

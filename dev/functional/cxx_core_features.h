@@ -17,28 +17,8 @@
 #define SQLITE_ORM_HAS_INCLUDE(file) 0L
 #endif
 
-#if __cpp_noexcept_function_type >= 201510L
-#define SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
-#endif
-
-#if __cpp_aggregate_bases >= 201603L
-#define SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-#endif
-
-#if __cpp_fold_expressions >= 201603L
-#define SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
-#endif
-
-#if __cpp_constexpr >= 201603L
-#define SQLITE_ORM_CONSTEXPR_LAMBDAS_SUPPORTED
-#endif
-
 #if __cpp_range_based_for >= 201603L
 #define SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED
-#endif
-
-#if __cpp_if_constexpr >= 201606L
-#define SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
 #endif
 
 #if __cpp_inline_variables >= 201606L

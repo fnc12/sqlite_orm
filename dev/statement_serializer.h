@@ -18,6 +18,7 @@
 
 #include "functional/cxx_type_traits_polyfill.h"  // std::remove_cvref, std::disjunction
 #include "functional/cxx_functional_polyfill.h"  // std::identity, std::invoke
+#include "functional/always_default.h"
 #include "functional/mpl.h"
 #include "tuple_helper/tuple_filter.h"
 #include "ast/upsert_clause.h"
@@ -159,7 +160,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "CREATE TABLE " << streaming_identifier(tableName) << " ("
                    << streaming_expressions_tuple(statement.elements, context) << ")";
-                if (statement_type::is_without_rowid_v) {
+                if constexpr (statement_type::is_without_rowid_v) {
                     ss << " WITHOUT ROWID";
                 }
                 return ss.str();
@@ -327,18 +328,18 @@ namespace sqlite_orm {
                 ss << "ON CONFLICT";
                 iterate_tuple(statement.target_args, [&ss, &context](auto& value) {
                     using value_type = polyfill::remove_cvref_t<decltype(value)>;
-                    auto needParenthesis = std::is_member_pointer<value_type>::value;
+                    constexpr bool needParenthesis = std::is_member_pointer<value_type>::value;
                     ss << ' ';
-                    if (needParenthesis) {
+                    if constexpr (needParenthesis) {
                         ss << '(';
                     }
                     ss << serialize(value, context);
-                    if (needParenthesis) {
+                    if constexpr (needParenthesis) {
                         ss << ')';
                     }
                 });
                 ss << ' ' << "DO";
-                if (std::tuple_size<typename statement_type::actions_tuple>::value == 0) {
+                if constexpr (std::tuple_size<typename statement_type::actions_tuple>::value == 0) {
                     ss << " NOTHING";
                 } else {
                     auto updateContext = context;
@@ -731,11 +732,11 @@ namespace sqlite_orm {
 
                 std::stringstream ss;
                 ss << expression.serialize();
-                if SQLITE_ORM_CONSTEXPR_IF (parenthesize) {
+                if constexpr (parenthesize) {
                     ss << "(";
                 }
                 ss << serialize(get_from_expression(expression.argument), subCtx);
-                if SQLITE_ORM_CONSTEXPR_IF (parenthesize) {
+                if constexpr (parenthesize) {
                     ss << ")";
                 }
                 return ss.str();
@@ -757,11 +758,11 @@ namespace sqlite_orm {
 
                 std::stringstream ss;
                 ss << static_cast<std::string>(expression) << " ";
-                if SQLITE_ORM_CONSTEXPR_IF (parenthesize) {
+                if constexpr (parenthesize) {
                     ss << "(";
                 }
                 ss << serialize(get_from_expression(expression.c), subCtx);
-                if SQLITE_ORM_CONSTEXPR_IF (parenthesize) {
+                if constexpr (parenthesize) {
                     ss << ")";
                 }
                 return ss.str();
@@ -786,19 +787,19 @@ namespace sqlite_orm {
                                                    is_binary_operator<right_type_t<statement_type>>::value;
 
                 std::stringstream ss;
-                if SQLITE_ORM_CONSTEXPR_IF (parenthesizeLeft) {
+                if constexpr (parenthesizeLeft) {
                     ss << "(";
                 }
                 ss << serialize(statement.lhs, subCtx);
-                if SQLITE_ORM_CONSTEXPR_IF (parenthesizeLeft) {
+                if constexpr (parenthesizeLeft) {
                     ss << ")";
                 }
                 ss << " " << statement.serialize() << " ";
-                if SQLITE_ORM_CONSTEXPR_IF (parenthesizeRight) {
+                if constexpr (parenthesizeRight) {
                     ss << "(";
                 }
                 ss << serialize(statement.rhs, subCtx);
-                if SQLITE_ORM_CONSTEXPR_IF (parenthesizeRight) {
+                if constexpr (parenthesizeRight) {
                     ss << ")";
                 }
                 return ss.str();
@@ -849,13 +850,13 @@ namespace sqlite_orm {
                     ss << "NOT IN";
                 }
                 ss << " ";
-                if (is_compound_operator<C>::value) {
+                if constexpr (is_compound_operator<C>::value) {
                     ss << '(';
                 }
                 auto newContext = context;
                 newContext.use_parentheses = true;
                 ss << serialize(statement.argument, newContext);
-                if (is_compound_operator<C>::value) {
+                if constexpr (is_compound_operator<C>::value) {
                     ss << ')';
                 }
                 return ss.str();
@@ -902,7 +903,7 @@ namespace sqlite_orm {
                 using args_type = std::tuple<Args...>;
                 constexpr bool theOnlySelect =
                     std::tuple_size<args_type>::value == 1 && is_select<std::tuple_element_t<0, args_type>>::value;
-                if (!theOnlySelect) {
+                if constexpr (!theOnlySelect) {
                     ss << "(";
                 }
                 ss << streaming_expressions_tuple(statement.argument, context);
@@ -1049,7 +1050,7 @@ namespace sqlite_orm {
                 }
                 using columns_tuple = typename statement_type::columns_tuple;
                 constexpr size_t columnsCount = std::tuple_size<columns_tuple>::value;
-                if (columnsCount) {
+                if constexpr (columnsCount > 0) {
                     ss << "(" << streaming_mapped_columns_expressions(statement.columns, context) << ")";
                 }
                 return ss.str();
@@ -1066,7 +1067,7 @@ namespace sqlite_orm {
                 ss << static_cast<std::string>(c);
                 using columns_tuple = typename statement_type::columns_tuple;
                 const size_t columnsCount = std::tuple_size<columns_tuple>::value;
-                if (columnsCount) {
+                if constexpr (columnsCount > 0) {
                     ss << "(" << streaming_mapped_columns_expressions(c.columns, context) << ")";
                 }
                 return ss.str();
@@ -1271,7 +1272,7 @@ namespace sqlite_orm {
                    << streaming_non_generated_column_names(table) << ")"
                    << " VALUES ("
                    << streaming_field_values_excluding(check_if<is_generated_always>{},
-                                                       empty_callable<std::false_type>,  //  don't exclude
+                                                       always_default<std::false_type>,  //  don't exclude
                                                        context,
                                                        get_ref(statement.object))
                    << ")";
@@ -1518,7 +1519,7 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
-                if (is_insert_raw<T>::value) {
+                if constexpr (is_insert_raw<T>::value) {
                     ss << "INSERT";
                 } else {
                     ss << "REPLACE";
@@ -1526,12 +1527,12 @@ namespace sqlite_orm {
                 iterate_tuple(statement.args, [&context, &ss](auto& value) {
                     using value_type = polyfill::remove_cvref_t<decltype(value)>;
                     ss << ' ';
-                    if (is_columns<value_type>::value) {
+                    if constexpr (is_columns<value_type>::value) {
                         auto newContext = context;
                         newContext.skip_table_name = true;
                         newContext.use_parentheses = true;
                         ss << serialize(value, newContext);
-                    } else if (is_values<value_type>::value || is_select<value_type>::value) {
+                    } else if constexpr (is_values<value_type>::value || is_select<value_type>::value) {
                         auto newContext = context;
                         newContext.use_parentheses = false;
                         ss << serialize(value, newContext);
@@ -1787,23 +1788,22 @@ namespace sqlite_orm {
                 subCtx.use_parentheses = true;
 
                 std::stringstream ss;
-                if (!is_compound_operator<T>::value) {
+                if constexpr (!is_compound_operator<T>::value) {
                     if (!sel.highest_level && context.use_parentheses) {
                         ss << "(";
                     }
                     ss << "SELECT ";
-                    call_if_constexpr<is_rowset_deduplicator_v<return_type>>(
+                    if constexpr (is_rowset_deduplicator_v<return_type>) {
                         // note: make use of implicit to-string conversion
-                        [&ss](std::string keyword) {
-                            ss << keyword << ' ';
-                        },
-                        sel.col);
+                        std::string keyword = sel.col;
+                        ss << keyword << ' ';
+                    }
                 }
 
                 ss << streaming_serialized(get_column_names(sel.col, subCtx));
                 using conditions_tuple = typename statement_type::conditions_type;
                 constexpr bool hasExplicitFrom = tuple_has<conditions_tuple, is_from>::value;
-                if (!hasExplicitFrom) {
+                if constexpr (!hasExplicitFrom) {
                     auto tableNames = collect_table_names(sel, context);
                     using joins_index_sequence = filter_tuple_sequence_t<conditions_tuple, is_constrained_join>;
                     // deduplicate table names of constrained join statements
@@ -1820,7 +1820,7 @@ namespace sqlite_orm {
                     }
                 }
                 ss << streaming_conditions_tuple(sel.conditions, context);
-                if (!is_compound_operator<T>::value) {
+                if constexpr (!is_compound_operator<T>::value) {
                     if (!sel.highest_level && context.use_parentheses) {
                         ss << ")";
                     }
@@ -1903,7 +1903,7 @@ namespace sqlite_orm {
                 std::string whereString;
                 iterate_tuple(statement.elements, [&columnNames, &context, &whereString](auto& value) {
                     using value_type = polyfill::remove_cvref_t<decltype(value)>;
-                    if (!is_where<value_type>::value) {
+                    if constexpr (!is_where<value_type>::value) {
                         auto newContext = context;
                         newContext.use_parentheses = false;
                         auto whereString = serialize(value, newContext);
@@ -2091,7 +2091,7 @@ namespace sqlite_orm {
                 ss << " BEGIN ";
                 iterate_tuple(statement.elements, [&ss, &context](auto& element) {
                     using element_type = polyfill::remove_cvref_t<decltype(element)>;
-                    if (is_select<element_type>::value) {
+                    if constexpr (is_select<element_type>::value) {
                         auto newContext = context;
                         newContext.use_parentheses = false;
                         ss << serialize(element, newContext);
@@ -2243,8 +2243,8 @@ namespace sqlite_orm {
                 newContext.skip_table_name = false;
                 std::stringstream ss;
                 ss << static_cast<std::string>(limt) << " ";
-                if (HO) {
-                    if (OI) {
+                if constexpr (HO) {
+                    if constexpr (OI) {
                         limt.off.apply([&newContext, &ss](auto& value) {
                             ss << serialize(value, newContext);
                         });

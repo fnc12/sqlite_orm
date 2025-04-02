@@ -4,7 +4,6 @@
 #include <string>  //  std::string
 #endif
 
-#include "functional/static_magic.h"
 #include "functional/index_sequence_util.h"
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_filter.h"
@@ -35,11 +34,11 @@ namespace sqlite_orm {
 
         template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs>>
         decltype(auto) lookup_table_name(const DBOs& dbObjects) {
-            return static_if<is_mapped<DBOs, Lookup>::value>(
-                [](const auto& dbObjects) -> const std::string& {
-                    return pick_table<Lookup>(dbObjects).name;
-                },
-                empty_callable<std::string>)(dbObjects);
+            if constexpr (is_mapped<DBOs, Lookup>::value) {
+                return (pick_table<Lookup>(dbObjects).name);
+            } else {
+                return std::string{};
+            }
         }
 
         /**

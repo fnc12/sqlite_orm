@@ -6,7 +6,6 @@
 #include <utility>  //  std::move
 #endif
 
-#include "functional/static_magic.h"
 #include "member_traits/member_traits.h"
 #include "table_reference.h"
 #include "row_extractor.h"
@@ -38,13 +37,11 @@ namespace sqlite_orm {
             void operator()(const column_field<G, S>& column) {
                 const auto rowExtractor = row_value_extractor<member_field_type_t<G>>();
                 auto value = rowExtractor.extract(this->stmt, ++this->columnIndex);
-                static_if<std::is_member_object_pointer<G>::value>(
-                    [&value, &object = this->object](const auto& column) {
-                        object.*column.member_pointer = std::move(value);
-                    },
-                    [&value, &object = this->object](const auto& column) {
-                        (object.*column.setter)(std::move(value));
-                    })(column);
+                if constexpr (std::is_member_object_pointer<G>::value) {
+                    object.*column.member_pointer = std::move(value);
+                } else {
+                    (object.*column.setter)(std::move(value));
+                };
             }
         };
 
