@@ -194,7 +194,7 @@ namespace sqlite_orm {
                 context_t context{this->db_objects};
                 statement_serializer<Table, void> serializer;
                 const std::string sql = serializer.serialize(table, context, tableName);
-                this->executor.perform_void_exec(db, sql);
+                this->executor.perform_void_exec(db, sql.data());
             }
 
             /**
@@ -217,7 +217,7 @@ namespace sqlite_orm {
                        << streaming_identifier(columnName) << std::flush;
                     sql = ss.str();
                 }
-                this->executor.perform_void_exec(db, sql);
+                this->executor.perform_void_exec(db, sql.data());
             }
 #endif
 
@@ -1186,7 +1186,7 @@ namespace sqlite_orm {
                 const auto res = sync_schema_result::already_in_sync;
                 context_t context{this->db_objects};
                 const auto sql = serialize(virtualTable, context);
-                this->executor.perform_void_exec(db, sql);
+                this->executor.perform_void_exec(db, sql.data());
                 return res;
             }
 
@@ -1197,7 +1197,7 @@ namespace sqlite_orm {
                 const auto res = sync_schema_result::already_in_sync;
                 context_t context{this->db_objects};
                 const auto sql = serialize(index, context);
-                this->executor.perform_void_exec(db, sql);
+                this->executor.perform_void_exec(db, sql.data());
                 return res;
             }
 
@@ -1208,7 +1208,7 @@ namespace sqlite_orm {
                 const auto res = sync_schema_result::already_in_sync;  // TODO Change accordingly
                 context_t context{this->db_objects};
                 const auto sql = serialize(trigger, context);
-                this->executor.perform_void_exec(db, sql);
+                this->executor.perform_void_exec(db, sql.data());
                 return res;
             }
 
@@ -1230,7 +1230,7 @@ namespace sqlite_orm {
                        << serialize(column, context) << std::flush;
                     sql = ss.str();
                 }
-                this->executor.perform_void_exec(db, sql);
+                this->executor.perform_void_exec(db, sql.data());
             }
 
             template<class ColResult, class S>

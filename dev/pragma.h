@@ -271,10 +271,10 @@ namespace sqlite_orm {
 
             void set_pragma_impl(const std::string& sql, sqlite3* db = nullptr) {
                 if (db) {
-                    this->executor.perform_void_exec(db, sql);
+                    this->executor.perform_void_exec(db, sql.data());
                 } else {
-                    auto con = this->get_connection();
-                    this->executor.perform_void_exec(con.get(), sql);
+                    auto connection = this->get_connection();
+                    this->executor.perform_void_exec(connection.get(), sql.data());
                 }
             }
         };

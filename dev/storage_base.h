@@ -156,7 +156,7 @@ namespace sqlite_orm {
                        << streaming_identifier(newName) << std::flush;
                     sql = ss.str();
                 }
-                this->executor.perform_void_exec(db, sql);
+                this->executor.perform_void_exec(db, sql.data());
             }
 
             /**
@@ -732,7 +732,7 @@ namespace sqlite_orm {
             void begin_transaction_internal(const std::string& sql) {
                 this->connection->retain();
                 sqlite3* db = this->connection->get();
-                this->executor.perform_void_exec(db, sql);
+                this->executor.perform_void_exec(db, sql.data());
             }
 
             connection_ref get_connection() {
@@ -748,7 +748,7 @@ namespace sqlite_orm {
                     ss << "PRAGMA foreign_keys = " << value << std::flush;
                     sql = ss.str();
                 }
-                this->executor.perform_void_exec(db, sql);
+                this->executor.perform_void_exec(db, sql.data());
             }
 
             bool foreign_keys(sqlite3* db) {
@@ -970,7 +970,7 @@ namespace sqlite_orm {
                     ss << ' ' << streaming_identifier(tableName) << std::flush;
                     sql = ss.str();
                 }
-                this->executor.perform_void_exec(db, sql);
+                this->executor.perform_void_exec(db, sql.data());
             }
 
             void drop_index_internal(const std::string& indexName, bool ifExists) {
@@ -985,7 +985,7 @@ namespace sqlite_orm {
                     sql = ss.str();
                 }
                 auto connection = this->get_connection();
-                this->executor.perform_void_exec(connection.get(), sql);
+                this->executor.perform_void_exec(connection.get(), sql.data());
             }
 
             void drop_trigger_internal(const std::string& triggerName, bool ifExists) {
@@ -1000,7 +1000,7 @@ namespace sqlite_orm {
                     sql = ss.str();
                 }
                 auto connection = this->get_connection();
-                this->executor.perform_void_exec(connection.get(), sql);
+                this->executor.perform_void_exec(connection.get(), sql.data());
             }
 
             static int
@@ -1069,7 +1069,7 @@ namespace sqlite_orm {
             std::function<int(int)> _busy_handler;
             std::list<udf_proxy> scalarFunctions;
             std::list<udf_proxy> aggregateFunctions;
-            sqlite_executor executor;
+            const sqlite_executor executor;
         };
     }
 }

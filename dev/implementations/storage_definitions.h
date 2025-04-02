@@ -158,7 +158,7 @@ namespace sqlite_orm {
                    << streaming_identifier(sourceTableName) << std::flush;
                 sql = ss.str();
             }
-            this->executor.perform_void_exec(db, sql);
+            this->executor.perform_void_exec(db, sql.data());
         }
     }
 }

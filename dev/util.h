@@ -59,15 +59,31 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 namespace sqlite_orm {
     namespace internal {
 
+        template<class L>
+        int perform_step(sqlite3_stmt* stmt, L&& lambda) {
+            const int rc = sqlite3_step(stmt);
+            switch (rc) {
+                case SQLITE_ROW: {
+                    lambda(stmt);
+                } break;
+                case SQLITE_DONE:
+                    break;
+                default: {
+                    throw_translated_sqlite_error(rc);
+                }
+            }
+            return rc;
+        }
+
         struct sqlite_executor {
             std::function<void(serialize_arg_type sql)> will_run_query;
             std::function<void(serialize_arg_type sql)> did_run_query;
 
-            inline void perform_void_exec(sqlite3* db, serialize_arg_type sql) const {
+            inline void perform_void_exec(sqlite3* db, const char* sql) const {
                 if (this->will_run_query) {
                     this->will_run_query(sql);
                 }
-                const int rc = sqlite3_exec(db, sql.data(), nullptr, nullptr, nullptr);
+                const int rc = sqlite3_exec(db, sql, nullptr, nullptr, nullptr);
                 if (rc != SQLITE_OK) {
                     throw_translated_sqlite_error(rc);
                 }
@@ -93,30 +109,24 @@ namespace sqlite_orm {
             }
 
             inline void perform_exec(sqlite3* db,
-                                     const serialize_result_type& query,
+                                     const std::string& query,
                                      int (*callback)(void* data, int argc, char** argv, char**),
                                      void* user_data) const {
                 return perform_exec(db, query.data(), callback, user_data);
             }
 
             template<class L>
-            void perform_steps(sqlite3_stmt* stmt, L&& lambda) {
-                const auto sql = sqlite3_sql(stmt);
+            void perform_steps(sqlite3_stmt* stmt, L&& lambda) const {
+                const char* sql = nullptr;
+                if (this->will_run_query || this->did_run_query) {
+                    sql = sqlite3_sql(stmt);
+                }
                 if (this->will_run_query) {
                     this->will_run_query(sql);
                 }
-                int rc;
+                int rc = 0;
                 do {
-                    switch (rc = sqlite3_step(stmt)) {
-                        case SQLITE_ROW: {
-                            lambda(stmt);
-                        } break;
-                        case SQLITE_DONE:
-                            break;
-                        default: {
-                            throw_translated_sqlite_error(rc);
-                        }
-                    }
+                    rc = internal::perform_step(stmt, lambda);
                 } while (rc != SQLITE_DONE);
                 if (this->did_run_query) {
                     this->did_run_query(sql);
@@ -130,10 +140,9 @@ namespace sqlite_orm {
             return stmt;
         }
 
-        // note: query is deliberately taken by value, such that it is thrown away early
         inline sqlite3_stmt* prepare_stmt(sqlite3* db, serialize_arg_type query) {
             sqlite3_stmt* stmt;
-            const int rc = sqlite3_prepare_v2(db, query.data(), -1, &stmt, nullptr);
+            const int rc = sqlite3_prepare_v2(db, query.data(), query.size(), &stmt, nullptr);
             if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
                 throw_translated_sqlite_error(rc);
             }
@@ -145,20 +154,6 @@ namespace sqlite_orm {
             const int rc = sqlite3_step(stmt);
             if (rc != expected) {
                 throw_translated_sqlite_error(rc);
-            }
-        }
-
-        template<class L>
-        void perform_step(sqlite3_stmt* stmt, L&& lambda) {
-            switch (int rc = sqlite3_step(stmt)) {
-                case SQLITE_ROW: {
-                    lambda(stmt);
-                } break;
-                case SQLITE_DONE:
-                    return;
-                default: {
-                    throw_translated_sqlite_error(rc);
-                }
             }
         }
     }
