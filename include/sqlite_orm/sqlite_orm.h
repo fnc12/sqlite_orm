@@ -14004,9 +14004,9 @@ namespace sqlite_orm {
             const std::function<void(sqlite3* db)> _didOpenDb;
 
           public:
+            const std::string filename;
             const std::string vfs_name;
             const db_open_mode open_mode;
-            const std::string filename;
         };
 
         struct connection_ref {
