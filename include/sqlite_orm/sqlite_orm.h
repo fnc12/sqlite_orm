@@ -262,6 +262,15 @@ using std::nullptr_t;
 
 #define SQLITE_ORM_WITH_CTE
 
+#if defined(_WIN32)
+#define SQLITE_ORM_WIN
+#elif defined(__APPLE__)
+#define SQLITE_ORM_APPLE
+#define SQLITE_ORM_UNIX
+#elif defined(__unix__) || defined(__unix) || defined(__linux__) || defined(__FreeBSD__)
+#define SQLITE_ORM_UNIX
+#endif
+
 // define the inline namespace "literals" so that it is available even if it was not introduced by a feature
 namespace sqlite_orm {
     inline namespace literals {}
@@ -4218,9 +4227,11 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
         using serialize_result_type = std::string_view;
         using serialize_arg_type = std::string_view;
+        using string_constant_type = std::string_view;
 #else
         using serialize_result_type = std::string;
         using serialize_arg_type = const std::string&;
+        using string_constant_type = const char*;
 #endif
     }
 }
@@ -13843,32 +13854,159 @@ namespace sqlite_orm {
 
 // #include "error_code.h"
 
+// #include "vfs_name.h"
+
+// #include "serialize_result_type.h"
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+
+#ifdef SQLITE_ORM_UNIX
+    SQLITE_ORM_INLINE_VAR constexpr internal::string_constant_type unix_vfs_name = "unix";
+    SQLITE_ORM_INLINE_VAR constexpr internal::string_constant_type unix_posix_vfs_name = unix_vfs_name;
+    SQLITE_ORM_INLINE_VAR constexpr internal::string_constant_type unix_dotfile_vfs_name = "unix-dotfile";
+#ifdef SQLITE_ORM_APPLE
+    SQLITE_ORM_INLINE_VAR constexpr internal::string_constant_type unix_afp_vfs_name = "unix-afp";
+#endif
+    SQLITE_ORM_INLINE_VAR constexpr internal::string_constant_type default_vfs_name = unix_vfs_name;
+#endif
+
+#ifdef SQLITE_ORM_WIN
+    SQLITE_ORM_INLINE_VAR constexpr internal::string_constant_type win32_vfs_name = "win32";
+    SQLITE_ORM_INLINE_VAR constexpr internal::string_constant_type win32_longpath_vfs_name = "win32-longpath";
+
+    SQLITE_ORM_INLINE_VAR constexpr internal::string_constant_type default_vfs_name = win32_vfs_name;
+#endif
+}
+
+// #include "db_open_mode.h"
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+
+    enum class db_open_mode {
+        default_ = 0,
+        create_readwrite = 0,
+        readonly = 1,
+    };
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    namespace internal {
+        constexpr int db_open_mode_to_int_flags(db_open_mode open) {
+
+            switch (open) {
+                case db_open_mode::readonly:
+                    return SQLITE_OPEN_READONLY;
+                case db_open_mode::create_readwrite:
+                    return SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE;
+            };
+
+            return -1;
+        }
+    }
+}
+
+// #include "storage_options.h"
+
+#include <sqlite3.h>
+#ifdef SQLITE_ORM_IMPORT_STD_MODULE
+#include <version>
+#else
+#include <type_traits>  //  std::is_aggregate
+#include <utility>  //  std::move
+#include <functional>  //  std::function
+#endif
+
+// #include "serialize_result_type.h"
+
+namespace sqlite_orm {
+    namespace internal {
+        template<typename T>
+        using storage_opt_tag_t = typename T::storage_opt_tag;
+
+        struct on_open_spec {
+            using storage_opt_tag = int;
+
+            std::function<void(sqlite3*)> onOpen;
+        };
+        struct will_run_query_spec {
+            using storage_opt_tag = int;
+
+            std::function<void(serialize_arg_type)> willRunQuery;
+        };
+        struct did_run_query_spec {
+            using storage_opt_tag = int;
+
+            std::function<void(serialize_arg_type)> didRunQuery;
+        };
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /** 
+     *  Database connection control options to be passed to `make_storage()`.
+     */
+    struct connection_control {
+        /// Whether to open the database once and for all.
+        /// Required if using a 'storage' instance from multiple threads.
+        bool open_forever = false;
+        std::string vfs_name{default_vfs_name};
+        db_open_mode open_mode = db_open_mode::default_;
+
+        using storage_opt_tag = int;
+    };
+#if __cpp_lib_is_aggregate >= 201703L
+    // design choice: must be an aggregate that can be constructed using designated initializers
+    static_assert(std::is_aggregate_v<connection_control>);
+#endif
+
+#ifdef SQLITE_ORM_CTAD_SUPPORTED
+    /** 
+     *  Callback function to be passed to `make_storage()`.
+     *  The provided function is called immdediately after the database connection has been established and set up.
+     */
+    inline internal::on_open_spec on_open(std::function<void(sqlite3*)> onOpen) {
+        return {std::move(onOpen)};
+    }
+#endif
+    inline internal::will_run_query_spec
+    will_run_query(std::function<void(internal::serialize_arg_type)> willRunQuery) {
+        return {std::move(willRunQuery)};
+    }
+
+    inline internal::did_run_query_spec did_run_query(std::function<void(internal::serialize_arg_type)> didRunQuery) {
+        return {std::move(didRunQuery)};
+    }
+}
+
 namespace sqlite_orm {
     namespace internal {
 
         struct connection_holder {
-            connection_holder(std::string filename, std::function<void(sqlite3*)> didOpenDb) :
-                _didOpenDb{std::move(didOpenDb)}, filename(std::move(filename)) {}
+            connection_holder(std::string filename,
+                              std::function<void(sqlite3*)> didOpenDb,
+                              const connection_control& options = {}) :
+                _didOpenDb{std::move(didOpenDb)}, filename(std::move(filename)), vfs_name(options.vfs_name),
+                open_mode(options.open_mode) {}
 
             connection_holder(const connection_holder&) = delete;
 
             connection_holder(const connection_holder& other, std::function<void(sqlite3*)> didOpenDb) :
-                _didOpenDb{std::move(didOpenDb)}, filename{other.filename} {}
+                _didOpenDb{std::move(didOpenDb)}, filename{other.filename}, vfs_name(other.vfs_name),
+                open_mode{other.open_mode} {}
 
             void retain() {
                 // first one opens the connection.
                 // we presume that the connection is opened once in a single-threaded context [also open forever].
                 // therefore we can just use an atomic increment but don't need sequencing due to `prevCount > 0`.
                 if (_retainCount.fetch_add(1, std::memory_order_relaxed) == 0) {
-                    int rc = sqlite3_open_v2(this->filename.c_str(),
-                                             &this->db,
-                                             SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE
+                    int open_flags = internal::db_open_mode_to_int_flags(this->open_mode);
 #if SQLITE_VERSION_NUMBER >= 3037002
-                                                 | SQLITE_OPEN_EXRESCODE,
-#else
-                                                 | 0,
+                    open_flags |= SQLITE_OPEN_EXRESCODE;
 #endif
-                                             nullptr);
+
+                    const int rc =
+                        sqlite3_open_v2(this->filename.c_str(), &this->db, open_flags, this->vfs_name.c_str());
+
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible, but unexpected*/ {
                         throw_translated_sqlite_error(rc);
                     }
@@ -13915,6 +14053,8 @@ namespace sqlite_orm {
 
           public:
             const std::string filename;
+            const std::string vfs_name;
+            const db_open_mode open_mode;
         };
 
         struct connection_ref {
@@ -17723,75 +17863,6 @@ namespace sqlite_orm {
 
 // #include "storage_options.h"
 
-#include <sqlite3.h>
-#ifdef SQLITE_ORM_IMPORT_STD_MODULE
-#include <version>
-#else
-#include <type_traits>  //  std::is_aggregate
-#include <utility>  //  std::move
-#include <functional>  //  std::function
-#endif
-
-// #include "serialize_result_type.h"
-
-namespace sqlite_orm {
-    namespace internal {
-        template<typename T>
-        using storage_opt_tag_t = typename T::storage_opt_tag;
-
-        struct on_open_spec {
-            using storage_opt_tag = int;
-
-            std::function<void(sqlite3*)> onOpen;
-        };
-        struct will_run_query_spec {
-            using storage_opt_tag = int;
-
-            std::function<void(serialize_arg_type)> willRunQuery;
-        };
-        struct did_run_query_spec {
-            using storage_opt_tag = int;
-
-            std::function<void(serialize_arg_type)> didRunQuery;
-        };
-    }
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    /** 
-     *  Database connection control options to be passed to `make_storage()`.
-     */
-    struct connection_control {
-        /// Whether to open the database once and for all.
-        /// Required if using a 'storage' instance from multiple threads.
-        bool open_forever = false;
-
-        using storage_opt_tag = int;
-    };
-#if __cpp_lib_is_aggregate >= 201703L
-    // design choice: must be an aggregate that can be constructed using designated initializers
-    static_assert(std::is_aggregate_v<connection_control>);
-#endif
-
-#ifdef SQLITE_ORM_CTAD_SUPPORTED
-    /** 
-     *  Callback function to be passed to `make_storage()`.
-     *  The provided function is called immdediately after the database connection has been established and set up.
-     */
-    inline internal::on_open_spec on_open(std::function<void(sqlite3*)> onOpen) {
-        return {std::move(onOpen)};
-    }
-#endif
-    inline internal::will_run_query_spec
-    will_run_query(std::function<void(internal::serialize_arg_type)> willRunQuery) {
-        return {std::move(willRunQuery)};
-    }
-
-    inline internal::did_run_query_spec did_run_query(std::function<void(internal::serialize_arg_type)> didRunQuery) {
-        return {std::move(didRunQuery)};
-    }
-}
-
 namespace sqlite_orm {
     namespace internal {
 
@@ -18383,7 +18454,7 @@ namespace sqlite_orm {
             }
 
             backup_t make_backup_to(const std::string& filename) {
-                auto holder = std::make_unique<connection_holder>(filename, nullptr);
+                auto holder = std::make_unique<connection_holder>(filename, nullptr, connection_control{});
                 connection_ref conRef{*holder};
                 return {conRef, "main", this->get_connection(), "main", std::move(holder)};
             }
@@ -18393,7 +18464,7 @@ namespace sqlite_orm {
             }
 
             backup_t make_backup_from(const std::string& filename) {
-                auto holder = std::make_unique<connection_holder>(filename, nullptr);
+                auto holder = std::make_unique<connection_holder>(filename, nullptr, connection_control{});
                 connection_ref conRef{*holder};
                 return {this->get_connection(), "main", conRef, "main", std::move(holder)};
             }
@@ -18412,6 +18483,28 @@ namespace sqlite_orm {
              */
             bool is_opened() const {
                 return this->connection->retain_count() > 0;
+            }
+
+            /**
+             * Return the name of the VFS object used by the database connection.
+             */
+            const std::string& vfs_name() const {
+                return this->connection->vfs_name;
+            }
+
+            /**
+             * Return the current open_mode for this storage object. 
+             */
+            db_open_mode open_mode() const {
+                return this->connection->open_mode;
+            }
+
+            /**
+             * Return true if this database object is opened in a readonly state. 
+             */
+            bool db_readonly() {
+                auto con = this->get_connection();
+                return static_cast<bool>(sqlite3_db_readonly(con.get(), "main"));
             }
 
             /*
@@ -18448,7 +18541,8 @@ namespace sqlite_orm {
                 inMemory(filename.empty() || filename == ":memory:"), isOpenedForever{connectionCtrl.open_forever},
                 connection(std::make_unique<connection_holder>(
                     std::move(filename),
-                    std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))),
+                    std::bind(&storage_base::on_open_internal, this, std::placeholders::_1),
+                    connectionCtrl)),
                 cachedForeignKeysCount(foreignKeysCount),
                 executor{std::move(willRunQuerySpec.willRunQuery), std::move(didRunQuerySpec.didRunQuery)} {
                 if (this->inMemory) {

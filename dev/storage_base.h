@@ -627,7 +627,7 @@ namespace sqlite_orm {
             }
 
             backup_t make_backup_to(const std::string& filename) {
-                auto holder = std::make_unique<connection_holder>(filename, nullptr);
+                auto holder = std::make_unique<connection_holder>(filename, nullptr, connection_control{});
                 connection_ref conRef{*holder};
                 return {conRef, "main", this->get_connection(), "main", std::move(holder)};
             }
@@ -637,7 +637,7 @@ namespace sqlite_orm {
             }
 
             backup_t make_backup_from(const std::string& filename) {
-                auto holder = std::make_unique<connection_holder>(filename, nullptr);
+                auto holder = std::make_unique<connection_holder>(filename, nullptr, connection_control{});
                 connection_ref conRef{*holder};
                 return {this->get_connection(), "main", conRef, "main", std::move(holder)};
             }
@@ -656,6 +656,28 @@ namespace sqlite_orm {
              */
             bool is_opened() const {
                 return this->connection->retain_count() > 0;
+            }
+
+            /**
+             * Return the name of the VFS object used by the database connection.
+             */
+            const std::string& vfs_name() const {
+                return this->connection->vfs_name;
+            }
+
+            /**
+             * Return the current open_mode for this storage object. 
+             */
+            db_open_mode open_mode() const {
+                return this->connection->open_mode;
+            }
+
+            /**
+             * Return true if this database object is opened in a readonly state. 
+             */
+            bool db_readonly() {
+                auto con = this->get_connection();
+                return static_cast<bool>(sqlite3_db_readonly(con.get(), "main"));
             }
 
             /*
@@ -692,7 +714,8 @@ namespace sqlite_orm {
                 inMemory(filename.empty() || filename == ":memory:"), isOpenedForever{connectionCtrl.open_forever},
                 connection(std::make_unique<connection_holder>(
                     std::move(filename),
-                    std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))),
+                    std::bind(&storage_base::on_open_internal, this, std::placeholders::_1),
+                    connectionCtrl)),
                 cachedForeignKeysCount(foreignKeysCount),
                 executor{std::move(willRunQuerySpec.willRunQuery), std::move(didRunQuerySpec.didRunQuery)} {
                 if (this->inMemory) {
