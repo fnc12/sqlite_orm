@@ -320,8 +320,8 @@ namespace sqlite_orm {
             mapped_view<O, self_type, Args...> iterate(Args&&... args) {
                 this->assert_mapped_type<O>();
 
-                auto con = this->get_connection();
-                return {*this, std::move(con), std::forward<Args>(args)...};
+                auto connection = this->get_connection();
+                return {*this, std::move(connection), std::forward<Args>(args)...};
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -348,8 +348,8 @@ namespace sqlite_orm {
                 requires (is_select_v<E>)
 #endif
             result_set_view<with_t<E, CTEs...>, db_objects_type> iterate(with_t<E, CTEs...> expression) {
-                auto con = this->get_connection();
-                return {this->db_objects, std::move(con), std::move(expression)};
+                auto connection = this->get_connection();
+                return {this->db_objects, std::move(connection), std::move(expression)};
             }
 #endif
 #endif

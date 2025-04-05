@@ -61,18 +61,17 @@ namespace sqlite_orm {
 
         template<class L>
         int perform_step(sqlite3_stmt* stmt, L&& lambda) {
-            const int rc = sqlite3_step(stmt);
-            switch (rc) {
+            switch (int rc = sqlite3_step(stmt)) {
                 case SQLITE_ROW: {
                     lambda(stmt);
                 } break;
                 case SQLITE_DONE:
-                    break;
+                    return rc;
                 default: {
                     throw_translated_sqlite_error(rc);
                 }
             }
-            return rc;
+            return SQLITE_OK;
         }
 
         struct sqlite_executor {
@@ -124,12 +123,20 @@ namespace sqlite_orm {
                 if (this->will_run_query) {
                     this->will_run_query(sql);
                 }
-                int rc = 0;
-                do {
-                    rc = internal::perform_step(stmt, lambda);
-                } while (rc != SQLITE_DONE);
-                if (this->did_run_query) {
-                    this->did_run_query(sql);
+                for (;;) {
+                    switch (int rc = sqlite3_step(stmt)) {
+                        case SQLITE_ROW: {
+                            lambda(stmt);
+                        } break;
+                        case SQLITE_DONE:
+                            if (this->did_run_query) {
+                                this->did_run_query(sql);
+                            }
+                            return;
+                        default: {
+                            throw_translated_sqlite_error(stmt);
+                        }
+                    }
                 }
             }
         };

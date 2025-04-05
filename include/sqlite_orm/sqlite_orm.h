@@ -13599,18 +13599,17 @@ namespace sqlite_orm {
 
         template<class L>
         int perform_step(sqlite3_stmt* stmt, L&& lambda) {
-            const int rc = sqlite3_step(stmt);
-            switch (rc) {
+            switch (int rc = sqlite3_step(stmt)) {
                 case SQLITE_ROW: {
                     lambda(stmt);
                 } break;
                 case SQLITE_DONE:
-                    break;
+                    return rc;
                 default: {
                     throw_translated_sqlite_error(rc);
                 }
             }
-            return rc;
+            return SQLITE_OK;
         }
 
         struct sqlite_executor {
@@ -13662,12 +13661,20 @@ namespace sqlite_orm {
                 if (this->will_run_query) {
                     this->will_run_query(sql);
                 }
-                int rc = 0;
-                do {
-                    rc = internal::perform_step(stmt, lambda);
-                } while (rc != SQLITE_DONE);
-                if (this->did_run_query) {
-                    this->did_run_query(sql);
+                for (;;) {
+                    switch (int rc = sqlite3_step(stmt)) {
+                        case SQLITE_ROW: {
+                            lambda(stmt);
+                        } break;
+                        case SQLITE_DONE:
+                            if (this->did_run_query) {
+                                this->did_run_query(sql);
+                            }
+                            return;
+                        default: {
+                            throw_translated_sqlite_error(stmt);
+                        }
+                    }
                 }
             }
         };
@@ -22921,8 +22928,8 @@ namespace sqlite_orm {
             mapped_view<O, self_type, Args...> iterate(Args&&... args) {
                 this->assert_mapped_type<O>();
 
-                auto con = this->get_connection();
-                return {*this, std::move(con), std::forward<Args>(args)...};
+                auto connection = this->get_connection();
+                return {*this, std::move(connection), std::forward<Args>(args)...};
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -22949,8 +22956,8 @@ namespace sqlite_orm {
                 requires (is_select_v<E>)
 #endif
             result_set_view<with_t<E, CTEs...>, db_objects_type> iterate(with_t<E, CTEs...> expression) {
-                auto con = this->get_connection();
-                return {this->db_objects, std::move(con), std::move(expression)};
+                auto connection = this->get_connection();
+                return {this->db_objects, std::move(connection), std::move(expression)};
             }
 #endif
 #endif
