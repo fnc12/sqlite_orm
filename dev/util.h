@@ -60,18 +60,17 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class L>
-        int perform_step(sqlite3_stmt* stmt, L&& lambda) {
+        void perform_step(sqlite3_stmt* stmt, L&& lambda) {
             switch (int rc = sqlite3_step(stmt)) {
                 case SQLITE_ROW: {
                     lambda(stmt);
                 } break;
                 case SQLITE_DONE:
-                    return rc;
+                    return;
                 default: {
                     throw_translated_sqlite_error(rc);
                 }
             }
-            return SQLITE_OK;
         }
 
         struct sqlite_executor {
