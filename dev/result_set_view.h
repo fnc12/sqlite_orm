@@ -51,11 +51,13 @@ namespace sqlite_orm::internal {
             using select_type = polyfill::detected_or_t<expression_type, expression_type_t, expression_type>;
             using column_result_type = column_result_of_t<ExprDBOs, select_type>;
             using context_t = serializer_context<ExprDBOs>;
+
             context_t context{exprDBOs};
             context.skip_table_name = false;
             context.replace_bindable_with_question = true;
 
-            statement_finalizer stmt{prepare_stmt(this->connection.get(), serialize(this->expression, context))};
+            const std::string sql = serialize(this->expression, context);
+            statement_finalizer stmt{prepare_stmt(this->connection.get(), sql)};
             iterate_ast(this->expression, conditional_binder{stmt.get()});
 
             // note: it is enough to only use the 'expression DBOs' at compile-time to determine the column results;

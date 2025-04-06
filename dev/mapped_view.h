@@ -51,12 +51,14 @@ namespace sqlite_orm {
 
             mapped_iterator<T, db_objects_type> begin() {
                 using context_t = serializer_context<db_objects_type>;
+
                 auto& dbObjects = obtain_db_objects(this->storage);
                 context_t context{dbObjects};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
 
-                statement_finalizer stmt{prepare_stmt(this->connection.get(), serialize(this->expression, context))};
+                const std::string sql = serialize(this->expression, context);
+                statement_finalizer stmt{prepare_stmt(this->connection.get(), sql)};
                 iterate_ast(this->expression.conditions, conditional_binder{stmt.get()});
                 return {dbObjects, std::move(stmt)};
             }

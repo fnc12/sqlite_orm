@@ -10,7 +10,7 @@ using namespace sqlite_orm;
 TEST_CASE("Prepared insert explicit") {
     using namespace PreparedStatementTests;
     using Catch::Matchers::UnorderedEquals;
-#if SQLITE_VERSION_NUMBER >= 3008008
+#if SQLITE_VERSION_NUMBER >= 3037002
     const ErrorCodeExceptionMatcher primaryKeyExceptionMatcher(sqlite_errc(SQLITE_CONSTRAINT_PRIMARYKEY));
 #else
     const ErrorCodeExceptionMatcher primaryKeyExceptionMatcher(sqlite_errc(SQLITE_CONSTRAINT));
