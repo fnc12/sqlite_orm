@@ -72,13 +72,35 @@
 
 #define SQLITE_ORM_WITH_CTE
 
-#if defined(_WIN32)
+#if defined(_WIN32) || defined(_WIN64)
 #define SQLITE_ORM_WIN
+
 #elif defined(__APPLE__)
+#include <TargetConditionals.h>
+#if TARGET_IPHONE_SIMULATOR == 1 || TARGET_OS_IPHONE == 1
+#define SQLITE_ORM_IOS
+#elif TARGET_OS_OSX == 1
+#define SQLITE_ORM_MACOS
+#endif
 #define SQLITE_ORM_APPLE
 #define SQLITE_ORM_UNIX
-#elif defined(__unix__) || defined(__unix) || defined(__linux__) || defined(__FreeBSD__)
+
+#elif defined(__linux__)
+#if defined(__ANDROID__)
+#define SQLITE_ORM_ANDROID
+#endif
+#define SQLITE_ORM_LINUX
 #define SQLITE_ORM_UNIX
+
+#elif defined(__FreeBSD__) || defined(__OpenBSD__)
+#define SQLITE_ORM_BSD
+#define SQLITE_ORM_UNIX
+
+#elif defined(__unix__) || defined(__unix)
+#define SQLITE_ORM_UNIX
+
+#else
+#error "Unknown target platform detected"
 #endif
 
 // define the inline namespace "literals" so that it is available even if it was not introduced by a feature
