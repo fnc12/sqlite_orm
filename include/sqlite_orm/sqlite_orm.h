@@ -282,7 +282,7 @@ using std::nullptr_t;
 #define SQLITE_ORM_LINUX
 #define SQLITE_ORM_UNIX
 
-#elif defined(__FreeBSD__) || defined(__OpenBSD__)
+#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
 #define SQLITE_ORM_BSD
 #define SQLITE_ORM_UNIX
 
