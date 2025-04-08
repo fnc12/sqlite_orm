@@ -286,6 +286,10 @@ using std::nullptr_t;
 #define SQLITE_ORM_BSD
 #define SQLITE_ORM_UNIX
 
+#elif defined(__RTP__) || defined(_WRS_KERNEL)
+#define SQLITE_ORM_VXWORKS
+#define SQLITE_ORM_UNIX
+
 #elif defined(__unix__) || defined(__unix)
 #define SQLITE_ORM_UNIX
 
