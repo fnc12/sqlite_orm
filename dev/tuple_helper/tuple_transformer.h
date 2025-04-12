@@ -69,7 +69,7 @@ namespace sqlite_orm {
          */
         struct plus_fold_integrals {
             template<class... Integrals>
-            constexpr auto operator()(const Integrals&...) const {
+            SQLITE_ORM_STATIC_CALLOP constexpr auto operator()(const Integrals&...) SQLITE_ORM_OR_CONST_CALLOP {
                 using integral_type = std::common_type_t<typename Integrals::value_type...>;
                 return std::integral_constant<integral_type, (Integrals::value + ...)>{};
             }
@@ -82,7 +82,7 @@ namespace sqlite_orm {
         template<template<class...> class NestedProject>
         struct project_nested_tuple_size {
             template<class T>
-            constexpr auto operator()(const T&) const {
+            SQLITE_ORM_STATIC_CALLOP constexpr auto operator()(const T&) SQLITE_ORM_OR_CONST_CALLOP {
                 return typename std::tuple_size<NestedProject<T>>::type{};
             }
         };

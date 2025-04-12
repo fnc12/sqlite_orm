@@ -197,12 +197,12 @@ namespace sqlite_orm {
 
             template<class R = decltype(UDF::name()),
                      std::enable_if_t<polyfill::negation<std::is_same<R, char>>::value, bool> = true>
-            decltype(auto) operator()() const {
+            SQLITE_ORM_STATIC_CALLOP decltype(auto) operator()() SQLITE_ORM_OR_CONST_CALLOP {
                 return UDF::name();
             }
 
             template<class R = decltype(UDF::name()), std::enable_if_t<std::is_same<R, char>::value, bool> = true>
-            std::string operator()() const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()() SQLITE_ORM_OR_CONST_CALLOP {
                 return std::string{UDF::name()};
             }
         };
@@ -348,17 +348,18 @@ namespace sqlite_orm {
              *  Generates the SQL function call.
              */
             template<typename... CallArgs>
-            function_call<UDF, CallArgs...> operator()(CallArgs... callArgs) const {
+            SQLITE_ORM_STATIC_CALLOP function_call<UDF, CallArgs...>
+            operator()(CallArgs... callArgs) SQLITE_ORM_OR_CONST_CALLOP {
                 check_function_call<UDF, CallArgs...>();
-                return {this->udf_holder(), {std::forward<CallArgs>(callArgs)...}};
+                return {udf_holder(), {std::forward<CallArgs>(callArgs)...}};
             }
 
-            constexpr auto udf_holder() const {
+            SQLITE_ORM_STATIC_CALLOP constexpr auto udf_holder() SQLITE_ORM_OR_CONST_CALLOP {
                 return internal::udf_holder<UDF>{};
             }
 
             // returns a character range
-            constexpr auto name() const {
+            SQLITE_ORM_STATIC_CALLOP constexpr auto name() SQLITE_ORM_OR_CONST_CALLOP {
                 return this->udf_holder()();
             }
         };

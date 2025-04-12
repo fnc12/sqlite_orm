@@ -10,7 +10,7 @@ namespace sqlite_orm {
         template<class R>
         struct always_default_of {
             template<class... Args>
-            constexpr R operator()(Args&&...) const {
+            SQLITE_ORM_STATIC_CALLOP constexpr R operator()(Args&&...) SQLITE_ORM_OR_CONST_CALLOP {
                 return R();
             }
 

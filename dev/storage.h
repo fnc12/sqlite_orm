@@ -128,7 +128,7 @@ namespace sqlite_orm {
 
             // swallow leaf expressions
             template<class T>
-            void operator()(const T&) const {}
+            SQLITE_ORM_STATIC_CALLOP void operator()(const T&) SQLITE_ORM_OR_CONST_CALLOP {}
 
             static bool _contains(const std::list<udf_proxy>& functions, const std::string_view& name) {
 #ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED

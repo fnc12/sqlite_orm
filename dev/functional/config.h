@@ -52,6 +52,14 @@
 #define SQLITE_ORM_CPP20_RANGES_SUPPORTED
 #endif
 
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+#define SQLITE_ORM_STATIC_CALLOP static
+#define SQLITE_ORM_OR_CONST_CALLOP
+#else
+#define SQLITE_ORM_STATIC_CALLOP
+#define SQLITE_ORM_OR_CONST_CALLOP const
+#endif
+
 // C++20 or later (unfortunately there's no feature test macro).
 // Stupidly, clang says C++20, but `std::default_sentinel_t` was only implemented in libc++ 13 and libstd++-v3 10
 // (the latter is used on Linux).

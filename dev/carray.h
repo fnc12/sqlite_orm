@@ -127,7 +127,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<typename P>
     struct note_value_fn {
-        P operator()(P&& value, carray_pointer_arg<P> pv) const {
+        SQLITE_ORM_STATIC_CALLOP P operator()(P&& value, carray_pointer_arg<P> pv) SQLITE_ORM_OR_CONST_CALLOP {
             if (P* observer = pv) {
                 *observer = value;
             }

@@ -147,7 +147,7 @@ namespace sqlite_orm {
             expressions_tuple compound;
 
             constexpr compound_operator(expressions_tuple compound) : compound{std::move(compound)} {
-                iterate_tuple(this->compound, [](auto& expression) {
+                iterate_tuple(this->compound, [](auto& expression) SQLITE_ORM_STATIC_CALLOP {
                     expression.highest_level = true;
                 });
             }
@@ -596,7 +596,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                        std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
                        std::convertible_to<ExplicitCols, std::string>) &&
                       ...)
-        constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) const {
+        SQLITE_ORM_STATIC_CALLOP constexpr auto
+        cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP {
             return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
         }
 #else
@@ -608,7 +609,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                       std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
                                       std::is_convertible<ExplicitCols, std::string>>...>,
                                   bool>>
-        constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) const {
+        SQLITE_ORM_STATIC_CALLOP constexpr auto
+        cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP {
             return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
         }
 #endif

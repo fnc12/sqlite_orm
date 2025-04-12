@@ -19,7 +19,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T, class SFINAE = void>
     struct type_is_nullable : std::false_type {
-        bool operator()(const T&) const {
+        SQLITE_ORM_STATIC_CALLOP bool operator()(const T&) SQLITE_ORM_OR_CONST_CALLOP {
             return true;
         }
     };
@@ -35,7 +35,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
                                 polyfill::is_specialization_of<T, std::unique_ptr>,
                                 polyfill::is_specialization_of<T, std::shared_ptr>>::value>> : std::true_type {
-        bool operator()(const T& t) const {
+        SQLITE_ORM_STATIC_CALLOP bool operator()(const T& t) SQLITE_ORM_OR_CONST_CALLOP {
             return static_cast<bool>(t);
         }
     };

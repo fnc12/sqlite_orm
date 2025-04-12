@@ -113,12 +113,13 @@ namespace sqlite_orm {
         template<stream_as mode>
         struct streaming {
             template<class... Ts>
-            auto operator()(const Ts&... ts) const {
+            SQLITE_ORM_STATIC_CALLOP auto operator()(const Ts&... ts) SQLITE_ORM_OR_CONST_CALLOP {
                 return std::forward_as_tuple(*this, ts...);
             }
 
             template<size_t... Idx>
-            constexpr std::index_sequence<1u + Idx...> offset_index(std::index_sequence<Idx...>) const {
+            SQLITE_ORM_STATIC_CALLOP constexpr std::index_sequence<1u + Idx...>
+            offset_index(std::index_sequence<Idx...>) SQLITE_ORM_OR_CONST_CALLOP {
                 return {};
             }
         };

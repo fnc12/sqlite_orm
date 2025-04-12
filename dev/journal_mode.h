@@ -64,7 +64,7 @@ namespace sqlite_orm {
                 journal_mode::OFF,
             }};
 #ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
-            std::ranges::transform(string, string.begin(), [](unsigned char c) noexcept {
+            std::ranges::transform(string, string.begin(), [](unsigned char c) noexcept SQLITE_ORM_STATIC_CALLOP {
                 return std::toupper(c);
             });
             if (auto found = std::ranges::find(journalModes, string, journal_mode_to_string);

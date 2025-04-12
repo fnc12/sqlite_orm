@@ -50,7 +50,7 @@ namespace sqlite_orm {
         struct get_ref_t {
 
             template<class O>
-            auto& operator()(O& t) const {
+            SQLITE_ORM_STATIC_CALLOP auto& operator()(O& t) SQLITE_ORM_OR_CONST_CALLOP {
                 return t;
             }
         };
@@ -59,7 +59,7 @@ namespace sqlite_orm {
         struct get_ref_t<std::reference_wrapper<T>> {
 
             template<class O>
-            auto& operator()(O& t) const {
+            SQLITE_ORM_STATIC_CALLOP auto& operator()(O& t) SQLITE_ORM_OR_CONST_CALLOP {
                 return t.get();
             }
         };
@@ -89,7 +89,7 @@ namespace sqlite_orm {
             using expression_type = replace_t<T>;
 
             template<class O>
-            auto& operator()(O& e) const {
+            SQLITE_ORM_STATIC_CALLOP auto& operator()(O& e) SQLITE_ORM_OR_CONST_CALLOP {
                 return get_ref(e.object);
             }
         };
@@ -99,7 +99,7 @@ namespace sqlite_orm {
             using expression_type = insert_t<T>;
 
             template<class O>
-            auto& operator()(O& e) const {
+            SQLITE_ORM_STATIC_CALLOP auto& operator()(O& e) SQLITE_ORM_OR_CONST_CALLOP {
                 return get_ref(e.object);
             }
         };
@@ -109,7 +109,7 @@ namespace sqlite_orm {
             using expression_type = update_t<T>;
 
             template<class O>
-            auto& operator()(O& e) const {
+            SQLITE_ORM_STATIC_CALLOP auto& operator()(O& e) SQLITE_ORM_OR_CONST_CALLOP {
                 return get_ref(e.object);
             }
         };
