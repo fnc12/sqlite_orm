@@ -1,6 +1,6 @@
 #pragma once
 
-#if defined(_WIN32) || defined(_WIN64)
+#if defined(_WIN32)
 #define SQLITE_ORM_WIN
 
 #elif defined(__APPLE__)
