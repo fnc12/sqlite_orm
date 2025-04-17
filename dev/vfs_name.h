@@ -1,6 +1,7 @@
 #pragma once
 
 #include "serialize_result_type.h"
+#include "functional/platform_definitions.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 

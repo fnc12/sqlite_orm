@@ -262,41 +262,6 @@ using std::nullptr_t;
 
 #define SQLITE_ORM_WITH_CTE
 
-#if defined(_WIN32) || defined(_WIN64)
-#define SQLITE_ORM_WIN
-
-#elif defined(__APPLE__)
-#include <TargetConditionals.h>
-#if TARGET_IPHONE_SIMULATOR == 1 || TARGET_OS_IPHONE == 1
-#define SQLITE_ORM_IOS
-#elif TARGET_OS_OSX == 1
-#define SQLITE_ORM_MACOS
-#endif
-#define SQLITE_ORM_APPLE
-#define SQLITE_ORM_UNIX
-
-#elif defined(__linux__)
-#if defined(__ANDROID__)
-#define SQLITE_ORM_ANDROID
-#endif
-#define SQLITE_ORM_LINUX
-#define SQLITE_ORM_UNIX
-
-#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
-#define SQLITE_ORM_BSD
-#define SQLITE_ORM_UNIX
-
-#elif defined(__RTP__) || defined(_WRS_KERNEL)
-#define SQLITE_ORM_VXWORKS
-#define SQLITE_ORM_UNIX
-
-#elif defined(__unix__) || defined(__unix)
-#define SQLITE_ORM_UNIX
-
-#else
-#error "Unknown target platform detected"
-#endif
-
 // define the inline namespace "literals" so that it is available even if it was not introduced by a feature
 namespace sqlite_orm {
     inline namespace literals {}
@@ -13889,6 +13854,43 @@ namespace sqlite_orm {
 // #include "vfs_name.h"
 
 // #include "serialize_result_type.h"
+
+// #include "functional/platform_definitions.h"
+
+#if defined(_WIN32) || defined(_WIN64)
+#define SQLITE_ORM_WIN
+
+#elif defined(__APPLE__)
+#include <TargetConditionals.h>
+#if TARGET_IPHONE_SIMULATOR == 1 || TARGET_OS_IPHONE == 1
+#define SQLITE_ORM_IOS
+#elif TARGET_OS_OSX == 1
+#define SQLITE_ORM_MACOS
+#endif
+#define SQLITE_ORM_APPLE
+#define SQLITE_ORM_UNIX
+
+#elif defined(__linux__)
+#if defined(__ANDROID__)
+#define SQLITE_ORM_ANDROID
+#endif
+#define SQLITE_ORM_LINUX
+#define SQLITE_ORM_UNIX
+
+#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
+#define SQLITE_ORM_BSD
+#define SQLITE_ORM_UNIX
+
+#elif defined(__RTP__) || defined(_WRS_KERNEL)
+#define SQLITE_ORM_VXWORKS
+#define SQLITE_ORM_UNIX
+
+#elif defined(__unix__) || defined(__unix)
+#define SQLITE_ORM_UNIX
+
+#else
+#error "Unknown target platform detected"
+#endif
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
