@@ -80,6 +80,16 @@ namespace sqlite_orm {
             return column_type{std::move(name), finalColRef, empty_setter{}};
         }
 
+#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+        /**
+         *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
+         */
+        template<typename DBOs, typename... CTETables>
+        auto db_objects_cat(const DBOs& dbObjects, CTETables&&... cteTables) {
+            auto& [... elements] = dbObjects;
+            return std::tuple{std::forward<CTETables>(cteTables)..., elements...};
+        }
+#else
         /**
          *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
          */
@@ -97,6 +107,7 @@ namespace sqlite_orm {
                                   std::make_index_sequence<std::tuple_size_v<DBOs>>{},
                                   std::forward<CTETables>(cteTables)...);
         }
+#endif
 
         /**
          *  This function returns the expression contained in a subselect that is relevant for

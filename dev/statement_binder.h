@@ -2,7 +2,7 @@
 
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::true_type, std::false_type, std::make_index_sequence, std::index_sequence
+#include <type_traits>  //  std::enable_if, std::is_arithmetic, std::is_same, std::make_index_sequence, std::index_sequence
 #include <memory>  //  std::default_delete
 #include <string>  //  std::string, std::wstring
 #include <vector>  //  std::vector
@@ -18,7 +18,7 @@
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
-#include "functional/cxx_functional_polyfill.h"
+#include "functional/cxx_functional_polyfill.h"  // std::invoke
 #include "is_std_ptr.h"
 #include "tuple_helper/tuple_filter.h"
 #include "type_traits.h"
@@ -292,14 +292,14 @@ namespace sqlite_orm {
 
         struct conditional_binder {
             sqlite3_stmt* stmt = nullptr;
-            int index = 1;
+            int nthSqlParameter = 0;
 
             explicit conditional_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
 
             template<class T, satisfies<is_bindable, T> = true>
             void operator()(const T& t) {
-                int rc = statement_binder<T>{}.bind(this->stmt, this->index++, t);
-                if (SQLITE_OK != rc) {
+                int rc = statement_binder<T>{}.bind(this->stmt, ++this->nthSqlParameter, t);
+                if (SQLITE_OK != rc) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
                     throw_translated_sqlite_error(rc);
                 }
             }
@@ -329,33 +329,43 @@ namespace sqlite_orm {
 
             explicit tuple_value_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
 
+#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+            void operator()(const auto& tpl, auto project) const {
+                int nthSqlParameter = 0;
+                auto& [... elements] = tpl;
+                (this->bind(std::invoke(project, elements), ++nthSqlParameter), ...);
+            }
+#else
             template<class Tpl, class Projection>
             void operator()(const Tpl& tpl, Projection project) const {
                 (*this)(tpl,
                         std::make_index_sequence<std::tuple_size<Tpl>::value>{},
                         std::forward<Projection>(project));
             }
+#endif
 
           private:
+#ifndef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
             template<class Tpl, size_t... Idx, class Projection>
             void operator()(const Tpl& tpl, std::index_sequence<Idx...>, Projection project) const {
-                (this->bind(polyfill::invoke(project, std::get<Idx>(tpl)), Idx), ...);
+                (this->bind(polyfill::invoke(project, std::get<Idx>(tpl)), int(Idx + 1)), ...);
             }
+#endif
 
             template<class T>
-            void bind(const T& t, size_t idx) const {
-                int rc = statement_binder<T>{}.bind(this->stmt, int(idx + 1), t);
-                if (SQLITE_OK != rc) {
+            void bind(const T& t, int nthSqlParameter) const {
+                int rc = statement_binder<T>{}.bind(this->stmt, nthSqlParameter, t);
+                if (SQLITE_OK != rc) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
                     throw_translated_sqlite_error(rc);
                 }
             }
 
             template<class T>
-            void bind(const T* value, size_t idx) const {
+            void bind(const T* value, int nthSqlParameter) const {
                 if (!value) {
                     throw std::system_error{orm_error_code::value_is_null};
                 }
-                (*this)(*value, idx);
+                this->bind(*value, nthSqlParameter);
             }
         };
 

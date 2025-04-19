@@ -118,12 +118,16 @@ using std::nullptr_t;
 #define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
 #endif
 
+#if __cpp_static_call_operator >= 202207L
+#define SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+#endif
+
 #if __cpp_pack_indexing >= 202311L
 #define SQLITE_ORM_PACK_INDEXING_SUPPORTED
 #endif
 
-#if __cpp_static_call_operator >= 202207L
-#define SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+#if __cpp_structured_bindings >= 202411L
+#define SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
 #endif
 
 #if __cplusplus >= 202002L
@@ -1476,6 +1480,7 @@ namespace sqlite_orm {
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::remove_reference, std::common_type, std::index_sequence, std::make_index_sequence, std::forward, std::move, std::integral_constant, std::declval
 #include <tuple>  //  std::tuple_size, std::get
+#include <utility>  // std::forward_like
 #endif
 
 // #include "../functional/cxx_type_traits_polyfill.h"
@@ -1574,6 +1579,16 @@ namespace sqlite_orm {
             return R{polyfill::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
         }
 
+#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+        /*
+         *  Like `std::make_from_tuple()`, but using a projection on the tuple elements.
+         */
+        template<class R, class Tpl, class Projection = std::identity>
+        constexpr R create_from_tuple(Tpl&& tpl, Projection project = {}) {
+            auto& [... elements] = tpl;
+            return R{std::invoke(project, std::forward_like<Tpl>(elements))...};
+        }
+#else
         /*
          *  Like `std::make_from_tuple()`, but using a projection on the tuple elements.
          */
@@ -1584,6 +1599,7 @@ namespace sqlite_orm {
                 std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
                 std::forward<Projection>(project));
         }
+#endif
 
 #ifdef SQLITE_ORM_CTAD_SUPPORTED
         template<template<typename...> class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
@@ -1591,8 +1607,18 @@ namespace sqlite_orm {
             return R{polyfill::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
         }
 
+#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
         /*
-         *  Similar to `create_from_tuple()`, but the result type is specified as a template class.
+         *  Similar to `create_from_tuple()`, but the result type is specified as a class template.
+         */
+        template<template<typename...> class R, class Tpl, class Projection = polyfill::identity>
+        constexpr auto create_from_tuple(Tpl&& tpl, Projection project = {}) {
+            auto& [... elements] = tpl;
+            return R{std::invoke(project, std::forward_like<Tpl>(elements))...};
+        }
+#else
+        /*
+         *  Similar to `create_from_tuple()`, but the result type is specified as a class template.
          */
         template<template<typename...> class R, class Tpl, class Projection = polyfill::identity>
         constexpr auto create_from_tuple(Tpl&& tpl, Projection project = {}) {
@@ -1601,6 +1627,7 @@ namespace sqlite_orm {
                 std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
                 std::forward<Projection>(project));
         }
+#endif
 #endif
     }
 }
@@ -9471,7 +9498,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::true_type, std::false_type, std::make_index_sequence, std::index_sequence
+#include <type_traits>  //  std::enable_if, std::is_arithmetic, std::is_same, std::make_index_sequence, std::index_sequence
 #include <memory>  //  std::default_delete
 #include <string>  //  std::string, std::wstring
 #include <vector>  //  std::vector
@@ -9490,7 +9517,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "functional/cxx_functional_polyfill.h"
-
+// std::invoke
 // #include "is_std_ptr.h"
 
 // #include "tuple_helper/tuple_filter.h"
@@ -10348,14 +10375,14 @@ namespace sqlite_orm {
 
         struct conditional_binder {
             sqlite3_stmt* stmt = nullptr;
-            int index = 1;
+            int nthSqlParameter = 0;
 
             explicit conditional_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
 
             template<class T, satisfies<is_bindable, T> = true>
             void operator()(const T& t) {
-                int rc = statement_binder<T>{}.bind(this->stmt, this->index++, t);
-                if (SQLITE_OK != rc) {
+                int rc = statement_binder<T>{}.bind(this->stmt, ++this->nthSqlParameter, t);
+                if (SQLITE_OK != rc) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
                     throw_translated_sqlite_error(rc);
                 }
             }
@@ -10385,33 +10412,43 @@ namespace sqlite_orm {
 
             explicit tuple_value_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
 
+#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+            void operator()(const auto& tpl, auto project) const {
+                int nthSqlParameter = 0;
+                auto& [... elements] = tpl;
+                (this->bind(std::invoke(project, elements), ++nthSqlParameter), ...);
+            }
+#else
             template<class Tpl, class Projection>
             void operator()(const Tpl& tpl, Projection project) const {
                 (*this)(tpl,
                         std::make_index_sequence<std::tuple_size<Tpl>::value>{},
                         std::forward<Projection>(project));
             }
+#endif
 
           private:
+#ifndef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
             template<class Tpl, size_t... Idx, class Projection>
             void operator()(const Tpl& tpl, std::index_sequence<Idx...>, Projection project) const {
-                (this->bind(polyfill::invoke(project, std::get<Idx>(tpl)), Idx), ...);
+                (this->bind(polyfill::invoke(project, std::get<Idx>(tpl)), int(Idx + 1)), ...);
             }
+#endif
 
             template<class T>
-            void bind(const T& t, size_t idx) const {
-                int rc = statement_binder<T>{}.bind(this->stmt, int(idx + 1), t);
-                if (SQLITE_OK != rc) {
+            void bind(const T& t, int nthSqlParameter) const {
+                int rc = statement_binder<T>{}.bind(this->stmt, nthSqlParameter, t);
+                if (SQLITE_OK != rc) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
                     throw_translated_sqlite_error(rc);
                 }
             }
 
             template<class T>
-            void bind(const T* value, size_t idx) const {
+            void bind(const T* value, int nthSqlParameter) const {
                 if (!value) {
                     throw std::system_error{orm_error_code::value_is_null};
                 }
-                (*this)(*value, idx);
+                this->bind(*value, nthSqlParameter);
             }
         };
 
@@ -16525,6 +16562,15 @@ namespace sqlite_orm {
             return stream_identifier(ss, "", identifier, "");
         }
 
+#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+        template<typename Tpl>
+            requires polyfill::is_detected_v<type_t, std::tuple_size<Tpl>>
+        void stream_identifier(std::ostream& ss, const Tpl& tpl) {
+            auto& [... elements] = tpl;
+            static_assert(sizeof...(elements) > 0 && sizeof...(elements) <= 3);
+            return stream_identifier(ss, elements...);
+        }
+#else
         template<typename Tpl, size_t... Is>
         void stream_identifier(std::ostream& ss, const Tpl& tpl, std::index_sequence<Is...>) {
             static_assert(sizeof...(Is) > 0 && sizeof...(Is) <= 3, "");
@@ -16536,6 +16582,7 @@ namespace sqlite_orm {
         void stream_identifier(std::ostream& ss, const Tpl& tpl) {
             return stream_identifier(ss, tpl, std::make_index_sequence<std::tuple_size<Tpl>::value>{});
         }
+#endif
 
         enum class stream_as {
             conditions_tuple,
@@ -22572,6 +22619,16 @@ namespace sqlite_orm {
             return column_type{std::move(name), finalColRef, empty_setter{}};
         }
 
+#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+        /**
+         *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
+         */
+        template<typename DBOs, typename... CTETables>
+        auto db_objects_cat(const DBOs& dbObjects, CTETables&&... cteTables) {
+            auto& [... elements] = dbObjects;
+            return std::tuple{std::forward<CTETables>(cteTables)..., elements...};
+        }
+#else
         /**
          *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
          */
@@ -22589,6 +22646,7 @@ namespace sqlite_orm {
                                   std::make_index_sequence<std::tuple_size_v<DBOs>>{},
                                   std::forward<CTETables>(cteTables)...);
         }
+#endif
 
         /**
          *  This function returns the expression contained in a subselect that is relevant for
