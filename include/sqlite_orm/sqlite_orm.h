@@ -13660,7 +13660,7 @@ namespace sqlite_orm {
                 case SQLITE_DONE:
                     return;
                 default: {
-                    throw_translated_sqlite_error(rc);
+                    throw_translated_sqlite_error(stmt);
                 }
             }
         }
