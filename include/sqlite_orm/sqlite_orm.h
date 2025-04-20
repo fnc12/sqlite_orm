@@ -13702,7 +13702,7 @@ namespace sqlite_orm {
                                      const std::string& query,
                                      int (*callback)(void* data, int argc, char** argv, char**),
                                      void* user_data) const {
-                return perform_exec(db, query.data(), callback, user_data);
+                return perform_exec(db, query.c_str(), callback, user_data);
             }
 
             template<class L>
@@ -13740,7 +13740,7 @@ namespace sqlite_orm {
 
         inline sqlite3_stmt* prepare_stmt(sqlite3* db, serialize_arg_type query) {
             sqlite3_stmt* stmt;
-            const int rc = sqlite3_prepare_v2(db, query.data(), query.size(), &stmt, nullptr);
+            const int rc = sqlite3_prepare_v2(db, query.data(), int(query.size()), &stmt, nullptr);
             if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
                 throw_translated_sqlite_error(rc);
             }
