@@ -1,6 +1,7 @@
 #pragma once
 
 #include "cxx_universal.h"
+#include "platform_definitions.h"
 
 #ifdef BUILD_SQLITE_ORM_MODULE
 #define SQLITE_ORM_EXPORT export
