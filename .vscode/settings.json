@@ -88,6 +88,7 @@
         "semaphore": "cpp",
         "stack": "cpp",
         "unordered_set": "cpp",
-        "regex": "cpp"
+        "regex": "cpp",
+        "csignal": "cpp"
     }
 }

@@ -21323,7 +21323,7 @@ namespace sqlite_orm {
                             return;
                         }
 
-                        columnNames.push_back(cref(column.name));
+                        columnNames.push_back(std::cref(column.name));
                     });
                 const size_t columnNamesCount = columnNames.size();
 
@@ -21489,7 +21489,7 @@ namespace sqlite_orm {
                             return;
                         }
 
-                        columnNames.push_back(cref(column.name));
+                        columnNames.push_back(std::cref(column.name));
                     });
                 const size_t valuesCount = std::distance(statement.range.first, statement.range.second);
                 const size_t columnNamesCount = columnNames.size();
