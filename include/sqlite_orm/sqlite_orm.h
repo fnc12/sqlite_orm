@@ -11477,9 +11477,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 // #include "ast/cast.h"
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  // std::string
 #include <utility>  // std::move
-
+#endif  //  SQLITE_ORM_IMPORT_STD_MODULE
 namespace sqlite_orm {
     namespace internal {
 
