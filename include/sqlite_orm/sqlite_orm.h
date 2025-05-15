@@ -10978,8 +10978,8 @@ namespace sqlite_orm {
 
 // #include "tags.h"
 
-namespace sqlite_orm {
-
+// export forward-declarations
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     struct arg_values;
 
     // note (internal): forward declare even if `SQLITE_VERSION_NUMBER < 3020000` in order to simplify coding below
@@ -10988,7 +10988,9 @@ namespace sqlite_orm {
     // note (internal): forward declare even if `SQLITE_VERSION_NUMBER < 3020000` in order to simplify coding below
     template<class P, class T, class D>
     class pointer_binding;
+}
 
+namespace sqlite_orm {
     namespace internal {
         template<class F>
         using scalar_call_function_t = decltype(&F::operator());
@@ -17520,6 +17522,8 @@ namespace sqlite_orm {
 // #include "arg_values.h"
 
 #include <sqlite3.h>
+
+// #include "error_code.h"
 
 // #include "row_extractor.h"
 
