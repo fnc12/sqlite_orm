@@ -123,7 +123,7 @@ namespace sqlite_orm {
         template<stream_as mode>
         struct streaming {
             template<class... Ts>
-            SQLITE_ORM_STATIC_CALLOP auto operator()(const Ts&... ts) SQLITE_ORM_OR_CONST_CALLOP {
+            auto operator()(const Ts&... ts) const {
                 return std::forward_as_tuple(*this, ts...);
             }
 

@@ -38,7 +38,7 @@ namespace sqlite_orm {
             }};
 
 #ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
-            std::ranges::transform(string, string.begin(), [](unsigned char c) noexcept SQLITE_ORM_STATIC_CALLOP {
+            std::ranges::transform(string, string.begin(), [](unsigned char c) SQLITE_ORM_STATIC_CALLOP noexcept {
                 return std::toupper(c);
             });
             if (auto found = std::ranges::find(lockingModes, string, locking_mode_to_string);

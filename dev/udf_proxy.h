@@ -24,7 +24,7 @@ namespace sqlite_orm {
             std::allocator<UDF> allocator;
             using traits = std::allocator_traits<decltype(allocator)>;
 
-            constexpr auto deallocate = [](void* location) noexcept SQLITE_ORM_STATIC_CALLOP {
+            constexpr auto deallocate = [](void* location) SQLITE_ORM_STATIC_CALLOP noexcept {
                 std::allocator<UDF> allocator;
                 using traits = std::allocator_traits<decltype(allocator)>;
                 traits::deallocate(allocator, (UDF*)location, 1);
@@ -44,7 +44,7 @@ namespace sqlite_orm {
                 return (void*)traits::allocate(allocator, 1);
             };
 
-            constexpr auto deallocate = [](void* location) noexcept SQLITE_ORM_STATIC_CALLOP {
+            constexpr auto deallocate = [](void* location) SQLITE_ORM_STATIC_CALLOP noexcept {
                 std::allocator<UDF> allocator;
                 using traits = std::allocator_traits<decltype(allocator)>;
                 traits::deallocate(allocator, (UDF*)location, 1);

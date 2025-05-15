@@ -350,18 +350,17 @@ namespace sqlite_orm {
              *  Generates the SQL function call.
              */
             template<typename... CallArgs>
-            SQLITE_ORM_STATIC_CALLOP function_call<UDF, CallArgs...>
-            operator()(CallArgs... callArgs) SQLITE_ORM_OR_CONST_CALLOP {
+            function_call<UDF, CallArgs...> operator()(CallArgs... callArgs) const {
                 check_function_call<UDF, CallArgs...>();
-                return {udf_holder(), {std::forward<CallArgs>(callArgs)...}};
+                return {this->udf_holder(), {std::forward<CallArgs>(callArgs)...}};
             }
 
-            SQLITE_ORM_STATIC_CALLOP constexpr auto udf_holder() SQLITE_ORM_OR_CONST_CALLOP {
+            constexpr auto udf_holder() const {
                 return internal::udf_holder<UDF>{};
             }
 
             // returns a character range
-            SQLITE_ORM_STATIC_CALLOP constexpr auto name() SQLITE_ORM_OR_CONST_CALLOP {
+            constexpr auto name() const {
                 return this->udf_holder()();
             }
         };

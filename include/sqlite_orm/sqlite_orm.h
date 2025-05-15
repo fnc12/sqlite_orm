@@ -11312,18 +11312,17 @@ namespace sqlite_orm {
              *  Generates the SQL function call.
              */
             template<typename... CallArgs>
-            SQLITE_ORM_STATIC_CALLOP function_call<UDF, CallArgs...>
-            operator()(CallArgs... callArgs) SQLITE_ORM_OR_CONST_CALLOP {
+            function_call<UDF, CallArgs...> operator()(CallArgs... callArgs) const {
                 check_function_call<UDF, CallArgs...>();
-                return {udf_holder(), {std::forward<CallArgs>(callArgs)...}};
+                return {this->udf_holder(), {std::forward<CallArgs>(callArgs)...}};
             }
 
-            SQLITE_ORM_STATIC_CALLOP constexpr auto udf_holder() SQLITE_ORM_OR_CONST_CALLOP {
+            constexpr auto udf_holder() const {
                 return internal::udf_holder<UDF>{};
             }
 
             // returns a character range
-            SQLITE_ORM_STATIC_CALLOP constexpr auto name() SQLITE_ORM_OR_CONST_CALLOP {
+            constexpr auto name() const {
                 return this->udf_holder()();
             }
         };
@@ -12817,7 +12816,7 @@ namespace sqlite_orm {
                 journal_mode::OFF,
             }};
 #ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
-            std::ranges::transform(string, string.begin(), [](unsigned char c) noexcept SQLITE_ORM_STATIC_CALLOP {
+            std::ranges::transform(string, string.begin(), [](unsigned char c) SQLITE_ORM_STATIC_CALLOP noexcept {
                 return std::toupper(c);
             });
             if (auto found = std::ranges::find(journalModes, string, journal_mode_to_string);
@@ -12924,7 +12923,7 @@ namespace sqlite_orm {
             }};
 
 #ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
-            std::ranges::transform(string, string.begin(), [](unsigned char c) noexcept SQLITE_ORM_STATIC_CALLOP {
+            std::ranges::transform(string, string.begin(), [](unsigned char c) SQLITE_ORM_STATIC_CALLOP noexcept {
                 return std::toupper(c);
             });
             if (auto found = std::ranges::find(lockingModes, string, locking_mode_to_string);
@@ -16607,7 +16606,7 @@ namespace sqlite_orm {
         template<stream_as mode>
         struct streaming {
             template<class... Ts>
-            SQLITE_ORM_STATIC_CALLOP auto operator()(const Ts&... ts) SQLITE_ORM_OR_CONST_CALLOP {
+            auto operator()(const Ts&... ts) const {
                 return std::forward_as_tuple(*this, ts...);
             }
 
@@ -17736,7 +17735,7 @@ namespace sqlite_orm {
             std::allocator<UDF> allocator;
             using traits = std::allocator_traits<decltype(allocator)>;
 
-            constexpr auto deallocate = [](void* location) noexcept SQLITE_ORM_STATIC_CALLOP {
+            constexpr auto deallocate = [](void* location) SQLITE_ORM_STATIC_CALLOP noexcept {
                 std::allocator<UDF> allocator;
                 using traits = std::allocator_traits<decltype(allocator)>;
                 traits::deallocate(allocator, (UDF*)location, 1);
@@ -17756,7 +17755,7 @@ namespace sqlite_orm {
                 return (void*)traits::allocate(allocator, 1);
             };
 
-            constexpr auto deallocate = [](void* location) noexcept SQLITE_ORM_STATIC_CALLOP {
+            constexpr auto deallocate = [](void* location) SQLITE_ORM_STATIC_CALLOP noexcept {
                 std::allocator<UDF> allocator;
                 using traits = std::allocator_traits<decltype(allocator)>;
                 traits::deallocate(allocator, (UDF*)location, 1);
