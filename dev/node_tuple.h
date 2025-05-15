@@ -24,6 +24,7 @@
 #include "ast/into.h"
 #include "ast/group_by.h"
 #include "ast/match.h"
+#include "ast/cast.h"
 
 namespace sqlite_orm {
     namespace internal {

@@ -130,6 +130,8 @@ TEST_CASE("Auto vacuum") {
 
     storage.pragma.auto_vacuum(2);
     REQUIRE(storage.pragma.auto_vacuum() == 2);
+
+    std::remove(filename);
 }
 
 TEST_CASE("busy_timeout") {
@@ -206,4 +208,6 @@ TEST_CASE("application_id") {
     auto storage = make_storage(filename);
     storage.pragma.application_id(3);
     REQUIRE(storage.pragma.application_id() == 3);
+
+    std::remove(filename);
 }

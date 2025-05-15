@@ -145,7 +145,7 @@ namespace sqlite_orm {
                                                      });
 #endif
                 if (columnToIgnoreIt == columnsToIgnore.end()) {
-                    columnNames.push_back(cref(columnName));
+                    columnNames.push_back(std::cref(columnName));
                 }
             });
 

@@ -611,7 +611,7 @@ namespace sqlite_orm {
             SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
-                ss << static_cast<std::string>(c) << " (";
+                ss << "CAST (";
                 ss << serialize(c.expression, context) << " AS " << type_printer<T>().print() << ")";
                 return ss.str();
             }
@@ -1523,7 +1523,7 @@ namespace sqlite_orm {
                             return;
                         }
 
-                        columnNames.push_back(cref(column.name));
+                        columnNames.push_back(std::cref(column.name));
                     });
                 const size_t columnNamesCount = columnNames.size();
 
@@ -1695,7 +1695,7 @@ namespace sqlite_orm {
                             return;
                         }
 
-                        columnNames.push_back(cref(column.name));
+                        columnNames.push_back(std::cref(column.name));
                     });
                 const size_t valuesCount = std::distance(statement.range.first, statement.range.second);
                 const size_t columnNamesCount = columnNames.size();

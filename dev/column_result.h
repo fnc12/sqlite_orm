@@ -25,6 +25,7 @@
 #include "storage_traits.h"
 #include "function.h"
 #include "ast/special_keywords.h"
+#include "ast/cast.h"
 
 namespace sqlite_orm {
 

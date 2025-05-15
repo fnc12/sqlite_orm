@@ -479,6 +479,8 @@ TEST_CASE("sync_schema_simulate") {
 
     storage.sync_schema();
     storage.sync_schema_simulate();
+
+    std::remove("db");
 }
 
 #if SQLITE_VERSION_NUMBER >= 3031000

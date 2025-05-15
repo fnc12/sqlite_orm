@@ -25,6 +25,7 @@
 #include "ast/exists.h"
 #include "ast/set.h"
 #include "ast/match.h"
+#include "ast/cast.h"
 
 namespace sqlite_orm {
 

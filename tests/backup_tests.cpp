@@ -123,6 +123,7 @@ TEST_CASE("backup") {
         auto rowsFromBackup = storage2.get_all<User>();
         REQUIRE_THAT(rowsFromBackup, UnorderedEquals(storage.get_all<User>()));
     }
+    std::remove(backupFilename.c_str());
 }
 
 TEST_CASE("Backup crash") {
@@ -155,4 +156,6 @@ TEST_CASE("Backup crash") {
     // --- Backup the current storage to the file
     auto backup = storage.make_backup_to(backupFilename);
     backup.step(-1);
+
+    std::remove(backupFilename.c_str());
 }

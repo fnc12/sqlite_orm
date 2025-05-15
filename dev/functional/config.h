@@ -1,6 +1,7 @@
 #pragma once
 
 #include "cxx_universal.h"
+#include "platform_definitions.h"
 
 #ifdef BUILD_SQLITE_ORM_MODULE
 #define SQLITE_ORM_EXPORT export
@@ -79,15 +80,6 @@
 #endif
 
 #define SQLITE_ORM_WITH_CTE
-
-#if defined(_WIN32)
-#define SQLITE_ORM_WIN
-#elif defined(__APPLE__)
-#define SQLITE_ORM_APPLE
-#define SQLITE_ORM_UNIX
-#elif defined(__unix__) || defined(__unix) || defined(__linux__) || defined(__FreeBSD__)
-#define SQLITE_ORM_UNIX
-#endif
 
 // define the inline namespace "literals" so that it is available even if it was not introduced by a feature
 namespace sqlite_orm {

@@ -200,6 +200,43 @@ using std::nullptr_t;
 #define SQLITE_ORM_BROKEN_NONTEMPLATE_CONCEPTS
 #endif
 
+// #include "platform_definitions.h"
+
+#if defined(_WIN32)
+#define SQLITE_ORM_WIN
+
+#elif defined(__APPLE__)
+#include <TargetConditionals.h>
+#if TARGET_IPHONE_SIMULATOR == 1 || TARGET_OS_IPHONE == 1
+#define SQLITE_ORM_IOS
+#elif TARGET_OS_OSX == 1
+#define SQLITE_ORM_MACOS
+#endif
+#define SQLITE_ORM_APPLE
+#define SQLITE_ORM_UNIX
+
+#elif defined(__linux__)
+#if defined(__ANDROID__)
+#define SQLITE_ORM_ANDROID
+#endif
+#define SQLITE_ORM_LINUX
+#define SQLITE_ORM_UNIX
+
+#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
+#define SQLITE_ORM_BSD
+#define SQLITE_ORM_UNIX
+
+#elif defined(__RTP__) || defined(_WRS_KERNEL)
+#define SQLITE_ORM_VXWORKS
+#define SQLITE_ORM_UNIX
+
+#elif defined(__unix__) || defined(__unix)
+#define SQLITE_ORM_UNIX
+
+#else
+#error "Unknown target platform detected"
+#endif
+
 #ifdef BUILD_SQLITE_ORM_MODULE
 #define SQLITE_ORM_EXPORT export
 #else
@@ -277,15 +314,6 @@ using std::nullptr_t;
 #endif
 
 #define SQLITE_ORM_WITH_CTE
-
-#if defined(_WIN32)
-#define SQLITE_ORM_WIN
-#elif defined(__APPLE__)
-#define SQLITE_ORM_APPLE
-#define SQLITE_ORM_UNIX
-#elif defined(__unix__) || defined(__unix) || defined(__linux__) || defined(__FreeBSD__)
-#define SQLITE_ORM_UNIX
-#endif
 
 // define the inline namespace "literals" so that it is available even if it was not introduced by a feature
 namespace sqlite_orm {
@@ -5708,28 +5736,6 @@ namespace sqlite_orm {
             inner_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
         };
 
-        struct cast_string {
-            operator std::string() const {
-                return "CAST";
-            }
-        };
-
-        /**
-         *  CAST holder.
-         *  T is a type to cast to
-         *  E is an expression type
-         *  Example: cast<std::string>(&User::id)
-         */
-        template<class T, class E>
-        struct cast_t : cast_string {
-            using to_type = T;
-            using expression_type = E;
-
-            expression_type expression;
-
-            cast_t(expression_type expression_) : expression(std::move(expression_)) {}
-        };
-
         template<class... Args>
         struct from_t {
             using tuple_type = std::tuple<Args...>;
@@ -6197,15 +6203,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class A, class T, class E>
     internal::like_t<A, T, E> like(A a, T t, E e) {
         return {std::move(a), std::move(t), {std::move(e)}};
-    }
-
-    /**
-     *  CAST(X AS type).
-     *  Example: cast<std::string>(&User::id)
-     */
-    template<class T, class E>
-    internal::cast_t<T, E> cast(E e) {
-        return {std::move(e)};
     }
 }
 
@@ -11533,6 +11530,41 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {};
     }
 }
+// #include "ast/cast.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <utility>  // std::move
+#endif  //  SQLITE_ORM_IMPORT_STD_MODULE
+namespace sqlite_orm {
+
+    namespace internal {
+
+        /**
+         *  CAST holder.
+         *  T is a type to cast to
+         *  E is an expression type
+         *  Example: cast<std::string>(&User::id)
+         */
+        template<class T, class E>
+        struct cast_t {
+            using to_type = T;
+            using expression_type = E;
+
+            expression_type expression;
+        };
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  CAST(X AS type).
+     *  Example: cast<std::string>(&User::id)
+     */
+    template<class T, class E>
+    internal::cast_t<T, E> cast(E e) {
+        return {std::move(e)};
+    }
+}
 
 namespace sqlite_orm {
 
@@ -15410,6 +15442,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(argument)};
     }
 }
+
+// #include "ast/cast.h"
 
 namespace sqlite_orm {
 
@@ -20546,7 +20580,7 @@ namespace sqlite_orm {
             SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
-                ss << static_cast<std::string>(c) << " (";
+                ss << "CAST (";
                 ss << serialize(c.expression, context) << " AS " << type_printer<T>().print() << ")";
                 return ss.str();
             }
@@ -21458,7 +21492,7 @@ namespace sqlite_orm {
                             return;
                         }
 
-                        columnNames.push_back(cref(column.name));
+                        columnNames.push_back(std::cref(column.name));
                     });
                 const size_t columnNamesCount = columnNames.size();
 
@@ -21630,7 +21664,7 @@ namespace sqlite_orm {
                             return;
                         }
 
-                        columnNames.push_back(cref(column.name));
+                        columnNames.push_back(std::cref(column.name));
                     });
                 const size_t valuesCount = std::distance(statement.range.first, statement.range.second);
                 const size_t columnNamesCount = columnNames.size();
@@ -25213,7 +25247,7 @@ namespace sqlite_orm {
                                                      });
 #endif
                 if (columnToIgnoreIt == columnsToIgnore.end()) {
-                    columnNames.push_back(cref(columnName));
+                    columnNames.push_back(std::cref(columnName));
                 }
             });
 
@@ -25288,6 +25322,8 @@ namespace sqlite_orm {
 // #include "ast/group_by.h"
 
 // #include "ast/match.h"
+
+// #include "ast/cast.h"
 
 namespace sqlite_orm {
     namespace internal {
