@@ -778,28 +778,6 @@ namespace sqlite_orm {
             inner_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
         };
 
-        struct cast_string {
-            operator std::string() const {
-                return "CAST";
-            }
-        };
-
-        /**
-         *  CAST holder.
-         *  T is a type to cast to
-         *  E is an expression type
-         *  Example: cast<std::string>(&User::id)
-         */
-        template<class T, class E>
-        struct cast_t : cast_string {
-            using to_type = T;
-            using expression_type = E;
-
-            expression_type expression;
-
-            cast_t(expression_type expression_) : expression(std::move(expression_)) {}
-        };
-
         template<class... Args>
         struct from_t {
             using tuple_type = std::tuple<Args...>;
@@ -1267,14 +1245,5 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class A, class T, class E>
     internal::like_t<A, T, E> like(A a, T t, E e) {
         return {std::move(a), std::move(t), {std::move(e)}};
-    }
-
-    /**
-     *  CAST(X AS type).
-     *  Example: cast<std::string>(&User::id)
-     */
-    template<class T, class E>
-    internal::cast_t<T, E> cast(E e) {
-        return {std::move(e)};
     }
 }
