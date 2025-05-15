@@ -11482,6 +11482,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  // std::move
 #endif  //  SQLITE_ORM_IMPORT_STD_MODULE
 namespace sqlite_orm {
+
     namespace internal {
 
         /**
@@ -11496,8 +11497,6 @@ namespace sqlite_orm {
             using expression_type = E;
 
             expression_type expression;
-
-            cast_t(expression_type expression_) : expression(std::move(expression_)) {}
         };
     }
 }
