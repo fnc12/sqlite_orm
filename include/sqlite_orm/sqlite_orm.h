@@ -11535,6 +11535,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  // std::move
 #endif  //  SQLITE_ORM_IMPORT_STD_MODULE
+
 namespace sqlite_orm {
 
     namespace internal {
