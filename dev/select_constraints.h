@@ -596,8 +596,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                        std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
                        std::convertible_to<ExplicitCols, std::string>) &&
                       ...)
-        SQLITE_ORM_STATIC_CALLOP constexpr auto
-        cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP {
+        constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP {
             return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
         }
 #else
@@ -609,8 +608,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                       std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
                                       std::is_convertible<ExplicitCols, std::string>>...>,
                                   bool>>
-        SQLITE_ORM_STATIC_CALLOP constexpr auto
-        cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP {
+        constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP {
             return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
         }
 #endif
