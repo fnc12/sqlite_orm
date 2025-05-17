@@ -19,6 +19,7 @@
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/cxx_functional_polyfill.h"
+#include "functional/gsl.h"
 #include "functional/mpl.h"
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_filter.h"
@@ -696,7 +697,7 @@ namespace sqlite_orm {
                      class... Args,
                      std::enable_if_t<polyfill::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value,
                                       bool> = true>
-            std::string group_concat(F field, const char* y, Args&&... args) {
+            std::string group_concat(F field, orm_gsl::czstring y, Args&&... args) {
                 std::unique_ptr<std::string> str;
                 if (y) {
                     str = std::make_unique<std::string>(y);
@@ -874,7 +875,7 @@ namespace sqlite_orm {
                 ss << "{ ";
                 table.for_each_column([&ss, &object, first = true](auto& column) mutable {
                     using field_type = field_type_t<std::remove_reference_t<decltype(column)>>;
-                    static constexpr std::array<const char*, 2> sep = {", ", ""};
+                    static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
 
                     ss << sep[std::exchange(first, false)] << column.name << " : '"
                        << field_printer<field_type>{}(polyfill::invoke(column.member_pointer, object)) << "'";

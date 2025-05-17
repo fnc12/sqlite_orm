@@ -758,6 +758,91 @@ namespace sqlite_orm {
     namespace polyfill = internal::polyfill;
 }
 
+// #include "functional/gsl.h"
+
+/** @file A partial copy of the Guidelines Support Library (GSL) as needed for this library.
+ *  
+ *  At the time of writing, the use of these symbols serves only to express the logical intention, because:
+ *  1. Each facility lives in the nested namespace `orm_gsl` because `gsl` may conflict with other GSL implementations [like ms-gsl or gsl-lite].
+ *  2. Tools like Clang-Tidy are currently hard-wired to the `gsl` namespace to check the guidelines.
+ *  3. There is no way to attach an attribute to tell Clang-Tidy that it is a "GSL" symbol.
+ *  
+ *  This might seem frustrating at first, but things are constantly evolving and need time, and many facilities found their way into the STL.
+ *  There's an ongoing discussion about this limitation on the guidelines repository:
+ *  https://github.com/isocpp/CppCoreGuidelines/issues/144
+ *  https://github.com/isocpp/CppCoreGuidelines/issues/1519
+ *  
+ *  However, these symbols are very valuable as we can "grep" for them and easily update things in the future.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::enable_if, std::is_pointer
+#endif
+
+namespace sqlite_orm {
+
+    // span
+    namespace orm_gsl {
+
+        inline constexpr size_t dynamic_extent = size_t(-1);
+
+    }
+
+    // C-style string types
+    namespace orm_gsl {
+        //
+        // These are "tag" typedefs for C-style strings (i.e. null-terminated character arrays)
+        // that allow static analysis to help find bugs.
+        //
+        // There are no additional features/semantics that we can find a way to add inside the
+        // type system for these types that will not either incur significant runtime costs or
+        // (sometimes needlessly) break existing programs when introduced.
+        //
+
+        template<typename Char, size_t Extent = dynamic_extent>
+        using basic_zstring = Char*;
+
+        using czstring = basic_zstring<const char, dynamic_extent>;
+
+        using cwzstring = basic_zstring<const wchar_t, dynamic_extent>;
+
+        using cu16zstring = basic_zstring<const char16_t, dynamic_extent>;
+
+        using cu32zstring = basic_zstring<const char32_t, dynamic_extent>;
+
+        using zstring = basic_zstring<char, dynamic_extent>;
+
+        using wzstring = basic_zstring<wchar_t, dynamic_extent>;
+
+        using u16zstring = basic_zstring<char16_t, dynamic_extent>;
+
+        using u32zstring = basic_zstring<char32_t, dynamic_extent>;
+
+    }
+
+    // pointers
+    namespace orm_gsl {
+
+        //
+        // owner
+        //
+        // `orm_gsl::owner<T>` is designed as a safety mechanism for code that must deal directly with raw pointers that own memory.
+        // Ideally such code should be restricted to the implementation of low-level abstractions.
+        //
+        // T must be a pointer type
+        //
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+        template<class T>
+            requires std::is_pointer_v<T>
+        using owner = T;
+#else
+        template<class T, typename = std::enable_if_t<std::is_pointer<T>::value>>
+        using owner = T;
+#endif
+
+    }
+}
+
 // #include "functional/mpl.h"
 
 /*
@@ -3073,6 +3158,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
+// #include "functional/gsl.h"
+
 // #include "type_traits.h"
 
 // #include "is_std_ptr.h"
@@ -3163,7 +3250,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     template<class T>
     struct type_printer<T,
-                        std::enable_if_t<polyfill::disjunction<std::is_same<T, const char*>,
+                        std::enable_if_t<polyfill::disjunction<std::is_same<T, orm_gsl::czstring>,
                                                                std::is_base_of<std::string, T>,
                                                                std::is_base_of<std::wstring, T>>::value>>
         : text_printer {};
@@ -4289,6 +4376,8 @@ namespace sqlite_orm {
 #endif
 #endif
 
+// #include "functional/gsl.h"
+
 namespace sqlite_orm {
     namespace internal {
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
@@ -4298,7 +4387,7 @@ namespace sqlite_orm {
 #else
         using serialize_result_type = std::string;
         using serialize_arg_type = const std::string&;
-        using string_constant_type = const char*;
+        using string_constant_type = orm_gsl::czstring;
 #endif
     }
 }
@@ -9558,6 +9647,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
+// #include "functional/gsl.h"
+
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     using xdestroy_fn_t = void (*)(void*);
@@ -9669,7 +9760,7 @@ namespace sqlite_orm {
          */
         template<typename D, typename P>
             requires (!integral_fp_c<D>)
-        void xdestroy_proxy(void* p) noexcept {
+        void xdestroy_proxy(orm_gsl::owner<void*> p) noexcept {
             // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>
             auto o = (P*)p;
             // ignoring return code
@@ -9683,7 +9774,7 @@ namespace sqlite_orm {
          *  that take a non-const parameter, but user code passes a pointer to a const object.
          */
         template<integral_fp_c D, typename P>
-        void xdestroy_proxy(void* p) noexcept {
+        void xdestroy_proxy(orm_gsl::owner<void*> p) noexcept {
             // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>,
             auto o = (std::remove_cv_t<P>*)(P*)p;
             // ignoring return code
@@ -9705,7 +9796,7 @@ namespace sqlite_orm {
             (!can_yield_fp_v<D> || !std::is_convertible<yielded_fn_t<D>, xdestroy_fn_t>::value);
 
         template<typename D, typename P, std::enable_if_t<!is_integral_fp_c_v<D>, bool> = true>
-        void xdestroy_proxy(void* p) noexcept {
+        void xdestroy_proxy(orm_gsl::owner<void*> p) noexcept {
             // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>
             auto o = (P*)p;
             // ignoring return code
@@ -9713,7 +9804,7 @@ namespace sqlite_orm {
         }
 
         template<typename D, typename P, std::enable_if_t<is_integral_fp_c_v<D>, bool> = true>
-        void xdestroy_proxy(void* p) noexcept {
+        void xdestroy_proxy(orm_gsl::owner<void*> p) noexcept {
             // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>,
             auto o = (std::remove_cv_t<P>*)(P*)p;
             // ignoring return code
@@ -9812,6 +9903,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
+// #include "functional/gsl.h"
+
 // #include "functional/cstring_literal.h"
 
 // #include "xdestroy_handling.h"
@@ -9838,12 +9931,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
     }
 
-    /** @short Specifies that a type is an integral constant string usable as a pointer type.
+    /** @short Specifies that a type is an integral constant C-string usable as a pointer type.
      */
     template<class T>
     concept orm_pointer_type = requires {
         typename T::value_type;
-        { T::value } -> std::convertible_to<const char*>;
+        { T::value } -> std::convertible_to<orm_gsl::czstring>;
     };
 #endif
 
@@ -9865,7 +9958,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         // of forward declarations in other places (e.g. function.h)
         static_assert(orm_pointer_type<T>, "T must be a pointer type (tag)");
 #else
-        static_assert(std::is_convertible<typename T::value_type, const char*>::value,
+        static_assert(std::is_convertible<typename T::value_type, orm_gsl::czstring>::value,
                       "The pointer type (tag) must be convertible to `const char*`");
 #endif
 
@@ -10205,7 +10298,7 @@ namespace sqlite_orm {
     template<class V>
     struct statement_binder<V,
                             std::enable_if_t<polyfill::disjunction<std::is_base_of<std::string, V>,
-                                                                   std::is_same<V, const char*>
+                                                                   std::is_same<V, orm_gsl::czstring>
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
                                                                    ,
                                                                    std::is_same<V, std::string_view>
@@ -10235,7 +10328,7 @@ namespace sqlite_orm {
             return {s.c_str(), int(s.size())};
         }
 
-        std::pair<const char*, int> string_data(const char* s) const {
+        std::pair<const char*, int> string_data(orm_gsl::czstring s) const {
             return {s, int(strlen(s))};
         }
 #endif
@@ -10460,6 +10553,8 @@ namespace sqlite_orm {
 #endif
 
 // #include "functional/cxx_type_traits_polyfill.h"
+
+// #include "functional/gsl.h"
 
 // #include "functional/mpl.h"
 
@@ -11838,7 +11933,7 @@ namespace sqlite_orm {
          *  Result for the most simple queries like `SELECT 'ototo'`
          */
         template<class DBOs>
-        struct column_result_t<DBOs, const char*, void> {
+        struct column_result_t<DBOs, orm_gsl::czstring, void> {
             using type = std::string;
         };
 
@@ -12894,15 +12989,15 @@ namespace sqlite_orm {
 #include <codecvt>  //  std::codecvt_utf8_utf16
 #endif
 #include <vector>  //  std::vector
-#include <algorithm>  //  std::copy
-#include <iterator>  //  std::back_inserter
-#include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
+#include <tuple>  //  std::tuple
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #include <concepts>
 #endif
 #endif
 
 // #include "functional/cxx_functional_polyfill.h"
+
+// #include "functional/gsl.h"
 
 // #include "tuple_helper/tuple_transformer.h"
 
@@ -13001,7 +13096,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         /*
          *  Called during one-step query execution (one result row) for each column of a result row.
          */
-        V extract(const char* columnText) const = delete;
+        V extract(orm_gsl::czstring columnText) const = delete;
 
         /*
          *  Called during multi-step query execution (result set) for each column of a result row.
@@ -13017,7 +13112,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     template<typename T>
-    concept orm_column_text_extractable = requires(const row_extractor<T>& extractor, const char* columnText) {
+    concept orm_column_text_extractable = requires(const row_extractor<T>& extractor, orm_gsl::czstring columnText) {
         { extractor.extract(columnText) } -> std::same_as<T>;
     };
 
@@ -13095,7 +13190,7 @@ namespace sqlite_orm {
     struct row_extractor<pointer_arg<P, T>, void> {
         using V = pointer_arg<P, T>;
 
-        V extract(const char* columnText) const = delete;
+        V extract(orm_gsl::czstring columnText) const = delete;
 
         V extract(sqlite3_stmt* stmt, int columnIndex) const = delete;
 
@@ -13116,7 +13211,7 @@ namespace sqlite_orm {
      */
     template<class V>
     struct row_extractor<V, std::enable_if_t<std::is_arithmetic<V>::value>> {
-        V extract(const char* columnText) const {
+        V extract(orm_gsl::czstring columnText) const {
             return this->extract(columnText, tag());
         }
 
@@ -13131,7 +13226,7 @@ namespace sqlite_orm {
       private:
         using tag = arithmetic_tag_t<V>;
 
-        V extract(const char* columnText, const int_or_smaller_tag&) const {
+        V extract(orm_gsl::czstring columnText, const int_or_smaller_tag&) const {
             return static_cast<V>(atoi(columnText));
         }
 
@@ -13143,7 +13238,7 @@ namespace sqlite_orm {
             return static_cast<V>(sqlite3_value_int(value));
         }
 
-        V extract(const char* columnText, const bigint_tag&) const {
+        V extract(orm_gsl::czstring columnText, const bigint_tag&) const {
             return static_cast<V>(atoll(columnText));
         }
 
@@ -13155,7 +13250,7 @@ namespace sqlite_orm {
             return static_cast<V>(sqlite3_value_int64(value));
         }
 
-        V extract(const char* columnText, const real_tag&) const {
+        V extract(orm_gsl::czstring columnText, const real_tag&) const {
             return static_cast<V>(atof(columnText));
         }
 
@@ -13173,7 +13268,7 @@ namespace sqlite_orm {
      */
     template<class T>
     struct row_extractor<T, std::enable_if_t<std::is_base_of<std::string, T>::value>> {
-        T extract(const char* columnText) const {
+        T extract(orm_gsl::czstring columnText) const {
             if (columnText) {
                 return columnText;
             } else {
@@ -13182,16 +13277,16 @@ namespace sqlite_orm {
         }
 
         T extract(sqlite3_stmt* stmt, int columnIndex) const {
-            if (auto cStr = (const char*)sqlite3_column_text(stmt, columnIndex)) {
-                return cStr;
+            if (orm_gsl::czstring text = (const char*)sqlite3_column_text(stmt, columnIndex)) {
+                return text;
             } else {
                 return {};
             }
         }
 
         T extract(sqlite3_value* value) const {
-            if (auto cStr = (const char*)sqlite3_value_text(value)) {
-                return cStr;
+            if (orm_gsl::czstring text = (const char*)sqlite3_value_text(value)) {
+                return text;
             } else {
                 return {};
             }
@@ -13203,7 +13298,7 @@ namespace sqlite_orm {
      */
     template<>
     struct row_extractor<std::wstring, void> {
-        std::wstring extract(const char* columnText) const {
+        std::wstring extract(orm_gsl::czstring columnText) const {
             if (columnText) {
                 std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
                 return converter.from_bytes(columnText);
@@ -13213,18 +13308,17 @@ namespace sqlite_orm {
         }
 
         std::wstring extract(sqlite3_stmt* stmt, int columnIndex) const {
-            auto cStr = (const char*)sqlite3_column_text(stmt, columnIndex);
-            if (cStr) {
+            if (orm_gsl::czstring text = (const char*)sqlite3_column_text(stmt, columnIndex)) {
                 std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-                return converter.from_bytes(cStr);
+                return converter.from_bytes(text);
             } else {
                 return {};
             }
         }
 
         std::wstring extract(sqlite3_value* value) const {
-            if (auto cStr = (const wchar_t*)sqlite3_value_text16(value)) {
-                return cStr;
+            if (orm_gsl::cwzstring text = (const wchar_t*)sqlite3_value_text16(value)) {
+                return text;
             } else {
                 return {};
             }
@@ -13236,7 +13330,7 @@ namespace sqlite_orm {
     struct row_extractor<V, std::enable_if_t<is_std_ptr<V>::value>> {
         using unqualified_type = std::remove_cv_t<typename V::element_type>;
 
-        V extract(const char* columnText) const
+        V extract(orm_gsl::czstring columnText) const
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
             requires (orm_column_text_extractable<unqualified_type>)
 #endif
@@ -13283,7 +13377,7 @@ namespace sqlite_orm {
     struct row_extractor<V, std::enable_if_t<polyfill::is_specialization_of_v<V, std::optional>>> {
         using unqualified_type = std::remove_cv_t<typename V::value_type>;
 
-        V extract(const char* columnText) const
+        V extract(orm_gsl::czstring columnText) const
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
             requires (orm_column_text_extractable<unqualified_type>)
 #endif
@@ -13328,7 +13422,7 @@ namespace sqlite_orm {
 
     template<>
     struct row_extractor<std::nullptr_t, void> {
-        std::nullptr_t extract(const char* /*columnText*/) const {
+        std::nullptr_t extract(orm_gsl::czstring /*columnText*/) const {
             return nullptr;
         }
 
@@ -13345,7 +13439,7 @@ namespace sqlite_orm {
      */
     template<>
     struct row_extractor<std::vector<char>, void> {
-        std::vector<char> extract(const char* columnText) const {
+        std::vector<char> extract(orm_gsl::czstring columnText) const {
             return {columnText, columnText + (columnText ? strlen(columnText) : 0)};
         }
 
@@ -13367,10 +13461,9 @@ namespace sqlite_orm {
      */
     template<>
     struct row_extractor<locking_mode, void> {
-        locking_mode extract(const char* columnText) const {
+        locking_mode extract(orm_gsl::czstring columnText) const {
             if (columnText) {
-                auto resultPair = internal::locking_mode_from_string(columnText);
-                if (resultPair.first) {
+                if (auto resultPair = internal::locking_mode_from_string(columnText); resultPair.first) {
                     return resultPair.second;
                 } else {
                     throw std::system_error{orm_error_code::incorrect_locking_mode_string};
@@ -13381,8 +13474,8 @@ namespace sqlite_orm {
         }
 
         locking_mode extract(sqlite3_stmt* stmt, int columnIndex) const {
-            auto cStr = (const char*)sqlite3_column_text(stmt, columnIndex);
-            return this->extract(cStr);
+            orm_gsl::czstring text = (const char*)sqlite3_column_text(stmt, columnIndex);
+            return this->extract(text);
         }
 
         locking_mode extract(sqlite3_value* value) const = delete;
@@ -13393,10 +13486,9 @@ namespace sqlite_orm {
      */
     template<>
     struct row_extractor<journal_mode, void> {
-        journal_mode extract(const char* columnText) const {
+        journal_mode extract(orm_gsl::czstring columnText) const {
             if (columnText) {
-                auto resultPair = internal::journal_mode_from_string(columnText);
-                if (resultPair.first) {
+                if (auto resultPair = internal::journal_mode_from_string(columnText); resultPair.first) {
                     return resultPair.second;
                 } else {
                     throw std::system_error{orm_error_code::incorrect_journal_mode_string};
@@ -13407,8 +13499,8 @@ namespace sqlite_orm {
         }
 
         journal_mode extract(sqlite3_stmt* stmt, int columnIndex) const {
-            auto cStr = (const char*)sqlite3_column_text(stmt, columnIndex);
-            return this->extract(cStr);
+            orm_gsl::czstring text = (const char*)sqlite3_column_text(stmt, columnIndex);
+            return this->extract(text);
         }
 
         journal_mode extract(sqlite3_value* value) const = delete;
@@ -13443,7 +13535,7 @@ namespace sqlite_orm {
         struct struct_extractor<std::tuple<Args...>, DBOs> {
             const DBOs& db_objects;
 
-            std::tuple<Args...> extract(const char* columnText) const = delete;
+            std::tuple<Args...> extract(orm_gsl::czstring columnText) const = delete;
 
             // note: expects to be called only from the top level, and therefore discards the index
             std::tuple<column_result_proxy_t<Args>...> extract(sqlite3_stmt* stmt,
@@ -13467,7 +13559,7 @@ namespace sqlite_orm {
         struct struct_extractor<structure<O, std::tuple<Args...>>, DBOs> {
             const DBOs& db_objects;
 
-            O extract(const char* columnText) const = delete;
+            O extract(orm_gsl::czstring columnText) const = delete;
 
             // note: expects to be called only from the top level, and therefore discards the index;
             // note: brace-init-list initialization guarantees order of evaluation, but only for aggregates and variadic constructors it seems.
@@ -13545,6 +13637,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move
 #endif
 
+// #include "functional/gsl.h"
+
 // #include "member_traits/member_traits.h"
 
 // #include "table_reference.h"
@@ -13597,7 +13691,7 @@ namespace sqlite_orm {
         struct struct_extractor<table_reference<O>, DBOs> {
             const DBOs& db_objects;
 
-            O extract(const char* columnText) const = delete;
+            O extract(orm_gsl::czstring columnText) const = delete;
 
             // note: expects to be called only from the top level, and therefore discards the index
             O extract(sqlite3_stmt* stmt, int&& /*nextColumnIndex*/ = 0) const {
@@ -13632,6 +13726,8 @@ namespace sqlite_orm {
 #include <string_view>  //  std::string_view
 #endif
 #endif
+
+// #include "functional/gsl.h"
 
 // #include "error_code.h"
 
@@ -13701,7 +13797,7 @@ namespace sqlite_orm {
             std::function<void(serialize_arg_type sql)> will_run_query;
             std::function<void(serialize_arg_type sql)> did_run_query;
 
-            inline void perform_void_exec(sqlite3* db, const char* sql) const {
+            inline void perform_void_exec(sqlite3* db, orm_gsl::czstring sql) const {
                 if (this->will_run_query) {
                     this->will_run_query(sql);
                 }
@@ -13715,7 +13811,7 @@ namespace sqlite_orm {
             }
 
             inline void perform_exec(sqlite3* db,
-                                     const char* sql,
+                                     orm_gsl::czstring sql,
                                      int (*callback)(void* data, int argc, char** argv, char**),
                                      void* user_data) const {
                 if (this->will_run_query) {
@@ -13739,7 +13835,7 @@ namespace sqlite_orm {
 
             template<class L>
             void perform_steps(sqlite3_stmt* stmt, L&& lambda) const {
-                const char* sql = nullptr;
+                orm_gsl::czstring sql = nullptr;
                 if (this->will_run_query || this->did_run_query) {
                     sql = sqlite3_sql(stmt);
                 }
@@ -13922,16 +14018,17 @@ namespace sqlite_orm {
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <memory>  //  std::unique_ptr
-#include <iterator>  //  std::iterator_traits
 #include <string>  //  std::string
 #include <type_traits>  //  std::integral_constant, std::declval
-#include <utility>  //  std::move, std::forward, std::pair
+#include <utility>  //  std::move, std::forward, std::exchange, std::pair
 #include <tuple>  //  std::tuple
 #endif
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "functional/cxx_functional_polyfill.h"
+
+// #include "functional/gsl.h"
 
 // #include "tuple_helper/tuple_traits.h"
 
@@ -13943,6 +14040,8 @@ namespace sqlite_orm {
 #include <functional>  //  std::function
 #include <string>  //  std::string
 #endif
+
+// #include "functional/gsl.h"
 
 // #include "error_code.h"
 
@@ -14135,7 +14234,7 @@ namespace sqlite_orm {
             }
 
           protected:
-            sqlite3* db = nullptr;
+            orm_gsl::owner<sqlite3*> db = nullptr;
 
           private:
             std::atomic_int _retainCount{};
@@ -14543,7 +14642,7 @@ namespace sqlite_orm {
     namespace internal {
 
         struct prepared_statement_base {
-            sqlite3_stmt* stmt = nullptr;
+            orm_gsl::owner<sqlite3_stmt*> stmt = nullptr;
             connection_ref con;
 
             ~prepared_statement_base() {
@@ -14553,7 +14652,7 @@ namespace sqlite_orm {
             std::string sql() const {
                 // note: sqlite3 internally checks for null before calling
                 // sqlite3_normalized_sql() or sqlite3_expanded_sql(), so check here, too, even if superfluous
-                if (const char* sql = sqlite3_sql(this->stmt)) {
+                if (orm_gsl::czstring sql = sqlite3_sql(this->stmt)) {
                     return sql;
                 } else {
                     return {};
@@ -14563,7 +14662,7 @@ namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3014000
             std::string expanded_sql() const {
                 // note: must check return value due to SQLITE_OMIT_TRACE
-                using char_ptr = std::unique_ptr<char, std::integral_constant<decltype(&sqlite3_free), sqlite3_free>>;
+                using char_ptr = std::unique_ptr<char[], std::integral_constant<decltype(&sqlite3_free), sqlite3_free>>;
                 if (char_ptr sql{sqlite3_expanded_sql(this->stmt)}) {
                     return sql.get();
                 } else {
@@ -14573,7 +14672,7 @@ namespace sqlite_orm {
 #endif
 #if SQLITE_VERSION_NUMBER >= 3026000 and defined(SQLITE_ENABLE_NORMALIZE)
             std::string normalized_sql() const {
-                if (const char* sql = sqlite3_normalized_sql(this->stmt)) {
+                if (orm_gsl::czstring sql = sqlite3_normalized_sql(this->stmt)) {
                     return sql;
                 } else {
                     return {};
@@ -14598,10 +14697,8 @@ namespace sqlite_orm {
                 prepared_statement_base{stmt_, std::move(con_)}, expression(std::move(expression_)) {}
 
             prepared_statement_t(prepared_statement_t&& prepared_stmt) :
-                prepared_statement_base{prepared_stmt.stmt, std::move(prepared_stmt.con)},
-                expression(std::move(prepared_stmt.expression)) {
-                prepared_stmt.stmt = nullptr;
-            }
+                prepared_statement_base{std::exchange(prepared_stmt.stmt, nullptr), std::move(prepared_stmt.con)},
+                expression(std::move(prepared_stmt.expression)) {}
         };
 
         template<class T>
@@ -16521,6 +16618,8 @@ namespace sqlite_orm {
 // std::remove_cvref, polyfill::is_detected
 // #include "functional/cxx_functional_polyfill.h"
 
+// #include "functional/gsl.h"
+
 // #include "tuple_helper/tuple_iteration.h"
 
 // #include "type_traits.h"
@@ -16687,7 +16786,7 @@ namespace sqlite_orm {
             auto& context = std::get<2>(tpl);
 
             iterate_tuple(actions, [&ss, &context, first = true](auto& action) mutable {
-                static constexpr std::array<const char*, 2> sep = {" ", ""};
+                static constexpr std::array<orm_gsl::czstring, 2> sep = {" ", ""};
                 ss << sep[std::exchange(first, false)] << serialize(action, context);
             });
             return ss;
@@ -16702,7 +16801,7 @@ namespace sqlite_orm {
             auto& context = std::get<2>(tpl);
 
             iterate_tuple(args, [&ss, &context, first = true](auto& arg) mutable {
-                static constexpr std::array<const char*, 2> sep = {", ", ""};
+                static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)] << serialize(arg, context);
             });
             return ss;
@@ -16737,7 +16836,7 @@ namespace sqlite_orm {
             auto& context = std::get<2>(tpl);
 
             iterate_tuple(args, [&ss, &context, first = true](auto& arg) mutable {
-                static constexpr std::array<const char*, 2> sep = {", ", ""};
+                static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)] << serialize_order_by(arg, context);
             });
             return ss;
@@ -16751,7 +16850,7 @@ namespace sqlite_orm {
             const auto& args = std::get<1>(tpl);
             auto& context = std::get<2>(tpl);
 
-            static constexpr std::array<const char*, 2> sep = {", ", ""};
+            static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
             bool first = true;
             for (auto& argument: args) {
                 ss << sep[std::exchange(first, false)] << serialize(argument, context);
@@ -16765,7 +16864,7 @@ namespace sqlite_orm {
         std::ostream& operator<<(std::ostream& ss, std::tuple<const streaming<stream_as::serialized>&, C> tpl) {
             const auto& strings = std::get<1>(tpl);
 
-            static constexpr std::array<const char*, 2> sep = {", ", ""};
+            static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
 #ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
             for (bool first = true; auto& s: strings) {
                 ss << sep[std::exchange(first, false)] << s;
@@ -16800,7 +16899,7 @@ namespace sqlite_orm {
         std::ostream& operator<<(std::ostream& ss, std::tuple<const streaming<stream_as::identifiers>&, C> tpl) {
             const auto& identifiers = std::get<1>(tpl);
 
-            static constexpr std::array<const char*, 2> sep = {", ", ""};
+            static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
             bool first = true;
             for (auto& identifier: identifiers) {
                 ss << sep[std::exchange(first, false)];
@@ -16823,7 +16922,7 @@ namespace sqlite_orm {
             std::string result;
             result.reserve((1 + (columnsCount * 1) + (columnsCount * 2 - 2) + 1) * valuesCount + (valuesCount * 2 - 2));
 
-            static constexpr std::array<const char*, 2> sep = {", ", ""};
+            static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
             for (ptrdiff_t i = 0, first = true; i < valuesCount; ++i) {
                 result += sep[std::exchange(first, false)];
                 result += "(";
@@ -16847,7 +16946,7 @@ namespace sqlite_orm {
             const std::string& qualifier = std::get<2>(tpl);
 
             table.for_each_column([&ss, &qualifier, first = true](const column_identifier& column) mutable {
-                static constexpr std::array<const char*, 2> sep = {", ", ""};
+                static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)];
                 stream_identifier(ss, qualifier, column.name, std::string{});
             });
@@ -16863,7 +16962,7 @@ namespace sqlite_orm {
 
             table.template for_each_column_excluding<is_generated_always>(
                 [&ss, first = true](const column_identifier& column) mutable {
-                    static constexpr std::array<const char*, 2> sep = {", ", ""};
+                    static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                     ss << sep[std::exchange(first, false)];
                     stream_identifier(ss, column.name);
                 });
@@ -16889,7 +16988,7 @@ namespace sqlite_orm {
                         return;
                     }
 
-                    static constexpr std::array<const char*, 2> sep = {", ", ""};
+                    static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                     ss << sep[std::exchange(first, false)]
                        << serialize(polyfill::invoke(column.member_pointer, object), context);
                 }));
@@ -16910,7 +17009,7 @@ namespace sqlite_orm {
                     throw std::system_error{orm_error_code::column_not_found};
                 }
 
-                static constexpr std::array<const char*, 2> sep = {", ", ""};
+                static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)];
                 stream_identifier(ss, *columnName);
             });
@@ -19185,6 +19284,8 @@ namespace sqlite_orm {
 // std::remove_cvref, std::disjunction
 // #include "functional/cxx_functional_polyfill.h"
 // std::identity, std::invoke
+// #include "functional/gsl.h"
+
 // #include "functional/always_default.h"
 
 namespace sqlite_orm {
@@ -19648,6 +19749,8 @@ namespace sqlite_orm {
 #include <utility>  //  std::exchange
 #endif
 
+// #include "functional/gsl.h"
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -19701,7 +19804,7 @@ namespace sqlite_orm {
                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << static_cast<std::string>(orderBy) << " ";
-                static constexpr std::array<const char*, 2> sep = {", ", ""};
+                static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
 #ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
                 for (bool first = true; const dynamic_order_by_entry_t& entry: orderBy) {
                     ss << sep[std::exchange(first, false)] << entry.name;
@@ -20074,7 +20177,7 @@ namespace sqlite_orm {
                 return quote_string_literal(field_printer<std::string>{}(c));
             }
 
-            static std::string do_serialize(const char* c) {
+            static std::string do_serialize(orm_gsl::czstring c) {
                 return quote_string_literal(c);
             }
 #ifndef SQLITE_ORM_OMITS_CODECVT
@@ -21341,7 +21444,7 @@ namespace sqlite_orm {
                                   static_assert(!is_setter_v<member_pointer_type>,
                                                 "Unable to use setter within insert explicit");
 
-                                  static constexpr std::array<const char*, 2> sep = {", ", ""};
+                                  static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                                   ss << sep[std::exchange(first, false)]
                                      << serialize(polyfill::invoke(memberPointer, object), context);
                               });
@@ -21368,7 +21471,7 @@ namespace sqlite_orm {
                             return;
                         }
 
-                        static constexpr std::array<const char*, 2> sep = {", ", ""};
+                        static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                         ss << sep[std::exchange(first, false)] << streaming_identifier(column.name) << " = "
                            << serialize(polyfill::invoke(column.member_pointer, object), context);
                     });
@@ -21379,7 +21482,7 @@ namespace sqlite_orm {
                             return;
                         }
 
-                        static constexpr std::array<const char*, 2> sep = {" AND ", ""};
+                        static constexpr std::array<orm_gsl::czstring, 2> sep = {" AND ", ""};
                         ss << sep[std::exchange(first, false)] << streaming_identifier(column.name) << " = "
                            << serialize(polyfill::invoke(column.member_pointer, object), context);
                     });
@@ -21420,7 +21523,7 @@ namespace sqlite_orm {
                 auto leftContext = context;
                 leftContext.skip_table_name = true;
                 iterate_tuple(statement.assigns, [&ss, &context, &leftContext, first = true](auto& value) mutable {
-                    static constexpr std::array<const char*, 2> sep = {", ", ""};
+                    static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                     ss << sep[std::exchange(first, false)] << serialize(value.lhs, leftContext) << ' '
                        << value.serialize() << ' ' << serialize(value.rhs, context);
                 });
@@ -21615,7 +21718,7 @@ namespace sqlite_orm {
                         throw std::system_error{orm_error_code::column_not_found};
                     }
 
-                    static constexpr std::array<const char*, 2> sep = {" AND ", ""};
+                    static constexpr std::array<orm_gsl::czstring, 2> sep = {" AND ", ""};
                     ss << sep[index == 0] << streaming_identifier(*columnName) << " = " << idsStrings[index];
                     ++index;
                 });
@@ -21748,7 +21851,7 @@ namespace sqlite_orm {
             }
 
 #ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
-            static constexpr std::array<const char*, 2> sep = {" AND ", ""};
+            static constexpr std::array<orm_gsl::czstring, 2> sep = {" AND ", ""};
             for (bool first = true; const std::string& pkName: primaryKeyColumnNames) {
                 ss << sep[std::exchange(first, false)] << streaming_identifier(pkName) << " = ?";
             }
@@ -21998,7 +22101,7 @@ namespace sqlite_orm {
                 iterate_tuple<typename From::tuple_type>([&context, &ss, first = true](auto* dummyItem) mutable {
                     using table_type = std::remove_pointer_t<decltype(dummyItem)>;
 
-                    static constexpr std::array<const char*, 2> sep = {", ", ""};
+                    static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                     ss << sep[std::exchange(first, false)]
                        << streaming_identifier(lookup_table_name<mapped_type_proxy_t<table_type>>(context.db_objects),
                                                alias_extractor<table_type>::as_alias());
@@ -23554,7 +23657,7 @@ namespace sqlite_orm {
                      class... Args,
                      std::enable_if_t<polyfill::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value,
                                       bool> = true>
-            std::string group_concat(F field, const char* y, Args&&... args) {
+            std::string group_concat(F field, orm_gsl::czstring y, Args&&... args) {
                 std::unique_ptr<std::string> str;
                 if (y) {
                     str = std::make_unique<std::string>(y);
@@ -23732,7 +23835,7 @@ namespace sqlite_orm {
                 ss << "{ ";
                 table.for_each_column([&ss, &object, first = true](auto& column) mutable {
                     using field_type = field_type_t<std::remove_reference_t<decltype(column)>>;
-                    static constexpr std::array<const char*, 2> sep = {", ", ""};
+                    static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
 
                     ss << sep[std::exchange(first, false)] << column.name << " : '"
                        << field_printer<field_type>{}(polyfill::invoke(column.member_pointer, object)) << "'";
@@ -25739,6 +25842,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
+// #include "functional/gsl.h"
+
 // #include "pointer_value.h"
 
 #if SQLITE_VERSION_NUMBER >= 3020000
@@ -25794,7 +25899,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 #else
     inline constexpr const char carray_pointer_name[] = "carray";
-    using carray_pointer_type = std::integral_constant<const char*, carray_pointer_name>;
+    using carray_pointer_type = std::integral_constant<orm_gsl::czstring, carray_pointer_name>;
     // [Deprecation notice] This type is deprecated and will be removed in v1.10. Use the alias type `carray_pointer_type` instead.
     using carray_pvt [[deprecated]] = carray_pointer_type;
 
@@ -25861,7 +25966,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  remember(V, $PTR) extension function https://sqlite.org/src/file/ext/misc/remember.c
      */
     struct remember_fn : note_value_fn<int64> {
-        static constexpr const char* name() {
+        static constexpr orm_gsl::czstring name() {
             return "remember";
         }
     };

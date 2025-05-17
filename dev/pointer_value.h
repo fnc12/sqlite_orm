@@ -11,6 +11,7 @@
 #endif
 #endif
 
+#include "functional/gsl.h"
 #include "functional/cstring_literal.h"
 #include "xdestroy_handling.h"
 
@@ -36,12 +37,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
     }
 
-    /** @short Specifies that a type is an integral constant string usable as a pointer type.
+    /** @short Specifies that a type is an integral constant C-string usable as a pointer type.
      */
     template<class T>
     concept orm_pointer_type = requires {
         typename T::value_type;
-        { T::value } -> std::convertible_to<const char*>;
+        { T::value } -> std::convertible_to<orm_gsl::czstring>;
     };
 #endif
 
@@ -63,7 +64,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         // of forward declarations in other places (e.g. function.h)
         static_assert(orm_pointer_type<T>, "T must be a pointer type (tag)");
 #else
-        static_assert(std::is_convertible<typename T::value_type, const char*>::value,
+        static_assert(std::is_convertible<typename T::value_type, orm_gsl::czstring>::value,
                       "The pointer type (tag) must be convertible to `const char*`");
 #endif
 

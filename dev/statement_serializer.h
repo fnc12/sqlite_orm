@@ -18,6 +18,7 @@
 
 #include "functional/cxx_type_traits_polyfill.h"  // std::remove_cvref, std::disjunction
 #include "functional/cxx_functional_polyfill.h"  // std::identity, std::invoke
+#include "functional/gsl.h"
 #include "functional/always_default.h"
 #include "functional/mpl.h"
 #include "tuple_helper/tuple_filter.h"
@@ -106,7 +107,7 @@ namespace sqlite_orm {
                 return quote_string_literal(field_printer<std::string>{}(c));
             }
 
-            static std::string do_serialize(const char* c) {
+            static std::string do_serialize(orm_gsl::czstring c) {
                 return quote_string_literal(c);
             }
 #ifndef SQLITE_ORM_OMITS_CODECVT
@@ -1373,7 +1374,7 @@ namespace sqlite_orm {
                                   static_assert(!is_setter_v<member_pointer_type>,
                                                 "Unable to use setter within insert explicit");
 
-                                  static constexpr std::array<const char*, 2> sep = {", ", ""};
+                                  static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                                   ss << sep[std::exchange(first, false)]
                                      << serialize(polyfill::invoke(memberPointer, object), context);
                               });
@@ -1400,7 +1401,7 @@ namespace sqlite_orm {
                             return;
                         }
 
-                        static constexpr std::array<const char*, 2> sep = {", ", ""};
+                        static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                         ss << sep[std::exchange(first, false)] << streaming_identifier(column.name) << " = "
                            << serialize(polyfill::invoke(column.member_pointer, object), context);
                     });
@@ -1411,7 +1412,7 @@ namespace sqlite_orm {
                             return;
                         }
 
-                        static constexpr std::array<const char*, 2> sep = {" AND ", ""};
+                        static constexpr std::array<orm_gsl::czstring, 2> sep = {" AND ", ""};
                         ss << sep[std::exchange(first, false)] << streaming_identifier(column.name) << " = "
                            << serialize(polyfill::invoke(column.member_pointer, object), context);
                     });
@@ -1452,7 +1453,7 @@ namespace sqlite_orm {
                 auto leftContext = context;
                 leftContext.skip_table_name = true;
                 iterate_tuple(statement.assigns, [&ss, &context, &leftContext, first = true](auto& value) mutable {
-                    static constexpr std::array<const char*, 2> sep = {", ", ""};
+                    static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                     ss << sep[std::exchange(first, false)] << serialize(value.lhs, leftContext) << ' '
                        << value.serialize() << ' ' << serialize(value.rhs, context);
                 });
@@ -1647,7 +1648,7 @@ namespace sqlite_orm {
                         throw std::system_error{orm_error_code::column_not_found};
                     }
 
-                    static constexpr std::array<const char*, 2> sep = {" AND ", ""};
+                    static constexpr std::array<orm_gsl::czstring, 2> sep = {" AND ", ""};
                     ss << sep[index == 0] << streaming_identifier(*columnName) << " = " << idsStrings[index];
                     ++index;
                 });
@@ -1780,7 +1781,7 @@ namespace sqlite_orm {
             }
 
 #ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
-            static constexpr std::array<const char*, 2> sep = {" AND ", ""};
+            static constexpr std::array<orm_gsl::czstring, 2> sep = {" AND ", ""};
             for (bool first = true; const std::string& pkName: primaryKeyColumnNames) {
                 ss << sep[std::exchange(first, false)] << streaming_identifier(pkName) << " = ?";
             }
@@ -2030,7 +2031,7 @@ namespace sqlite_orm {
                 iterate_tuple<typename From::tuple_type>([&context, &ss, first = true](auto* dummyItem) mutable {
                     using table_type = std::remove_pointer_t<decltype(dummyItem)>;
 
-                    static constexpr std::array<const char*, 2> sep = {", ", ""};
+                    static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                     ss << sep[std::exchange(first, false)]
                        << streaming_identifier(lookup_table_name<mapped_type_proxy_t<table_type>>(context.db_objects),
                                                alias_extractor<table_type>::as_alias());

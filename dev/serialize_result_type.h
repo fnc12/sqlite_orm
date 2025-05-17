@@ -7,6 +7,8 @@
 #endif
 #endif
 
+#include "functional/gsl.h"
+
 namespace sqlite_orm {
     namespace internal {
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
@@ -16,7 +18,7 @@ namespace sqlite_orm {
 #else
         using serialize_result_type = std::string;
         using serialize_arg_type = const std::string&;
-        using string_constant_type = const char*;
+        using string_constant_type = orm_gsl::czstring;
 #endif
     }
 }

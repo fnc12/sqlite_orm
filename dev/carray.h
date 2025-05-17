@@ -17,6 +17,7 @@
 #endif
 #endif
 
+#include "functional/gsl.h"
 #include "pointer_value.h"
 
 #if SQLITE_VERSION_NUMBER >= 3020000
@@ -72,7 +73,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 #else
     inline constexpr const char carray_pointer_name[] = "carray";
-    using carray_pointer_type = std::integral_constant<const char*, carray_pointer_name>;
+    using carray_pointer_type = std::integral_constant<orm_gsl::czstring, carray_pointer_name>;
     // [Deprecation notice] This type is deprecated and will be removed in v1.10. Use the alias type `carray_pointer_type` instead.
     using carray_pvt [[deprecated]] = carray_pointer_type;
 
@@ -139,7 +140,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  remember(V, $PTR) extension function https://sqlite.org/src/file/ext/misc/remember.c
      */
     struct remember_fn : note_value_fn<int64> {
-        static constexpr const char* name() {
+        static constexpr orm_gsl::czstring name() {
             return "remember";
         }
     };
