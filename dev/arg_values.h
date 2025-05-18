@@ -2,6 +2,7 @@
 
 #include <sqlite3.h>
 
+#include "error_code.h"
 #include "row_extractor.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

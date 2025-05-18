@@ -65,8 +65,16 @@
 #define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
 #endif
 
+#if __cpp_static_call_operator >= 202207L
+#define SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+#endif
+
 #if __cpp_pack_indexing >= 202311L
 #define SQLITE_ORM_PACK_INDEXING_SUPPORTED
+#endif
+
+#if __cpp_structured_bindings >= 202411L
+#define SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
 #endif
 
 #if __cplusplus >= 202002L

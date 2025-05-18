@@ -39,7 +39,8 @@ namespace sqlite_orm {
             using statement_type = order_by_t<O>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& orderBy, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 auto newContext = context;
                 newContext.skip_table_name = false;
@@ -55,7 +56,8 @@ namespace sqlite_orm {
             using statement_type = dynamic_order_by_t<C>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& orderBy, const Ctx&) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
+                                                            const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << static_cast<std::string>(orderBy) << " ";
                 static constexpr std::array<const char*, 2> sep = {", ", ""};

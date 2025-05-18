@@ -531,10 +531,11 @@ namespace sqlite_orm {
 
             template<class C>
             void create_collation() {
-                collating_function func = [](int leftLength, const void* lhs, int rightLength, const void* rhs) {
-                    C collatingObject;
-                    return collatingObject(leftLength, lhs, rightLength, rhs);
-                };
+                collating_function func = [](int leftLength, const void* lhs, int rightLength, const void* rhs)
+                                              SQLITE_ORM_STATIC_CALLOP {
+                                                  C collatingObject;
+                                                  return collatingObject(leftLength, lhs, rightLength, rhs);
+                                              };
                 std::stringstream ss;
                 ss << C::name() << std::flush;
                 this->create_collation(ss.str(), std::move(func));

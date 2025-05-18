@@ -34,7 +34,7 @@ bool operator==(const Zone& lhs, const Zone& rhs) {
 namespace sqlite_orm {
 
     /**
-     *  First of all is a type_printer template class.
+     *  First of all is a type_printer class template.
      *  It is responsible for sqlite type string representation.
      *  We want Rect to be `BLOB` so let's just derive from
      *  blob_printer. Also there are other printers: real_printer,

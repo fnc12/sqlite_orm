@@ -52,7 +52,8 @@ namespace sqlite_orm {
                            std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
                            std::convertible_to<ExplicitCols, std::string>) &&
                           ...)
-            constexpr auto operator()(ExplicitCols... explicitColumns) const;
+            SQLITE_ORM_STATIC_CALLOP constexpr auto
+            operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP;
 #else
             template<class... ExplicitCols,
                      std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
@@ -61,7 +62,8 @@ namespace sqlite_orm {
                                           std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
                                           std::is_convertible<ExplicitCols, std::string>>...>,
                                       bool> = true>
-            constexpr auto operator()(ExplicitCols... explicitColumns) const;
+            SQLITE_ORM_STATIC_CALLOP constexpr auto
+            operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP;
 #endif
         };
     }

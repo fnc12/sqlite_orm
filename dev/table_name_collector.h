@@ -33,7 +33,7 @@ namespace sqlite_orm {
             table_name_collector(const db_objects_type& dbObjects) : db_objects{dbObjects} {}
 
             template<class T>
-            void operator()(const T&) const {}
+            SQLITE_ORM_STATIC_CALLOP void operator()(const T&) SQLITE_ORM_OR_CONST_CALLOP {}
 
             template<class F, class O>
             void operator()(F O::*) {

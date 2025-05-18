@@ -24,7 +24,7 @@ namespace sqlite_orm {
             std::allocator<UDF> allocator;
             using traits = std::allocator_traits<decltype(allocator)>;
 
-            constexpr auto deallocate = [](void* location) noexcept {
+            constexpr auto deallocate = [](void* location) SQLITE_ORM_STATIC_CALLOP noexcept {
                 std::allocator<UDF> allocator;
                 using traits = std::allocator_traits<decltype(allocator)>;
                 traits::deallocate(allocator, (UDF*)location, 1);
@@ -38,13 +38,13 @@ namespace sqlite_orm {
          */
         template<class UDF>
         std::pair<void* (*)(), xdestroy_fn_t> obtain_udf_allocator() {
-            constexpr auto allocate = []() {
+            constexpr auto allocate = []() SQLITE_ORM_STATIC_CALLOP {
                 std::allocator<UDF> allocator;
                 using traits = std::allocator_traits<decltype(allocator)>;
                 return (void*)traits::allocate(allocator, 1);
             };
 
-            constexpr auto deallocate = [](void* location) noexcept {
+            constexpr auto deallocate = [](void* location) SQLITE_ORM_STATIC_CALLOP noexcept {
                 std::allocator<UDF> allocator;
                 using traits = std::allocator_traits<decltype(allocator)>;
                 traits::deallocate(allocator, (UDF*)location, 1);
@@ -58,7 +58,7 @@ namespace sqlite_orm {
          */
         struct udf_destruct_only_deleter {
             template<class UDF>
-            void operator()(UDF* f) const noexcept {
+            SQLITE_ORM_STATIC_CALLOP void operator()(UDF* f) SQLITE_ORM_OR_CONST_CALLOP noexcept {
                 std::allocator<UDF> allocator;
                 using traits = std::allocator_traits<decltype(allocator)>;
                 traits::destroy(allocator, f);
