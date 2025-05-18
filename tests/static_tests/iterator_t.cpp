@@ -149,8 +149,6 @@ TEST_CASE("can view and iterate mapped") {
         STATIC_REQUIRE(std::is_default_constructible<iter>::value);
     }
     STATIC_REQUIRE(std::is_same<std::iterator_traits<iter>::pointer, Object*>::value);
-    // note: should actually be only present for contiguous iterators
-    STATIC_REQUIRE(std::is_same<decltype(it.operator->()), Object*>::value);
 #endif
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
