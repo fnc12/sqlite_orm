@@ -13810,11 +13810,6 @@ namespace sqlite_orm {
                 return *this->current;
             }
 
-            // note: should actually be only present for contiguous iterators
-            value_type* operator->() const {
-                return &(this->operator*());
-            }
-
             mapped_iterator& operator++() {
                 next();
                 return *this;
@@ -16138,14 +16133,6 @@ namespace sqlite_orm {
 
             mapped_view(storage_type& storage, connection_ref conn, Args&&... args) :
                 storage(storage), connection(std::move(conn)), expression{{std::forward<Args>(args)...}} {}
-
-            size_t size() const {
-                return this->storage.template count<T>();
-            }
-
-            bool empty() const {
-                return !this->size();
-            }
 
             mapped_iterator<T, db_objects_type> begin() {
                 using context_t = serializer_context<db_objects_type>;
