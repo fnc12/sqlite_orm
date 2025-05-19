@@ -59,8 +59,6 @@ concept can_iterate_mapped = requires(Iter it) {
     // would not tell us why exactly the end iterator cannot be a sentinel
     requires std::sentinel_for<Iter, Iter>;
     { *it } -> std::same_as<Value&>;
-    // note: should actually be only present for contiguous iterators
-    { it.operator->() } -> std::same_as<Value*>;
 };
 
 template<class V, class O, class DBOs>
@@ -115,7 +113,9 @@ TEST_CASE("can view and iterate mapped") {
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     using iter = mapped_iterator<Object, storage_type::db_objects_type>;
+
     STATIC_REQUIRE(can_iterate_mapped<iter, Object>);
+
     // check default initializability at runtime
     [[maybe_unused]] const iter end;
 #else
@@ -149,8 +149,6 @@ TEST_CASE("can view and iterate mapped") {
         STATIC_REQUIRE(std::is_default_constructible<iter>::value);
     }
     STATIC_REQUIRE(std::is_same<std::iterator_traits<iter>::pointer, Object*>::value);
-    // note: should actually be only present for contiguous iterators
-    STATIC_REQUIRE(std::is_same<decltype(it.operator->()), Object*>::value);
 #endif
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED

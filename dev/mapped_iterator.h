@@ -90,11 +90,6 @@ namespace sqlite_orm {
                 return *this->current;
             }
 
-            // note: should actually be only present for contiguous iterators
-            value_type* operator->() const {
-                return &(this->operator*());
-            }
-
             mapped_iterator& operator++() {
                 next();
                 return *this;
