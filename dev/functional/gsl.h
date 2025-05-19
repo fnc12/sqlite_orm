@@ -1,6 +1,6 @@
 #pragma once
 
-/** @file A partial copy of the Guidelines Support Library (GSL) as needed for this library.
+/** @file A subset of the Guidelines Support Library (GSL) as it is useful for this library.
  *  
  *  At the time of writing, the use of these symbols serves only to express the logical intention, because:
  *  1. Each facility lives in the nested namespace `orm_gsl` because `gsl` may conflict with other GSL implementations [like ms-gsl or gsl-lite].
