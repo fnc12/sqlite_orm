@@ -375,6 +375,8 @@ TEST_CASE("Select") {
     storage.update_all(set(assign(&Word::currentWord, "ototo")), where(is_equal(&Word::id, firstId)));
 
     REQUIRE(storage.get<Word>(firstId).currentWord == "ototo");
+
+    std::remove(dbFileName);
 }
 
 TEST_CASE("Replace query") {
