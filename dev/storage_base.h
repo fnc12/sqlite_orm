@@ -181,7 +181,7 @@ namespace sqlite_orm {
                 this->executor.perform_exec(
                     db,
                     sql,
-                    [](void* data, int argc, char** argv, char** /*azColName*/) -> int {
+                    [](void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring* /*azColName*/) -> int {
                         auto& res = *(bool*)data;
                         if (argc) {
                             res = !!atoi(argv[0]);
@@ -285,7 +285,7 @@ namespace sqlite_orm {
                 this->executor.perform_exec(
                     connection.get(),
                     "SELECT name FROM sqlite_master WHERE type='table'",
-                    [](void* data, int argc, char** argv, char** /*columnName*/) -> int {
+                    [](void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring* /*columnName*/) -> int {
                         auto& tableNames_ = *(data_t*)data;
                         for (int i = 0; i < argc; ++i) {
                             if (argv[i]) {

@@ -93,7 +93,7 @@ namespace sqlite_orm {
 
             inline void perform_exec(sqlite3* db,
                                      orm_gsl::czstring sql,
-                                     int (*callback)(void* data, int argc, char** argv, char**),
+                                     int (*callback)(void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring*),
                                      void* user_data) const {
                 if (this->will_run_query) {
                     this->will_run_query(sql);
@@ -109,7 +109,7 @@ namespace sqlite_orm {
 
             inline void perform_exec(sqlite3* db,
                                      const std::string& query,
-                                     int (*callback)(void* data, int argc, char** argv, char**),
+                                     int (*callback)(void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring*),
                                      void* user_data) const {
                 return perform_exec(db, query.c_str(), callback, user_data);
             }

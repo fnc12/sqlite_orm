@@ -122,7 +122,7 @@ namespace sqlite_orm {
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class R>
-    int extract_single_value(void* data, int argc, char** argv, char**) {
+    int extract_single_value(void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring*) {
         auto& res = *(R*)data;
         if (argc) {
             const auto rowExtractor = internal::column_text_extractor<R>();
