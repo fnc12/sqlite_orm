@@ -36,7 +36,8 @@ TEST_CASE("statement_serializer trigger") {
                                            .end());
         value = serialize(expression, context);
         expected =
-            R"(CREATE TRIGGER IF NOT EXISTS "validate_email_before_insert_leads" BEFORE INSERT ON "leads" BEGIN SELECT )"
+            R"(DROP TRIGGER IF EXISTS "validate_email_before_insert_leads";)"
+            R"(CREATE TRIGGER "validate_email_before_insert_leads" BEFORE INSERT ON "leads" BEGIN SELECT )"
             R"(CASE WHEN NOT NEW."email" LIKE '%_@__%.__%' THEN RAISE(ABORT, 'Invalid email address') END; END)";
     }
     REQUIRE(value == expected);

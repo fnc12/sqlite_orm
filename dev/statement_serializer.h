@@ -2191,9 +2191,10 @@ namespace sqlite_orm {
             SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
+                ss << "DROP TRIGGER IF EXISTS " << streaming_identifier(statement.name) << ";";
                 ss << "CREATE ";
 
-                ss << "TRIGGER IF NOT EXISTS " << streaming_identifier(statement.name) << " "
+                ss << "TRIGGER " << streaming_identifier(statement.name) << " "
                    << serialize(statement.base, context);
                 ss << " BEGIN ";
                 iterate_tuple(statement.elements, [&ss, &context](auto& element) {

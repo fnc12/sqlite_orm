@@ -104,6 +104,42 @@ TEST_CASE("triggers_basics") {
     }
 }
 
+TEST_CASE("issue1429") {
+    auto storagePath = "issue1429.sqlite";
+    struct X {
+        int test = 0;
+    };
+
+    {
+        auto storage = make_storage(
+            storagePath,
+            make_trigger("table_insert_InsertTest", after().insert().on<X>().begin(update_all(set(c(&X::test) = 5))).end()),
+            make_table("x",
+                make_column("test", &X::test)));
+        auto simulated = storage.sync_schema_simulate();
+        auto ssr = storage.sync_schema();
+        REQUIRE(ssr == simulated);
+
+        storage.insert(X{1});
+        auto records = storage.get_all<X>();
+        REQUIRE(records[0].test == 5);
+    }
+    {
+        auto storage = make_storage(
+            storagePath,
+            make_trigger("table_insert_InsertTest", after().insert().on<X>().begin(update_all(set(c(&X::test) = 6))).end()),
+            make_table("x",
+                make_column("test", &X::test)));
+        auto simulated = storage.sync_schema_simulate();
+        auto ssr = storage.sync_schema();
+        REQUIRE(ssr == simulated);
+
+        storage.insert(X{1});
+        auto records = storage.get_all<X>();
+        REQUIRE(records[0].test == 6);
+    }
+}
+
 TEST_CASE("issue1280") {
     struct X {
         int test = 0;
