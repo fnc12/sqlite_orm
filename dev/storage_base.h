@@ -278,25 +278,16 @@ namespace sqlite_orm {
              *  @return Returns list of tables in database.
              */
             std::vector<std::string> table_names() {
-                using data_t = std::vector<std::string>;
+                return this->object_names("table");
+            }
 
-                auto connection = this->get_connection();
-                data_t tableNames;
-                this->executor.perform_exec(
-                    connection.get(),
-                    "SELECT name FROM sqlite_master WHERE type='table'",
-                    [](void* data, int argc, char** argv, char** /*columnName*/) -> int {
-                        auto& tableNames_ = *(data_t*)data;
-                        for (int i = 0; i < argc; ++i) {
-                            if (argv[i]) {
-                                tableNames_.emplace_back(argv[i]);
-                            }
-                        }
-                        return 0;
-                    },
-                    &tableNames);
-                tableNames.shrink_to_fit();
-                return tableNames;
+            /**
+             *  Returns existing permanent trigger names in database. Doesn't check storage itself - works only with
+             * actual database.
+             *  @return Returns list of triggers in database.
+             */
+            std::vector<std::string> trigger_names() {
+                return this->object_names("trigger");
             }
 
             /**
@@ -762,6 +753,30 @@ namespace sqlite_orm {
             connection_ref get_connection() {
                 connection_ref res{*this->connection};
                 return res;
+            }
+
+            std::vector<std::string> object_names(const std::string& type) {
+                using data_t = std::vector<std::string>;
+
+                auto connection = this->get_connection();
+                data_t objectNames;
+                std::stringstream ss;
+                ss << "SELECT name FROM sqlite_master WHERE type=" << quote_string_literal(type);
+                this->executor.perform_exec(
+                    connection.get(),
+                    ss.str(),
+                    [](void* data, int argc, char** argv, char** /*columnName*/) -> int {
+                        auto& objectNames_ = *(data_t*)data;
+                        for (int i = 0; i < argc; ++i) {
+                            if (argv[i]) {
+                                objectNames_.emplace_back(argv[i]);
+                            }
+                        }
+                        return 0;
+                    },
+                    &objectNames);
+                objectNames.shrink_to_fit();
+                return objectNames;
             }
 
 #if SQLITE_VERSION_NUMBER >= 3006019

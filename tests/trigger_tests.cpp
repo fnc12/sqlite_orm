@@ -104,6 +104,35 @@ TEST_CASE("triggers_basics") {
     }
 }
 
+TEST_CASE("trigger_names") {
+    auto storagePath = "trigger_names.sqlite";
+    struct X {
+        int test = 0;
+    };
+
+    {
+        auto storage = make_storage(
+            storagePath,
+            make_trigger("trigger1", after().insert().on<X>().begin(update_all(set(c(&X::test) = 1))).end()),
+            make_trigger("trigger2", after().insert().on<X>().begin(update_all(set(c(&X::test) = 2))).end()),
+            make_table("x",
+                make_column("test", &X::test)));
+        storage.sync_schema();
+    }
+    {
+        auto storage = make_storage(
+            storagePath,
+            make_trigger("trigger2", after().insert().on<X>().begin(update_all(set(c(&X::test) = 2))).end()),
+            make_trigger("trigger3", after().insert().on<X>().begin(update_all(set(c(&X::test) = 3))).end()),
+            make_table("x",
+                make_column("test", &X::test)));
+        storage.sync_schema();
+
+        auto trigger_names=storage.trigger_names();
+        REQUIRE_THAT(trigger_names, Catch::Matchers::UnorderedEquals(std::vector<std::string>{"trigger1", "trigger2", "trigger3"}));
+    }
+}
+
 TEST_CASE("issue1429") {
     auto storagePath = "issue1429.sqlite";
     struct X {
