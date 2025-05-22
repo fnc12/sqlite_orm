@@ -64,7 +64,7 @@ TEST_CASE("Iterate mapped") {
     }
 }
 
-#if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
 TEST_CASE("Iterate select statement") {
     struct Test {
         int64_t id = 0;

@@ -46,7 +46,8 @@ using std::nullptr_t;
 #endif
 
 #if (__cpp_noexcept_function_type < 201510L) ||                                                                        \
-    (__cpp_fold_expressions < 201603L || __cpp_constexpr < 201603L || __cpp_aggregate_bases < 201603L) ||              \
+    (__cpp_fold_expressions < 201603L || __cpp_constexpr < 201603L || __cpp_aggregate_bases < 201603L ||               \
+     __cpp_range_based_for < 201603L) ||                                                                               \
     (__cpp_if_constexpr < 201606L || __cpp_inline_variables < 201606L)
 #error A fully C++17-compliant compiler is required.
 #endif
@@ -68,10 +69,6 @@ using std::nullptr_t;
 #define SQLITE_ORM_HAS_INCLUDE(file) __has_include(file)
 #else
 #define SQLITE_ORM_HAS_INCLUDE(file) 0L
-#endif
-
-#if __cpp_range_based_for >= 201603L
-#define SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED
 #endif
 
 #if __cpp_structured_bindings >= 201606L
@@ -16308,8 +16305,7 @@ inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::m
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move, std::remove_cvref
 #include <functional>  //  std::reference_wrapper
-#if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED) &&           \
-    defined(SQLITE_ORM_CPP20_RANGES_SUPPORTED)
+#if defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED) && defined(SQLITE_ORM_CPP20_RANGES_SUPPORTED)
 #include <ranges>  //  std::ranges::view_interface
 #endif
 #endif
@@ -16335,7 +16331,7 @@ inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::m
 
 // #include "util.h"
 
-#if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
 namespace sqlite_orm::internal {
 
     template<class ColResult, class DBOs>
@@ -16422,7 +16418,7 @@ namespace sqlite_orm::internal {
 
 // #include "storage_lookup.h"
 
-#if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
 namespace sqlite_orm::internal {
     /*  
      *  A C++ view over a result set of a select statement, returned by `storage_t::iterate()`.
@@ -23285,7 +23281,7 @@ namespace sqlite_orm {
             }
 #endif
 
-#if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
             template<class Select>
 #ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
                 requires (is_select_v<Select>)
