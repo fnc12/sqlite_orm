@@ -10,6 +10,7 @@
 #include <iomanip>  //  std::flush
 #endif
 
+#include "functional/gsl.h"
 #include "error_code.h"
 #include "row_extractor.h"
 #include "journal_mode.h"
@@ -25,12 +26,13 @@ namespace sqlite_orm {
         struct sqlite_executor;
 
         template<class T>
-        int getPragmaCallback(void* data, int argc, char** argv, char** x) {
+        int getPragmaCallback(void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring* x) {
             return extract_single_value<T>(data, argc, argv, x);
         }
 
         template<>
-        inline int getPragmaCallback<std::vector<std::string>>(void* data, int argc, char** argv, char**) {
+        inline int
+        getPragmaCallback<std::vector<std::string>>(void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring*) {
             auto& res = *(std::vector<std::string>*)data;
             res.reserve(argc);
             const auto rowExtractor = column_text_extractor<std::string>();
@@ -169,7 +171,7 @@ namespace sqlite_orm {
                 this->executor.perform_exec(
                     connection.get(),
                     sql,
-                    [](void* data, int argc, char** argv, char**) -> int {
+                    [](void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring*) -> int {
                         auto& res = *(std::vector<sqlite_orm::table_xinfo>*)data;
                         if (argc) {
                             auto index = 0;
@@ -210,7 +212,7 @@ namespace sqlite_orm {
                 this->executor.perform_exec(
                     connection.get(),
                     sql,
-                    [](void* data, int argc, char** argv, char**) -> int {
+                    [](void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring*) -> int {
                         auto& res = *(std::vector<sqlite_orm::table_info>*)data;
                         if (argc) {
                             auto index = 0;

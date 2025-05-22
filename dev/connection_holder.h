@@ -7,6 +7,7 @@
 #include <string>  //  std::string
 #endif
 
+#include "functional/gsl.h"
 #include "error_code.h"
 #include "vfs_name.h"
 #include "db_open_mode.h"
@@ -77,7 +78,7 @@ namespace sqlite_orm {
             }
 
           protected:
-            sqlite3* db = nullptr;
+            orm_gsl::owner<sqlite3*> db = nullptr;
 
           private:
             std::atomic_int _retainCount{};

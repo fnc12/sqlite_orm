@@ -127,7 +127,7 @@ namespace sqlite_orm {
     template<class V>
     struct statement_binder<V,
                             std::enable_if_t<polyfill::disjunction<std::is_base_of<std::string, V>,
-                                                                   std::is_same<V, const char*>
+                                                                   std::is_same<V, orm_gsl::czstring>
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
                                                                    ,
                                                                    std::is_same<V, std::string_view>
@@ -157,7 +157,7 @@ namespace sqlite_orm {
             return {s.c_str(), int(s.size())};
         }
 
-        std::pair<const char*, int> string_data(const char* s) const {
+        std::pair<const char*, int> string_data(orm_gsl::czstring s) const {
             return {s, int(strlen(s))};
         }
 #endif

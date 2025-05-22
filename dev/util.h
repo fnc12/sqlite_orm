@@ -10,6 +10,7 @@
 #endif
 #endif
 
+#include "functional/gsl.h"
 #include "error_code.h"
 #include "serialize_result_type.h"
 
@@ -77,7 +78,7 @@ namespace sqlite_orm {
             std::function<void(serialize_arg_type sql)> will_run_query;
             std::function<void(serialize_arg_type sql)> did_run_query;
 
-            inline void perform_void_exec(sqlite3* db, const char* sql) const {
+            inline void perform_void_exec(sqlite3* db, orm_gsl::czstring sql) const {
                 if (this->will_run_query) {
                     this->will_run_query(sql);
                 }
@@ -91,8 +92,8 @@ namespace sqlite_orm {
             }
 
             inline void perform_exec(sqlite3* db,
-                                     const char* sql,
-                                     int (*callback)(void* data, int argc, char** argv, char**),
+                                     orm_gsl::czstring sql,
+                                     int (*callback)(void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring*),
                                      void* user_data) const {
                 if (this->will_run_query) {
                     this->will_run_query(sql);
@@ -108,14 +109,14 @@ namespace sqlite_orm {
 
             inline void perform_exec(sqlite3* db,
                                      const std::string& query,
-                                     int (*callback)(void* data, int argc, char** argv, char**),
+                                     int (*callback)(void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring*),
                                      void* user_data) const {
                 return perform_exec(db, query.c_str(), callback, user_data);
             }
 
             template<class L>
             void perform_steps(sqlite3_stmt* stmt, L&& lambda) const {
-                const char* sql = nullptr;
+                orm_gsl::czstring sql = nullptr;
                 if (this->will_run_query || this->did_run_query) {
                     sql = sqlite3_sql(stmt);
                 }
