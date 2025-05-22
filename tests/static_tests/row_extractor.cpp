@@ -94,7 +94,6 @@ TEST_CASE("is_extractable") {
     check_not_extractable<std::optional<User>>();
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 #if SQLITE_VERSION_NUMBER >= 3020000
-#ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     check_not_extractable<static_pointer_binding_t<std::nullptr_t, carray_pointer_tag>>();
 #else
@@ -107,7 +106,6 @@ TEST_CASE("is_extractable") {
         STATIC_CHECK_FALSE(orm_row_value_extractable<int64_pointer_arg>);
         STATIC_CHECK(orm_boxed_value_extractable<int64_pointer_arg>);
     }
-#endif
 #endif
 
     check_extractable<custom_enum>();

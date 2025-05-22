@@ -20,17 +20,17 @@ namespace sqlite_orm {
          *  short:   `alias_column<alias_d<Derived>>(&Base::field)`
          */
         template<class F, class T, class SFINAE = void>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_field_of_v = false;
+        inline constexpr bool is_field_of_v = false;
 
         /*
          *  `true` if a pointer-to-member of Base is convertible to a pointer-to-member of Derived.
          */
         template<class O, class Base, class F>
-        SQLITE_ORM_INLINE_VAR constexpr bool
+        inline constexpr bool
             is_field_of_v<F Base::*, O, std::enable_if_t<std::is_convertible<F Base::*, F O::*>::value>> = true;
 
         template<class F, class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_field_of_v<column_pointer<T, F>, T, void> = true;
+        inline constexpr bool is_field_of_v<column_pointer<T, F>, T, void> = true;
 
         template<class F, class T>
         struct is_field_of : polyfill::bool_constant<is_field_of_v<F, T>> {};

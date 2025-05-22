@@ -21,10 +21,6 @@
 #define SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED
 #endif
 
-#if __cpp_inline_variables >= 201606L
-#define SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
-#endif
-
 #if __cpp_structured_bindings >= 201606L
 #define SQLITE_ORM_STRUCTURED_BINDINGS_SUPPORTED
 #endif

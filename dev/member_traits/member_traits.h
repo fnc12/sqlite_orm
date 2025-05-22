@@ -62,7 +62,7 @@ namespace sqlite_orm {
         struct is_getter<T, polyfill::void_t<getter_field_type_t<T>>> : std::true_type {};
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_getter_v = is_getter<T>::value;
+        inline constexpr bool is_getter_v = is_getter<T>::value;
 
         template<class T, class SFINAE = void>
         struct is_setter : std::false_type {};
@@ -70,7 +70,7 @@ namespace sqlite_orm {
         struct is_setter<T, polyfill::void_t<setter_field_type_t<T>>> : std::true_type {};
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_setter_v = is_setter<T>::value;
+        inline constexpr bool is_setter_v = is_setter<T>::value;
 
         template<class T>
         struct member_field_type : object_field_type<T>, getter_field_type<T>, setter_field_type<T> {};

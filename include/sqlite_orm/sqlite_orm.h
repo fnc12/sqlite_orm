@@ -47,7 +47,7 @@ using std::nullptr_t;
 
 #if (__cpp_noexcept_function_type < 201510L) ||                                                                        \
     (__cpp_fold_expressions < 201603L || __cpp_constexpr < 201603L || __cpp_aggregate_bases < 201603L) ||              \
-    (__cpp_if_constexpr < 201606L)
+    (__cpp_if_constexpr < 201606L || __cpp_inline_variables < 201606L)
 #error A fully C++17-compliant compiler is required.
 #endif
 
@@ -72,10 +72,6 @@ using std::nullptr_t;
 
 #if __cpp_range_based_for >= 201603L
 #define SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED
-#endif
-
-#if __cpp_inline_variables >= 201606L
-#define SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 #endif
 
 #if __cpp_structured_bindings >= 201606L
@@ -247,12 +243,6 @@ using std::nullptr_t;
 #include <version>
 #endif
 
-#ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
-#define SQLITE_ORM_INLINE_VAR inline
-#else
-#define SQLITE_ORM_INLINE_VAR
-#endif
-
 #if __cpp_lib_constexpr_functional >= 201907L
 #define SQLITE_ORM_CONSTEXPR_CPP20 constexpr
 #else
@@ -307,8 +297,7 @@ using std::nullptr_t;
 #define SQLITE_ORM_STL_HAS_DEFAULT_SENTINEL
 #endif
 
-#if (defined(SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED) && defined(SQLITE_ORM_INLINE_VARIABLES_SUPPORTED) &&        \
-     defined(SQLITE_ORM_CONSTEVAL_SUPPORTED)) &&                                                                       \
+#if (defined(SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED) && defined(SQLITE_ORM_CONSTEVAL_SUPPORTED)) &&              \
     (defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED))
 #define SQLITE_ORM_WITH_CPP20_ALIASES
 #endif
@@ -434,7 +423,7 @@ namespace sqlite_orm {
             template<typename B1, typename... Bn>
             struct conjunction<B1, Bn...> : mpl::conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
             template<typename... Bs>
-            SQLITE_ORM_INLINE_VAR constexpr bool conjunction_v = conjunction<Bs...>::value;
+            inline constexpr bool conjunction_v = conjunction<Bs...>::value;
 
             template<typename...>
             struct disjunction : std::false_type {};
@@ -443,12 +432,12 @@ namespace sqlite_orm {
             template<typename B1, typename... Bn>
             struct disjunction<B1, Bn...> : mpl::conditional_t<bool(B1::value), B1, disjunction<Bn...>> {};
             template<typename... Bs>
-            SQLITE_ORM_INLINE_VAR constexpr bool disjunction_v = disjunction<Bs...>::value;
+            inline constexpr bool disjunction_v = disjunction<Bs...>::value;
 
             template<typename B>
             struct negation : bool_constant<!bool(B::value)> {};
             template<typename B>
-            SQLITE_ORM_INLINE_VAR constexpr bool negation_v = negation<B>::value;
+            inline constexpr bool negation_v = negation<B>::value;
 #endif
 
 #if __cpp_lib_remove_cvref >= 201711L
@@ -514,7 +503,7 @@ namespace sqlite_orm {
             using detected_or_t = typename detected_or<Default, Op, Args...>::type;
 
             template<template<class...> class Op, class... Args>
-            SQLITE_ORM_INLINE_VAR constexpr bool is_detected_v = is_detected<Op, Args...>::value;
+            inline constexpr bool is_detected_v = is_detected<Op, Args...>::value;
 #endif
 
 #if 0  // proposed but not pursued
@@ -523,17 +512,17 @@ namespace sqlite_orm {
             // is_specialization_of: https://github.com/cplusplus/papers/issues/812
 
             template<typename Type, template<typename...> class Primary>
-            SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_of_v = false;
+            inline constexpr bool is_specialization_of_v = false;
 
             template<template<typename...> class Primary, class... Types>
-            SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_of_v<Primary<Types...>, Primary> = true;
+            inline constexpr bool is_specialization_of_v<Primary<Types...>, Primary> = true;
 
             template<typename Type, template<typename...> class Primary>
             struct is_specialization_of : bool_constant<is_specialization_of_v<Type, Primary>> {};
 #endif
 
             template<typename...>
-            SQLITE_ORM_INLINE_VAR constexpr bool always_false_v = false;
+            inline constexpr bool always_false_v = false;
 
             template<size_t I>
             using index_constant = std::integral_constant<size_t, I>;
@@ -621,7 +610,7 @@ namespace sqlite_orm {
         struct is_getter<T, polyfill::void_t<getter_field_type_t<T>>> : std::true_type {};
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_getter_v = is_getter<T>::value;
+        inline constexpr bool is_getter_v = is_getter<T>::value;
 
         template<class T, class SFINAE = void>
         struct is_setter : std::false_type {};
@@ -629,7 +618,7 @@ namespace sqlite_orm {
         struct is_setter<T, polyfill::void_t<setter_field_type_t<T>>> : std::true_type {};
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_setter_v = is_setter<T>::value;
+        inline constexpr bool is_setter_v = is_setter<T>::value;
 
         template<class T>
         struct member_field_type : object_field_type<T>, getter_field_type<T>, setter_field_type<T> {};
@@ -895,9 +884,9 @@ namespace sqlite_orm {
              *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR].
              */
             template<class T, class SFINAE = void>
-            SQLITE_ORM_INLINE_VAR constexpr bool is_quoted_metafuntion_v = false;
+            inline constexpr bool is_quoted_metafuntion_v = false;
             template<class Q>
-            SQLITE_ORM_INLINE_VAR constexpr bool
+            inline constexpr bool
                 is_quoted_metafuntion_v<Q, polyfill::void_t<indirectly_test_metafunction<Q::template fn>>> = true;
 
             template<class T>
@@ -2061,7 +2050,7 @@ namespace sqlite_orm {
 #endif
 
         template<class R>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_table_reference_v =
+        inline constexpr bool is_table_reference_v =
             polyfill::is_specialization_of_v<std::remove_const_t<R>, table_reference>;
 
         template<class R>
@@ -2092,7 +2081,7 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class A>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_alias_v = std::is_base_of<alias_tag, A>::value;
+        inline constexpr bool is_alias_v = std::is_base_of<alias_tag, A>::value;
 
         template<class A>
         struct is_alias : polyfill::bool_constant<is_alias_v<A>> {};
@@ -2100,7 +2089,7 @@ namespace sqlite_orm {
         /** @short Alias of a column in a record set, see `orm_column_alias`.
          */
         template<class A>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_column_alias_v =
+        inline constexpr bool is_column_alias_v =
             polyfill::conjunction<is_alias<A>, polyfill::negation<polyfill::is_detected<type_t, A>>>::value;
 
         template<class A>
@@ -2109,7 +2098,7 @@ namespace sqlite_orm {
         /** @short Alias of any type of record set, see `orm_recordset_alias`.
          */
         template<class A>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_recordset_alias_v =
+        inline constexpr bool is_recordset_alias_v =
             polyfill::conjunction<is_alias<A>, polyfill::is_detected<type_t, A>>::value;
 
         template<class A>
@@ -2118,7 +2107,7 @@ namespace sqlite_orm {
         /** @short Alias of a concrete table, see `orm_table_alias`.
          */
         template<class A>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_table_alias_v = polyfill::conjunction<
+        inline constexpr bool is_table_alias_v = polyfill::conjunction<
             is_recordset_alias<A>,
             polyfill::negation<std::is_same<polyfill::detected_t<type_t, A>, std::remove_const_t<A>>>>::value;
 
@@ -2128,7 +2117,7 @@ namespace sqlite_orm {
         /** @short Moniker of a CTE, see `orm_cte_moniker`.
          */
         template<class A>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_cte_moniker_v =
+        inline constexpr bool is_cte_moniker_v =
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             polyfill::conjunction_v<is_recordset_alias<A>,
                                     std::is_same<polyfill::detected_t<type_t, A>, std::remove_const_t<A>>>;
@@ -2221,17 +2210,17 @@ namespace sqlite_orm {
          *  short:   `alias_column<alias_d<Derived>>(&Base::field)`
          */
         template<class F, class T, class SFINAE = void>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_field_of_v = false;
+        inline constexpr bool is_field_of_v = false;
 
         /*
          *  `true` if a pointer-to-member of Base is convertible to a pointer-to-member of Derived.
          */
         template<class O, class Base, class F>
-        SQLITE_ORM_INLINE_VAR constexpr bool
+        inline constexpr bool
             is_field_of_v<F Base::*, O, std::enable_if_t<std::is_convertible<F Base::*, F O::*>::value>> = true;
 
         template<class F, class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_field_of_v<column_pointer<T, F>, T, void> = true;
+        inline constexpr bool is_field_of_v<column_pointer<T, F>, T, void> = true;
 
         template<class F, class T>
         struct is_field_of : polyfill::bool_constant<is_field_of_v<F, T>> {};
@@ -2322,7 +2311,7 @@ namespace sqlite_orm {
          *  Specialize if a type participates as an argument to overloaded operators (arithmetic, conditional, negation, chaining)
          */
         template<class T, class SFINAE = void>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_operator_argument_v = false;
+        inline constexpr bool is_operator_argument_v = false;
 
         template<class T>
         using is_operator_argument = polyfill::bool_constant<is_operator_argument_v<T>>;
@@ -2361,15 +2350,13 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_column_pointer_v =
-            polyfill::is_specialization_of<T, column_pointer>::value;
+        inline constexpr bool is_column_pointer_v = polyfill::is_specialization_of<T, column_pointer>::value;
 
         template<class T>
         struct is_column_pointer : polyfill::bool_constant<is_column_pointer_v<T>> {};
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_operator_argument_v<T, std::enable_if_t<is_column_pointer<T>::value>> =
-            true;
+        inline constexpr bool is_operator_argument_v<T, std::enable_if_t<is_column_pointer<T>::value>> = true;
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         template<class A>
@@ -2532,7 +2519,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool
+        inline constexpr bool
             is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, alias_column_t>::value>> =
                 true;
 
@@ -2630,7 +2617,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool
+        inline constexpr bool
             is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, alias_holder>::value>> = true;
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -3813,7 +3800,7 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_foreign_key_v =
+        inline constexpr bool is_foreign_key_v =
 #if SQLITE_VERSION_NUMBER >= 3006019
             polyfill::is_specialization_of<T, foreign_key_t>::value;
 #else
@@ -3824,13 +3811,13 @@ namespace sqlite_orm {
         struct is_foreign_key : polyfill::bool_constant<is_foreign_key_v<T>> {};
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_primary_key_v = std::is_base_of<primary_key_base, T>::value;
+        inline constexpr bool is_primary_key_v = std::is_base_of<primary_key_base, T>::value;
 
         template<class T>
         struct is_primary_key : polyfill::bool_constant<is_primary_key_v<T>> {};
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_generated_always_v =
+        inline constexpr bool is_generated_always_v =
 #if SQLITE_VERSION_NUMBER >= 3031000
             polyfill::is_specialization_of<T, generated_always_t>::value;
 #else
@@ -4093,9 +4080,9 @@ namespace sqlite_orm {
         struct indirectly_test_printable;
 
         template<class T, class SFINAE = void>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_printable_v = false;
+        inline constexpr bool is_printable_v = false;
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool
+        inline constexpr bool
             is_printable_v<T, polyfill::void_t<indirectly_test_printable<decltype(field_printer<T>{})>>> = true;
 
         template<class T>
@@ -4346,7 +4333,7 @@ namespace sqlite_orm {
 #endif
 
         template<template<typename...> class Base, typename T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_base_template_of_v = is_base_template_of<Base, T>::value;
+        inline constexpr bool is_base_template_of_v = is_base_template_of<Base, T>::value;
     }
 }
 
@@ -4408,7 +4395,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_binary_operator_v = is_base_template_of<binary_operator, T>::value;
+        inline constexpr bool is_binary_operator_v = is_base_template_of<binary_operator, T>::value;
 
         template<class T>
         using is_binary_operator = polyfill::bool_constant<is_binary_operator_v<T>>;
@@ -4775,7 +4762,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_where_v = polyfill::is_specialization_of<T, where_t>::value;
+        inline constexpr bool is_where_v = polyfill::is_specialization_of<T, where_t>::value;
 
         template<class T>
         struct is_where : polyfill::bool_constant<is_where_v<T>> {};
@@ -5011,7 +4998,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool
+        inline constexpr bool
             is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, expression_t>::value>> = true;
 
         template<class T>
@@ -5189,7 +5176,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_binary_condition_v = is_base_template_of_v<binary_condition, T>;
+        inline constexpr bool is_binary_condition_v = is_base_template_of_v<binary_condition, T>;
 
         template<class T>
         struct is_binary_condition : polyfill::bool_constant<is_binary_condition_v<T>> {};
@@ -5601,7 +5588,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_order_by_v =
+        inline constexpr bool is_order_by_v =
             polyfill::disjunction<polyfill::is_specialization_of<T, order_by_t>,
                                   polyfill::is_specialization_of<T, multi_order_by_t>,
                                   polyfill::is_specialization_of<T, dynamic_order_by_t>>::value;
@@ -6353,8 +6340,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_built_in_function_v =
-            is_base_template_of<built_in_function_t, T>::value;
+        inline constexpr bool is_built_in_function_v = is_base_template_of<built_in_function_t, T>::value;
 
         template<class T>
         struct is_built_in_function : polyfill::bool_constant<is_built_in_function_v<T>> {};
@@ -8732,7 +8718,7 @@ namespace sqlite_orm {
         using column_field_expression_t = typename column_field_expression<T>::type;
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_column_v = polyfill::is_specialization_of<T, column_t>::value;
+        inline constexpr bool is_column_v = polyfill::is_specialization_of<T, column_t>::value;
 
         template<class T>
         using is_column = polyfill::bool_constant<is_column_v<T>>;
@@ -8864,7 +8850,7 @@ namespace sqlite_orm {
          *  Whether a type represents a keyword for a result set modifier (as part of a simple select expression).
          */
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_rowset_deduplicator_v =
+        inline constexpr bool is_rowset_deduplicator_v =
             polyfill::disjunction<polyfill::is_specialization_of<T, distinct_t>,
                                   polyfill::is_specialization_of<T, all_t>>::value;
 
@@ -8881,7 +8867,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_columns_v = polyfill::is_specialization_of<T, columns_t>::value;
+        inline constexpr bool is_columns_v = polyfill::is_specialization_of<T, columns_t>::value;
 
         template<class T>
         using is_columns = polyfill::bool_constant<is_columns_v<T>>;
@@ -8901,7 +8887,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_struct_v = polyfill::is_specialization_of<T, struct_t>::value;
+        inline constexpr bool is_struct_v = polyfill::is_specialization_of<T, struct_t>::value;
 
         template<class T>
         using is_struct = polyfill::bool_constant<is_struct_v<T>>;
@@ -8920,7 +8906,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_select_v = polyfill::is_specialization_of<T, select_t>::value;
+        inline constexpr bool is_select_v = polyfill::is_specialization_of<T, select_t>::value;
 
         template<class T>
         using is_select = polyfill::bool_constant<is_select_v<T>>;
@@ -8942,7 +8928,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_compound_operator_v = is_base_template_of<compound_operator, T>::value;
+        inline constexpr bool is_compound_operator_v = is_base_template_of<compound_operator, T>::value;
 
         template<class T>
         using is_compound_operator = polyfill::bool_constant<is_compound_operator_v<T>>;
@@ -9653,7 +9639,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     using xdestroy_fn_t = void (*)(void*);
     using null_xdestroy_t = std::integral_constant<xdestroy_fn_t, nullptr>;
-    SQLITE_ORM_INLINE_VAR constexpr null_xdestroy_t null_xdestroy_f{};
+    inline constexpr null_xdestroy_t null_xdestroy_f{};
 }
 
 namespace sqlite_orm {
@@ -9697,7 +9683,7 @@ namespace sqlite_orm {
 #else
 
         template<typename D>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_stateless_deleter_v =
+        inline constexpr bool is_stateless_deleter_v =
             std::is_empty<D>::value && std::is_default_constructible<D>::value;
 
         template<typename D, typename SFINAE = void>
@@ -9710,7 +9696,7 @@ namespace sqlite_orm {
                              std::enable_if_t<std::is_function<std::remove_pointer_t<typename D::value_type>>::value>>>
             : std::true_type {};
         template<typename D>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_integral_fp_c_v = is_integral_fp_c<D>::value;
+        inline constexpr bool is_integral_fp_c_v = is_integral_fp_c<D>::value;
 
         template<typename D, typename SFINAE = void>
         struct can_yield_fp : std::false_type {};
@@ -9722,7 +9708,7 @@ namespace sqlite_orm {
                 std::enable_if_t<std::is_function<std::remove_pointer_t<decltype(+std::declval<D>())>>::value>>>
             : std::true_type {};
         template<typename D>
-        SQLITE_ORM_INLINE_VAR constexpr bool can_yield_fp_v = can_yield_fp<D>::value;
+        inline constexpr bool can_yield_fp_v = can_yield_fp<D>::value;
 
         template<typename D, bool = can_yield_fp_v<D>>
         struct yield_fp_of {
@@ -9782,16 +9768,16 @@ namespace sqlite_orm {
         }
 #else
         template<typename D>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_unusable_for_xdestroy_v =
+        inline constexpr bool is_unusable_for_xdestroy_v =
             !is_stateless_deleter_v<D> &&
             (can_yield_fp_v<D> && !std::is_convertible<yielded_fn_t<D>, xdestroy_fn_t>::value);
 
         template<typename D>
-        SQLITE_ORM_INLINE_VAR constexpr bool can_yield_xdestroy_v =
+        inline constexpr bool can_yield_xdestroy_v =
             can_yield_fp_v<D> && std::is_convertible<yielded_fn_t<D>, xdestroy_fn_t>::value;
 
         template<typename D, typename P>
-        SQLITE_ORM_INLINE_VAR constexpr bool needs_xdestroy_proxy_v =
+        inline constexpr bool needs_xdestroy_proxy_v =
             is_stateless_deleter_v<D> &&
             (!can_yield_fp_v<D> || !std::is_convertible<yielded_fn_t<D>, xdestroy_fn_t>::value);
 
@@ -10218,9 +10204,9 @@ namespace sqlite_orm {
         struct indirectly_test_bindable;
 
         template<class T, class SFINAE = void>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_bindable_v = false;
+        inline constexpr bool is_bindable_v = false;
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool
+        inline constexpr bool
             is_bindable_v<T, polyfill::void_t<indirectly_test_bindable<decltype(statement_binder<T>{})>>> = true;
 
         template<class T>
@@ -10884,7 +10870,7 @@ namespace sqlite_orm {
 #endif
 
         template<class DBOs, class Lookup>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_mapped_v = is_mapped<DBOs, Lookup>::value;
+        inline constexpr bool is_mapped_v = is_mapped<DBOs, Lookup>::value;
     }
 }
 
@@ -11092,17 +11078,17 @@ namespace sqlite_orm {
         using aggregate_fin_function_t = decltype(&F::fin);
 
         template<class F, class SFINAE = void>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_scalar_udf_v = false;
+        inline constexpr bool is_scalar_udf_v = false;
         template<class F>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_scalar_udf_v<F, polyfill::void_t<scalar_call_function_t<F>>> = true;
+        inline constexpr bool is_scalar_udf_v<F, polyfill::void_t<scalar_call_function_t<F>>> = true;
 
         template<class F>
         struct is_scalar_udf : polyfill::bool_constant<is_scalar_udf_v<F>> {};
 
         template<class F, class SFINAE = void>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_aggregate_udf_v = false;
+        inline constexpr bool is_aggregate_udf_v = false;
         template<class F>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_aggregate_udf_v<
+        inline constexpr bool is_aggregate_udf_v<
             F,
             polyfill::void_t<aggregate_step_function_t<F>,
                              aggregate_fin_function_t<F>,
@@ -11274,7 +11260,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool
+        inline constexpr bool
             is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, function_call>::value>> = true;
 
         template<class T>
@@ -11556,7 +11542,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         requires (orm_scalar_udf<UDF> || orm_aggregate_udf<UDF>)
 #endif
-    SQLITE_ORM_INLINE_VAR constexpr internal::function<UDF> func{};
+    inline constexpr internal::function<UDF> func{};
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     inline namespace literals {
@@ -14047,20 +14033,20 @@ namespace sqlite_orm {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_UNIX
-    SQLITE_ORM_INLINE_VAR constexpr internal::string_constant_type unix_vfs_name = "unix";
-    SQLITE_ORM_INLINE_VAR constexpr internal::string_constant_type unix_posix_vfs_name = unix_vfs_name;
-    SQLITE_ORM_INLINE_VAR constexpr internal::string_constant_type unix_dotfile_vfs_name = "unix-dotfile";
+    inline constexpr internal::string_constant_type unix_vfs_name = "unix";
+    inline constexpr internal::string_constant_type unix_posix_vfs_name = unix_vfs_name;
+    inline constexpr internal::string_constant_type unix_dotfile_vfs_name = "unix-dotfile";
 #ifdef SQLITE_ORM_APPLE
-    SQLITE_ORM_INLINE_VAR constexpr internal::string_constant_type unix_afp_vfs_name = "unix-afp";
+    inline constexpr internal::string_constant_type unix_afp_vfs_name = "unix-afp";
 #endif
-    SQLITE_ORM_INLINE_VAR constexpr internal::string_constant_type default_vfs_name = unix_vfs_name;
+    inline constexpr internal::string_constant_type default_vfs_name = unix_vfs_name;
 #endif
 
 #ifdef SQLITE_ORM_WIN
-    SQLITE_ORM_INLINE_VAR constexpr internal::string_constant_type win32_vfs_name = "win32";
-    SQLITE_ORM_INLINE_VAR constexpr internal::string_constant_type win32_longpath_vfs_name = "win32-longpath";
+    inline constexpr internal::string_constant_type win32_vfs_name = "win32";
+    inline constexpr internal::string_constant_type win32_longpath_vfs_name = "win32-longpath";
 
-    SQLITE_ORM_INLINE_VAR constexpr internal::string_constant_type default_vfs_name = win32_vfs_name;
+    inline constexpr internal::string_constant_type default_vfs_name = win32_vfs_name;
 #endif
 }
 
@@ -14301,7 +14287,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_values_v = polyfill::is_specialization_of<T, values_t>::value;
+        inline constexpr bool is_values_v = polyfill::is_specialization_of<T, values_t>::value;
 
         template<class T>
         using is_values = polyfill::bool_constant<is_values_v<T>>;
@@ -14375,7 +14361,7 @@ namespace sqlite_orm {
 #endif
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_upsert_clause_v =
+        inline constexpr bool is_upsert_clause_v =
 #if SQLITE_VERSION_NUMBER >= 3024000
             polyfill::is_specialization_of<T, upsert_clause>::value;
 #else
@@ -14697,8 +14683,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_prepared_statement_v =
-            polyfill::is_specialization_of<T, prepared_statement_t>::value;
+        inline constexpr bool is_prepared_statement_v = polyfill::is_specialization_of<T, prepared_statement_t>::value;
 
         template<class T>
         struct is_prepared_statement : polyfill::bool_constant<is_prepared_statement_v<T>> {};
@@ -14750,7 +14735,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_update_all_v = polyfill::is_specialization_of<T, update_all_t>::value;
+        inline constexpr bool is_update_all_v = polyfill::is_specialization_of<T, update_all_t>::value;
 
         template<class T>
         using is_update_all = polyfill::bool_constant<is_update_all_v<T>>;
@@ -14764,7 +14749,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_remove_all_v = polyfill::is_specialization_of<T, remove_all_t>::value;
+        inline constexpr bool is_remove_all_v = polyfill::is_specialization_of<T, remove_all_t>::value;
 
         template<class T>
         using is_remove_all = polyfill::bool_constant<is_remove_all_v<T>>;
@@ -14818,7 +14803,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_v = polyfill::is_specialization_of<T, insert_t>::value;
+        inline constexpr bool is_insert_v = polyfill::is_specialization_of<T, insert_t>::value;
 
         template<class T>
         struct is_insert : polyfill::bool_constant<is_insert_v<T>> {};
@@ -14840,7 +14825,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_v = polyfill::is_specialization_of<T, replace_t>::value;
+        inline constexpr bool is_replace_v = polyfill::is_specialization_of<T, replace_t>::value;
 
         template<class T>
         struct is_replace : polyfill::bool_constant<is_replace_v<T>> {};
@@ -14856,8 +14841,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_range_v =
-            polyfill::is_specialization_of<T, insert_range_t>::value;
+        inline constexpr bool is_insert_range_v = polyfill::is_specialization_of<T, insert_range_t>::value;
 
         template<class T>
         struct is_insert_range : polyfill::bool_constant<is_insert_range_v<T>> {};
@@ -14873,8 +14857,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_range_v =
-            polyfill::is_specialization_of<T, replace_range_t>::value;
+        inline constexpr bool is_replace_range_v = polyfill::is_specialization_of<T, replace_range_t>::value;
 
         template<class T>
         struct is_replace_range : polyfill::bool_constant<is_replace_range_v<T>> {};
@@ -14887,7 +14870,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_raw_v = polyfill::is_specialization_of<T, insert_raw_t>::value;
+        inline constexpr bool is_insert_raw_v = polyfill::is_specialization_of<T, insert_raw_t>::value;
 
         template<class T>
         struct is_insert_raw : polyfill::bool_constant<is_insert_raw_v<T>> {};
@@ -14900,7 +14883,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_raw_v = polyfill::is_specialization_of<T, replace_raw_t>::value;
+        inline constexpr bool is_replace_raw_v = polyfill::is_specialization_of<T, replace_raw_t>::value;
 
         template<class T>
         struct is_replace_raw : polyfill::bool_constant<is_replace_raw_v<T>> {};
@@ -23093,9 +23076,9 @@ namespace sqlite_orm {
         struct indirectly_test_preparable;
 
         template<class S, class E, class SFINAE = void>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_preparable_v = false;
+        inline constexpr bool is_preparable_v = false;
         template<class S, class E>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_preparable_v<
+        inline constexpr bool is_preparable_v<
             S,
             E,
             polyfill::void_t<indirectly_test_preparable<decltype(std::declval<S>().prepare(std::declval<E>()))>>> =
@@ -25836,19 +25819,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #pragma once
 
-/*
- *  Note: This feature needs constexpr variables with external linkage.
- *  which can be achieved before C++17's inline variables, but differs from compiler to compiler.
- *  Hence we make it only available for compilers supporting inline variables.
- */
-
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if SQLITE_VERSION_NUMBER >= 3020000
-#ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 #include <utility>  //  std::move
 #ifndef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <type_traits>  //  std::integral_constant
-#endif
 #endif
 #endif
 #endif
@@ -25858,7 +25833,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "pointer_value.h"
 
 #if SQLITE_VERSION_NUMBER >= 3020000
-#ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -25982,7 +25956,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
     };
 }
-#endif
 #endif
 #pragma once
 

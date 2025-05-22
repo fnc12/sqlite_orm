@@ -47,7 +47,7 @@ namespace sqlite_orm {
             template<typename B1, typename... Bn>
             struct conjunction<B1, Bn...> : mpl::conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
             template<typename... Bs>
-            SQLITE_ORM_INLINE_VAR constexpr bool conjunction_v = conjunction<Bs...>::value;
+            inline constexpr bool conjunction_v = conjunction<Bs...>::value;
 
             template<typename...>
             struct disjunction : std::false_type {};
@@ -56,12 +56,12 @@ namespace sqlite_orm {
             template<typename B1, typename... Bn>
             struct disjunction<B1, Bn...> : mpl::conditional_t<bool(B1::value), B1, disjunction<Bn...>> {};
             template<typename... Bs>
-            SQLITE_ORM_INLINE_VAR constexpr bool disjunction_v = disjunction<Bs...>::value;
+            inline constexpr bool disjunction_v = disjunction<Bs...>::value;
 
             template<typename B>
             struct negation : bool_constant<!bool(B::value)> {};
             template<typename B>
-            SQLITE_ORM_INLINE_VAR constexpr bool negation_v = negation<B>::value;
+            inline constexpr bool negation_v = negation<B>::value;
 #endif
 
 #if __cpp_lib_remove_cvref >= 201711L
@@ -127,7 +127,7 @@ namespace sqlite_orm {
             using detected_or_t = typename detected_or<Default, Op, Args...>::type;
 
             template<template<class...> class Op, class... Args>
-            SQLITE_ORM_INLINE_VAR constexpr bool is_detected_v = is_detected<Op, Args...>::value;
+            inline constexpr bool is_detected_v = is_detected<Op, Args...>::value;
 #endif
 
 #if 0  // proposed but not pursued
@@ -136,17 +136,17 @@ namespace sqlite_orm {
             // is_specialization_of: https://github.com/cplusplus/papers/issues/812
 
             template<typename Type, template<typename...> class Primary>
-            SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_of_v = false;
+            inline constexpr bool is_specialization_of_v = false;
 
             template<template<typename...> class Primary, class... Types>
-            SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_of_v<Primary<Types...>, Primary> = true;
+            inline constexpr bool is_specialization_of_v<Primary<Types...>, Primary> = true;
 
             template<typename Type, template<typename...> class Primary>
             struct is_specialization_of : bool_constant<is_specialization_of_v<Type, Primary>> {};
 #endif
 
             template<typename...>
-            SQLITE_ORM_INLINE_VAR constexpr bool always_false_v = false;
+            inline constexpr bool always_false_v = false;
 
             template<size_t I>
             using index_constant = std::integral_constant<size_t, I>;

@@ -2,7 +2,6 @@
 #include <catch2/catch_all.hpp>
 
 #if SQLITE_VERSION_NUMBER >= 3020000
-#ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 using namespace sqlite_orm;
 using std::unique_ptr;
 
@@ -176,5 +175,4 @@ TEST_CASE("pointer-passing") {
         }
     }
 }
-#endif
 #endif
