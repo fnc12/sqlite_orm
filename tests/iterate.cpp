@@ -40,8 +40,6 @@ TEST_CASE("Iterate mapped") {
         auto view = db.iterate<Test>();
         REQUIRE(std::vector<Test>{view.begin(), view.end()} == expected_vec);
     }
-
-#ifdef SQLITE_ORM_STRUCTURED_BINDINGS_SUPPORTED
     SECTION("borrowed iterator") {
         auto [begin, end] = [](auto view) {
             return std::make_pair(view.begin(), view.end());
@@ -49,7 +47,6 @@ TEST_CASE("Iterate mapped") {
         REQUIRE(*begin == expected);
         REQUIRE(++begin == end);
     }
-#endif
 
 #if __cpp_lib_containers_ranges >= 202202L
     SECTION("from range") {
