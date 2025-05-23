@@ -13442,8 +13442,8 @@ namespace sqlite_orm {
     struct row_extractor<locking_mode, void> {
         locking_mode extract(orm_gsl::czstring columnText) const {
             if (columnText) {
-                if (auto resultPair = internal::locking_mode_from_string(columnText); resultPair.first) {
-                    return resultPair.second;
+                if (auto [found, mode] = internal::locking_mode_from_string(columnText); found) {
+                    return mode;
                 } else {
                     throw std::system_error{orm_error_code::incorrect_locking_mode_string};
                 }
@@ -13467,8 +13467,8 @@ namespace sqlite_orm {
     struct row_extractor<journal_mode, void> {
         journal_mode extract(orm_gsl::czstring columnText) const {
             if (columnText) {
-                if (auto resultPair = internal::journal_mode_from_string(columnText); resultPair.first) {
-                    return resultPair.second;
+                if (auto [found, mode] = internal::journal_mode_from_string(columnText); found) {
+                    return mode;
                 } else {
                     throw std::system_error{orm_error_code::incorrect_journal_mode_string};
                 }
@@ -18804,15 +18804,16 @@ namespace sqlite_orm {
                     this->pragma.set_pragma("journal_mode", static_cast<journal_mode>(this->pragma.journal_mode_), db);
                 }
 
-                for (auto& p: this->collatingFunctions) {
-                    int rc = sqlite3_create_collation(db, p.first.c_str(), SQLITE_UTF8, &p.second, collate_callback);
+                for (auto& [name, collatingFunction]: this->collatingFunctions) {
+                    int rc =
+                        sqlite3_create_collation(db, name.c_str(), SQLITE_UTF8, &collatingFunction, collate_callback);
                     if (rc != SQLITE_OK) {
                         throw_translated_sqlite_error(rc);
                     }
                 }
 
-                for (auto& p: this->limit.limits) {
-                    sqlite3_limit(db, p.first, p.second);
+                for (auto [id, value]: this->limit.limits) {
+                    sqlite3_limit(db, id, value);
                 }
 
                 if (_busy_handler) {

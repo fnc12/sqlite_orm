@@ -42,9 +42,8 @@ int main() {
                                                make_column("trackname", &Track::trackName),
                                                make_column("trackartist", &Track::trackArtist),
                                                foreign_key(&Track::trackArtist).references(&Artist::artistId)));
-        auto syncSchemaRes = storage.sync_schema();
-        for (auto& p: syncSchemaRes) {
-            cout << p.first << " " << p.second << endl;
+        for (const auto& [name, result]: storage.sync_schema()) {
+            cout << name << " " << result << endl;
         }
 
         storage.remove_all<Track>();
@@ -131,9 +130,8 @@ int main() {
                        make_column("trackname", &Track::trackName),
                        make_column("trackartist", &Track::trackArtist),
                        foreign_key(&Track::trackArtist).references(&Artist::artistId).on_update.cascade()));
-        auto syncSchemaRes = storage.sync_schema();
-        for (auto& p: syncSchemaRes) {
-            cout << p.first << " " << p.second << endl;
+        for (const auto& [name, result]: storage.sync_schema()) {
+            cout << name << " " << result << endl;
         }
 
         storage.remove_all<Track>();
@@ -183,9 +181,8 @@ int main() {
                        make_column("trackname", &Track::trackName),
                        make_column("trackartist", &Track::trackArtist, default_value(0)),
                        foreign_key(&Track::trackArtist).references(&Artist::artistId).on_delete.set_default()));
-        auto syncSchemaRes = storage.sync_schema();
-        for (auto& p: syncSchemaRes) {
-            cout << p.first << " " << p.second << endl;
+        for (const auto& [name, result]: storage.sync_schema()) {
+            cout << name << " " << result << endl;
         }
 
         storage.remove_all<Track>();

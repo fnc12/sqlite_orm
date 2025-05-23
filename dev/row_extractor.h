@@ -417,8 +417,8 @@ namespace sqlite_orm {
     struct row_extractor<locking_mode, void> {
         locking_mode extract(orm_gsl::czstring columnText) const {
             if (columnText) {
-                if (auto resultPair = internal::locking_mode_from_string(columnText); resultPair.first) {
-                    return resultPair.second;
+                if (auto [found, mode] = internal::locking_mode_from_string(columnText); found) {
+                    return mode;
                 } else {
                     throw std::system_error{orm_error_code::incorrect_locking_mode_string};
                 }
@@ -442,8 +442,8 @@ namespace sqlite_orm {
     struct row_extractor<journal_mode, void> {
         journal_mode extract(orm_gsl::czstring columnText) const {
             if (columnText) {
-                if (auto resultPair = internal::journal_mode_from_string(columnText); resultPair.first) {
-                    return resultPair.second;
+                if (auto [found, mode] = internal::journal_mode_from_string(columnText); found) {
+                    return mode;
                 } else {
                     throw std::system_error{orm_error_code::incorrect_journal_mode_string};
                 }

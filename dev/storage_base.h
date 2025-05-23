@@ -797,15 +797,16 @@ namespace sqlite_orm {
                     this->pragma.set_pragma("journal_mode", static_cast<journal_mode>(this->pragma.journal_mode_), db);
                 }
 
-                for (auto& p: this->collatingFunctions) {
-                    int rc = sqlite3_create_collation(db, p.first.c_str(), SQLITE_UTF8, &p.second, collate_callback);
+                for (auto& [name, collatingFunction]: this->collatingFunctions) {
+                    int rc =
+                        sqlite3_create_collation(db, name.c_str(), SQLITE_UTF8, &collatingFunction, collate_callback);
                     if (rc != SQLITE_OK) {
                         throw_translated_sqlite_error(rc);
                     }
                 }
 
-                for (auto& p: this->limit.limits) {
-                    sqlite3_limit(db, p.first, p.second);
+                for (auto [id, value]: this->limit.limits) {
+                    sqlite3_limit(db, id, value);
                 }
 
                 if (_busy_handler) {
