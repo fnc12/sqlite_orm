@@ -6,6 +6,7 @@
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
+#include "functional/gsl.h"
 #include "functional/mpl.h"
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_fy.h"
@@ -300,7 +301,7 @@ namespace sqlite_orm {
          *  Result for the most simple queries like `SELECT 'ototo'`
          */
         template<class DBOs>
-        struct column_result_t<DBOs, const char*, void> {
+        struct column_result_t<DBOs, orm_gsl::czstring, void> {
             using type = std::string;
         };
 

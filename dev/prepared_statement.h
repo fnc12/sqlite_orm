@@ -3,15 +3,15 @@
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <memory>  //  std::unique_ptr
-#include <iterator>  //  std::iterator_traits
 #include <string>  //  std::string
 #include <type_traits>  //  std::integral_constant, std::declval
-#include <utility>  //  std::move, std::forward, std::pair
+#include <utility>  //  std::move, std::forward, std::exchange, std::pair
 #include <tuple>  //  std::tuple
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/cxx_functional_polyfill.h"
+#include "functional/gsl.h"
 #include "tuple_helper/tuple_traits.h"
 #include "connection_holder.h"
 #include "select_constraints.h"
@@ -26,7 +26,7 @@ namespace sqlite_orm {
     namespace internal {
 
         struct prepared_statement_base {
-            sqlite3_stmt* stmt = nullptr;
+            orm_gsl::owner<sqlite3_stmt*> stmt = nullptr;
             connection_ref con;
 
             ~prepared_statement_base() {
@@ -36,7 +36,7 @@ namespace sqlite_orm {
             std::string sql() const {
                 // note: sqlite3 internally checks for null before calling
                 // sqlite3_normalized_sql() or sqlite3_expanded_sql(), so check here, too, even if superfluous
-                if (const char* sql = sqlite3_sql(this->stmt)) {
+                if (orm_gsl::czstring sql = sqlite3_sql(this->stmt)) {
                     return sql;
                 } else {
                     return {};
@@ -46,7 +46,7 @@ namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3014000
             std::string expanded_sql() const {
                 // note: must check return value due to SQLITE_OMIT_TRACE
-                using char_ptr = std::unique_ptr<char, std::integral_constant<decltype(&sqlite3_free), sqlite3_free>>;
+                using char_ptr = std::unique_ptr<char[], std::integral_constant<decltype(&sqlite3_free), sqlite3_free>>;
                 if (char_ptr sql{sqlite3_expanded_sql(this->stmt)}) {
                     return sql.get();
                 } else {
@@ -56,7 +56,7 @@ namespace sqlite_orm {
 #endif
 #if SQLITE_VERSION_NUMBER >= 3026000 and defined(SQLITE_ENABLE_NORMALIZE)
             std::string normalized_sql() const {
-                if (const char* sql = sqlite3_normalized_sql(this->stmt)) {
+                if (orm_gsl::czstring sql = sqlite3_normalized_sql(this->stmt)) {
                     return sql;
                 } else {
                     return {};
@@ -81,10 +81,8 @@ namespace sqlite_orm {
                 prepared_statement_base{stmt_, std::move(con_)}, expression(std::move(expression_)) {}
 
             prepared_statement_t(prepared_statement_t&& prepared_stmt) :
-                prepared_statement_base{prepared_stmt.stmt, std::move(prepared_stmt.con)},
-                expression(std::move(prepared_stmt.expression)) {
-                prepared_stmt.stmt = nullptr;
-            }
+                prepared_statement_base{std::exchange(prepared_stmt.stmt, nullptr), std::move(prepared_stmt.con)},
+                expression(std::move(prepared_stmt.expression)) {}
         };
 
         template<class T>

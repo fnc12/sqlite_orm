@@ -118,8 +118,16 @@ using std::nullptr_t;
 #define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
 #endif
 
+#if __cpp_static_call_operator >= 202207L
+#define SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+#endif
+
 #if __cpp_pack_indexing >= 202311L
 #define SQLITE_ORM_PACK_INDEXING_SUPPORTED
+#endif
+
+#if __cpp_structured_bindings >= 202411L
+#define SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
 #endif
 
 #if __cplusplus >= 202002L
@@ -277,6 +285,14 @@ using std::nullptr_t;
 
 #if __cpp_lib_ranges >= 201911L
 #define SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#endif
+
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+#define SQLITE_ORM_STATIC_CALLOP static
+#define SQLITE_ORM_OR_CONST_CALLOP
+#else
+#define SQLITE_ORM_STATIC_CALLOP
+#define SQLITE_ORM_OR_CONST_CALLOP const
 #endif
 
 // C++20 or later (unfortunately there's no feature test macro).
@@ -740,6 +756,91 @@ namespace sqlite_orm {
     }
 
     namespace polyfill = internal::polyfill;
+}
+
+// #include "functional/gsl.h"
+
+/** @file A subset of the Guidelines Support Library (GSL) as it is useful for this library.
+ *  
+ *  At the time of writing, the use of these symbols serves only to express the logical intention, because:
+ *  1. Each facility lives in the nested namespace `orm_gsl` because `gsl` may conflict with other GSL implementations [like ms-gsl or gsl-lite].
+ *  2. Tools like Clang-Tidy are currently hard-wired to the `gsl` namespace to check the guidelines.
+ *  3. There is no way to attach an attribute to tell Clang-Tidy that it is a "GSL" symbol.
+ *  
+ *  This might seem frustrating at first, but things are constantly evolving and need time, and many facilities found their way into the STL.
+ *  There's an ongoing discussion about this limitation on the guidelines repository:
+ *  https://github.com/isocpp/CppCoreGuidelines/issues/144
+ *  https://github.com/isocpp/CppCoreGuidelines/issues/1519
+ *  
+ *  However, these symbols are very valuable as we can "grep" for them and easily update things in the future.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::enable_if, std::is_pointer
+#endif
+
+namespace sqlite_orm {
+
+    // span
+    namespace orm_gsl {
+
+        inline constexpr size_t dynamic_extent = size_t(-1);
+
+    }
+
+    // C-style string types
+    namespace orm_gsl {
+        //
+        // These are "tag" typedefs for C-style strings (i.e. null-terminated character arrays)
+        // that allow static analysis to help find bugs.
+        //
+        // There are no additional features/semantics that we can find a way to add inside the
+        // type system for these types that will not either incur significant runtime costs or
+        // (sometimes needlessly) break existing programs when introduced.
+        //
+
+        template<typename Char, size_t Extent = dynamic_extent>
+        using basic_zstring = Char*;
+
+        using czstring = basic_zstring<const char, dynamic_extent>;
+
+        using cwzstring = basic_zstring<const wchar_t, dynamic_extent>;
+
+        using cu16zstring = basic_zstring<const char16_t, dynamic_extent>;
+
+        using cu32zstring = basic_zstring<const char32_t, dynamic_extent>;
+
+        using zstring = basic_zstring<char, dynamic_extent>;
+
+        using wzstring = basic_zstring<wchar_t, dynamic_extent>;
+
+        using u16zstring = basic_zstring<char16_t, dynamic_extent>;
+
+        using u32zstring = basic_zstring<char32_t, dynamic_extent>;
+
+    }
+
+    // pointers
+    namespace orm_gsl {
+
+        //
+        // owner
+        //
+        // `orm_gsl::owner<T>` is designed as a safety mechanism for code that must deal directly with raw pointers that own memory.
+        // Ideally such code should be restricted to the implementation of low-level abstractions.
+        //
+        // T must be a pointer type
+        //
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+        template<class T>
+            requires std::is_pointer_v<T>
+        using owner = T;
+#else
+        template<class T, typename = std::enable_if_t<std::is_pointer<T>::value>>
+        using owner = T;
+#endif
+
+    }
 }
 
 // #include "functional/mpl.h"
@@ -1492,6 +1593,7 @@ namespace sqlite_orm {
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::remove_reference, std::common_type, std::index_sequence, std::make_index_sequence, std::forward, std::move, std::integral_constant, std::declval
 #include <tuple>  //  std::tuple_size, std::get
+#include <utility>  // std::forward_like
 #endif
 
 // #include "../functional/cxx_type_traits_polyfill.h"
@@ -1560,7 +1662,7 @@ namespace sqlite_orm {
          */
         struct plus_fold_integrals {
             template<class... Integrals>
-            constexpr auto operator()(const Integrals&...) const {
+            SQLITE_ORM_STATIC_CALLOP constexpr auto operator()(const Integrals&...) SQLITE_ORM_OR_CONST_CALLOP {
                 using integral_type = std::common_type_t<typename Integrals::value_type...>;
                 return std::integral_constant<integral_type, (Integrals::value + ...)>{};
             }
@@ -1573,7 +1675,7 @@ namespace sqlite_orm {
         template<template<class...> class NestedProject>
         struct project_nested_tuple_size {
             template<class T>
-            constexpr auto operator()(const T&) const {
+            SQLITE_ORM_STATIC_CALLOP constexpr auto operator()(const T&) SQLITE_ORM_OR_CONST_CALLOP {
                 return typename std::tuple_size<NestedProject<T>>::type{};
             }
         };
@@ -1590,6 +1692,16 @@ namespace sqlite_orm {
             return R{polyfill::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
         }
 
+#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+        /*
+         *  Like `std::make_from_tuple()`, but using a projection on the tuple elements.
+         */
+        template<class R, class Tpl, class Projection = std::identity>
+        constexpr R create_from_tuple(Tpl&& tpl, Projection project = {}) {
+            auto& [... elements] = tpl;
+            return R{std::invoke(project, std::forward_like<Tpl>(elements))...};
+        }
+#else
         /*
          *  Like `std::make_from_tuple()`, but using a projection on the tuple elements.
          */
@@ -1600,6 +1712,7 @@ namespace sqlite_orm {
                 std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
                 std::forward<Projection>(project));
         }
+#endif
 
 #ifdef SQLITE_ORM_CTAD_SUPPORTED
         template<template<typename...> class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
@@ -1607,8 +1720,18 @@ namespace sqlite_orm {
             return R{polyfill::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
         }
 
+#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
         /*
-         *  Similar to `create_from_tuple()`, but the result type is specified as a template class.
+         *  Similar to `create_from_tuple()`, but the result type is specified as a class template.
+         */
+        template<template<typename...> class R, class Tpl, class Projection = polyfill::identity>
+        constexpr auto create_from_tuple(Tpl&& tpl, Projection project = {}) {
+            auto& [... elements] = tpl;
+            return R{std::invoke(project, std::forward_like<Tpl>(elements))...};
+        }
+#else
+        /*
+         *  Similar to `create_from_tuple()`, but the result type is specified as a class template.
          */
         template<template<typename...> class R, class Tpl, class Projection = polyfill::identity>
         constexpr auto create_from_tuple(Tpl&& tpl, Projection project = {}) {
@@ -1617,6 +1740,7 @@ namespace sqlite_orm {
                 std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
                 std::forward<Projection>(project));
         }
+#endif
 #endif
     }
 }
@@ -3034,6 +3158,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
+// #include "functional/gsl.h"
+
 // #include "type_traits.h"
 
 // #include "is_std_ptr.h"
@@ -3124,7 +3250,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     template<class T>
     struct type_printer<T,
-                        std::enable_if_t<polyfill::disjunction<std::is_same<T, const char*>,
+                        std::enable_if_t<polyfill::disjunction<std::is_same<T, orm_gsl::czstring>,
                                                                std::is_base_of<std::string, T>,
                                                                std::is_base_of<std::wstring, T>>::value>>
         : text_printer {};
@@ -3978,7 +4104,7 @@ namespace sqlite_orm {
 
     template<class T>
     struct field_printer<T, internal::match_if<std::is_arithmetic, T>> {
-        std::string operator()(const T& t) const {
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const T& t) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
             ss << t;
             return ss.str();
@@ -3990,7 +4116,7 @@ namespace sqlite_orm {
      */
     template<>
     struct field_printer<unsigned char, void> {
-        std::string operator()(const unsigned char& t) const {
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const unsigned char& t) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
             ss << +t;
             return ss.str();
@@ -4002,7 +4128,7 @@ namespace sqlite_orm {
      */
     template<>
     struct field_printer<signed char, void> {
-        std::string operator()(const signed char& t) const {
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const signed char& t) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
             ss << +t;
             return ss.str();
@@ -4014,7 +4140,7 @@ namespace sqlite_orm {
      */
     template<>
     struct field_printer<char, void> {
-        std::string operator()(const char& t) const {
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const char& t) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
             ss << +t;
             return ss.str();
@@ -4023,14 +4149,14 @@ namespace sqlite_orm {
 
     template<class T>
     struct field_printer<T, internal::match_if<std::is_base_of, std::string, T>> {
-        std::string operator()(std::string string) const {
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(std::string string) SQLITE_ORM_OR_CONST_CALLOP {
             return string;
         }
     };
 
     template<>
     struct field_printer<std::vector<char>, void> {
-        std::string operator()(const std::vector<char>& t) const {
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const std::vector<char>& t) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
             ss << std::hex;
             for (auto c: t) {
@@ -4045,7 +4171,7 @@ namespace sqlite_orm {
      */
     template<class T>
     struct field_printer<T, internal::match_if<std::is_base_of, std::wstring, T>> {
-        std::string operator()(const std::wstring& wideString) const {
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const std::wstring& wideString) SQLITE_ORM_OR_CONST_CALLOP {
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
             return converter.to_bytes(wideString);
         }
@@ -4053,14 +4179,14 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ORM_OMITS_CODECVT
     template<>
     struct field_printer<std::nullptr_t, void> {
-        std::string operator()(const std::nullptr_t&) const {
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const std::nullptr_t&) SQLITE_ORM_OR_CONST_CALLOP {
             return "NULL";
         }
     };
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<>
     struct field_printer<std::nullopt_t, void> {
-        std::string operator()(const std::nullopt_t&) const {
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const std::nullopt_t&) SQLITE_ORM_OR_CONST_CALLOP {
             return "NULL";
         }
     };
@@ -4072,7 +4198,7 @@ namespace sqlite_orm {
                              internal::is_printable<std::remove_cv_t<typename T::element_type>>>::value>> {
         using unqualified_type = std::remove_cv_t<typename T::element_type>;
 
-        std::string operator()(const T& t) const {
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const T& t) SQLITE_ORM_OR_CONST_CALLOP {
             if (t) {
                 return field_printer<unqualified_type>()(*t);
             } else {
@@ -4089,7 +4215,7 @@ namespace sqlite_orm {
                                                  internal::is_printable<std::remove_cv_t<typename T::value_type>>>>> {
         using unqualified_type = std::remove_cv_t<typename T::value_type>;
 
-        std::string operator()(const T& t) const {
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const T& t) SQLITE_ORM_OR_CONST_CALLOP {
             if (t.has_value()) {
                 return field_printer<unqualified_type>()(*t);
             } else {
@@ -4250,6 +4376,8 @@ namespace sqlite_orm {
 #endif
 #endif
 
+// #include "functional/gsl.h"
+
 namespace sqlite_orm {
     namespace internal {
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
@@ -4259,7 +4387,7 @@ namespace sqlite_orm {
 #else
         using serialize_result_type = std::string;
         using serialize_arg_type = const std::string&;
-        using string_constant_type = const char*;
+        using string_constant_type = orm_gsl::czstring;
 #endif
     }
 }
@@ -8443,7 +8571,8 @@ namespace sqlite_orm {
                            std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
                            std::convertible_to<ExplicitCols, std::string>) &&
                           ...)
-            constexpr auto operator()(ExplicitCols... explicitColumns) const;
+            SQLITE_ORM_STATIC_CALLOP constexpr auto
+            operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP;
 #else
             template<class... ExplicitCols,
                      std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
@@ -8452,7 +8581,8 @@ namespace sqlite_orm {
                                           std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
                                           std::is_convertible<ExplicitCols, std::string>>...>,
                                       bool> = true>
-            constexpr auto operator()(ExplicitCols... explicitColumns) const;
+            SQLITE_ORM_STATIC_CALLOP constexpr auto
+            operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP;
 #endif
         };
     }
@@ -8524,7 +8654,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T, class SFINAE = void>
     struct type_is_nullable : std::false_type {
-        bool operator()(const T&) const {
+        SQLITE_ORM_STATIC_CALLOP bool operator()(const T&) SQLITE_ORM_OR_CONST_CALLOP {
             return true;
         }
     };
@@ -8540,7 +8670,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
                                 polyfill::is_specialization_of<T, std::unique_ptr>,
                                 polyfill::is_specialization_of<T, std::shared_ptr>>::value>> : std::true_type {
-        bool operator()(const T& t) const {
+        SQLITE_ORM_STATIC_CALLOP bool operator()(const T& t) SQLITE_ORM_OR_CONST_CALLOP {
             return static_cast<bool>(t);
         }
     };
@@ -8848,7 +8978,7 @@ namespace sqlite_orm {
             expressions_tuple compound;
 
             constexpr compound_operator(expressions_tuple compound) : compound{std::move(compound)} {
-                iterate_tuple(this->compound, [](auto& expression) {
+                iterate_tuple(this->compound, [](auto& expression) SQLITE_ORM_STATIC_CALLOP {
                     expression.highest_level = true;
                 });
             }
@@ -9297,7 +9427,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                        std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
                        std::convertible_to<ExplicitCols, std::string>) &&
                       ...)
-        constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) const {
+        constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP {
             return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
         }
 #else
@@ -9309,7 +9439,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                       std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
                                       std::is_convertible<ExplicitCols, std::string>>...>,
                                   bool>>
-        constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) const {
+        constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP {
             return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
         }
 #endif
@@ -9495,7 +9625,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::true_type, std::false_type, std::make_index_sequence, std::index_sequence
+#include <type_traits>  //  std::enable_if, std::is_arithmetic, std::is_same, std::make_index_sequence, std::index_sequence
 #include <memory>  //  std::default_delete
 #include <string>  //  std::string, std::wstring
 #include <vector>  //  std::vector
@@ -9514,7 +9644,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "functional/cxx_functional_polyfill.h"
-
+// std::invoke
 // #include "is_std_ptr.h"
 
 // #include "tuple_helper/tuple_filter.h"
@@ -9559,6 +9689,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 
 // #include "functional/cxx_type_traits_polyfill.h"
+
+// #include "functional/gsl.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
@@ -9671,7 +9803,7 @@ namespace sqlite_orm {
          */
         template<typename D, typename P>
             requires (!integral_fp_c<D>)
-        void xdestroy_proxy(void* p) noexcept {
+        void xdestroy_proxy(orm_gsl::owner<void*> p) noexcept {
             // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>
             auto o = (P*)p;
             // ignoring return code
@@ -9685,7 +9817,7 @@ namespace sqlite_orm {
          *  that take a non-const parameter, but user code passes a pointer to a const object.
          */
         template<integral_fp_c D, typename P>
-        void xdestroy_proxy(void* p) noexcept {
+        void xdestroy_proxy(orm_gsl::owner<void*> p) noexcept {
             // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>,
             auto o = (std::remove_cv_t<P>*)(P*)p;
             // ignoring return code
@@ -9707,7 +9839,7 @@ namespace sqlite_orm {
             (!can_yield_fp_v<D> || !std::is_convertible<yielded_fn_t<D>, xdestroy_fn_t>::value);
 
         template<typename D, typename P, std::enable_if_t<!is_integral_fp_c_v<D>, bool> = true>
-        void xdestroy_proxy(void* p) noexcept {
+        void xdestroy_proxy(orm_gsl::owner<void*> p) noexcept {
             // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>
             auto o = (P*)p;
             // ignoring return code
@@ -9715,7 +9847,7 @@ namespace sqlite_orm {
         }
 
         template<typename D, typename P, std::enable_if_t<is_integral_fp_c_v<D>, bool> = true>
-        void xdestroy_proxy(void* p) noexcept {
+        void xdestroy_proxy(orm_gsl::owner<void*> p) noexcept {
             // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>,
             auto o = (std::remove_cv_t<P>*)(P*)p;
             // ignoring return code
@@ -9814,6 +9946,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
+// #include "functional/gsl.h"
+
 // #include "functional/cstring_literal.h"
 
 // #include "xdestroy_handling.h"
@@ -9840,12 +9974,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
     }
 
-    /** @short Specifies that a type is an integral constant string usable as a pointer type.
+    /** @short Specifies that a type is an integral constant C-string usable as a pointer type.
      */
     template<class T>
     concept orm_pointer_type = requires {
         typename T::value_type;
-        { T::value } -> std::convertible_to<const char*>;
+        { T::value } -> std::convertible_to<orm_gsl::czstring>;
     };
 #endif
 
@@ -9867,7 +10001,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         // of forward declarations in other places (e.g. function.h)
         static_assert(orm_pointer_type<T>, "T must be a pointer type (tag)");
 #else
-        static_assert(std::is_convertible<typename T::value_type, const char*>::value,
+        static_assert(std::is_convertible<typename T::value_type, orm_gsl::czstring>::value,
                       "The pointer type (tag) must be convertible to `const char*`");
 #endif
 
@@ -10207,7 +10341,7 @@ namespace sqlite_orm {
     template<class V>
     struct statement_binder<V,
                             std::enable_if_t<polyfill::disjunction<std::is_base_of<std::string, V>,
-                                                                   std::is_same<V, const char*>
+                                                                   std::is_same<V, orm_gsl::czstring>
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
                                                                    ,
                                                                    std::is_same<V, std::string_view>
@@ -10237,7 +10371,7 @@ namespace sqlite_orm {
             return {s.c_str(), int(s.size())};
         }
 
-        std::pair<const char*, int> string_data(const char* s) const {
+        std::pair<const char*, int> string_data(orm_gsl::czstring s) const {
             return {s, int(strlen(s))};
         }
 #endif
@@ -10336,7 +10470,7 @@ namespace sqlite_orm {
     struct statement_binder<std::vector<char>, void> {
         int bind(sqlite3_stmt* stmt, int index, const std::vector<char>& value) const {
             if (!value.empty()) {
-                return sqlite3_bind_blob(stmt, index, (const void*)&value.front(), int(value.size()), SQLITE_TRANSIENT);
+                return sqlite3_bind_blob(stmt, index, value.data(), int(value.size()), SQLITE_TRANSIENT);
             } else {
                 return sqlite3_bind_blob(stmt, index, "", 0, SQLITE_TRANSIENT);
             }
@@ -10344,7 +10478,7 @@ namespace sqlite_orm {
 
         void result(sqlite3_context* context, const std::vector<char>& value) const {
             if (!value.empty()) {
-                sqlite3_result_blob(context, (const void*)&value.front(), int(value.size()), nullptr);
+                sqlite3_result_blob(context, value.data(), int(value.size()), nullptr);
             } else {
                 sqlite3_result_blob(context, "", 0, nullptr);
             }
@@ -10372,14 +10506,14 @@ namespace sqlite_orm {
 
         struct conditional_binder {
             sqlite3_stmt* stmt = nullptr;
-            int index = 1;
+            int nthSqlParameter = 0;
 
             explicit conditional_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
 
             template<class T, satisfies<is_bindable, T> = true>
             void operator()(const T& t) {
-                int rc = statement_binder<T>{}.bind(this->stmt, this->index++, t);
-                if (SQLITE_OK != rc) {
+                int rc = statement_binder<T>{}.bind(this->stmt, ++this->nthSqlParameter, t);
+                if (SQLITE_OK != rc) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
                     throw_translated_sqlite_error(rc);
                 }
             }
@@ -10409,33 +10543,43 @@ namespace sqlite_orm {
 
             explicit tuple_value_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
 
+#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+            void operator()(const auto& tpl, auto project) const {
+                int nthSqlParameter = 0;
+                auto& [... elements] = tpl;
+                (this->bind(std::invoke(project, elements), ++nthSqlParameter), ...);
+            }
+#else
             template<class Tpl, class Projection>
             void operator()(const Tpl& tpl, Projection project) const {
                 (*this)(tpl,
                         std::make_index_sequence<std::tuple_size<Tpl>::value>{},
                         std::forward<Projection>(project));
             }
+#endif
 
           private:
+#ifndef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
             template<class Tpl, size_t... Idx, class Projection>
             void operator()(const Tpl& tpl, std::index_sequence<Idx...>, Projection project) const {
-                (this->bind(polyfill::invoke(project, std::get<Idx>(tpl)), Idx), ...);
+                (this->bind(polyfill::invoke(project, std::get<Idx>(tpl)), int(Idx + 1)), ...);
             }
+#endif
 
             template<class T>
-            void bind(const T& t, size_t idx) const {
-                int rc = statement_binder<T>{}.bind(this->stmt, int(idx + 1), t);
-                if (SQLITE_OK != rc) {
+            void bind(const T& t, int nthSqlParameter) const {
+                int rc = statement_binder<T>{}.bind(this->stmt, nthSqlParameter, t);
+                if (SQLITE_OK != rc) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
                     throw_translated_sqlite_error(rc);
                 }
             }
 
             template<class T>
-            void bind(const T* value, size_t idx) const {
+            void bind(const T* value, int nthSqlParameter) const {
                 if (!value) {
                     throw std::system_error{orm_error_code::value_is_null};
                 }
-                (*this)(*value, idx);
+                this->bind(*value, nthSqlParameter);
             }
         };
 
@@ -10452,6 +10596,8 @@ namespace sqlite_orm {
 #endif
 
 // #include "functional/cxx_type_traits_polyfill.h"
+
+// #include "functional/gsl.h"
 
 // #include "functional/mpl.h"
 
@@ -10965,8 +11111,8 @@ namespace sqlite_orm {
 
 // #include "tags.h"
 
-namespace sqlite_orm {
-
+// export forward-declarations
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     struct arg_values;
 
     // note (internal): forward declare even if `SQLITE_VERSION_NUMBER < 3020000` in order to simplify coding below
@@ -10975,7 +11121,9 @@ namespace sqlite_orm {
     // note (internal): forward declare even if `SQLITE_VERSION_NUMBER < 3020000` in order to simplify coding below
     template<class P, class T, class D>
     class pointer_binding;
+}
 
+namespace sqlite_orm {
     namespace internal {
         template<class F>
         using scalar_call_function_t = decltype(&F::operator());
@@ -11146,12 +11294,12 @@ namespace sqlite_orm {
 
             template<class R = decltype(UDF::name()),
                      std::enable_if_t<polyfill::negation<std::is_same<R, char>>::value, bool> = true>
-            decltype(auto) operator()() const {
+            SQLITE_ORM_STATIC_CALLOP decltype(auto) operator()() SQLITE_ORM_OR_CONST_CALLOP {
                 return UDF::name();
             }
 
             template<class R = decltype(UDF::name()), std::enable_if_t<std::is_same<R, char>::value, bool> = true>
-            std::string operator()() const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()() SQLITE_ORM_OR_CONST_CALLOP {
                 return std::string{UDF::name()};
             }
         };
@@ -11523,6 +11671,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  // std::move
 #endif  //  SQLITE_ORM_IMPORT_STD_MODULE
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -11827,7 +11976,7 @@ namespace sqlite_orm {
          *  Result for the most simple queries like `SELECT 'ototo'`
          */
         template<class DBOs>
-        struct column_result_t<DBOs, const char*, void> {
+        struct column_result_t<DBOs, orm_gsl::czstring, void> {
             using type = std::string;
         };
 
@@ -12836,7 +12985,7 @@ namespace sqlite_orm {
                 journal_mode::OFF,
             }};
 #ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
-            std::ranges::transform(string, string.begin(), [](unsigned char c) noexcept {
+            std::ranges::transform(string, string.begin(), [](unsigned char c) SQLITE_ORM_STATIC_CALLOP noexcept {
                 return std::toupper(c);
             });
             if (auto found = std::ranges::find(journalModes, string, journal_mode_to_string);
@@ -12883,15 +13032,15 @@ namespace sqlite_orm {
 #include <codecvt>  //  std::codecvt_utf8_utf16
 #endif
 #include <vector>  //  std::vector
-#include <algorithm>  //  std::copy
-#include <iterator>  //  std::back_inserter
-#include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
+#include <tuple>  //  std::tuple
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #include <concepts>
 #endif
 #endif
 
 // #include "functional/cxx_functional_polyfill.h"
+
+// #include "functional/gsl.h"
 
 // #include "tuple_helper/tuple_transformer.h"
 
@@ -12943,7 +13092,7 @@ namespace sqlite_orm {
             }};
 
 #ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
-            std::ranges::transform(string, string.begin(), [](unsigned char c) noexcept {
+            std::ranges::transform(string, string.begin(), [](unsigned char c) SQLITE_ORM_STATIC_CALLOP noexcept {
                 return std::toupper(c);
             });
             if (auto found = std::ranges::find(lockingModes, string, locking_mode_to_string);
@@ -12990,7 +13139,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         /*
          *  Called during one-step query execution (one result row) for each column of a result row.
          */
-        V extract(const char* columnText) const = delete;
+        V extract(orm_gsl::czstring columnText) const = delete;
 
         /*
          *  Called during multi-step query execution (result set) for each column of a result row.
@@ -13006,7 +13155,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     template<typename T>
-    concept orm_column_text_extractable = requires(const row_extractor<T>& extractor, const char* columnText) {
+    concept orm_column_text_extractable = requires(const row_extractor<T>& extractor, orm_gsl::czstring columnText) {
         { extractor.extract(columnText) } -> std::same_as<T>;
     };
 
@@ -13062,7 +13211,7 @@ namespace sqlite_orm {
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class R>
-    int extract_single_value(void* data, int argc, char** argv, char**) {
+    int extract_single_value(void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring*) {
         auto& res = *(R*)data;
         if (argc) {
             const auto rowExtractor = internal::column_text_extractor<R>();
@@ -13084,7 +13233,7 @@ namespace sqlite_orm {
     struct row_extractor<pointer_arg<P, T>, void> {
         using V = pointer_arg<P, T>;
 
-        V extract(const char* columnText) const = delete;
+        V extract(orm_gsl::czstring columnText) const = delete;
 
         V extract(sqlite3_stmt* stmt, int columnIndex) const = delete;
 
@@ -13105,7 +13254,7 @@ namespace sqlite_orm {
      */
     template<class V>
     struct row_extractor<V, std::enable_if_t<std::is_arithmetic<V>::value>> {
-        V extract(const char* columnText) const {
+        V extract(orm_gsl::czstring columnText) const {
             return this->extract(columnText, tag());
         }
 
@@ -13120,7 +13269,7 @@ namespace sqlite_orm {
       private:
         using tag = arithmetic_tag_t<V>;
 
-        V extract(const char* columnText, const int_or_smaller_tag&) const {
+        V extract(orm_gsl::czstring columnText, const int_or_smaller_tag&) const {
             return static_cast<V>(atoi(columnText));
         }
 
@@ -13132,7 +13281,7 @@ namespace sqlite_orm {
             return static_cast<V>(sqlite3_value_int(value));
         }
 
-        V extract(const char* columnText, const bigint_tag&) const {
+        V extract(orm_gsl::czstring columnText, const bigint_tag&) const {
             return static_cast<V>(atoll(columnText));
         }
 
@@ -13144,7 +13293,7 @@ namespace sqlite_orm {
             return static_cast<V>(sqlite3_value_int64(value));
         }
 
-        V extract(const char* columnText, const real_tag&) const {
+        V extract(orm_gsl::czstring columnText, const real_tag&) const {
             return static_cast<V>(atof(columnText));
         }
 
@@ -13162,7 +13311,7 @@ namespace sqlite_orm {
      */
     template<class T>
     struct row_extractor<T, std::enable_if_t<std::is_base_of<std::string, T>::value>> {
-        T extract(const char* columnText) const {
+        T extract(orm_gsl::czstring columnText) const {
             if (columnText) {
                 return columnText;
             } else {
@@ -13171,16 +13320,16 @@ namespace sqlite_orm {
         }
 
         T extract(sqlite3_stmt* stmt, int columnIndex) const {
-            if (auto cStr = (const char*)sqlite3_column_text(stmt, columnIndex)) {
-                return cStr;
+            if (orm_gsl::czstring text = (const char*)sqlite3_column_text(stmt, columnIndex)) {
+                return text;
             } else {
                 return {};
             }
         }
 
         T extract(sqlite3_value* value) const {
-            if (auto cStr = (const char*)sqlite3_value_text(value)) {
-                return cStr;
+            if (orm_gsl::czstring text = (const char*)sqlite3_value_text(value)) {
+                return text;
             } else {
                 return {};
             }
@@ -13192,7 +13341,7 @@ namespace sqlite_orm {
      */
     template<>
     struct row_extractor<std::wstring, void> {
-        std::wstring extract(const char* columnText) const {
+        std::wstring extract(orm_gsl::czstring columnText) const {
             if (columnText) {
                 std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
                 return converter.from_bytes(columnText);
@@ -13202,18 +13351,17 @@ namespace sqlite_orm {
         }
 
         std::wstring extract(sqlite3_stmt* stmt, int columnIndex) const {
-            auto cStr = (const char*)sqlite3_column_text(stmt, columnIndex);
-            if (cStr) {
+            if (orm_gsl::czstring text = (const char*)sqlite3_column_text(stmt, columnIndex)) {
                 std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-                return converter.from_bytes(cStr);
+                return converter.from_bytes(text);
             } else {
                 return {};
             }
         }
 
         std::wstring extract(sqlite3_value* value) const {
-            if (auto cStr = (const wchar_t*)sqlite3_value_text16(value)) {
-                return cStr;
+            if (orm_gsl::cwzstring text = (const wchar_t*)sqlite3_value_text16(value)) {
+                return text;
             } else {
                 return {};
             }
@@ -13225,7 +13373,7 @@ namespace sqlite_orm {
     struct row_extractor<V, std::enable_if_t<is_std_ptr<V>::value>> {
         using unqualified_type = std::remove_cv_t<typename V::element_type>;
 
-        V extract(const char* columnText) const
+        V extract(orm_gsl::czstring columnText) const
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
             requires (orm_column_text_extractable<unqualified_type>)
 #endif
@@ -13272,7 +13420,7 @@ namespace sqlite_orm {
     struct row_extractor<V, std::enable_if_t<polyfill::is_specialization_of_v<V, std::optional>>> {
         using unqualified_type = std::remove_cv_t<typename V::value_type>;
 
-        V extract(const char* columnText) const
+        V extract(orm_gsl::czstring columnText) const
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
             requires (orm_column_text_extractable<unqualified_type>)
 #endif
@@ -13317,7 +13465,7 @@ namespace sqlite_orm {
 
     template<>
     struct row_extractor<std::nullptr_t, void> {
-        std::nullptr_t extract(const char* /*columnText*/) const {
+        std::nullptr_t extract(orm_gsl::czstring /*columnText*/) const {
             return nullptr;
         }
 
@@ -13334,7 +13482,7 @@ namespace sqlite_orm {
      */
     template<>
     struct row_extractor<std::vector<char>, void> {
-        std::vector<char> extract(const char* columnText) const {
+        std::vector<char> extract(orm_gsl::czstring columnText) const {
             return {columnText, columnText + (columnText ? strlen(columnText) : 0)};
         }
 
@@ -13356,10 +13504,9 @@ namespace sqlite_orm {
      */
     template<>
     struct row_extractor<locking_mode, void> {
-        locking_mode extract(const char* columnText) const {
+        locking_mode extract(orm_gsl::czstring columnText) const {
             if (columnText) {
-                auto resultPair = internal::locking_mode_from_string(columnText);
-                if (resultPair.first) {
+                if (auto resultPair = internal::locking_mode_from_string(columnText); resultPair.first) {
                     return resultPair.second;
                 } else {
                     throw std::system_error{orm_error_code::incorrect_locking_mode_string};
@@ -13370,8 +13517,8 @@ namespace sqlite_orm {
         }
 
         locking_mode extract(sqlite3_stmt* stmt, int columnIndex) const {
-            auto cStr = (const char*)sqlite3_column_text(stmt, columnIndex);
-            return this->extract(cStr);
+            orm_gsl::czstring text = (const char*)sqlite3_column_text(stmt, columnIndex);
+            return this->extract(text);
         }
 
         locking_mode extract(sqlite3_value* value) const = delete;
@@ -13382,10 +13529,9 @@ namespace sqlite_orm {
      */
     template<>
     struct row_extractor<journal_mode, void> {
-        journal_mode extract(const char* columnText) const {
+        journal_mode extract(orm_gsl::czstring columnText) const {
             if (columnText) {
-                auto resultPair = internal::journal_mode_from_string(columnText);
-                if (resultPair.first) {
+                if (auto resultPair = internal::journal_mode_from_string(columnText); resultPair.first) {
                     return resultPair.second;
                 } else {
                     throw std::system_error{orm_error_code::incorrect_journal_mode_string};
@@ -13396,8 +13542,8 @@ namespace sqlite_orm {
         }
 
         journal_mode extract(sqlite3_stmt* stmt, int columnIndex) const {
-            auto cStr = (const char*)sqlite3_column_text(stmt, columnIndex);
-            return this->extract(cStr);
+            orm_gsl::czstring text = (const char*)sqlite3_column_text(stmt, columnIndex);
+            return this->extract(text);
         }
 
         journal_mode extract(sqlite3_value* value) const = delete;
@@ -13432,7 +13578,7 @@ namespace sqlite_orm {
         struct struct_extractor<std::tuple<Args...>, DBOs> {
             const DBOs& db_objects;
 
-            std::tuple<Args...> extract(const char* columnText) const = delete;
+            std::tuple<Args...> extract(orm_gsl::czstring columnText) const = delete;
 
             // note: expects to be called only from the top level, and therefore discards the index
             std::tuple<column_result_proxy_t<Args>...> extract(sqlite3_stmt* stmt,
@@ -13456,7 +13602,7 @@ namespace sqlite_orm {
         struct struct_extractor<structure<O, std::tuple<Args...>>, DBOs> {
             const DBOs& db_objects;
 
-            O extract(const char* columnText) const = delete;
+            O extract(orm_gsl::czstring columnText) const = delete;
 
             // note: expects to be called only from the top level, and therefore discards the index;
             // note: brace-init-list initialization guarantees order of evaluation, but only for aggregates and variadic constructors it seems.
@@ -13534,6 +13680,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move
 #endif
 
+// #include "functional/gsl.h"
+
 // #include "member_traits/member_traits.h"
 
 // #include "table_reference.h"
@@ -13586,7 +13734,7 @@ namespace sqlite_orm {
         struct struct_extractor<table_reference<O>, DBOs> {
             const DBOs& db_objects;
 
-            O extract(const char* columnText) const = delete;
+            O extract(orm_gsl::czstring columnText) const = delete;
 
             // note: expects to be called only from the top level, and therefore discards the index
             O extract(sqlite3_stmt* stmt, int&& /*nextColumnIndex*/ = 0) const {
@@ -13621,6 +13769,8 @@ namespace sqlite_orm {
 #include <string_view>  //  std::string_view
 #endif
 #endif
+
+// #include "functional/gsl.h"
 
 // #include "error_code.h"
 
@@ -13681,7 +13831,7 @@ namespace sqlite_orm {
                 case SQLITE_DONE:
                     return;
                 default: {
-                    throw_translated_sqlite_error(rc);
+                    throw_translated_sqlite_error(stmt);
                 }
             }
         }
@@ -13690,7 +13840,7 @@ namespace sqlite_orm {
             std::function<void(serialize_arg_type sql)> will_run_query;
             std::function<void(serialize_arg_type sql)> did_run_query;
 
-            inline void perform_void_exec(sqlite3* db, const char* sql) const {
+            inline void perform_void_exec(sqlite3* db, orm_gsl::czstring sql) const {
                 if (this->will_run_query) {
                     this->will_run_query(sql);
                 }
@@ -13704,8 +13854,8 @@ namespace sqlite_orm {
             }
 
             inline void perform_exec(sqlite3* db,
-                                     const char* sql,
-                                     int (*callback)(void* data, int argc, char** argv, char**),
+                                     orm_gsl::czstring sql,
+                                     int (*callback)(void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring*),
                                      void* user_data) const {
                 if (this->will_run_query) {
                     this->will_run_query(sql);
@@ -13721,14 +13871,14 @@ namespace sqlite_orm {
 
             inline void perform_exec(sqlite3* db,
                                      const std::string& query,
-                                     int (*callback)(void* data, int argc, char** argv, char**),
+                                     int (*callback)(void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring*),
                                      void* user_data) const {
-                return perform_exec(db, query.data(), callback, user_data);
+                return perform_exec(db, query.c_str(), callback, user_data);
             }
 
             template<class L>
             void perform_steps(sqlite3_stmt* stmt, L&& lambda) const {
-                const char* sql = nullptr;
+                orm_gsl::czstring sql = nullptr;
                 if (this->will_run_query || this->did_run_query) {
                     sql = sqlite3_sql(stmt);
                 }
@@ -13761,7 +13911,7 @@ namespace sqlite_orm {
 
         inline sqlite3_stmt* prepare_stmt(sqlite3* db, serialize_arg_type query) {
             sqlite3_stmt* stmt;
-            const int rc = sqlite3_prepare_v2(db, query.data(), query.size(), &stmt, nullptr);
+            const int rc = sqlite3_prepare_v2(db, query.data(), int(query.size()), &stmt, nullptr);
             if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
                 throw_translated_sqlite_error(rc);
             }
@@ -13853,11 +14003,6 @@ namespace sqlite_orm {
                 return *this->current;
             }
 
-            // note: should actually be only present for contiguous iterators
-            value_type* operator->() const {
-                return &(this->operator*());
-            }
-
             mapped_iterator& operator++() {
                 next();
                 return *this;
@@ -13911,16 +14056,17 @@ namespace sqlite_orm {
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <memory>  //  std::unique_ptr
-#include <iterator>  //  std::iterator_traits
 #include <string>  //  std::string
 #include <type_traits>  //  std::integral_constant, std::declval
-#include <utility>  //  std::move, std::forward, std::pair
+#include <utility>  //  std::move, std::forward, std::exchange, std::pair
 #include <tuple>  //  std::tuple
 #endif
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "functional/cxx_functional_polyfill.h"
+
+// #include "functional/gsl.h"
 
 // #include "tuple_helper/tuple_traits.h"
 
@@ -13932,6 +14078,8 @@ namespace sqlite_orm {
 #include <functional>  //  std::function
 #include <string>  //  std::string
 #endif
+
+// #include "functional/gsl.h"
 
 // #include "error_code.h"
 
@@ -14124,7 +14272,7 @@ namespace sqlite_orm {
             }
 
           protected:
-            sqlite3* db = nullptr;
+            orm_gsl::owner<sqlite3*> db = nullptr;
 
           private:
             std::atomic_int _retainCount{};
@@ -14356,7 +14504,7 @@ namespace sqlite_orm {
             table_name_collector(const db_objects_type& dbObjects) : db_objects{dbObjects} {}
 
             template<class T>
-            void operator()(const T&) const {}
+            SQLITE_ORM_STATIC_CALLOP void operator()(const T&) SQLITE_ORM_OR_CONST_CALLOP {}
 
             template<class F, class O>
             void operator()(F O::*) {
@@ -14532,7 +14680,7 @@ namespace sqlite_orm {
     namespace internal {
 
         struct prepared_statement_base {
-            sqlite3_stmt* stmt = nullptr;
+            orm_gsl::owner<sqlite3_stmt*> stmt = nullptr;
             connection_ref con;
 
             ~prepared_statement_base() {
@@ -14542,7 +14690,7 @@ namespace sqlite_orm {
             std::string sql() const {
                 // note: sqlite3 internally checks for null before calling
                 // sqlite3_normalized_sql() or sqlite3_expanded_sql(), so check here, too, even if superfluous
-                if (const char* sql = sqlite3_sql(this->stmt)) {
+                if (orm_gsl::czstring sql = sqlite3_sql(this->stmt)) {
                     return sql;
                 } else {
                     return {};
@@ -14552,7 +14700,7 @@ namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3014000
             std::string expanded_sql() const {
                 // note: must check return value due to SQLITE_OMIT_TRACE
-                using char_ptr = std::unique_ptr<char, std::integral_constant<decltype(&sqlite3_free), sqlite3_free>>;
+                using char_ptr = std::unique_ptr<char[], std::integral_constant<decltype(&sqlite3_free), sqlite3_free>>;
                 if (char_ptr sql{sqlite3_expanded_sql(this->stmt)}) {
                     return sql.get();
                 } else {
@@ -14562,7 +14710,7 @@ namespace sqlite_orm {
 #endif
 #if SQLITE_VERSION_NUMBER >= 3026000 and defined(SQLITE_ENABLE_NORMALIZE)
             std::string normalized_sql() const {
-                if (const char* sql = sqlite3_normalized_sql(this->stmt)) {
+                if (orm_gsl::czstring sql = sqlite3_normalized_sql(this->stmt)) {
                     return sql;
                 } else {
                     return {};
@@ -14587,10 +14735,8 @@ namespace sqlite_orm {
                 prepared_statement_base{stmt_, std::move(con_)}, expression(std::move(expression_)) {}
 
             prepared_statement_t(prepared_statement_t&& prepared_stmt) :
-                prepared_statement_base{prepared_stmt.stmt, std::move(prepared_stmt.con)},
-                expression(std::move(prepared_stmt.expression)) {
-                prepared_stmt.stmt = nullptr;
-            }
+                prepared_statement_base{std::exchange(prepared_stmt.stmt, nullptr), std::move(prepared_stmt.con)},
+                expression(std::move(prepared_stmt.expression)) {}
         };
 
         template<class T>
@@ -15463,7 +15609,7 @@ namespace sqlite_orm {
              *  L is a callable type. Mostly is a templated lambda
              */
             template<class L>
-            void operator()(const node_type& leaf, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& leaf, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 lambda(leaf);
             }
         };
@@ -15492,7 +15638,7 @@ namespace sqlite_orm {
             using node_type = as_optional_t<T>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.expression, lambda);
             }
         };
@@ -15503,7 +15649,8 @@ namespace sqlite_orm {
             using node_type = std::reference_wrapper<T>;
 
             template<class L>
-            void operator()(const node_type& expression, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& expression,
+                                                     L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(expression.get(), lambda);
             }
         };
@@ -15513,7 +15660,7 @@ namespace sqlite_orm {
             using node_type = match_t<T, X>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.argument, lambda);
             }
         };
@@ -15523,7 +15670,8 @@ namespace sqlite_orm {
             using node_type = group_by_t<Args...>;
 
             template<class L>
-            void operator()(const node_type& expression, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& expression,
+                                                     L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(expression.args, lambda);
             }
         };
@@ -15533,7 +15681,8 @@ namespace sqlite_orm {
             using node_type = highlight_t<T, X, Y, Z>;
 
             template<class L>
-            void operator()(const node_type& expression, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& expression,
+                                                     L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(expression.argument0, lambda);
                 iterate_ast(expression.argument1, lambda);
                 iterate_ast(expression.argument2, lambda);
@@ -15545,7 +15694,8 @@ namespace sqlite_orm {
             using node_type = excluded_t<T>;
 
             template<class L>
-            void operator()(const node_type& expression, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& expression,
+                                                     L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(expression.expression, lambda);
             }
         };
@@ -15555,7 +15705,8 @@ namespace sqlite_orm {
             using node_type = T;
 
             template<class L>
-            void operator()(const node_type& expression, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& expression,
+                                                     L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(expression.actions, lambda);
             }
         };
@@ -15565,7 +15716,8 @@ namespace sqlite_orm {
             using node_type = where_t<C>;
 
             template<class L>
-            void operator()(const node_type& expression, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& expression,
+                                                     L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(expression.expression, lambda);
             }
         };
@@ -15577,7 +15729,7 @@ namespace sqlite_orm {
             using node_type = T;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.lhs, lambda);
                 iterate_ast(node.rhs, lambda);
             }
@@ -15588,7 +15740,7 @@ namespace sqlite_orm {
             using node_type = is_equal_with_table_t<L, R>;
 
             template<class C>
-            void operator()(const node_type& node, C& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, C& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.rhs, lambda);
             }
         };
@@ -15598,7 +15750,7 @@ namespace sqlite_orm {
             using node_type = C;
 
             template<class L>
-            void operator()(const node_type& cols, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& cols, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(cols.columns, lambda);
             }
         };
@@ -15608,7 +15760,7 @@ namespace sqlite_orm {
             using node_type = dynamic_in_t<L, A>;
 
             template<class C>
-            void operator()(const node_type& in, C& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& in, C& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(in.left, lambda);
                 iterate_ast(in.argument, lambda);
             }
@@ -15619,7 +15771,7 @@ namespace sqlite_orm {
             using node_type = in_t<L, Args...>;
 
             template<class C>
-            void operator()(const node_type& in, C& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& in, C& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(in.left, lambda);
                 iterate_ast(in.argument, lambda);
             }
@@ -15630,7 +15782,7 @@ namespace sqlite_orm {
             using node_type = std::vector<T>;
 
             template<class L>
-            void operator()(const node_type& vec, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& vec, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 for (auto& i: vec) {
                     iterate_ast(i, lambda);
                 }
@@ -15642,7 +15794,7 @@ namespace sqlite_orm {
             using node_type = std::vector<char>;
 
             template<class L>
-            void operator()(const node_type& vec, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& vec, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 lambda(vec);
             }
         };
@@ -15653,7 +15805,7 @@ namespace sqlite_orm {
             using node_type = CTE;
 
             template<class L>
-            void operator()(const node_type& c, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& c, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(c.subselect, lambda);
             }
         };
@@ -15663,7 +15815,7 @@ namespace sqlite_orm {
             using node_type = With;
 
             template<class L>
-            void operator()(const node_type& c, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& c, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(c.cte, lambda);
                 iterate_ast(c.expression, lambda);
             }
@@ -15675,7 +15827,7 @@ namespace sqlite_orm {
             using node_type = T;
 
             template<class L>
-            void operator()(const node_type& c, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& c, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(c.compound, lambda);
             }
         };
@@ -15685,7 +15837,8 @@ namespace sqlite_orm {
             using node_type = into_t<T>;
 
             template<class L>
-            void operator()(const node_type& /*node*/, L& /*lambda*/) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& /*node*/,
+                                                     L& /*lambda*/) SQLITE_ORM_OR_CONST_CALLOP {
                 //..
             }
         };
@@ -15695,7 +15848,7 @@ namespace sqlite_orm {
             using node_type = insert_raw_t<Args...>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.args, lambda);
             }
         };
@@ -15705,7 +15858,7 @@ namespace sqlite_orm {
             using node_type = replace_raw_t<Args...>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.args, lambda);
             }
         };
@@ -15715,7 +15868,7 @@ namespace sqlite_orm {
             using node_type = select_t<T, Args...>;
 
             template<class L>
-            void operator()(const node_type& sel, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& sel, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(sel.col, lambda);
                 iterate_ast(sel.conditions, lambda);
             }
@@ -15726,7 +15879,7 @@ namespace sqlite_orm {
             using node_type = get_all_t<T, R, Args...>;
 
             template<class L>
-            void operator()(const node_type& get, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& get, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(get.conditions, lambda);
             }
         };
@@ -15736,7 +15889,7 @@ namespace sqlite_orm {
             using node_type = get_all_pointer_t<T, Args...>;
 
             template<class L>
-            void operator()(const node_type& get, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& get, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(get.conditions, lambda);
             }
         };
@@ -15747,7 +15900,7 @@ namespace sqlite_orm {
             using node_type = get_all_optional_t<T, Args...>;
 
             template<class L>
-            void operator()(const node_type& get, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& get, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(get.conditions, lambda);
             }
         };
@@ -15758,7 +15911,7 @@ namespace sqlite_orm {
             using node_type = update_all_t<S, Wargs...>;
 
             template<class L>
-            void operator()(const node_type& u, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& u, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(u.set, lambda);
                 iterate_ast(u.conditions, lambda);
             }
@@ -15769,7 +15922,7 @@ namespace sqlite_orm {
             using node_type = remove_all_t<T, Args...>;
 
             template<class L>
-            void operator()(const node_type& r, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& r, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(r.conditions, lambda);
             }
         };
@@ -15779,7 +15932,7 @@ namespace sqlite_orm {
             using node_type = set_t<Args...>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.assigns, lambda);
             }
         };
@@ -15789,7 +15942,7 @@ namespace sqlite_orm {
             using node_type = dynamic_set_t<S>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.entries, lambda);
             }
         };
@@ -15799,7 +15952,7 @@ namespace sqlite_orm {
             using node_type = std::tuple<Args...>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_tuple(node, [&lambda](auto& v) {
                     iterate_ast(v, lambda);
                 });
@@ -15811,7 +15964,7 @@ namespace sqlite_orm {
             using node_type = group_by_with_having<T, Args...>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.args, lambda);
                 iterate_ast(node.expression, lambda);
             }
@@ -15822,7 +15975,7 @@ namespace sqlite_orm {
             using node_type = cast_t<T, E>;
 
             template<class L>
-            void operator()(const node_type& c, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& c, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(c.expression, lambda);
             }
         };
@@ -15832,7 +15985,7 @@ namespace sqlite_orm {
             using node_type = exists_t<T>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.expression, lambda);
             }
         };
@@ -15842,7 +15995,7 @@ namespace sqlite_orm {
             using node_type = like_t<A, T, E>;
 
             template<class L>
-            void operator()(const node_type& lk, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& lk, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(lk.arg, lambda);
                 iterate_ast(lk.pattern, lambda);
                 lk.arg3.apply([&lambda](auto& value) {
@@ -15856,7 +16009,7 @@ namespace sqlite_orm {
             using node_type = glob_t<A, T>;
 
             template<class L>
-            void operator()(const node_type& lk, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& lk, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(lk.arg, lambda);
                 iterate_ast(lk.pattern, lambda);
             }
@@ -15867,7 +16020,7 @@ namespace sqlite_orm {
             using node_type = between_t<A, T>;
 
             template<class L>
-            void operator()(const node_type& b, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& b, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(b.expr, lambda);
                 iterate_ast(b.b1, lambda);
                 iterate_ast(b.b2, lambda);
@@ -15879,7 +16032,7 @@ namespace sqlite_orm {
             using node_type = named_collate<T>;
 
             template<class L>
-            void operator()(const node_type& col, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& col, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(col.expr, lambda);
             }
         };
@@ -15889,7 +16042,7 @@ namespace sqlite_orm {
             using node_type = negated_condition_t<C>;
 
             template<class L>
-            void operator()(const node_type& neg, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& neg, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(neg.c, lambda);
             }
         };
@@ -15899,7 +16052,7 @@ namespace sqlite_orm {
             using node_type = is_null_t<T>;
 
             template<class L>
-            void operator()(const node_type& i, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& i, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(i.t, lambda);
             }
         };
@@ -15909,7 +16062,7 @@ namespace sqlite_orm {
             using node_type = is_not_null_t<T>;
 
             template<class L>
-            void operator()(const node_type& i, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& i, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(i.t, lambda);
             }
         };
@@ -15919,7 +16072,7 @@ namespace sqlite_orm {
             using node_type = function_call<F, CallArgs...>;
 
             template<class L>
-            void operator()(const node_type& f, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& f, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(f.callArgs, lambda);
             }
         };
@@ -15929,7 +16082,7 @@ namespace sqlite_orm {
             using node_type = built_in_function_t<R, S, Args...>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.args, lambda);
             }
         };
@@ -15939,7 +16092,7 @@ namespace sqlite_orm {
             using node_type = built_in_aggregate_function_t<R, S, Args...>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.args, lambda);
             }
         };
@@ -15949,7 +16102,7 @@ namespace sqlite_orm {
             using node_type = filtered_aggregate_function<F, W>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.function, lambda);
                 iterate_ast(node.where, lambda);
             }
@@ -15960,7 +16113,7 @@ namespace sqlite_orm {
             using node_type = Join;
 
             template<class L>
-            void operator()(const node_type& join, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& join, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(join.constraint, lambda);
             }
         };
@@ -15970,7 +16123,7 @@ namespace sqlite_orm {
             using node_type = on_t<T>;
 
             template<class L>
-            void operator()(const node_type& on, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& on, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(on.arg, lambda);
             }
         };
@@ -15982,7 +16135,7 @@ namespace sqlite_orm {
             using node_type = T;
 
             template<class L>
-            void operator()(const node_type& o, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& o, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(o.column, lambda);
             }
         };
@@ -15992,7 +16145,7 @@ namespace sqlite_orm {
             using node_type = simple_case_t<R, T, E, Args...>;
 
             template<class L>
-            void operator()(const node_type& c, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& c, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 c.case_expression.apply([&lambda](auto& c_) {
                     iterate_ast(c_, lambda);
                 });
@@ -16011,7 +16164,7 @@ namespace sqlite_orm {
             using node_type = as_t<T, E>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.expression, lambda);
             }
         };
@@ -16021,7 +16174,7 @@ namespace sqlite_orm {
             using node_type = limit_t<T, false, OI, void>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.limit, lambda);
             }
         };
@@ -16031,7 +16184,7 @@ namespace sqlite_orm {
             using node_type = limit_t<T, true, false, O>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.limit, lambda);
                 node.offset.apply([&lambda](auto& value) {
                     iterate_ast(value, lambda);
@@ -16044,7 +16197,7 @@ namespace sqlite_orm {
             using node_type = limit_t<T, true, true, O>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 node.offset.apply([&lambda](auto& value) {
                     iterate_ast(value, lambda);
                 });
@@ -16057,7 +16210,7 @@ namespace sqlite_orm {
             using node_type = distinct_t<T>;
 
             template<class L>
-            void operator()(const node_type& a, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& a, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(a.expression, lambda);
             }
         };
@@ -16067,7 +16220,7 @@ namespace sqlite_orm {
             using node_type = all_t<T>;
 
             template<class L>
-            void operator()(const node_type& a, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& a, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(a.expression, lambda);
             }
         };
@@ -16077,7 +16230,7 @@ namespace sqlite_orm {
             using node_type = bitwise_not_t<T>;
 
             template<class L>
-            void operator()(const node_type& a, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& a, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(a.argument, lambda);
             }
         };
@@ -16087,7 +16240,7 @@ namespace sqlite_orm {
             using node_type = values_t<Args...>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.tuple, lambda);
             }
         };
@@ -16097,7 +16250,7 @@ namespace sqlite_orm {
             using node_type = dynamic_values_t<T>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.vector, lambda);
             }
         };
@@ -16113,7 +16266,8 @@ namespace sqlite_orm {
             using node_type = T;
 
             template<class L>
-            void operator()(const node_type& /*node*/, L& /*lambda*/) const {}
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& /*node*/,
+                                                     L& /*lambda*/) SQLITE_ORM_OR_CONST_CALLOP {}
         };
 
         template<class E>
@@ -16121,7 +16275,7 @@ namespace sqlite_orm {
             using node_type = order_by_t<E>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node._expression, lambda);
             }
         };
@@ -16131,7 +16285,7 @@ namespace sqlite_orm {
             using node_type = multi_order_by_t<Args...>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.args, lambda);
             }
         };
@@ -16141,7 +16295,7 @@ namespace sqlite_orm {
             using node_type = collate_t<T>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.expr, lambda);
             }
         };
@@ -16183,14 +16337,6 @@ namespace sqlite_orm {
 
             mapped_view(storage_type& storage, connection_ref conn, Args&&... args) :
                 storage(storage), connection(std::move(conn)), expression{{std::forward<Args>(args)...}} {}
-
-            size_t size() const {
-                return this->storage.template count<T>();
-            }
-
-            bool empty() const {
-                return !this->size();
-            }
 
             mapped_iterator<T, db_objects_type> begin() {
                 using context_t = serializer_context<db_objects_type>;
@@ -16313,7 +16459,7 @@ namespace sqlite_orm::internal {
 
       private:
         void step() {
-            perform_step(this->stmt.get(), [](sqlite3_stmt*) {});
+            perform_step(this->stmt.get(), [](sqlite3_stmt*) SQLITE_ORM_STATIC_CALLOP {});
         }
 
         value_type extract() const {
@@ -16477,6 +16623,8 @@ namespace sqlite_orm {
 #include <iomanip>  //  std::flush
 #endif
 
+// #include "functional/gsl.h"
+
 // #include "error_code.h"
 
 // #include "row_extractor.h"
@@ -16503,6 +16651,8 @@ namespace sqlite_orm {
 // #include "functional/cxx_type_traits_polyfill.h"
 // std::remove_cvref, polyfill::is_detected
 // #include "functional/cxx_functional_polyfill.h"
+
+// #include "functional/gsl.h"
 
 // #include "tuple_helper/tuple_iteration.h"
 
@@ -16579,6 +16729,15 @@ namespace sqlite_orm {
             return stream_identifier(ss, "", identifier, "");
         }
 
+#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+        template<typename Tpl>
+            requires polyfill::is_detected_v<type_t, std::tuple_size<Tpl>>
+        void stream_identifier(std::ostream& ss, const Tpl& tpl) {
+            auto& [... elements] = tpl;
+            static_assert(sizeof...(elements) > 0 && sizeof...(elements) <= 3);
+            return stream_identifier(ss, elements...);
+        }
+#else
         template<typename Tpl, size_t... Is>
         void stream_identifier(std::ostream& ss, const Tpl& tpl, std::index_sequence<Is...>) {
             static_assert(sizeof...(Is) > 0 && sizeof...(Is) <= 3, "");
@@ -16590,6 +16749,7 @@ namespace sqlite_orm {
         void stream_identifier(std::ostream& ss, const Tpl& tpl) {
             return stream_identifier(ss, tpl, std::make_index_sequence<std::tuple_size<Tpl>::value>{});
         }
+#endif
 
         enum class stream_as {
             conditions_tuple,
@@ -16617,7 +16777,8 @@ namespace sqlite_orm {
             }
 
             template<size_t... Idx>
-            constexpr std::index_sequence<1u + Idx...> offset_index(std::index_sequence<Idx...>) const {
+            SQLITE_ORM_STATIC_CALLOP constexpr std::index_sequence<1u + Idx...>
+            offset_index(std::index_sequence<Idx...>) SQLITE_ORM_OR_CONST_CALLOP {
                 return {};
             }
         };
@@ -16659,7 +16820,7 @@ namespace sqlite_orm {
             auto& context = std::get<2>(tpl);
 
             iterate_tuple(actions, [&ss, &context, first = true](auto& action) mutable {
-                static constexpr std::array<const char*, 2> sep = {" ", ""};
+                static constexpr std::array<orm_gsl::czstring, 2> sep = {" ", ""};
                 ss << sep[std::exchange(first, false)] << serialize(action, context);
             });
             return ss;
@@ -16674,7 +16835,7 @@ namespace sqlite_orm {
             auto& context = std::get<2>(tpl);
 
             iterate_tuple(args, [&ss, &context, first = true](auto& arg) mutable {
-                static constexpr std::array<const char*, 2> sep = {", ", ""};
+                static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)] << serialize(arg, context);
             });
             return ss;
@@ -16709,7 +16870,7 @@ namespace sqlite_orm {
             auto& context = std::get<2>(tpl);
 
             iterate_tuple(args, [&ss, &context, first = true](auto& arg) mutable {
-                static constexpr std::array<const char*, 2> sep = {", ", ""};
+                static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)] << serialize_order_by(arg, context);
             });
             return ss;
@@ -16723,7 +16884,7 @@ namespace sqlite_orm {
             const auto& args = std::get<1>(tpl);
             auto& context = std::get<2>(tpl);
 
-            static constexpr std::array<const char*, 2> sep = {", ", ""};
+            static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
             bool first = true;
             for (auto& argument: args) {
                 ss << sep[std::exchange(first, false)] << serialize(argument, context);
@@ -16737,7 +16898,7 @@ namespace sqlite_orm {
         std::ostream& operator<<(std::ostream& ss, std::tuple<const streaming<stream_as::serialized>&, C> tpl) {
             const auto& strings = std::get<1>(tpl);
 
-            static constexpr std::array<const char*, 2> sep = {", ", ""};
+            static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
 #ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
             for (bool first = true; auto& s: strings) {
                 ss << sep[std::exchange(first, false)] << s;
@@ -16772,7 +16933,7 @@ namespace sqlite_orm {
         std::ostream& operator<<(std::ostream& ss, std::tuple<const streaming<stream_as::identifiers>&, C> tpl) {
             const auto& identifiers = std::get<1>(tpl);
 
-            static constexpr std::array<const char*, 2> sep = {", ", ""};
+            static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
             bool first = true;
             for (auto& identifier: identifiers) {
                 ss << sep[std::exchange(first, false)];
@@ -16795,7 +16956,7 @@ namespace sqlite_orm {
             std::string result;
             result.reserve((1 + (columnsCount * 1) + (columnsCount * 2 - 2) + 1) * valuesCount + (valuesCount * 2 - 2));
 
-            static constexpr std::array<const char*, 2> sep = {", ", ""};
+            static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
             for (ptrdiff_t i = 0, first = true; i < valuesCount; ++i) {
                 result += sep[std::exchange(first, false)];
                 result += "(";
@@ -16819,7 +16980,7 @@ namespace sqlite_orm {
             const std::string& qualifier = std::get<2>(tpl);
 
             table.for_each_column([&ss, &qualifier, first = true](const column_identifier& column) mutable {
-                static constexpr std::array<const char*, 2> sep = {", ", ""};
+                static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)];
                 stream_identifier(ss, qualifier, column.name, std::string{});
             });
@@ -16835,7 +16996,7 @@ namespace sqlite_orm {
 
             table.template for_each_column_excluding<is_generated_always>(
                 [&ss, first = true](const column_identifier& column) mutable {
-                    static constexpr std::array<const char*, 2> sep = {", ", ""};
+                    static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                     ss << sep[std::exchange(first, false)];
                     stream_identifier(ss, column.name);
                 });
@@ -16861,7 +17022,7 @@ namespace sqlite_orm {
                         return;
                     }
 
-                    static constexpr std::array<const char*, 2> sep = {", ", ""};
+                    static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                     ss << sep[std::exchange(first, false)]
                        << serialize(polyfill::invoke(column.member_pointer, object), context);
                 }));
@@ -16882,7 +17043,7 @@ namespace sqlite_orm {
                     throw std::system_error{orm_error_code::column_not_found};
                 }
 
-                static constexpr std::array<const char*, 2> sep = {", ", ""};
+                static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)];
                 stream_identifier(ss, *columnName);
             });
@@ -16945,12 +17106,13 @@ namespace sqlite_orm {
         struct sqlite_executor;
 
         template<class T>
-        int getPragmaCallback(void* data, int argc, char** argv, char** x) {
+        int getPragmaCallback(void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring* x) {
             return extract_single_value<T>(data, argc, argv, x);
         }
 
         template<>
-        inline int getPragmaCallback<std::vector<std::string>>(void* data, int argc, char** argv, char**) {
+        inline int
+        getPragmaCallback<std::vector<std::string>>(void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring*) {
             auto& res = *(std::vector<std::string>*)data;
             res.reserve(argc);
             const auto rowExtractor = column_text_extractor<std::string>();
@@ -17089,7 +17251,7 @@ namespace sqlite_orm {
                 this->executor.perform_exec(
                     connection.get(),
                     sql,
-                    [](void* data, int argc, char** argv, char**) -> int {
+                    [](void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring*) -> int {
                         auto& res = *(std::vector<sqlite_orm::table_xinfo>*)data;
                         if (argc) {
                             auto index = 0;
@@ -17130,7 +17292,7 @@ namespace sqlite_orm {
                 this->executor.perform_exec(
                     connection.get(),
                     sql,
-                    [](void* data, int argc, char** argv, char**) -> int {
+                    [](void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring*) -> int {
                         auto& res = *(std::vector<sqlite_orm::table_info>*)data;
                         if (argc) {
                             auto index = 0;
@@ -17527,6 +17689,8 @@ namespace sqlite_orm {
 
 #include <sqlite3.h>
 
+// #include "error_code.h"
+
 // #include "row_extractor.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -17681,23 +17845,24 @@ namespace sqlite_orm {
         template<class Tpl>
         struct tuple_from_values {
             template<class R = Tpl, satisfies_not<std::is_same, R, std::tuple<arg_values>> = true>
-            R operator()(sqlite3_value** values, int /*argsCount*/) const {
-                return this->create_from(values, std::make_index_sequence<std::tuple_size<Tpl>::value>{});
+            SQLITE_ORM_STATIC_CALLOP R operator()(sqlite3_value** values,
+                                                  int /*argsCount*/) SQLITE_ORM_OR_CONST_CALLOP {
+                return tuple_from_values::create_from(values, std::make_index_sequence<std::tuple_size<Tpl>::value>{});
             }
 
             template<class R = Tpl, satisfies<std::is_same, R, std::tuple<arg_values>> = true>
-            R operator()(sqlite3_value** values, int argsCount) const {
+            SQLITE_ORM_STATIC_CALLOP R operator()(sqlite3_value** values, int argsCount) SQLITE_ORM_OR_CONST_CALLOP {
                 return {arg_values(argsCount, values)};
             }
 
           private:
             template<size_t... Idx>
-            Tpl create_from(sqlite3_value** values, std::index_sequence<Idx...>) const {
-                return {this->extract<std::tuple_element_t<Idx, Tpl>>(values[Idx])...};
+            static Tpl create_from(sqlite3_value** values, std::index_sequence<Idx...>) {
+                return {tuple_from_values::extract<std::tuple_element_t<Idx, Tpl>>(values[Idx])...};
             }
 
             template<class T>
-            T extract(sqlite3_value* value) const {
+            static T extract(sqlite3_value* value) {
                 const auto rowExtractor = boxed_value_extractor<T>();
                 return rowExtractor.extract(value);
             }
@@ -17737,7 +17902,7 @@ namespace sqlite_orm {
             std::allocator<UDF> allocator;
             using traits = std::allocator_traits<decltype(allocator)>;
 
-            constexpr auto deallocate = [](void* location) noexcept {
+            constexpr auto deallocate = [](void* location) SQLITE_ORM_STATIC_CALLOP noexcept {
                 std::allocator<UDF> allocator;
                 using traits = std::allocator_traits<decltype(allocator)>;
                 traits::deallocate(allocator, (UDF*)location, 1);
@@ -17751,13 +17916,13 @@ namespace sqlite_orm {
          */
         template<class UDF>
         std::pair<void* (*)(), xdestroy_fn_t> obtain_udf_allocator() {
-            constexpr auto allocate = []() {
+            constexpr auto allocate = []() SQLITE_ORM_STATIC_CALLOP {
                 std::allocator<UDF> allocator;
                 using traits = std::allocator_traits<decltype(allocator)>;
                 return (void*)traits::allocate(allocator, 1);
             };
 
-            constexpr auto deallocate = [](void* location) noexcept {
+            constexpr auto deallocate = [](void* location) SQLITE_ORM_STATIC_CALLOP noexcept {
                 std::allocator<UDF> allocator;
                 using traits = std::allocator_traits<decltype(allocator)>;
                 traits::deallocate(allocator, (UDF*)location, 1);
@@ -17771,7 +17936,7 @@ namespace sqlite_orm {
          */
         struct udf_destruct_only_deleter {
             template<class UDF>
-            void operator()(UDF* f) const noexcept {
+            SQLITE_ORM_STATIC_CALLOP void operator()(UDF* f) SQLITE_ORM_OR_CONST_CALLOP noexcept {
                 std::allocator<UDF> allocator;
                 using traits = std::allocator_traits<decltype(allocator)>;
                 traits::destroy(allocator, f);
@@ -18093,7 +18258,7 @@ namespace sqlite_orm {
                 this->executor.perform_exec(
                     db,
                     sql,
-                    [](void* data, int argc, char** argv, char** /*azColName*/) -> int {
+                    [](void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring* /*azColName*/) -> int {
                         auto& res = *(bool*)data;
                         if (argc) {
                             res = !!atoi(argv[0]);
@@ -18197,7 +18362,7 @@ namespace sqlite_orm {
                 this->executor.perform_exec(
                     connection.get(),
                     "SELECT name FROM sqlite_master WHERE type='table'",
-                    [](void* data, int argc, char** argv, char** /*columnName*/) -> int {
+                    [](void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring* /*columnName*/) -> int {
                         auto& tableNames_ = *(data_t*)data;
                         for (int i = 0; i < argc; ++i) {
                             if (argv[i]) {
@@ -18443,10 +18608,11 @@ namespace sqlite_orm {
 
             template<class C>
             void create_collation() {
-                collating_function func = [](int leftLength, const void* lhs, int rightLength, const void* rhs) {
-                    C collatingObject;
-                    return collatingObject(leftLength, lhs, rightLength, rhs);
-                };
+                collating_function func = [](int leftLength, const void* lhs, int rightLength, const void* rhs)
+                                              SQLITE_ORM_STATIC_CALLOP {
+                                                  C collatingObject;
+                                                  return collatingObject(leftLength, lhs, rightLength, rhs);
+                                              };
                 std::stringstream ss;
                 ss << C::name() << std::flush;
                 this->create_collation(ss.str(), std::move(func));
@@ -19064,7 +19230,7 @@ namespace sqlite_orm {
         struct get_ref_t {
 
             template<class O>
-            auto& operator()(O& t) const {
+            SQLITE_ORM_STATIC_CALLOP auto& operator()(O& t) SQLITE_ORM_OR_CONST_CALLOP {
                 return t;
             }
         };
@@ -19073,7 +19239,7 @@ namespace sqlite_orm {
         struct get_ref_t<std::reference_wrapper<T>> {
 
             template<class O>
-            auto& operator()(O& t) const {
+            SQLITE_ORM_STATIC_CALLOP auto& operator()(O& t) SQLITE_ORM_OR_CONST_CALLOP {
                 return t.get();
             }
         };
@@ -19103,7 +19269,7 @@ namespace sqlite_orm {
             using expression_type = replace_t<T>;
 
             template<class O>
-            auto& operator()(O& e) const {
+            SQLITE_ORM_STATIC_CALLOP auto& operator()(O& e) SQLITE_ORM_OR_CONST_CALLOP {
                 return get_ref(e.object);
             }
         };
@@ -19113,7 +19279,7 @@ namespace sqlite_orm {
             using expression_type = insert_t<T>;
 
             template<class O>
-            auto& operator()(O& e) const {
+            SQLITE_ORM_STATIC_CALLOP auto& operator()(O& e) SQLITE_ORM_OR_CONST_CALLOP {
                 return get_ref(e.object);
             }
         };
@@ -19123,7 +19289,7 @@ namespace sqlite_orm {
             using expression_type = update_t<T>;
 
             template<class O>
-            auto& operator()(O& e) const {
+            SQLITE_ORM_STATIC_CALLOP auto& operator()(O& e) SQLITE_ORM_OR_CONST_CALLOP {
                 return get_ref(e.object);
             }
         };
@@ -19153,6 +19319,8 @@ namespace sqlite_orm {
 // std::remove_cvref, std::disjunction
 // #include "functional/cxx_functional_polyfill.h"
 // std::identity, std::invoke
+// #include "functional/gsl.h"
+
 // #include "functional/always_default.h"
 
 namespace sqlite_orm {
@@ -19165,7 +19333,7 @@ namespace sqlite_orm {
         template<class R>
         struct always_default_of {
             template<class... Args>
-            constexpr R operator()(Args&&...) const {
+            SQLITE_ORM_STATIC_CALLOP constexpr R operator()(Args&&...) SQLITE_ORM_OR_CONST_CALLOP {
                 return R();
             }
 
@@ -19438,7 +19606,8 @@ namespace sqlite_orm {
             static_assert(!is_compound_operator_v<T>);
 
             template<class Ctx>
-            std::vector<std::string> operator()(const expression_type& t, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::vector<std::string>
+            operator()(const expression_type& t, const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 auto newContext = context;
                 newContext.skip_table_name = true;
                 std::string columnName = serialize(t, newContext);
@@ -19461,7 +19630,8 @@ namespace sqlite_orm {
             using expression_type = As;
 
             template<class Ctx>
-            std::vector<std::string> operator()(const expression_type& /*expression*/, const Ctx& /*context*/) const {
+            SQLITE_ORM_STATIC_CALLOP std::vector<std::string>
+            operator()(const expression_type& /*expression*/, const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
                 return {alias_extractor<alias_type_t<As>>::extract()};
             }
         };
@@ -19471,7 +19641,8 @@ namespace sqlite_orm {
             using expression_type = Wrapper;
 
             template<class Ctx>
-            std::vector<std::string> operator()(const expression_type& expression, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::vector<std::string>
+            operator()(const expression_type& expression, const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 return get_cte_column_names(expression.get(), context);
             }
         };
@@ -19482,7 +19653,8 @@ namespace sqlite_orm {
             using T = typename Asterisk::type;
 
             template<class Ctx>
-            std::vector<std::string> operator()(const expression_type&, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::vector<std::string>
+            operator()(const expression_type&, const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 auto& table = pick_table<T>(context.db_objects);
 
                 std::vector<std::string> columnNames;
@@ -19512,7 +19684,8 @@ namespace sqlite_orm {
             using expression_type = Columns;
 
             template<class Ctx>
-            std::vector<std::string> operator()(const expression_type& cols, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::vector<std::string>
+            operator()(const expression_type& cols, const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::vector<std::string> columnNames;
                 columnNames.reserve(size_t(cols.count));
                 auto newContext = context;
@@ -19613,6 +19786,8 @@ namespace sqlite_orm {
 #include <utility>  //  std::exchange
 #endif
 
+// #include "functional/gsl.h"
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -19645,7 +19820,8 @@ namespace sqlite_orm {
             using statement_type = order_by_t<O>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& orderBy, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 auto newContext = context;
                 newContext.skip_table_name = false;
@@ -19661,10 +19837,11 @@ namespace sqlite_orm {
             using statement_type = dynamic_order_by_t<C>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& orderBy, const Ctx&) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
+                                                            const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << static_cast<std::string>(orderBy) << " ";
-                static constexpr std::array<const char*, 2> sep = {", ", ""};
+                static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
 #ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
                 for (bool first = true; const dynamic_order_by_entry_t& entry: orderBy) {
                     ss << sep[std::exchange(first, false)] << entry.name;
@@ -20008,11 +20185,12 @@ namespace sqlite_orm {
             using statement_type = T;
 
             template<class Ctx>
-            std::string operator()(const T& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const T& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 if (context.replace_bindable_with_question) {
                     return "?";
                 } else {
-                    return this->do_serialize(statement);
+                    return statement_serializer::do_serialize(statement);
                 }
             }
 
@@ -20024,38 +20202,38 @@ namespace sqlite_orm {
 #endif
                                       ,
                                       bool> = true>
-            std::string do_serialize(const X& c) const {
+            static std::string do_serialize(const X& c) {
                 static_assert(std::is_same<X, T>::value, "");
 
                 // implementation detail: utilizing field_printer
                 return field_printer<X>{}(c);
             }
 
-            std::string do_serialize(const std::string& c) const {
+            static std::string do_serialize(const std::string& c) {
                 // implementation detail: utilizing field_printer
                 return quote_string_literal(field_printer<std::string>{}(c));
             }
 
-            std::string do_serialize(const char* c) const {
+            static std::string do_serialize(orm_gsl::czstring c) {
                 return quote_string_literal(c);
             }
 #ifndef SQLITE_ORM_OMITS_CODECVT
-            std::string do_serialize(const std::wstring& c) const {
+            static std::string do_serialize(const std::wstring& c) {
                 // implementation detail: utilizing field_printer
                 return quote_string_literal(field_printer<std::wstring>{}(c));
             }
 
-            std::string do_serialize(const wchar_t* c) const {
+            static std::string do_serialize(const wchar_t* c) {
                 std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
                 return quote_string_literal(converter.to_bytes(c));
             }
 #endif
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-            std::string do_serialize(const std::string_view& c) const {
+            static std::string do_serialize(const std::string_view& c) {
                 return quote_string_literal(std::string(c));
             }
 #ifndef SQLITE_ORM_OMITS_CODECVT
-            std::string do_serialize(const std::wstring_view& c) const {
+            static std::string do_serialize(const std::wstring_view& c) {
                 std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
                 return quote_string_literal(converter.to_bytes(c.data(), c.data() + c.size()));
             }
@@ -20064,13 +20242,13 @@ namespace sqlite_orm {
             /**
              *  Specialization for binary data (std::vector<char>).
              */
-            std::string do_serialize(const std::vector<char>& t) const {
+            static std::string do_serialize(const std::vector<char>& t) {
                 return quote_blob_literal(field_printer<std::vector<char>>{}(t));
             }
 
 #if SQLITE_VERSION_NUMBER >= 3020000
             template<class P, class PT, class D>
-            std::string do_serialize(const pointer_binding<P, PT, D>&) const {
+            static std::string do_serialize(const pointer_binding<P, PT, D>&) {
                 // always serialize null (security reasons)
                 return field_printer<std::nullptr_t>{}(nullptr);
             }
@@ -20082,12 +20260,14 @@ namespace sqlite_orm {
             using statement_type = table_t<O, WithoutRowId, Cs...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) {
-                return this->serialize(statement, context, statement.name);
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+                return statement_serializer::serialize(statement, context, statement.name);
             }
 
             template<class Ctx>
-            auto serialize(const statement_type& statement, const Ctx& context, const std::string& tableName) {
+            static std::string
+            serialize(const statement_type& statement, const Ctx& context, const std::string& tableName) {
                 std::stringstream ss;
                 ss << "CREATE TABLE " << streaming_identifier(tableName) << " ("
                    << streaming_expressions_tuple(statement.elements, context) << ")";
@@ -20103,7 +20283,8 @@ namespace sqlite_orm {
             using statement_type = current_time_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& /*statement*/,
+                                                            const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
                 return "CURRENT_TIME";
             }
         };
@@ -20113,7 +20294,8 @@ namespace sqlite_orm {
             using statement_type = current_date_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& /*statement*/,
+                                                            const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
                 return "CURRENT_DATE";
             }
         };
@@ -20123,7 +20305,8 @@ namespace sqlite_orm {
             using statement_type = current_timestamp_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& /*statement*/, const Ctx& /*context*/) {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& /*statement*/,
+                                                            const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
                 return "CURRENT_TIMESTAMP";
             }
         };
@@ -20133,7 +20316,8 @@ namespace sqlite_orm {
             using statement_type = highlight_t<T, X, Y, Z>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 auto& tableName = lookup_table_name<T>(context.db_objects);
                 ss << "HIGHLIGHT (" << streaming_identifier(tableName);
@@ -20152,7 +20336,8 @@ namespace sqlite_orm {
             using statement_type = T;
 
             template<class Ctx>
-            std::string operator()(const statement_type& literal, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& literal,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 static_assert(is_bindable_v<type_t<statement_type>>, "A literal value must be also bindable");
 
                 Ctx literalCtx = context;
@@ -20167,7 +20352,8 @@ namespace sqlite_orm {
             using statement_type = filtered_aggregate_function<F, W>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << serialize(statement.function, context);
                 ss << " FILTER (WHERE " << serialize(statement.where, context) << ")";
@@ -20180,7 +20366,8 @@ namespace sqlite_orm {
             using statement_type = excluded_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << "excluded.";
                 if (auto* columnName = find_column_name(context.db_objects, statement.expression)) {
@@ -20197,7 +20384,8 @@ namespace sqlite_orm {
             using statement_type = as_optional_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 return serialize(statement.expression, context);
             }
         };
@@ -20207,7 +20395,8 @@ namespace sqlite_orm {
             using statement_type = std::reference_wrapper<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& s, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& s,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 return serialize(s.get(), context);
             }
         };
@@ -20217,7 +20406,8 @@ namespace sqlite_orm {
             using statement_type = alias_holder<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type&, const Ctx&) {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type&,
+                                                            const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << streaming_identifier(T::get());
                 return ss.str();
@@ -20229,7 +20419,8 @@ namespace sqlite_orm {
             using statement_type = match_t<T, X>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 auto& table = pick_table<T>(context.db_objects);
                 std::stringstream ss;
                 ss << streaming_identifier(table.name) << " MATCH " << serialize(statement.argument, context);
@@ -20242,7 +20433,8 @@ namespace sqlite_orm {
             using statement_type = column_alias<C...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type&, const Ctx&) {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type&,
+                                                            const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << streaming_identifier(statement_type::get());
                 return ss.str();
@@ -20254,7 +20446,8 @@ namespace sqlite_orm {
             using statement_type = T;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << "ON CONFLICT";
                 iterate_tuple(statement.target_args, [&ss, &context](auto& value) {
@@ -20286,7 +20479,8 @@ namespace sqlite_orm {
             using statement_type = built_in_function_t<R, S, Args...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << statement.serialize() << "(" << streaming_expressions_tuple(statement.args, context) << ")";
                 return ss.str();
@@ -20302,7 +20496,8 @@ namespace sqlite_orm {
             using statement_type = function_call<F, CallArgs...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 stream_identifier(ss, "", statement.name(), "");
                 ss << "(" << streaming_expressions_tuple(statement.callArgs, context) << ")";
@@ -20315,7 +20510,8 @@ namespace sqlite_orm {
             using statement_type = as_t<T, E>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << serialize(c.expression, context) + " AS " << streaming_identifier(alias_extractor<T>::extract());
                 return ss.str();
@@ -20327,7 +20523,8 @@ namespace sqlite_orm {
             using statement_type = alias_column_t<T, P>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 if (!context.skip_table_name) {
                     ss << streaming_identifier(alias_extractor<T>::extract()) << ".";
@@ -20346,7 +20543,8 @@ namespace sqlite_orm {
             using statement_type = E;
 
             template<class Ctx>
-            std::string operator()(const statement_type& e, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& e,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 if (auto* columnName = find_column_name(context.db_objects, e)) {
                     ss << streaming_identifier(
@@ -20365,7 +20563,8 @@ namespace sqlite_orm {
             using statement_type = rank_t;
 
             template<class Ctx>
-            serialize_result_type operator()(const statement_type& /*statement*/, const Ctx&) const {
+            SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& /*statement*/,
+                                                                      const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
                 return "rank";
             }
         };
@@ -20375,7 +20574,8 @@ namespace sqlite_orm {
             using statement_type = rowid_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx&) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
                 return static_cast<std::string>(statement);
             }
         };
@@ -20385,7 +20585,8 @@ namespace sqlite_orm {
             using statement_type = oid_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx&) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
                 return static_cast<std::string>(statement);
             }
         };
@@ -20395,7 +20596,8 @@ namespace sqlite_orm {
             using statement_type = _rowid_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx&) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
                 return static_cast<std::string>(statement);
             }
         };
@@ -20405,7 +20607,8 @@ namespace sqlite_orm {
             using statement_type = table_rowid_t<O>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 if (!context.skip_table_name) {
                     ss << streaming_identifier(lookup_table_name<O>(context.db_objects)) << ".";
@@ -20420,7 +20623,8 @@ namespace sqlite_orm {
             using statement_type = table_oid_t<O>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 if (!context.skip_table_name) {
                     ss << streaming_identifier(lookup_table_name<O>(context.db_objects)) << ".";
@@ -20435,7 +20639,8 @@ namespace sqlite_orm {
             using statement_type = table__rowid_t<O>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 if (!context.skip_table_name) {
                     ss << streaming_identifier(lookup_table_name<O>(context.db_objects)) << ".";
@@ -20450,7 +20655,8 @@ namespace sqlite_orm {
             using statement_type = is_equal_with_table_t<L, R>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 const auto tableName = lookup_table_name<L>(context.db_objects);
                 ss << streaming_identifier(tableName);
@@ -20465,7 +20671,8 @@ namespace sqlite_orm {
             using statement_type = count_asterisk_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type&, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type&,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 return serialize(count_asterisk_without_type{}, context);
             }
         };
@@ -20475,7 +20682,8 @@ namespace sqlite_orm {
             using statement_type = count_asterisk_without_type;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx&) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
+                                                            const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 auto functionName = c.serialize();
                 ss << functionName << "(*)";
@@ -20490,7 +20698,8 @@ namespace sqlite_orm {
             using statement_type = distinct_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 // DISTINCT introduces no parentheses
                 auto subCtx = context;
                 subCtx.use_parentheses = false;
@@ -20507,7 +20716,8 @@ namespace sqlite_orm {
             using statement_type = cast_t<T, E>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << "CAST (";
                 ss << serialize(c.expression, context) << " AS " << type_printer<T>().print() << ")";
@@ -20523,7 +20733,8 @@ namespace sqlite_orm {
             using statement_type = materialized_t;
 
             template<class Ctx>
-            std::string_view operator()(const statement_type& /*statement*/, const Ctx& /*context*/) const {
+            SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& /*statement*/,
+                                                                 const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
                 return "MATERIALIZED";
             }
         };
@@ -20533,7 +20744,8 @@ namespace sqlite_orm {
             using statement_type = not_materialized_t;
 
             template<class Ctx>
-            std::string_view operator()(const statement_type& /*statement*/, const Ctx& /*context*/) const {
+            SQLITE_ORM_STATIC_CALLOP std::string_view operator()(const statement_type& /*statement*/,
+                                                                 const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
                 return "NOT MATERIALIZED";
             }
         };
@@ -20545,7 +20757,8 @@ namespace sqlite_orm {
             using statement_type = CTE;
 
             template<class Ctx>
-            std::string operator()(const statement_type& cte, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& cte,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 // A CTE always starts a new 'highest level' context
                 Ctx cteContext = context;
                 cteContext.use_parentheses = false;
@@ -20570,7 +20783,8 @@ namespace sqlite_orm {
             using statement_type = With;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 Ctx tupleContext = context;
                 tupleContext.use_parentheses = false;
 
@@ -20591,7 +20805,8 @@ namespace sqlite_orm {
             using statement_type = T;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << streaming_compound_expressions(c.compound, static_cast<std::string>(c), context);
                 return ss.str();
@@ -20603,7 +20818,8 @@ namespace sqlite_orm {
             using statement_type = simple_case_t<R, T, E, Args...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << "CASE ";
                 c.case_expression.apply([&ss, context](auto& c_) {
@@ -20626,7 +20842,8 @@ namespace sqlite_orm {
             using statement_type = is_null_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << serialize(c.t, context) << " " << static_cast<std::string>(c);
                 return ss.str();
@@ -20638,7 +20855,8 @@ namespace sqlite_orm {
             using statement_type = is_not_null_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << serialize(c.t, context) << " " << static_cast<std::string>(c);
                 return ss.str();
@@ -20653,7 +20871,8 @@ namespace sqlite_orm {
             using statement_type = T;
 
             template<class Ctx>
-            std::string operator()(const statement_type& expression, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& expression,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 // subqueries should always use parentheses in binary expressions
                 auto subCtx = context;
                 subCtx.use_parentheses = true;
@@ -20679,7 +20898,8 @@ namespace sqlite_orm {
             using statement_type = negated_condition_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& expression, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& expression,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 // subqueries should always use parentheses in binary expressions
                 auto subCtx = context;
                 subCtx.use_parentheses = true;
@@ -20707,7 +20927,8 @@ namespace sqlite_orm {
             using statement_type = T;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 // subqueries should always use parentheses in binary expressions
                 auto subCtx = context;
                 subCtx.use_parentheses = true;
@@ -20742,7 +20963,8 @@ namespace sqlite_orm {
             using statement_type = named_collate<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 auto newContext = context;
                 newContext.use_parentheses = false;
                 auto res = serialize(c.expr, newContext);
@@ -20755,7 +20977,8 @@ namespace sqlite_orm {
             using statement_type = collate_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 auto newContext = context;
                 newContext.use_parentheses = false;
                 auto res = serialize(c.expr, newContext);
@@ -20771,7 +20994,8 @@ namespace sqlite_orm {
             using statement_type = dynamic_in_t<L, C>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 auto leftString = serialize(statement.left, context);
                 ss << leftString << " ";
@@ -20802,7 +21026,8 @@ namespace sqlite_orm {
             using statement_type = dynamic_in_t<L, C>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 auto leftString = serialize(statement.left, context);
                 ss << leftString << " ";
@@ -20821,7 +21046,8 @@ namespace sqlite_orm {
             using statement_type = in_t<L, Args...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 auto leftString = serialize(statement.left, context);
                 ss << leftString << " ";
@@ -20850,7 +21076,8 @@ namespace sqlite_orm {
             using statement_type = like_t<A, T, E>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << serialize(c.arg, context) << " ";
                 ss << static_cast<std::string>(c) << " ";
@@ -20867,7 +21094,8 @@ namespace sqlite_orm {
             using statement_type = glob_t<A, T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << serialize(c.arg, context) << " ";
                 ss << static_cast<std::string>(c) << " ";
@@ -20881,7 +21109,8 @@ namespace sqlite_orm {
             using statement_type = between_t<A, T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 auto expr = serialize(c.expr, context);
                 ss << expr << " " << static_cast<std::string>(c) << " ";
@@ -20897,7 +21126,8 @@ namespace sqlite_orm {
             using statement_type = exists_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 auto newContext = context;
                 newContext.use_parentheses = true;
@@ -20911,7 +21141,8 @@ namespace sqlite_orm {
             using statement_type = conflict_clause_t;
 
             template<class Ctx>
-            serialize_result_type operator()(const statement_type& statement, const Ctx&) const {
+            SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& statement,
+                                                                      const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
                 switch (statement) {
                     case conflict_clause_t::rollback:
                         return "ROLLBACK";
@@ -20933,7 +21164,8 @@ namespace sqlite_orm {
             using statement_type = primary_key_with_autoincrement<PK>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 return serialize(statement.as_base(), context) + " AUTOINCREMENT";
             }
         };
@@ -20943,7 +21175,8 @@ namespace sqlite_orm {
             using statement_type = null_t;
 
             template<class Ctx>
-            serialize_result_type operator()(const statement_type& /*statement*/, const Ctx& /*context*/) const {
+            SQLITE_ORM_STATIC_CALLOP serialize_result_type
+            operator()(const statement_type& /*statement*/, const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
                 return "NULL";
             }
         };
@@ -20953,7 +21186,8 @@ namespace sqlite_orm {
             using statement_type = not_null_t;
 
             template<class Ctx>
-            serialize_result_type operator()(const statement_type& /*statement*/, const Ctx& /*context*/) const {
+            SQLITE_ORM_STATIC_CALLOP serialize_result_type
+            operator()(const statement_type& /*statement*/, const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
                 return "NOT NULL";
             }
         };
@@ -20963,7 +21197,8 @@ namespace sqlite_orm {
             using statement_type = primary_key_t<Cs...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << "PRIMARY KEY";
                 switch (statement.options.asc_option) {
@@ -20993,7 +21228,8 @@ namespace sqlite_orm {
             using statement_type = unique_t<Args...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << static_cast<std::string>(c);
                 using columns_tuple = typename statement_type::columns_tuple;
@@ -21011,7 +21247,8 @@ namespace sqlite_orm {
             using statement_type = unindexed_t;
 
             template<class Ctx>
-            serialize_result_type operator()(const statement_type& /*statement*/, const Ctx& /*context*/) const {
+            SQLITE_ORM_STATIC_CALLOP serialize_result_type
+            operator()(const statement_type& /*statement*/, const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
                 return "UNINDEXED";
             }
         };
@@ -21021,7 +21258,8 @@ namespace sqlite_orm {
             using statement_type = prefix_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << "prefix=" << serialize(statement.value, context);
                 return ss.str();
@@ -21033,7 +21271,8 @@ namespace sqlite_orm {
             using statement_type = tokenize_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << "tokenize = " << serialize(statement.value, context);
                 return ss.str();
@@ -21045,7 +21284,8 @@ namespace sqlite_orm {
             using statement_type = content_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << "content=" << serialize(statement.value, context);
                 return ss.str();
@@ -21057,7 +21297,8 @@ namespace sqlite_orm {
             using statement_type = table_content_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& /*statement*/, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& /*statement*/,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 using mapped_type = typename statement_type::mapped_type;
 
                 auto& table = pick_table<mapped_type>(context.db_objects);
@@ -21074,7 +21315,8 @@ namespace sqlite_orm {
             using statement_type = collate_constraint_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx&) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
                 return static_cast<std::string>(statement);
             }
         };
@@ -21084,7 +21326,8 @@ namespace sqlite_orm {
             using statement_type = default_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 return static_cast<std::string>(statement) + " (" + serialize(statement.value, context) + ")";
             }
         };
@@ -21095,7 +21338,8 @@ namespace sqlite_orm {
             using statement_type = foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& fk, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& fk,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << "FOREIGN KEY(" << streaming_mapped_columns_expressions(fk.columns, context) << ") REFERENCES ";
                 {
@@ -21122,7 +21366,8 @@ namespace sqlite_orm {
             using statement_type = check_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << "CHECK (" << serialize(statement.expression, context) << ")";
                 return ss.str();
@@ -21134,7 +21379,8 @@ namespace sqlite_orm {
             using statement_type = generated_always_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 if (statement.full) {
                     ss << "GENERATED ALWAYS ";
@@ -21161,7 +21407,8 @@ namespace sqlite_orm {
             using statement_type = column_t<G, S, Op...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& column, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& column,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << streaming_identifier(column.name);
                 if (!context.fts5_columns) {
@@ -21180,7 +21427,8 @@ namespace sqlite_orm {
             using statement_type = remove_all_t<T, Args...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& rem, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& rem,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 auto& table = pick_table<T>(context.db_objects);
 
                 std::stringstream ss;
@@ -21195,7 +21443,8 @@ namespace sqlite_orm {
             using statement_type = replace_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 using object_type = expression_object_type_t<statement_type>;
                 auto& table = pick_table<object_type>(context.db_objects);
                 std::stringstream ss;
@@ -21216,7 +21465,8 @@ namespace sqlite_orm {
             using statement_type = insert_explicit<T, Cols...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& ins, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& ins,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 constexpr size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
                 static_assert(colsCount > 0, "Use insert or replace with 1 argument instead");
                 using object_type = expression_object_type_t<statement_type>;
@@ -21231,7 +21481,7 @@ namespace sqlite_orm {
                                   static_assert(!is_setter_v<member_pointer_type>,
                                                 "Unable to use setter within insert explicit");
 
-                                  static constexpr std::array<const char*, 2> sep = {", ", ""};
+                                  static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                                   ss << sep[std::exchange(first, false)]
                                      << serialize(polyfill::invoke(memberPointer, object), context);
                               });
@@ -21245,7 +21495,8 @@ namespace sqlite_orm {
             using statement_type = update_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 using object_type = expression_object_type_t<statement_type>;
                 auto& table = pick_table<object_type>(context.db_objects);
 
@@ -21257,7 +21508,7 @@ namespace sqlite_orm {
                             return;
                         }
 
-                        static constexpr std::array<const char*, 2> sep = {", ", ""};
+                        static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                         ss << sep[std::exchange(first, false)] << streaming_identifier(column.name) << " = "
                            << serialize(polyfill::invoke(column.member_pointer, object), context);
                     });
@@ -21268,7 +21519,7 @@ namespace sqlite_orm {
                             return;
                         }
 
-                        static constexpr std::array<const char*, 2> sep = {" AND ", ""};
+                        static constexpr std::array<orm_gsl::czstring, 2> sep = {" AND ", ""};
                         ss << sep[std::exchange(first, false)] << streaming_identifier(column.name) << " = "
                            << serialize(polyfill::invoke(column.member_pointer, object), context);
                     });
@@ -21281,7 +21532,8 @@ namespace sqlite_orm {
             using statement_type = dynamic_set_t<C>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx&) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << "SET ";
                 int index = 0;
@@ -21301,13 +21553,14 @@ namespace sqlite_orm {
             using statement_type = set_t<Args...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << "SET ";
                 auto leftContext = context;
                 leftContext.skip_table_name = true;
                 iterate_tuple(statement.assigns, [&ss, &context, &leftContext, first = true](auto& value) mutable {
-                    static constexpr std::array<const char*, 2> sep = {", ", ""};
+                    static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                     ss << sep[std::exchange(first, false)] << serialize(value.lhs, leftContext) << ' '
                        << value.serialize() << ' ' << serialize(value.rhs, context);
                 });
@@ -21343,7 +21596,8 @@ namespace sqlite_orm {
             using statement_type = update_all_t<S, Wargs...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 const auto& tableNames = collect_table_names(statement.set, context);
                 if (tableNames.empty()) {
                     throw std::system_error{orm_error_code::no_tables_specified};
@@ -21362,7 +21616,8 @@ namespace sqlite_orm {
             using statement_type = insert_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 using object_type = expression_object_type_t<statement_type>;
                 auto& table = pick_table<object_type>(context.db_objects);
                 using is_without_rowid = typename std::remove_reference_t<decltype(table)>::is_without_rowid;
@@ -21410,7 +21665,8 @@ namespace sqlite_orm {
             using statement_type = into_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type&, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type&,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 auto& table = pick_table<T>(context.db_objects);
 
                 std::stringstream ss;
@@ -21424,7 +21680,8 @@ namespace sqlite_orm {
             using statement_type = C;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 // subqueries should always use parentheses in column names
                 auto subCtx = context;
                 subCtx.use_parentheses = true;
@@ -21448,7 +21705,8 @@ namespace sqlite_orm {
             using statement_type = T;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 if constexpr (is_insert_raw<T>::value) {
                     ss << "INSERT";
@@ -21480,7 +21738,8 @@ namespace sqlite_orm {
             using statement_type = remove_t<T, Ids...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 auto& table = pick_table<T>(context.db_objects);
                 std::stringstream ss;
                 ss << "DELETE FROM " << streaming_identifier(table.name) << " "
@@ -21496,7 +21755,7 @@ namespace sqlite_orm {
                         throw std::system_error{orm_error_code::column_not_found};
                     }
 
-                    static constexpr std::array<const char*, 2> sep = {" AND ", ""};
+                    static constexpr std::array<orm_gsl::czstring, 2> sep = {" AND ", ""};
                     ss << sep[index == 0] << streaming_identifier(*columnName) << " = " << idsStrings[index];
                     ++index;
                 });
@@ -21509,7 +21768,8 @@ namespace sqlite_orm {
             using statement_type = replace_range_t<It, L, O>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& rep, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& rep,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 using object_type = expression_object_type_t<statement_type>;
                 auto& table = pick_table<object_type>(context.db_objects);
 
@@ -21528,7 +21788,8 @@ namespace sqlite_orm {
             using statement_type = insert_range_t<It, L, O>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 using object_type = expression_object_type_t<statement_type>;
                 auto& table = pick_table<object_type>(context.db_objects);
                 using is_without_rowid = typename std::remove_reference_t<decltype(table)>::is_without_rowid;
@@ -21584,7 +21845,8 @@ namespace sqlite_orm {
             using statement_type = get_all_optional_t<T, R, Args...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& get, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& get,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 return serialize_get_all_impl(get, context);
             }
         };
@@ -21595,7 +21857,8 @@ namespace sqlite_orm {
             using statement_type = get_all_pointer_t<T, R, Args...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& get, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& get,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 return serialize_get_all_impl(get, context);
             }
         };
@@ -21605,7 +21868,8 @@ namespace sqlite_orm {
             using statement_type = get_all_t<T, R, Args...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& get, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& get,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 return serialize_get_all_impl(get, context);
             }
         };
@@ -21624,7 +21888,7 @@ namespace sqlite_orm {
             }
 
 #ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
-            static constexpr std::array<const char*, 2> sep = {" AND ", ""};
+            static constexpr std::array<orm_gsl::czstring, 2> sep = {" AND ", ""};
             for (bool first = true; const std::string& pkName: primaryKeyColumnNames) {
                 ss << sep[std::exchange(first, false)] << streaming_identifier(pkName) << " = ?";
             }
@@ -21644,7 +21908,8 @@ namespace sqlite_orm {
             using statement_type = get_t<T, Ids...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& get, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& get,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 return serialize_get_impl(get, context);
             }
         };
@@ -21654,7 +21919,8 @@ namespace sqlite_orm {
             using statement_type = get_pointer_t<T, Ids...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 return serialize_get_impl(statement, context);
             }
         };
@@ -21664,7 +21930,8 @@ namespace sqlite_orm {
             using statement_type = conflict_action;
 
             template<class Ctx>
-            serialize_result_type operator()(const statement_type& statement, const Ctx&) const {
+            SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& statement,
+                                                                      const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
                 switch (statement) {
                     case conflict_action::replace:
                         return "REPLACE";
@@ -21686,7 +21953,8 @@ namespace sqlite_orm {
             using statement_type = insert_constraint;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
 
                 ss << "OR " << serialize(statement.action, context);
@@ -21700,7 +21968,8 @@ namespace sqlite_orm {
             using statement_type = get_optional_t<T, Ids...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& get, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& get,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 return serialize_get_impl(get, context);
             }
         };
@@ -21712,7 +21981,8 @@ namespace sqlite_orm {
             using return_type = typename statement_type::return_type;
 
             template<class Ctx>
-            std::string operator()(const statement_type& sel, Ctx context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& sel,
+                                                            Ctx context) SQLITE_ORM_OR_CONST_CALLOP {
                 context.skip_table_name = false;
                 // subqueries should always use parentheses in column names
                 auto subCtx = context;
@@ -21765,7 +22035,8 @@ namespace sqlite_orm {
             using statement_type = indexed_column_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << serialize(statement._column_or_expression, context);
                 if (!statement._collation_name.empty()) {
@@ -21791,7 +22062,8 @@ namespace sqlite_orm {
             using statement_type = using_fts5_t<Cs...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << "USING FTS5(";
                 auto subContext = context;
@@ -21807,7 +22079,8 @@ namespace sqlite_orm {
             using statement_type = virtual_table_t<M>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << "CREATE VIRTUAL TABLE IF NOT EXISTS ";
                 ss << streaming_identifier(statement.name) << ' ';
@@ -21821,7 +22094,8 @@ namespace sqlite_orm {
             using statement_type = index_t<T, Cols...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << "CREATE ";
                 if (statement.unique) {
@@ -21857,13 +22131,14 @@ namespace sqlite_orm {
             using statement_type = From;
 
             template<class Ctx>
-            std::string operator()(const statement_type&, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type&,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << "FROM ";
                 iterate_tuple<typename From::tuple_type>([&context, &ss, first = true](auto* dummyItem) mutable {
                     using table_type = std::remove_pointer_t<decltype(dummyItem)>;
 
-                    static constexpr std::array<const char*, 2> sep = {", ", ""};
+                    static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                     ss << sep[std::exchange(first, false)]
                        << streaming_identifier(lookup_table_name<mapped_type_proxy_t<table_type>>(context.db_objects),
                                                alias_extractor<table_type>::as_alias());
@@ -21877,7 +22152,8 @@ namespace sqlite_orm {
             using statement_type = old_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << "OLD.";
                 auto newContext = context;
@@ -21892,7 +22168,8 @@ namespace sqlite_orm {
             using statement_type = new_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << "NEW.";
                 auto newContext = context;
@@ -21907,7 +22184,8 @@ namespace sqlite_orm {
             using statement_type = raise_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 switch (statement.type) {
                     case raise_t::type_t::ignore:
                         return "RAISE(IGNORE)";
@@ -21930,7 +22208,8 @@ namespace sqlite_orm {
             using statement_type = trigger_timing;
 
             template<class Ctx>
-            serialize_result_type operator()(const statement_type& statement, const Ctx&) const {
+            SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& statement,
+                                                                      const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
                 switch (statement) {
                     case trigger_timing::trigger_before:
                         return "BEFORE";
@@ -21948,7 +22227,8 @@ namespace sqlite_orm {
             using statement_type = trigger_type;
 
             template<class Ctx>
-            serialize_result_type operator()(const statement_type& statement, const Ctx&) const {
+            SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& statement,
+                                                                      const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
                 switch (statement) {
                     case trigger_type::trigger_delete:
                         return "DELETE";
@@ -21966,7 +22246,8 @@ namespace sqlite_orm {
             using statement_type = trigger_type_base_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
 
                 ss << serialize(statement.timing, context) << " " << serialize(statement.type, context);
@@ -21979,7 +22260,8 @@ namespace sqlite_orm {
             using statement_type = trigger_update_type_t<Cs...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
 
                 ss << serialize(statement.timing, context) << " UPDATE OF "
@@ -21993,7 +22275,8 @@ namespace sqlite_orm {
             using statement_type = trigger_base_t<T, W, Trigger>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
 
                 ss << serialize(statement.type_base, context);
@@ -22013,7 +22296,8 @@ namespace sqlite_orm {
             using statement_type = trigger_t<S...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << "CREATE ";
 
@@ -22042,7 +22326,8 @@ namespace sqlite_orm {
             using statement_type = where_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << statement.serialize() << " ";
                 auto whereString = serialize(statement.expression, context);
@@ -22056,7 +22341,8 @@ namespace sqlite_orm {
             using statement_type = order_by_t<O>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& orderBy, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << static_cast<std::string>(orderBy) << " ";
                 ss << serialize_order_by(orderBy, context);
@@ -22069,7 +22355,8 @@ namespace sqlite_orm {
             using statement_type = dynamic_order_by_t<C>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& orderBy, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 return serialize_order_by(orderBy, context);
             }
         };
@@ -22079,7 +22366,8 @@ namespace sqlite_orm {
             using statement_type = multi_order_by_t<Args...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& orderBy, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << static_cast<std::string>(orderBy) << " " << streaming_expressions_tuple(orderBy.args, context);
                 return ss.str();
@@ -22094,7 +22382,8 @@ namespace sqlite_orm {
             using statement_type = Join;
 
             template<class Ctx>
-            std::string operator()(const statement_type& join, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& join,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << static_cast<std::string>(join) << " "
                    << streaming_identifier(lookup_table_name<type_t<Join>>(context.db_objects));
@@ -22107,7 +22396,8 @@ namespace sqlite_orm {
             using statement_type = Join;
 
             template<class Ctx>
-            std::string operator()(const statement_type& join, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& join,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << static_cast<std::string>(join) << " "
                    << streaming_identifier(lookup_table_name<mapped_type_proxy_t<type_t<Join>>>(context.db_objects),
@@ -22122,7 +22412,8 @@ namespace sqlite_orm {
             using statement_type = on_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& on, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& on,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 auto newContext = context;
                 newContext.skip_table_name = false;
@@ -22136,7 +22427,8 @@ namespace sqlite_orm {
             using statement_type = group_by_with_having<T, Args...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 auto newContext = context;
                 newContext.skip_table_name = false;
@@ -22151,7 +22443,8 @@ namespace sqlite_orm {
             using statement_type = group_by_t<Args...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 auto newContext = context;
                 newContext.skip_table_name = false;
@@ -22169,7 +22462,8 @@ namespace sqlite_orm {
             using statement_type = limit_t<T, HO, OI, O>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 auto newContext = context;
                 newContext.skip_table_name = false;
                 std::stringstream ss;
@@ -22199,7 +22493,8 @@ namespace sqlite_orm {
             using statement_type = default_values_t;
 
             template<class Ctx>
-            serialize_result_type operator()(const statement_type&, const Ctx&) const {
+            SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
+                                                                      const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
                 return "DEFAULT VALUES";
             }
         };
@@ -22209,7 +22504,8 @@ namespace sqlite_orm {
             using statement_type = using_t<T, M>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 auto newContext = context;
                 newContext.skip_table_name = true;
                 return static_cast<std::string>(statement) + " (" + serialize(statement.column, newContext) + ")";
@@ -22221,7 +22517,8 @@ namespace sqlite_orm {
             using statement_type = std::tuple<Args...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 if (context.use_parentheses) {
                     ss << '(';
@@ -22239,7 +22536,8 @@ namespace sqlite_orm {
             using statement_type = values_t<Args...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 if (context.use_parentheses) {
                     ss << '(';
@@ -22262,7 +22560,8 @@ namespace sqlite_orm {
             using statement_type = dynamic_values_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 if (context.use_parentheses) {
                     ss << '(';
@@ -22496,6 +22795,16 @@ namespace sqlite_orm {
             return column_type{std::move(name), finalColRef, empty_setter{}};
         }
 
+#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+        /**
+         *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
+         */
+        template<typename DBOs, typename... CTETables>
+        auto db_objects_cat(const DBOs& dbObjects, CTETables&&... cteTables) {
+            auto& [... elements] = dbObjects;
+            return std::tuple{std::forward<CTETables>(cteTables)..., elements...};
+        }
+#else
         /**
          *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
          */
@@ -22513,6 +22822,7 @@ namespace sqlite_orm {
                                   std::make_index_sequence<std::tuple_size_v<DBOs>>{},
                                   std::forward<CTETables>(cteTables)...);
         }
+#endif
 
         /**
          *  This function returns the expression contained in a subselect that is relevant for
@@ -22748,6 +23058,76 @@ namespace sqlite_orm {
 
 // #include "serializing_util.h"
 
+// #include "udf_existence_checker.h"
+
+// #include "functional/cxx_string_view.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <algorithm>  // std::ranges::find
+#endif
+
+// #include "functional/cxx_type_traits_polyfill.h"
+
+// #include "error_code.h"
+
+// #include "conditions.h"
+
+// #include "function.h"
+
+// #include "storage_base.h"
+
+namespace sqlite_orm::internal {
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+    /*
+     *  AST iteration callable that matches function call node expressions.
+     *  * Throws a `orm_error_code::function_not_found` exception
+     *    if an application-defined scalar or aggregate function was not registered.
+     *  * Throws a `sqlite_errc(SQLITE_ERROR_MISSING_COLLSEQ)` if a named collation function was not registered.
+     */
+    struct udf_existence_checker {
+        const std::list<udf_proxy>& _scalarFunctions;
+        const std::list<udf_proxy>& _aggregateFunctions;
+        const std::map<std::string, storage_base::collating_function>& _collatingFunctions;
+
+        // examine `function_call` node expressions
+        template<class UDF, class... CallArgs>
+        void operator()(polyfill::bool_constant<true>, const function_call<UDF, CallArgs...>& udfCall) const {
+            auto&& name = udfCall.name();
+            SQLITE_ORM_CPP_UNLIKELY {
+                if (!_contains(_scalarFunctions, name) && !_contains(_aggregateFunctions, name))
+                    throw std::system_error{orm_error_code::function_not_found, std::string(name)};
+            }
+        }
+
+        // examine `named_collate` node expressions
+        void operator()(polyfill::bool_constant<true>, const named_collate_base& collateCall) const {
+            if (_collatingFunctions.find(collateCall.name) == _collatingFunctions.end()) SQLITE_ORM_CPP_UNLIKELY {
+#if SQLITE_VERSION_NUMBER >= 3008008
+                throw std::system_error{sqlite_errc(SQLITE_ERROR_MISSING_COLLSEQ), std::string(collateCall.name)};
+#else
+                throw std::system_error{sqlite_errc(SQLITE_ERROR), std::string(collateCall.name)};
+#endif
+            }
+        }
+
+        // swallow leaf expressions
+        template<class T>
+        SQLITE_ORM_STATIC_CALLOP void operator()(const T&) SQLITE_ORM_OR_CONST_CALLOP {}
+
+        static bool _contains(const std::list<udf_proxy>& functions, const std::string_view& name) {
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+            auto it = std::ranges::find(functions, name, &udf_proxy::name);
+#else
+            auto it = std::find_if(functions.begin(), functions.end(), [&name](const udf_proxy& udfProxy) {
+                return udfProxy.name == name;
+            });
+#endif
+            return it != functions.end();
+        }
+    };
+#endif
+}
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -22780,56 +23160,6 @@ namespace sqlite_orm {
             return Opt{};
 #endif
         }
-
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-        /*
-         *  AST iteration callable that matches function call node expressions.
-         *  * Throws a `orm_error_code::function_not_found` exception
-         *    if an application-defined scalar or aggregate function was not registered.
-         *  * Throws a `sqlite_errc(SQLITE_ERROR_MISSING_COLLSEQ)` if a named collation function was not registered.
-         */
-        struct udf_presence_checker {
-            const std::list<udf_proxy>& _scalarFunctions;
-            const std::list<udf_proxy>& _aggregateFunctions;
-            const std::map<std::string, storage_base::collating_function>& _collatingFunctions;
-
-            // examine `function_call` node expressions
-            template<class UDF, class... CallArgs>
-            void operator()(polyfill::bool_constant<true>, const function_call<UDF, CallArgs...>& udfCall) const {
-                auto&& name = udfCall.name();
-                SQLITE_ORM_CPP_UNLIKELY {
-                    if (!_contains(_scalarFunctions, name) && !_contains(_aggregateFunctions, name))
-                        throw std::system_error{orm_error_code::function_not_found, std::string(name)};
-                }
-            }
-
-            // examine `named_collate` node expressions
-            void operator()(polyfill::bool_constant<true>, const named_collate_base& collateCall) const {
-                if (_collatingFunctions.find(collateCall.name) == _collatingFunctions.end()) SQLITE_ORM_CPP_UNLIKELY {
-#if SQLITE_VERSION_NUMBER >= 3008008
-                    throw std::system_error{sqlite_errc(SQLITE_ERROR_MISSING_COLLSEQ), std::string(collateCall.name)};
-#else
-                    throw std::system_error{sqlite_errc(SQLITE_ERROR), std::string(collateCall.name)};
-#endif
-                }
-            }
-
-            // swallow leaf expressions
-            template<class T>
-            void operator()(const T&) const {}
-
-            static bool _contains(const std::list<udf_proxy>& functions, const std::string_view& name) {
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
-                auto it = std::ranges::find(functions, name, &udf_proxy::name);
-#else
-                auto it = std::find_if(functions.begin(), functions.end(), [&name](const udf_proxy& udfProxy) {
-                    return udfProxy.name == name;
-                });
-#endif
-                return it != functions.end();
-            }
-        };
-#endif
 
         /**
          *  Storage class itself. Create an instanse to use it as an interfacto to sqlite db by calling `make_storage`
@@ -23384,7 +23714,7 @@ namespace sqlite_orm {
                      class... Args,
                      std::enable_if_t<polyfill::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value,
                                       bool> = true>
-            std::string group_concat(F field, const char* y, Args&&... args) {
+            std::string group_concat(F field, orm_gsl::czstring y, Args&&... args) {
                 std::unique_ptr<std::string> str;
                 if (y) {
                     str = std::make_unique<std::string>(y);
@@ -23562,7 +23892,7 @@ namespace sqlite_orm {
                 ss << "{ ";
                 table.for_each_column([&ss, &object, first = true](auto& column) mutable {
                     using field_type = field_type_t<std::remove_reference_t<decltype(column)>>;
-                    static constexpr std::array<const char*, 2> sep = {", ", ""};
+                    static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
 
                     ss << sep[std::exchange(first, false)] << column.name << " : '"
                        << field_printer<field_type>{}(polyfill::invoke(column.member_pointer, object)) << "'";
@@ -23955,9 +24285,10 @@ namespace sqlite_orm {
             template<typename S>
             prepared_statement_t<S> prepare_impl(S statement) {
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+                // check the existence of application-defined functions used in the statement
                 iterate_ast(
                     statement,
-                    udf_presence_checker{this->scalarFunctions, this->aggregateFunctions, this->collatingFunctions});
+                    udf_existence_checker{this->scalarFunctions, this->aggregateFunctions, this->collatingFunctions});
 #endif
 
                 const auto& exprDBOs = db_objects_for_expression(this->db_objects, statement);
@@ -25571,6 +25902,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
+// #include "functional/gsl.h"
+
 // #include "pointer_value.h"
 
 #if SQLITE_VERSION_NUMBER >= 3020000
@@ -25626,7 +25959,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 #else
     inline constexpr const char carray_pointer_name[] = "carray";
-    using carray_pointer_type = std::integral_constant<const char*, carray_pointer_name>;
+    using carray_pointer_type = std::integral_constant<orm_gsl::czstring, carray_pointer_name>;
     // [Deprecation notice] This type is deprecated and will be removed in v1.10. Use the alias type `carray_pointer_type` instead.
     using carray_pvt [[deprecated]] = carray_pointer_type;
 
@@ -25681,7 +26014,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<typename P>
     struct note_value_fn {
-        P operator()(P&& value, carray_pointer_arg<P> pv) const {
+        SQLITE_ORM_STATIC_CALLOP P operator()(P&& value, carray_pointer_arg<P> pv) SQLITE_ORM_OR_CONST_CALLOP {
             if (P* observer = pv) {
                 *observer = value;
             }
@@ -25693,7 +26026,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  remember(V, $PTR) extension function https://sqlite.org/src/file/ext/misc/remember.c
      */
     struct remember_fn : note_value_fn<int64> {
-        static constexpr const char* name() {
+        static constexpr orm_gsl::czstring name() {
             return "remember";
         }
     };

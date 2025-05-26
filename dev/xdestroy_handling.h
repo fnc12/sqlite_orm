@@ -8,6 +8,7 @@
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
+#include "functional/gsl.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
@@ -120,7 +121,7 @@ namespace sqlite_orm {
          */
         template<typename D, typename P>
             requires (!integral_fp_c<D>)
-        void xdestroy_proxy(void* p) noexcept {
+        void xdestroy_proxy(orm_gsl::owner<void*> p) noexcept {
             // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>
             auto o = (P*)p;
             // ignoring return code
@@ -134,7 +135,7 @@ namespace sqlite_orm {
          *  that take a non-const parameter, but user code passes a pointer to a const object.
          */
         template<integral_fp_c D, typename P>
-        void xdestroy_proxy(void* p) noexcept {
+        void xdestroy_proxy(orm_gsl::owner<void*> p) noexcept {
             // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>,
             auto o = (std::remove_cv_t<P>*)(P*)p;
             // ignoring return code
@@ -156,7 +157,7 @@ namespace sqlite_orm {
             (!can_yield_fp_v<D> || !std::is_convertible<yielded_fn_t<D>, xdestroy_fn_t>::value);
 
         template<typename D, typename P, std::enable_if_t<!is_integral_fp_c_v<D>, bool> = true>
-        void xdestroy_proxy(void* p) noexcept {
+        void xdestroy_proxy(orm_gsl::owner<void*> p) noexcept {
             // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>
             auto o = (P*)p;
             // ignoring return code
@@ -164,7 +165,7 @@ namespace sqlite_orm {
         }
 
         template<typename D, typename P, std::enable_if_t<is_integral_fp_c_v<D>, bool> = true>
-        void xdestroy_proxy(void* p) noexcept {
+        void xdestroy_proxy(orm_gsl::owner<void*> p) noexcept {
             // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>,
             auto o = (std::remove_cv_t<P>*)(P*)p;
             // ignoring return code

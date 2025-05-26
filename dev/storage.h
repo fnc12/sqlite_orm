@@ -19,6 +19,7 @@
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/cxx_functional_polyfill.h"
+#include "functional/gsl.h"
 #include "functional/mpl.h"
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_filter.h"
@@ -59,6 +60,7 @@
 #include "cte_storage.h"
 #include "util.h"
 #include "serializing_util.h"
+#include "udf_existence_checker.h"
 
 namespace sqlite_orm {
 
@@ -92,56 +94,6 @@ namespace sqlite_orm {
             return Opt{};
 #endif
         }
-
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-        /*
-         *  AST iteration callable that matches function call node expressions.
-         *  * Throws a `orm_error_code::function_not_found` exception
-         *    if an application-defined scalar or aggregate function was not registered.
-         *  * Throws a `sqlite_errc(SQLITE_ERROR_MISSING_COLLSEQ)` if a named collation function was not registered.
-         */
-        struct udf_presence_checker {
-            const std::list<udf_proxy>& _scalarFunctions;
-            const std::list<udf_proxy>& _aggregateFunctions;
-            const std::map<std::string, storage_base::collating_function>& _collatingFunctions;
-
-            // examine `function_call` node expressions
-            template<class UDF, class... CallArgs>
-            void operator()(polyfill::bool_constant<true>, const function_call<UDF, CallArgs...>& udfCall) const {
-                auto&& name = udfCall.name();
-                SQLITE_ORM_CPP_UNLIKELY {
-                    if (!_contains(_scalarFunctions, name) && !_contains(_aggregateFunctions, name))
-                        throw std::system_error{orm_error_code::function_not_found, std::string(name)};
-                }
-            }
-
-            // examine `named_collate` node expressions
-            void operator()(polyfill::bool_constant<true>, const named_collate_base& collateCall) const {
-                if (_collatingFunctions.find(collateCall.name) == _collatingFunctions.end()) SQLITE_ORM_CPP_UNLIKELY {
-#if SQLITE_VERSION_NUMBER >= 3008008
-                    throw std::system_error{sqlite_errc(SQLITE_ERROR_MISSING_COLLSEQ), std::string(collateCall.name)};
-#else
-                    throw std::system_error{sqlite_errc(SQLITE_ERROR), std::string(collateCall.name)};
-#endif
-                }
-            }
-
-            // swallow leaf expressions
-            template<class T>
-            void operator()(const T&) const {}
-
-            static bool _contains(const std::list<udf_proxy>& functions, const std::string_view& name) {
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
-                auto it = std::ranges::find(functions, name, &udf_proxy::name);
-#else
-                auto it = std::find_if(functions.begin(), functions.end(), [&name](const udf_proxy& udfProxy) {
-                    return udfProxy.name == name;
-                });
-#endif
-                return it != functions.end();
-            }
-        };
-#endif
 
         /**
          *  Storage class itself. Create an instanse to use it as an interfacto to sqlite db by calling `make_storage`
@@ -696,7 +648,7 @@ namespace sqlite_orm {
                      class... Args,
                      std::enable_if_t<polyfill::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value,
                                       bool> = true>
-            std::string group_concat(F field, const char* y, Args&&... args) {
+            std::string group_concat(F field, orm_gsl::czstring y, Args&&... args) {
                 std::unique_ptr<std::string> str;
                 if (y) {
                     str = std::make_unique<std::string>(y);
@@ -874,7 +826,7 @@ namespace sqlite_orm {
                 ss << "{ ";
                 table.for_each_column([&ss, &object, first = true](auto& column) mutable {
                     using field_type = field_type_t<std::remove_reference_t<decltype(column)>>;
-                    static constexpr std::array<const char*, 2> sep = {", ", ""};
+                    static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
 
                     ss << sep[std::exchange(first, false)] << column.name << " : '"
                        << field_printer<field_type>{}(polyfill::invoke(column.member_pointer, object)) << "'";
@@ -1267,9 +1219,10 @@ namespace sqlite_orm {
             template<typename S>
             prepared_statement_t<S> prepare_impl(S statement) {
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+                // check the existence of application-defined functions used in the statement
                 iterate_ast(
                     statement,
-                    udf_presence_checker{this->scalarFunctions, this->aggregateFunctions, this->collatingFunctions});
+                    udf_existence_checker{this->scalarFunctions, this->aggregateFunctions, this->collatingFunctions});
 #endif
 
                 const auto& exprDBOs = db_objects_for_expression(this->db_objects, statement);

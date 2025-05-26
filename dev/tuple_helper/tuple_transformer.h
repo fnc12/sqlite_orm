@@ -3,6 +3,7 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::remove_reference, std::common_type, std::index_sequence, std::make_index_sequence, std::forward, std::move, std::integral_constant, std::declval
 #include <tuple>  //  std::tuple_size, std::get
+#include <utility>  // std::forward_like
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
@@ -69,7 +70,7 @@ namespace sqlite_orm {
          */
         struct plus_fold_integrals {
             template<class... Integrals>
-            constexpr auto operator()(const Integrals&...) const {
+            SQLITE_ORM_STATIC_CALLOP constexpr auto operator()(const Integrals&...) SQLITE_ORM_OR_CONST_CALLOP {
                 using integral_type = std::common_type_t<typename Integrals::value_type...>;
                 return std::integral_constant<integral_type, (Integrals::value + ...)>{};
             }
@@ -82,7 +83,7 @@ namespace sqlite_orm {
         template<template<class...> class NestedProject>
         struct project_nested_tuple_size {
             template<class T>
-            constexpr auto operator()(const T&) const {
+            SQLITE_ORM_STATIC_CALLOP constexpr auto operator()(const T&) SQLITE_ORM_OR_CONST_CALLOP {
                 return typename std::tuple_size<NestedProject<T>>::type{};
             }
         };
@@ -99,6 +100,16 @@ namespace sqlite_orm {
             return R{polyfill::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
         }
 
+#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+        /*
+         *  Like `std::make_from_tuple()`, but using a projection on the tuple elements.
+         */
+        template<class R, class Tpl, class Projection = std::identity>
+        constexpr R create_from_tuple(Tpl&& tpl, Projection project = {}) {
+            auto& [... elements] = tpl;
+            return R{std::invoke(project, std::forward_like<Tpl>(elements))...};
+        }
+#else
         /*
          *  Like `std::make_from_tuple()`, but using a projection on the tuple elements.
          */
@@ -109,6 +120,7 @@ namespace sqlite_orm {
                 std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
                 std::forward<Projection>(project));
         }
+#endif
 
 #ifdef SQLITE_ORM_CTAD_SUPPORTED
         template<template<typename...> class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
@@ -116,8 +128,18 @@ namespace sqlite_orm {
             return R{polyfill::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
         }
 
+#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
         /*
-         *  Similar to `create_from_tuple()`, but the result type is specified as a template class.
+         *  Similar to `create_from_tuple()`, but the result type is specified as a class template.
+         */
+        template<template<typename...> class R, class Tpl, class Projection = polyfill::identity>
+        constexpr auto create_from_tuple(Tpl&& tpl, Projection project = {}) {
+            auto& [... elements] = tpl;
+            return R{std::invoke(project, std::forward_like<Tpl>(elements))...};
+        }
+#else
+        /*
+         *  Similar to `create_from_tuple()`, but the result type is specified as a class template.
          */
         template<template<typename...> class R, class Tpl, class Projection = polyfill::identity>
         constexpr auto create_from_tuple(Tpl&& tpl, Projection project = {}) {
@@ -126,6 +148,7 @@ namespace sqlite_orm {
                 std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
                 std::forward<Projection>(project));
         }
+#endif
 #endif
     }
 }

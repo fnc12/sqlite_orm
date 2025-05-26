@@ -18,23 +18,24 @@ namespace sqlite_orm {
         template<class Tpl>
         struct tuple_from_values {
             template<class R = Tpl, satisfies_not<std::is_same, R, std::tuple<arg_values>> = true>
-            R operator()(sqlite3_value** values, int /*argsCount*/) const {
-                return this->create_from(values, std::make_index_sequence<std::tuple_size<Tpl>::value>{});
+            SQLITE_ORM_STATIC_CALLOP R operator()(sqlite3_value** values,
+                                                  int /*argsCount*/) SQLITE_ORM_OR_CONST_CALLOP {
+                return tuple_from_values::create_from(values, std::make_index_sequence<std::tuple_size<Tpl>::value>{});
             }
 
             template<class R = Tpl, satisfies<std::is_same, R, std::tuple<arg_values>> = true>
-            R operator()(sqlite3_value** values, int argsCount) const {
+            SQLITE_ORM_STATIC_CALLOP R operator()(sqlite3_value** values, int argsCount) SQLITE_ORM_OR_CONST_CALLOP {
                 return {arg_values(argsCount, values)};
             }
 
           private:
             template<size_t... Idx>
-            Tpl create_from(sqlite3_value** values, std::index_sequence<Idx...>) const {
-                return {this->extract<std::tuple_element_t<Idx, Tpl>>(values[Idx])...};
+            static Tpl create_from(sqlite3_value** values, std::index_sequence<Idx...>) {
+                return {tuple_from_values::extract<std::tuple_element_t<Idx, Tpl>>(values[Idx])...};
             }
 
             template<class T>
-            T extract(sqlite3_value* value) const {
+            static T extract(sqlite3_value* value) {
                 const auto rowExtractor = boxed_value_extractor<T>();
                 return rowExtractor.extract(value);
             }

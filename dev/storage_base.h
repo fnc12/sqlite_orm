@@ -181,7 +181,7 @@ namespace sqlite_orm {
                 this->executor.perform_exec(
                     db,
                     sql,
-                    [](void* data, int argc, char** argv, char** /*azColName*/) -> int {
+                    [](void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring* /*azColName*/) -> int {
                         auto& res = *(bool*)data;
                         if (argc) {
                             res = !!atoi(argv[0]);
@@ -285,7 +285,7 @@ namespace sqlite_orm {
                 this->executor.perform_exec(
                     connection.get(),
                     "SELECT name FROM sqlite_master WHERE type='table'",
-                    [](void* data, int argc, char** argv, char** /*columnName*/) -> int {
+                    [](void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring* /*columnName*/) -> int {
                         auto& tableNames_ = *(data_t*)data;
                         for (int i = 0; i < argc; ++i) {
                             if (argv[i]) {
@@ -531,10 +531,11 @@ namespace sqlite_orm {
 
             template<class C>
             void create_collation() {
-                collating_function func = [](int leftLength, const void* lhs, int rightLength, const void* rhs) {
-                    C collatingObject;
-                    return collatingObject(leftLength, lhs, rightLength, rhs);
-                };
+                collating_function func = [](int leftLength, const void* lhs, int rightLength, const void* rhs)
+                                              SQLITE_ORM_STATIC_CALLOP {
+                                                  C collatingObject;
+                                                  return collatingObject(leftLength, lhs, rightLength, rhs);
+                                              };
                 std::stringstream ss;
                 ss << C::name() << std::flush;
                 this->create_collation(ss.str(), std::move(func));

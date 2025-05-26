@@ -64,7 +64,7 @@ static std::optional<std::chrono::sys_days> sysDaysFromString(const std::string&
 namespace sqlite_orm {
 
     /**
-     *  First of all is a type_printer template class.
+     *  First of all is a type_printer class template.
      *  It is responsible for sqlite type string representation.
      *  We want SysDays to be `TEXT` so let's just derive from
      *  text_printer. Also there are other printers: real_printer and

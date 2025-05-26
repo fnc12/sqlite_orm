@@ -6,6 +6,7 @@
 #include <utility>  //  std::move
 #endif
 
+#include "functional/gsl.h"
 #include "member_traits/member_traits.h"
 #include "table_reference.h"
 #include "row_extractor.h"
@@ -54,7 +55,7 @@ namespace sqlite_orm {
         struct struct_extractor<table_reference<O>, DBOs> {
             const DBOs& db_objects;
 
-            O extract(const char* columnText) const = delete;
+            O extract(orm_gsl::czstring columnText) const = delete;
 
             // note: expects to be called only from the top level, and therefore discards the index
             O extract(sqlite3_stmt* stmt, int&& /*nextColumnIndex*/ = 0) const {

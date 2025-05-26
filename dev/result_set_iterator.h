@@ -74,7 +74,7 @@ namespace sqlite_orm::internal {
 
       private:
         void step() {
-            perform_step(this->stmt.get(), [](sqlite3_stmt*) {});
+            perform_step(this->stmt.get(), [](sqlite3_stmt*) SQLITE_ORM_STATIC_CALLOP {});
         }
 
         value_type extract() const {

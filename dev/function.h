@@ -16,8 +16,8 @@
 #include "type_traits.h"
 #include "tags.h"
 
-namespace sqlite_orm {
-
+// export forward-declarations
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     struct arg_values;
 
     // note (internal): forward declare even if `SQLITE_VERSION_NUMBER < 3020000` in order to simplify coding below
@@ -26,7 +26,9 @@ namespace sqlite_orm {
     // note (internal): forward declare even if `SQLITE_VERSION_NUMBER < 3020000` in order to simplify coding below
     template<class P, class T, class D>
     class pointer_binding;
+}
 
+namespace sqlite_orm {
     namespace internal {
         template<class F>
         using scalar_call_function_t = decltype(&F::operator());
@@ -197,12 +199,12 @@ namespace sqlite_orm {
 
             template<class R = decltype(UDF::name()),
                      std::enable_if_t<polyfill::negation<std::is_same<R, char>>::value, bool> = true>
-            decltype(auto) operator()() const {
+            SQLITE_ORM_STATIC_CALLOP decltype(auto) operator()() SQLITE_ORM_OR_CONST_CALLOP {
                 return UDF::name();
             }
 
             template<class R = decltype(UDF::name()), std::enable_if_t<std::is_same<R, char>::value, bool> = true>
-            std::string operator()() const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()() SQLITE_ORM_OR_CONST_CALLOP {
                 return std::string{UDF::name()};
             }
         };
