@@ -26,6 +26,7 @@
 #include "ast/set.h"
 #include "ast/match.h"
 #include "ast/cast.h"
+#include "ast/limit.h"
 
 namespace sqlite_orm {
 
@@ -603,8 +604,8 @@ namespace sqlite_orm {
             using node_type = as_t<T, E>;
 
             template<class L>
-            void operator()(const node_type& a, L& lambda) const {
-                iterate_ast(a.expression, lambda);
+            void operator()(const node_type& node, L& lambda) const {
+                iterate_ast(node.expression, lambda);
             }
         };
 
@@ -613,8 +614,8 @@ namespace sqlite_orm {
             using node_type = limit_t<T, false, OI, void>;
 
             template<class L>
-            void operator()(const node_type& a, L& lambda) const {
-                iterate_ast(a.lim, lambda);
+            void operator()(const node_type& node, L& lambda) const {
+                iterate_ast(node.limit, lambda);
             }
         };
 
@@ -623,9 +624,9 @@ namespace sqlite_orm {
             using node_type = limit_t<T, true, false, O>;
 
             template<class L>
-            void operator()(const node_type& a, L& lambda) const {
-                iterate_ast(a.lim, lambda);
-                a.off.apply([&lambda](auto& value) {
+            void operator()(const node_type& node, L& lambda) const {
+                iterate_ast(node.limit, lambda);
+                node.offset.apply([&lambda](auto& value) {
                     iterate_ast(value, lambda);
                 });
             }
@@ -636,11 +637,11 @@ namespace sqlite_orm {
             using node_type = limit_t<T, true, true, O>;
 
             template<class L>
-            void operator()(const node_type& a, L& lambda) const {
-                a.off.apply([&lambda](auto& value) {
+            void operator()(const node_type& node, L& lambda) const {
+                node.offset.apply([&lambda](auto& value) {
                     iterate_ast(value, lambda);
                 });
-                iterate_ast(a.lim, lambda);
+                iterate_ast(node.limit, lambda);
             }
         };
 

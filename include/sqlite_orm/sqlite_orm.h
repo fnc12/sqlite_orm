@@ -4724,6 +4724,107 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
+// #include "ast/limit.h"
+
+#include <utility>  //  std::move
+#include <type_traits>  //  std::true_type, std::false_type
+
+// #include "../optional_container.h"
+
+// #include "../type_traits.h"
+
+// #include "offset.h"
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+namespace sqlite_orm {
+
+    namespace internal {
+        /**
+         *  Stores OFFSET only info
+         */
+        template<class T>
+        struct offset_t {
+            T offset;
+        };
+
+        template<class T>
+        using is_offset = polyfill::is_specialization_of<T, offset_t>;
+    }
+
+    /**
+     *  OFFSET clause.
+     *  Example: offset(5)
+     *  @param offset The offset value (number of rows to skip).
+     *  @return offset_t instance representing OFFSET clause.
+     */
+    template<class T>
+    internal::offset_t<T> offset(T offset) {
+        return {std::move(offset)};
+    }
+}
+
+namespace sqlite_orm {
+
+    namespace internal {
+        /**
+         *  Stores LIMIT/OFFSET info
+         */
+        template<class T, bool has_offset, bool offset_is_implicit, class O>
+        struct limit_t {
+            T limit;
+            optional_container<O> offset;
+
+            limit_t() = default;
+
+            limit_t(decltype(limit) limit) : limit(std::move(limit)) {}
+
+            limit_t(decltype(limit) limit, decltype(offset) offset) :
+                limit(std::move(limit)), offset(std::move(offset)) {}
+        };
+
+        template<class T>
+        struct is_limit : std::false_type {};
+
+        template<class T, bool has_offset, bool offset_is_implicit, class O>
+        struct is_limit<limit_t<T, has_offset, offset_is_implicit, O>> : std::true_type {};
+    }
+
+    /**
+     *  LIMIT clause.
+     *  Example: limit(10)
+     *  @param limit The maximum number of rows to return.
+     *  @return limit_t instance representing LIMIT clause.
+     */
+    template<class T>
+    internal::limit_t<T, false, false, void> limit(T limit) {
+        return {std::move(limit)};
+    }
+
+    /**
+     *  LIMIT with OFFSET clause (implicit offset).
+     *  Example: limit(5, 10) // OFFSET 5 LIMIT 10
+     *  @param offset The offset value (number of rows to skip).
+     *  @param limit The limit value (maximum number of rows to return).
+     *  @return limit_t instance representing LIMIT and OFFSET clause.
+     */
+    template<class T, class O, internal::satisfies_not<internal::is_offset, T> = true>
+    internal::limit_t<T, true, true, O> limit(O offset, T limit) {
+        return {std::move(limit), {std::move(offset)}};
+    }
+
+    /**
+     *  LIMIT with explicit OFFSET clause.
+     *  Example: limit(10, offset(5))
+     *  @param limit The limit value (maximum number of rows to return).
+     *  @param offset The offset_t instance representing the offset.
+     *  @return limit_t instance representing LIMIT and OFFSET clause.
+     */
+    template<class T, class O>
+    internal::limit_t<T, true, false, O> limit(T limit, internal::offset_t<O> offset) {
+        return {std::move(limit), {std::move(offset.offset)}};
+    }
+}
 // #include "core_functions.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -4949,44 +5050,6 @@ namespace sqlite_orm {
 namespace sqlite_orm {
 
     namespace internal {
-
-        struct limit_string {
-            operator std::string() const {
-                return "LIMIT";
-            }
-        };
-
-        /**
-         *  Stores LIMIT/OFFSET info
-         */
-        template<class T, bool has_offset, bool offset_is_implicit, class O>
-        struct limit_t : limit_string {
-            T lim;
-            optional_container<O> off;
-
-            limit_t() = default;
-
-            limit_t(decltype(lim) lim_) : lim(std::move(lim_)) {}
-
-            limit_t(decltype(lim) lim_, decltype(off) off_) : lim(std::move(lim_)), off(std::move(off_)) {}
-        };
-
-        template<class T>
-        struct is_limit : std::false_type {};
-
-        template<class T, bool has_offset, bool offset_is_implicit, class O>
-        struct is_limit<limit_t<T, has_offset, offset_is_implicit, O>> : std::true_type {};
-
-        /**
-         *  Stores OFFSET only info
-         */
-        template<class T>
-        struct offset_t {
-            T off;
-        };
-
-        template<class T>
-        using is_offset = polyfill::is_specialization_of<T, offset_t>;
 
         /**
          *  Collated something
@@ -5921,26 +5984,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return inner_join<internal::auto_decay_table_ref_t<alias>, On>(std::move(on));
     }
 #endif
-
-    template<class T>
-    internal::offset_t<T> offset(T off) {
-        return {std::move(off)};
-    }
-
-    template<class T>
-    internal::limit_t<T, false, false, void> limit(T lim) {
-        return {std::move(lim)};
-    }
-
-    template<class T, class O, internal::satisfies_not<internal::is_offset, T> = true>
-    internal::limit_t<T, true, true, O> limit(O off, T lim) {
-        return {std::move(lim), {std::move(off)}};
-    }
-
-    template<class T, class O>
-    internal::limit_t<T, true, false, O> limit(T lim, internal::offset_t<O> offt) {
-        return {std::move(lim), {std::move(offt.off)}};
-    }
 
     template<class L, class R>
     constexpr auto and_(L l, R r) {
@@ -15390,6 +15433,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/cast.h"
 
+// #include "ast/limit.h"
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -15966,8 +16011,8 @@ namespace sqlite_orm {
             using node_type = as_t<T, E>;
 
             template<class L>
-            void operator()(const node_type& a, L& lambda) const {
-                iterate_ast(a.expression, lambda);
+            void operator()(const node_type& node, L& lambda) const {
+                iterate_ast(node.expression, lambda);
             }
         };
 
@@ -15976,8 +16021,8 @@ namespace sqlite_orm {
             using node_type = limit_t<T, false, OI, void>;
 
             template<class L>
-            void operator()(const node_type& a, L& lambda) const {
-                iterate_ast(a.lim, lambda);
+            void operator()(const node_type& node, L& lambda) const {
+                iterate_ast(node.limit, lambda);
             }
         };
 
@@ -15986,9 +16031,9 @@ namespace sqlite_orm {
             using node_type = limit_t<T, true, false, O>;
 
             template<class L>
-            void operator()(const node_type& a, L& lambda) const {
-                iterate_ast(a.lim, lambda);
-                a.off.apply([&lambda](auto& value) {
+            void operator()(const node_type& node, L& lambda) const {
+                iterate_ast(node.limit, lambda);
+                node.offset.apply([&lambda](auto& value) {
                     iterate_ast(value, lambda);
                 });
             }
@@ -15999,11 +16044,11 @@ namespace sqlite_orm {
             using node_type = limit_t<T, true, true, O>;
 
             template<class L>
-            void operator()(const node_type& a, L& lambda) const {
-                a.off.apply([&lambda](auto& value) {
+            void operator()(const node_type& node, L& lambda) const {
+                node.offset.apply([&lambda](auto& value) {
                     iterate_ast(value, lambda);
                 });
-                iterate_ast(a.lim, lambda);
+                iterate_ast(node.limit, lambda);
             }
         };
 
@@ -19163,6 +19208,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/special_keywords.h"
 
+// #include "ast/limit.h"
+
 // #include "core_functions.h"
 
 // #include "constraints.h"
@@ -22122,26 +22169,26 @@ namespace sqlite_orm {
             using statement_type = limit_t<T, HO, OI, O>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& limt, const Ctx& context) const {
+            std::string operator()(const statement_type& statement, const Ctx& context) const {
                 auto newContext = context;
                 newContext.skip_table_name = false;
                 std::stringstream ss;
-                ss << static_cast<std::string>(limt) << " ";
+                ss << "LIMIT ";
                 if constexpr (HO) {
                     if constexpr (OI) {
-                        limt.off.apply([&newContext, &ss](auto& value) {
+                        statement.offset.apply([&newContext, &ss](auto& value) {
                             ss << serialize(value, newContext);
                         });
                         ss << ", ";
-                        ss << serialize(limt.lim, newContext);
+                        ss << serialize(statement.limit, newContext);
                     } else {
-                        ss << serialize(limt.lim, newContext) << " OFFSET ";
-                        limt.off.apply([&newContext, &ss](auto& value) {
+                        ss << serialize(statement.limit, newContext) << " OFFSET ";
+                        statement.offset.apply([&newContext, &ss](auto& value) {
                             ss << serialize(value, newContext);
                         });
                     }
                 } else {
-                    ss << serialize(limt.lim, newContext);
+                    ss << serialize(statement.limit, newContext);
                 }
                 return ss.str();
             }
@@ -25106,6 +25153,8 @@ namespace sqlite_orm {
 // #include "ast/match.h"
 
 // #include "ast/cast.h"
+
+// #include "ast/limit.h"
 
 namespace sqlite_orm {
     namespace internal {
