@@ -4854,8 +4854,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/limit.h"
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
 #include <type_traits>  //  std::true_type, std::false_type
+#endif  //  SQLITE_ORM_IMPORT_STD_MODULE
 
 // #include "../optional_container.h"
 
