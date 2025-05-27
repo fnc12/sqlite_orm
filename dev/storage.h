@@ -74,9 +74,9 @@ namespace sqlite_orm {
         struct indirectly_test_preparable;
 
         template<class S, class E, class SFINAE = void>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_preparable_v = false;
+        inline constexpr bool is_preparable_v = false;
         template<class S, class E>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_preparable_v<
+        inline constexpr bool is_preparable_v<
             S,
             E,
             polyfill::void_t<indirectly_test_preparable<decltype(std::declval<S>().prepare(std::declval<E>()))>>> =
@@ -283,7 +283,7 @@ namespace sqlite_orm {
             }
 #endif
 
-#if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
             template<class Select>
 #ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
                 requires (is_select_v<Select>)

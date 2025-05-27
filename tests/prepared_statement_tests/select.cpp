@@ -448,7 +448,6 @@ TEST_CASE("dumping") {
         }
     }
 #if SQLITE_VERSION_NUMBER >= 3020000
-#ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
     SECTION("with bound pointer") {
         int64 lastSelectedId;
         auto statement = storage.prepare(select(bind_carray_pointer_statically(&lastSelectedId)));
@@ -465,7 +464,6 @@ TEST_CASE("dumping") {
             expected = "SELECT NULL";
         }
     }
-#endif
 #endif
     REQUIRE(value == expected);
 }

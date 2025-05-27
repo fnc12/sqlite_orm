@@ -47,9 +47,9 @@ namespace sqlite_orm {
         struct indirectly_test_bindable;
 
         template<class T, class SFINAE = void>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_bindable_v = false;
+        inline constexpr bool is_bindable_v = false;
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool
+        inline constexpr bool
             is_bindable_v<T, polyfill::void_t<indirectly_test_bindable<decltype(statement_binder<T>{})>>> = true;
 
         template<class T>

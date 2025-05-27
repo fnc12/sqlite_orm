@@ -26,7 +26,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_binary_operator_v = is_base_template_of<binary_operator, T>::value;
+        inline constexpr bool is_binary_operator_v = is_base_template_of<binary_operator, T>::value;
 
         template<class T>
         using is_binary_operator = polyfill::bool_constant<is_binary_operator_v<T>>;

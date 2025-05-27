@@ -40,17 +40,17 @@ namespace sqlite_orm {
         using aggregate_fin_function_t = decltype(&F::fin);
 
         template<class F, class SFINAE = void>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_scalar_udf_v = false;
+        inline constexpr bool is_scalar_udf_v = false;
         template<class F>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_scalar_udf_v<F, polyfill::void_t<scalar_call_function_t<F>>> = true;
+        inline constexpr bool is_scalar_udf_v<F, polyfill::void_t<scalar_call_function_t<F>>> = true;
 
         template<class F>
         struct is_scalar_udf : polyfill::bool_constant<is_scalar_udf_v<F>> {};
 
         template<class F, class SFINAE = void>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_aggregate_udf_v = false;
+        inline constexpr bool is_aggregate_udf_v = false;
         template<class F>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_aggregate_udf_v<
+        inline constexpr bool is_aggregate_udf_v<
             F,
             polyfill::void_t<aggregate_step_function_t<F>,
                              aggregate_fin_function_t<F>,
@@ -222,7 +222,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool
+        inline constexpr bool
             is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, function_call>::value>> = true;
 
         template<class T>
@@ -504,7 +504,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         requires (orm_scalar_udf<UDF> || orm_aggregate_udf<UDF>)
 #endif
-    SQLITE_ORM_INLINE_VAR constexpr internal::function<UDF> func{};
+    inline constexpr internal::function<UDF> func{};
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     inline namespace literals {

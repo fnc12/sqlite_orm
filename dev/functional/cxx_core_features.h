@@ -17,18 +17,6 @@
 #define SQLITE_ORM_HAS_INCLUDE(file) 0L
 #endif
 
-#if __cpp_range_based_for >= 201603L
-#define SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED
-#endif
-
-#if __cpp_inline_variables >= 201606L
-#define SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
-#endif
-
-#if __cpp_structured_bindings >= 201606L
-#define SQLITE_ORM_STRUCTURED_BINDINGS_SUPPORTED
-#endif
-
 #if __cpp_deduction_guides >= 201703L
 #define SQLITE_ORM_CTAD_SUPPORTED
 #endif

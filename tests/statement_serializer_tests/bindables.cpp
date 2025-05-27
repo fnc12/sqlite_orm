@@ -260,7 +260,6 @@ TEST_CASE("bindables") {
     }
 
 #if SQLITE_VERSION_NUMBER >= 3020000
-#ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
     SECTION("bindable_pointer") {
         string value, expected;
         context.replace_bindable_with_question = false;
@@ -310,6 +309,5 @@ TEST_CASE("bindables") {
 
         REQUIRE(value == expected);
     }
-#endif
 #endif
 }

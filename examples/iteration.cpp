@@ -66,7 +66,7 @@ int main(int, char**) {
     }
     cout << "heroesByAlgorithm.size = " << heroesByAlgorithm.size() << endl;
 
-#if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
     cout << "====" << endl;
 
     cout << "Distinct hero names:" << endl;

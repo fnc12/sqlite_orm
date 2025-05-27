@@ -142,7 +142,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_binary_condition_v = is_base_template_of_v<binary_condition, T>;
+        inline constexpr bool is_binary_condition_v = is_base_template_of_v<binary_condition, T>;
 
         template<class T>
         struct is_binary_condition : polyfill::bool_constant<is_binary_condition_v<T>> {};
@@ -554,7 +554,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_order_by_v =
+        inline constexpr bool is_order_by_v =
             polyfill::disjunction<polyfill::is_specialization_of<T, order_by_t>,
                                   polyfill::is_specialization_of<T, multi_order_by_t>,
                                   polyfill::is_specialization_of<T, dynamic_order_by_t>>::value;
