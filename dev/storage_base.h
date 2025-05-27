@@ -755,23 +755,19 @@ namespace sqlite_orm {
                 return res;
             }
 
-            std::vector<std::string> object_names(const std::string& type) {
+            std::vector<std::string> object_names(string_constant_type type) {
                 using data_t = std::vector<std::string>;
 
                 auto connection = this->get_connection();
                 data_t objectNames;
                 std::stringstream ss;
-                ss << "SELECT name FROM sqlite_master WHERE type = " << quote_string_literal(type);
+                ss << "SELECT name FROM sqlite_master WHERE type=" << quote_string_literal(type);
                 this->executor.perform_exec(
                     connection.get(),
                     ss.str(),
                     [](void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring* /*columnName*/) -> int {
                         auto& objectNames_ = *(data_t*)data;
-                        for (int i = 0; i < argc; ++i) {
-                            if (argv[i]) {
-                                objectNames_.emplace_back(argv[i]);
-                            }
-                        }
+                        objectNames_.emplace_back(argv[0]);
                         return 0;
                     },
                     &objectNames);

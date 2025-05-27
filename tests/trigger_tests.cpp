@@ -126,7 +126,7 @@ TEST_CASE("trigger_names") {
             make_table("x", make_column("test", &X::test)));
         storage.sync_schema();
 
-        auto trigger_names=storage.trigger_names();
+        auto trigger_names = storage.trigger_names();
         REQUIRE_THAT(trigger_names,
                      Catch::Matchers::UnorderedEquals(std::vector<std::string>{"trigger1", "trigger2", "trigger3"}));
     }
