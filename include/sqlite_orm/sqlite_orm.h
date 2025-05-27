@@ -4885,8 +4885,6 @@ namespace sqlite_orm {
             T limit;
             optional_container<O> offset;
 
-            limit_t() = default;
-
             limit_t(decltype(limit) limit) : limit(std::move(limit)) {}
 
             limit_t(decltype(limit) limit, decltype(offset) offset) :
@@ -4935,6 +4933,7 @@ namespace sqlite_orm {
         return {std::move(limit), {std::move(offset.offset)}};
     }
 }
+
 // #include "core_functions.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
