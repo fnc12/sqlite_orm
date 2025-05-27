@@ -4884,11 +4884,6 @@ namespace sqlite_orm {
         struct limit_t {
             T limit;
             optional_container<O> offset;
-
-            limit_t(decltype(limit) limit) : limit(std::move(limit)) {}
-
-            limit_t(decltype(limit) limit, decltype(offset) offset) :
-                limit(std::move(limit)), offset(std::move(offset)) {}
         };
 
         template<class T>
