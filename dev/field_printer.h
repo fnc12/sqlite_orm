@@ -37,9 +37,9 @@ namespace sqlite_orm {
         struct indirectly_test_printable;
 
         template<class T, class SFINAE = void>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_printable_v = false;
+        inline constexpr bool is_printable_v = false;
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool
+        inline constexpr bool
             is_printable_v<T, polyfill::void_t<indirectly_test_printable<decltype(field_printer<T>{})>>> = true;
 
         template<class T>

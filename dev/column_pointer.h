@@ -26,15 +26,13 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_column_pointer_v =
-            polyfill::is_specialization_of<T, column_pointer>::value;
+        inline constexpr bool is_column_pointer_v = polyfill::is_specialization_of<T, column_pointer>::value;
 
         template<class T>
         struct is_column_pointer : polyfill::bool_constant<is_column_pointer_v<T>> {};
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_operator_argument_v<T, std::enable_if_t<is_column_pointer<T>::value>> =
-            true;
+        inline constexpr bool is_operator_argument_v<T, std::enable_if_t<is_column_pointer<T>::value>> = true;
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         template<class A>

@@ -10,7 +10,7 @@ using namespace sqlite_orm;
 using internal::mapped_iterator;
 using internal::mapped_view;
 using internal::structure;
-#if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
 using internal::result_set_iterator;
 using internal::result_set_sentinel_t;
 using internal::result_set_view;
@@ -75,8 +75,7 @@ concept storage_iterate_mapped = requires(S& storage_type) {
 };
 #endif
 
-#if (defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)) &&         \
-    defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED)
+#if defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED) && defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED)
 template<class Iter, class Value>
 concept can_iterate_result_set = requires(Iter it) {
     requires std::input_iterator<Iter>;
@@ -156,8 +155,7 @@ TEST_CASE("can view and iterate mapped") {
 #endif
 }
 
-#if (defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)) &&         \
-    defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED)
+#if defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED) && defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED)
 TEST_CASE("can view and iterate result set") {
     struct Object {};
     using empty_storage_type = decltype(make_storage(""));

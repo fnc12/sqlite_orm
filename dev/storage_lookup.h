@@ -123,7 +123,7 @@ namespace sqlite_orm {
 #endif
 
         template<class DBOs, class Lookup>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_mapped_v = is_mapped<DBOs, Lookup>::value;
+        inline constexpr bool is_mapped_v = is_mapped<DBOs, Lookup>::value;
     }
 }
 

@@ -20,7 +20,7 @@ namespace sqlite_orm {
          *  Specialize if a type participates as an argument to overloaded operators (arithmetic, conditional, negation, chaining)
          */
         template<class T, class SFINAE = void>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_operator_argument_v = false;
+        inline constexpr bool is_operator_argument_v = false;
 
         template<class T>
         using is_operator_argument = polyfill::bool_constant<is_operator_argument_v<T>>;

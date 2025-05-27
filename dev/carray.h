@@ -1,18 +1,10 @@
 #pragma once
 
-/*
- *  Note: This feature needs constexpr variables with external linkage.
- *  which can be achieved before C++17's inline variables, but differs from compiler to compiler.
- *  Hence we make it only available for compilers supporting inline variables.
- */
-
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if SQLITE_VERSION_NUMBER >= 3020000
-#ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 #include <utility>  //  std::move
 #ifndef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <type_traits>  //  std::integral_constant
-#endif
 #endif
 #endif
 #endif
@@ -21,7 +13,6 @@
 #include "pointer_value.h"
 
 #if SQLITE_VERSION_NUMBER >= 3020000
-#ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -145,5 +136,4 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
     };
 }
-#endif
 #endif

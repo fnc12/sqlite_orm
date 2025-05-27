@@ -29,7 +29,7 @@ namespace sqlite_orm {
 #endif
 
         template<class R>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_table_reference_v =
+        inline constexpr bool is_table_reference_v =
             polyfill::is_specialization_of_v<std::remove_const_t<R>, table_reference>;
 
         template<class R>

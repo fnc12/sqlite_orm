@@ -35,6 +35,6 @@ namespace sqlite_orm {
 #endif
 
         template<template<typename...> class Base, typename T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_base_template_of_v = is_base_template_of<Base, T>::value;
+        inline constexpr bool is_base_template_of_v = is_base_template_of<Base, T>::value;
     }
 }

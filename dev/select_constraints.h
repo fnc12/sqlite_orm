@@ -77,7 +77,7 @@ namespace sqlite_orm {
          *  Whether a type represents a keyword for a result set modifier (as part of a simple select expression).
          */
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_rowset_deduplicator_v =
+        inline constexpr bool is_rowset_deduplicator_v =
             polyfill::disjunction<polyfill::is_specialization_of<T, distinct_t>,
                                   polyfill::is_specialization_of<T, all_t>>::value;
 
@@ -94,7 +94,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_columns_v = polyfill::is_specialization_of<T, columns_t>::value;
+        inline constexpr bool is_columns_v = polyfill::is_specialization_of<T, columns_t>::value;
 
         template<class T>
         using is_columns = polyfill::bool_constant<is_columns_v<T>>;
@@ -114,7 +114,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_struct_v = polyfill::is_specialization_of<T, struct_t>::value;
+        inline constexpr bool is_struct_v = polyfill::is_specialization_of<T, struct_t>::value;
 
         template<class T>
         using is_struct = polyfill::bool_constant<is_struct_v<T>>;
@@ -133,7 +133,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_select_v = polyfill::is_specialization_of<T, select_t>::value;
+        inline constexpr bool is_select_v = polyfill::is_specialization_of<T, select_t>::value;
 
         template<class T>
         using is_select = polyfill::bool_constant<is_select_v<T>>;
@@ -155,7 +155,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_compound_operator_v = is_base_template_of<compound_operator, T>::value;
+        inline constexpr bool is_compound_operator_v = is_base_template_of<compound_operator, T>::value;
 
         template<class T>
         using is_compound_operator = polyfill::bool_constant<is_compound_operator_v<T>>;
