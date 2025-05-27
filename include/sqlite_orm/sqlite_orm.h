@@ -18793,7 +18793,7 @@ namespace sqlite_orm {
                 auto connection = this->get_connection();
                 data_t objectNames;
                 std::stringstream ss;
-                ss << "SELECT name FROM sqlite_master WHERE type=" << quote_string_literal(type);
+                ss << "SELECT name FROM sqlite_master WHERE type=" << quote_string_literal(std::string(type));
                 this->executor.perform_exec(
                     connection.get(),
                     ss.str(),
