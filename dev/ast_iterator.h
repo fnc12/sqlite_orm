@@ -26,6 +26,7 @@
 #include "ast/set.h"
 #include "ast/match.h"
 #include "ast/cast.h"
+#include "ast/limit.h"
 
 namespace sqlite_orm {
 
@@ -610,8 +611,8 @@ namespace sqlite_orm {
             using node_type = as_t<T, E>;
 
             template<class L>
-            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& a, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-                iterate_ast(a.expression, lambda);
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
+                iterate_ast(node.expression, lambda);
             }
         };
 
@@ -620,8 +621,8 @@ namespace sqlite_orm {
             using node_type = limit_t<T, false, OI, void>;
 
             template<class L>
-            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& a, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-                iterate_ast(a.lim, lambda);
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
+                iterate_ast(node.limit, lambda);
             }
         };
 
@@ -630,9 +631,9 @@ namespace sqlite_orm {
             using node_type = limit_t<T, true, false, O>;
 
             template<class L>
-            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& a, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-                iterate_ast(a.lim, lambda);
-                a.off.apply([&lambda](auto& value) {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
+                iterate_ast(node.limit, lambda);
+                node.offset.apply([&lambda](auto& value) {
                     iterate_ast(value, lambda);
                 });
             }
@@ -643,11 +644,11 @@ namespace sqlite_orm {
             using node_type = limit_t<T, true, true, O>;
 
             template<class L>
-            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& a, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-                a.off.apply([&lambda](auto& value) {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
+                node.offset.apply([&lambda](auto& value) {
                     iterate_ast(value, lambda);
                 });
-                iterate_ast(a.lim, lambda);
+                iterate_ast(node.limit, lambda);
             }
         };
 

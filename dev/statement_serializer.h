@@ -29,6 +29,7 @@
 #include "ast/match.h"
 #include "ast/rank.h"
 #include "ast/special_keywords.h"
+#include "ast/limit.h"
 #include "core_functions.h"
 #include "constraints.h"
 #include "conditions.h"
@@ -2355,27 +2356,27 @@ namespace sqlite_orm {
             using statement_type = limit_t<T, HO, OI, O>;
 
             template<class Ctx>
-            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& limt,
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 auto newContext = context;
                 newContext.skip_table_name = false;
                 std::stringstream ss;
-                ss << static_cast<std::string>(limt) << " ";
+                ss << "LIMIT ";
                 if constexpr (HO) {
                     if constexpr (OI) {
-                        limt.off.apply([&newContext, &ss](auto& value) {
+                        statement.offset.apply([&newContext, &ss](auto& value) {
                             ss << serialize(value, newContext);
                         });
                         ss << ", ";
-                        ss << serialize(limt.lim, newContext);
+                        ss << serialize(statement.limit, newContext);
                     } else {
-                        ss << serialize(limt.lim, newContext) << " OFFSET ";
-                        limt.off.apply([&newContext, &ss](auto& value) {
+                        ss << serialize(statement.limit, newContext) << " OFFSET ";
+                        statement.offset.apply([&newContext, &ss](auto& value) {
                             ss << serialize(value, newContext);
                         });
                     }
                 } else {
-                    ss << serialize(limt.lim, newContext);
+                    ss << serialize(statement.limit, newContext);
                 }
                 return ss.str();
             }

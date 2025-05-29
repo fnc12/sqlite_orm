@@ -19,6 +19,7 @@
 #include "optional_container.h"
 #include "ast/where.h"
 #include "ast/group_by.h"
+#include "ast/limit.h"
 #include "core_functions.h"
 #include "alias_traits.h"
 #include "cte_moniker.h"

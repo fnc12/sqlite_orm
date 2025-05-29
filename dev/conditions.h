@@ -31,44 +31,6 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        struct limit_string {
-            operator std::string() const {
-                return "LIMIT";
-            }
-        };
-
-        /**
-         *  Stores LIMIT/OFFSET info
-         */
-        template<class T, bool has_offset, bool offset_is_implicit, class O>
-        struct limit_t : limit_string {
-            T lim;
-            optional_container<O> off;
-
-            limit_t() = default;
-
-            limit_t(decltype(lim) lim_) : lim(std::move(lim_)) {}
-
-            limit_t(decltype(lim) lim_, decltype(off) off_) : lim(std::move(lim_)), off(std::move(off_)) {}
-        };
-
-        template<class T>
-        struct is_limit : std::false_type {};
-
-        template<class T, bool has_offset, bool offset_is_implicit, class O>
-        struct is_limit<limit_t<T, has_offset, offset_is_implicit, O>> : std::true_type {};
-
-        /**
-         *  Stores OFFSET only info
-         */
-        template<class T>
-        struct offset_t {
-            T off;
-        };
-
-        template<class T>
-        using is_offset = polyfill::is_specialization_of<T, offset_t>;
-
         /**
          *  Collated something
          */
@@ -1002,26 +964,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return inner_join<internal::auto_decay_table_ref_t<alias>, On>(std::move(on));
     }
 #endif
-
-    template<class T>
-    internal::offset_t<T> offset(T off) {
-        return {std::move(off)};
-    }
-
-    template<class T>
-    internal::limit_t<T, false, false, void> limit(T lim) {
-        return {std::move(lim)};
-    }
-
-    template<class T, class O, internal::satisfies_not<internal::is_offset, T> = true>
-    internal::limit_t<T, true, true, O> limit(O off, T lim) {
-        return {std::move(lim), {std::move(off)}};
-    }
-
-    template<class T, class O>
-    internal::limit_t<T, true, false, O> limit(T lim, internal::offset_t<O> offt) {
-        return {std::move(lim), {std::move(offt.off)}};
-    }
 
     template<class L, class R>
     constexpr auto and_(L l, R r) {
