@@ -445,7 +445,6 @@ namespace sqlite_orm {
             [[nodiscard]] consteval auto quote(F callable) const {
                 using Sig = function_signature_type_t<decltype(&F::operator())>;
                 // detect whether overloaded call operator can be picked using `Sig`
-                using call_operator_type = decltype(static_cast<Sig F::*>(&F::operator()));
                 return quoted_scalar_function<F, Sig, N>{this->cstr, std::move(callable)};
             }
 
@@ -456,7 +455,6 @@ namespace sqlite_orm {
                 requires ((stateless<F> || std::copy_constructible<F>))
             [[nodiscard]] consteval auto quote(F callable) const {
                 // detect whether overloaded call operator can be picked using `Sig`
-                using call_operator_type = decltype(static_cast<Sig F::*>(&F::operator()));
                 return quoted_scalar_function<F, Sig, N>{this->cstr, std::move(callable)};
             }
 
@@ -477,7 +475,6 @@ namespace sqlite_orm {
                 requires ((stateless<F> || std::copy_constructible<F>))
             [[nodiscard]] consteval auto quote(Args&&... constructorArgs) const {
                 // detect whether overloaded call operator can be picked using `Sig`
-                using call_operator_type = decltype(static_cast<Sig F::*>(&F::operator()));
                 return quoted_scalar_function<F, Sig, N>{this->cstr, std::forward<Args>(constructorArgs)...};
             }
         };

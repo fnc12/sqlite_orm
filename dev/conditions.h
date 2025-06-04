@@ -35,7 +35,7 @@ namespace sqlite_orm {
          *  Collated something
          */
         template<class T>
-        struct collate_t : public condition_t {
+        struct collate_t : condition_t {
             T expr;
             collate_argument argument;
 

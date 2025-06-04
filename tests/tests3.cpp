@@ -297,7 +297,8 @@ TEST_CASE("Blob") {
         return data;
     };
 
-    auto storage = make_storage("blob.db", make_table("blob", make_column("data", &BlobData::data)));
+    auto filename = "blob.db";
+    auto storage = make_storage(filename, make_table("blob", make_column("data", &BlobData::data)));
     storage.sync_schema();
     storage.remove_all<BlobData>();
 
@@ -340,6 +341,7 @@ TEST_CASE("Blob") {
     storage.insert(BlobData{});
 
     free(data);
+    std::remove(filename);
 }
 
 /**
