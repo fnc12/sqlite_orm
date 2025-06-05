@@ -5159,7 +5159,7 @@ namespace sqlite_orm {
          *  Collated something
          */
         template<class T>
-        struct collate_t : public condition_t {
+        struct collate_t : condition_t {
             T expr;
             collate_argument argument;
 
@@ -11515,7 +11515,6 @@ namespace sqlite_orm {
             [[nodiscard]] consteval auto quote(F callable) const {
                 using Sig = function_signature_type_t<decltype(&F::operator())>;
                 // detect whether overloaded call operator can be picked using `Sig`
-                using call_operator_type = decltype(static_cast<Sig F::*>(&F::operator()));
                 return quoted_scalar_function<F, Sig, N>{this->cstr, std::move(callable)};
             }
 
@@ -11526,7 +11525,6 @@ namespace sqlite_orm {
                 requires ((stateless<F> || std::copy_constructible<F>))
             [[nodiscard]] consteval auto quote(F callable) const {
                 // detect whether overloaded call operator can be picked using `Sig`
-                using call_operator_type = decltype(static_cast<Sig F::*>(&F::operator()));
                 return quoted_scalar_function<F, Sig, N>{this->cstr, std::move(callable)};
             }
 
@@ -11547,7 +11545,6 @@ namespace sqlite_orm {
                 requires ((stateless<F> || std::copy_constructible<F>))
             [[nodiscard]] consteval auto quote(Args&&... constructorArgs) const {
                 // detect whether overloaded call operator can be picked using `Sig`
-                using call_operator_type = decltype(static_cast<Sig F::*>(&F::operator()));
                 return quoted_scalar_function<F, Sig, N>{this->cstr, std::forward<Args>(constructorArgs)...};
             }
         };
@@ -18813,7 +18810,7 @@ namespace sqlite_orm {
                 this->executor.perform_exec(
                     connection.get(),
                     ss.str(),
-                    [](void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring* /*columnName*/) -> int {
+                    [](void* data, int /*argc*/, orm_gsl::zstring* argv, orm_gsl::zstring* /*columnName*/) -> int {
                         auto& objectNames_ = *(data_t*)data;
                         objectNames_.emplace_back(argv[0]);
                         return 0;

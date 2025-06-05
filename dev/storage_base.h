@@ -765,7 +765,7 @@ namespace sqlite_orm {
                 this->executor.perform_exec(
                     connection.get(),
                     ss.str(),
-                    [](void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring* /*columnName*/) -> int {
+                    [](void* data, int /*argc*/, orm_gsl::zstring* argv, orm_gsl::zstring* /*columnName*/) -> int {
                         auto& objectNames_ = *(data_t*)data;
                         objectNames_.emplace_back(argv[0]);
                         return 0;
