@@ -55,7 +55,10 @@ if(SQLITE_ORM_OMITS_CODECVT)
     target_compile_definitions(unit_tests PRIVATE SQLITE_ORM_OMITS_CODECVT=1)
 endif()
 
-if (MSVC)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    # GCC would complain about name mangling errors (with type traits for locally defined lambdas) if the ABI version is not set to 0
+    add_compile_options(-fabi-version=0)
+elseif(MSVC)
     target_compile_options(unit_tests PUBLIC
         # multi-processor compilation
         /MP)
