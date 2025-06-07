@@ -11561,7 +11561,7 @@ namespace sqlite_orm {
                 // detect whether overloaded call operator can be picked using `Sig`
                 static_assert(polyfill::is_detected_v<overloaded_callop_t, Sig, F> ||
                                   polyfill::is_detected_v<overloaded_static_callop_t, Sig, F>,
-                              "No call operator with the specified signature available; have you overlook the method "
+                              "No call operator with the specified signature available; have you overlooked the method "
                               "qualifiers?");
                 return quoted_scalar_function<F, Sig, N>{this->cstr, std::move(callable)};
             }
@@ -11585,7 +11585,7 @@ namespace sqlite_orm {
                 // detect whether overloaded call operator can be picked using `Sig`
                 static_assert(polyfill::is_detected_v<overloaded_callop_t, Sig, F> ||
                                   polyfill::is_detected_v<overloaded_static_callop_t, Sig, F>,
-                              "No call operator with the specified signature available; have you overlook the method "
+                              "No call operator with the specified signature available; have you overlooked the method "
                               "qualifiers?");
                 return quoted_scalar_function<F, Sig, N>{this->cstr, std::forward<Args>(constructorArgs)...};
             }
