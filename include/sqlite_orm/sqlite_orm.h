@@ -11235,6 +11235,17 @@ namespace sqlite_orm {
         struct callable_arguments : callable_arguments_impl<F> {};
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        template<orm_function_sig Sig, class F>
+        using overloaded_callop_t = decltype(static_cast<Sig F::*>(&F::operator()));
+
+        template<orm_function_sig Sig, class F>
+        using overloaded_static_callop_t =
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            decltype(static_cast<Sig*>(&F::operator()));
+#else
+            std::enable_if_t<polyfill::always_false_v<Sig>, void>;
+#endif
+
         /*
          *  Bundle of type and name of a quoted user-defined function.
          */
@@ -11468,12 +11479,31 @@ namespace sqlite_orm {
             /*
              *  Return original `udf` if stateless or a copy of it otherwise
              */
-            constexpr decltype(auto) callable() const {
-                if constexpr (stateless<F>) {
-                    return (this->udf);
-                } else {
+            constexpr auto callable() const {
+                // function pointer
+                if constexpr (std::is_pointer_v<F>) {
+                    return this->udf;
+                }
+                // static call operator
+                else if constexpr (polyfill::is_detected_v<internal::overloaded_static_callop_t, Sig, F>) {
+                    return static_cast<Sig*>(&F::operator());
+                }
+                // stateless functor
+                else if constexpr (stateless<F>) {
+#if __cpp_lib_bind_front >= 202306L
+                    return std::bind_front<static_cast<Sig F::*>(&F::operator())>(std::ref(this->udf));
+#else
+                    return std::bind_front(static_cast<Sig F::*>(&F::operator()), std::ref(this->udf));
+#endif
+                }
+                // stateful functor
+                else {
                     // non-const copy
-                    return F(this->udf);
+#if __cpp_lib_bind_front >= 202306L
+                    return std::bind_front<static_cast<Sig F::*>(&F::operator())>(this->udf);
+#else
+                    return std::bind_front(static_cast<Sig F::*>(&F::operator()), this->udf);
+#endif
                 }
             }
 
@@ -11510,11 +11540,10 @@ namespace sqlite_orm {
             /*
              *  From a classic function object instance.
              */
-            template<class F>
-                requires (orm_classic_function_object<F> && (stateless<F> || std::copy_constructible<F>))
+            template<orm_classic_function_object F>
+                requires (stateless<F> || std::copy_constructible<F>)
             [[nodiscard]] consteval auto quote(F callable) const {
                 using Sig = function_signature_type_t<decltype(&F::operator())>;
-                // detect whether overloaded call operator can be picked using `Sig`
                 return quoted_scalar_function<F, Sig, N>{this->cstr, std::move(callable)};
             }
 
@@ -11522,9 +11551,13 @@ namespace sqlite_orm {
              *  From a function object instance, picking the overloaded call operator.
              */
             template<orm_function_sig Sig, class F>
-                requires ((stateless<F> || std::copy_constructible<F>))
+                requires (stateless<F> || std::copy_constructible<F>)
             [[nodiscard]] consteval auto quote(F callable) const {
                 // detect whether overloaded call operator can be picked using `Sig`
+                static_assert(polyfill::is_detected_v<overloaded_callop_t, Sig, F> ||
+                                  polyfill::is_detected_v<overloaded_static_callop_t, Sig, F>,
+                              "No call operator with the specified signature available; have you overlook the method "
+                              "qualifiers?");
                 return quoted_scalar_function<F, Sig, N>{this->cstr, std::move(callable)};
             }
 
@@ -11542,9 +11575,13 @@ namespace sqlite_orm {
              *  From a function object type, picking the overloaded call operator.
              */
             template<orm_function_sig Sig, class F, class... Args>
-                requires ((stateless<F> || std::copy_constructible<F>))
+                requires (stateless<F> || std::copy_constructible<F>)
             [[nodiscard]] consteval auto quote(Args&&... constructorArgs) const {
                 // detect whether overloaded call operator can be picked using `Sig`
+                static_assert(polyfill::is_detected_v<overloaded_callop_t, Sig, F> ||
+                                  polyfill::is_detected_v<overloaded_static_callop_t, Sig, F>,
+                              "No call operator with the specified signature available; have you overlook the method "
+                              "qualifiers?");
                 return quoted_scalar_function<F, Sig, N>{this->cstr, std::forward<Args>(constructorArgs)...};
             }
         };
@@ -18420,12 +18457,12 @@ namespace sqlite_orm {
             template<decltype(auto) quotedF>
                 requires (orm_quoted_scalar_function<decltype(quotedF)>)
             void create_scalar_function() {
-                using Sig = auto_udf_type_t<(quotedF)>;
-                using args_tuple = typename callable_arguments<Sig>::args_tuple;
-                using return_type = typename callable_arguments<Sig>::return_type;
-                constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
-                                               ? -1
-                                               : int(std::tuple_size<args_tuple>::value);
+                using signature_type = auto_udf_type_t<(quotedF)>;
+                using args_tuple = typename callable_arguments<signature_type>::args_tuple;
+                using return_type = typename callable_arguments<signature_type>::return_type;
+                constexpr int argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
+                                              ? -1
+                                              : int(std::tuple_size<args_tuple>::value);
                 this->scalarFunctions.emplace_back(
                     std::string{quotedF.name()},
                     argsCount,
@@ -18434,9 +18471,9 @@ namespace sqlite_orm {
                     /* destroy = */
                     nullptr,
                     /* call = */
-                    [](sqlite3_context* context, int argsCount, sqlite3_value** values) {
-                        proxy_assert_args_count(context, argsCount);
-                        args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
+                    [](sqlite3_context* context, int nValues, sqlite3_value** values) {
+                        proxy_assert_args_count(context, nValues);
+                        args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, nValues);
                         auto result = polyfill::apply(quotedF.callable(), std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
                     },
@@ -18886,9 +18923,9 @@ namespace sqlite_orm {
             void create_scalar_function_impl(udf_holder<F> udfName, std::function<void(void* location)> constructAt) {
                 using args_tuple = typename callable_arguments<F>::args_tuple;
                 using return_type = typename callable_arguments<F>::return_type;
-                constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
-                                               ? -1
-                                               : int(std::tuple_size<args_tuple>::value);
+                constexpr int argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
+                                              ? -1
+                                              : int(std::tuple_size<args_tuple>::value);
                 using is_stateless = std::is_empty<F>;
                 auto udfMemorySpace = preallocate_udf_memory<F>();
                 if constexpr (is_stateless::value) {
@@ -18901,9 +18938,9 @@ namespace sqlite_orm {
                     /* destroy = */
                     obtain_xdestroy_for<F>(udf_destruct_only_deleter{}),
                     /* call = */
-                    [](sqlite3_context* context, int argsCount, sqlite3_value** values) {
-                        auto udfPointer = proxy_get_scalar_udf<F>(is_stateless{}, context, argsCount);
-                        args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
+                    [](sqlite3_context* context, int nValues, sqlite3_value** values) {
+                        auto udfPointer = proxy_get_scalar_udf<F>(is_stateless{}, context, nValues);
+                        args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, nValues);
                         auto result = polyfill::apply(*udfPointer, std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
                     },
@@ -18920,9 +18957,9 @@ namespace sqlite_orm {
                                                 std::function<void(void* location)> constructAt) {
                 using args_tuple = typename callable_arguments<F>::args_tuple;
                 using return_type = typename callable_arguments<F>::return_type;
-                constexpr auto argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
-                                               ? -1
-                                               : int(std::tuple_size<args_tuple>::value);
+                constexpr int argsCount = std::is_same<args_tuple, std::tuple<arg_values>>::value
+                                              ? -1
+                                              : int(std::tuple_size<args_tuple>::value);
                 this->aggregateFunctions.emplace_back(
                     udfName(),
                     argsCount,
@@ -18930,15 +18967,15 @@ namespace sqlite_orm {
                     /* destroy = */
                     obtain_xdestroy_for<F>(udf_destruct_only_deleter{}),
                     /* step = */
-                    [](sqlite3_context* context, int argsCount, sqlite3_value** values) {
+                    [](sqlite3_context* context, int nValues, sqlite3_value** values) {
                         F* udfPointer;
                         try {
-                            udfPointer = proxy_get_aggregate_step_udf<F>(context, argsCount);
+                            udfPointer = proxy_get_aggregate_step_udf<F>(context, nValues);
                         } catch (const std::bad_alloc&) {
                             sqlite3_result_error_nomem(context);
                             return;
                         }
-                        args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, argsCount);
+                        args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, nValues);
 #if __cpp_lib_bind_front >= 201907L
                         std::apply(std::bind_front(&F::step, udfPointer), std::move(argsTuple));
 #else

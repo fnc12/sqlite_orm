@@ -277,30 +277,252 @@ TEST_CASE("function static") {
     }
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     SECTION("quoted") {
-        constexpr auto quotedScalar = "f"_scalar.quote(std::clamp<int>);
-        using quoted_type = decltype("f"_scalar.quote(std::clamp<int>));
+        struct functor {
+            bool operator()(int&, int&) const = delete;
 
-        STATIC_REQUIRE(quotedScalar.nme[0] == 'f' && quotedScalar.nme[1] == '\0');
-        STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar),
-                                      const quoted_scalar_function<decltype(std::clamp<int>)*,
-                                                                   const int&(const int&, const int&, const int&),
-                                                                   2>>);
+            bool operator()(const int&, const int&) const {
+                return true;
+            }
 
-        STATIC_REQUIRE(std::is_same_v<quoted_type::callable_type, decltype(std::clamp<int>)*>);
-        STATIC_REQUIRE(std::is_same_v<quoted_type::udf_type, const int&(const int&, const int&, const int&)>);
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+            static bool operator()(int, int) {
+                return true;
+            }
+#endif
+        };
 
-        STATIC_REQUIRE(std::is_same_v<callable_arguments<quoted_type::udf_type>::return_type, int>);
-        STATIC_REQUIRE(
-            std::is_same_v<callable_arguments<quoted_type::udf_type>::args_tuple, std::tuple<int, int, int>>);
+        SECTION("detect overloaded call operator") {
+            constexpr auto lambda = [](unsigned long errcode) {
+                return errcode != 0;
+            };
+            using lambda_type = std::remove_const_t<decltype(lambda)>;
 
-        STATIC_REQUIRE(orm_quoted_scalar_function<decltype(quotedScalar)>);
-        STATIC_REQUIRE_FALSE(orm_scalar_function<decltype(quotedScalar)>);
+            STATIC_REQUIRE(
+                polyfill::is_detected_v<internal::overloaded_callop_t, bool(unsigned long) const, lambda_type>);
+            STATIC_REQUIRE_FALSE(
+                polyfill::is_detected_v<internal::overloaded_static_callop_t, bool(unsigned long) const, lambda_type>);
+        }
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+        SECTION("detect overloaded static call operator") {
+            constexpr auto lambda = [](unsigned long errcode) static {
+                return errcode != 0;
+            };
+            using lambda_type = std::remove_const_t<decltype(lambda)>;
 
-        STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar(0, 1, 1)),
-                                      function_call<const int&(const int&, const int&, const int&), int, int, int>>);
+            STATIC_REQUIRE_FALSE(
+                polyfill::is_detected_v<internal::overloaded_callop_t, bool(unsigned long), lambda_type>);
+            STATIC_REQUIRE(
+                polyfill::is_detected_v<internal::overloaded_static_callop_t, bool(unsigned long), lambda_type>);
+        }
+#endif
+        SECTION("freestanding function") {
+            constexpr auto quotedScalar = "f"_scalar.quote(std::clamp<int>);
+            using quoted_type = decltype("f"_scalar.quote(std::clamp<int>));
 
-        using storage_type = decltype(make_storage(""));
-        STATIC_REQUIRE(storage_scalar_callable<storage_type, quotedScalar>);
+            STATIC_REQUIRE(quotedScalar.nme[0] == 'f' && quotedScalar.nme[1] == '\0');
+            STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar),
+                                          const quoted_scalar_function<decltype(&std::clamp<int>),
+                                                                       const int&(const int&, const int&, const int&),
+                                                                       2>>);
+
+            STATIC_REQUIRE(std::is_same_v<quoted_type::callable_type, decltype(&std::clamp<int>)>);
+            STATIC_REQUIRE(std::is_same_v<quoted_type::udf_type, const int&(const int&, const int&, const int&)>);
+
+            STATIC_REQUIRE(std::is_same_v<callable_arguments<quoted_type::udf_type>::return_type, int>);
+            STATIC_REQUIRE(
+                std::is_same_v<callable_arguments<quoted_type::udf_type>::args_tuple, std::tuple<int, int, int>>);
+
+            STATIC_REQUIRE(orm_quoted_scalar_function<decltype(quotedScalar)>);
+            STATIC_REQUIRE_FALSE(orm_scalar_function<decltype(quotedScalar)>);
+
+            STATIC_REQUIRE(
+                std::is_same_v<decltype(quotedScalar(0, 1, 1)),
+                               function_call<const int&(const int&, const int&, const int&), int, int, int>>);
+
+            using storage_type = decltype(make_storage(""));
+            STATIC_REQUIRE(storage_scalar_callable<storage_type, quotedScalar>);
+        }
+        SECTION("template function") {
+            constexpr auto quotedScalar = "f"_scalar.quote<const int&(const int&, const int&, const int&)>(std::clamp);
+            using quoted_type = decltype("f"_scalar.quote<const int&(const int&, const int&, const int&)>(std::clamp));
+
+            STATIC_REQUIRE(quotedScalar.nme[0] == 'f' && quotedScalar.nme[1] == '\0');
+            STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar),
+                                          const quoted_scalar_function<decltype(&std::clamp<int>),
+                                                                       const int&(const int&, const int&, const int&),
+                                                                       2>>);
+
+            STATIC_REQUIRE(std::is_same_v<quoted_type::callable_type, decltype(&std::clamp<int>)>);
+            STATIC_REQUIRE(std::is_same_v<quoted_type::udf_type, const int&(const int&, const int&, const int&)>);
+
+            STATIC_REQUIRE(std::is_same_v<callable_arguments<quoted_type::udf_type>::return_type, int>);
+            STATIC_REQUIRE(
+                std::is_same_v<callable_arguments<quoted_type::udf_type>::args_tuple, std::tuple<int, int, int>>);
+
+            STATIC_REQUIRE(orm_quoted_scalar_function<decltype(quotedScalar)>);
+            STATIC_REQUIRE_FALSE(orm_scalar_function<decltype(quotedScalar)>);
+
+            STATIC_REQUIRE(
+                std::is_same_v<decltype(quotedScalar(0, 1, 1)),
+                               function_call<const int&(const int&, const int&, const int&), int, int, int>>);
+
+            using storage_type = decltype(make_storage(""));
+            STATIC_REQUIRE(storage_scalar_callable<storage_type, quotedScalar>);
+        }
+        SECTION("lambda") {
+            constexpr auto lambda = [](unsigned long errcode) {
+                return errcode != 0;
+            };
+            using lambda_type = std::remove_const_t<decltype(lambda)>;
+            constexpr auto quotedScalar = "f"_scalar.quote(lambda);
+            using quoted_type = std::remove_const_t<decltype(quotedScalar)>;
+
+            STATIC_REQUIRE(quotedScalar.nme[0] == 'f' && quotedScalar.nme[1] == '\0');
+            STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar),
+                                          const quoted_scalar_function<lambda_type, bool(unsigned long) const, 2>>);
+
+            STATIC_REQUIRE(std::is_same_v<quoted_type::callable_type, lambda_type>);
+            STATIC_REQUIRE(std::is_same_v<quoted_type::udf_type, bool(unsigned long) const>);
+
+            STATIC_REQUIRE(std::is_same_v<callable_arguments<quoted_type::udf_type>::return_type, bool>);
+            STATIC_REQUIRE(
+                std::is_same_v<callable_arguments<quoted_type::udf_type>::args_tuple, std::tuple<unsigned long>>);
+
+            STATIC_REQUIRE(orm_quoted_scalar_function<decltype(quotedScalar)>);
+            STATIC_REQUIRE_FALSE(orm_scalar_function<decltype(quotedScalar)>);
+
+            STATIC_REQUIRE(
+                std::is_same_v<decltype(quotedScalar(1ul)), function_call<bool(unsigned long) const, unsigned long>>);
+
+            using storage_type = decltype(make_storage(""));
+            STATIC_REQUIRE(storage_scalar_callable<storage_type, quotedScalar>);
+        }
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+        SECTION("static lambda") {
+            constexpr auto lambda = [](unsigned long errcode) static {
+                return errcode != 0;
+            };
+            using lambda_type = std::remove_const_t<decltype(lambda)>;
+            constexpr auto quotedScalar = "f"_scalar.quote(lambda);
+            using quoted_type = std::remove_const_t<decltype(quotedScalar)>;
+
+            STATIC_REQUIRE(quotedScalar.nme[0] == 'f' && quotedScalar.nme[1] == '\0');
+            STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar),
+                                          const quoted_scalar_function<lambda_type, bool(unsigned long), 2>>);
+
+            STATIC_REQUIRE(std::is_same_v<quoted_type::callable_type, lambda_type>);
+            STATIC_REQUIRE(std::is_same_v<quoted_type::udf_type, bool(unsigned long)>);
+
+            STATIC_REQUIRE(std::is_same_v<callable_arguments<quoted_type::udf_type>::return_type, bool>);
+            STATIC_REQUIRE(
+                std::is_same_v<callable_arguments<quoted_type::udf_type>::args_tuple, std::tuple<unsigned long>>);
+
+            STATIC_REQUIRE(orm_quoted_scalar_function<decltype(quotedScalar)>);
+            STATIC_REQUIRE_FALSE(orm_scalar_function<decltype(quotedScalar)>);
+
+            STATIC_REQUIRE(
+                std::is_same_v<decltype(quotedScalar(1ul)), function_call<bool(unsigned long), unsigned long>>);
+
+            using storage_type = decltype(make_storage(""));
+            STATIC_REQUIRE(storage_scalar_callable<storage_type, quotedScalar>);
+        }
+#endif
+        SECTION("classic function object") {
+            constexpr auto quotedScalar = "f"_scalar.quote<bool(const int&, const int&) const>(std::equal_to<int>{});
+            using quoted_type = decltype("f"_scalar.quote<bool(const int&, const int&) const>(std::equal_to<int>{}));
+
+            STATIC_REQUIRE(quotedScalar.nme[0] == 'f' && quotedScalar.nme[1] == '\0');
+            STATIC_REQUIRE(std::is_same_v<
+                           decltype(quotedScalar),
+                           const quoted_scalar_function<std::equal_to<int>, bool(const int&, const int&) const, 2>>);
+
+            STATIC_REQUIRE(std::is_same_v<quoted_type::callable_type, std::equal_to<int>>);
+            STATIC_REQUIRE(std::is_same_v<quoted_type::udf_type, bool(const int&, const int&) const>);
+
+            STATIC_REQUIRE(std::is_same_v<callable_arguments<quoted_type::udf_type>::return_type, bool>);
+            STATIC_REQUIRE(std::is_same_v<callable_arguments<quoted_type::udf_type>::args_tuple, std::tuple<int, int>>);
+
+            STATIC_REQUIRE(orm_quoted_scalar_function<decltype(quotedScalar)>);
+            STATIC_REQUIRE_FALSE(orm_scalar_function<decltype(quotedScalar)>);
+
+            STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar(1, 1)),
+                                          function_call<bool(const int&, const int&) const, int, int>>);
+
+            using storage_type = decltype(make_storage(""));
+            STATIC_REQUIRE(storage_scalar_callable<storage_type, quotedScalar>);
+        }
+        SECTION("transparent function object") {
+            constexpr auto quotedScalar = "f"_scalar.quote<bool(const int&, const int&) const>(std::equal_to<void>{});
+            using quoted_type = decltype("f"_scalar.quote<bool(const int&, const int&) const>(std::equal_to<void>{}));
+
+            STATIC_REQUIRE(quotedScalar.nme[0] == 'f' && quotedScalar.nme[1] == '\0');
+            STATIC_REQUIRE(std::is_same_v<
+                           decltype(quotedScalar),
+                           const quoted_scalar_function<std::equal_to<void>, bool(const int&, const int&) const, 2>>);
+
+            STATIC_REQUIRE(std::is_same_v<quoted_type::callable_type, std::equal_to<void>>);
+            STATIC_REQUIRE(std::is_same_v<quoted_type::udf_type, bool(const int&, const int&) const>);
+
+            STATIC_REQUIRE(std::is_same_v<callable_arguments<quoted_type::udf_type>::return_type, bool>);
+            STATIC_REQUIRE(std::is_same_v<callable_arguments<quoted_type::udf_type>::args_tuple, std::tuple<int, int>>);
+
+            STATIC_REQUIRE(orm_quoted_scalar_function<decltype(quotedScalar)>);
+            STATIC_REQUIRE_FALSE(orm_scalar_function<decltype(quotedScalar)>);
+
+            STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar(1, 1)),
+                                          function_call<bool(const int&, const int&) const, int, int>>);
+
+            using storage_type = decltype(make_storage(""));
+            STATIC_REQUIRE(storage_scalar_callable<storage_type, quotedScalar>);
+        }
+        SECTION("function object overloaded call operator") {
+            constexpr auto quotedScalar = "f"_scalar.quote<bool(const int&, const int&) const>(functor{});
+            using quoted_type = decltype("f"_scalar.quote<bool(const int&, const int&) const>(functor{}));
+
+            STATIC_REQUIRE(quotedScalar.nme[0] == 'f' && quotedScalar.nme[1] == '\0');
+            STATIC_REQUIRE(
+                std::is_same_v<decltype(quotedScalar),
+                               const quoted_scalar_function<functor, bool(const int&, const int&) const, 2>>);
+
+            STATIC_REQUIRE(std::is_same_v<quoted_type::callable_type, functor>);
+            STATIC_REQUIRE(std::is_same_v<quoted_type::udf_type, bool(const int&, const int&) const>);
+
+            STATIC_REQUIRE(std::is_same_v<callable_arguments<quoted_type::udf_type>::return_type, bool>);
+            STATIC_REQUIRE(std::is_same_v<callable_arguments<quoted_type::udf_type>::args_tuple, std::tuple<int, int>>);
+
+            STATIC_REQUIRE(orm_quoted_scalar_function<decltype(quotedScalar)>);
+            STATIC_REQUIRE_FALSE(orm_scalar_function<decltype(quotedScalar)>);
+
+            STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar(1, 1)),
+                                          function_call<bool(const int&, const int&) const, int, int>>);
+
+            using storage_type = decltype(make_storage(""));
+            STATIC_REQUIRE(storage_scalar_callable<storage_type, quotedScalar>);
+        }
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+        SECTION("function object with static call operator") {
+            constexpr auto quotedScalar = "f"_scalar.quote<bool(int, int)>(functor{});
+            using quoted_type = decltype("f"_scalar.quote<bool(int, int)>(functor{}));
+
+            STATIC_REQUIRE(quotedScalar.nme[0] == 'f' && quotedScalar.nme[1] == '\0');
+            STATIC_REQUIRE(
+                std::is_same_v<decltype(quotedScalar), const quoted_scalar_function<functor, bool(int, int), 2>>);
+
+            STATIC_REQUIRE(std::is_same_v<quoted_type::callable_type, functor>);
+            STATIC_REQUIRE(std::is_same_v<quoted_type::udf_type, bool(int, int)>);
+
+            STATIC_REQUIRE(std::is_same_v<callable_arguments<quoted_type::udf_type>::return_type, bool>);
+            STATIC_REQUIRE(std::is_same_v<callable_arguments<quoted_type::udf_type>::args_tuple, std::tuple<int, int>>);
+
+            STATIC_REQUIRE(orm_quoted_scalar_function<decltype(quotedScalar)>);
+            STATIC_REQUIRE_FALSE(orm_scalar_function<decltype(quotedScalar)>);
+
+            STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar(1, 1)), function_call<bool(int, int), int, int>>);
+
+            using storage_type = decltype(make_storage(""));
+            STATIC_REQUIRE(storage_scalar_callable<storage_type, quotedScalar>);
+        }
+#endif
     }
 #endif
 }

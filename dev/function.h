@@ -165,6 +165,17 @@ namespace sqlite_orm {
         struct callable_arguments : callable_arguments_impl<F> {};
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        template<orm_function_sig Sig, class F>
+        using overloaded_callop_t = decltype(static_cast<Sig F::*>(&F::operator()));
+
+        template<orm_function_sig Sig, class F>
+        using overloaded_static_callop_t =
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            decltype(static_cast<Sig*>(&F::operator()));
+#else
+            std::enable_if_t<polyfill::always_false_v<Sig>, void>;
+#endif
+
         /*
          *  Bundle of type and name of a quoted user-defined function.
          */
@@ -398,12 +409,31 @@ namespace sqlite_orm {
             /*
              *  Return original `udf` if stateless or a copy of it otherwise
              */
-            constexpr decltype(auto) callable() const {
-                if constexpr (stateless<F>) {
-                    return (this->udf);
-                } else {
+            constexpr auto callable() const {
+                // function pointer
+                if constexpr (std::is_pointer_v<F>) {
+                    return this->udf;
+                }
+                // static call operator
+                else if constexpr (polyfill::is_detected_v<internal::overloaded_static_callop_t, Sig, F>) {
+                    return static_cast<Sig*>(&F::operator());
+                }
+                // stateless functor
+                else if constexpr (stateless<F>) {
+#if __cpp_lib_bind_front >= 202306L
+                    return std::bind_front<static_cast<Sig F::*>(&F::operator())>(std::ref(this->udf));
+#else
+                    return std::bind_front(static_cast<Sig F::*>(&F::operator()), std::ref(this->udf));
+#endif
+                }
+                // stateful functor
+                else {
                     // non-const copy
-                    return F(this->udf);
+#if __cpp_lib_bind_front >= 202306L
+                    return std::bind_front<static_cast<Sig F::*>(&F::operator())>(this->udf);
+#else
+                    return std::bind_front(static_cast<Sig F::*>(&F::operator()), this->udf);
+#endif
                 }
             }
 
@@ -440,11 +470,10 @@ namespace sqlite_orm {
             /*
              *  From a classic function object instance.
              */
-            template<class F>
-                requires (orm_classic_function_object<F> && (stateless<F> || std::copy_constructible<F>))
+            template<orm_classic_function_object F>
+                requires (stateless<F> || std::copy_constructible<F>)
             [[nodiscard]] consteval auto quote(F callable) const {
                 using Sig = function_signature_type_t<decltype(&F::operator())>;
-                // detect whether overloaded call operator can be picked using `Sig`
                 return quoted_scalar_function<F, Sig, N>{this->cstr, std::move(callable)};
             }
 
@@ -452,9 +481,13 @@ namespace sqlite_orm {
              *  From a function object instance, picking the overloaded call operator.
              */
             template<orm_function_sig Sig, class F>
-                requires ((stateless<F> || std::copy_constructible<F>))
+                requires (stateless<F> || std::copy_constructible<F>)
             [[nodiscard]] consteval auto quote(F callable) const {
                 // detect whether overloaded call operator can be picked using `Sig`
+                static_assert(polyfill::is_detected_v<overloaded_callop_t, Sig, F> ||
+                                  polyfill::is_detected_v<overloaded_static_callop_t, Sig, F>,
+                              "No call operator with the specified signature available; have you overlook the method "
+                              "qualifiers?");
                 return quoted_scalar_function<F, Sig, N>{this->cstr, std::move(callable)};
             }
 
@@ -472,9 +505,13 @@ namespace sqlite_orm {
              *  From a function object type, picking the overloaded call operator.
              */
             template<orm_function_sig Sig, class F, class... Args>
-                requires ((stateless<F> || std::copy_constructible<F>))
+                requires (stateless<F> || std::copy_constructible<F>)
             [[nodiscard]] consteval auto quote(Args&&... constructorArgs) const {
                 // detect whether overloaded call operator can be picked using `Sig`
+                static_assert(polyfill::is_detected_v<overloaded_callop_t, Sig, F> ||
+                                  polyfill::is_detected_v<overloaded_static_callop_t, Sig, F>,
+                              "No call operator with the specified signature available; have you overlook the method "
+                              "qualifiers?");
                 return quoted_scalar_function<F, Sig, N>{this->cstr, std::forward<Args>(constructorArgs)...};
             }
         };
