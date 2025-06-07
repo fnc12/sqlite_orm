@@ -15,7 +15,7 @@ include(ucm)
 # However, Visual C++ has an option that instructs MSBuild to automatically provision the standard modules,
 # and this option is ON by default when using the `/std:c++latest` compiler switch:
 # "Build ISO C++23 Standard Library Modules", MSBuild property `BuildStlModules`.
-if(SQLITE_ORM_ENABLE_CXX_23 AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.28.2 AND MSVC AND MSVC_VERSION GREATER_EQUAL 1930)
+if(CMAKE_CXX_STANDARD GREATER_EQUAL 23 AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.28.2 AND MSVC AND MSVC_VERSION GREATER_EQUAL 1930)
     add_executable(module_tests
         named_module/named_module.cpp
     )
