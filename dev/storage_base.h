@@ -316,7 +316,7 @@ namespace sqlite_orm {
              * an instance of the function object is repeatedly recreated for each result row,
              * ensuring that the calculations always start with freshly initialized values.
              * 
-             * T - function class. T must have operator() overload and static name function like this:
+             * T - function class. T must have a single call operator and static name function like this:
              * ```
              *  struct SqrtFunction {
              *
@@ -324,7 +324,7 @@ namespace sqlite_orm {
              *          return std::sqrt(arg);
              *      }
              *
-             *      static const char *name() {
+             *      static const char* name() {
              *          return "SQRT";
              *      }
              *  };
@@ -369,7 +369,7 @@ namespace sqlite_orm {
              * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
              *
              * If `quotedF` contains a freestanding function, stateless lambda or stateless function object,
-             * `quoted_scalar_function::callable()` uses the original function object, assuming it is free of side effects;
+             * `quoted_scalar_function::_callable()` uses the original function object, assuming it is free of side effects;
              * otherwise, it repeatedly uses a copy of the contained function object, assuming possible side effects.
              */
             template<decltype(auto) quotedF>
@@ -392,7 +392,7 @@ namespace sqlite_orm {
                     [](sqlite3_context* context, int nValues, sqlite3_value** values) {
                         proxy_assert_args_count(context, nValues);
                         args_tuple argsTuple = tuple_from_values<args_tuple>{}(values, nValues);
-                        auto result = polyfill::apply(quotedF.callable(), std::move(argsTuple));
+                        auto result = polyfill::apply(quotedF._callable(), std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
                     },
                     /* finalCall = */

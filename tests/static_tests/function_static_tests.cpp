@@ -319,7 +319,7 @@ TEST_CASE("function static") {
             constexpr auto quotedScalar = "f"_scalar.quote(std::clamp<int>);
             using quoted_type = decltype("f"_scalar.quote(std::clamp<int>));
 
-            STATIC_REQUIRE(quotedScalar.nme[0] == 'f' && quotedScalar.nme[1] == '\0');
+            STATIC_REQUIRE(quotedScalar._nme[0] == 'f' && quotedScalar._nme[1] == '\0');
             STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar),
                                           const quoted_scalar_function<decltype(&std::clamp<int>),
                                                                        const int&(const int&, const int&, const int&),
@@ -346,7 +346,7 @@ TEST_CASE("function static") {
             constexpr auto quotedScalar = "f"_scalar.quote<const int&(const int&, const int&, const int&)>(std::clamp);
             using quoted_type = decltype("f"_scalar.quote<const int&(const int&, const int&, const int&)>(std::clamp));
 
-            STATIC_REQUIRE(quotedScalar.nme[0] == 'f' && quotedScalar.nme[1] == '\0');
+            STATIC_REQUIRE(quotedScalar._nme[0] == 'f' && quotedScalar._nme[1] == '\0');
             STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar),
                                           const quoted_scalar_function<decltype(&std::clamp<int>),
                                                                        const int&(const int&, const int&, const int&),
@@ -377,7 +377,7 @@ TEST_CASE("function static") {
             constexpr auto quotedScalar = "f"_scalar.quote(lambda);
             using quoted_type = std::remove_const_t<decltype(quotedScalar)>;
 
-            STATIC_REQUIRE(quotedScalar.nme[0] == 'f' && quotedScalar.nme[1] == '\0');
+            STATIC_REQUIRE(quotedScalar._nme[0] == 'f' && quotedScalar._nme[1] == '\0');
             STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar),
                                           const quoted_scalar_function<lambda_type, bool(unsigned long) const, 2>>);
 
@@ -406,7 +406,7 @@ TEST_CASE("function static") {
             constexpr auto quotedScalar = "f"_scalar.quote(lambda);
             using quoted_type = std::remove_const_t<decltype(quotedScalar)>;
 
-            STATIC_REQUIRE(quotedScalar.nme[0] == 'f' && quotedScalar.nme[1] == '\0');
+            STATIC_REQUIRE(quotedScalar._nme[0] == 'f' && quotedScalar._nme[1] == '\0');
             STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar),
                                           const quoted_scalar_function<lambda_type, bool(unsigned long), 2>>);
 
@@ -431,7 +431,7 @@ TEST_CASE("function static") {
             constexpr auto quotedScalar = "f"_scalar.quote<bool(const int&, const int&) const>(std::equal_to<int>{});
             using quoted_type = decltype("f"_scalar.quote<bool(const int&, const int&) const>(std::equal_to<int>{}));
 
-            STATIC_REQUIRE(quotedScalar.nme[0] == 'f' && quotedScalar.nme[1] == '\0');
+            STATIC_REQUIRE(quotedScalar._nme[0] == 'f' && quotedScalar._nme[1] == '\0');
             STATIC_REQUIRE(std::is_same_v<
                            decltype(quotedScalar),
                            const quoted_scalar_function<std::equal_to<int>, bool(const int&, const int&) const, 2>>);
@@ -455,7 +455,7 @@ TEST_CASE("function static") {
             constexpr auto quotedScalar = "f"_scalar.quote<bool(const int&, const int&) const>(std::equal_to<void>{});
             using quoted_type = decltype("f"_scalar.quote<bool(const int&, const int&) const>(std::equal_to<void>{}));
 
-            STATIC_REQUIRE(quotedScalar.nme[0] == 'f' && quotedScalar.nme[1] == '\0');
+            STATIC_REQUIRE(quotedScalar._nme[0] == 'f' && quotedScalar._nme[1] == '\0');
             STATIC_REQUIRE(std::is_same_v<
                            decltype(quotedScalar),
                            const quoted_scalar_function<std::equal_to<void>, bool(const int&, const int&) const, 2>>);
@@ -479,7 +479,7 @@ TEST_CASE("function static") {
             constexpr auto quotedScalar = "f"_scalar.quote<bool(const int&, const int&) const>(functor{});
             using quoted_type = decltype("f"_scalar.quote<bool(const int&, const int&) const>(functor{}));
 
-            STATIC_REQUIRE(quotedScalar.nme[0] == 'f' && quotedScalar.nme[1] == '\0');
+            STATIC_REQUIRE(quotedScalar._nme[0] == 'f' && quotedScalar._nme[1] == '\0');
             STATIC_REQUIRE(
                 std::is_same_v<decltype(quotedScalar),
                                const quoted_scalar_function<functor, bool(const int&, const int&) const, 2>>);
@@ -504,7 +504,7 @@ TEST_CASE("function static") {
             constexpr auto quotedScalar = "f"_scalar.quote<bool(int, int)>(functor{});
             using quoted_type = decltype("f"_scalar.quote<bool(int, int)>(functor{}));
 
-            STATIC_REQUIRE(quotedScalar.nme[0] == 'f' && quotedScalar.nme[1] == '\0');
+            STATIC_REQUIRE(quotedScalar._nme[0] == 'f' && quotedScalar._nme[1] == '\0');
             STATIC_REQUIRE(
                 std::is_same_v<decltype(quotedScalar), const quoted_scalar_function<functor, bool(int, int), 2>>);
 
