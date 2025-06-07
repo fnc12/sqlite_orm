@@ -217,6 +217,18 @@ struct alignas(2 * __STDCPP_DEFAULT_NEW_ALIGNMENT__) OverAlignedAggregateFunctio
 };
 #endif
 
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+struct StaticCallOpFunction {
+    static bool operator()(int x, int y) {
+        return x == y;
+    }
+
+    static const char* name() {
+        return "STATICCALLOP";
+    }
+};
+#endif
+
 struct NonAllocatableAggregateFunction {
     void step(double /*arg*/) {}
 
@@ -481,6 +493,16 @@ TEST_CASE("custom functions") {
         storage.create_aggregate_function<OverAlignedAggregateFunction>();
         REQUIRE_NOTHROW(storage.delete_aggregate_function<OverAlignedAggregateFunction>());
     }
+#endif
+
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+    storage.create_scalar_function<StaticCallOpFunction>();
+    {
+        auto rows = storage.select(func<StaticCallOpFunction>(1, 1));
+        decltype(rows) expected{true};
+        REQUIRE(rows == expected);
+    }
+    storage.delete_scalar_function<StaticCallOpFunction>();
 #endif
 
     storage.create_scalar_function<NonDefaultCtorScalarFunction>(42);

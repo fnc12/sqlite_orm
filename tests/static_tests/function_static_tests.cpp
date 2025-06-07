@@ -243,6 +243,14 @@ TEST_CASE("function static") {
             }
             int operator()(int) const;
         };
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+        struct SFunction2 {
+            static const char* name() {
+                return "";
+            }
+            static int operator()(int);
+        };
+#endif
         struct AFunction {
             static const char* name() {
                 return "";
@@ -262,6 +270,15 @@ TEST_CASE("function static") {
         STATIC_REQUIRE(std::is_same<function<SFunction>::callable_type, SFunction>::value);
         STATIC_REQUIRE(std::is_same<function<SFunction>::udf_type, SFunction>::value);
 
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+        constexpr auto scalar2 = func<SFunction2>;
+
+        STATIC_REQUIRE(std::is_same<decltype(scalar2), const function<SFunction2>>::value);
+        STATIC_REQUIRE(std::is_same<decltype(scalar2(42)), function_call<SFunction2, int>>::value);
+        STATIC_REQUIRE(std::is_same<function<SFunction2>::callable_type, SFunction2>::value);
+        STATIC_REQUIRE(std::is_same<function<SFunction2>::udf_type, SFunction2>::value);
+#endif
+
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         STATIC_REQUIRE(orm_scalar_function<decltype(scalar)>);
         STATIC_REQUIRE_FALSE(orm_aggregate_function<decltype(scalar)>);
@@ -273,6 +290,14 @@ TEST_CASE("function static") {
         STATIC_REQUIRE_FALSE(storage_aggregate_callable<storage_type, scalar>);
         STATIC_REQUIRE(storage_aggregate_callable<storage_type, aggregate>);
         STATIC_REQUIRE_FALSE(storage_scalar_callable<storage_type, aggregate>);
+
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+        STATIC_REQUIRE(orm_scalar_function<decltype(scalar2)>);
+        STATIC_REQUIRE_FALSE(orm_aggregate_function<decltype(scalar2)>);
+
+        STATIC_REQUIRE(storage_scalar_callable<storage_type, scalar2>);
+        STATIC_REQUIRE_FALSE(storage_aggregate_callable<storage_type, scalar2>);
+#endif
 #endif
     }
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
