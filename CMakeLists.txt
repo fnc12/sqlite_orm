@@ -25,9 +25,9 @@ elseif(SQLITE_ORM_ENABLE_CXX_17)
     set(CMAKE_CXX_STANDARD 17)
     message(STATUS "SQLITE_ORM: Build with C++17 features")
 else()
-    # fallback to C++14 if there is no special instruction
-    set(CMAKE_CXX_STANDARD 14)
-    message(STATUS "SQLITE_ORM: Build with C++14 features")
+    # fallback to C++17 if there is no special instruction
+    set(CMAKE_CXX_STANDARD 17)
+    message(STATUS "SQLITE_ORM: Build with C++17 features")
 endif()
 set(CMAKE_CXX_EXTENSIONS OFF)
 
