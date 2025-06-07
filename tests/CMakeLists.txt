@@ -61,22 +61,13 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
 elseif(MSVC)
     target_compile_options(unit_tests PUBLIC
         # multi-processor compilation
-        /MP)
-    if (MSVC_VERSION LESS_EQUAL 1900)
-        target_compile_options(unit_tests PUBLIC
-            # C4503: decorated name length exceeded
-            /wd4503
-            # C4800: forcing value to bool (performance warning)
-            /wd4800)
-    else()
-        target_compile_options(unit_tests PUBLIC
-            # warning-level 4
-            /W4
-            # C4456: declaration of 'symbol' hides previous local declaration
-            /wd4456
-            # C4458: declaration of 'symbol' hides class member
-            /wd4458)
-    endif()
+        /MP
+        # warning-level 4
+        /W4
+        # C4456: declaration of 'symbol' hides previous local declaration
+        /wd4456
+        # C4458: declaration of 'symbol' hides class member
+        /wd4458)
     if (CMAKE_CXX_FLAGS MATCHES "/D_UNICODE")
         # explicitly set the entry point of the executable file,
         # otherwise for some reason the linker will not pick up `wmain`, which is provided by the static Catch2 library
