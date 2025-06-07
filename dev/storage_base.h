@@ -181,11 +181,9 @@ namespace sqlite_orm {
                 this->executor.perform_exec(
                     db,
                     sql,
-                    [](void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring* /*azColName*/) -> int {
-                        auto& res = *(bool*)data;
-                        if (argc) {
-                            res = !!atoi(argv[0]);
-                        }
+                    [](void* userData, int /*argc*/, orm_gsl::zstring* argv, orm_gsl::zstring* /*azColName*/) -> int {
+                        auto& res = *(bool*)userData;
+                        res = !!atoi(argv[0]);
                         return 0;
                     },
                     &result);
@@ -765,9 +763,9 @@ namespace sqlite_orm {
                 this->executor.perform_exec(
                     connection.get(),
                     ss.str(),
-                    [](void* data, int /*argc*/, orm_gsl::zstring* argv, orm_gsl::zstring* /*columnName*/) -> int {
-                        auto& objectNames_ = *(data_t*)data;
-                        objectNames_.emplace_back(argv[0]);
+                    [](void* userData, int /*argc*/, orm_gsl::zstring* argv, orm_gsl::zstring* /*columnName*/) -> int {
+                        auto& objectNames = *(data_t*)userData;
+                        objectNames.emplace_back(argv[0]);
                         return 0;
                     },
                     &objectNames);

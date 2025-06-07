@@ -171,9 +171,9 @@ namespace sqlite_orm {
                 this->executor.perform_exec(
                     connection.get(),
                     sql,
-                    [](void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring*) -> int {
+                    [](void* data, int /*argc*/, orm_gsl::zstring* argv, orm_gsl::zstring*) -> int {
                         auto& res = *(std::vector<sqlite_orm::table_xinfo>*)data;
-                        if (argc) {
+                        {
                             auto index = 0;
                             auto cid = atoi(argv[index++]);
                             std::string name = argv[index++];
@@ -212,9 +212,9 @@ namespace sqlite_orm {
                 this->executor.perform_exec(
                     connection.get(),
                     sql,
-                    [](void* data, int argc, orm_gsl::zstring* argv, orm_gsl::zstring*) -> int {
+                    [](void* data, int /*argc*/, orm_gsl::zstring* argv, orm_gsl::zstring*) -> int {
                         auto& res = *(std::vector<sqlite_orm::table_info>*)data;
-                        if (argc) {
+                        {
                             auto index = 0;
                             auto cid = atoi(argv[index++]);
                             std::string name = argv[index++];
