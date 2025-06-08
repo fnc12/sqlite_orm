@@ -17858,11 +17858,10 @@ namespace sqlite_orm::internal {
 
     template<class Tpl>
     struct tuple_from_values {
-        SQLITE_ORM_STATIC_CALLOP Tpl operator()(sqlite3_value** values, int nValues) SQLITE_ORM_OR_CONST_CALLOP {
+        SQLITE_ORM_STATIC_CALLOP Tpl operator()(sqlite3_value** values,
+                                                [[maybe_unused]] int nValues) SQLITE_ORM_OR_CONST_CALLOP {
 #ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
             contract_assert(nValues == std::tuple_size<Tpl>::value);
-#else
-            (void)nValues;
 #endif
             return tuple_from_values::create_from(values, std::make_index_sequence<std::tuple_size<Tpl>::value>{});
         }
