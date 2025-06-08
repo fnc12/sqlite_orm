@@ -111,9 +111,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             mutable arg_value currentValue;
         };
 
-        arg_values() : arg_values(0, nullptr) {}
+        arg_values() = default;
 
-        arg_values(int argsCount_, sqlite3_value** values_) : argsCount(argsCount_), values(values_) {}
+        arg_values(int nValues, sqlite3_value** values) : argsCount(nValues), values(values) {}
 
         size_t size() const {
             return this->argsCount;

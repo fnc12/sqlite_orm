@@ -117,6 +117,12 @@ namespace sqlite_orm {
         row_extractor<R> boxed_value_extractor() {
             return {};
         }
+
+        template<class T>
+        T extract_boxed_value(sqlite3_value* value) {
+            const auto rowExtractor = boxed_value_extractor<T>();
+            return rowExtractor.extract(value);
+        }
     }
 }
 

@@ -217,6 +217,18 @@ struct alignas(2 * __STDCPP_DEFAULT_NEW_ALIGNMENT__) OverAlignedAggregateFunctio
 };
 #endif
 
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+struct StaticCallOpFunction {
+    static bool operator()(int x, int y) {
+        return x == y;
+    }
+
+    static const char* name() {
+        return "STATICCALLOP";
+    }
+};
+#endif
+
 struct NonAllocatableAggregateFunction {
     void step(double /*arg*/) {}
 
@@ -483,6 +495,16 @@ TEST_CASE("custom functions") {
     }
 #endif
 
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+    storage.create_scalar_function<StaticCallOpFunction>();
+    {
+        auto rows = storage.select(func<StaticCallOpFunction>(1, 1));
+        decltype(rows) expected{true};
+        REQUIRE(rows == expected);
+    }
+    storage.delete_scalar_function<StaticCallOpFunction>();
+#endif
+
     storage.create_scalar_function<NonDefaultCtorScalarFunction>(42);
     {
         auto rows = storage.select(func<NonDefaultCtorScalarFunction>(1));
@@ -526,6 +548,26 @@ struct stateful_scalar {
 inline constexpr stateful_scalar offset0{};
 
 TEST_CASE("generalized scalar udf") {
+    struct functor {
+        bool operator()(int&, int&) const = delete;
+
+        bool operator()(const int&, const int&) const {
+            return true;
+        }
+
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+        static bool operator()(int, int) {
+            return true;
+        }
+#endif
+    };
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+    // note: this static lambda lives up here because of GCC 13.2 and mangling issues
+    constexpr auto lambda_static_dummy = [](unsigned long errcode) static {
+        return errcode != 0;
+    };
+#endif
+
     auto storage = make_storage("");
     storage.sync_schema();
 
@@ -551,6 +593,20 @@ TEST_CASE("generalized scalar udf") {
         }
         storage.delete_scalar_function<is_fatal_error_f>();
     }
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+    SECTION("stateless static lambda") {
+        constexpr auto is_fatal_error_f = "is_fatal_error"_scalar.quote([](unsigned long errcode) static {
+            return errcode != 0;
+        });
+        storage.create_scalar_function<is_fatal_error_f>();
+        {
+            auto rows = storage.select(is_fatal_error_f(1));
+            decltype(rows) expected{true};
+            REQUIRE(rows == expected);
+        }
+        storage.delete_scalar_function<is_fatal_error_f>();
+    }
+#endif
     SECTION("function object instance") {
         constexpr auto equal_to_int_f = "equal_to"_scalar.quote(std::equal_to<int>{});
         storage.create_scalar_function<equal_to_int_f>();
@@ -593,6 +649,18 @@ TEST_CASE("generalized scalar udf") {
         }
         storage.delete_scalar_function<equal_to_int_f>();
     }
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+    SECTION("function object instance with static call operator") {
+        constexpr auto f = "f"_scalar.quote<bool(int, int)>(functor{});
+        storage.create_scalar_function<f>();
+        {
+            auto rows = storage.select(f(0, 1));
+            decltype(rows) expected{true};
+            REQUIRE(rows == expected);
+        }
+        storage.delete_scalar_function<f>();
+    }
+#endif
     SECTION("specialized template function") {
         constexpr auto clamp_int_f = "clamp_int"_scalar.quote(std::clamp<int>);
         storage.create_scalar_function<clamp_int_f>();

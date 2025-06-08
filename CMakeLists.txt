@@ -11,11 +11,18 @@ set(PACKAGE_VERSION ${sqlite_orm_VERSION})
 project("sqlite_orm" VERSION ${PACKAGE_VERSION})
 
 # Handling C++ standard version to use
+if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.25)
+option(SQLITE_ORM_ENABLE_CXX_26 "Enable C++ 26" OFF)
+endif()
 option(SQLITE_ORM_ENABLE_CXX_23 "Enable C++ 23" OFF)
 option(SQLITE_ORM_ENABLE_CXX_20 "Enable C++ 20" OFF)
 option(SQLITE_ORM_ENABLE_CXX_17 "Enable C++ 17" OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-if(SQLITE_ORM_ENABLE_CXX_23)
+
+if(SQLITE_ORM_ENABLE_CXX_26)
+    set(CMAKE_CXX_STANDARD 26)
+    message(STATUS "SQLITE_ORM: Build with C++26 features")
+elseif(SQLITE_ORM_ENABLE_CXX_23)
     set(CMAKE_CXX_STANDARD 23)
     message(STATUS "SQLITE_ORM: Build with C++23 features")
 elseif(SQLITE_ORM_ENABLE_CXX_20)
@@ -25,9 +32,9 @@ elseif(SQLITE_ORM_ENABLE_CXX_17)
     set(CMAKE_CXX_STANDARD 17)
     message(STATUS "SQLITE_ORM: Build with C++17 features")
 else()
-    # fallback to C++14 if there is no special instruction
-    set(CMAKE_CXX_STANDARD 14)
-    message(STATUS "SQLITE_ORM: Build with C++14 features")
+    # fallback to C++17 if there is no special instruction
+    set(CMAKE_CXX_STANDARD 17)
+    message(STATUS "SQLITE_ORM: Build with C++17 features")
 endif()
 set(CMAKE_CXX_EXTENSIONS OFF)
 
