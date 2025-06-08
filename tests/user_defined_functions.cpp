@@ -561,6 +561,12 @@ TEST_CASE("generalized scalar udf") {
         }
 #endif
     };
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+    // note: this static lambda lives up here because of GCC 13.2 and mangling issues
+    constexpr auto lambda_static_dummy = [](unsigned long errcode) static {
+        return errcode != 0;
+    };
+#endif
 
     auto storage = make_storage("");
     storage.sync_schema();

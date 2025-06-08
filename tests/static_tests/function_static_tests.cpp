@@ -315,29 +315,31 @@ TEST_CASE("function static") {
             }
 #endif
         };
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+        // note: this static lambda lives up here because of GCC 13.2 and mangling issues
+        constexpr auto lambda_static_dummy = [](unsigned long errcode) static {
+            return errcode != 0;
+        };
+#endif
 
         SECTION("detect overloaded call operator") {
-            constexpr auto lambda = [](unsigned long errcode) {
-                return errcode != 0;
-            };
+            constexpr auto lambda = [](unsigned long) {};
             using lambda_type = std::remove_const_t<decltype(lambda)>;
 
             STATIC_REQUIRE(
-                polyfill::is_detected_v<internal::overloaded_callop_t, bool(unsigned long) const, lambda_type>);
+                polyfill::is_detected_v<internal::overloaded_callop_t, void(unsigned long) const, lambda_type>);
             STATIC_REQUIRE_FALSE(
-                polyfill::is_detected_v<internal::overloaded_static_callop_t, bool(unsigned long) const, lambda_type>);
+                polyfill::is_detected_v<internal::overloaded_static_callop_t, void(unsigned long) const, lambda_type>);
         }
 #ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
         SECTION("detect overloaded static call operator") {
-            constexpr auto lambda = [](unsigned long errcode) static {
-                return errcode != 0;
-            };
+            constexpr auto lambda = [](unsigned long) static {};
             using lambda_type = std::remove_const_t<decltype(lambda)>;
 
             STATIC_REQUIRE_FALSE(
-                polyfill::is_detected_v<internal::overloaded_callop_t, bool(unsigned long), lambda_type>);
+                polyfill::is_detected_v<internal::overloaded_callop_t, void(unsigned long), lambda_type>);
             STATIC_REQUIRE(
-                polyfill::is_detected_v<internal::overloaded_static_callop_t, bool(unsigned long), lambda_type>);
+                polyfill::is_detected_v<internal::overloaded_static_callop_t, void(unsigned long), lambda_type>);
         }
 #endif
         SECTION("freestanding function") {
