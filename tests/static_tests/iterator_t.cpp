@@ -169,9 +169,11 @@ TEST_CASE("can view and iterate result set") {
     STATIC_REQUIRE(
         can_iterate_result_set<result_set_iterator<structure<Object, empty_db_objects_type>, empty_db_objects_type>,
                                Object>);
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     STATIC_REQUIRE(can_iterate_result_set<result_set_iterator<table_reference<Object>, db_objects_type>, Object>);
-#endif
+    STATIC_REQUIRE(can_iterate_result_set<
+                   result_set_iterator<std::tuple<table_reference<Object>, structure<Object, std::tuple<>>, int>,
+                                       db_objects_type>,
+                   std::tuple<Object, Object, int>>);
 
     STATIC_REQUIRE(storage_iterate_result_set<empty_storage_type, decltype(select(42)), int>);
     STATIC_REQUIRE(
@@ -179,10 +181,12 @@ TEST_CASE("can view and iterate result set") {
     STATIC_REQUIRE(storage_iterate_result_set<empty_storage_type,
                                               decltype(select(struct_<Object>())),
                                               structure<Object, std::tuple<>>>);
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     STATIC_REQUIRE(
         storage_iterate_result_set<storage_type, decltype(select(object<Object>())), table_reference<Object>>);
-#endif
+    STATIC_REQUIRE(
+        storage_iterate_result_set<storage_type,
+                                   decltype(select(columns(object<Object>(), struct_<Object>(), 42))),
+                                   std::tuple<table_reference<Object>, structure<Object, std::tuple<>>, int>>);
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
