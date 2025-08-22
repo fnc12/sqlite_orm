@@ -42,7 +42,8 @@ namespace sqlite_orm::internal {
         using iterator_category = std::input_iterator_tag;
 #endif
         using difference_type = ptrdiff_t;
-        using value_type = column_result_proxy_t<ColResult>;
+        // using value_type = column_result_proxy_t<ColResult>;
+        using value_type = decltype(make_row_extractor<ColResult>(std::declval<db_objects_type>()).extract(nullptr, 0));
 
       public:
         result_set_iterator(const db_objects_type& dbObjects, statement_finalizer stmt) :
