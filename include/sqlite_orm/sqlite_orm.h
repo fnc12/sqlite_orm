@@ -10662,6 +10662,14 @@ namespace sqlite_orm {
 
 // #include "column_result_proxy.h"
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>
+#endif
+
+// #include "functional/cxx_type_traits_polyfill.h"
+
+// #include "tuple_helper/tuple_transformer.h"
+
 // #include "type_traits.h"
 
 // #include "table_reference.h"
@@ -10683,23 +10691,31 @@ namespace sqlite_orm {
 namespace sqlite_orm {
     namespace internal {
 
+        /*
+         *  Determine the actual and final result type of an intermediate column result produced by `column_result_t`,
+         *  unwrapping `table_reference` and `structure`, and transforming tuples element-wise.
+         */
         template<class T, class SFINAE = void>
         struct column_result_proxy : std::remove_const<T> {};
 
-        /*
-         *  Unwrap `table_reference`
-         */
-        template<class P>
-        struct column_result_proxy<P, match_if<is_table_reference, P>> : decay_table_ref<P> {};
-
-        /*
-         *  Pass through `structure`
-         */
-        template<class P>
-        struct column_result_proxy<P, match_specialization_of<P, structure>> : P {};
-
         template<class T>
         using column_result_proxy_t = typename column_result_proxy<T>::type;
+
+        /*
+         *  Unwrap `table_reference`, `structure`.
+         */
+        template<class P>
+        struct column_result_proxy<
+            P,
+            std::enable_if_t<
+                polyfill::disjunction_v<is_table_reference<P>, polyfill::is_specialization_of<P, structure>>>> : P {};
+
+        /*
+         *  Calculate result of multiple columns.
+         */
+        template<class Tpl>
+        struct column_result_proxy<Tpl, match_specialization_of<Tpl, std::tuple>>
+            : tuple_transformer<Tpl, column_result_proxy_t> {};
     }
 }
 
@@ -16335,16 +16351,12 @@ namespace sqlite_orm {
     namespace internal {
 
         /**
-         * A C++ view-like class which is returned
-         * by `storage_t::iterate()` function. This class contains STL functions:
-         *  -   size_t size()
-         *  -   bool empty()
-         *  -   iterator end()
-         *  -   iterator begin()
-         *  All these functions are not right const cause all of them may open SQLite connections.
+         *  A C++ view over a result set of objects mapped as tables, returned by `storage_t::iterate<>()`.
          *  
-         *  `mapped_view` is also a 'borrowed range',
+         *  Models a C++ input range and is also a 'borrowed range',
          *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
+         *  
+         *  Its `begin()` and `end()` methods are non-const to leave room for different implementation details.
          */
         template<class T, class S, class... Args>
         struct mapped_view {
@@ -16509,8 +16521,10 @@ namespace sqlite_orm::internal {
     /*  
      *  A C++ view over a result set of a select statement, returned by `storage_t::iterate()`.
      *  
-     *  `result_set_view` is also a 'borrowed range',
+     *  Models a C++ input range and is also a 'borrowed range',
      *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
+     *  
+     *  Its `begin()` and `end()` methods are non-const to leave room for different implementation details.
      */
     template<class Select, class DBOs>
     struct result_set_view
@@ -23359,6 +23373,12 @@ namespace sqlite_orm {
             }
 
           public:
+            /*  
+             *  Iterate over objects of a type mapped as a table, lazily fetched from a result set.
+             *  
+             *  The returned C++ view models a C++ input range and is also a 'borrowed range',
+             *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
+             */
             template<class T, class O = mapped_type_proxy_t<T>, class... Args>
             mapped_view<O, self_type, Args...> iterate(Args&&... args) {
                 this->assert_mapped_type<O>();
@@ -23368,6 +23388,12 @@ namespace sqlite_orm {
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            /*  
+             *  Iterate over objects of a type mapped as a table, lazily fetched from a result set.
+             *  
+             *  The returned C++ view models a C++ input range and is also a 'borrowed range',
+             *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
+             */
             template<orm_refers_to_table auto mapped, class... Args>
             auto iterate(Args&&... args) {
                 return this->iterate<decltype(mapped)>(std::forward<Args>(args)...);
@@ -23375,6 +23401,12 @@ namespace sqlite_orm {
 #endif
 
 #ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+            /*  
+             *  Iterate over a result set of a select statement.
+             *  
+             *  The returned C++ view models a C++ input range and is also a 'borrowed range',
+             *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
+             */
             template<class Select>
 #ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
                 requires (is_select_v<Select>)
@@ -23386,6 +23418,12 @@ namespace sqlite_orm {
             }
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+            /*  
+             *  Iterate over a result set of a select statement involving a common table expression.
+             *  
+             *  The returned C++ view models a C++ input range and is also a 'borrowed range',
+             *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
+             */
             template<class... CTEs, class E>
 #ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
                 requires (is_select_v<E>)
