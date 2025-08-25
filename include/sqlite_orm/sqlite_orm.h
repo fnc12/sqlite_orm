@@ -16351,16 +16351,12 @@ namespace sqlite_orm {
     namespace internal {
 
         /**
-         * A C++ view-like class which is returned
-         * by `storage_t::iterate()` function. This class contains STL functions:
-         *  -   size_t size()
-         *  -   bool empty()
-         *  -   iterator end()
-         *  -   iterator begin()
-         *  All these functions are not right const cause all of them may open SQLite connections.
+         *  A C++ view over a result set of objects mapped as tables, returned by `storage_t::iterate<>()`.
          *  
-         *  `mapped_view` is also a 'borrowed range',
+         *  Models a C++ input range and is also a 'borrowed range',
          *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
+         *  
+         *  Its `begin()` and `end()` methods are non-const to leave room for different implementation details.
          */
         template<class T, class S, class... Args>
         struct mapped_view {
@@ -16525,8 +16521,10 @@ namespace sqlite_orm::internal {
     /*  
      *  A C++ view over a result set of a select statement, returned by `storage_t::iterate()`.
      *  
-     *  `result_set_view` is also a 'borrowed range',
+     *  Models a C++ input range and is also a 'borrowed range',
      *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
+     *  
+     *  Its `begin()` and `end()` methods are non-const to leave room for different implementation details.
      */
     template<class Select, class DBOs>
     struct result_set_view
@@ -23375,6 +23373,12 @@ namespace sqlite_orm {
             }
 
           public:
+            /*  
+             *  Iterate over objects of a type mapped as a table, lazily fetched from a result set.
+             *  
+             *  The returned C++ view models a C++ input range and is also a 'borrowed range',
+             *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
+             */
             template<class T, class O = mapped_type_proxy_t<T>, class... Args>
             mapped_view<O, self_type, Args...> iterate(Args&&... args) {
                 this->assert_mapped_type<O>();
@@ -23384,6 +23388,12 @@ namespace sqlite_orm {
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            /*  
+             *  Iterate over objects of a type mapped as a table, lazily fetched from a result set.
+             *  
+             *  The returned C++ view models a C++ input range and is also a 'borrowed range',
+             *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
+             */
             template<orm_refers_to_table auto mapped, class... Args>
             auto iterate(Args&&... args) {
                 return this->iterate<decltype(mapped)>(std::forward<Args>(args)...);
@@ -23391,6 +23401,12 @@ namespace sqlite_orm {
 #endif
 
 #ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+            /*  
+             *  Iterate over a result set of a select statement.
+             *  
+             *  The returned C++ view models a C++ input range and is also a 'borrowed range',
+             *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
+             */
             template<class Select>
 #ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
                 requires (is_select_v<Select>)
@@ -23402,6 +23418,12 @@ namespace sqlite_orm {
             }
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+            /*  
+             *  Iterate over a result set of a select statement involving a common table expression.
+             *  
+             *  The returned C++ view models a C++ input range and is also a 'borrowed range',
+             *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
+             */
             template<class... CTEs, class E>
 #ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
                 requires (is_select_v<E>)

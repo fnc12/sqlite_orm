@@ -17,16 +17,12 @@ namespace sqlite_orm {
     namespace internal {
 
         /**
-         * A C++ view-like class which is returned
-         * by `storage_t::iterate()` function. This class contains STL functions:
-         *  -   size_t size()
-         *  -   bool empty()
-         *  -   iterator end()
-         *  -   iterator begin()
-         *  All these functions are not right const cause all of them may open SQLite connections.
+         *  A C++ view over a result set of objects mapped as tables, returned by `storage_t::iterate<>()`.
          *  
-         *  `mapped_view` is also a 'borrowed range',
+         *  Models a C++ input range and is also a 'borrowed range',
          *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
+         *  
+         *  Its `begin()` and `end()` methods are non-const to leave room for different implementation details.
          */
         template<class T, class S, class... Args>
         struct mapped_view {
