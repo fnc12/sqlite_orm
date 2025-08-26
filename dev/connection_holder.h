@@ -122,7 +122,8 @@ namespace sqlite_orm {
             }
 
           protected:
-            alignas(polyfill::hardware_destructive_interference_size) orm_gsl::owner<sqlite3*> db = nullptr;
+            SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(alignas(polyfill::hardware_destructive_interference_size))
+            orm_gsl::owner<sqlite3*> db = nullptr;
 
           private:
             std::atomic_int _retainCount{};
@@ -130,7 +131,8 @@ namespace sqlite_orm {
             std::binary_semaphore _sync{1};
 
           private:
-            alignas(polyfill::hardware_destructive_interference_size) const std::function<void(sqlite3* db)> _didOpenDb;
+            SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(alignas(polyfill::hardware_destructive_interference_size))
+            const std::function<void(sqlite3* db)> _didOpenDb;
 
           public:
             const std::string filename;
@@ -200,13 +202,15 @@ namespace sqlite_orm {
             }
 
           protected:
-            alignas(polyfill::hardware_destructive_interference_size) orm_gsl::owner<sqlite3*> db = nullptr;
+            SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(alignas(polyfill::hardware_destructive_interference_size))
+            orm_gsl::owner<sqlite3*> db = nullptr;
 
           private:
             std::atomic_int _retainCount{};
 
           private:
-            alignas(polyfill::hardware_destructive_interference_size) const std::function<void(sqlite3* db)> _didOpenDb;
+            SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(alignas(polyfill::hardware_destructive_interference_size))
+            const std::function<void(sqlite3* db)> _didOpenDb;
 
           public:
             const std::string filename;

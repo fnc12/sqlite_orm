@@ -190,8 +190,7 @@ int MultiSum::objectsCount = 0;
 int FirstFunction::objectsCount = 0;
 int FirstFunction::callsCount = 0;
 
-#if __cpp_aligned_new >= 201606L
-struct alignas(2 * __STDCPP_DEFAULT_NEW_ALIGNMENT__) OverAlignedScalarFunction {
+struct SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(alignas(2 * __STDCPP_DEFAULT_NEW_ALIGNMENT__)) OverAlignedScalarFunction {
     int operator()(int arg) const {
         return arg;
     }
@@ -201,7 +200,8 @@ struct alignas(2 * __STDCPP_DEFAULT_NEW_ALIGNMENT__) OverAlignedScalarFunction {
     }
 };
 
-struct alignas(2 * __STDCPP_DEFAULT_NEW_ALIGNMENT__) OverAlignedAggregateFunction {
+struct SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(alignas(2 *
+                                                      __STDCPP_DEFAULT_NEW_ALIGNMENT__)) OverAlignedAggregateFunction {
     double sum = 0;
 
     void step(double arg) {
@@ -215,7 +215,6 @@ struct alignas(2 * __STDCPP_DEFAULT_NEW_ALIGNMENT__) OverAlignedAggregateFunctio
         return "OVERALIGNED2";
     }
 };
-#endif
 
 #ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
 struct StaticCallOpFunction {
@@ -486,14 +485,12 @@ TEST_CASE("custom functions") {
     }
     storage.delete_aggregate_function<MultiSum>();
 
-#if __cpp_aligned_new >= 201606L
     {
         storage.create_scalar_function<OverAlignedScalarFunction>();
         REQUIRE_NOTHROW(storage.delete_scalar_function<OverAlignedScalarFunction>());
         storage.create_aggregate_function<OverAlignedAggregateFunction>();
         REQUIRE_NOTHROW(storage.delete_aggregate_function<OverAlignedAggregateFunction>());
     }
-#endif
 
 #ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
     storage.create_scalar_function<StaticCallOpFunction>();
