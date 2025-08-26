@@ -17,16 +17,12 @@ namespace sqlite_orm {
     namespace internal {
 
         /**
-         * A C++ view-like class which is returned
-         * by `storage_t::iterate()` function. This class contains STL functions:
-         *  -   size_t size()
-         *  -   bool empty()
-         *  -   iterator end()
-         *  -   iterator begin()
-         *  All these functions are not right const cause all of them may open SQLite connections.
+         *  A C++ view over a result set of objects mapped as tables, returned by `storage_t::iterate<>()`.
          *  
-         *  `mapped_view` is also a 'borrowed range',
+         *  Models a C++ input range and is also a 'borrowed range',
          *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
+         *  
+         *  Its `begin()` and `end()` methods are non-const to leave room for different implementation details.
          */
         template<class T, class S, class... Args>
         struct mapped_view {
@@ -41,22 +37,16 @@ namespace sqlite_orm {
             mapped_view(storage_type& storage, connection_ref conn, Args&&... args) :
                 storage(storage), connection(std::move(conn)), expression{{std::forward<Args>(args)...}} {}
 
-            size_t size() const {
-                return this->storage.template count<T>();
-            }
-
-            bool empty() const {
-                return !this->size();
-            }
-
             mapped_iterator<T, db_objects_type> begin() {
                 using context_t = serializer_context<db_objects_type>;
+
                 auto& dbObjects = obtain_db_objects(this->storage);
                 context_t context{dbObjects};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
 
-                statement_finalizer stmt{prepare_stmt(this->connection.get(), serialize(this->expression, context))};
+                const std::string sql = serialize(this->expression, context);
+                statement_finalizer stmt{prepare_stmt(this->connection.get(), sql)};
                 iterate_ast(this->expression.conditions, conditional_binder{stmt.get()});
                 return {dbObjects, std::move(stmt)};
             }

@@ -8,3 +8,6 @@ cmake-build-debug/
 /compile
 build/
 build-xcode/
+build-code-edit/
+*.sqlite
+*.db

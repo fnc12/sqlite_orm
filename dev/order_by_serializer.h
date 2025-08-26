@@ -7,6 +7,8 @@
 #include <utility>  //  std::exchange
 #endif
 
+#include "functional/gsl.h"
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -39,7 +41,8 @@ namespace sqlite_orm {
             using statement_type = order_by_t<O>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& orderBy, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 auto newContext = context;
                 newContext.skip_table_name = false;
@@ -55,10 +58,11 @@ namespace sqlite_orm {
             using statement_type = dynamic_order_by_t<C>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& orderBy, const Ctx&) const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& orderBy,
+                                                            const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << static_cast<std::string>(orderBy) << " ";
-                static constexpr std::array<const char*, 2> sep = {", ", ""};
+                static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
 #ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
                 for (bool first = true; const dynamic_order_by_entry_t& entry: orderBy) {
                     ss << sep[std::exchange(first, false)] << entry.name;

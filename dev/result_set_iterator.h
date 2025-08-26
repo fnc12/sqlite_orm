@@ -12,7 +12,7 @@
 #include "column_result_proxy.h"
 #include "util.h"
 
-#if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
 namespace sqlite_orm::internal {
 
     template<class ColResult, class DBOs>
@@ -74,7 +74,7 @@ namespace sqlite_orm::internal {
 
       private:
         void step() {
-            perform_step(this->stmt.get(), [](sqlite3_stmt*) {});
+            perform_step(this->stmt.get(), [](sqlite3_stmt*) SQLITE_ORM_STATIC_CALLOP {});
         }
 
         value_type extract() const {

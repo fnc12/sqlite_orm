@@ -24,6 +24,8 @@
 #include "ast/into.h"
 #include "ast/group_by.h"
 #include "ast/match.h"
+#include "ast/cast.h"
+#include "ast/limit.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -104,6 +106,9 @@ namespace sqlite_orm {
 
         template<class E>
         struct node_tuple<order_by_t<E>, void> : node_tuple<E> {};
+
+        template<class... E>
+        struct node_tuple<multi_order_by_t<E...>, void> : node_tuple_for<E...> {};
 
         template<class L, class R>
         struct node_tuple<is_equal_with_table_t<L, R>, void> : node_tuple<R> {};

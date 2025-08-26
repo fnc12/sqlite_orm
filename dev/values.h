@@ -20,7 +20,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_values_v = polyfill::is_specialization_of<T, values_t>::value;
+        inline constexpr bool is_values_v = polyfill::is_specialization_of<T, values_t>::value;
 
         template<class T>
         using is_values = polyfill::bool_constant<is_values_v<T>>;

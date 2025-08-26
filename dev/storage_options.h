@@ -9,6 +9,8 @@
 #include <functional>  //  std::function
 #endif
 
+#include "serialize_result_type.h"
+
 namespace sqlite_orm {
     namespace internal {
         template<typename T>
@@ -18,6 +20,16 @@ namespace sqlite_orm {
             using storage_opt_tag = int;
 
             std::function<void(sqlite3*)> onOpen;
+        };
+        struct will_run_query_spec {
+            using storage_opt_tag = int;
+
+            std::function<void(serialize_arg_type)> willRunQuery;
+        };
+        struct did_run_query_spec {
+            using storage_opt_tag = int;
+
+            std::function<void(serialize_arg_type)> didRunQuery;
         };
     }
 }
@@ -30,6 +42,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         /// Whether to open the database once and for all.
         /// Required if using a 'storage' instance from multiple threads.
         bool open_forever = false;
+        std::string vfs_name{default_vfs_name};
+        db_open_mode open_mode = db_open_mode::default_;
 
         using storage_opt_tag = int;
     };
@@ -47,4 +61,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(onOpen)};
     }
 #endif
+    inline internal::will_run_query_spec
+    will_run_query(std::function<void(internal::serialize_arg_type)> willRunQuery) {
+        return {std::move(willRunQuery)};
+    }
+
+    inline internal::did_run_query_spec did_run_query(std::function<void(internal::serialize_arg_type)> didRunQuery) {
+        return {std::move(didRunQuery)};
+    }
 }

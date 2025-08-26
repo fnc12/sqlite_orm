@@ -217,6 +217,18 @@ struct alignas(2 * __STDCPP_DEFAULT_NEW_ALIGNMENT__) OverAlignedAggregateFunctio
 };
 #endif
 
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+struct StaticCallOpFunction {
+    static bool operator()(int x, int y) {
+        return x == y;
+    }
+
+    static const char* name() {
+        return "STATICCALLOP";
+    }
+};
+#endif
+
 struct NonAllocatableAggregateFunction {
     void step(double /*arg*/) {}
 
@@ -279,8 +291,12 @@ struct NonDefaultCtorAggregateFunction {
 };
 
 TEST_CASE("custom functions") {
-    using Catch::Matchers::ContainsSubstring;
     const ErrorCodeExceptionMatcher noMemExceptionMatcher(sqlite_errc(SQLITE_NOMEM));
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+    const ErrorCodeExceptionMatcher notFoundExceptionMatcher(orm_error_code::function_not_found);
+#else
+    const ErrorCodeExceptionMatcher notFoundExceptionMatcher(sqlite_errc(SQLITE_ERROR));
+#endif
 
     SqrtFunction::callsCount = 0;
     StatelessHasPrefixFunction::callsCount = 0;
@@ -314,7 +330,7 @@ TEST_CASE("custom functions") {
     storage.delete_aggregate_function<NonAllocatableAggregateFunction>();
 
     //   call before creation
-    REQUIRE_THROWS_WITH(storage.select(func<SqrtFunction>(4)), ContainsSubstring("no such function"));
+    REQUIRE_THROWS_MATCHES(storage.select(func<SqrtFunction>(4)), std::system_error, notFoundExceptionMatcher);
 
     //  create function
     REQUIRE(SqrtFunction::callsCount == 0);
@@ -479,6 +495,16 @@ TEST_CASE("custom functions") {
     }
 #endif
 
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+    storage.create_scalar_function<StaticCallOpFunction>();
+    {
+        auto rows = storage.select(func<StaticCallOpFunction>(1, 1));
+        decltype(rows) expected{true};
+        REQUIRE(rows == expected);
+    }
+    storage.delete_scalar_function<StaticCallOpFunction>();
+#endif
+
     storage.create_scalar_function<NonDefaultCtorScalarFunction>(42);
     {
         auto rows = storage.select(func<NonDefaultCtorScalarFunction>(1));
@@ -522,6 +548,26 @@ struct stateful_scalar {
 inline constexpr stateful_scalar offset0{};
 
 TEST_CASE("generalized scalar udf") {
+    struct functor {
+        bool operator()(int&, int&) const = delete;
+
+        bool operator()(const int&, const int&) const {
+            return true;
+        }
+
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+        static bool operator()(int, int) {
+            return true;
+        }
+#endif
+    };
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+    // note: this static lambda lives up here because of GCC 13.2 and mangling issues
+    constexpr auto lambda_static_dummy = [](unsigned long errcode) static {
+        return errcode != 0;
+    };
+#endif
+
     auto storage = make_storage("");
     storage.sync_schema();
 
@@ -547,6 +593,20 @@ TEST_CASE("generalized scalar udf") {
         }
         storage.delete_scalar_function<is_fatal_error_f>();
     }
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+    SECTION("stateless static lambda") {
+        constexpr auto is_fatal_error_f = "is_fatal_error"_scalar.quote([](unsigned long errcode) static {
+            return errcode != 0;
+        });
+        storage.create_scalar_function<is_fatal_error_f>();
+        {
+            auto rows = storage.select(is_fatal_error_f(1));
+            decltype(rows) expected{true};
+            REQUIRE(rows == expected);
+        }
+        storage.delete_scalar_function<is_fatal_error_f>();
+    }
+#endif
     SECTION("function object instance") {
         constexpr auto equal_to_int_f = "equal_to"_scalar.quote(std::equal_to<int>{});
         storage.create_scalar_function<equal_to_int_f>();
@@ -589,6 +649,18 @@ TEST_CASE("generalized scalar udf") {
         }
         storage.delete_scalar_function<equal_to_int_f>();
     }
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+    SECTION("function object instance with static call operator") {
+        constexpr auto f = "f"_scalar.quote<bool(int, int)>(functor{});
+        storage.create_scalar_function<f>();
+        {
+            auto rows = storage.select(f(0, 1));
+            decltype(rows) expected{true};
+            REQUIRE(rows == expected);
+        }
+        storage.delete_scalar_function<f>();
+    }
+#endif
     SECTION("specialized template function") {
         constexpr auto clamp_int_f = "clamp_int"_scalar.quote(std::clamp<int>);
         storage.create_scalar_function<clamp_int_f>();
@@ -611,14 +683,17 @@ TEST_CASE("generalized scalar udf") {
         storage.delete_scalar_function<clamp_int_f>();
     }
     SECTION("non-copyable function object") {
-        constexpr auto idfunc_f = "idfunc"_scalar.quote<noncopyable_scalar>();
-        storage.create_scalar_function<idfunc_f>();
+        // note: unlike msvc, gcc+clang require a constant template parameter to be copyable (and probably rightly so);
+        // so we must explicitly use an ordinary l-value expression from a global quoted function.
+
+        static constexpr auto idfunc_f = "idfunc"_scalar.quote<noncopyable_scalar>();
+        storage.create_scalar_function<(idfunc_f)>();
         {
             auto rows = storage.select(idfunc_f(1));
             decltype(rows) expected{1};
             REQUIRE(rows == expected);
         }
-        storage.delete_scalar_function<idfunc_f>();
+        storage.delete_scalar_function<(idfunc_f)>();
     }
     SECTION("stateful function object") {
         constexpr auto offset0_f = "offset0"_scalar.quote(offset0);

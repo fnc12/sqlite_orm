@@ -10,7 +10,7 @@
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/mpl/conditional.h"
-#include "is_base_of_template.h"
+#include "functional/is_base_template_of.h"
 #include "tuple_helper/tuple_traits.h"
 #include "conditions.h"
 #include "serialize_result_type.h"
@@ -45,8 +45,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_built_in_function_v =
-            is_base_of_template<T, built_in_function_t>::value;
+        inline constexpr bool is_built_in_function_v = is_base_template_of<built_in_function_t, T>::value;
 
         template<class T>
         struct is_built_in_function : polyfill::bool_constant<is_built_in_function_v<T>> {};
@@ -620,12 +619,9 @@ namespace sqlite_orm {
             using argument1_type = Y;
             using argument2_type = Z;
 
-            argument0_type argument0;
-            argument1_type argument1;
-            argument2_type argument2;
-
-            highlight_t(argument0_type argument0, argument1_type argument1, argument2_type argument2) :
-                argument0(std::move(argument0)), argument1(std::move(argument1)), argument2(std::move(argument2)) {}
+            argument0_type argument0{};
+            argument1_type argument1{};
+            argument2_type argument2{};
         };
     }
 }
@@ -1700,7 +1696,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  NULLIF(X,Y) function https://www.sqlite.org/lang_corefunc.html#nullif
      */
-#if defined(SQLITE_ORM_OPTIONAL_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
+#if defined(SQLITE_ORM_OPTIONAL_SUPPORTED)
     /**
      *  NULLIF(X,Y) using common return type of X and Y
      */

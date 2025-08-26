@@ -22,18 +22,25 @@
 
 namespace sqlite_orm {
     namespace internal {
+        template<class... DBO>
+        template<class Table, satisfies<is_table, Table>>
+        sync_schema_result storage_t<DBO...>::sync_table([[maybe_unused]] const Table& table,
+                                                         [[maybe_unused]] sqlite3* db,
+                                                         [[maybe_unused]] bool preserve) {
+            if constexpr (
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+                std::is_same<object_type_t<Table>, dbstat>::value ||
+#endif
+                std::is_same<object_type_t<Table>, sqlite_master>::value) {
+                return sync_schema_result::already_in_sync;
+            } else {
+                return this->sync_regular_table(table, db, preserve);
+            }
+        }
 
         template<class... DBO>
         template<class Table, satisfies<is_table, Table>>
-        sync_schema_result storage_t<DBO...>::sync_table(const Table& table, sqlite3* db, bool preserve) {
-            if (std::is_same<object_type_t<Table>, sqlite_master>::value) {
-                return sync_schema_result::already_in_sync;
-            }
-#ifdef SQLITE_ENABLE_DBSTAT_VTAB
-            if (std::is_same<object_type_t<Table>, dbstat>::value) {
-                return sync_schema_result::already_in_sync;
-            }
-#endif  //  SQLITE_ENABLE_DBSTAT_VTAB
+        sync_schema_result storage_t<DBO...>::sync_regular_table(const Table& table, sqlite3* db, bool preserve) {
             auto res = sync_schema_result::already_in_sync;
             bool attempt_to_preserve = true;
 
@@ -138,16 +145,20 @@ namespace sqlite_orm {
                                                      });
 #endif
                 if (columnToIgnoreIt == columnsToIgnore.end()) {
-                    columnNames.push_back(cref(columnName));
+                    columnNames.push_back(std::cref(columnName));
                 }
             });
 
-            std::stringstream ss;
-            ss << "INSERT INTO " << streaming_identifier(destinationTableName) << " ("
-               << streaming_identifiers(columnNames) << ") "
-               << "SELECT " << streaming_identifiers(columnNames) << " FROM " << streaming_identifier(sourceTableName)
-               << std::flush;
-            perform_void_exec(db, ss.str());
+            std::string sql;
+            {
+                std::stringstream ss;
+                ss << "INSERT INTO " << streaming_identifier(destinationTableName) << " ("
+                   << streaming_identifiers(columnNames) << ") "
+                   << "SELECT " << streaming_identifiers(columnNames) << " FROM "
+                   << streaming_identifier(sourceTableName) << std::flush;
+                sql = ss.str();
+            }
+            this->executor.perform_void_exec(db, sql.data());
         }
     }
 }

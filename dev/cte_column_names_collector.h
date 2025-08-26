@@ -54,7 +54,8 @@ namespace sqlite_orm {
             static_assert(!is_compound_operator_v<T>);
 
             template<class Ctx>
-            std::vector<std::string> operator()(const expression_type& t, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::vector<std::string>
+            operator()(const expression_type& t, const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 auto newContext = context;
                 newContext.skip_table_name = true;
                 std::string columnName = serialize(t, newContext);
@@ -77,7 +78,8 @@ namespace sqlite_orm {
             using expression_type = As;
 
             template<class Ctx>
-            std::vector<std::string> operator()(const expression_type& /*expression*/, const Ctx& /*context*/) const {
+            SQLITE_ORM_STATIC_CALLOP std::vector<std::string>
+            operator()(const expression_type& /*expression*/, const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
                 return {alias_extractor<alias_type_t<As>>::extract()};
             }
         };
@@ -87,7 +89,8 @@ namespace sqlite_orm {
             using expression_type = Wrapper;
 
             template<class Ctx>
-            std::vector<std::string> operator()(const expression_type& expression, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::vector<std::string>
+            operator()(const expression_type& expression, const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 return get_cte_column_names(expression.get(), context);
             }
         };
@@ -98,7 +101,8 @@ namespace sqlite_orm {
             using T = typename Asterisk::type;
 
             template<class Ctx>
-            std::vector<std::string> operator()(const expression_type&, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::vector<std::string>
+            operator()(const expression_type&, const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 auto& table = pick_table<T>(context.db_objects);
 
                 std::vector<std::string> columnNames;
@@ -128,7 +132,8 @@ namespace sqlite_orm {
             using expression_type = Columns;
 
             template<class Ctx>
-            std::vector<std::string> operator()(const expression_type& cols, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::vector<std::string>
+            operator()(const expression_type& cols, const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::vector<std::string> columnNames;
                 columnNames.reserve(size_t(cols.count));
                 auto newContext = context;
@@ -159,8 +164,9 @@ namespace sqlite_orm {
             std::vector<std::string> columnNames = get_cte_column_names(sel.col, context);
 
             // 2. override column names from cte expression
-            if (size_t n = std::tuple_size_v<ExplicitColRefs>) {
-                if (n != columnNames.size()) {
+            constexpr size_t nExplicitColumns = std::tuple_size_v<ExplicitColRefs>;
+            if constexpr (nExplicitColumns > 0) {
+                if (nExplicitColumns != columnNames.size()) {
                     throw std::system_error{orm_error_code::column_not_found};
                 }
 

@@ -1,10 +1,12 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::is_invocable
 #include <vector>  //  std::vector
 #include <functional>  //  std::reference_wrapper
 #endif
 
+#include "functional/cxx_functional_polyfill.h"  //  std::is_invocable
 #include "tuple_helper/tuple_iteration.h"
 #include "type_traits.h"
 #include "conditions.h"
@@ -23,6 +25,8 @@
 #include "ast/exists.h"
 #include "ast/set.h"
 #include "ast/match.h"
+#include "ast/cast.h"
+#include "ast/limit.h"
 
 namespace sqlite_orm {
 
@@ -36,7 +40,7 @@ namespace sqlite_orm {
          *  ast_iterator is used in finding literals to be bound to
          *  a statement, and to collect table names.
          *  
-         *  Note that not all leaves of the expression tree are always visited:
+         *  Note that not all leaves of the expression tree are visited:
          *  Column expressions can be more complex, but are passed as a whole to the callable.
          *  Examples are `column_pointer<>` and `alias_column_t<>`.
          *  
@@ -52,17 +56,26 @@ namespace sqlite_orm {
              *  L is a callable type. Mostly is a templated lambda
              */
             template<class L>
-            void operator()(const T& t, L& lambda) const {
-                lambda(t);
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& leaf, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
+                lambda(leaf);
             }
         };
 
         /**
-         *  Simplified API
+         *  Simplified API.
+         *  
+         *  @param lambda Callable invoked with each leaf expression.
+         *  The callable can opt in to be invoked for a node expression.
          */
         template<class T, class L>
         void iterate_ast(const T& t, L&& lambda) {
             ast_iterator<T> iterator;
+
+            // possibly invoke lambda with node itself
+            if constexpr (polyfill::is_invocable<L, polyfill::bool_constant<true>, const T&>::value) {
+                lambda(polyfill::bool_constant<true>{}, t);
+            }
+
             iterator(t, lambda);
         }
 
@@ -72,7 +85,7 @@ namespace sqlite_orm {
             using node_type = as_optional_t<T>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.expression, lambda);
             }
         };
@@ -83,7 +96,8 @@ namespace sqlite_orm {
             using node_type = std::reference_wrapper<T>;
 
             template<class L>
-            void operator()(const node_type& expression, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& expression,
+                                                     L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(expression.get(), lambda);
             }
         };
@@ -93,7 +107,7 @@ namespace sqlite_orm {
             using node_type = match_t<T, X>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.argument, lambda);
             }
         };
@@ -103,7 +117,8 @@ namespace sqlite_orm {
             using node_type = group_by_t<Args...>;
 
             template<class L>
-            void operator()(const node_type& expression, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& expression,
+                                                     L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(expression.args, lambda);
             }
         };
@@ -113,8 +128,8 @@ namespace sqlite_orm {
             using node_type = highlight_t<T, X, Y, Z>;
 
             template<class L>
-            void operator()(const node_type& expression, L& lambda) const {
-                lambda(expression);
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& expression,
+                                                     L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(expression.argument0, lambda);
                 iterate_ast(expression.argument1, lambda);
                 iterate_ast(expression.argument2, lambda);
@@ -126,7 +141,8 @@ namespace sqlite_orm {
             using node_type = excluded_t<T>;
 
             template<class L>
-            void operator()(const node_type& expression, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& expression,
+                                                     L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(expression.expression, lambda);
             }
         };
@@ -136,7 +152,8 @@ namespace sqlite_orm {
             using node_type = T;
 
             template<class L>
-            void operator()(const node_type& expression, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& expression,
+                                                     L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(expression.actions, lambda);
             }
         };
@@ -146,7 +163,8 @@ namespace sqlite_orm {
             using node_type = where_t<C>;
 
             template<class L>
-            void operator()(const node_type& expression, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& expression,
+                                                     L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(expression.expression, lambda);
             }
         };
@@ -158,7 +176,7 @@ namespace sqlite_orm {
             using node_type = T;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.lhs, lambda);
                 iterate_ast(node.rhs, lambda);
             }
@@ -169,7 +187,7 @@ namespace sqlite_orm {
             using node_type = is_equal_with_table_t<L, R>;
 
             template<class C>
-            void operator()(const node_type& node, C& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, C& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.rhs, lambda);
             }
         };
@@ -179,7 +197,7 @@ namespace sqlite_orm {
             using node_type = C;
 
             template<class L>
-            void operator()(const node_type& cols, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& cols, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(cols.columns, lambda);
             }
         };
@@ -189,7 +207,7 @@ namespace sqlite_orm {
             using node_type = dynamic_in_t<L, A>;
 
             template<class C>
-            void operator()(const node_type& in, C& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& in, C& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(in.left, lambda);
                 iterate_ast(in.argument, lambda);
             }
@@ -200,7 +218,7 @@ namespace sqlite_orm {
             using node_type = in_t<L, Args...>;
 
             template<class C>
-            void operator()(const node_type& in, C& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& in, C& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(in.left, lambda);
                 iterate_ast(in.argument, lambda);
             }
@@ -211,7 +229,7 @@ namespace sqlite_orm {
             using node_type = std::vector<T>;
 
             template<class L>
-            void operator()(const node_type& vec, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& vec, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 for (auto& i: vec) {
                     iterate_ast(i, lambda);
                 }
@@ -223,7 +241,7 @@ namespace sqlite_orm {
             using node_type = std::vector<char>;
 
             template<class L>
-            void operator()(const node_type& vec, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& vec, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 lambda(vec);
             }
         };
@@ -234,7 +252,7 @@ namespace sqlite_orm {
             using node_type = CTE;
 
             template<class L>
-            void operator()(const node_type& c, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& c, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(c.subselect, lambda);
             }
         };
@@ -244,7 +262,7 @@ namespace sqlite_orm {
             using node_type = With;
 
             template<class L>
-            void operator()(const node_type& c, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& c, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(c.cte, lambda);
                 iterate_ast(c.expression, lambda);
             }
@@ -256,7 +274,7 @@ namespace sqlite_orm {
             using node_type = T;
 
             template<class L>
-            void operator()(const node_type& c, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& c, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(c.compound, lambda);
             }
         };
@@ -266,7 +284,8 @@ namespace sqlite_orm {
             using node_type = into_t<T>;
 
             template<class L>
-            void operator()(const node_type& /*node*/, L& /*lambda*/) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& /*node*/,
+                                                     L& /*lambda*/) SQLITE_ORM_OR_CONST_CALLOP {
                 //..
             }
         };
@@ -276,7 +295,7 @@ namespace sqlite_orm {
             using node_type = insert_raw_t<Args...>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.args, lambda);
             }
         };
@@ -286,7 +305,7 @@ namespace sqlite_orm {
             using node_type = replace_raw_t<Args...>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.args, lambda);
             }
         };
@@ -296,7 +315,7 @@ namespace sqlite_orm {
             using node_type = select_t<T, Args...>;
 
             template<class L>
-            void operator()(const node_type& sel, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& sel, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(sel.col, lambda);
                 iterate_ast(sel.conditions, lambda);
             }
@@ -307,7 +326,7 @@ namespace sqlite_orm {
             using node_type = get_all_t<T, R, Args...>;
 
             template<class L>
-            void operator()(const node_type& get, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& get, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(get.conditions, lambda);
             }
         };
@@ -317,7 +336,7 @@ namespace sqlite_orm {
             using node_type = get_all_pointer_t<T, Args...>;
 
             template<class L>
-            void operator()(const node_type& get, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& get, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(get.conditions, lambda);
             }
         };
@@ -328,7 +347,7 @@ namespace sqlite_orm {
             using node_type = get_all_optional_t<T, Args...>;
 
             template<class L>
-            void operator()(const node_type& get, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& get, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(get.conditions, lambda);
             }
         };
@@ -339,7 +358,7 @@ namespace sqlite_orm {
             using node_type = update_all_t<S, Wargs...>;
 
             template<class L>
-            void operator()(const node_type& u, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& u, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(u.set, lambda);
                 iterate_ast(u.conditions, lambda);
             }
@@ -350,7 +369,7 @@ namespace sqlite_orm {
             using node_type = remove_all_t<T, Args...>;
 
             template<class L>
-            void operator()(const node_type& r, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& r, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(r.conditions, lambda);
             }
         };
@@ -360,7 +379,7 @@ namespace sqlite_orm {
             using node_type = set_t<Args...>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.assigns, lambda);
             }
         };
@@ -370,7 +389,7 @@ namespace sqlite_orm {
             using node_type = dynamic_set_t<S>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.entries, lambda);
             }
         };
@@ -380,7 +399,7 @@ namespace sqlite_orm {
             using node_type = std::tuple<Args...>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_tuple(node, [&lambda](auto& v) {
                     iterate_ast(v, lambda);
                 });
@@ -392,7 +411,7 @@ namespace sqlite_orm {
             using node_type = group_by_with_having<T, Args...>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.args, lambda);
                 iterate_ast(node.expression, lambda);
             }
@@ -403,7 +422,7 @@ namespace sqlite_orm {
             using node_type = cast_t<T, E>;
 
             template<class L>
-            void operator()(const node_type& c, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& c, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(c.expression, lambda);
             }
         };
@@ -413,7 +432,7 @@ namespace sqlite_orm {
             using node_type = exists_t<T>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.expression, lambda);
             }
         };
@@ -423,7 +442,7 @@ namespace sqlite_orm {
             using node_type = like_t<A, T, E>;
 
             template<class L>
-            void operator()(const node_type& lk, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& lk, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(lk.arg, lambda);
                 iterate_ast(lk.pattern, lambda);
                 lk.arg3.apply([&lambda](auto& value) {
@@ -437,7 +456,7 @@ namespace sqlite_orm {
             using node_type = glob_t<A, T>;
 
             template<class L>
-            void operator()(const node_type& lk, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& lk, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(lk.arg, lambda);
                 iterate_ast(lk.pattern, lambda);
             }
@@ -448,7 +467,7 @@ namespace sqlite_orm {
             using node_type = between_t<A, T>;
 
             template<class L>
-            void operator()(const node_type& b, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& b, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(b.expr, lambda);
                 iterate_ast(b.b1, lambda);
                 iterate_ast(b.b2, lambda);
@@ -460,7 +479,7 @@ namespace sqlite_orm {
             using node_type = named_collate<T>;
 
             template<class L>
-            void operator()(const node_type& col, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& col, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(col.expr, lambda);
             }
         };
@@ -470,7 +489,7 @@ namespace sqlite_orm {
             using node_type = negated_condition_t<C>;
 
             template<class L>
-            void operator()(const node_type& neg, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& neg, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(neg.c, lambda);
             }
         };
@@ -480,7 +499,7 @@ namespace sqlite_orm {
             using node_type = is_null_t<T>;
 
             template<class L>
-            void operator()(const node_type& i, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& i, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(i.t, lambda);
             }
         };
@@ -490,7 +509,7 @@ namespace sqlite_orm {
             using node_type = is_not_null_t<T>;
 
             template<class L>
-            void operator()(const node_type& i, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& i, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(i.t, lambda);
             }
         };
@@ -500,7 +519,7 @@ namespace sqlite_orm {
             using node_type = function_call<F, CallArgs...>;
 
             template<class L>
-            void operator()(const node_type& f, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& f, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(f.callArgs, lambda);
             }
         };
@@ -510,7 +529,7 @@ namespace sqlite_orm {
             using node_type = built_in_function_t<R, S, Args...>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.args, lambda);
             }
         };
@@ -520,7 +539,7 @@ namespace sqlite_orm {
             using node_type = built_in_aggregate_function_t<R, S, Args...>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.args, lambda);
             }
         };
@@ -530,7 +549,7 @@ namespace sqlite_orm {
             using node_type = filtered_aggregate_function<F, W>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.function, lambda);
                 iterate_ast(node.where, lambda);
             }
@@ -541,7 +560,7 @@ namespace sqlite_orm {
             using node_type = Join;
 
             template<class L>
-            void operator()(const node_type& join, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& join, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(join.constraint, lambda);
             }
         };
@@ -551,7 +570,7 @@ namespace sqlite_orm {
             using node_type = on_t<T>;
 
             template<class L>
-            void operator()(const node_type& on, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& on, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(on.arg, lambda);
             }
         };
@@ -563,7 +582,7 @@ namespace sqlite_orm {
             using node_type = T;
 
             template<class L>
-            void operator()(const node_type& o, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& o, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(o.column, lambda);
             }
         };
@@ -573,7 +592,7 @@ namespace sqlite_orm {
             using node_type = simple_case_t<R, T, E, Args...>;
 
             template<class L>
-            void operator()(const node_type& c, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& c, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 c.case_expression.apply([&lambda](auto& c_) {
                     iterate_ast(c_, lambda);
                 });
@@ -592,8 +611,8 @@ namespace sqlite_orm {
             using node_type = as_t<T, E>;
 
             template<class L>
-            void operator()(const node_type& a, L& lambda) const {
-                iterate_ast(a.expression, lambda);
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
+                iterate_ast(node.expression, lambda);
             }
         };
 
@@ -602,8 +621,8 @@ namespace sqlite_orm {
             using node_type = limit_t<T, false, OI, void>;
 
             template<class L>
-            void operator()(const node_type& a, L& lambda) const {
-                iterate_ast(a.lim, lambda);
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
+                iterate_ast(node.limit, lambda);
             }
         };
 
@@ -612,9 +631,9 @@ namespace sqlite_orm {
             using node_type = limit_t<T, true, false, O>;
 
             template<class L>
-            void operator()(const node_type& a, L& lambda) const {
-                iterate_ast(a.lim, lambda);
-                a.off.apply([&lambda](auto& value) {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
+                iterate_ast(node.limit, lambda);
+                node.offset.apply([&lambda](auto& value) {
                     iterate_ast(value, lambda);
                 });
             }
@@ -625,11 +644,11 @@ namespace sqlite_orm {
             using node_type = limit_t<T, true, true, O>;
 
             template<class L>
-            void operator()(const node_type& a, L& lambda) const {
-                a.off.apply([&lambda](auto& value) {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
+                node.offset.apply([&lambda](auto& value) {
                     iterate_ast(value, lambda);
                 });
-                iterate_ast(a.lim, lambda);
+                iterate_ast(node.limit, lambda);
             }
         };
 
@@ -638,7 +657,7 @@ namespace sqlite_orm {
             using node_type = distinct_t<T>;
 
             template<class L>
-            void operator()(const node_type& a, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& a, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(a.expression, lambda);
             }
         };
@@ -648,7 +667,7 @@ namespace sqlite_orm {
             using node_type = all_t<T>;
 
             template<class L>
-            void operator()(const node_type& a, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& a, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(a.expression, lambda);
             }
         };
@@ -658,7 +677,7 @@ namespace sqlite_orm {
             using node_type = bitwise_not_t<T>;
 
             template<class L>
-            void operator()(const node_type& a, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& a, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(a.argument, lambda);
             }
         };
@@ -668,7 +687,7 @@ namespace sqlite_orm {
             using node_type = values_t<Args...>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.tuple, lambda);
             }
         };
@@ -678,7 +697,7 @@ namespace sqlite_orm {
             using node_type = dynamic_values_t<T>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.vector, lambda);
             }
         };
@@ -694,7 +713,8 @@ namespace sqlite_orm {
             using node_type = T;
 
             template<class L>
-            void operator()(const node_type& /*node*/, L& /*lambda*/) const {}
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& /*node*/,
+                                                     L& /*lambda*/) SQLITE_ORM_OR_CONST_CALLOP {}
         };
 
         template<class E>
@@ -702,7 +722,7 @@ namespace sqlite_orm {
             using node_type = order_by_t<E>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node._expression, lambda);
             }
         };
@@ -712,7 +732,7 @@ namespace sqlite_orm {
             using node_type = multi_order_by_t<Args...>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.args, lambda);
             }
         };
@@ -722,7 +742,7 @@ namespace sqlite_orm {
             using node_type = collate_t<T>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(node.expr, lambda);
             }
         };

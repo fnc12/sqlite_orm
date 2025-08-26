@@ -4,8 +4,7 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move, std::remove_cvref
 #include <functional>  //  std::reference_wrapper
-#if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED) &&           \
-    defined(SQLITE_ORM_CPP20_RANGES_SUPPORTED)
+#if defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED) && defined(SQLITE_ORM_CPP20_RANGES_SUPPORTED)
 #include <ranges>  //  std::ranges::view_interface
 #endif
 #endif
@@ -19,13 +18,15 @@
 #include "type_traits.h"
 #include "storage_lookup.h"
 
-#if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
 namespace sqlite_orm::internal {
     /*  
      *  A C++ view over a result set of a select statement, returned by `storage_t::iterate()`.
      *  
-     *  `result_set_view` is also a 'borrowed range',
+     *  Models a C++ input range and is also a 'borrowed range',
      *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
+     *  
+     *  Its `begin()` and `end()` methods are non-const to leave room for different implementation details.
      */
     template<class Select, class DBOs>
     struct result_set_view
@@ -51,11 +52,13 @@ namespace sqlite_orm::internal {
             using select_type = polyfill::detected_or_t<expression_type, expression_type_t, expression_type>;
             using column_result_type = column_result_of_t<ExprDBOs, select_type>;
             using context_t = serializer_context<ExprDBOs>;
+
             context_t context{exprDBOs};
             context.skip_table_name = false;
             context.replace_bindable_with_question = true;
 
-            statement_finalizer stmt{prepare_stmt(this->connection.get(), serialize(this->expression, context))};
+            const std::string sql = serialize(this->expression, context);
+            statement_finalizer stmt{prepare_stmt(this->connection.get(), sql)};
             iterate_ast(this->expression, conditional_binder{stmt.get()});
 
             // note: it is enough to only use the 'expression DBOs' at compile-time to determine the column results;

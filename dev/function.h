@@ -1,11 +1,12 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::is_member_function_pointer, std::is_function, std::remove_const, std::decay, std::is_convertible, std::is_same, std::false_type, std::true_type
+#include <type_traits>  //  std::enable_if, std::is_member_function_pointer, std::is_function, std::remove_const, std::decay, std::is_convertible, std::is_same, std::false_type, std::true_type, std::is_pointer
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #include <concepts>  //  std::copy_constructible
 #endif
 #include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
+#include <functional>  // std::bind_front
 #include <algorithm>  //  std::min, std::copy_n
 #include <utility>  //  std::move, std::forward
 #endif
@@ -16,8 +17,8 @@
 #include "type_traits.h"
 #include "tags.h"
 
-namespace sqlite_orm {
-
+// export forward-declarations
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     struct arg_values;
 
     // note (internal): forward declare even if `SQLITE_VERSION_NUMBER < 3020000` in order to simplify coding below
@@ -26,7 +27,9 @@ namespace sqlite_orm {
     // note (internal): forward declare even if `SQLITE_VERSION_NUMBER < 3020000` in order to simplify coding below
     template<class P, class T, class D>
     class pointer_binding;
+}
 
+namespace sqlite_orm {
     namespace internal {
         template<class F>
         using scalar_call_function_t = decltype(&F::operator());
@@ -38,17 +41,17 @@ namespace sqlite_orm {
         using aggregate_fin_function_t = decltype(&F::fin);
 
         template<class F, class SFINAE = void>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_scalar_udf_v = false;
+        inline constexpr bool is_scalar_udf_v = false;
         template<class F>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_scalar_udf_v<F, polyfill::void_t<scalar_call_function_t<F>>> = true;
+        inline constexpr bool is_scalar_udf_v<F, polyfill::void_t<scalar_call_function_t<F>>> = true;
 
         template<class F>
         struct is_scalar_udf : polyfill::bool_constant<is_scalar_udf_v<F>> {};
 
         template<class F, class SFINAE = void>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_aggregate_udf_v = false;
+        inline constexpr bool is_aggregate_udf_v = false;
         template<class F>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_aggregate_udf_v<
+        inline constexpr bool is_aggregate_udf_v<
             F,
             polyfill::void_t<aggregate_step_function_t<F>,
                              aggregate_fin_function_t<F>,
@@ -128,7 +131,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class Q>
     concept orm_quoted_scalar_function = requires(const Q& quotedF) {
         quotedF.name();
-        quotedF.callable();
+        quotedF._callable();
     };
 #endif
 }
@@ -163,6 +166,17 @@ namespace sqlite_orm {
         struct callable_arguments : callable_arguments_impl<F> {};
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        template<orm_function_sig Sig, class F>
+        using overloaded_callop_t = decltype(static_cast<Sig F::*>(&F::operator()));
+
+        template<orm_function_sig Sig, class F>
+        using overloaded_static_callop_t =
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            decltype(static_cast<Sig*>(&F::operator()));
+#else
+            std::enable_if_t<polyfill::always_false_v<Sig>, void>;
+#endif
+
         /*
          *  Bundle of type and name of a quoted user-defined function.
          */
@@ -197,12 +211,12 @@ namespace sqlite_orm {
 
             template<class R = decltype(UDF::name()),
                      std::enable_if_t<polyfill::negation<std::is_same<R, char>>::value, bool> = true>
-            decltype(auto) operator()() const {
+            SQLITE_ORM_STATIC_CALLOP decltype(auto) operator()() SQLITE_ORM_OR_CONST_CALLOP {
                 return UDF::name();
             }
 
             template<class R = decltype(UDF::name()), std::enable_if_t<std::is_same<R, char>::value, bool> = true>
-            std::string operator()() const {
+            SQLITE_ORM_STATIC_CALLOP std::string operator()() SQLITE_ORM_OR_CONST_CALLOP {
                 return std::string{UDF::name()};
             }
         };
@@ -220,7 +234,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool
+        inline constexpr bool
             is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, function_call>::value>> = true;
 
         template<class T>
@@ -257,7 +271,7 @@ namespace sqlite_orm {
             return valid;
         }
 
-#if __cplusplus >= 201703L  // C++17 or later
+#ifndef SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR
         template<size_t I, const char* PointerArg, const char* Binding>
         SQLITE_ORM_CONSTEVAL bool assert_same_pointer_tag() {
             constexpr bool valid = Binding == PointerArg;
@@ -337,7 +351,7 @@ namespace sqlite_orm {
          *  
          *  Use the variable template `func<>` to instantiate.
          *  
-         *  Calling the function captures the parameters in a `function_call` node.
+         *  Calling the generator captures the parameters in a `function_call` expression.
          */
         template<class UDF>
         struct function {
@@ -345,21 +359,21 @@ namespace sqlite_orm {
             using callable_type = UDF;
 
             /*
-             *  Generates the SQL function call.
+             *  Generates the SQL function call expression.
              */
             template<typename... CallArgs>
             function_call<UDF, CallArgs...> operator()(CallArgs... callArgs) const {
                 check_function_call<UDF, CallArgs...>();
-                return {this->udf_holder(), {std::forward<CallArgs>(callArgs)...}};
-            }
-
-            constexpr auto udf_holder() const {
-                return internal::udf_holder<UDF>{};
+                return {_udf_holder(), {std::forward<CallArgs>(callArgs)...}};
             }
 
             // returns a character range
             constexpr auto name() const {
-                return this->udf_holder()();
+                return _udf_holder()();
+            }
+
+            constexpr auto _udf_holder() const {
+                return internal::udf_holder<UDF>{};
             }
         };
 
@@ -368,16 +382,13 @@ namespace sqlite_orm {
          *  Generator of a user-defined function call in a sql query expression.
          *  
          *  Use the string literal operator template `""_scalar.quote()` to quote
-         *  a freestanding function, stateless lambda or function object.
+         *  a freestanding function, lambda or function object.
          *  
-         *  Calling the function captures the parameters in a `function_call` node.
+         *  Calling the generator captures the parameters in a `function_call` expression.
          *  
-         *  Internal note:
-         *  1. Captures and represents a function [pointer or object], especially one without side effects.
-         *  If `F` is a stateless function object, `quoted_scalar_function::callable()` returns the original function object,
-         *  otherwise it is assumed to have possibe side-effects and `quoted_scalar_function::callable()` returns a copy.
-         *  2. The nested `udf_type` typename is deliberately chosen to be the function signature,
-         *  and will be the abstracted version of the user-defined function. 
+         *  Internal notes:
+         *  1. The nested `udf_type` typename is deliberately chosen to be the function signature,
+         *     and will be the abstracted version of the specified quoted function. 
          */
         template<class F, class Sig, size_t N>
         struct quoted_scalar_function {
@@ -385,47 +396,73 @@ namespace sqlite_orm {
             using callable_type = F;
 
             /*
-             *  Generates the SQL function call.
+             *  Generates the SQL function call expression.
              */
             template<typename... CallArgs>
             function_call<udf_type, CallArgs...> operator()(CallArgs... callArgs) const {
                 check_function_call<udf_type, CallArgs...>();
-                return {this->udf_holder(), {std::forward<CallArgs>(callArgs)...}};
-            }
-
-            /*
-             *  Return original `udf` if stateless or a copy of it otherwise
-             */
-            constexpr decltype(auto) callable() const {
-                if constexpr (stateless<F>) {
-                    return (this->udf);
-                } else {
-                    // non-const copy
-                    return F(this->udf);
-                }
-            }
-
-            constexpr auto udf_holder() const {
-                return internal::udf_holder<udf_type>{this->name()};
+                return {_udf_holder(), {std::forward<CallArgs>(callArgs)...}};
             }
 
             constexpr auto name() const {
-                return this->nme;
+                return _nme;
+            }
+
+            /*  
+             *  Make the final callable that will be used to apply the user-defined function:
+             *  - if `F` is a pointer to a freestanding function, return it as is
+             *  - if `F` is a static call operator, return a pointer to it;
+             *    the function signature is used to pick the function object's static call operator
+             *  - if `F` is a stateless functor, bind a reference to the original function object its call operator;
+             *    the function signature is used to pick the function object's call operator
+             *  - if `F` is a stateful functor, bind a copy of the original function object to its call operator;
+             *    the function signature is used to pick the function object's call operator
+             */
+            constexpr auto _callable() const {
+                // function pointer
+                if constexpr (std::is_pointer_v<F>) {
+                    return _udf;
+                }
+                // static call operator
+                else if constexpr (polyfill::is_detected_v<internal::overloaded_static_callop_t, Sig, F>) {
+                    return static_cast<Sig*>(&F::operator());
+                }
+                // stateless functor
+                else if constexpr (stateless<F>) {
+#if __cpp_lib_bind_front >= 202306L  // NTTP callables
+                    return std::bind_front<static_cast<Sig F::*>(&F::operator())>(std::ref(_udf));
+#else
+                    return std::bind_front(static_cast<Sig F::*>(&F::operator()), std::ref(_udf));
+#endif
+                }
+                // stateful functor
+                else {
+                    // non-const copy
+#if __cpp_lib_bind_front >= 202306L  // NTTP callables
+                    return std::bind_front<static_cast<Sig F::*>(&F::operator())>(_udf);
+#else
+                    return std::bind_front(static_cast<Sig F::*>(&F::operator()), _udf);
+#endif
+                }
+            }
+
+            constexpr auto _udf_holder() const {
+                return internal::udf_holder<udf_type>{this->name()};
             }
 
             template<class... Args>
             consteval quoted_scalar_function(const char (&name)[N], Args&&... constructorArgs) :
-                udf(std::forward<Args>(constructorArgs)...) {
-                std::copy_n(name, N, this->nme);
+                _udf(std::forward<Args>(constructorArgs)...) {
+                std::copy_n(name, N, _nme);
             }
 
-            F udf;
-            char nme[N];
+            F _udf;
+            char _nme[N];
         };
 
         template<size_t N>
         struct quoted_function_builder : cstring_literal<N> {
-            using cstring_literal<N>::cstring_literal;
+            constexpr quoted_function_builder(const char (&cstr)[N]) : cstring_literal<N>{cstr} {}
 
             /*
              *  From a freestanding function, possibly overloaded.
@@ -438,12 +475,10 @@ namespace sqlite_orm {
             /*
              *  From a classic function object instance.
              */
-            template<class F>
-                requires (orm_classic_function_object<F> && (stateless<F> || std::copy_constructible<F>))
+            template<orm_classic_function_object F>
+                requires (stateless<F> || std::copy_constructible<F>)
             [[nodiscard]] consteval auto quote(F callable) const {
                 using Sig = function_signature_type_t<decltype(&F::operator())>;
-                // detect whether overloaded call operator can be picked using `Sig`
-                using call_operator_type = decltype(static_cast<Sig F::*>(&F::operator()));
                 return quoted_scalar_function<F, Sig, N>{this->cstr, std::move(callable)};
             }
 
@@ -451,10 +486,13 @@ namespace sqlite_orm {
              *  From a function object instance, picking the overloaded call operator.
              */
             template<orm_function_sig Sig, class F>
-                requires ((stateless<F> || std::copy_constructible<F>))
+                requires (stateless<F> || std::copy_constructible<F>)
             [[nodiscard]] consteval auto quote(F callable) const {
                 // detect whether overloaded call operator can be picked using `Sig`
-                using call_operator_type = decltype(static_cast<Sig F::*>(&F::operator()));
+                static_assert(polyfill::is_detected_v<overloaded_callop_t, Sig, F> ||
+                                  polyfill::is_detected_v<overloaded_static_callop_t, Sig, F>,
+                              "No call operator with the specified signature available; have you overlooked the method "
+                              "qualifiers?");
                 return quoted_scalar_function<F, Sig, N>{this->cstr, std::move(callable)};
             }
 
@@ -472,10 +510,13 @@ namespace sqlite_orm {
              *  From a function object type, picking the overloaded call operator.
              */
             template<orm_function_sig Sig, class F, class... Args>
-                requires ((stateless<F> || std::copy_constructible<F>))
+                requires (stateless<F> || std::copy_constructible<F>)
             [[nodiscard]] consteval auto quote(Args&&... constructorArgs) const {
                 // detect whether overloaded call operator can be picked using `Sig`
-                using call_operator_type = decltype(static_cast<Sig F::*>(&F::operator()));
+                static_assert(polyfill::is_detected_v<overloaded_callop_t, Sig, F> ||
+                                  polyfill::is_detected_v<overloaded_static_callop_t, Sig, F>,
+                              "No call operator with the specified signature available; have you overlooked the method "
+                              "qualifiers?");
                 return quoted_scalar_function<F, Sig, N>{this->cstr, std::forward<Args>(constructorArgs)...};
             }
         };
@@ -484,7 +525,7 @@ namespace sqlite_orm {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-    /** @short Call a user-defined function.
+    /** @short Define a user-defined function.
      *  
      *  Note: Currently the number of call arguments is checked and whether the types of pointer values match,
      *  but other call argument types are not checked against the parameter types of the function.
@@ -502,21 +543,21 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         requires (orm_scalar_udf<UDF> || orm_aggregate_udf<UDF>)
 #endif
-    SQLITE_ORM_INLINE_VAR constexpr internal::function<UDF> func{};
+    inline constexpr internal::function<UDF> func{};
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     inline namespace literals {
-        /*  @short Create a scalar function from a freestanding function, stateless lambda or function object,
+        /*  @short Create a scalar function from a freestanding function, lambda or function object,
          *  and call such a user-defined function.
          *  
          *  If you need to pick a function or method from an overload set, or pick a template function you can
-         *  specify an explicit function signature in the call to `from()`.
+         *  specify an explicit function signature in the call to `quote()`.
          *  
          *  Examples:
          *  // freestanding function from a library
          *  constexpr orm_quoted_scalar_function auto clamp_int_f = "clamp_int"_scalar.quote(std::clamp<int>);
          *  // stateless lambda
-         *  constexpr orm_quoted_scalar_function auto is_fatal_error_f = "IS_FATAL_ERROR"_scalar.quote([](unsigned long errcode) {
+         *  constexpr orm_quoted_scalar_function auto is_fatal_error_f = "IS_FATAL_ERROR"_scalar.quote([](unsigned long errcode) static {
          *      return errcode != 0;
          *  });
          *  // function object instance

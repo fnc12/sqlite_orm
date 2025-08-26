@@ -20,11 +20,11 @@ template<typename T>
 using delete_default_t = std::integral_constant<decltype(&delete_default<T>), delete_default<T>>;
 // Integral function constant variable for default deletion
 template<typename T>
-SQLITE_ORM_INLINE_VAR constexpr delete_default_t<T> delete_default_f{};
+inline constexpr delete_default_t<T> delete_default_f{};
 #endif
 
 using free_t = std::integral_constant<decltype(&free), free>;
-SQLITE_ORM_INLINE_VAR constexpr free_t free_f{};
+inline constexpr free_t free_f{};
 
 TEST_CASE("obtain_xdestroy_for") {
 

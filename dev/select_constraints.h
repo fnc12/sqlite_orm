@@ -12,13 +12,14 @@
 #include "functional/cxx_optional.h"
 
 #include "functional/cxx_type_traits_polyfill.h"
-#include "is_base_of_template.h"
+#include "functional/is_base_template_of.h"
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_transformer.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "optional_container.h"
 #include "ast/where.h"
 #include "ast/group_by.h"
+#include "ast/limit.h"
 #include "core_functions.h"
 #include "alias_traits.h"
 #include "cte_moniker.h"
@@ -76,7 +77,7 @@ namespace sqlite_orm {
          *  Whether a type represents a keyword for a result set modifier (as part of a simple select expression).
          */
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_rowset_deduplicator_v =
+        inline constexpr bool is_rowset_deduplicator_v =
             polyfill::disjunction<polyfill::is_specialization_of<T, distinct_t>,
                                   polyfill::is_specialization_of<T, all_t>>::value;
 
@@ -93,7 +94,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_columns_v = polyfill::is_specialization_of<T, columns_t>::value;
+        inline constexpr bool is_columns_v = polyfill::is_specialization_of<T, columns_t>::value;
 
         template<class T>
         using is_columns = polyfill::bool_constant<is_columns_v<T>>;
@@ -113,7 +114,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_struct_v = polyfill::is_specialization_of<T, struct_t>::value;
+        inline constexpr bool is_struct_v = polyfill::is_specialization_of<T, struct_t>::value;
 
         template<class T>
         using is_struct = polyfill::bool_constant<is_struct_v<T>>;
@@ -132,7 +133,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_select_v = polyfill::is_specialization_of<T, select_t>::value;
+        inline constexpr bool is_select_v = polyfill::is_specialization_of<T, select_t>::value;
 
         template<class T>
         using is_select = polyfill::bool_constant<is_select_v<T>>;
@@ -147,14 +148,14 @@ namespace sqlite_orm {
             expressions_tuple compound;
 
             constexpr compound_operator(expressions_tuple compound) : compound{std::move(compound)} {
-                iterate_tuple(this->compound, [](auto& expression) {
+                iterate_tuple(this->compound, [](auto& expression) SQLITE_ORM_STATIC_CALLOP {
                     expression.highest_level = true;
                 });
             }
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_compound_operator_v = is_base_of_template<T, compound_operator>::value;
+        inline constexpr bool is_compound_operator_v = is_base_template_of<compound_operator, T>::value;
 
         template<class T>
         using is_compound_operator = polyfill::bool_constant<is_compound_operator_v<T>>;
@@ -270,30 +271,30 @@ namespace sqlite_orm {
 
         template<typename Moniker, class ExplicitCols>
         struct cte_builder {
-            ExplicitCols explicitColumns;
+            ExplicitCols _explicitColumns;
 
 #if SQLITE_VERSION_NUMBER >= 3035000 && defined(SQLITE_ORM_WITH_CPP20_ALIASES)
             template<auto... hints, class Select, satisfies<is_select, Select> = true>
             constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<decltype(hints)...>, Select>
             as(Select sel) && {
-                return {std::move(this->explicitColumns), std::move(sel)};
+                return {std::move(_explicitColumns), std::move(sel)};
             }
 
             template<auto... hints, class Compound, satisfies<is_compound_operator, Compound> = true>
             constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<decltype(hints)...>, select_t<Compound>>
             as(Compound sel) && {
-                return {std::move(this->explicitColumns), {std::move(sel)}};
+                return {std::move(_explicitColumns), {std::move(sel)}};
             }
 #else
             template<class Select, satisfies<is_select, Select> = true>
             constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<>, Select> as(Select sel) && {
-                return {std::move(this->explicitColumns), std::move(sel)};
+                return {std::move(_explicitColumns), std::move(sel)};
             }
 
             template<class Compound, satisfies<is_compound_operator, Compound> = true>
             constexpr common_table_expression<Moniker, ExplicitCols, std::tuple<>, select_t<Compound>>
             as(Compound sel) && {
-                return {std::move(this->explicitColumns), {std::move(sel)}};
+                return {std::move(_explicitColumns), {std::move(sel)}};
             }
 #endif
         };
@@ -582,8 +583,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         static_assert((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
                       "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
 
-        using builder_type =
-            cte_builder<decltype(moniker), transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
+        using builder_type = cte_builder<std::remove_const_t<decltype(moniker)>,
+                                         transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
         return builder_type{{std::move(explicitColumns)...}};
     }
 #endif
@@ -596,7 +597,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                        std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
                        std::convertible_to<ExplicitCols, std::string>) &&
                       ...)
-        constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) const {
+        constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP {
             return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
         }
 #else
@@ -608,7 +609,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                       std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
                                       std::is_convertible<ExplicitCols, std::string>>...>,
                                   bool>>
-        constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) const {
+        constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP {
             return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
         }
 #endif

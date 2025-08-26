@@ -101,7 +101,8 @@ TEST_CASE("Wide string") {
         std::wstring letters;
     };
 
-    auto storage = make_storage("wideStrings.sqlite",
+    const auto filename = "wideStrings.sqlite";
+    auto storage = make_storage(filename,
                                 make_table("alphabets",
                                            make_column("id", &Alphabet::id, primary_key()),
                                            make_column("letters", &Alphabet::letters)));
@@ -119,6 +120,7 @@ TEST_CASE("Wide string") {
         auto id = storage.insert(Alphabet{0, expectedString});
         REQUIRE(storage.get<Alphabet>(id).letters == expectedString);
     }
+    std::remove(filename);
 }
 #endif  //  SQLITE_ORM_OMITS_CODECVT
 
@@ -295,7 +297,8 @@ TEST_CASE("Blob") {
         return data;
     };
 
-    auto storage = make_storage("blob.db", make_table("blob", make_column("data", &BlobData::data)));
+    auto filename = "blob.db";
+    auto storage = make_storage(filename, make_table("blob", make_column("data", &BlobData::data)));
     storage.sync_schema();
     storage.remove_all<BlobData>();
 
@@ -338,6 +341,7 @@ TEST_CASE("Blob") {
     storage.insert(BlobData{});
 
     free(data);
+    std::remove(filename);
 }
 
 /**

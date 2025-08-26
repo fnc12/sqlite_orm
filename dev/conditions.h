@@ -11,7 +11,7 @@
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
-#include "is_base_of_template.h"
+#include "functional/is_base_template_of.h"
 #include "type_traits.h"
 #include "collate_argument.h"
 #include "constraints.h"
@@ -31,49 +31,11 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        struct limit_string {
-            operator std::string() const {
-                return "LIMIT";
-            }
-        };
-
-        /**
-         *  Stores LIMIT/OFFSET info
-         */
-        template<class T, bool has_offset, bool offset_is_implicit, class O>
-        struct limit_t : limit_string {
-            T lim;
-            optional_container<O> off;
-
-            limit_t() = default;
-
-            limit_t(decltype(lim) lim_) : lim(std::move(lim_)) {}
-
-            limit_t(decltype(lim) lim_, decltype(off) off_) : lim(std::move(lim_)), off(std::move(off_)) {}
-        };
-
-        template<class T>
-        struct is_limit : std::false_type {};
-
-        template<class T, bool has_offset, bool offset_is_implicit, class O>
-        struct is_limit<limit_t<T, has_offset, offset_is_implicit, O>> : std::true_type {};
-
-        /**
-         *  Stores OFFSET only info
-         */
-        template<class T>
-        struct offset_t {
-            T off;
-        };
-
-        template<class T>
-        using is_offset = polyfill::is_specialization_of<T, offset_t>;
-
         /**
          *  Collated something
          */
         template<class T>
-        struct collate_t : public condition_t {
+        struct collate_t : condition_t {
             T expr;
             collate_argument argument;
 
@@ -142,7 +104,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_binary_condition_v = is_base_of_template_v<T, binary_condition>;
+        inline constexpr bool is_binary_condition_v = is_base_template_of_v<binary_condition, T>;
 
         template<class T>
         struct is_binary_condition : polyfill::bool_constant<is_binary_condition_v<T>> {};
@@ -554,7 +516,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_order_by_v =
+        inline constexpr bool is_order_by_v =
             polyfill::disjunction<polyfill::is_specialization_of<T, order_by_t>,
                                   polyfill::is_specialization_of<T, multi_order_by_t>,
                                   polyfill::is_specialization_of<T, dynamic_order_by_t>>::value;
@@ -776,28 +738,6 @@ namespace sqlite_orm {
             on_type constraint;
 
             inner_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
-        };
-
-        struct cast_string {
-            operator std::string() const {
-                return "CAST";
-            }
-        };
-
-        /**
-         *  CAST holder.
-         *  T is a type to cast to
-         *  E is an expression type
-         *  Example: cast<std::string>(&User::id)
-         */
-        template<class T, class E>
-        struct cast_t : cast_string {
-            using to_type = T;
-            using expression_type = E;
-
-            expression_type expression;
-
-            cast_t(expression_type expression_) : expression(std::move(expression_)) {}
         };
 
         template<class... Args>
@@ -1025,26 +965,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 #endif
 
-    template<class T>
-    internal::offset_t<T> offset(T off) {
-        return {std::move(off)};
-    }
-
-    template<class T>
-    internal::limit_t<T, false, false, void> limit(T lim) {
-        return {std::move(lim)};
-    }
-
-    template<class T, class O, internal::satisfies_not<internal::is_offset, T> = true>
-    internal::limit_t<T, true, true, O> limit(O off, T lim) {
-        return {std::move(lim), {std::move(off)}};
-    }
-
-    template<class T, class O>
-    internal::limit_t<T, true, false, O> limit(T lim, internal::offset_t<O> offt) {
-        return {std::move(lim), {std::move(offt.off)}};
-    }
-
     template<class L, class R>
     constexpr auto and_(L l, R r) {
         using namespace ::sqlite_orm::internal;
@@ -1267,14 +1187,5 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class A, class T, class E>
     internal::like_t<A, T, E> like(A a, T t, E e) {
         return {std::move(a), std::move(t), {std::move(e)}};
-    }
-
-    /**
-     *  CAST(X AS type).
-     *  Example: cast<std::string>(&User::id)
-     */
-    template<class T, class E>
-    internal::cast_t<T, E> cast(E e) {
-        return {std::move(e)};
     }
 }

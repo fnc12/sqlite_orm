@@ -37,9 +37,9 @@ namespace sqlite_orm {
         struct indirectly_test_printable;
 
         template<class T, class SFINAE = void>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_printable_v = false;
+        inline constexpr bool is_printable_v = false;
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool
+        inline constexpr bool
             is_printable_v<T, polyfill::void_t<indirectly_test_printable<decltype(field_printer<T>{})>>> = true;
 
         template<class T>
@@ -48,7 +48,7 @@ namespace sqlite_orm {
 
     template<class T>
     struct field_printer<T, internal::match_if<std::is_arithmetic, T>> {
-        std::string operator()(const T& t) const {
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const T& t) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
             ss << t;
             return ss.str();
@@ -60,7 +60,7 @@ namespace sqlite_orm {
      */
     template<>
     struct field_printer<unsigned char, void> {
-        std::string operator()(const unsigned char& t) const {
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const unsigned char& t) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
             ss << +t;
             return ss.str();
@@ -72,7 +72,7 @@ namespace sqlite_orm {
      */
     template<>
     struct field_printer<signed char, void> {
-        std::string operator()(const signed char& t) const {
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const signed char& t) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
             ss << +t;
             return ss.str();
@@ -84,7 +84,7 @@ namespace sqlite_orm {
      */
     template<>
     struct field_printer<char, void> {
-        std::string operator()(const char& t) const {
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const char& t) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
             ss << +t;
             return ss.str();
@@ -93,14 +93,14 @@ namespace sqlite_orm {
 
     template<class T>
     struct field_printer<T, internal::match_if<std::is_base_of, std::string, T>> {
-        std::string operator()(std::string string) const {
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(std::string string) SQLITE_ORM_OR_CONST_CALLOP {
             return string;
         }
     };
 
     template<>
     struct field_printer<std::vector<char>, void> {
-        std::string operator()(const std::vector<char>& t) const {
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const std::vector<char>& t) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
             ss << std::hex;
             for (auto c: t) {
@@ -115,7 +115,7 @@ namespace sqlite_orm {
      */
     template<class T>
     struct field_printer<T, internal::match_if<std::is_base_of, std::wstring, T>> {
-        std::string operator()(const std::wstring& wideString) const {
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const std::wstring& wideString) SQLITE_ORM_OR_CONST_CALLOP {
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
             return converter.to_bytes(wideString);
         }
@@ -123,14 +123,14 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ORM_OMITS_CODECVT
     template<>
     struct field_printer<std::nullptr_t, void> {
-        std::string operator()(const std::nullptr_t&) const {
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const std::nullptr_t&) SQLITE_ORM_OR_CONST_CALLOP {
             return "NULL";
         }
     };
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<>
     struct field_printer<std::nullopt_t, void> {
-        std::string operator()(const std::nullopt_t&) const {
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const std::nullopt_t&) SQLITE_ORM_OR_CONST_CALLOP {
             return "NULL";
         }
     };
@@ -142,7 +142,7 @@ namespace sqlite_orm {
                              internal::is_printable<std::remove_cv_t<typename T::element_type>>>::value>> {
         using unqualified_type = std::remove_cv_t<typename T::element_type>;
 
-        std::string operator()(const T& t) const {
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const T& t) SQLITE_ORM_OR_CONST_CALLOP {
             if (t) {
                 return field_printer<unqualified_type>()(*t);
             } else {
@@ -159,7 +159,7 @@ namespace sqlite_orm {
                                                  internal::is_printable<std::remove_cv_t<typename T::value_type>>>>> {
         using unqualified_type = std::remove_cv_t<typename T::value_type>;
 
-        std::string operator()(const T& t) const {
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const T& t) SQLITE_ORM_OR_CONST_CALLOP {
             if (t.has_value()) {
                 return field_printer<unqualified_type>()(*t);
             } else {

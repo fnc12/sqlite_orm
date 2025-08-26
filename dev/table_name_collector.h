@@ -30,12 +30,10 @@ namespace sqlite_orm {
 
             const db_objects_type& db_objects;
 
-            table_name_collector() = default;
-
             table_name_collector(const db_objects_type& dbObjects) : db_objects{dbObjects} {}
 
             template<class T>
-            void operator()(const T&) const {}
+            SQLITE_ORM_STATIC_CALLOP void operator()(const T&) SQLITE_ORM_OR_CONST_CALLOP {}
 
             template<class F, class O>
             void operator()(F O::*) {
@@ -90,7 +88,7 @@ namespace sqlite_orm {
             }
 
             template<class T, class X, class Y, class Z>
-            void operator()(const highlight_t<T, X, Y, Z>&) {
+            void operator()(polyfill::bool_constant<true>, const highlight_t<T, X, Y, Z>&) {
                 this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
             }
         };

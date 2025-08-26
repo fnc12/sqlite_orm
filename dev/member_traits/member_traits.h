@@ -34,13 +34,11 @@ namespace sqlite_orm {
         template<class F>
         struct getter_field_type<F(void)> : polyfill::remove_cvref<F> {};
 
-#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
         template<class F>
         struct getter_field_type<F(void) const noexcept> : polyfill::remove_cvref<F> {};
 
         template<class F>
         struct getter_field_type<F(void) noexcept> : polyfill::remove_cvref<F> {};
-#endif
 
         // SFINAE friendly trait to get a member function pointer's field type (i.e. unqualified parameter type)
         template<class T>
@@ -55,10 +53,8 @@ namespace sqlite_orm {
         template<class F>
         struct setter_field_type<void(F)> : polyfill::remove_cvref<F> {};
 
-#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
         template<class F>
         struct setter_field_type<void(F) noexcept> : polyfill::remove_cvref<F> {};
-#endif
 
         template<class T, class SFINAE = void>
         struct is_getter : std::false_type {};
@@ -66,7 +62,7 @@ namespace sqlite_orm {
         struct is_getter<T, polyfill::void_t<getter_field_type_t<T>>> : std::true_type {};
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_getter_v = is_getter<T>::value;
+        inline constexpr bool is_getter_v = is_getter<T>::value;
 
         template<class T, class SFINAE = void>
         struct is_setter : std::false_type {};
@@ -74,7 +70,7 @@ namespace sqlite_orm {
         struct is_setter<T, polyfill::void_t<setter_field_type_t<T>>> : std::true_type {};
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_setter_v = is_setter<T>::value;
+        inline constexpr bool is_setter_v = is_setter<T>::value;
 
         template<class T>
         struct member_field_type : object_field_type<T>, getter_field_type<T>, setter_field_type<T> {};

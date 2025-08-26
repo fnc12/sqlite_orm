@@ -53,9 +53,6 @@ namespace sqlite_orm {
             const primary_key_type& as_base() const {
                 return *this;
             }
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            constexpr primary_key_with_autoincrement(primary_key_type primary_key) : primary_key_type{primary_key} {}
-#endif
         };
 
         /**
@@ -466,7 +463,7 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_foreign_key_v =
+        inline constexpr bool is_foreign_key_v =
 #if SQLITE_VERSION_NUMBER >= 3006019
             polyfill::is_specialization_of<T, foreign_key_t>::value;
 #else
@@ -477,13 +474,13 @@ namespace sqlite_orm {
         struct is_foreign_key : polyfill::bool_constant<is_foreign_key_v<T>> {};
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_primary_key_v = std::is_base_of<primary_key_base, T>::value;
+        inline constexpr bool is_primary_key_v = std::is_base_of<primary_key_base, T>::value;
 
         template<class T>
         struct is_primary_key : polyfill::bool_constant<is_primary_key_v<T>> {};
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_generated_always_v =
+        inline constexpr bool is_generated_always_v =
 #if SQLITE_VERSION_NUMBER >= 3031000
             polyfill::is_specialization_of<T, generated_always_t>::value;
 #else

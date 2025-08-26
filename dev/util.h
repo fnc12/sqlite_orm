@@ -4,9 +4,15 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <utility>  //  std::move
+#include <functional>  //  std::function
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+#include <string_view>  //  std::string_view
+#endif
 #endif
 
+#include "functional/gsl.h"
 #include "error_code.h"
+#include "serialize_result_type.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
@@ -53,52 +59,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 namespace sqlite_orm {
     namespace internal {
-        // Wrapper to reduce boiler-plate code
-        inline sqlite3_stmt* reset_stmt(sqlite3_stmt* stmt) {
-            sqlite3_reset(stmt);
-            return stmt;
-        }
-
-        // note: query is deliberately taken by value, such that it is thrown away early
-        inline sqlite3_stmt* prepare_stmt(sqlite3* db, std::string query) {
-            sqlite3_stmt* stmt;
-            if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
-                throw_translated_sqlite_error(db);
-            }
-            return stmt;
-        }
-
-        inline void perform_void_exec(sqlite3* db, const std::string& query) {
-            int rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
-            if (rc != SQLITE_OK) {
-                throw_translated_sqlite_error(db);
-            }
-        }
-
-        inline void perform_exec(sqlite3* db,
-                                 const char* query,
-                                 int (*callback)(void* data, int argc, char** argv, char**),
-                                 void* user_data) {
-            int rc = sqlite3_exec(db, query, callback, user_data, nullptr);
-            if (rc != SQLITE_OK) {
-                throw_translated_sqlite_error(db);
-            }
-        }
-
-        inline void perform_exec(sqlite3* db,
-                                 const std::string& query,
-                                 int (*callback)(void* data, int argc, char** argv, char**),
-                                 void* user_data) {
-            return perform_exec(db, query.c_str(), callback, user_data);
-        }
-
-        template<int expected = SQLITE_DONE>
-        void perform_step(sqlite3_stmt* stmt) {
-            int rc = sqlite3_step(stmt);
-            if (rc != expected) {
-                throw_translated_sqlite_error(stmt);
-            }
-        }
 
         template<class L>
         void perform_step(sqlite3_stmt* stmt, L&& lambda) {
@@ -114,19 +74,93 @@ namespace sqlite_orm {
             }
         }
 
-        template<class L>
-        void perform_steps(sqlite3_stmt* stmt, L&& lambda) {
-            for (;;) {
-                switch (int rc = sqlite3_step(stmt)) {
-                    case SQLITE_ROW: {
-                        lambda(stmt);
-                    } break;
-                    case SQLITE_DONE:
-                        return;
-                    default: {
-                        throw_translated_sqlite_error(stmt);
+        struct sqlite_executor {
+            std::function<void(serialize_arg_type sql)> will_run_query;
+            std::function<void(serialize_arg_type sql)> did_run_query;
+
+            inline void perform_void_exec(sqlite3* db, orm_gsl::czstring sql) const {
+                if (this->will_run_query) {
+                    this->will_run_query(sql);
+                }
+                const int rc = sqlite3_exec(db, sql, nullptr, nullptr, nullptr);
+                if (rc != SQLITE_OK) {
+                    throw_translated_sqlite_error(rc);
+                }
+                if (this->did_run_query) {
+                    this->did_run_query(sql);
+                }
+            }
+
+            inline void perform_exec(sqlite3* db,
+                                     orm_gsl::czstring sql,
+                                     int (*callback)(void*, int, orm_gsl::zstring*, orm_gsl::zstring*),
+                                     void* user_data) const {
+                if (this->will_run_query) {
+                    this->will_run_query(sql);
+                }
+                const int rc = sqlite3_exec(db, sql, callback, user_data, nullptr);
+                if (rc != SQLITE_OK) {
+                    throw_translated_sqlite_error(rc);
+                }
+                if (this->did_run_query) {
+                    this->did_run_query(sql);
+                }
+            }
+
+            inline void perform_exec(sqlite3* db,
+                                     const std::string& query,
+                                     int (*callback)(void*, int, orm_gsl::zstring*, orm_gsl::zstring*),
+                                     void* user_data) const {
+                return perform_exec(db, query.c_str(), callback, user_data);
+            }
+
+            template<class L>
+            void perform_steps(sqlite3_stmt* stmt, L&& lambda) const {
+                orm_gsl::czstring sql = nullptr;
+                if (this->will_run_query || this->did_run_query) {
+                    sql = sqlite3_sql(stmt);
+                }
+                if (this->will_run_query) {
+                    this->will_run_query(sql);
+                }
+                for (;;) {
+                    switch (int rc = sqlite3_step(stmt)) {
+                        case SQLITE_ROW: {
+                            lambda(stmt);
+                        } break;
+                        case SQLITE_DONE:
+                            if (this->did_run_query) {
+                                this->did_run_query(sql);
+                            }
+                            return;
+                        default: {
+                            throw_translated_sqlite_error(stmt);
+                        }
                     }
                 }
+            }
+        };
+
+        // Wrapper to reduce boiler-plate code
+        inline sqlite3_stmt* reset_stmt(sqlite3_stmt* stmt) {
+            sqlite3_reset(stmt);
+            return stmt;
+        }
+
+        inline sqlite3_stmt* prepare_stmt(sqlite3* db, serialize_arg_type query) {
+            sqlite3_stmt* stmt;
+            const int rc = sqlite3_prepare_v2(db, query.data(), int(query.size()), &stmt, nullptr);
+            if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
+                throw_translated_sqlite_error(rc);
+            }
+            return stmt;
+        }
+
+        template<int expected = SQLITE_DONE>
+        void perform_step(sqlite3_stmt* stmt) {
+            const int rc = sqlite3_step(stmt);
+            if (rc != expected) {
+                throw_translated_sqlite_error(rc);
             }
         }
     }

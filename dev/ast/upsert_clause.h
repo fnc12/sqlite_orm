@@ -43,7 +43,7 @@ namespace sqlite_orm {
 #endif
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_upsert_clause_v =
+        inline constexpr bool is_upsert_clause_v =
 #if SQLITE_VERSION_NUMBER >= 3024000
             polyfill::is_specialization_of<T, upsert_clause>::value;
 #else

@@ -10,7 +10,7 @@ using namespace sqlite_orm;
 using internal::mapped_iterator;
 using internal::mapped_view;
 using internal::structure;
-#if defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
 using internal::result_set_iterator;
 using internal::result_set_sentinel_t;
 using internal::result_set_view;
@@ -59,8 +59,6 @@ concept can_iterate_mapped = requires(Iter it) {
     // would not tell us why exactly the end iterator cannot be a sentinel
     requires std::sentinel_for<Iter, Iter>;
     { *it } -> std::same_as<Value&>;
-    // note: should actually be only present for contiguous iterators
-    { it.operator->() } -> std::same_as<Value*>;
 };
 
 template<class V, class O, class DBOs>
@@ -72,13 +70,12 @@ concept can_view_mapped = requires(V view) {
 
 template<class S, class O, class DBOs = typename S::db_objects_type>
 concept storage_iterate_mapped = requires(S& storage_type) {
-    { storage_type.iterate<O>() } -> std::same_as<mapped_view<O, S>>;
-    { storage_type.iterate<O>() } -> can_view_mapped<O, DBOs>;
+    { storage_type.template iterate<O>() } -> std::same_as<mapped_view<O, S>>;
+    { storage_type.template iterate<O>() } -> can_view_mapped<O, DBOs>;
 };
 #endif
 
-#if (defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)) &&         \
-    defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED)
+#if defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED) && defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED)
 template<class Iter, class Value>
 concept can_iterate_result_set = requires(Iter it) {
     requires std::input_iterator<Iter>;
@@ -115,7 +112,9 @@ TEST_CASE("can view and iterate mapped") {
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     using iter = mapped_iterator<Object, storage_type::db_objects_type>;
+
     STATIC_REQUIRE(can_iterate_mapped<iter, Object>);
+
     // check default initializability at runtime
     [[maybe_unused]] const iter end;
 #else
@@ -149,8 +148,6 @@ TEST_CASE("can view and iterate mapped") {
         STATIC_REQUIRE(std::is_default_constructible<iter>::value);
     }
     STATIC_REQUIRE(std::is_same<std::iterator_traits<iter>::pointer, Object*>::value);
-    // note: should actually be only present for contiguous iterators
-    STATIC_REQUIRE(std::is_same<decltype(it.operator->()), Object*>::value);
 #endif
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
@@ -158,8 +155,7 @@ TEST_CASE("can view and iterate mapped") {
 #endif
 }
 
-#if (defined(SQLITE_ORM_SENTINEL_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED)) &&         \
-    defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED)
+#if defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED) && defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED)
 TEST_CASE("can view and iterate result set") {
     struct Object {};
     using empty_storage_type = decltype(make_storage(""));
@@ -173,9 +169,11 @@ TEST_CASE("can view and iterate result set") {
     STATIC_REQUIRE(
         can_iterate_result_set<result_set_iterator<structure<Object, empty_db_objects_type>, empty_db_objects_type>,
                                Object>);
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     STATIC_REQUIRE(can_iterate_result_set<result_set_iterator<table_reference<Object>, db_objects_type>, Object>);
-#endif
+    STATIC_REQUIRE(can_iterate_result_set<
+                   result_set_iterator<std::tuple<table_reference<Object>, structure<Object, std::tuple<>>, int>,
+                                       db_objects_type>,
+                   std::tuple<Object, Object, int>>);
 
     STATIC_REQUIRE(storage_iterate_result_set<empty_storage_type, decltype(select(42)), int>);
     STATIC_REQUIRE(
@@ -183,10 +181,12 @@ TEST_CASE("can view and iterate result set") {
     STATIC_REQUIRE(storage_iterate_result_set<empty_storage_type,
                                               decltype(select(struct_<Object>())),
                                               structure<Object, std::tuple<>>>);
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     STATIC_REQUIRE(
         storage_iterate_result_set<storage_type, decltype(select(object<Object>())), table_reference<Object>>);
-#endif
+    STATIC_REQUIRE(
+        storage_iterate_result_set<storage_type,
+                                   decltype(select(columns(object<Object>(), struct_<Object>(), 42))),
+                                   std::tuple<table_reference<Object>, structure<Object, std::tuple<>>, int>>);
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES

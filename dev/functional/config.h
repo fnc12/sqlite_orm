@@ -1,6 +1,7 @@
 #pragma once
 
 #include "cxx_universal.h"
+#include "platform_definitions.h"
 
 #ifdef BUILD_SQLITE_ORM_MODULE
 #define SQLITE_ORM_EXPORT export
@@ -10,24 +11,6 @@
 
 #if SQLITE_ORM_HAS_INCLUDE(<version>)
 #include <version>
-#endif
-
-#ifdef SQLITE_ORM_CONSTEXPR_LAMBDAS_SUPPORTED
-#define SQLITE_ORM_CONSTEXPR_LAMBDA_CPP17 constexpr
-#else
-#define SQLITE_ORM_CONSTEXPR_LAMBDA_CPP17
-#endif
-
-#ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
-#define SQLITE_ORM_INLINE_VAR inline
-#else
-#define SQLITE_ORM_INLINE_VAR
-#endif
-
-#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
-#define SQLITE_ORM_CONSTEXPR_IF constexpr
-#else
-#define SQLITE_ORM_CONSTEXPR_IF
 #endif
 
 #if __cpp_lib_constexpr_functional >= 201907L
@@ -68,6 +51,14 @@
 #define SQLITE_ORM_CPP20_SEMAPHORE_SUPPORTED
 #endif
 
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+#define SQLITE_ORM_STATIC_CALLOP static
+#define SQLITE_ORM_OR_CONST_CALLOP
+#else
+#define SQLITE_ORM_STATIC_CALLOP
+#define SQLITE_ORM_OR_CONST_CALLOP const
+#endif
+
 // C++20 or later (unfortunately there's no feature test macro).
 // Stupidly, clang says C++20, but `std::default_sentinel_t` was only implemented in libc++ 13 and libstd++-v3 10
 // (the latter is used on Linux).
@@ -80,15 +71,12 @@
 #define SQLITE_ORM_STL_HAS_DEFAULT_SENTINEL
 #endif
 
-#if (defined(SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED) && defined(SQLITE_ORM_INLINE_VARIABLES_SUPPORTED) &&        \
-     defined(SQLITE_ORM_CONSTEVAL_SUPPORTED)) &&                                                                       \
+#if (defined(SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED) && defined(SQLITE_ORM_CONSTEVAL_SUPPORTED)) &&              \
     (defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED))
 #define SQLITE_ORM_WITH_CPP20_ALIASES
 #endif
 
-#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
 #define SQLITE_ORM_WITH_CTE
-#endif
 
 // define the inline namespace "literals" so that it is available even if it was not introduced by a feature
 namespace sqlite_orm {

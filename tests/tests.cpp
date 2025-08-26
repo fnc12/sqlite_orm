@@ -103,7 +103,7 @@ TEST_CASE("Limits") {
 }
 
 TEST_CASE("Custom collate") {
-#if SQLITE_VERSION_NUMBER >= 3008008
+#if defined(SQLITE_ORM_STRING_VIEW_SUPPORTED) || SQLITE_VERSION_NUMBER >= 3008008
     const ErrorCodeExceptionMatcher collSequExceptionMatcher(sqlite_errc(SQLITE_ERROR_MISSING_COLLSEQ));
 #else
     const ErrorCodeExceptionMatcher collSequExceptionMatcher(sqlite_errc(SQLITE_ERROR));
@@ -230,8 +230,9 @@ TEST_CASE("Vacuum") {
         std::string name;
     };
 
+    const auto filename = "vacuum.sqlite";
     auto storage = make_storage(
-        "vacuum.sqlite",
+        filename,
         make_table("items", make_column("id", &Item::id, primary_key()), make_column("name", &Item::name)));
     storage.sync_schema();
     storage.insert(Item{0, "One"});
@@ -241,4 +242,6 @@ TEST_CASE("Vacuum") {
     storage.insert(Item{0, "Five"});
     storage.remove_all<Item>();
     storage.vacuum();
+
+    std::remove(filename);
 }

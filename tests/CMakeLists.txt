@@ -15,7 +15,7 @@ include(ucm)
 # However, Visual C++ has an option that instructs MSBuild to automatically provision the standard modules,
 # and this option is ON by default when using the `/std:c++latest` compiler switch:
 # "Build ISO C++23 Standard Library Modules", MSBuild property `BuildStlModules`.
-if(SQLITE_ORM_ENABLE_CXX_23 AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.28.2 AND MSVC AND MSVC_VERSION GREATER_EQUAL 1930)
+if(CMAKE_CXX_STANDARD GREATER_EQUAL 23 AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.28.2 AND MSVC AND MSVC_VERSION GREATER_EQUAL 1930)
     add_executable(module_tests
         named_module/named_module.cpp
     )
@@ -55,27 +55,16 @@ if(SQLITE_ORM_OMITS_CODECVT)
     target_compile_definitions(unit_tests PRIVATE SQLITE_ORM_OMITS_CODECVT=1)
 endif()
 
-if (MSVC)
+if(MSVC)
     target_compile_options(unit_tests PUBLIC
         # multi-processor compilation
-        /MP)
-    if (MSVC_VERSION LESS_EQUAL 1900)
-        target_compile_options(unit_tests PUBLIC
-            # C4503: decorated name length exceeded
-            /wd4503
-            # C4800: forcing value to bool (performance warning)
-            /wd4800)
-    else()
-        target_compile_options(unit_tests PUBLIC
-            # warning-level 4
-            /W4
-            # C4127: conditional expression is constant
-            /wd4127
-            # C4456: declaration of 'symbol' hides previous local declaration
-            /wd4456
-            # C4458: declaration of 'symbol' hides class member
-            /wd4458)
-    endif()
+        /MP
+        # warning-level 4
+        /W4
+        # C4456: declaration of 'symbol' hides previous local declaration
+        /wd4456
+        # C4458: declaration of 'symbol' hides class member
+        /wd4458)
     if (CMAKE_CXX_FLAGS MATCHES "/D_UNICODE")
         # explicitly set the entry point of the executable file,
         # otherwise for some reason the linker will not pick up `wmain`, which is provided by the static Catch2 library

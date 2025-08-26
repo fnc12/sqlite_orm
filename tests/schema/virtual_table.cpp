@@ -20,11 +20,22 @@ TEST_CASE("virtual table") {
 #endif
     };
 
+    auto virtualTable =
+        make_virtual_table("posts", using_fts5(make_column("title", &Post::title), make_column("body", &Post::body)));
+    {
+        const auto compareColumnName = [](const std::string* foundValue, std::string expectedValue) {
+            if (!foundValue) {
+                return false;
+            }
+            return *foundValue == expectedValue;
+        };
+        REQUIRE(compareColumnName(virtualTable.find_column_name(&Post::title), std::string("title")));
+        REQUIRE(compareColumnName(virtualTable.find_column_name(&Post::body), std::string("body")));
+    }
+
     /// CREATE VIRTUAL TABLE posts
     /// USING FTS5(title, body);
-    auto storage = make_storage(
-        "",
-        make_virtual_table("posts", using_fts5(make_column("title", &Post::title), make_column("body", &Post::body))));
+    auto storage = make_storage("", std::move(virtualTable));
 
     storage.sync_schema();
     storage.sync_schema_simulate();
@@ -79,5 +90,37 @@ TEST_CASE("virtual table") {
         storage.select(columns(highlight<Post>(0, "<b>", "</b>"), highlight<Post>(1, "<b>", "</b>")),
                        where(match<Post>("SQLite")),
                        order_by(rank()));
+}
+
+TEST_CASE("issue1410") {
+    struct NormalTable {
+        int id;
+        std::string text;
+        int otherValue;
+    };
+
+    struct SearchTable {
+        int normal_table_id;
+        std::string text;
+    };
+
+    auto storage =
+        make_storage("",
+                     make_table("normal_table",
+                                make_column("id", &NormalTable::id, primary_key().autoincrement()),
+                                make_column("path", &NormalTable::text),
+                                make_column("other_value", &NormalTable::otherValue)),
+
+                     make_virtual_table("search_table",
+                                        using_fts5(make_column("text", &SearchTable::text),
+                                                   make_column("normal_table_id", &SearchTable::normal_table_id),
+                                                   tokenize("trigram"))));
+    storage.sync_schema();
+    auto rows = storage.iterate<NormalTable>(
+        where(eq(&NormalTable::id, select(&SearchTable::normal_table_id, where(match<SearchTable>("Some Text"))))));
+
+    for (const auto& row: rows) {
+        std::ignore = row;
+    }  //  has to be compiled
 }
 #endif

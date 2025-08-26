@@ -1,26 +1,18 @@
 #pragma once
 
-/*
- *  Note: This feature needs constexpr variables with external linkage.
- *  which can be achieved before C++17's inline variables, but differs from compiler to compiler.
- *  Hence we make it only available for compilers supporting inline variables.
- */
-
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if SQLITE_VERSION_NUMBER >= 3020000
-#ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 #include <utility>  //  std::move
 #ifndef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <type_traits>  //  std::integral_constant
 #endif
 #endif
 #endif
-#endif
 
+#include "functional/gsl.h"
 #include "pointer_value.h"
 
 #if SQLITE_VERSION_NUMBER >= 3020000
-#ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -72,7 +64,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 #else
     inline constexpr const char carray_pointer_name[] = "carray";
-    using carray_pointer_type = std::integral_constant<const char*, carray_pointer_name>;
+    using carray_pointer_type = std::integral_constant<orm_gsl::czstring, carray_pointer_name>;
     // [Deprecation notice] This type is deprecated and will be removed in v1.10. Use the alias type `carray_pointer_type` instead.
     using carray_pvt [[deprecated]] = carray_pointer_type;
 
@@ -127,7 +119,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<typename P>
     struct note_value_fn {
-        P operator()(P&& value, carray_pointer_arg<P> pv) const {
+        SQLITE_ORM_STATIC_CALLOP P operator()(P&& value, carray_pointer_arg<P> pv) SQLITE_ORM_OR_CONST_CALLOP {
             if (P* observer = pv) {
                 *observer = value;
             }
@@ -139,10 +131,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  remember(V, $PTR) extension function https://sqlite.org/src/file/ext/misc/remember.c
      */
     struct remember_fn : note_value_fn<int64> {
-        static constexpr const char* name() {
+        static constexpr orm_gsl::czstring name() {
             return "remember";
         }
     };
 }
-#endif
 #endif

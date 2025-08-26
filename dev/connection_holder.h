@@ -12,6 +12,9 @@
 
 #include "functional/cxx_new.h"
 #include "error_code.h"
+#include "vfs_name.h"
+#include "db_open_mode.h"
+#include "storage_options.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -44,15 +47,17 @@ namespace sqlite_orm {
                 std::binary_semaphore& sync;
             };
 
-            connection_holder(std::string filename, bool openedForeverHint, std::function<void(sqlite3*)> didOpenDb) :
-                _openedForeverHint{openedForeverHint}, _didOpenDb{std::move(didOpenDb)}, filename(std::move(filename)) {
-            }
+            connection_holder(std::string filename,
+                              std::function<void(sqlite3*)> didOpenDb,
+                              const connection_control& options = {}) :
+                _didOpenDb{std::move(didOpenDb)}, filename(std::move(filename)), vfs_name(options.vfs_name),
+                open_mode(options.open_mode) {}
 
             connection_holder(const connection_holder&) = delete;
 
             connection_holder(const connection_holder& other, std::function<void(sqlite3*)> didOpenDb) :
-                _openedForeverHint{other._openedForeverHint}, _didOpenDb{std::move(didOpenDb)},
-                filename{other.filename} {}
+                _didOpenDb{std::move(didOpenDb)}, filename{other.filename}, vfs_name(other.vfs_name),
+                open_mode{other.open_mode} {}
 
             void retain() {
                 const maybe_lock maybeLock{_sync, !_openedForeverHint};
@@ -66,15 +71,12 @@ namespace sqlite_orm {
 
                 // first one opens and sets up the connection.
 
-                if (int rc = sqlite3_open_v2(this->filename.c_str(),
-                                             &this->db,
-                                             SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE
-#if SQLITE_VERSION_NUMBER >= 3008008
-                                                 | SQLITE_OPEN_EXRESCODE,
-#else
-                                                 | 0,
+                int open_flags = internal::db_open_mode_to_int_flags(this->open_mode);
+#if SQLITE_VERSION_NUMBER >= 3037002
+                open_flags |= SQLITE_OPEN_EXRESCODE;
 #endif
-                                             nullptr);
+
+                if (int rc = sqlite3_open_v2(this->filename.c_str(), &this->db, open_flags, this->vfs_name.c_str());
                     rc != SQLITE_OK) [[unlikely]] /*possible, but unexpected*/ {
                     throw_translated_sqlite_error(this->db);
                 }
@@ -120,7 +122,7 @@ namespace sqlite_orm {
             }
 
           protected:
-            alignas(polyfill::hardware_destructive_interference_size) sqlite3* db = nullptr;
+            alignas(polyfill::hardware_destructive_interference_size) orm_gsl::owner<sqlite3*> db = nullptr;
 
           private:
             std::atomic_int _retainCount{};
@@ -132,35 +134,38 @@ namespace sqlite_orm {
 
           public:
             const std::string filename;
+            const std::string vfs_name;
+            const db_open_mode open_mode;
         };
 #else
         struct connection_holder {
             connection_holder(std::string filename,
-                              bool /*openedForeverHint*/,
-                              std::function<void(sqlite3*)> didOpenDb) :
-                _didOpenDb{std::move(didOpenDb)}, filename(std::move(filename)) {}
+                              std::function<void(sqlite3*)> didOpenDb,
+                              const connection_control& options = {}) :
+                _didOpenDb{std::move(didOpenDb)}, filename(std::move(filename)), vfs_name(options.vfs_name),
+                open_mode(options.open_mode) {}
 
             connection_holder(const connection_holder&) = delete;
 
             connection_holder(const connection_holder& other, std::function<void(sqlite3*)> didOpenDb) :
-                _didOpenDb{std::move(didOpenDb)}, filename{other.filename} {}
+                _didOpenDb{std::move(didOpenDb)}, filename{other.filename}, vfs_name(other.vfs_name),
+                open_mode{other.open_mode} {}
 
             void retain() {
                 // first one opens the connection.
                 // we presume that the connection is opened once in a single-threaded context [also open forever].
                 // therefore we can just use an atomic increment but don't need sequencing due to `prevCount > 0`.
                 if (_retainCount.fetch_add(1, std::memory_order_relaxed) == 0) {
-                    int rc = sqlite3_open_v2(this->filename.c_str(),
-                                             &this->db,
-                                             SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE
-#if SQLITE_VERSION_NUMBER >= 3008008
-                                                 | SQLITE_OPEN_EXRESCODE,
-#else
-                                                 | 0,
+                    int open_flags = internal::db_open_mode_to_int_flags(this->open_mode);
+#if SQLITE_VERSION_NUMBER >= 3037002
+                    open_flags |= SQLITE_OPEN_EXRESCODE;
 #endif
-                                             nullptr);
+
+                    const int rc =
+                        sqlite3_open_v2(this->filename.c_str(), &this->db, open_flags, this->vfs_name.c_str());
+
                     if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible, but unexpected*/ {
-                        throw_translated_sqlite_error(this->db);
+                        throw_translated_sqlite_error(rc);
                     }
 
                     if (_didOpenDb) {
@@ -195,22 +200,18 @@ namespace sqlite_orm {
             }
 
           protected:
-#ifdef SQLITE_ORM_ALIGNED_NEW_SUPPORTED
-            alignas(polyfill::hardware_destructive_interference_size)
-#endif
-                sqlite3* db = nullptr;
+            alignas(polyfill::hardware_destructive_interference_size) orm_gsl::owner<sqlite3*> db = nullptr;
 
           private:
             std::atomic_int _retainCount{};
 
           private:
-#ifdef SQLITE_ORM_ALIGNED_NEW_SUPPORTED
-            alignas(polyfill::hardware_destructive_interference_size)
-#endif
-                const std::function<void(sqlite3* db)> _didOpenDb;
+            alignas(polyfill::hardware_destructive_interference_size) const std::function<void(sqlite3* db)> _didOpenDb;
 
           public:
             const std::string filename;
+            const std::string vfs_name;
+            const db_open_mode open_mode;
         };
 #endif
 

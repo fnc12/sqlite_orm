@@ -375,6 +375,8 @@ TEST_CASE("Select") {
     storage.update_all(set(assign(&Word::currentWord, "ototo")), where(is_equal(&Word::id, firstId)));
 
     REQUIRE(storage.get<Word>(firstId).currentWord == "ototo");
+
+    std::remove(dbFileName);
 }
 
 TEST_CASE("Replace query") {
@@ -505,7 +507,7 @@ TEST_CASE("Remove all") {
 }
 
 TEST_CASE("Explicit insert") {
-#if SQLITE_VERSION_NUMBER >= 3008008
+#if SQLITE_VERSION_NUMBER >= 3037002
     const ErrorCodeExceptionMatcher notNullExceptionMatcher(sqlite_errc(SQLITE_CONSTRAINT_NOTNULL));
 #else
     const ErrorCodeExceptionMatcher notNullExceptionMatcher(sqlite_errc(SQLITE_CONSTRAINT));

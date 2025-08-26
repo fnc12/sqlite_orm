@@ -5,7 +5,6 @@
 #include <utility>  // std::move
 #endif
 
-#include "functional/cxx_core_features.h"
 #include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"
 #include "table_reference.h"
@@ -27,15 +26,13 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_column_pointer_v =
-            polyfill::is_specialization_of<T, column_pointer>::value;
+        inline constexpr bool is_column_pointer_v = polyfill::is_specialization_of<T, column_pointer>::value;
 
         template<class T>
         struct is_column_pointer : polyfill::bool_constant<is_column_pointer_v<T>> {};
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_operator_argument_v<T, std::enable_if_t<is_column_pointer<T>::value>> =
-            true;
+        inline constexpr bool is_operator_argument_v<T, std::enable_if_t<is_column_pointer<T>::value>> = true;
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         template<class A>
@@ -114,7 +111,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  storage.with(cte<cte_1>()(select(as<colalias_a>(&Object::id))), select(column<cte_1>(get<colalias_a>())));
      */
     template<class Moniker, class F, internal::satisfies<internal::is_recordset_alias, Moniker> = true>
-    constexpr auto column(F field) {
+    constexpr auto column([[maybe_unused]] F field) {
         using namespace ::sqlite_orm::internal;
 
         static_assert(is_cte_moniker_v<Moniker>, "`Moniker' must be a CTE moniker");
@@ -127,7 +124,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         } else {
             return column_pointer<Moniker, F>{std::move(field)};
         }
-        (void)field;
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES

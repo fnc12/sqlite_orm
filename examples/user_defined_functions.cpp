@@ -2,6 +2,12 @@
  *  This example was taken from here http://souptonuts.sourceforge.net/readme_sqlite_tutorial.html
  */
 #include <sqlite_orm/sqlite_orm.h>
+#include <cstdint>
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+#if __cpp_lib_bit_cast >= 201806L
+#include <bit>
+#endif
+#endif
 #include <iostream>
 
 using namespace sqlite_orm;
@@ -36,6 +42,18 @@ struct SignFunction {
 };
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 inline constexpr orm_scalar_function auto sign = func<SignFunction>;
+#endif
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+#if __cpp_lib_bit_cast >= 201806L
+/**
+ *  A scalar application-defined function that quotes a stateless lambda.
+ *  Quoting functions is a neat shortcut to avoid defining a class.
+ */
+inline constexpr orm_quoted_scalar_function auto sign_of = "SIGN_OF"_scalar.quote([](int value) -> int {
+    return std::bit_cast<std::int8_t>(value <=> 0);
+});
+#endif
 #endif
 
 /**
@@ -135,9 +153,20 @@ int main() {
      */
     storage.create_scalar_function<sign>();
 
-    //  SELECT SIGN(3)
-    auto signRows = storage.select(sign(3));
-    cout << "SELECT SIGN(3) = " << signRows.at(0) << endl;
+    //  SELECT SIGN(3), SIGN(0), SIGN(-3)
+    {
+        auto [c1, c2, c3] = storage.select(columns(sign(3), sign(0), sign(-3))).at(0);
+        cout << "SELECT SIGN(3) = " << c1 << ", SIGN(0) = " << c2 << ", SIGN(-3) = " << c3 << endl;
+    }
+
+#if __cpp_lib_bit_cast >= 201806L
+    storage.create_scalar_function<sign_of>();
+    //  SELECT SIGN_OF(3), SIGN_OF(0), SIGN_OF(-3)
+    {
+        auto [c1, c2, c3] = storage.select(columns(sign_of(3), sign_of(0), sign_of(-3))).at(0);
+        cout << "SELECT SIGN_OF(3) = " << c1 << ", SIGN_OF(0) = " << c2 << ", SIGN_OF(-3) = " << c3 << endl;
+    }
+#endif
 
     storage.insert(Table{1, -1, 2});
     storage.insert(Table{2, -2, 4});
@@ -148,13 +177,12 @@ int main() {
 
     //  SELECT ASUM(a), ASUM(b), ASUM(c)
     //  FROM t
-    auto aSumRows =
-        storage.select(columns(accelerated_sum(&Table::a), accelerated_sum(&Table::b), accelerated_sum(&Table::c)));
     cout << "SELECT ASUM(a), ASUM(b), ASUM(c) FROM t:" << endl;
-    for (auto& row: aSumRows) {
-        cout << '\t' << get<0>(row) << endl;
-        cout << '\t' << get<1>(row) << endl;
-        cout << '\t' << get<2>(row) << endl;
+    for (auto [a, b, c]: storage.iterate(
+             select(columns(accelerated_sum(&Table::a), accelerated_sum(&Table::b), accelerated_sum(&Table::c))))) {
+        cout << '\t' << a << endl;
+        cout << '\t' << b << endl;
+        cout << '\t' << c << endl;
     }
 
     storage.create_scalar_function<arithmetic_mean>();

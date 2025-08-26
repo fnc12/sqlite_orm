@@ -24,7 +24,7 @@ namespace sqlite_orm {
             std::allocator<UDF> allocator;
             using traits = std::allocator_traits<decltype(allocator)>;
 
-            SQLITE_ORM_CONSTEXPR_LAMBDA_CPP17 auto deallocate = [](void* location) noexcept {
+            constexpr auto deallocate = [](void* location) SQLITE_ORM_STATIC_CALLOP noexcept {
                 std::allocator<UDF> allocator;
                 using traits = std::allocator_traits<decltype(allocator)>;
                 traits::deallocate(allocator, (UDF*)location, 1);
@@ -38,13 +38,13 @@ namespace sqlite_orm {
          */
         template<class UDF>
         std::pair<void* (*)(), xdestroy_fn_t> obtain_udf_allocator() {
-            SQLITE_ORM_CONSTEXPR_LAMBDA_CPP17 auto allocate = []() {
+            constexpr auto allocate = []() SQLITE_ORM_STATIC_CALLOP {
                 std::allocator<UDF> allocator;
                 using traits = std::allocator_traits<decltype(allocator)>;
                 return (void*)traits::allocate(allocator, 1);
             };
 
-            SQLITE_ORM_CONSTEXPR_LAMBDA_CPP17 auto deallocate = [](void* location) noexcept {
+            constexpr auto deallocate = [](void* location) SQLITE_ORM_STATIC_CALLOP noexcept {
                 std::allocator<UDF> allocator;
                 using traits = std::allocator_traits<decltype(allocator)>;
                 traits::deallocate(allocator, (UDF*)location, 1);
@@ -58,7 +58,7 @@ namespace sqlite_orm {
          */
         struct udf_destruct_only_deleter {
             template<class UDF>
-            void operator()(UDF* f) const noexcept {
+            SQLITE_ORM_STATIC_CALLOP void operator()(UDF* f) SQLITE_ORM_OR_CONST_CALLOP noexcept {
                 std::allocator<UDF> allocator;
                 using traits = std::allocator_traits<decltype(allocator)>;
                 traits::destroy(allocator, f);
@@ -142,19 +142,16 @@ namespace sqlite_orm {
         };
 
         // safety net of doing a triple check at runtime
-        inline void assert_args_count(const udf_proxy* proxy, int argsCount) {
+        inline void assert_args_count([[maybe_unused]] const udf_proxy* proxy, [[maybe_unused]] int argsCount) {
             assert((proxy->argumentsCount == -1) || (proxy->argumentsCount == argsCount ||
                                                      /*check fin call*/ argsCount == -1));
-            (void)proxy;
-            (void)argsCount;
         }
 
         // safety net of doing a triple check at runtime
-        inline void proxy_assert_args_count(sqlite3_context* context, int argsCount) {
+        inline void proxy_assert_args_count([[maybe_unused]] sqlite3_context* context, int argsCount) {
             udf_proxy* proxy;
             assert((proxy = static_cast<udf_proxy*>(sqlite3_user_data(context))) != nullptr);
             assert_args_count(proxy, argsCount);
-            (void)context;
         }
 
         // note: may throw `std::bad_alloc` in case memory space for the aggregate function object cannot be allocated

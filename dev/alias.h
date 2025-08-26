@@ -54,7 +54,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool
+        inline constexpr bool
             is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, alias_column_t>::value>> =
                 true;
 
@@ -152,7 +152,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool
+        inline constexpr bool
             is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, alias_holder>::value>> = true;
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -252,7 +252,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         requires (!orm_cte_moniker<internal::auto_type_t<als>>)
     constexpr auto alias_column(C field) {
         using namespace ::sqlite_orm::internal;
-        using A = decltype(als);
+        using A = std::remove_const_t<decltype(als)>;
         using aliased_type = type_t<A>;
         static_assert(is_field_of_v<C, aliased_type>, "Column must be from aliased table");
 
@@ -348,7 +348,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<orm_column_alias auto als, class E>
     auto as(E expression) {
-        return internal::as_t<decltype(als), E>{std::move(expression)};
+        return internal::as_t<std::remove_const_t<decltype(als)>, E>{std::move(expression)};
     }
 
     /**
@@ -380,7 +380,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<orm_column_alias auto als>
     auto get() {
-        return internal::alias_holder<decltype(als)>{};
+        return internal::alias_holder<std::remove_const_t<decltype(als)>>{};
     }
 #endif
 

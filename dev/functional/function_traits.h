@@ -51,7 +51,6 @@ namespace sqlite_orm {
             using signature_type = R(Args...) const;
         };
 
-#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
         template<class R, class... Args>
         struct function_traits<R(Args...) noexcept> : function_traits<R(Args...)> {
             using signature_type = R(Args...) noexcept;
@@ -61,7 +60,6 @@ namespace sqlite_orm {
         struct function_traits<R(Args...) const noexcept> : function_traits<R(Args...)> {
             using signature_type = R(Args...) const noexcept;
         };
-#endif
 
         /*
          *  Pick signature of function pointer
