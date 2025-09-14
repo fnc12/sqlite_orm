@@ -95,6 +95,10 @@ using std::nullptr_t;
 #define SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
 #endif
 
+#if __cpp_constexpr >= 201907L
+#define SQLITE_ORM_TRIVIAL_DEFAULTINIT_SUPPORTED
+#endif
+
 #if __cpp_concepts >= 201907L
 #define SQLITE_ORM_CONCEPTS_SUPPORTED
 #endif
@@ -1456,7 +1460,7 @@ namespace sqlite_orm {
         template<size_t Pos, size_t... Idx>
         SQLITE_ORM_CONSTEVAL size_t index_sequence_value_at(std::index_sequence<Idx...>) {
             static_assert(Pos < sizeof...(Idx));
-#ifdef SQLITE_ORM_CONSTEVAL_SUPPORTED
+#ifdef SQLITE_ORM_TRIVIAL_DEFAULTINIT_SUPPORTED
             size_t result;
 #else
             size_t result = 0;
@@ -1745,7 +1749,7 @@ namespace sqlite_orm {
         constexpr void iterate_tuple(Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
             if constexpr (reversed) {
                 // nifty fold expression trick: make use of guaranteed right-to-left evaluation order when folding over operator=
-#ifdef SQLITE_ORM_CONSTEVAL_SUPPORTED
+#ifdef SQLITE_ORM_TRIVIAL_DEFAULTINIT_SUPPORTED
                 [[maybe_unused]] int sink;
 #else
                 [[maybe_unused]] int sink = 0;
