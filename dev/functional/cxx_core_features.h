@@ -41,6 +41,10 @@
 #define SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
 #endif
 
+#if __cpp_constexpr >= 201907L
+#define SQLITE_ORM_TRIVIAL_DEFAULTINIT_SUPPORTED
+#endif
+
 #if __cpp_concepts >= 201907L
 #define SQLITE_ORM_CONCEPTS_SUPPORTED
 #endif
