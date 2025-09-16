@@ -73,6 +73,12 @@ concept storage_iterate_mapped = requires(S& storage_type) {
     { storage_type.template iterate<O>() } -> std::same_as<mapped_view<O, S>>;
     { storage_type.template iterate<O>() } -> can_view_mapped<O, DBOs>;
 };
+
+template<class S, auto mapped, class O, class DBOs = typename S::db_objects_type>
+concept storage_iterate_mapped_ref = requires(S& storage_type) {
+    { storage_type.template iterate<mapped>() } -> std::same_as<mapped_view<O, S>>;
+    { storage_type.template iterate<mapped>() } -> can_view_mapped<O, DBOs>;
+};
 #endif
 
 #if defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED) && defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED)
@@ -103,8 +109,29 @@ concept storage_iterate_result_set = requires(S& storage_type, Select select) {
 };
 #endif
 
+#ifdef SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
+template<class S, class T, class O>
+concept storage_yield_mapped = requires(S& storage_type) {
+    { storage_type.template yield<T>() } -> std::same_as<std::generator<O>>;
+};
+
+template<class S, auto mapped, class O>
+concept storage_yield_mapped_ref = requires(S& storage_type) {
+    { storage_type.template yield<mapped>() } -> std::same_as<std::generator<O>>;
+};
+
+template<class S, class Select, class ColResult>
+concept storage_yield_result_set = requires(S& storage_type, Select select) {
+    { storage_type.yield(select) } -> std::same_as<std::generator<ColResult>>;
+};
+#endif
+
 namespace {
     struct Object {};
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    constexpr orm_table_alias auto object_alias = "o"_alias.for_<Object>();
+    constexpr orm_table_reference auto object_table = c<Object>();
+#endif
 }
 
 TEST_CASE("can view and iterate mapped") {
@@ -152,6 +179,14 @@ TEST_CASE("can view and iterate mapped") {
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     STATIC_REQUIRE(storage_iterate_mapped<storage_type, Object>);
+    STATIC_REQUIRE(storage_iterate_mapped_ref<storage_type, object_table, Object>);
+    STATIC_REQUIRE(storage_iterate_mapped_ref<storage_type, object_alias, Object>);
+#endif
+
+#ifdef SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
+    STATIC_REQUIRE(storage_yield_mapped<storage_type, Object, Object>);
+    STATIC_REQUIRE(storage_yield_mapped_ref<storage_type, object_table, Object>);
+    STATIC_REQUIRE(storage_yield_mapped_ref<storage_type, object_alias, Object>);
 #endif
 }
 
@@ -193,6 +228,13 @@ TEST_CASE("can view and iterate result set") {
     constexpr orm_cte_moniker auto x = "x"_cte;
     constexpr orm_column_alias auto i = "i"_col;
     STATIC_REQUIRE(storage_iterate_result_set<storage_type, decltype(with(x(i).as(select(1)), select(x->*i))), int>);
+#endif
+#endif
+
+#ifdef SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
+    STATIC_REQUIRE(storage_yield_result_set<empty_storage_type, decltype(select(42)), int>);
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+    STATIC_REQUIRE(storage_yield_result_set<storage_type, decltype(with(x(i).as(select(1)), select(x->*i))), int>);
 #endif
 #endif
 }
