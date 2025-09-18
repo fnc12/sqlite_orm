@@ -14,6 +14,9 @@
 #include <tuple>  //  std::tuple_size, std::tuple, std::make_tuple, std::tie
 #include <utility>  //  std::forward, std::pair
 #include <algorithm>  //  std::for_each, std::ranges::for_each
+#ifdef SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
+#include <generator>
+#endif
 #endif
 #include "functional/cxx_optional.h"
 
@@ -326,6 +329,63 @@ namespace sqlite_orm {
             result_set_view<with_t<E, CTEs...>, db_objects_type> iterate(with_t<E, CTEs...> expression) {
                 auto connection = this->get_connection();
                 return {this->db_objects, std::move(connection), std::move(expression)};
+            }
+#endif
+#endif
+
+#ifdef SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
+            /*  
+             *  Iterate over objects of a type mapped as a table, lazily fetched from a result set in a coroutine.
+             */
+            template<class T, class O = mapped_type_proxy_t<T>, class... Args>
+            std::generator<O> yield(Args&&... args) {
+                this->assert_mapped_type<O>();
+                // implementation note: instead of using `this->iterate<O>()` we iterate over a select statement,
+                // because a `mapped_view` has a legacy input iterator that returns a reference to an object.
+                // For a generator we want to yield objects by value that can be moved from.
+                for (O obj:
+                     this->iterate(sqlite_orm::select(struct_<O>(asterisk<T>(true)), std::forward<Args>(args)...))) {
+                    co_yield obj;
+                }
+            }
+
+            /*  
+             *  Iterate over objects of a type mapped as a table, lazily fetched from a result set in a coroutine.
+             */
+            template<orm_refers_to_table auto mapped, class O = mapped_type_proxy_t<decltype(mapped)>, class... Args>
+            std::generator<O> yield(Args&&... args) {
+                this->assert_mapped_type<O>();
+                // implementation note: instead of using `this->iterate<O>()` we iterate over a select statement,
+                // because a `mapped_view` has a legacy input iterator that returns a reference to an object.
+                // For a generator we want to yield objects by value that can be moved from.
+                for (O obj: this->iterate(sqlite_orm::select(struct_<O>(asterisk<decltype(mapped)>(true)),
+                                                             std::forward<Args>(args)...))) {
+                    co_yield obj;
+                }
+            }
+
+            /*  
+             *  Iterate over a result set of a select statement in a coroutine.
+             */
+            template<class Select>
+                requires (is_select_v<Select>)
+            auto yield(Select expression) -> std::generator<decltype(*this->iterate(std::move(expression)).begin())> {
+                for (auto row: this->iterate(std::move(expression))) {
+                    co_yield row;
+                }
+            }
+
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+            /*  
+             *  Iterate over a result set of a select statement involving a common table expression in a coroutine.
+             */
+            template<class... CTEs, class E>
+                requires (is_select_v<E>)
+            auto yield(with_t<E, CTEs...> expression)
+                -> std::generator<decltype(*this->iterate(std::move(expression)).begin())> {
+                for (auto row: this->iterate(std::move(expression))) {
+                    co_yield row;
+                }
             }
 #endif
 #endif
