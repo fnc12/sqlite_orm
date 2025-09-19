@@ -298,7 +298,6 @@ namespace sqlite_orm {
             }
 #endif
 
-#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
             /*  
              *  Iterate over a result set of a select statement.
              *  
@@ -330,7 +329,6 @@ namespace sqlite_orm {
                 auto connection = this->get_connection();
                 return {this->db_objects, std::move(connection), std::move(expression)};
             }
-#endif
 #endif
 
 #ifdef SQLITE_ORM_CPP23_GENERATOR_SUPPORTED

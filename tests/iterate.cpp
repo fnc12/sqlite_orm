@@ -61,13 +61,18 @@ TEST_CASE("Iterate mapped") {
     }
 }
 
-#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
 TEST_CASE("Iterate select statement") {
     struct Test {
         int64_t id = 0;
         std::vector<char> key;
 
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
         bool operator==(const Test&) const = default;
+#else
+        bool operator==(const Test& right) const {
+            return this->id == right.id && this->key == right.key;
+        }
+#endif
     };
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     constexpr orm_table_reference auto test_table = c<Test>();
@@ -144,4 +149,3 @@ TEST_CASE("Iterate select statement") {
 #endif
 #endif
 }
-#endif
