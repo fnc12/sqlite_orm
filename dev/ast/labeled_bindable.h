@@ -1,6 +1,7 @@
 #pragma once
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+#include <type_traits>  //  std::remove_const
 #include <utility>
 #endif
 #endif
@@ -79,6 +80,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** @short Specifies that a type is an integral constant C-string usable as a label for a bindable.
      */
     template<class T>
-    concept orm_bindable_label = polyfill::is_specialization_of_v<T, internal::bindable_label>;
+    concept orm_bindable_label = polyfill::is_specialization_of_v<std::remove_const_t<T>, internal::bindable_label>;
 }
 #endif

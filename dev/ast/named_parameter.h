@@ -2,6 +2,7 @@
 #pragma once
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+#include <type_traits>  //  std::remove_const
 #include <algorithm>
 #include <utility>
 #include <memory>
@@ -82,6 +83,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** @short Specifies that a type is an integral constant C-string usable for a named parameter.
      */
     template<class T>
-    concept orm_parameter_moniker = polyfill::is_specialization_of_v<T, internal::parameter_moniker>;
+    concept orm_parameter_moniker =
+        polyfill::is_specialization_of_v<std::remove_const_t<T>, internal::parameter_moniker>;
 }
 #endif
