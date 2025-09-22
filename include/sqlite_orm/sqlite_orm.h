@@ -15851,6 +15851,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/limit.h"
 
+// #include "ast/labeled_bindable.h"
+
 namespace sqlite_orm {
 
     namespace internal {

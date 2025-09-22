@@ -27,6 +27,7 @@
 #include "ast/match.h"
 #include "ast/cast.h"
 #include "ast/limit.h"
+#include "ast/labeled_bindable.h"
 
 namespace sqlite_orm {
 
