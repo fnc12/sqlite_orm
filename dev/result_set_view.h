@@ -4,7 +4,7 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move, std::remove_cvref
 #include <functional>  //  std::reference_wrapper
-#if defined(SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED) && defined(SQLITE_ORM_CPP20_RANGES_SUPPORTED)
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
 #include <ranges>  //  std::ranges::view_interface
 #endif
 #endif
@@ -18,7 +18,6 @@
 #include "type_traits.h"
 #include "storage_lookup.h"
 
-#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
 namespace sqlite_orm::internal {
     /*  
      *  A C++ view over a result set of a select statement, returned by `storage_t::iterate()`.
@@ -47,7 +46,7 @@ namespace sqlite_orm::internal {
 
         auto begin() {
             const auto& exprDBOs = db_objects_for_expression(this->db_objects.get(), this->expression);
-            using ExprDBOs = std::remove_cvref_t<decltype(exprDBOs)>;
+            using ExprDBOs = polyfill::remove_cvref_t<decltype(exprDBOs)>;
             // note: Select can be `select_t` or `with_t`
             using select_type = polyfill::detected_or_t<expression_type, expression_type_t, expression_type>;
             using column_result_type = column_result_of_t<ExprDBOs, select_type>;
@@ -81,5 +80,4 @@ namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
 template<class Select, class DBOs>
 inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::result_set_view<Select, DBOs>> = true;
-#endif
 #endif

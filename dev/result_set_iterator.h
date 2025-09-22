@@ -12,7 +12,6 @@
 #include "column_result_proxy.h"
 #include "util.h"
 
-#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
 namespace sqlite_orm::internal {
 
     template<class ColResult, class DBOs>
@@ -71,6 +70,11 @@ namespace sqlite_orm::internal {
         friend bool operator==(const result_set_iterator& it, const result_set_sentinel_t&) noexcept {
             return sqlite3_data_count(it.stmt.get()) == 0;
         }
+#ifndef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+        friend bool operator!=(const result_set_iterator& it, const result_set_sentinel_t& s) noexcept {
+            return !(it == s);
+        }
+#endif
 
       private:
         void step() {
@@ -87,4 +91,3 @@ namespace sqlite_orm::internal {
         statement_finalizer stmt;
     };
 }
-#endif

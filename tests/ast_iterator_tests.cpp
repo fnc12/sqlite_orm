@@ -64,7 +64,7 @@ TEST_CASE("ast_iterator") {
         }
         SECTION("named") {
             auto bindable = "@p"_param.create<int>();
-            constexpr auto node = select(bindable);
+            auto node = select(bindable);
             expected.push_back(typeid(int));
             iterate_ast(node, lambda);
         }
