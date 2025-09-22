@@ -30,6 +30,8 @@
 #include "ast/rank.h"
 #include "ast/special_keywords.h"
 #include "ast/limit.h"
+#include "ast/labeled_bindable.h"
+#include "ast/named_parameter.h"
 #include "core_functions.h"
 #include "constraints.h"
 #include "conditions.h"
@@ -240,6 +242,46 @@ namespace sqlite_orm {
                 return serializer(literal.value, literalCtx);
             }
         };
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        /**
+         *  Serializer for labeled bindables.
+         */
+        template<class T>
+        struct statement_serializer<T, match_specialization_of<T, labeled_bindable>> {
+            using statement_type = T;
+
+            template<class Ctx>
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& labeled,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+                static_assert(is_bindable_v<type_t<statement_type>>, "Value must be bindable");
+
+                statement_serializer<type_t<statement_type>> serializer{};
+                return serializer(labeled.value, context);
+            }
+        };
+
+        /**
+         *  Serializer for named parameters.
+         */
+        template<class T>
+        struct statement_serializer<T, match_specialization_of<T, named_bindable>> {
+            using statement_type = T;
+
+            template<class Ctx>
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& param,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+                static_assert(is_bindable_v<type_t<statement_type>>, "Value must be bindable");
+
+                if (context.replace_bindable_with_question) {
+                    return std::string(statement_type::name_constant_type::value.cstr);
+                } else {
+                    statement_serializer<type_t<statement_type>> serializer{};
+                    return serializer(*param.value, context);
+                }
+            }
+        };
+#endif
 
         template<class F, class W>
         struct statement_serializer<filtered_aggregate_function<F, W>, void> {

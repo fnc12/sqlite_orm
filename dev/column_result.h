@@ -25,6 +25,8 @@
 #include "cte_types.h"
 #include "storage_traits.h"
 #include "function.h"
+#include "ast/labeled_bindable.h"
+#include "ast/named_parameter.h"
 #include "ast/special_keywords.h"
 #include "ast/cast.h"
 
@@ -131,6 +133,18 @@ namespace sqlite_orm {
         struct column_result_t<DBOs, pointer_binding<P, T, D>, void> {
             using type = std::nullptr_t;
         };
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        template<class DBOs, class T>
+        struct column_result_t<DBOs, T, match_specialization_of<T, labeled_bindable>> {
+            using type = typename T::type;
+        };
+
+        template<class DBOs, class T>
+        struct column_result_t<DBOs, T, match_specialization_of<T, named_bindable>> {
+            using type = typename T::type;
+        };
+#endif
 
         template<class DBOs, class T>
         struct column_result_t<DBOs, count_asterisk_t<T>, void> {

@@ -50,9 +50,25 @@ TEST_CASE("ast_iterator") {
 #endif
 
     SECTION("bindables") {
-        auto node = select(1);
-        expected.push_back(typeid(int));
-        iterate_ast(node, lambda);
+        SECTION("normal") {
+            constexpr auto node = select(1);
+            expected.push_back(typeid(int));
+            iterate_ast(node, lambda);
+        }
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        SECTION("labeled") {
+            constexpr auto label = "l"_bindable;
+            constexpr auto node = select(1 >>= label);
+            expected.push_back(typeid(int));
+            iterate_ast(node, lambda);
+        }
+        SECTION("named") {
+            auto bindable = "@p"_param.create<int>();
+            constexpr auto node = select(bindable);
+            expected.push_back(typeid(int));
+            iterate_ast(node, lambda);
+        }
+#endif
     }
     SECTION("aggregate functions") {
         SECTION("avg") {

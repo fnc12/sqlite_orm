@@ -6,6 +6,7 @@ using namespace sqlite_orm;
 using internal::alias_holder;
 using internal::column_alias;
 using internal::column_pointer;
+using internal::literal_holder;
 
 template<class T>
 struct is_pair : std::false_type {};
@@ -58,11 +59,29 @@ TEST_CASE("Node tuple") {
             static_assert(is_same<Tuple, Expected>::value, "bindable float");
             STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<float>>::value);
         }
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        SECTION("labeled") {
+            constexpr orm_bindable_label auto label = "l"_bindable;
+            using Node = decltype(42 >>= label);
+            using Tuple = node_tuple_t<Node>;
+            using Expected = tuple<Node>;
+            STATIC_REQUIRE(std::is_same_v<Tuple, Expected>);
+            STATIC_REQUIRE(std::is_same_v<bindable_filter_t<Tuple>, tuple<Node>>);
+        }
+        SECTION("named") {
+            auto bindable = "@p"_param.create<int>();
+            using Node = decltype(bindable);
+            using Tuple = node_tuple_t<Node>;
+            using Expected = tuple<Node>;
+            STATIC_REQUIRE(std::is_same_v<Tuple, Expected>);
+            STATIC_REQUIRE(std::is_same_v<bindable_filter_t<Tuple>, tuple<Node>>);
+        }
+#endif
     }
     SECTION("non-bindable literals") {
         using namespace internal;
         using Tuple = node_tuple_t<literal_holder<int>>;
-        using Expected = tuple<>;
+        using Expected = tuple<literal_holder<int>>;
         static_assert(is_same<Tuple, Expected>::value, "literal int");
         STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<>>::value);
     }
@@ -622,7 +641,7 @@ TEST_CASE("Node tuple") {
             STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(""))>, tuple<const char*>>::value);
         }
         SECTION("positional ordinal") {
-            STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(1))>, tuple<>>::value);
+            STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(1))>, tuple<literal_holder<int>>>::value);
         }
         SECTION("sole column alias") {
             STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(get<colalias_a>()))>, tuple<>>::value);

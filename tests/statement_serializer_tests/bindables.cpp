@@ -259,6 +259,26 @@ TEST_CASE("bindables") {
         }
     }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    SECTION("wrapped bindables") {
+        string value, expected;
+        context.replace_bindable_with_question = true;
+
+        SECTION("labeled") {
+            constexpr orm_bindable_label auto label = "l"_bindable;
+            value = serialize(42 >>= label, context);
+            expected = "?";
+        }
+        SECTION("named") {
+            auto bindable = "@p"_param.create<int>();
+            value = serialize(bindable, context);
+            expected = "@p";
+        }
+
+        REQUIRE(value == expected);
+    }
+#endif
+
 #if SQLITE_VERSION_NUMBER >= 3020000
     SECTION("pointer binding") {
         string value, expected;

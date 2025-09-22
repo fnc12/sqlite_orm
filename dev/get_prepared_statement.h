@@ -6,6 +6,8 @@
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
+#include "ast/labeled_bindable.h"
+#include "ast/named_parameter.h"
 #include "type_traits.h"
 #include "prepared_statement.h"
 #include "ast_iterator.h"
@@ -126,19 +128,22 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     template<int N, class T>
     const auto& get(const internal::prepared_statement_t<T>& statement) {
+        using namespace ::sqlite_orm::internal;
         using statement_type = polyfill::remove_cvref_t<decltype(statement)>;
-        using expression_type = internal::expression_type_t<statement_type>;
-        using node_tuple = internal::node_tuple_t<expression_type>;
-        using bind_tuple = internal::bindable_filter_t<node_tuple>;
-        using result_type = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
+        using expression_type = expression_type_t<statement_type>;
+        using node_tuple = node_tuple_t<expression_type>;
+        using bind_tuple = bindable_filter_t<node_tuple>;
+        using bound_type = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
+        using result_type = access_bindable_t<bound_type>;
+
         const result_type* result = nullptr;
-        internal::iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
-            using node_type = polyfill::remove_cvref_t<decltype(node)>;
-            if constexpr (internal::is_bindable<node_type>::value) {
+        iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
+            using leaf_type = polyfill::remove_cvref_t<decltype(node)>;
+            if constexpr (is_sql_parameter<leaf_type>::value) {
                 ++index;
-                if constexpr (std::is_same<result_type, node_type>::value) {
+                if constexpr (std::is_same<result_type, access_bindable_t<leaf_type>>::value) {
                     if (index == N) {
-                        result = &node;
+                        result = &access_bindable(node);
                     }
                 }
             }
@@ -148,24 +153,86 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     template<int N, class T>
     auto& get(internal::prepared_statement_t<T>& statement) {
+        using namespace ::sqlite_orm::internal;
         using statement_type = std::remove_reference_t<decltype(statement)>;
-        using expression_type = internal::expression_type_t<statement_type>;
-        using node_tuple = internal::node_tuple_t<expression_type>;
-        using bind_tuple = internal::bindable_filter_t<node_tuple>;
-        using result_type = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
-        result_type* result = nullptr;
+        using expression_type = expression_type_t<statement_type>;
+        using node_tuple = node_tuple_t<expression_type>;
+        using bind_tuple = bindable_filter_t<node_tuple>;
+        using bound_type = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
+        using result_type = access_bindable_t<bound_type>;
 
-        internal::iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
-            using node_type = polyfill::remove_cvref_t<decltype(node)>;
-            if constexpr (internal::is_bindable<node_type>::value) {
+        result_type* result = nullptr;
+        iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
+            using leaf_type = polyfill::remove_cvref_t<decltype(node)>;
+            if constexpr (is_sql_parameter<leaf_type>::value) {
                 ++index;
-                if constexpr (std::is_same<result_type, node_type>::value) {
+                if constexpr (std::is_same<result_type, access_bindable_t<leaf_type>>::value) {
                     if (index == N) {
-                        result = const_cast<result_type*>(&node);
+                        result = const_cast<result_type*>(&access_bindable(node));
                     }
                 }
             }
         });
         return internal::get_ref(*result);
     }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<auto name, class T>
+        requires (orm_parameter_moniker<decltype(name)> || orm_bindable_label<decltype(name)>)
+    const auto& access(const internal::prepared_statement_t<T>& statement) {
+        using namespace ::sqlite_orm::internal;
+        using statement_type = std::remove_cvref_t<decltype(statement)>;
+        using expression_type = expression_type_t<statement_type>;
+        using node_tuple = node_tuple_t<expression_type>;
+        using bind_tuple = bindable_filter_t<node_tuple>;
+        using index_type =
+            find_tuple_type<bind_tuple, name_constant_type_t<decltype(name)>, name_constant_type_or_none_t>;
+        constexpr size_t N = index_type::value;
+        static_assert(N < std::tuple_size_v<bind_tuple>, "No such named bindable found in prepared statement");
+        using bound_type = std::tuple_element_t<N, bind_tuple>;
+        using result_type = access_bindable_t<bound_type>;
+
+        const result_type* result = nullptr;
+        iterate_ast(statement.expression, [&result, index = -1]<class leaf_type>(const leaf_type& node) mutable {
+            if constexpr (is_sql_parameter<leaf_type>::value) {
+                ++index;
+                if constexpr (std::is_same_v<result_type, access_bindable_t<leaf_type>>) {
+                    if (index == N) {
+                        result = &access_bindable(node);
+                    }
+                }
+            }
+        });
+        return internal::get_ref(*result);
+    }
+
+    template<auto name, class T>
+        requires (orm_parameter_moniker<decltype(name)> || orm_bindable_label<decltype(name)>)
+    auto& access(internal::prepared_statement_t<T>& statement) {
+        using namespace ::sqlite_orm::internal;
+        using statement_type = std::remove_cvref_t<decltype(statement)>;
+        using expression_type = expression_type_t<statement_type>;
+        using node_tuple = node_tuple_t<expression_type>;
+        using bind_tuple = bindable_filter_t<node_tuple>;
+        using index_type =
+            find_tuple_type<bind_tuple, name_constant_type_t<decltype(name)>, name_constant_type_or_none_t>;
+        constexpr size_t N = index_type::value;
+        static_assert(N < std::tuple_size_v<bind_tuple>, "No such named bindable found in prepared statement");
+        using bound_type = std::tuple_element_t<N, bind_tuple>;
+        using result_type = access_bindable_t<bound_type>;
+
+        result_type* result = nullptr;
+        iterate_ast(statement.expression, [&result, index = -1]<class leaf_type>(const leaf_type& node) mutable {
+            if constexpr (is_sql_parameter<leaf_type>::value) {
+                ++index;
+                if constexpr (std::is_same_v<result_type, access_bindable_t<leaf_type>>) {
+                    if (index == N) {
+                        result = const_cast<result_type*>(&access_bindable(node));
+                    }
+                }
+            }
+        });
+        return internal::get_ref(*result);
+    }
+#endif
 }
