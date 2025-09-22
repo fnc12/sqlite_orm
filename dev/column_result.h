@@ -127,6 +127,11 @@ namespace sqlite_orm {
             using type = std::unique_ptr<column_result_of_t<DBOs, X>>;
         };
 
+        template<class DBOs, class P, class T, class D>
+        struct column_result_t<DBOs, pointer_binding<P, T, D>, void> {
+            using type = std::nullptr_t;
+        };
+
         template<class DBOs, class T>
         struct column_result_t<DBOs, count_asterisk_t<T>, void> {
             using type = int;

@@ -80,6 +80,7 @@ TEST_CASE("column_result_of_t") {
     runTest<db_objects_t, std::unique_ptr<std::string>>(min(&User::name));
     runTest<db_objects_t, int>(count<User>());
     runTest<db_objects_t, int>(count());
+    // function call
     {
         struct RandomFunc {
             static const char* name();
@@ -88,6 +89,11 @@ TEST_CASE("column_result_of_t") {
             }
         };
         runTest<db_objects_t, int>(func<RandomFunc>());
+    }
+    // pointer binding
+    {
+        const int64 value = 0;
+        runTest<db_objects_t, std::nullptr_t>(bind_carray_pointer_statically(&value));
     }
     runTest<db_objects_t, int>(distinct(&User::id));
     runTest<db_objects_t, std::string>(distinct(&User::name));
