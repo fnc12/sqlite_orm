@@ -4,7 +4,7 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_member_object_pointer
 #include <utility>  //  std::move
-#ifdef SQLITE_ORM_WITH_VIEW
+#if defined(SQLITE_ORM_WITH_VIEW) && (BOOST_PFR_ENABLED == 1)
 #include <cstddef>  //  std::byte
 #endif
 #endif
@@ -49,7 +49,7 @@ namespace sqlite_orm {
                 };
             }
 
-#ifdef SQLITE_ORM_WITH_VIEW
+#if defined(SQLITE_ORM_WITH_VIEW) && (BOOST_PFR_ENABLED == 1)
             template<class C>
                 requires (is_column_pointer_v<C>)
             void operator()(const column_field<C, empty_setter>& column) {

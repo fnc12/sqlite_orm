@@ -80,7 +80,8 @@
 
 // note: PFR depends on `SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED` for field name determination
 #if (defined(SQLITE_ORM_CONSTEVAL_SUPPORTED) && defined(SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED)) &&              \
-    (__cpp_lib_byte >= 201603L && __cpp_lib_remove_cvref >= 201711L)
+    (__cpp_lib_byte >= 201603L && __cpp_lib_remove_cvref >= 201711L) &&                                                \
+    (__cpp_impl_reflection >= 202500L || BOOST_PFR_ENABLED == 1)
 #define SQLITE_ORM_WITH_VIEW
 #endif
 

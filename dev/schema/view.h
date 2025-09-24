@@ -5,14 +5,19 @@
 #include <utility>  // std::forward, std::move, std::index_sequence, std::make_index_sequence
 #include <cstddef>  //  std::byte
 #include <stddef.h>  //  offsetof
-#include <boost/pfr.hpp>
-#include "../functional/cxx_universal.h"  //  ::size_t
+#if __cpp_impl_reflection >= 202500L
+#include <meta>
 #endif
+#endif
+#if __cpp_impl_reflection < 202500L && BOOST_PFR_ENABLED == 1
 #include "../column_pointer.h"
+#endif
 #include "../select_constraints.h"
 #include "column.h"
 #include "mapped_object.h"
 
+#if __cpp_impl_reflection >= 202500L
+#elif BOOST_PFR_ENABLED == 1
 namespace boost::pfr {
     namespace detail {
         namespace sequence_tuple {
@@ -45,8 +50,22 @@ namespace boost::pfr {
         return detail::sequence_tuple::get_nth_relative_address<I, TS>();
     }
 }
+#endif
 
 namespace sqlite_orm::internal {
+    /**
+     *  View definition, mapping an aggregate object type to a corresponding select statement.
+     */
+    template<class O, class Select, class... Cs>
+    struct view_t : mapped_object_t<O, Cs...> {
+        using base_type = mapped_object_t<O, Cs...>;
+        using object_type = typename base_type::object_type;
+        using elements_type = typename base_type::elements_type;
+        using select_type = Select;
+
+        select_type select;
+    };
+
     template<class Select>
     decltype(auto) get_cte_driving_subselect(const Select& select);
 
@@ -56,7 +75,11 @@ namespace sqlite_orm::internal {
         return get_cte_driving_subselect(select.expression);
     }
 #endif
+}
 
+#if __cpp_impl_reflection >= 202500L
+#elif BOOST_PFR_ENABLED == 1
+namespace sqlite_orm::internal {
     /**
      *  Factory function for a column definition from a relative pointer to an object of the object to be mapped.
      */
@@ -72,6 +95,12 @@ namespace sqlite_orm::internal {
             return {std::move(name), relativeField, {}, std::tuple<Op...>{std::move(constraints)...}});
     }
 
+    /*  
+     *  A column field carrying a relative address to a member of an object.
+     *  
+     *  Internal note: According to my tests msvc or compilers in general have a hard time to use pointer-to-members at compile-time.
+     *  That's why we use a relative address.
+     */
     template<class O, class F>
     struct column_field<column_pointer<O, F*>, empty_setter> {
         using member_pointer_t = F O::*;
@@ -106,19 +135,6 @@ namespace sqlite_orm::internal {
         constexpr O* object = nullptr;
         return relative.field == &(object->*m);
     }
-
-    /**
-     *  View definition, mapping an aggregate object type to a corresponding select statement.
-     */
-    template<class O, class Select, class... Cs>
-    struct view_t : mapped_object_t<O, Cs...> {
-        using base_type = mapped_object_t<O, Cs...>;
-        using object_type = typename base_type::object_type;
-        using elements_type = typename base_type::elements_type;
-        using select_type = Select;
-
-        select_type select;
-    };
 
     template<class Select>
     using columns_size_t = std::tuple_size<typename Select::return_type::columns_type>;
@@ -170,7 +186,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                       std::make_index_sequence<boost::pfr::tuple_size_v<O>>{},
                                       std::move(select));
     }
+}
+#endif
 
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
  *  Factory function for a view definition.
