@@ -18454,7 +18454,7 @@ namespace sqlite_orm {
                        << streaming_identifier(newName) << std::flush;
                     sql = ss.str();
                 }
-                this->executor.perform_void_exec(db, sql.data());
+                this->executor.perform_void_exec(db, sql.c_str());
             }
 
             /**
@@ -19043,7 +19043,7 @@ namespace sqlite_orm {
             void begin_transaction_internal(const std::string& sql) {
                 this->connection->retain();
                 sqlite3* db = this->connection->get();
-                this->executor.perform_void_exec(db, sql.data());
+                this->executor.perform_void_exec(db, sql.c_str());
             }
 
             connection_ref get_connection() {
@@ -19079,7 +19079,7 @@ namespace sqlite_orm {
                     ss << "PRAGMA foreign_keys = " << value << std::flush;
                     sql = ss.str();
                 }
-                this->executor.perform_void_exec(db, sql.data());
+                this->executor.perform_void_exec(db, sql.c_str());
             }
 
             bool foreign_keys(sqlite3* db) {
@@ -19302,7 +19302,7 @@ namespace sqlite_orm {
                     ss << ' ' << streaming_identifier(tableName) << std::flush;
                     sql = ss.str();
                 }
-                this->executor.perform_void_exec(db, sql.data());
+                this->executor.perform_void_exec(db, sql.c_str());
             }
 
             void drop_index_internal(const std::string& indexName, bool ifExists) {
@@ -19317,7 +19317,7 @@ namespace sqlite_orm {
                     sql = ss.str();
                 }
                 auto connection = this->get_connection();
-                this->executor.perform_void_exec(connection.get(), sql.data());
+                this->executor.perform_void_exec(connection.get(), sql.c_str());
             }
 
             void drop_trigger_internal(const std::string& triggerName, bool ifExists) {
@@ -19332,7 +19332,7 @@ namespace sqlite_orm {
                     sql = ss.str();
                 }
                 auto connection = this->get_connection();
-                this->executor.perform_void_exec(connection.get(), sql.data());
+                this->executor.perform_void_exec(connection.get(), sql.c_str());
             }
 
             static int
@@ -24716,7 +24716,7 @@ namespace sqlite_orm {
                 const auto res = sync_schema_result::already_in_sync;
                 context_t context{this->db_objects};
                 const auto sql = serialize(virtualTable, context);
-                this->executor.perform_void_exec(db, sql.data());
+                this->executor.perform_void_exec(db, sql.c_str());
                 return res;
             }
 
@@ -24727,7 +24727,7 @@ namespace sqlite_orm {
                 const auto res = sync_schema_result::already_in_sync;
                 context_t context{this->db_objects};
                 const auto sql = serialize(index, context);
-                this->executor.perform_void_exec(db, sql.data());
+                this->executor.perform_void_exec(db, sql.c_str());
                 return res;
             }
 
@@ -24738,7 +24738,7 @@ namespace sqlite_orm {
                 const auto res = sync_schema_result::already_in_sync;  // TODO Change accordingly
                 context_t context{this->db_objects};
                 const auto sql = serialize(trigger, context);
-                this->executor.perform_void_exec(db, sql.data());
+                this->executor.perform_void_exec(db, sql.c_str());
                 return res;
             }
 
