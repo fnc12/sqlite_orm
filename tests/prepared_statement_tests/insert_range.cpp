@@ -1,15 +1,17 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 #include <algorithm>
+#include "../catch_matchers.h"
 
 #include "prepared_common.h"
 
+#if SQLITE_VERSION_NUMBER >= 3006019
 using namespace sqlite_orm;
 
 TEST_CASE("Prepared insert range") {
     using namespace PreparedStatementTests;
-    using Catch::Matchers::ContainsSubstring;
     using Catch::Matchers::UnorderedEquals;
+    const ErrorCodeExceptionMatcher emptyRangeExceptionMatcher(orm_error_code::empty_range);
 
     const int defaultVisitTime = 50;
 
@@ -40,22 +42,21 @@ TEST_CASE("Prepared insert range") {
     storage.replace(UserAndVisit{3, 1, "Shine on"});
 
     std::vector<User> users;
-    std::vector<User> expected;
-    expected.push_back(User{1, "Team BS"});
-    expected.push_back(User{2, "Shy'm"});
-    expected.push_back(User{3, "Maître Gims"});
+    std::vector<User> expected{{1, "Team BS"}, {2, "Shy'm"}, {3, "Maître Gims"}};
 
     SECTION("empty") {
         SECTION("strict") {
-            REQUIRE_THROWS_WITH(storage.prepare(insert_range(users.begin(), users.end())),
-                                ContainsSubstring("incomplete input"));
+            REQUIRE_THROWS_MATCHES(storage.prepare(insert_range(users.begin(), users.end())),
+                                   std::system_error,
+                                   emptyRangeExceptionMatcher);
         }
         SECTION("container with pointers") {
             std::vector<std::unique_ptr<User>> usersPointers;
-            REQUIRE_THROWS_WITH(
+            REQUIRE_THROWS_MATCHES(
                 storage.prepare(
                     insert_range(usersPointers.begin(), usersPointers.end(), &std::unique_ptr<User>::operator*)),
-                ContainsSubstring("incomplete input"));
+                std::system_error,
+                emptyRangeExceptionMatcher);
         }
     }
     SECTION("one") {
@@ -98,7 +99,7 @@ TEST_CASE("Prepared insert range") {
             decltype(users) otherUsers;
             otherUsers.push_back(User{6, "DJ Alban"});
             otherUsers.push_back(User{7, "Flo Rida"});
-            for(auto& user: otherUsers) {
+            for (auto& user: otherUsers) {
                 expected.push_back(user);
             }
             get<0>(statement) = otherUsers.begin();
@@ -124,7 +125,7 @@ TEST_CASE("Prepared insert range") {
             decltype(usersPointers) otherUsers;
             otherUsers.emplace_back(new User{6, "DJ Alban"});
             otherUsers.emplace_back(new User{7, "Flo Rida"});
-            for(auto& user: otherUsers) {
+            for (auto& user: otherUsers) {
                 expected.push_back(*user);
             }
             get<0>(statement) = otherUsers.begin();
@@ -138,3 +139,4 @@ TEST_CASE("Prepared insert range") {
     auto rows = storage.get_all<User>();
     REQUIRE_THAT(rows, UnorderedEquals(expected));
 }
+#endif

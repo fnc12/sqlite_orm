@@ -34,7 +34,7 @@ int main(int, char**) {
 
         auto id2 = storage.insert(Entry{0, sameString, std::make_unique<std::string>("I got you")});
         cout << "inserted " << storage.dump(storage.get<Entry>(id2)) << endl;
-    } catch(const std::system_error& e) {
+    } catch (const std::system_error& e) {
         cerr << e.what() << endl;
     }
 

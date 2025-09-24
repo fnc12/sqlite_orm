@@ -1,9 +1,11 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include "catch_matchers.h"
 
 #include <vector>  //  std::vector
 #include <string>  //  std::string
-#include <cstdio>  //  remove
+#include <cstdio>  //  std::remove
+#include <cstring>  //  std::strncmp
 
 using namespace sqlite_orm;
 
@@ -101,7 +103,11 @@ TEST_CASE("Limits") {
 }
 
 TEST_CASE("Custom collate") {
-    using Catch::Matchers::ContainsSubstring;
+#if defined(SQLITE_ORM_STRING_VIEW_SUPPORTED) || SQLITE_VERSION_NUMBER >= 3008008
+    const ErrorCodeExceptionMatcher collSequExceptionMatcher(sqlite_errc(SQLITE_ERROR_MISSING_COLLSEQ));
+#else
+    const ErrorCodeExceptionMatcher collSequExceptionMatcher(sqlite_errc(SQLITE_ERROR));
+#endif
 
     struct Item {
         int id;
@@ -110,8 +116,8 @@ TEST_CASE("Custom collate") {
 
     struct OtotoCollation {
         int operator()(int leftLength, const void* lhs, int rightLength, const void* rhs) const {
-            if(leftLength == rightLength) {
-                return ::strncmp((const char*)lhs, (const char*)rhs, leftLength);
+            if (leftLength == rightLength) {
+                return std::strncmp((const char*)lhs, (const char*)rhs, leftLength);
             } else {
                 return 1;
             }
@@ -141,7 +147,7 @@ TEST_CASE("Custom collate") {
     }
 
     auto filename = "custom_collate.sqlite";
-    ::remove(filename);
+    std::remove(filename);
     auto storage = make_storage(
         filename,
         make_table("items", make_column("id", &Item::id, primary_key()), make_column("name", &Item::name)));
@@ -150,10 +156,10 @@ TEST_CASE("Custom collate") {
     storage.remove_all<Item>();
     storage.insert(Item{0, "Mercury"});
     storage.insert(Item{0, "Mars"});
-    if(useLegacyScript) {
+    if (useLegacyScript) {
         storage.create_collation("ototo", [](int leftLength, const void* lhs, int rightLength, const void* rhs) {
-            if(leftLength == rightLength) {
-                return ::strncmp((const char*)lhs, (const char*)rhs, leftLength);
+            if (leftLength == rightLength) {
+                return std::strncmp((const char*)lhs, (const char*)rhs, leftLength);
             } else {
                 return 1;
             }
@@ -181,17 +187,21 @@ TEST_CASE("Custom collate") {
                           where(is_equal(&Item::name, "Mercury").collate<AlwaysEqualCollation>()),
                           order_by(&Item::name).collate<OtotoCollation>());
 
-    if(useLegacyScript) {
+    if (useLegacyScript) {
         storage.create_collation("ototo", {});
     } else {
         storage.delete_collation<OtotoCollation>();
     }
-    REQUIRE_THROWS_WITH(storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo"))),
-                        ContainsSubstring("no such collation sequence"));
-    REQUIRE_THROWS_WITH(storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate<OtotoCollation>())),
-                        ContainsSubstring("no such collation sequence"));
-    REQUIRE_THROWS_WITH(storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo2"))),
-                        ContainsSubstring("no such collation sequence"));
+    REQUIRE_THROWS_MATCHES(storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo"))),
+                           std::system_error,
+                           collSequExceptionMatcher);
+    REQUIRE_THROWS_MATCHES(
+        storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate<OtotoCollation>())),
+        std::system_error,
+        collSequExceptionMatcher);
+    REQUIRE_THROWS_MATCHES(storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo2"))),
+                           std::system_error,
+                           collSequExceptionMatcher);
 
     rows = storage.select(&Item::name,
                           where(is_equal(&Item::name, "Mercury").collate("alwaysequal")),
@@ -220,8 +230,9 @@ TEST_CASE("Vacuum") {
         std::string name;
     };
 
+    const auto filename = "vacuum.sqlite";
     auto storage = make_storage(
-        "vacuum.sqlite",
+        filename,
         make_table("items", make_column("id", &Item::id, primary_key()), make_column("name", &Item::name)));
     storage.sync_schema();
     storage.insert(Item{0, "One"});
@@ -231,4 +242,6 @@ TEST_CASE("Vacuum") {
     storage.insert(Item{0, "Five"});
     storage.remove_all<Item>();
     storage.vacuum();
+
+    std::remove(filename);
 }

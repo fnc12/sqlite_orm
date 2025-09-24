@@ -1,5 +1,8 @@
+#include <sqlite3.h>
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <cstring>  //  std::strcmp
+#include "catch_matchers.h"
 
 using namespace sqlite_orm;
 
@@ -7,11 +10,6 @@ TEST_CASE("explicit from") {
     struct User {
         int id = 0;
         std::string name;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        User() = default;
-        User(int id, std::string name) : id{id}, name{std::move(name)} {}
-#endif
     };
     auto storage = make_storage(
         {},
@@ -77,11 +75,6 @@ TEST_CASE("update set null") {
     struct User {
         int id = 0;
         std::unique_ptr<std::string> name;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        User() = default;
-        User(int id, decltype(name) name) : id{id}, name{std::move(name)} {}
-#endif
     };
 
     auto storage = make_storage(
@@ -122,7 +115,7 @@ TEST_CASE("update set null") {
 
 TEST_CASE("InsertRange") {
     struct Object {
-        int id;
+        int id = 0;
         std::string name;
 
 #ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
@@ -132,7 +125,7 @@ TEST_CASE("InsertRange") {
     };
 
     struct ObjectWithoutRowid {
-        int id;
+        int id = 0;
         std::string name;
 
 #ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
@@ -176,7 +169,7 @@ TEST_CASE("InsertRange") {
     SECTION("pointers") {
         std::vector<std::unique_ptr<Object>> objects;
         objects.reserve(100);
-        for(auto i = 0; i < 100; ++i) {
+        for (auto i = 0; i < 100; ++i) {
             objects.push_back(std::make_unique<Object>(0, "Skillet"));
         }
         storage.insert_range(objects.begin(), objects.end(), &std::unique_ptr<Object>::operator*);
@@ -223,7 +216,7 @@ TEST_CASE("Select") {
     REQUIRE(rc == SQLITE_OK);
 
     rc = sqlite3_step(stmt);
-    if(rc != SQLITE_DONE) {
+    if (rc != SQLITE_DONE) {
         throw std::runtime_error(sqlite3_errmsg(db));
     }
     sqlite3_finalize(stmt);
@@ -239,7 +232,7 @@ TEST_CASE("Select") {
     sqlite3_bind_text(stmt, 3, "hey", -1, nullptr);
     sqlite3_bind_int(stmt, 4, 5);
     rc = sqlite3_step(stmt);
-    if(rc != SQLITE_DONE) {
+    if (rc != SQLITE_DONE) {
         throw std::runtime_error(sqlite3_errmsg(db));
     }
     sqlite3_finalize(stmt);
@@ -255,7 +248,7 @@ TEST_CASE("Select") {
     sqlite3_bind_text(stmt, 3, "brothers", -1, nullptr);
     sqlite3_bind_int(stmt, 4, 15);
     rc = sqlite3_step(stmt);
-    if(rc != SQLITE_DONE) {
+    if (rc != SQLITE_DONE) {
         throw std::runtime_error(sqlite3_errmsg(db));
     }
     sqlite3_finalize(stmt);
@@ -273,13 +266,13 @@ TEST_CASE("Select") {
 
         sqlite3_bind_int64(stmt, 1, firstId);
         rc = sqlite3_step(stmt);
-        if(rc != SQLITE_ROW) {
+        if (rc != SQLITE_ROW) {
             throw std::runtime_error(sqlite3_errmsg(db));
         }
         REQUIRE(sqlite3_column_int(stmt, 0) == firstId);
-        REQUIRE(::strcmp((const char*)sqlite3_column_text(stmt, 1), "best") == 0);
-        REQUIRE(::strcmp((const char*)sqlite3_column_text(stmt, 2), "behaviour") == 0);
-        REQUIRE(::strcmp((const char*)sqlite3_column_text(stmt, 3), "hey") == 0);
+        REQUIRE(std::strcmp((const char*)sqlite3_column_text(stmt, 1), "best") == 0);
+        REQUIRE(std::strcmp((const char*)sqlite3_column_text(stmt, 2), "behaviour") == 0);
+        REQUIRE(std::strcmp((const char*)sqlite3_column_text(stmt, 3), "hey") == 0);
         REQUIRE(sqlite3_column_int(stmt, 4) == 5);
         sqlite3_finalize(stmt);
     }
@@ -382,11 +375,13 @@ TEST_CASE("Select") {
     storage.update_all(set(assign(&Word::currentWord, "ototo")), where(is_equal(&Word::id, firstId)));
 
     REQUIRE(storage.get<Word>(firstId).currentWord == "ototo");
+
+    std::remove(dbFileName);
 }
 
 TEST_CASE("Replace query") {
     struct Object {
-        int id;
+        int id = 0;
         std::string name;
 
 #ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
@@ -492,7 +487,7 @@ TEST_CASE("Replace query") {
 
 TEST_CASE("Remove all") {
     struct Object {
-        int id;
+        int id = 0;
         std::string name;
     };
 
@@ -512,7 +507,11 @@ TEST_CASE("Remove all") {
 }
 
 TEST_CASE("Explicit insert") {
-    using Catch::Matchers::ContainsSubstring;
+#if SQLITE_VERSION_NUMBER >= 3037002
+    const ErrorCodeExceptionMatcher notNullExceptionMatcher(sqlite_errc(SQLITE_CONSTRAINT_NOTNULL));
+#else
+    const ErrorCodeExceptionMatcher notNullExceptionMatcher(sqlite_errc(SQLITE_CONSTRAINT));
+#endif
 
     struct User {
         int id;
@@ -601,8 +600,9 @@ TEST_CASE("Explicit insert") {
         SECTION("one column") {
             User user4;
             user4.name = "Egor";
-            REQUIRE_THROWS_WITH(storage.insert(user4, columns(&User::name)),
-                                ContainsSubstring("NOT NULL constraint failed"));
+            REQUIRE_THROWS_MATCHES(storage.insert(user4, columns(&User::name)),
+                                   std::system_error,
+                                   notNullExceptionMatcher);
         }
     }
     SECTION("visit") {
@@ -634,8 +634,9 @@ TEST_CASE("Explicit insert") {
             Visit visit3;
             visit3.setId(10);
             SECTION("getter") {
-                REQUIRE_THROWS_WITH(storage.insert(visit3, columns(&Visit::id)),
-                                    ContainsSubstring("NOT NULL constraint failed"));
+                REQUIRE_THROWS_MATCHES(storage.insert(visit3, columns(&Visit::id)),
+                                       std::system_error,
+                                       notNullExceptionMatcher);
             }
         }
     }

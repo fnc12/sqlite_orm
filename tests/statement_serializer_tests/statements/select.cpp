@@ -34,12 +34,12 @@ TEST_CASE("statement_serializer select_t") {
             SECTION("!highest_level") {
                 statement.highest_level = false;
                 stringValue = serialize(statement, context);
-                expected = "(SELECT null)";
+                expected = "(SELECT NULL)";
             }
             SECTION("highest_level") {
                 statement.highest_level = true;
                 stringValue = serialize(statement, context);
-                expected = "SELECT null";
+                expected = "SELECT NULL";
             }
         }
     }
@@ -110,12 +110,12 @@ TEST_CASE("statement_serializer select_t") {
             SECTION("!highest_level") {
                 statement.highest_level = false;
                 stringValue = serialize(statement, context);
-                expected = "(SELECT null)";
+                expected = "(SELECT NULL)";
             }
             SECTION("highest_level") {
                 statement.highest_level = true;
                 stringValue = serialize(statement, context);
-                expected = "SELECT null";
+                expected = "SELECT NULL";
             }
         }
         SECTION("asterisk") {
@@ -197,6 +197,7 @@ TEST_CASE("statement_serializer select_t") {
                 stringValue = serialize(expression, context);
                 expected = R"("users".*, "users"."id", "users"."name")";
             }
+#if SQLITE_VERSION_NUMBER >= 3006019
             SECTION("issue #945") {
                 struct Employee {
                     int m_empno;
@@ -231,6 +232,63 @@ TEST_CASE("statement_serializer select_t") {
                 stringValue = serialize(expression, context);
                 expected =
                     R"(SELECT "d".* FROM "Dept" "d" LEFT JOIN "Emp" "e" ON "d"."deptno" = "e"."deptno"  WHERE ("e"."deptno" IS NULL))";
+            }
+#endif
+        }
+        SECTION("deduplication") {
+            SECTION("distinct column, top-level") {
+                auto expression = select(distinct(&User::name));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT DISTINCT "users"."name" FROM "users")";
+            }
+            SECTION("distinct column, !top-level") {
+                auto expression = select(distinct(&User::name));
+                expression.highest_level = false;
+                stringValue = serialize(expression, context);
+                expected = R"((SELECT DISTINCT "users"."name" FROM "users"))";
+            }
+            SECTION("all column") {
+                auto expression = select(all(&User::name));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT ALL "users"."name" FROM "users")";
+            }
+            SECTION("distinct columns") {
+                auto expression = select(distinct(columns(&User::id, &User::name)));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT DISTINCT "users"."id", "users"."name" FROM "users")";
+            }
+            SECTION("all columns") {
+                auto expression = select(all(columns(&User::id, &User::name)));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT ALL "users"."id", "users"."name" FROM "users")";
+            }
+            SECTION("distinct struct") {
+                auto expression = select(distinct(struct_<User>(&User::name)));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT DISTINCT "users"."name" FROM "users")";
+            }
+            SECTION("all struct") {
+                auto expression = select(all(struct_<User>(&User::name)));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT ALL "users"."name" FROM "users")";
+            }
+            SECTION("distinct aggregate function, top-level") {
+                auto expression = select(count(distinct(&User::name)));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = R"(SELECT COUNT(DISTINCT "users"."name") FROM "users")";
+            }
+            SECTION("distinct aggregate function, !top-level") {
+                auto expression = select(count(distinct(&User::name)));
+                expression.highest_level = false;
+                stringValue = serialize(expression, context);
+                expected = R"((SELECT COUNT(DISTINCT "users"."name") FROM "users"))";
             }
         }
     }

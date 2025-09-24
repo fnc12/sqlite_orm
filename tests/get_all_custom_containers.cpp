@@ -10,11 +10,6 @@ namespace {
     struct User {
         int id = 0;
         std::string name;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        User() = default;
-        User(int id, std::string name) : id{id}, name{std::move(name)} {}
-#endif
     };
 
     struct Comparator {
@@ -24,7 +19,7 @@ namespace {
         }
 
         bool operator()(const std::unique_ptr<User>& lhs, const User& rhs) const {
-            if(lhs) {
+            if (lhs) {
                 return this->operator()(*lhs, rhs);
             } else {
                 return false;
@@ -32,7 +27,7 @@ namespace {
         }
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         bool operator()(const std::optional<User>& lhs, const User& rhs) const {
-            if(lhs.has_value()) {
+            if (lhs.has_value()) {
                 return this->operator()(*lhs, rhs);
             } else {
                 return false;

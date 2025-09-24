@@ -1,9 +1,10 @@
 #pragma once
 
-#include <type_traits>  //  std::enable_if
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::enable_if, std::is_convertible
 #include <utility>  // std::move
+#endif
 
-#include "functional/cxx_core_features.h"
 #include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"
 #include "table_reference.h"
@@ -25,22 +26,22 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_column_pointer_v =
-            polyfill::is_specialization_of<T, column_pointer>::value;
+        inline constexpr bool is_column_pointer_v = polyfill::is_specialization_of<T, column_pointer>::value;
 
         template<class T>
         struct is_column_pointer : polyfill::bool_constant<is_column_pointer_v<T>> {};
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_operator_argument_v<T, std::enable_if_t<is_column_pointer<T>::value>> =
-            true;
+        inline constexpr bool is_operator_argument_v<T, std::enable_if_t<is_column_pointer<T>::value>> = true;
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         template<class A>
         struct alias_holder;
 #endif
     }
+}
 
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Explicitly refer to a column, used in contexts
      *  where the automatic object mapping deduction needs to be overridden.
@@ -50,9 +51,9 @@ namespace sqlite_orm {
      *  struct MyType : BaseType { ... };
      *  storage.select(column<MyType>(&BaseType::id));
      */
-    template<class Object, class F, class O, internal::satisfies_not<internal::is_recordset_alias, Object> = true>
-    constexpr internal::column_pointer<Object, F O::*> column(F O::*field) {
-        static_assert(internal::is_field_of_v<F O::*, Object>, "Column must be from derived class");
+    template<class O, class Base, class F, internal::satisfies_not<internal::is_recordset_alias, O> = true>
+    constexpr internal::column_pointer<O, F Base::*> column(F Base::* field) {
+        static_assert(std::is_convertible<F Base::*, F O::*>::value, "Field must be from derived class");
         return {field};
     }
 
@@ -61,7 +62,7 @@ namespace sqlite_orm {
      *  Explicitly refer to a column.
      */
     template<orm_table_reference auto table, class O, class F>
-    constexpr auto column(F O::*field) {
+    constexpr auto column(F O::* field) {
         return column<internal::auto_type_t<table>>(field);
     }
 
@@ -72,7 +73,7 @@ namespace sqlite_orm {
          *  Explicitly refer to a column.
          */
         template<orm_table_reference R, class O, class F>
-        constexpr auto operator->*(const R& /*table*/, F O::*field) {
+        constexpr auto operator->*(const R& /*table*/, F O::* field) {
             return column<typename R::type>(field);
         }
     }
@@ -81,7 +82,7 @@ namespace sqlite_orm {
      *  Make a table reference.
      */
     template<class O>
-        requires(!orm_recordset_alias<O>)
+        requires (!orm_recordset_alias<O>)
     consteval internal::table_reference<O> column() {
         return {};
     }
@@ -90,13 +91,13 @@ namespace sqlite_orm {
      *  Make a table reference.
      */
     template<class O>
-        requires(!orm_recordset_alias<O>)
+        requires (!orm_recordset_alias<O>)
     consteval internal::table_reference<O> c() {
         return {};
     }
 #endif
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     /**
      *  Explicitly refer to a column alias mapped into a CTE or subquery.
      *
@@ -110,20 +111,19 @@ namespace sqlite_orm {
      *  storage.with(cte<cte_1>()(select(as<colalias_a>(&Object::id))), select(column<cte_1>(get<colalias_a>())));
      */
     template<class Moniker, class F, internal::satisfies<internal::is_recordset_alias, Moniker> = true>
-    constexpr auto column(F field) {
+    constexpr auto column([[maybe_unused]] F field) {
         using namespace ::sqlite_orm::internal;
 
         static_assert(is_cte_moniker_v<Moniker>, "`Moniker' must be a CTE moniker");
 
-        if constexpr(polyfill::is_specialization_of_v<F, alias_holder>) {
+        if constexpr (polyfill::is_specialization_of_v<F, alias_holder>) {
             static_assert(is_column_alias_v<type_t<F>>);
             return column_pointer<Moniker, F>{{}};
-        } else if constexpr(is_column_alias_v<F>) {
+        } else if constexpr (is_column_alias_v<F>) {
             return column_pointer<Moniker, alias_holder<F>>{{}};
         } else {
             return column_pointer<Moniker, F>{std::move(field)};
         }
-        (void)field;
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES

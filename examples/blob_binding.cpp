@@ -1,4 +1,5 @@
 #include <sqlite_orm/sqlite_orm.h>
+#include <cstdint>
 #include <iostream>
 
 using namespace sqlite_orm;
@@ -15,11 +16,6 @@ struct Rect {
     int y = 0;
     int width = 0;
     int height = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-    Rect() = default;
-    Rect(int x, int y, int width, int height) : x{x}, y{y}, width{width}, height{height} {}
-#endif
 };
 
 bool operator==(const Rect& lhs, const Rect& rhs) {
@@ -29,11 +25,6 @@ bool operator==(const Rect& lhs, const Rect& rhs) {
 struct Zone {
     int id = 0;
     Rect rect;  //  this member will be mapped as BLOB column
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-    Zone() = default;
-    Zone(int id, Rect rect) : id{id}, rect{rect} {}
-#endif
 };
 
 bool operator==(const Zone& lhs, const Zone& rhs) {
@@ -43,7 +34,7 @@ bool operator==(const Zone& lhs, const Zone& rhs) {
 namespace sqlite_orm {
 
     /**
-     *  First of all is a type_printer template class.
+     *  First of all is a type_printer class template.
      *  It is responsible for sqlite type string representation.
      *  We want Rect to be `BLOB` so let's just derive from
      *  blob_printer. Also there are other printers: real_printer,
@@ -66,7 +57,7 @@ namespace sqlite_orm {
             std::vector<char> blobValue;
             blobValue.reserve(16);
             auto encodeInteger = [&blobValue](int value) {
-                auto preciseValue = int32_t(value);
+                auto preciseValue = std::int32_t(value);
                 const auto intPointer = &preciseValue;
                 auto charPointer = (const char*)(intPointer);
                 blobValue.push_back(charPointer[0]);
@@ -110,7 +101,7 @@ namespace sqlite_orm {
             Rect value;
             auto decodeInteger = [charPointer](int& integer, int index) {
                 auto pointerWithOffset = charPointer + index * 4;
-                auto intPointer = (const int32_t*)pointerWithOffset;
+                auto intPointer = (const std::int32_t*)pointerWithOffset;
                 integer = int(*intPointer);
             };
             decodeInteger(value.x, 0);
@@ -131,7 +122,7 @@ int main() {
 
     auto allZones = storage.get_all<Zone>();
     cout << "zones count = " << allZones.size() << ":" << endl;  //  zones count = 1:
-    for(auto& zone: allZones) {
+    for (auto& zone: allZones) {
         cout << "zone = " << storage.dump(zone)
              << endl;  //  zone = { id : '1', rect : '{ x = 10, y = 10, width = 200, height = 300 }' }
     }
@@ -140,7 +131,7 @@ int main() {
     cout << endl;
     allZones = storage.get_all<Zone>();
     cout << "zones count = " << allZones.size() << ":" << endl;  //  zones count = 1:
-    for(auto& zone: allZones) {
+    for (auto& zone: allZones) {
         cout << "zone = " << storage.dump(zone)
              << endl;  //  zone = { id : '1', rect : '{ x = 20, y = 20, width = 500, height = 600 }' }
     }

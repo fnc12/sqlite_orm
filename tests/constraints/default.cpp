@@ -1,5 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <cstdio>  //  std::remove
 
 using namespace sqlite_orm;
 
@@ -14,7 +15,7 @@ TEST_CASE("Default value") {
 
     auto filename = "test_db.sqlite";
 
-    ::remove(filename);
+    std::remove(filename);
 
     auto storage1 = make_storage(filename,
                                  make_table("User",

@@ -10,5 +10,4 @@ namespace sqlite_orm {
             rtrim,
         };
     }
-
 }

@@ -1,6 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <iostream>
-#include <cassert>
+#include <assert.h>
 
 using std::cout;
 using std::endl;
@@ -10,12 +10,6 @@ struct MarvelHero {
     std::string name;
     std::string abilities;
     short points = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-    MarvelHero() {}
-    MarvelHero(int id, std::string name, std::string abilities, short points) :
-        id{id}, name{std::move(name)}, abilities{std::move(abilities)}, points{points} {}
-#endif
 };
 
 struct Contact {
@@ -23,12 +17,6 @@ struct Contact {
     std::string firstName;
     std::string lastName;
     std::string phone;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-    Contact() {}
-    Contact(int id, std::string firstName, std::string lastName, std::string phone) :
-        id{id}, firstName{std::move(firstName)}, lastName{std::move(lastName)}, phone{std::move(phone)} {}
-#endif
 };
 
 struct Customer {
@@ -45,28 +33,6 @@ struct Customer {
     std::unique_ptr<std::string> fax;
     std::string email;
     int supportRepId = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-    Customer() {}
-    Customer(int id,
-             std::string firstName,
-             std::string lastName,
-             std::string company,
-             std::string address,
-             std::string city,
-             std::string state,
-             std::string country,
-             std::string postalCode,
-             std::string phone,
-             std::unique_ptr<std::string> fax,
-             std::string email,
-             int supportRepId) :
-        id{id},
-        firstName{std::move(firstName)}, lastName{std::move(lastName)}, company{std::move(company)},
-        address{std::move(address)}, city{std::move(city)}, state{std::move(state)}, country{std::move(country)},
-        postalCode{std::move(postalCode)}, phone{std::move(phone)}, fax{std::move(fax)}, email{std::move(email)},
-        supportRepId{supportRepId} {}
-#endif
 };
 
 int main(int, char** argv) {
@@ -897,7 +863,7 @@ int main(int, char** argv) {
     //  FROM marvel
     auto nameLengths = storage.select(length(&MarvelHero::name));  //  nameLengths is std::vector<int>
     cout << "nameLengths.size = " << nameLengths.size() << endl;
-    for(auto& len: nameLengths) {
+    for (auto& len: nameLengths) {
         cout << len << " ";
     }
     cout << endl;
@@ -908,7 +874,7 @@ int main(int, char** argv) {
         columns(&MarvelHero::name,
                 length(&MarvelHero::name)));  //  namesWithLengths is std::vector<std::tuple<std::string, int>>
     cout << "namesWithLengths.size = " << namesWithLengths.size() << endl;
-    for(auto& row: namesWithLengths) {
+    for (auto& row: namesWithLengths) {
         cout << "LENGTH(" << std::get<0>(row) << ") = " << std::get<1>(row) << endl;
     }
 
@@ -918,7 +884,7 @@ int main(int, char** argv) {
     auto namesWithLengthGreaterThan5 =
         storage.select(&MarvelHero::name, where(length(&MarvelHero::name) > 5));  //  std::vector<std::string>
     cout << "namesWithLengthGreaterThan5.size = " << namesWithLengthGreaterThan5.size() << endl;
-    for(auto& name: namesWithLengthGreaterThan5) {
+    for (auto& name: namesWithLengthGreaterThan5) {
         cout << "name = " << name << endl;
     }
 
@@ -934,8 +900,8 @@ int main(int, char** argv) {
     //  FROM marvel
     auto absPoints = storage.select(abs(&MarvelHero::points));  //  std::vector<std::unique_ptr<int>>
     cout << "absPoints: ";
-    for(auto& value: absPoints) {
-        if(value) {
+    for (auto& value: absPoints) {
+        if (value) {
             cout << *value;
         } else {
             cout << "null";
@@ -949,7 +915,7 @@ int main(int, char** argv) {
     //  WHERE ABS(points) < 5
     auto namesByAbs = storage.select(&MarvelHero::name, where(abs(&MarvelHero::points) < 5));
     cout << "namesByAbs.size = " << namesByAbs.size() << endl;
-    for(auto& name: namesByAbs) {
+    for (auto& name: namesByAbs) {
         cout << name << endl;
     }
     cout << endl;
@@ -964,7 +930,7 @@ int main(int, char** argv) {
     //  FROM marvel
     auto lowerNames = storage.select(lower(&MarvelHero::name));
     cout << "lowerNames.size = " << lowerNames.size() << endl;
-    for(auto& name: lowerNames) {
+    for (auto& name: lowerNames) {
         cout << name << endl;
     }
     cout << endl;
@@ -973,7 +939,7 @@ int main(int, char** argv) {
     //  FROM marvel
     auto upperAbilities = storage.select(upper(&MarvelHero::abilities));
     cout << "upperAbilities.size = " << upperAbilities.size() << endl;
-    for(auto& abilities: upperAbilities) {
+    for (auto& abilities: upperAbilities) {
         cout << abilities << endl;
     }
     cout << endl;
@@ -1007,7 +973,7 @@ int main(int, char** argv) {
     //  FROM marvel
     auto emails = storage.select(lower(&MarvelHero::name) || c("@marvel.com"));
     cout << "emails.size = " << emails.size() << endl;
-    for(auto& email: emails) {
+    for (auto& email: emails) {
         cout << email << endl;
     }
     cout << endl;
@@ -1029,15 +995,17 @@ int main(int, char** argv) {
     //  SELECT TRIM('42totn6372', '0123456789')
     cout << "TRIM('42totn6372', '0123456789') = " << storage.select(trim("42totn6372", "0123456789")).front() << endl;
 
+#if SQLITE_VERSION_NUMBER >= 3007016
     //  SELECT RANDOM()
-    for(auto i = 0; i < 10; ++i) {
+    for (auto i = 0; i < 10; ++i) {
         cout << "RANDOM() = " << storage.select(sqlite_orm::random()).front() << endl;
     }
 
     //  SELECT * FROM marvel ORDER BY RANDOM()
-    for(auto& hero: storage.iterate<MarvelHero>(order_by(sqlite_orm::random()))) {
+    for (auto& hero: storage.iterate<MarvelHero>(order_by(sqlite_orm::random()))) {
         cout << "hero = " << storage.dump(hero) << endl;
     }
+#endif
 
     //  https://www.techonthenet.com/sqlite/functions/ltrim.php
 
@@ -1147,7 +1115,7 @@ int main(int, char** argv) {
         auto rows = storage.select(columns(&MarvelHero::name, as<o_pos>(instr(&MarvelHero::abilities, "o"))),
                                    where(greater_than(get<o_pos>(), 0)),
                                    order_by(get<o_pos>()));
-        for(auto& row: rows) {
+        for (auto& row: rows) {
             cout << get<0>(row) << '\t' << get<1>(row) << endl;
         }
         cout << endl;
@@ -1165,7 +1133,7 @@ int main(int, char** argv) {
     //  SET phone = REPLACE(phone, '410', '+1-410')
     storage.update_all(set(c(&Contact::phone) = replace(&Contact::phone, "410", "+1-410")));
     cout << "Contacts:" << endl;
-    for(auto& contact: storage.iterate<Contact>()) {
+    for (auto& contact: storage.iterate<Contact>()) {
         cout << storage.dump(contact) << endl;
     }
 
@@ -1212,7 +1180,7 @@ int main(int, char** argv) {
                                            ifnull<std::string>(&Customer::fax, "Call:" || c(&Customer::phone))),
                                    order_by(&Customer::firstName));
         cout << "rows count: " << rows.size() << endl;
-        for(auto& row: rows) {
+        for (auto& row: rows) {
             cout << get<0>(row) << '\t' << get<1>(row) << '\t' << get<2>(row) << endl;
         }
         cout << endl;

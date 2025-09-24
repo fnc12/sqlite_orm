@@ -1,20 +1,26 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 
+#include <ctime>  //  std::time_t
+
 using namespace sqlite_orm;
 
 namespace {
     struct Employee {
-        int id;
+        int id = 0;
         std::string name;
-        int age;
+        int age = 0;
         std::string address;  //  optional
         double salary;  //  optional
 
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+        bool operator==(const Employee&) const = default;
+#else
         bool operator==(const Employee& other) const {
             return this->id == other.id && this->name == other.name && this->age == other.age &&
                    this->address == other.address && this->salary == other.salary;
         }
+#endif
     };
 }
 TEST_CASE("select constraints") {
@@ -30,13 +36,13 @@ TEST_CASE("select constraints") {
     storage.sync_schema();
 
     //  create employees..
-    Employee paul{-1, "Paul", 32, "California", 20000.0};
-    Employee allen{-1, "Allen", 25, "Texas", 15000.0};
-    Employee teddy{-1, "Teddy", 23, "Norway", 20000.0};
-    Employee mark{-1, "Mark", 25, "Rich-Mond", 65000.0};
-    Employee david{-1, "David", 27, "Texas", 85000.0};
-    Employee kim{-1, "Kim", 22, "South-Hall", 45000.0};
-    Employee james{-1, "James", 24, "Houston", 10000.0};
+    Employee paul{0, "Paul", 32, "California", 20000.0};
+    Employee allen{0, "Allen", 25, "Texas", 15000.0};
+    Employee teddy{0, "Teddy", 23, "Norway", 20000.0};
+    Employee mark{0, "Mark", 25, "Rich-Mond", 65000.0};
+    Employee david{0, "David", 27, "Texas", 85000.0};
+    Employee kim{0, "Kim", 22, "South-Hall", 45000.0};
+    Employee james{0, "James", 24, "Houston", 10000.0};
 
     //  insert employees. `insert` function returns id of inserted object..
     paul.id = storage.insert(paul);
@@ -69,9 +75,9 @@ TEST_CASE("select constraints") {
         }
     }
     SECTION("distinct") {
-        storage.insert(Employee{-1, "Paul", 24, "Houston", 20000.0});
-        storage.insert(Employee{-1, "James", 44, "Norway", 5000.0});
-        storage.insert(Employee{-1, "James", 45, "Texas", 5000.0});
+        storage.insert(Employee{0, "Paul", 24, "Houston", 20000.0});
+        storage.insert(Employee{0, "James", 44, "Norway", 5000.0});
+        storage.insert(Employee{0, "James", 45, "Texas", 5000.0});
 
         std::vector<std::string> names;
         decltype(names) expected;
@@ -139,6 +145,7 @@ TEST_CASE("select constraints") {
             expected.push_back("James");
             REQUIRE_THAT(rows, UnorderedEquals(expected));
         }
+#if SQLITE_VERSION_NUMBER >= 3006019
         SECTION("left join") {
             struct Author {
                 int id = 0;
@@ -208,6 +215,7 @@ TEST_CASE("select constraints") {
                 REQUIRE_THAT(rows, UnorderedEquals(expected));
             }
         }
+#endif
     }
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 }
@@ -216,24 +224,15 @@ namespace {
     struct User1 {
         int id = 0;
         std::string name;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        User1() = default;
-        User1(int id, std::string name) : id{id}, name{std::move(name)} {}
-#endif
     };
 
     struct Visit1 {
         int id = 0;
         int userId = 0;
-        time_t time = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        Visit1() = default;
-        Visit1(int id, int userId, time_t time) : id{id}, userId{userId}, time{time} {}
-#endif
+        std::time_t time = 0;
     };
 }
+#if SQLITE_VERSION_NUMBER >= 3006019
 TEST_CASE("Exists") {
     auto storage = make_storage(
         "",
@@ -259,6 +258,7 @@ TEST_CASE("Exists") {
         where(exists(select(&Visit1::id, where(c(&Visit1::time) == 200000 and eq(&Visit1::userId, &User1::id))))));
     REQUIRE(rows.empty() == false);
 }
+#endif
 
 namespace {
     struct User2 {
@@ -266,24 +266,12 @@ namespace {
         std::string firstName;
         std::string lastName;
         std::string country;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        User2() = default;
-        User2(int id, std::string firstName, std::string lastName, std::string country) :
-            id{id}, firstName{std::move(firstName)}, lastName{std::move(lastName)}, country{country} {}
-#endif
     };
 
     struct Track2 {
         int id = 0;
         std::string name;
         long milliseconds = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        Track2() = default;
-        Track2(int id, std::string name, long milliseconds) :
-            id{id}, name{std::move(name)}, milliseconds{milliseconds} {}
-#endif
     };
 
 }
@@ -375,11 +363,6 @@ namespace {
         int id = 0;
         int age = 0;
         std::string name;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        User3() = default;
-        User3(int id, int age, std::string name) : id{id}, age{age}, name{std::move(name)} {}
-#endif
     };
 
 }
@@ -419,14 +402,13 @@ namespace {
         int id = 0;
         std::string firstName;
 
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        User4() = default;
-        User4(int id, std::string firstName) : id{id}, firstName{std::move(firstName)} {}
-#endif
-
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+        bool operator==(const User4&) const = default;
+#else
         bool operator==(const User4& user) const {
             return this->id == user.id && this->firstName == user.firstName;
         }
+#endif
     };
 }
 TEST_CASE("collate") {
@@ -454,12 +436,6 @@ namespace {
         std::string firstName;
         std::string lastName;
         long registerTime = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        User5() = default;
-        User5(int id, std::string firstName, std::string lastName, long registerTime) :
-            id{id}, firstName{std::move(firstName)}, lastName{std::move(lastName)}, registerTime{registerTime} {}
-#endif
     };
 
 }
@@ -568,7 +544,7 @@ TEST_CASE("Dynamic order by") {
 
     auto rows = storage.get_all<User5>(orderBy);
     REQUIRE(rows.size() == 4);
-    for(size_t i = 0; i < rows.size(); ++i) {
+    for (size_t i = 0; i < rows.size(); ++i) {
         auto& row = rows[i];
         REQUIRE(row.id == expectedIds[i]);
     }

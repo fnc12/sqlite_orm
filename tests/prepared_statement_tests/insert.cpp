@@ -1,8 +1,10 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <cstring>  //  std::strcmp
 
 #include "prepared_common.h"
 
+#if SQLITE_VERSION_NUMBER >= 3006019
 using namespace sqlite_orm;
 
 TEST_CASE("Prepared insert") {
@@ -25,9 +27,9 @@ TEST_CASE("Prepared insert") {
         }
 
         bool compareNames(const decltype(name)& lhs, const decltype(name)& rhs) const {
-            if(lhs && rhs) {
+            if (lhs && rhs) {
                 return *lhs == *rhs;
-            } else if(!lhs && !rhs) {
+            } else if (!lhs && !rhs) {
                 return true;
             } else {
                 return false;
@@ -75,7 +77,7 @@ TEST_CASE("Prepared insert") {
                         insert(into<User>(), columns(&User::id, &User::name), values(std::make_tuple(1, "Ellie"))));
                     storage.execute(statement);
                     REQUIRE(get<0>(statement) == 1);
-                    REQUIRE(::strcmp(get<1>(statement), "Ellie") == 0);
+                    REQUIRE(std::strcmp(get<1>(statement), "Ellie") == 0);
                 }
                 SECTION("no statement") {
                     storage.insert(into<User>(), columns(&User::id, &User::name), values(std::make_tuple(1, "Ellie")));
@@ -92,9 +94,9 @@ TEST_CASE("Prepared insert") {
                                                values(std::make_tuple(1, "Ellie"), std::make_tuple(5, "Calvin"))));
                     storage.execute(statement);
                     REQUIRE(get<0>(statement) == 1);
-                    REQUIRE(::strcmp(get<1>(statement), "Ellie") == 0);
+                    REQUIRE(std::strcmp(get<1>(statement), "Ellie") == 0);
                     REQUIRE(get<2>(statement) == 5);
-                    REQUIRE(::strcmp(get<3>(statement), "Calvin") == 0);
+                    REQUIRE(std::strcmp(get<3>(statement), "Calvin") == 0);
                 }
                 SECTION("no statement") {
                     storage.insert(into<User>(),
@@ -238,3 +240,4 @@ TEST_CASE("Prepared insert") {
         }
     }
 }
+#endif

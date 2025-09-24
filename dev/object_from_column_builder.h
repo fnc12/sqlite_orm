@@ -1,13 +1,15 @@
 #pragma once
 
 #include <sqlite3.h>
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_member_object_pointer
 #include <utility>  //  std::move
 #ifdef SQLITE_ORM_WITH_VIEW
 #include <cstddef>  //  std::byte
 #endif
+#endif
 
-#include "functional/static_magic.h"
+#include "functional/gsl.h"
 #include "member_traits/member_traits.h"
 #include "type_traits.h"
 #include "table_reference.h"
@@ -22,11 +24,6 @@ namespace sqlite_orm {
         struct object_from_column_builder_base {
             sqlite3_stmt* stmt = nullptr;
             int columnIndex = -1;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            object_from_column_builder_base(sqlite3_stmt* stmt, int columnIndex = -1) :
-                stmt{stmt}, columnIndex{columnIndex} {}
-#endif
         };
 
         /**
@@ -45,18 +42,16 @@ namespace sqlite_orm {
             void operator()(const column_field<G, S>& column) {
                 const auto rowExtractor = row_value_extractor<member_field_type_t<G>>();
                 auto value = rowExtractor.extract(this->stmt, ++this->columnIndex);
-                static_if<std::is_member_object_pointer<G>::value>(
-                    [&value, &object = this->object](const auto& column) {
-                        object.*column.member_pointer = std::move(value);
-                    },
-                    [&value, &object = this->object](const auto& column) {
-                        (object.*column.setter)(std::move(value));
-                    })(column);
+                if constexpr (std::is_member_object_pointer<G>::value) {
+                    object.*column.member_pointer = std::move(value);
+                } else {
+                    (object.*column.setter)(std::move(value));
+                };
             }
 
 #ifdef SQLITE_ORM_WITH_VIEW
             template<class C>
-                requires(is_column_pointer_v<C>)
+                requires (is_column_pointer_v<C>)
             void operator()(const column_field<C, empty_setter>& column) {
                 using field_type = field_type_t<column_field<C, empty_setter>>;
                 const auto rowExtractor = row_value_extractor<field_type>();
@@ -78,7 +73,7 @@ namespace sqlite_orm {
         struct struct_extractor<table_reference<O>, DBOs> {
             const DBOs& db_objects;
 
-            O extract(const char* columnText) const = delete;
+            O extract(orm_gsl::czstring columnText) const = delete;
 
             // note: expects to be called only from the top level, and therefore discards the index
             O extract(sqlite3_stmt* stmt, int&& /*nextColumnIndex*/ = 0) const {

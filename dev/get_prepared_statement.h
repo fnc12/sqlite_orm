@@ -1,18 +1,18 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_same, std::remove_reference, std::remove_cvref
 #include <tuple>  //  std::get
+#endif
 
-#include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/cxx_type_traits_polyfill.h"
-#include "functional/static_magic.h"
 #include "type_traits.h"
 #include "prepared_statement.h"
 #include "ast_iterator.h"
 #include "node_tuple.h"
 #include "expression_object_type.h"
 
-namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     template<int N, class It, class L, class O>
     auto& get(internal::prepared_statement_t<internal::insert_range_t<It, L, O>>& statement) {
@@ -134,16 +134,13 @@ namespace sqlite_orm {
         const result_type* result = nullptr;
         internal::iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
             using node_type = polyfill::remove_cvref_t<decltype(node)>;
-            if(internal::is_bindable<node_type>::value) {
+            if constexpr (internal::is_bindable<node_type>::value) {
                 ++index;
-            }
-            if(index == N) {
-                internal::call_if_constexpr<std::is_same<result_type, node_type>::value>(
-                    [](auto& r, auto& n) {
-                        r = &n;
-                    },
-                    result,
-                    node);
+                if constexpr (std::is_same<result_type, node_type>::value) {
+                    if (index == N) {
+                        result = &node;
+                    }
+                }
             }
         });
         return internal::get_ref(*result);
@@ -160,16 +157,13 @@ namespace sqlite_orm {
 
         internal::iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
             using node_type = polyfill::remove_cvref_t<decltype(node)>;
-            if(internal::is_bindable<node_type>::value) {
+            if constexpr (internal::is_bindable<node_type>::value) {
                 ++index;
-            }
-            if(index == N) {
-                internal::call_if_constexpr<std::is_same<result_type, node_type>::value>(
-                    [](auto& r, auto& n) {
-                        r = const_cast<std::remove_reference_t<decltype(r)>>(&n);
-                    },
-                    result,
-                    node);
+                if constexpr (std::is_same<result_type, node_type>::value) {
+                    if (index == N) {
+                        result = const_cast<result_type*>(&node);
+                    }
+                }
             }
         });
         return internal::get_ref(*result);

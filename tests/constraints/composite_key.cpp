@@ -8,11 +8,6 @@ TEST_CASE("Composite key") {
         int year = 0;
         int month = 0;
         int amount = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        Record() = default;
-        Record(int year, int month, int amount) : year{year}, month{month}, amount{amount} {}
-#endif
     };
 
     auto recordsTableName = "records";

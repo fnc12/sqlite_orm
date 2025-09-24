@@ -1,10 +1,12 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if, std::is_same, std::decay, std::is_arithmetic, std::is_base_of
 #include <functional>  //  std::reference_wrapper
+#endif
 
-#include "functional/cxx_universal.h"  //  ::nullptr_t
 #include "functional/cxx_type_traits_polyfill.h"
+#include "functional/gsl.h"
 #include "functional/mpl.h"
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_fy.h"
@@ -24,6 +26,7 @@
 #include "storage_traits.h"
 #include "function.h"
 #include "ast/special_keywords.h"
+#include "ast/cast.h"
 
 namespace sqlite_orm {
 
@@ -42,7 +45,15 @@ namespace sqlite_orm {
          *  SFINAE - sfinae argument
          */
         template<class DBOs, class T, class SFINAE = void>
-        struct column_result_t;
+        struct column_result_t {
+#ifdef __FUNCTION__
+            // produce an error message that reveals `T` and `DBOs`
+            static constexpr bool reveal() {
+                static_assert(polyfill::always_false_v<T>, "T not found in DBOs - " __FUNCTION__);
+            }
+            static constexpr bool trigger = reveal();
+#endif
+        };
 
         template<class DBOs, class T>
         using column_result_of_t = typename column_result_t<DBOs, T>::type;
@@ -122,8 +133,8 @@ namespace sqlite_orm {
         };
 
         template<class DBOs>
-        struct column_result_t<DBOs, nullptr_t, void> {
-            using type = nullptr_t;
+        struct column_result_t<DBOs, std::nullptr_t, void> {
+            using type = std::nullptr_t;
         };
 
         template<class DBOs>
@@ -140,6 +151,11 @@ namespace sqlite_orm {
         template<class DBOs, class L, class R>
         struct column_result_t<DBOs, conc_t<L, R>, void> {
             using type = std::string;
+        };
+
+        template<class DBOs, class T>
+        struct column_result_t<DBOs, unary_minus_t<T>, void> {
+            using type = double;
         };
 
         template<class DBOs, class L, class R>
@@ -228,7 +244,7 @@ namespace sqlite_orm {
         template<class DBOs, class T, class F>
         struct column_result_t<DBOs, column_pointer<T, F>, void> : column_result_t<DBOs, F> {};
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         template<class DBOs, class Moniker, class ColAlias>
         struct column_result_t<DBOs, column_pointer<Moniker, alias_holder<ColAlias>>, void> {
             using table_type = storage_pick_table_t<Moniker, DBOs>;
@@ -285,7 +301,7 @@ namespace sqlite_orm {
          *  Result for the most simple queries like `SELECT 'ototo'`
          */
         template<class DBOs>
-        struct column_result_t<DBOs, const char*, void> {
+        struct column_result_t<DBOs, orm_gsl::czstring, void> {
             using type = std::string;
         };
 

@@ -1,6 +1,8 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::remove_const
+#endif
 
 #include "type_traits.h"
 #include "table_reference.h"
@@ -11,7 +13,7 @@ namespace sqlite_orm {
     namespace internal {
 
         /**
-         *  If T is a recordset alias then the typename mapped_type_proxy<T>::type is the unqualified aliased type,
+         *  If T is a table reference or recordset alias then the typename mapped_type_proxy<T>::type is the unqualified aliased type,
          *  otherwise unqualified T.
          */
         template<class T, class SFINAE = void>

@@ -16,15 +16,14 @@ namespace {
         int id = 0;
         std::string attributes;
 
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        Item() = default;
-        Item(int id, std::string attributes) : id{id}, attributes{std::move(attributes)} {}
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+        friend bool operator==(const Item&, const Item&) = default;
+#else
+        friend bool operator==(const Item& lhs, const Item& rhs) {
+            return lhs.id == rhs.id && lhs.attributes == rhs.attributes;
+        }
 #endif
     };
-
-    inline bool operator==(const Item& lhs, const Item& rhs) {
-        return lhs.id == rhs.id && lhs.attributes == rhs.attributes;
-    }
 }
 
 TEST_CASE("get_all with two tables") {

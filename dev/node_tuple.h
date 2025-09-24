@@ -1,10 +1,12 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::pair
 #include <functional>  //  std::reference_wrapper
 #include "functional/cxx_optional.h"
+#endif
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "tuple_helper/tuple_filter.h"
@@ -22,6 +24,8 @@
 #include "ast/into.h"
 #include "ast/group_by.h"
 #include "ast/match.h"
+#include "ast/cast.h"
+#include "ast/limit.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -103,6 +107,9 @@ namespace sqlite_orm {
         template<class E>
         struct node_tuple<order_by_t<E>, void> : node_tuple<E> {};
 
+        template<class... E>
+        struct node_tuple<multi_order_by_t<E...>, void> : node_tuple_for<E...> {};
+
         template<class L, class R>
         struct node_tuple<is_equal_with_table_t<L, R>, void> : node_tuple<R> {};
 
@@ -127,7 +134,7 @@ namespace sqlite_orm {
         template<class T>
         struct node_tuple<T, match_if<is_compound_operator, T>> : node_tuple<typename T::expressions_tuple> {};
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         template<class CTE>
         struct node_tuple<CTE, match_specialization_of<CTE, common_table_expression>>
             : node_tuple<typename CTE::expression_type> {};
@@ -198,6 +205,12 @@ namespace sqlite_orm {
 
         template<class C>
         struct node_tuple<negated_condition_t<C>, void> : node_tuple<C> {};
+
+        template<class T>
+        struct node_tuple<unary_minus_t<T>, void> : node_tuple<T> {};
+
+        template<class T>
+        struct node_tuple<bitwise_not_t<T>, void> : node_tuple<T> {};
 
         template<class R, class S, class... Args>
         struct node_tuple<built_in_function_t<R, S, Args...>, void> : node_tuple_for<Args...> {};

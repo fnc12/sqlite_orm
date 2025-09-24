@@ -4,15 +4,21 @@
 
 #include <sqlite_orm/sqlite_orm.h>
 #include <string>
-#include <cassert>
+#include <assert.h>
 #include <algorithm>
 #include <iostream>
 
+#if SQLITE_VERSION_NUMBER >= 3006019
+#define ENABLE_THIS_EXAMPLE
+#endif
+
+#ifdef ENABLE_THIS_EXAMPLE
 using std::cout;
 using std::endl;
+#endif
 
 int main() {
-
+#ifdef ENABLE_THIS_EXAMPLE
     struct Employee {
         int id;
         std::string name;
@@ -83,7 +89,7 @@ int main() {
         std::sort(rows.begin(), rows.end(), [](auto& lhs, auto& rhs) {
             return std::get<0>(lhs) < std::get<0>(rhs);
         });
-        for(auto& row: rows) {
+        for (auto& row: rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << endl;
         }
         cout << endl;
@@ -103,11 +109,12 @@ int main() {
                              inner_join<Department>(on(is_equal(&Employee::id, &Department::employeeId)))),
                       select(columns(&Department::employeeId, &Employee::name, &Department::dept),
                              left_outer_join<Department>(on(is_equal(&Employee::id, &Department::employeeId))))));
-        for(auto& row: rows) {
+        for (auto& row: rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << endl;
         }
         cout << endl;
     }
+#endif
 
     return 0;
 }

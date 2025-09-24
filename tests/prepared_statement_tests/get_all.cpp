@@ -3,6 +3,7 @@
 
 #include "prepared_common.h"
 
+#if SQLITE_VERSION_NUMBER >= 3006019
 using namespace sqlite_orm;
 
 TEST_CASE("Prepared get all") {
@@ -216,8 +217,8 @@ TEST_CASE("Prepared get all") {
     }
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     SECTION("from table reference") {
-        constexpr auto schema = c<sqlite_master>();
-        auto statement = storage.prepare(get_all<schema>(where(schema->*&sqlite_master::type == "table")));
+        auto statement =
+            storage.prepare(get_all<sqlite_master_table>(where(sqlite_master_table->*&sqlite_master::type == "table")));
         auto str = storage.dump(statement);
         testSerializing(statement);
     }
@@ -229,3 +230,4 @@ TEST_CASE("Prepared get all") {
     }
 #endif
 }
+#endif

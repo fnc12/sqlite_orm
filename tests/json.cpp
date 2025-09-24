@@ -100,7 +100,7 @@ TEST_CASE("json_array_length nullable") {
     value = std::move(rows[0]);
     REQUIRE(rows.size() == 1);
     REQUIRE(bool(expected) == bool(value));
-    if(expected) {
+    if (expected) {
         REQUIRE(*expected == *value);
     }
 }
@@ -375,7 +375,7 @@ TEST_CASE("json_type") {
         testCases.push_back(TestCase{R"({"a":[2,3.5,true,false,null,"x"]})", "null", "$.a[4]"});
         testCases.push_back(TestCase{R"({"a":[2,3.5,true,false,null,"x"]})", "text", "$.a[5]"});
         testCases.push_back(TestCase{R"({"a":[2,3.5,true,false,null,"x"]})", "", "$.a[6]"});
-        for(auto& testCase: testCases) {
+        for (auto& testCase: testCases) {
             {
                 auto rows = storage.select(json_type(testCase.argument, testCase.secondArgument));
                 decltype(rows) expected;
@@ -386,7 +386,7 @@ TEST_CASE("json_type") {
                 auto rows =
                     storage.select(json_type<std::unique_ptr<std::string>>(testCase.argument, testCase.secondArgument));
                 REQUIRE(rows.size() == 1);
-                if(!testCase.result.empty()) {
+                if (!testCase.result.empty()) {
                     REQUIRE(rows[0]);
                     REQUIRE(*rows[0] == testCase.result);
                 } else {
@@ -406,7 +406,7 @@ TEST_CASE("json_valid") {
     std::vector<TestCase> testCases;
     testCases.push_back(TestCase{R"({"x":35})", true});
     testCases.push_back(TestCase{R"({"x":35)", false});
-    for(auto& testCase: testCases) {
+    for (auto& testCase: testCases) {
         auto rows = storage.select(json_valid(testCase.argument));
         decltype(rows) expected;
         expected.push_back(testCase.expected);

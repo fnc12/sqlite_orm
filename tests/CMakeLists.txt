@@ -1,188 +1,70 @@
 cmake_minimum_required (VERSION 3.16)
 
-# note: find_package(SQLite3 REQUIRED) already done in top-level CMakeLists
+# Note: find_package(SQLite3 REQUIRED) already done in top-level CMakeLists
 FetchContent_MakeAvailable(Catch2)
 
 option(SQLITE_ORM_OMITS_CODECVT "Omits codec testing" OFF)
 
-add_executable(unit_tests
-    static_tests/functional/static_if_tests.cpp
-    static_tests/functional/mpl.cpp
-    static_tests/functional/same_or_void.cpp
-    static_tests/functional/index_sequence_util.cpp
-    static_tests/functional/tuple_conc.cpp
-    static_tests/functional/tuple_filter.cpp
-    static_tests/functional/tuple_traits.cpp
-    static_tests/functional/tuple_transform.cpp
-    static_tests/is_printable.cpp
-    static_tests/is_bindable.cpp
-    static_tests/row_extractor.cpp
-    static_tests/iterator_t.cpp
-    static_tests/arithmetic_operators_result_type.cpp
-    static_tests/node_tuple.cpp
-    static_tests/bindable_filter.cpp
-    static_tests/member_traits_tests.cpp
-    static_tests/select_return_type.cpp
-    static_tests/column.cpp
-    static_tests/foreign_key.cpp
-    static_tests/function_static_tests.cpp
-    static_tests/aggregate_function_return_types.cpp
-    static_tests/core_function_return_types.cpp
-    static_tests/column_expression_type.cpp
-    static_tests/column_result_t.cpp
-    static_tests/column_pointer.cpp
-    static_tests/alias.cpp
-    static_tests/cte.cpp
-    static_tests/is_primary_key_insertable.cpp
-    static_tests/is_column_with_insertable_primary_key.cpp
-    static_tests/operators_adl.cpp
-    static_tests/table_static_tests.cpp
-    static_tests/statements.cpp
-    tuple_iteration.cpp
-    xdestroy_handling.cpp
-    sync_schema_tests.cpp
-    tests.cpp
-    tests3.cpp
-    tests4.cpp
-    tests5.cpp
-    schema/column_tests.cpp
-    schema/index_tests.cpp
-    schema/table_tests.cpp
-    schema/explicit_columns.cpp
-    schema/virtual_table.cpp
-    private_getters_tests.cpp
-    pragma_tests.cpp
-    built_in_functions_tests/core_functions_tests.cpp
-    built_in_functions_tests/datetime_function_tests.cpp
-    built_in_functions_tests/math_functions.cpp
-    user_defined_functions.cpp
-    constraints/composite_key.cpp
-    operators/arithmetic_operators.cpp
-    operators/like.cpp
-    operators/glob.cpp
-    operators/in.cpp
-    operators/cast.cpp
-    operators/is_null.cpp
-    operators/not_operator.cpp
-    operators/bitwise.cpp
-    operators/binary_operators.cpp
-    prepared_statement_tests/select.cpp
-    prepared_statement_tests/get_all.cpp
-    prepared_statement_tests/get_all_pointer.cpp
-    prepared_statement_tests/get_all_optional.cpp
-    prepared_statement_tests/update_all.cpp
-    prepared_statement_tests/remove_all.cpp
-    prepared_statement_tests/get.cpp
-    prepared_statement_tests/get_pointer.cpp
-    prepared_statement_tests/get_optional.cpp
-    prepared_statement_tests/update.cpp
-    prepared_statement_tests/remove.cpp
-    prepared_statement_tests/insert.cpp
-    prepared_statement_tests/replace.cpp
-    prepared_statement_tests/insert_range.cpp
-    prepared_statement_tests/replace_range.cpp
-    prepared_statement_tests/insert_explicit.cpp
-    prepared_statement_tests/column_names.cpp
-    pragma_tests.cpp
-    simple_query.cpp
-    constraints/default.cpp
-    constraints/unique.cpp
-    constraints/foreign_key.cpp
-    constraints/check.cpp
-    statement_serializer_tests/column_constraints/generated.cpp
-    statement_serializer_tests/column_constraints/default.cpp
-    statement_serializer_tests/column_constraints/primary_key.cpp
-    statement_serializer_tests/column_constraints/unique.cpp
-    statement_serializer_tests/column_constraints/check.cpp
-    statement_serializer_tests/column_constraints/null.cpp
-    statement_serializer_tests/column_constraints/not_null.cpp
-    statement_serializer_tests/column_constraints/unindexed.cpp
-    statement_serializer_tests/table_constraints/prefix.cpp
-    statement_serializer_tests/table_constraints/foreign_key.cpp
-    statement_serializer_tests/table_constraints/tokenize.cpp
-    statement_serializer_tests/table_constraints/content.cpp
-    statement_serializer_tests/bindables.cpp
-    statement_serializer_tests/ast/upsert_clause.cpp
-    statement_serializer_tests/ast/excluded.cpp
-    statement_serializer_tests/ast/set.cpp
-    statement_serializer_tests/ast/match.cpp
-    statement_serializer_tests/ast/rank.cpp
-    statement_serializer_tests/arithmetic_operators.cpp
-    statement_serializer_tests/base_types.cpp
-    statement_serializer_tests/collate.cpp
-    statement_serializer_tests/comparison_operators.cpp
-    statement_serializer_tests/core_functions.cpp
-    statement_serializer_tests/rowid.cpp
-    statement_serializer_tests/column_names.cpp
-    statement_serializer_tests/schema/index.cpp
-    statement_serializer_tests/schema/trigger.cpp
-    statement_serializer_tests/schema/new_old.cpp
-    statement_serializer_tests/schema/raise.cpp
-    statement_serializer_tests/schema/using_fts5.cpp
-    statement_serializer_tests/schema/virtual_table.cpp
-    statement_serializer_tests/schema/column.cpp
-    statement_serializer_tests/schema/table.cpp
-    statement_serializer_tests/indexed_column.cpp
-    statement_serializer_tests/logical_operators.cpp
-    statement_serializer_tests/statements/select.cpp
-    statement_serializer_tests/select_constraints.cpp
-    statement_serializer_tests/conditions.cpp
-    statement_serializer_tests/statements/insert_replace.cpp
-    statement_serializer_tests/statements/update.cpp
-    statement_serializer_tests/statements/remove.cpp
-    statement_serializer_tests/statements/update_all.cpp
-    statement_serializer_tests/aggregate_functions.cpp
-    statement_serializer_tests/alias_extractor.cpp
-    storage_tests.cpp
-    storage_non_crud_tests.cpp
-    unique_cases/get_all_with_two_tables.cpp
-    unique_cases/prepare_get_all_with_case.cpp
-    unique_cases/index_named_table_with_fk.cpp
-    unique_cases/issue525.cpp
-    unique_cases/delete_with_two_fields.cpp
-    unique_cases/join_iterator_ctor_compilation_error.cpp
-    unique_cases/issue86.cpp
-    unique_cases/issue937.cpp
-    unique_cases/issue663.cpp
-    get_all_custom_containers.cpp
-    select_constraints_tests.cpp
-    backup_tests.cpp
-    transaction_tests.cpp
-    json.cpp
-    row_id.cpp
-    trigger_tests.cpp
-    ast_iterator_tests.cpp
-    table_name_collector.cpp
-    pointer_passing_interface.cpp
-    row_extractor.cpp
-)
+include(ucm)
+
+
+# Consuming the standard library as C++ named module is a C++23 standard library feature and additionally requires support from build systems.
+# At the time of adding support for sqlite_orm as a C++ named module, CMake has still only experimental features to
+# effect the provision of the the C++ Standard Library Modules [see `CMAKE_EXPERIMENTAL_CXX_IMPORT_STD`].
+# 
+# However, Visual C++ has an option that instructs MSBuild to automatically provision the standard modules,
+# and this option is ON by default when using the `/std:c++latest` compiler switch:
+# "Build ISO C++23 Standard Library Modules", MSBuild property `BuildStlModules`.
+if(CMAKE_CXX_STANDARD GREATER_EQUAL 23 AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.28.2 AND MSVC AND MSVC_VERSION GREATER_EQUAL 1930)
+    add_executable(module_tests
+        named_module/named_module.cpp
+    )
+
+    target_sources(module_tests
+        PRIVATE FILE_SET all_modules TYPE CXX_MODULES
+        BASE_DIRS ../modules
+        FILES ../modules/sqlite_orm.ixx
+    )
+
+    target_compile_features(module_tests PUBLIC cxx_std_23)
+
+    if(SQLITE_ORM_OMITS_CODECVT)
+        message(STATUS "SQLITE_ORM_OMITS_CODECVT is enabled")
+        target_compile_definitions(module_tests PRIVATE SQLITE_ORM_OMITS_CODECVT=1)
+    endif()
+
+    target_precompile_headers(module_tests PRIVATE
+        <sqlite3.h>)
+
+    # note: sqlite3 already linked in top-level CMakeLists
+    target_link_libraries(module_tests PRIVATE sqlite_orm)
+
+    add_test(NAME "module_tests"
+        COMMAND module_tests
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+endif()
+
+# Glob all .cpp files recursively in the current directory
+file(GLOB_RECURSE UNIT_TEST_SOURCES "*.cpp")
+ucm_remove_directories(named_module FROM UNIT_TEST_SOURCES)
+
+add_executable(unit_tests ${UNIT_TEST_SOURCES})
 
 if(SQLITE_ORM_OMITS_CODECVT)
     message(STATUS "SQLITE_ORM_OMITS_CODECVT is enabled")
     target_compile_definitions(unit_tests PRIVATE SQLITE_ORM_OMITS_CODECVT=1)
 endif()
 
-if (MSVC)
+if(MSVC)
     target_compile_options(unit_tests PUBLIC
         # multi-processor compilation
-        /MP)
-    if (MSVC_VERSION LESS_EQUAL 1900)
-        target_compile_options(unit_tests PUBLIC
-            # C4503: decorated name length exceeded
-            /wd4503
-            # C4800: forcing value to bool (performance warning)
-            /wd4800)
-    else()
-        target_compile_options(unit_tests PUBLIC
-            # warning-level 4
-            /W4
-            # C4127: conditional expression is constant
-            /wd4127
-            # C4456: declaration of 'symbol' hides previous local declaration
-            /wd4456
-            # C4458: declaration of 'symbol' hides class member
-            /wd4458)
-    endif()
+        /MP
+        # warning-level 4
+        /W4
+        # C4456: declaration of 'symbol' hides previous local declaration
+        /wd4456
+        # C4458: declaration of 'symbol' hides class member
+        /wd4458)
     if (CMAKE_CXX_FLAGS MATCHES "/D_UNICODE")
         # explicitly set the entry point of the executable file,
         # otherwise for some reason the linker will not pick up `wmain`, which is provided by the static Catch2 library

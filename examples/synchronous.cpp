@@ -1,15 +1,15 @@
-
 #include <sqlite_orm/sqlite_orm.h>
+#include <cstdint>
 #include <string>
 
 struct Query {
     std::string src_ip;
-    uint16_t src_port;
-    uint16_t txn_id;
-    uint32_t tv_sec;
-    uint32_t tv_usec;
+    std::uint16_t src_port;
+    std::uint16_t txn_id;
+    std::uint32_t tv_sec;
+    std::uint32_t tv_usec;
     std::string name;
-    uint16_t type;
+    std::uint16_t type;
 };
 
 int main(int, char**) {

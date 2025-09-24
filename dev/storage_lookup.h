@@ -1,10 +1,11 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::true_type, std::false_type, std::remove_const, std::enable_if, std::is_base_of, std::is_void
 #include <tuple>
 #include <utility>  //  std::index_sequence, std::make_index_sequence
+#endif
 
-#include "functional/cxx_universal.h"  //  ::size_t
 #include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"
 
@@ -122,7 +123,7 @@ namespace sqlite_orm {
 #endif
 
         template<class DBOs, class Lookup>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_mapped_v = is_mapped<DBOs, Lookup>::value;
+        inline constexpr bool is_mapped_v = is_mapped<DBOs, Lookup>::value;
     }
 }
 
@@ -140,8 +141,15 @@ namespace sqlite_orm {
             return std::get<table_type>(dbObjects);
         }
 
+        /**
+         *  Return passed in DBOs.
+         */
+        template<class DBOs, class E, satisfies<is_db_objects, DBOs> = true>
+        decltype(auto) db_objects_for_expression(DBOs& dbObjects, const E&) {
+            return dbObjects;
+        }
+
         template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs> = true>
         decltype(auto) lookup_table_name(const DBOs& dbObjects);
-
     }
 }

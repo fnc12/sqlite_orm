@@ -1,8 +1,10 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <cstring>  //  std::strcmp
 
 #include "prepared_common.h"
 
+#if SQLITE_VERSION_NUMBER >= 3006019
 using namespace sqlite_orm;
 
 TEST_CASE("Prepared replace") {
@@ -40,7 +42,7 @@ TEST_CASE("Prepared replace") {
                         replace(into<User>(), columns(&User::id, &User::name), values(std::make_tuple(1, "Ellie"))));
                     storage.execute(statement);
                     REQUIRE(get<0>(statement) == 1);
-                    REQUIRE(::strcmp(get<1>(statement), "Ellie") == 0);
+                    REQUIRE(std::strcmp(get<1>(statement), "Ellie") == 0);
                 }
                 SECTION("no statement") {
                     storage.replace(into<User>(), columns(&User::id, &User::name), values(std::make_tuple(1, "Ellie")));
@@ -55,9 +57,9 @@ TEST_CASE("Prepared replace") {
                                                 values(std::make_tuple(1, "Ellie"), std::make_tuple(5, "Calvin"))));
                     storage.execute(statement);
                     REQUIRE(get<0>(statement) == 1);
-                    REQUIRE(::strcmp(get<1>(statement), "Ellie") == 0);
+                    REQUIRE(std::strcmp(get<1>(statement), "Ellie") == 0);
                     REQUIRE(get<2>(statement) == 5);
-                    REQUIRE(::strcmp(get<3>(statement), "Calvin") == 0);
+                    REQUIRE(std::strcmp(get<3>(statement), "Calvin") == 0);
                 }
                 SECTION("no statement") {
                     storage.replace(into<User>(),
@@ -159,3 +161,4 @@ TEST_CASE("Prepared replace") {
     auto rows = storage.get_all<User>();
     REQUIRE_THAT(rows, UnorderedEquals(expected));
 }
+#endif

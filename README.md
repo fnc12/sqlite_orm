@@ -25,7 +25,7 @@ SQLite ORM light header only library for modern C++. Please read the license pre
 * **No raw string queries**
 * **Intuitive syntax**
 * **Comfortable interface - one code line per single query**
-* **Built with modern C++14/C++17/C++20 features (no macros and external scripts)**
+* **Built with modern C++17 functionality (or higher) - no macros and external scripts**
 * **CRUD support**
 * **Pure select query support**
 * **Prepared statements support**
@@ -801,7 +801,7 @@ If you want to use the lib directly with Make or something else, just set the in
 
 # Requirements
 
-* C++14 compatible compiler (not C++11 cause of templated lambdas in the lib).
+* C++17 compatible compiler.
 * Sqlite3 installed on your system and in the path, so cmake can find it (or linked to you project if you don't use cmake)
 
 # Video from conference

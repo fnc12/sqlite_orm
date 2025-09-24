@@ -1,10 +1,12 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::false_type, std::true_type
 #include <utility>  //  std::move
+#endif
 
 #include "functional/cxx_type_traits_polyfill.h"
-#include "is_base_of_template.h"
+#include "functional/is_base_template_of.h"
 #include "tags.h"
 #include "serialize_result_type.h"
 
@@ -20,11 +22,11 @@ namespace sqlite_orm {
             left_type lhs;
             right_type rhs;
 
-            binary_operator(left_type lhs_, right_type rhs_) : lhs(std::move(lhs_)), rhs(std::move(rhs_)) {}
+            constexpr binary_operator(left_type lhs_, right_type rhs_) : lhs(std::move(lhs_)), rhs(std::move(rhs_)) {}
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_binary_operator_v = is_base_of_template<T, binary_operator>::value;
+        inline constexpr bool is_binary_operator_v = is_base_template_of<binary_operator, T>::value;
 
         template<class T>
         using is_binary_operator = polyfill::bool_constant<is_binary_operator_v<T>>;
@@ -40,6 +42,24 @@ namespace sqlite_orm {
          */
         template<class L, class R>
         using conc_t = binary_operator<L, R, conc_string>;
+
+        struct unary_minus_string {
+            serialize_result_type serialize() const {
+                return "-";
+            }
+        };
+
+        /**
+         *  Result of unary minus - operator
+         */
+        template<class T>
+        struct unary_minus_t : unary_minus_string, arithmetic_t, negatable_t {
+            using argument_type = T;
+
+            argument_type argument;
+
+            unary_minus_t(argument_type argument_) : argument(std::move(argument_)) {}
+        };
 
         struct add_string {
             serialize_result_type serialize() const {
@@ -60,7 +80,7 @@ namespace sqlite_orm {
         };
 
         /**
-         *  Result of substitute - operator
+         *  Result of substraction - operator
          */
         template<class L, class R>
         using sub_t = binary_operator<L, R, sub_string, arithmetic_t, negatable_t>;
@@ -191,21 +211,28 @@ namespace sqlite_orm {
         template<class L, class R>
         struct is_assign_t<assign_t<L, R>> : public std::true_type {};
     }
+}
 
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Public interface for || concatenation operator. Example: `select(conc(&User::name, "@gmail.com"));` => SELECT
      * name || '@gmail.com' FROM users
      */
     template<class L, class R>
-    internal::conc_t<L, R> conc(L l, R r) {
+    constexpr internal::conc_t<L, R> conc(L l, R r) {
         return {std::move(l), std::move(r)};
+    }
+
+    template<class T>
+    constexpr internal::unary_minus_t<T> minus(T t) {
+        return {std::move(t)};
     }
 
     /**
      *  Public interface for + operator. Example: `select(add(&User::age, 100));` => SELECT age + 100 FROM users
      */
     template<class L, class R>
-    internal::add_t<L, R> add(L l, R r) {
+    constexpr internal::add_t<L, R> add(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
@@ -213,7 +240,7 @@ namespace sqlite_orm {
      *  Public interface for - operator. Example: `select(sub(&User::age, 1));` => SELECT age - 1 FROM users
      */
     template<class L, class R>
-    internal::sub_t<L, R> sub(L l, R r) {
+    constexpr internal::sub_t<L, R> sub(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
@@ -221,7 +248,7 @@ namespace sqlite_orm {
      *  Public interface for * operator. Example: `select(mul(&User::salary, 2));` => SELECT salary * 2 FROM users
      */
     template<class L, class R>
-    internal::mul_t<L, R> mul(L l, R r) {
+    constexpr internal::mul_t<L, R> mul(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
@@ -231,7 +258,7 @@ namespace sqlite_orm {
      *  If you use `using namespace sqlite_orm` directive you an specify which `div` you call explicitly using  `::div` or `sqlite_orm::div` statements.
      */
     template<class L, class R>
-    internal::div_t<L, R> div(L l, R r) {
+    constexpr internal::div_t<L, R> div(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
@@ -239,32 +266,32 @@ namespace sqlite_orm {
      *  Public interface for % operator. Example: `select(mod(&User::age, 5));` => SELECT age % 5 FROM users
      */
     template<class L, class R>
-    internal::mod_t<L, R> mod(L l, R r) {
+    constexpr internal::mod_t<L, R> mod(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    internal::bitwise_shift_left_t<L, R> bitwise_shift_left(L l, R r) {
+    constexpr internal::bitwise_shift_left_t<L, R> bitwise_shift_left(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    internal::bitwise_shift_right_t<L, R> bitwise_shift_right(L l, R r) {
+    constexpr internal::bitwise_shift_right_t<L, R> bitwise_shift_right(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    internal::bitwise_and_t<L, R> bitwise_and(L l, R r) {
+    constexpr internal::bitwise_and_t<L, R> bitwise_and(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    internal::bitwise_or_t<L, R> bitwise_or(L l, R r) {
+    constexpr internal::bitwise_or_t<L, R> bitwise_or(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class T>
-    internal::bitwise_not_t<T> bitwise_not(T t) {
+    constexpr internal::bitwise_not_t<T> bitwise_not(T t) {
         return {std::move(t)};
     }
 
@@ -272,5 +299,4 @@ namespace sqlite_orm {
     internal::assign_t<L, R> assign(L l, R r) {
         return {std::move(l), std::move(r)};
     }
-
 }

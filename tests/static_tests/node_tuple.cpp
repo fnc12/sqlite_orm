@@ -189,25 +189,46 @@ TEST_CASE("Node tuple") {
         using namespace internal;
 
         using CondTuple = node_tuple_t<conc_t<std::string, decltype(&User::name)>>;
-        static_assert(is_same<CondTuple, tuple<std::string, decltype(&User::name)>>::value, "conc_t");
+        STATIC_REQUIRE(is_same<CondTuple, tuple<std::string, decltype(&User::name)>>::value);
+
+        using MinusTuple = node_tuple_t<unary_minus_t<decltype(&User::id)>>;
+        STATIC_REQUIRE(is_same<MinusTuple, tuple<decltype(&User::id)>>::value);
 
         using AddTuple = node_tuple_t<add_t<int, decltype(&User::id)>>;
-        static_assert(is_same<AddTuple, tuple<int, decltype(&User::id)>>::value, "add_t");
+        STATIC_REQUIRE(is_same<AddTuple, tuple<int, decltype(&User::id)>>::value);
 
         using SubTuple = node_tuple_t<sub_t<float, double>>;
-        static_assert(is_same<SubTuple, tuple<float, double>>::value, "sub_t");
+        STATIC_REQUIRE(is_same<SubTuple, tuple<float, double>>::value);
 
         using MulTuple = node_tuple_t<mul_t<double, decltype(&User::id)>>;
-        static_assert(is_same<MulTuple, tuple<double, decltype(&User::id)>>::value, "mul_t");
+        STATIC_REQUIRE(is_same<MulTuple, tuple<double, decltype(&User::id)>>::value);
 
         using DivTuple = node_tuple_t<sqlite_orm::internal::div_t<int, float>>;
-        static_assert(is_same<DivTuple, tuple<int, float>>::value, "div_t");
+        STATIC_REQUIRE(is_same<DivTuple, tuple<int, float>>::value);
 
         using ModTuple = node_tuple_t<mod_t<decltype(&User::id), int>>;
-        static_assert(is_same<ModTuple, tuple<decltype(&User::id), int>>::value, "mod_t");
+        STATIC_REQUIRE(is_same<ModTuple, tuple<decltype(&User::id), int>>::value);
 
         using AssignTuple = node_tuple_t<assign_t<decltype(&User::name), std::string>>;
-        static_assert(is_same<AssignTuple, tuple<decltype(&User::name), std::string>>::value, "assign_t");
+        STATIC_REQUIRE(is_same<AssignTuple, tuple<decltype(&User::name), std::string>>::value);
+    }
+    SECTION("bitwise operator") {
+        using namespace internal;
+
+        using BitwiseNotTuple = node_tuple_t<bitwise_not_t<decltype(&User::id)>>;
+        STATIC_REQUIRE(is_same<BitwiseNotTuple, tuple<decltype(&User::id)>>::value);
+
+        using BitwiseShiftLeftTuple = node_tuple_t<bitwise_shift_left_t<int, decltype(&User::id)>>;
+        STATIC_REQUIRE(is_same<BitwiseShiftLeftTuple, tuple<int, decltype(&User::id)>>::value);
+
+        using BitwiseShiftRightTuple = node_tuple_t<bitwise_shift_right_t<int, decltype(&User::id)>>;
+        STATIC_REQUIRE(is_same<BitwiseShiftRightTuple, tuple<int, decltype(&User::id)>>::value);
+
+        using BitwiseAndTuple = node_tuple_t<bitwise_and_t<int, decltype(&User::id)>>;
+        STATIC_REQUIRE(is_same<BitwiseAndTuple, tuple<int, decltype(&User::id)>>::value);
+
+        using BitwiseOrTuple = node_tuple_t<bitwise_or_t<int, decltype(&User::id)>>;
+        STATIC_REQUIRE(is_same<BitwiseOrTuple, tuple<int, decltype(&User::id)>>::value);
     }
     SECTION("columns") {
         auto cols = columns(&User::id, &User::name);
@@ -250,7 +271,7 @@ TEST_CASE("Node tuple") {
             using Expected = tuple<decltype(node)>;
             static_assert(is_same<Tuple, Expected>::value, "count(*)");
         }
-#ifdef SQLITE_ORM_WITH_CTE
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         SECTION("count(*) cte") {
             auto node = count<decltype(1_ctealias)>();
             using Node = decltype(node);
@@ -574,14 +595,14 @@ TEST_CASE("Node tuple") {
             using Like = decltype(lk);
             using NodeTuple = node_tuple_t<Like>;
             using Expected = tuple<decltype(&User::name), const char*>;
-            static_assert(is_same<NodeTuple, Expected>::value, "like(&User::name, \"S%\") type 0");
+            static_assert(is_same<NodeTuple, Expected>::value, R"(like(&User::name, "S%") type 0)");
         }
         SECTION("like(&User::name, std::string('pattern'), '%')") {
             auto lk = like(&User::name, std::string("pattern"), "%");
             using Like = decltype(lk);
             using NodeTuple = node_tuple_t<Like>;
             using Expected = tuple<decltype(&User::name), std::string, const char*>;
-            static_assert(is_same<NodeTuple, Expected>::value, "like(&User::name, std::string(\"pattern\"), \"%\")");
+            static_assert(is_same<NodeTuple, Expected>::value, R"(like(&User::name, std::string("pattern"), "%"))");
         }
         SECTION("like(&User::name, std::string('pattern')).escape('%')") {
             auto lk = like(&User::name, std::string("pattern")).escape("%");
@@ -589,7 +610,7 @@ TEST_CASE("Node tuple") {
             using NodeTuple = node_tuple_t<Like>;
             using Expected = tuple<decltype(&User::name), std::string, const char*>;
             static_assert(is_same<NodeTuple, Expected>::value,
-                          "like(&User::name, std::string(\"pattern\")).escape(\"%\")");
+                          R"(like(&User::name, std::string("pattern")).escape("%"))");
         }
     }
     SECTION("order_by_t") {
@@ -609,12 +630,16 @@ TEST_CASE("Node tuple") {
         SECTION("column alias in expression") {
             STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(get<colalias_a>() > 1))>, tuple<int>>::value);
         }
+        SECTION("multi") {
+            STATIC_REQUIRE(is_same<node_tuple_t<decltype(multi_order_by(order_by(""), order_by("")))>,
+                                   tuple<const char*, const char*>>::value);
+        }
     }
     SECTION("glob_t") {
         auto gl = glob(&User::name, "H*");
         using Glob = decltype(gl);
         using Tuple = node_tuple_t<Glob>;
-        static_assert(is_same<Tuple, tuple<decltype(&User::name), const char*>>::value, "glob(&User::name, \"H*\")");
+        static_assert(is_same<Tuple, tuple<decltype(&User::name), const char*>>::value, R"(glob(&User::name, "H*"))");
     }
     SECTION("between_t") {
         auto bet = between(&User::id, 10, 20);
@@ -635,7 +660,7 @@ TEST_CASE("Node tuple") {
             using Con = decltype(c);
             using Tuple = node_tuple_t<Con>;
             using Expected = tuple<int, const char*>;
-            static_assert(is_same<Tuple, Expected>::value, "not is_equal(20, \"20\")");
+            static_assert(is_same<Tuple, Expected>::value, R"(not is_equal(20, "20"))");
         }
         SECTION("not is_not_equal(&User::id, 15.0)") {
             auto c = not is_not_equal(&User::id, 15.0);
@@ -663,7 +688,7 @@ TEST_CASE("Node tuple") {
             using Con = decltype(c);
             using Tuple = node_tuple_t<Con>;
             using Expected = tuple<decltype(&User::id), std::string>;
-            static_assert(is_same<Tuple, Expected>::value, "not less_than(&User::id, std::string(\"6\"))");
+            static_assert(is_same<Tuple, Expected>::value, R"(not less_than(&User::id, std::string("6")))");
         }
         SECTION("not less_or_equal(&User::id, 10)") {
             auto c = not less_or_equal(&User::id, 10);
@@ -698,14 +723,14 @@ TEST_CASE("Node tuple") {
             using Con = decltype(c);
             using Tuple = node_tuple_t<Con>;
             using Expected = tuple<decltype(&User::name), const char*>;
-            static_assert(is_same<Tuple, Expected>::value, "not like(&User::name, \"*D*\")");
+            static_assert(is_same<Tuple, Expected>::value, R"(not like(&User::name, "*D*"))");
         }
         SECTION("not glob(&User::name, std::string('_A_'))") {
             auto c = not glob(&User::name, std::string("_A_"));
             using Con = decltype(c);
             using Tuple = node_tuple_t<Con>;
             using Expected = tuple<decltype(&User::name), std::string>;
-            static_assert(is_same<Tuple, Expected>::value, "not glob(&User::name, std::string(\"_A_\"))");
+            static_assert(is_same<Tuple, Expected>::value, R"(not glob(&User::name, std::string("_A_")))");
         }
         SECTION("not exists(select(&User::name, where(in(&User::id, {6, 7, 9}))))") {
             auto c = not exists(select(&User::name, where(in(&User::id, {6, 7, 9}))));
@@ -976,7 +1001,7 @@ TEST_CASE("Node tuple") {
         using ExpectedTuple = tuple<decltype(&User::name), decltype(&User::name), const char*>;
         STATIC_REQUIRE(std::is_same<Tuple, ExpectedTuple>::value);
     }
-#ifdef SQLITE_ORM_WITH_CTE
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     SECTION("with ordinary") {
         using cte_1 = decltype(1_ctealias);
         auto expression = with(1_ctealias().as(select(1)), select(column<cte_1>(1_colalias)));

@@ -13,13 +13,6 @@ int main() {
         std::string lastName;
         std::string email;
         std::string phone;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        Contact() {}
-        Contact(int id, std::string firstName, std::string lastName, std::string email, std::string phone) :
-            id{id}, firstName{std::move(firstName)}, lastName{std::move(lastName)}, email{std::move(email)},
-            phone{std::move(phone)} {}
-#endif
     };
 
     struct Product {
@@ -27,12 +20,6 @@ int main() {
         std::string name;
         float listPrice = 0;
         float discount = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        Product() {}
-        Product(int id, std::string name, float listPrice, float discount) :
-            id{id}, name{std::move(name)}, listPrice{listPrice}, discount{discount} {}
-#endif
     };
 
     auto storage = make_storage(":memory:",
@@ -54,20 +41,20 @@ int main() {
 
     try {
         storage.insert(Contact{0, "John", "Doe", {}, "408123456"});
-    } catch(const std::system_error& e) {
+    } catch (const std::system_error& e) {
         cout << e.what() << endl;
     }
     storage.insert(Contact{0, "John", "Doe", {}, "(408)-123-456"});
 
     try {
         storage.insert(Product{0, "New Product", 900, 1000});
-    } catch(const std::system_error& e) {
+    } catch (const std::system_error& e) {
         cout << e.what() << endl;
     }
 
     try {
         storage.insert(Product{0, "New XFactor", 1000, -10});
-    } catch(const std::system_error& e) {
+    } catch (const std::system_error& e) {
         cout << e.what() << endl;
     }
 

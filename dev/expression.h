@@ -1,13 +1,15 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>
 #include <type_traits>  //  std::enable_if
 #include <utility>  //  std::move, std::forward, std::declval
+#endif
 #include "functional/cxx_optional.h"
 
-#include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
 #include "tags.h"
+#include "operators.h"
 
 namespace sqlite_orm {
 
@@ -34,7 +36,7 @@ namespace sqlite_orm {
                 return {this->value, std::move(r)};
             }
 
-            assign_t<T, nullptr_t> operator=(nullptr_t) const {
+            assign_t<T, std::nullptr_t> operator=(std::nullptr_t) const {
                 return {this->value, nullptr};
             }
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -64,29 +66,41 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool
+        inline constexpr bool
             is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, expression_t>::value>> = true;
 
         template<class T>
-        T get_from_expression(T value) {
+        constexpr T get_from_expression(T&& value) {
             return std::move(value);
         }
 
         template<class T>
-        T get_from_expression(expression_t<T> expression) {
+        constexpr const T& get_from_expression(const T& value) {
+            return value;
+        }
+
+        template<class T>
+        constexpr T get_from_expression(expression_t<T>&& expression) {
             return std::move(expression.value);
+        }
+
+        template<class T>
+        constexpr const T& get_from_expression(const expression_t<T>& expression) {
+            return expression.value;
         }
 
         template<class T>
         using unwrap_expression_t = decltype(get_from_expression(std::declval<T>()));
     }
+}
 
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Public interface for syntax sugar for columns. Example: `where(c(&User::id) == 5)` or
      * `storage.update(set(c(&User::name) = "Dua Lipa"));
      */
     template<class T>
-    internal::expression_t<T> c(T value) {
+    constexpr internal::expression_t<T> c(T value) {
         return {std::move(value)};
     }
 }

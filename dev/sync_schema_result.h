@@ -1,8 +1,10 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <ostream>
+#endif
 
-namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     enum class sync_schema_result {
 
@@ -42,7 +44,7 @@ namespace sqlite_orm {
     };
 
     inline std::ostream& operator<<(std::ostream& os, sync_schema_result value) {
-        switch(value) {
+        switch (value) {
             case sync_schema_result::new_table_created:
                 return os << "new table created";
             case sync_schema_result::already_in_sync:

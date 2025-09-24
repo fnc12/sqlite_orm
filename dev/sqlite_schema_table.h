@@ -1,12 +1,15 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
+#endif
 
 #include "schema/column.h"
 #include "schema/table.h"
+#include "column_pointer.h"
 #include "alias.h"
 
-namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** 
      *  SQLite's "schema table" that stores the schema for a database.
      *  
@@ -38,6 +41,7 @@ namespace sqlite_orm {
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    inline constexpr auto sqlite_schema = "sqlite_schema"_alias.for_<sqlite_master>();
+    inline constexpr orm_table_reference auto sqlite_master_table = c<sqlite_master>();
+    inline constexpr orm_table_alias auto sqlite_schema = "sqlite_schema"_alias.for_<sqlite_master>();
 #endif
 }

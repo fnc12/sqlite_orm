@@ -1,6 +1,5 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <iostream>
-#include <cassert>
 
 using std::cout;
 using std::endl;
@@ -13,12 +12,6 @@ void marvel_hero_ordered_by_o_pos() {
         std::string name;
         std::string abilities;
         short points = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        MarvelHero() {}
-        MarvelHero(int id, std::string name, std::string abilities, short points) :
-            id{id}, name{std::move(name)}, abilities{std::move(abilities)}, points{points} {}
-#endif
     };
 
     auto storage = make_storage("",
@@ -53,14 +46,14 @@ void marvel_hero_ordered_by_o_pos() {
         auto rows = storage.select(columns(&MarvelHero::name, as<colalias_i>(instr(&MarvelHero::abilities, "o"))),
                                    where(greater_than(get<colalias_i>(), 0)),
                                    order_by(get<colalias_i>()));
-        for(auto& row: rows) {
+        for (auto& row: rows) {
             cout << get<0>(row) << '\t' << get<1>(row) << '\n';
         }
     }
     cout << endl;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     {
-        constexpr auto i = "i"_col;
+        constexpr orm_column_alias auto i = "i"_col;
         //  SELECT name, instr(abilities, 'o') i
         //  FROM marvel
         //  WHERE i > 0
@@ -68,7 +61,7 @@ void marvel_hero_ordered_by_o_pos() {
         auto rows = storage.select(columns(&MarvelHero::name, as<i>(instr(&MarvelHero::abilities, "o"))),
                                    where(i > 0),
                                    order_by(i));
-        for(auto& row: rows) {
+        for (auto& row: rows) {
             cout << get<0>(row) << '\t' << get<1>(row) << '\n';
         }
     }
@@ -79,7 +72,7 @@ void marvel_hero_ordered_by_o_pos() {
         //  FROM marvel
         //  ORDER BY 2
         auto rows = storage.select(columns(&MarvelHero::name, instr(&MarvelHero::abilities, "o")), order_by(2));
-        for(auto& row: rows) {
+        for (auto& row: rows) {
             cout << get<0>(row) << '\t' << get<1>(row) << '\n';
         }
     }
@@ -94,7 +87,7 @@ void cpp20_column_pointer() {
     };
 
     struct LastResult : Result {};
-    constexpr auto last_result = c<LastResult>();
+    constexpr orm_table_reference auto last_result = c<LastResult>();
 
     auto storage = make_storage(
         "",
@@ -114,7 +107,7 @@ int main() {
     try {
         marvel_hero_ordered_by_o_pos();
         cpp20_column_pointer();
-    } catch(const system_error& e) {
+    } catch (const system_error& e) {
         cout << "[" << e.code() << "] " << e.what();
     }
 

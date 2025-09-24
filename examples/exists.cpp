@@ -421,7 +421,7 @@ int main(int, char**) {
                                    order_by(&Agent::comission));
         cout << "AGENT_CODE  AGENT_NAME                                WORKING_AREA  COMMISSION" << endl;
         cout << "----------  ----------------------------------------  ------------  ----------" << endl;
-        for(auto& row: rows) {
+        for (auto& row: rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row)
                  << endl;
         }
@@ -442,7 +442,7 @@ int main(int, char**) {
                                                        group_by(&Customer::grade).having(greater_than(count(), 2))))));
         cout << "CUST_CODE   CUST_NAME   CUST_CITY                            GRADE" << endl;
         cout << "----------  ----------  -----------------------------------  ----------" << endl;
-        for(auto& row: rows) {
+        for (auto& row: rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row)
                  << endl;
         }
@@ -460,7 +460,7 @@ int main(int, char**) {
             from<Order>(),
             where(not exists(select(&Customer::agentCode, where(is_equal(&Customer::paymentAmt, 1400))))));
         cout << "AGENT_CODE  ORD_NUM     ORD_AMOUNT  CUST_CODE" << endl;
-        for(auto& row: rows) {
+        for (auto& row: rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row)
                  << endl;
         }
@@ -476,8 +476,8 @@ int main(int, char**) {
         //  ORDER BY 'c'."PAYMENT_AMT"
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        constexpr auto c_als = "c"_alias.for_<Customer>();
-        constexpr auto d = "d"_alias.for_<Customer>();
+        constexpr orm_table_alias auto c_als = "c"_alias.for_<Customer>();
+        constexpr orm_table_alias auto d = "d"_alias.for_<Customer>();
 
         double amount = 2000;
         auto where_clause = select(d->*&Customer::agentCode,
@@ -518,10 +518,12 @@ int main(int, char**) {
                                    order_by(alias_column<als>(&Customer::paymentAmt))));
 #endif
 
+#if SQLITE_VERSION_NUMBER >= 3014000
         auto sql = statement.expanded_sql();
+#endif
         auto rows = storage.execute(statement);
         cout << endl;
-        for(auto& row: rows) {
+        for (auto& row: rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row)
                  << '\t' << std::get<4>(row) << endl;
         }

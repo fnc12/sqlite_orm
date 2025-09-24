@@ -63,6 +63,20 @@ TEST_CASE("statement_serializer logical operators") {
             expected = R"(("id" = 5) OR ("name" = 'Ariana'))";
         }
     }
+    SECTION("not") {
+        SECTION("simple") {
+            SECTION("operator") {
+                stringValue = serialize(!c(20), context);
+            }
+            expected = "NOT 20";
+        }
+        SECTION("complex") {
+            SECTION("operator") {
+                stringValue = serialize(!(c(20) and 1), context);
+            }
+            expected = "NOT (20 AND 1)";
+        }
+    }
     SECTION("in") {
         SECTION("static in") {
             auto inValue = c(&User::id).in(1, 2, 3);

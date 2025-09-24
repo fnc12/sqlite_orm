@@ -1,6 +1,8 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
+#endif
 
 #include "constraints.h"
 #include "serializer_context.h"
@@ -10,11 +12,11 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        template<class T, class C>
-        auto serialize(const T& t, const C& context);
+        template<class T, class Ctx>
+        auto serialize(const T& t, const Ctx& context);
 
         /**
-         *  Serialize default value of a column's default valu
+         *  Serialize a column's default value.
          */
         template<class T>
         std::string serialize_default_value(const default_t<T>& dft) {

@@ -41,7 +41,7 @@ int main(int, char**) {
             "Doe",
             "john.doe@sqlitetutorial.net",
         });
-    } catch(const std::system_error& e) {
+    } catch (const std::system_error& e) {
         cout << e.what() << endl;
     }
     std::vector<Contract> moreContracts = {

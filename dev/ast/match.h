@@ -1,5 +1,9 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <utility>
+#endif
+
 namespace sqlite_orm {
     namespace internal {
 
@@ -9,11 +13,11 @@ namespace sqlite_orm {
             using argument_type = X;
 
             argument_type argument;
-
-            match_t(argument_type argument) : argument(std::move(argument)) {}
         };
     }
+}
 
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T, class X>
     internal::match_t<T, X> match(X argument) {
         return {std::move(argument)};

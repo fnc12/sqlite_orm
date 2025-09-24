@@ -5,6 +5,7 @@
 
 using namespace sqlite_orm;
 
+#if SQLITE_VERSION_NUMBER >= 3006019
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 TEST_CASE("Prepared get optional") {
     using namespace PreparedStatementTests;
@@ -147,3 +148,4 @@ TEST_CASE("Prepared get optional") {
     }
 }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+#endif

@@ -1,15 +1,18 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <memory>  //  std::shared_ptr, std::unique_ptr
 #include <vector>  //  std::vector
+#endif
 #include "functional/cxx_optional.h"
 
 #include "functional/cxx_type_traits_polyfill.h"
+#include "functional/gsl.h"
 #include "type_traits.h"
 #include "is_std_ptr.h"
 
-namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  This class transforms a C++ type to a sqlite type name (int -> INTEGER, ...)
@@ -63,7 +66,7 @@ namespace sqlite_orm {
 
     template<class T>
     struct type_printer<T,
-                        std::enable_if_t<polyfill::disjunction<std::is_same<T, const char*>,
+                        std::enable_if_t<polyfill::disjunction<std::is_same<T, orm_gsl::czstring>,
                                                                std::is_base_of<std::string, T>,
                                                                std::is_base_of<std::wstring, T>>::value>>
         : text_printer {};

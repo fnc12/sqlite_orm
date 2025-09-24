@@ -10,16 +10,45 @@ using internal::column_alias;
 using internal::column_pointer;
 using internal::iterate_ast;
 
+#ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
+template<class... L>
+struct overloaded : L... {
+    using L::operator()...;
+};
+#if __cpp_deduction_guides < 201907L
+template<class... L>
+overloaded(L...) -> overloaded<L...>;
+#endif
+#endif
+
 TEST_CASE("ast_iterator") {
     struct User {
         int id = 0;
         std::string name;
     };
+
     std::vector<std::type_index> typeIndexes;
     decltype(typeIndexes) expected;
-    auto lambda = [&typeIndexes](auto& value) {
+    const auto lambda = [&typeIndexes](auto& value) {
         typeIndexes.push_back(typeid(value));
     };
+#ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
+    const auto nodeLambda = overloaded{
+        [&typeIndexes]<class UDF, class... CallArgs>(polyfill::bool_constant<true>,
+                                                     const internal::function_call<UDF, CallArgs...>& udfCall) {
+            typeIndexes.push_back(typeid(udfCall.name));
+        },
+        [&typeIndexes](polyfill::bool_constant<true>, const internal::named_collate_base& collateCall) {
+            typeIndexes.push_back(typeid(collateCall));
+        },
+        [&typeIndexes]<class T, class X, class Y, class Z>(polyfill::bool_constant<true>,
+                                                           const internal::highlight_t<T, X, Y, Z>&) {
+            typeIndexes.push_back(typeid(T));
+        },
+        // swallow leaf expressions
+        [](auto&) {}};
+#endif
+
     SECTION("bindables") {
         auto node = select(1);
         expected.push_back(typeid(int));
@@ -183,6 +212,22 @@ TEST_CASE("ast_iterator") {
             auto node = order_by(1);
             iterate_ast(node, lambda);
         }
+        SECTION("normal") {
+            auto node = order_by(&User::id);
+            expected.push_back(typeid(&User::id));
+            iterate_ast(node, lambda);
+        }
+        SECTION("multi, single") {
+            auto node = multi_order_by(order_by(&User::id));
+            expected.push_back(typeid(&User::id));
+            iterate_ast(node, lambda);
+        }
+        SECTION("multi, several") {
+            auto node = multi_order_by(order_by(&User::id), order_by(&User::name));
+            expected.push_back(typeid(&User::id));
+            expected.push_back(typeid(&User::name));
+            iterate_ast(node, lambda);
+        }
         SECTION("sole column alias") {
             auto node = order_by(get<colalias_a>());
             iterate_ast(node, lambda);
@@ -330,7 +375,7 @@ TEST_CASE("ast_iterator") {
         iterate_ast(expression, lambda);
     }
 #endif
-#ifdef SQLITE_ORM_WITH_CTE
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     SECTION("with ordinary") {
         using cte_1 = decltype(1_ctealias);
         auto expression = with(cte<cte_1>().as(select(1)), select(column<cte_1>(1_colalias)));
@@ -395,11 +440,25 @@ TEST_CASE("ast_iterator") {
 #endif
     SECTION("highlight") {
         auto expression = highlight<User>(0, std::string("<b>"), std::string("</b>"));
-        expected.push_back(typeid(expression));
         expected.push_back(typeid(int));
         expected.push_back(typeid(std::string));
         expected.push_back(typeid(std::string));
         iterate_ast(expression, lambda);
     }
+#ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
+    SECTION("node expressions") {
+        struct Func {
+            static const char* name();
+            const std::string& operator()(const std::string& value) const;
+        };
+        auto expression1 = func<Func>(&User::name);
+        auto expression2 = is_equal("", "").collate("");
+        auto expression3 = highlight<User>(0, std::string("<b>"), std::string("</b>"));
+        expected.assign({typeid(internal::udf_holder<Func>), typeid(internal::named_collate_base), typeid(User)});
+        iterate_ast(expression1, nodeLambda);
+        iterate_ast(expression2, nodeLambda);
+        iterate_ast(expression3, nodeLambda);
+    }
+#endif
     REQUIRE(typeIndexes == expected);
 }

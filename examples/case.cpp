@@ -15,12 +15,6 @@ int main() {
         std::string name;
         std::string email;
         float marks = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        Student() {}
-        Student(int id, std::string name, std::string email, float marks) :
-            id{id}, name{std::move(name)}, email{std::move(email)}, marks{marks} {}
-#endif
     };
 
     auto storage = make_storage({},
@@ -40,7 +34,7 @@ int main() {
     });
 
     //  list all students
-    for(auto& student: storage.iterate<Student>()) {
+    for (auto& student: storage.iterate<Student>()) {
         cout << storage.dump(student) << endl;
     }
     cout << endl;
@@ -66,7 +60,7 @@ int main() {
                                                .when(greater_or_equal(&Student::marks, 50), then("C"))
                                                .else_("Sorry!! Failed")
                                                .end()));
-        for(auto& row: rows) {
+        for (auto& row: rows) {
             cout << std::get<0>(row) << ' ' << std::get<1>(row) << ' ' << std::get<2>(row) << ' ' << std::get<3>(row)
                  << endl;
         }
@@ -100,7 +94,7 @@ int main() {
                                                               .when(greater_or_equal(&Student::marks, 50), then("C"))
                                                               .else_("Sorry!! Failed")
                                                               .end())));
-        for(auto& row: rows) {
+        for (auto& row: rows) {
             cout << std::get<0>(row) << ' ' << std::get<1>(row) << ' ' << std::get<2>(row) << ' ' << std::get<3>(row)
                  << endl;
         }

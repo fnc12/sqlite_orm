@@ -1,12 +1,13 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
 #include <system_error>  //  std::system_error
 #include <ostream>  //  std::ostream
 #include <string>  //  std::string
 #include <tuple>  //  std::tuple
-#include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
+#endif
 
-#include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/mpl.h"
 #include "tuple_helper/same_or_void.h"
@@ -15,8 +16,10 @@
 #include "type_traits.h"
 #include "collate_argument.h"
 #include "error_code.h"
+#include "field_of.h"
 #include "table_type_of.h"
 #include "type_printer.h"
+#include "table_reference.h"
 
 namespace sqlite_orm {
 
@@ -50,9 +53,6 @@ namespace sqlite_orm {
             const primary_key_type& as_base() const {
                 return *this;
             }
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            primary_key_with_autoincrement(primary_key_type primary_key) : primary_key_type{primary_key} {}
-#endif
         };
 
         /**
@@ -62,59 +62,58 @@ namespace sqlite_orm {
          */
         template<class... Cs>
         struct primary_key_t : primary_key_base {
-            using self = primary_key_t<Cs...>;
             using order_by = primary_key_base::order_by;
             using columns_tuple = std::tuple<Cs...>;
 
             columns_tuple columns;
 
-            primary_key_t(columns_tuple columns) : columns(std::move(columns)) {}
+            constexpr primary_key_t(columns_tuple columns) : columns(std::move(columns)) {}
 
-            self asc() const {
+            constexpr primary_key_t asc() const {
                 auto res = *this;
                 res.options.asc_option = order_by::ascending;
                 return res;
             }
 
-            self desc() const {
+            constexpr primary_key_t desc() const {
                 auto res = *this;
                 res.options.asc_option = order_by::descending;
                 return res;
             }
 
-            primary_key_with_autoincrement<self> autoincrement() const {
+            constexpr primary_key_with_autoincrement<primary_key_t> autoincrement() const {
                 return {*this};
             }
 
-            self on_conflict_rollback() const {
+            constexpr primary_key_t on_conflict_rollback() const {
                 auto res = *this;
                 res.options.conflict_clause_is_on = true;
                 res.options.conflict_clause = conflict_clause_t::rollback;
                 return res;
             }
 
-            self on_conflict_abort() const {
+            constexpr primary_key_t on_conflict_abort() const {
                 auto res = *this;
                 res.options.conflict_clause_is_on = true;
                 res.options.conflict_clause = conflict_clause_t::abort;
                 return res;
             }
 
-            self on_conflict_fail() const {
+            constexpr primary_key_t on_conflict_fail() const {
                 auto res = *this;
                 res.options.conflict_clause_is_on = true;
                 res.options.conflict_clause = conflict_clause_t::fail;
                 return res;
             }
 
-            self on_conflict_ignore() const {
+            constexpr primary_key_t on_conflict_ignore() const {
                 auto res = *this;
                 res.options.conflict_clause_is_on = true;
                 res.options.conflict_clause = conflict_clause_t::ignore;
                 return res;
             }
 
-            self on_conflict_replace() const {
+            constexpr primary_key_t on_conflict_replace() const {
                 auto res = *this;
                 res.options.conflict_clause_is_on = true;
                 res.options.conflict_clause = conflict_clause_t::replace;
@@ -163,6 +162,11 @@ namespace sqlite_orm {
             value_type value;
         };
 
+        template<class T>
+        struct table_content_t {
+            using mapped_type = T;
+        };
+
         /**
          *  DEFAULT constraint class.
          *  T is a value type.
@@ -179,14 +183,12 @@ namespace sqlite_orm {
         };
 
 #if SQLITE_VERSION_NUMBER >= 3006019
-
         /**
          *  FOREIGN KEY constraint class.
          *  Cs are columns which has foreign key
          *  Rs are column which C references to
-         *  Available in SQLite 3.6.19 or higher
+         *  Available since SQLite 3.6.19
          */
-
         template<class A, class B>
         struct foreign_key_t;
 
@@ -200,7 +202,7 @@ namespace sqlite_orm {
         };
 
         inline std::ostream& operator<<(std::ostream& os, foreign_key_action action) {
-            switch(action) {
+            switch (action) {
                 case foreign_key_action::no_action:
                     os << "NO ACTION";
                     break;
@@ -226,7 +228,7 @@ namespace sqlite_orm {
             const bool update;  //  true if update and false if delete
 
             operator std::string() const {
-                if(this->update) {
+                if (this->update) {
                     return "ON UPDATE";
                 } else {
                     return "ON DELETE";
@@ -250,7 +252,7 @@ namespace sqlite_orm {
 
             foreign_key_type no_action() const {
                 auto res = this->fk;
-                if(update) {
+                if (update) {
                     res.on_update._action = foreign_key_action::no_action;
                 } else {
                     res.on_delete._action = foreign_key_action::no_action;
@@ -260,7 +262,7 @@ namespace sqlite_orm {
 
             foreign_key_type restrict_() const {
                 auto res = this->fk;
-                if(update) {
+                if (update) {
                     res.on_update._action = foreign_key_action::restrict_;
                 } else {
                     res.on_delete._action = foreign_key_action::restrict_;
@@ -270,7 +272,7 @@ namespace sqlite_orm {
 
             foreign_key_type set_null() const {
                 auto res = this->fk;
-                if(update) {
+                if (update) {
                     res.on_update._action = foreign_key_action::set_null;
                 } else {
                     res.on_delete._action = foreign_key_action::set_null;
@@ -280,7 +282,7 @@ namespace sqlite_orm {
 
             foreign_key_type set_default() const {
                 auto res = this->fk;
-                if(update) {
+                if (update) {
                     res.on_update._action = foreign_key_action::set_default;
                 } else {
                     res.on_delete._action = foreign_key_action::set_default;
@@ -290,7 +292,7 @@ namespace sqlite_orm {
 
             foreign_key_type cascade() const {
                 auto res = this->fk;
-                if(update) {
+                if (update) {
                     res.on_update._action = foreign_key_action::cascade;
                 } else {
                     res.on_delete._action = foreign_key_action::cascade;
@@ -298,8 +300,8 @@ namespace sqlite_orm {
                 return res;
             }
 
-            operator bool() const {
-                return this->_action != foreign_key_action::none;
+            explicit operator bool() const {
+                return _action != foreign_key_action::none;
             }
         };
 
@@ -312,7 +314,6 @@ namespace sqlite_orm {
         struct foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> {
             using columns_type = std::tuple<Cs...>;
             using references_type = std::tuple<Rs...>;
-            using self = foreign_key_t<columns_type, references_type>;
 
             /**
              * Holds obect type of all referenced columns.
@@ -327,28 +328,23 @@ namespace sqlite_orm {
             columns_type columns;
             references_type references;
 
-            on_update_delete_t<self> on_update;
-            on_update_delete_t<self> on_delete;
+            on_update_delete_t<foreign_key_t> on_update;
+            on_update_delete_t<foreign_key_t> on_delete;
 
             static_assert(std::tuple_size<columns_type>::value == std::tuple_size<references_type>::value,
                           "Columns size must be equal to references tuple");
-            static_assert(!std::is_same<target_type, void>::value, "All references must have the same type");
+            static_assert(!std::is_same<source_type, void>::value, "All columns must have the same mapped type");
+            static_assert(!std::is_same<target_type, void>::value, "All references must have the same mapped type");
 
             foreign_key_t(columns_type columns_, references_type references_) :
                 columns(std::move(columns_)), references(std::move(references_)),
                 on_update(*this, true, foreign_key_action::none), on_delete(*this, false, foreign_key_action::none) {}
 
-            foreign_key_t(const self& other) :
+            foreign_key_t(const foreign_key_t& other) :
                 columns(other.columns), references(other.references), on_update(*this, true, other.on_update._action),
                 on_delete(*this, false, other.on_delete._action) {}
 
-            self& operator=(const self& other) {
-                this->columns = other.columns;
-                this->references = other.references;
-                this->on_update = {*this, true, other.on_update._action};
-                this->on_delete = {*this, false, other.on_delete._action};
-                return *this;
-            }
+            foreign_key_t& operator=(const foreign_key_t&) = delete;
         };
 
         template<class A, class B>
@@ -358,35 +354,56 @@ namespace sqlite_orm {
         }
 
         /**
-         *  Cs can be a class member pointer, a getter function member pointer or setter
-         *  func member pointer
-         *  Available in SQLite 3.6.19 or higher
+         *  Cs can be a class member pointer or column pointer
+         *  Available since SQLite 3.6.19
          */
         template<class... Cs>
         struct foreign_key_intermediate_t {
             using tuple_type = std::tuple<Cs...>;
 
-            tuple_type columns;
+            tuple_type _columns;
 
+            /**
+             *  Specify one or more target fields, which can either be pointers to class members or column pointers.
+             */
             template<class... Rs>
-            foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> references(Rs... refs) {
-                return {std::move(this->columns), {std::forward<Rs>(refs)...}};
+            foreign_key_t<tuple_type, std::tuple<Rs...>> references(Rs... refs) {
+                return {std::move(_columns), {std::forward<Rs>(refs)...}};
             }
+
+            /**
+             *  Specify one or more target fields that are member pointers of base classes,
+             *  specifying the derived class as an explicit template argument.
+             */
+            template<class O, class... Base, class... F>
+            foreign_key_t<tuple_type, std::tuple<F O::*...>> references(F Base::*... refs) {
+                static_assert(polyfill::conjunction<is_field_of<F Base::*, O>...>::value,
+                              "Referenced fields must be from explicitly specified derived class");
+                return {std::move(_columns), {refs...}};
+            }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            /**
+             *  Specify one or more target fields that are member pointers of base classes,
+             *  specifying the derived class as an explicit template argument.
+             */
+            template<orm_table_reference auto table, class... Base, class... F>
+            auto references(F Base::*... refs) {
+                return this->references<auto_decay_table_ref_t<table>>(refs...);
+            }
+#endif
         };
 #endif
 
         struct collate_constraint_t {
             collate_argument argument = collate_argument::binary;
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            collate_constraint_t(collate_argument argument) : argument{argument} {}
-#endif
 
             operator std::string() const {
                 return "COLLATE " + this->string_from_collate_argument(this->argument);
             }
 
             static std::string string_from_collate_argument(collate_argument argument) {
-                switch(argument) {
+                switch (argument) {
                     case collate_argument::binary:
                         return "BINARY";
                     case collate_argument::nocase:
@@ -405,7 +422,6 @@ namespace sqlite_orm {
             expression_type expression;
         };
 
-#if SQLITE_VERSION_NUMBER >= 3031000
         struct basic_generated_always {
             enum class storage_type {
                 not_specified,
@@ -413,14 +429,13 @@ namespace sqlite_orm {
                 stored,
             };
 
+#if SQLITE_VERSION_NUMBER >= 3031000
             bool full = true;
             storage_type storage = storage_type::not_specified;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            basic_generated_always(bool full, storage_type storage) : full{full}, storage{storage} {}
 #endif
         };
 
+#if SQLITE_VERSION_NUMBER >= 3031000
         template<class T>
         struct generated_always_t : basic_generated_always {
             using expression_type = T;
@@ -448,7 +463,7 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_foreign_key_v =
+        inline constexpr bool is_foreign_key_v =
 #if SQLITE_VERSION_NUMBER >= 3006019
             polyfill::is_specialization_of<T, foreign_key_t>::value;
 #else
@@ -459,13 +474,13 @@ namespace sqlite_orm {
         struct is_foreign_key : polyfill::bool_constant<is_foreign_key_v<T>> {};
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_primary_key_v = std::is_base_of<primary_key_base, T>::value;
+        inline constexpr bool is_primary_key_v = std::is_base_of<primary_key_base, T>::value;
 
         template<class T>
         struct is_primary_key : polyfill::bool_constant<is_primary_key_v<T>> {};
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_generated_always_v =
+        inline constexpr bool is_generated_always_v =
 #if SQLITE_VERSION_NUMBER >= 3031000
             polyfill::is_specialization_of<T, generated_always_t>::value;
 #else
@@ -502,7 +517,9 @@ namespace sqlite_orm {
                                                                     check_if_is_type<unindexed_t>>,
                                                    T>;
     }
+}
 
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3031000
     template<class T>
     internal::generated_always_t<T> generated_always_as(T expression) {
@@ -517,13 +534,37 @@ namespace sqlite_orm {
 
 #if SQLITE_VERSION_NUMBER >= 3006019
     /**
-     *  FOREIGN KEY constraint construction function that takes member pointer as argument
-     *  Available in SQLite 3.6.19 or higher
+     *  FOREIGN KEY constraint builder function taking one or more fields, which can either be pointers to class members or column pointers.
+     *  Available since SQLite 3.6.19
      */
     template<class... Cs>
     internal::foreign_key_intermediate_t<Cs...> foreign_key(Cs... columns) {
         return {{std::forward<Cs>(columns)...}};
     }
+
+    /**
+     *  FOREIGN KEY constraint builder function taking one or more fields that are member pointers of base classes,
+     *  specifying the derived class as an explicit template argument.
+     *  Available since SQLite 3.6.19
+     */
+    template<class O, class... Base, class... F>
+    internal::foreign_key_intermediate_t<F O::*...> foreign_key(F Base::*... columns) {
+        static_assert(polyfill::conjunction<internal::is_field_of<F Base::*, O>...>::value,
+                      "Fields must be from explicitly specified derived class");
+        return {{columns...}};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  FOREIGN KEY constraint builder function taking one or more fields that are member pointers of base classes,
+     *  specifying the derived class as an explicit template argument.
+     *  Available since SQLite 3.6.19
+     */
+    template<orm_table_reference auto table, class... Base, class... F>
+    auto foreign_key(F Base::*... columns) {
+        return foreign_key<internal::auto_decay_table_ref_t<table>>(columns...);
+    }
+#endif
 #endif
 
     /**
@@ -541,6 +582,7 @@ namespace sqlite_orm {
         return {{}};
     }
 
+#if SQLITE_VERSION_NUMBER >= 3009000
     /**
      *  UNINDEXED column constraint builder function. Used in FTS virtual tables.
      * 
@@ -581,17 +623,50 @@ namespace sqlite_orm {
     }
 
     /**
-     *  PRIMARY KEY table constraint builder function.
+     *  content='table' table constraint builder function. Used in FTS virtual tables.
+     * 
+     *  https://www.sqlite.org/fts5.html#external_content_tables
+     */
+    template<class T>
+    internal::table_content_t<T> content() {
+        return {};
+    }
+#endif
+
+    /**
+     *  PRIMARY KEY constraint builder function taking one or more fields, which can either be pointers to class members or column pointers.
      */
     template<class... Cs>
-    internal::primary_key_t<Cs...> primary_key(Cs... cs) {
+    constexpr internal::primary_key_t<Cs...> primary_key(Cs... cs) {
         return {{std::forward<Cs>(cs)...}};
     }
 
     /**
-     *  PRIMARY KEY column constraint builder function.
+     *  PRIMARY KEY constraint builder function taking one or more fields that are member pointers of base classes,
+     *  specifying the derived class as an explicit template argument.
      */
-    inline internal::primary_key_t<> primary_key() {
+    template<class O, class... Base, class... F>
+    constexpr internal::primary_key_t<F O::*...> primary_key(F Base::*... columns) {
+        static_assert(polyfill::conjunction<internal::is_field_of<F Base::*, O>...>::value,
+                      "Fields must be from explicitly specified derived class");
+        return {{columns...}};
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  PRIMARY KEY constraint builder function taking one or more fields that are member pointers of base classes,
+     *  specifying the derived class as an explicit template argument.
+     */
+    template<orm_table_reference auto table, class... Base, class... F>
+    constexpr auto primary_key(F Base::*... columns) {
+        return primary_key<internal::auto_decay_table_ref_t<table>>(columns...);
+    }
+#endif
+
+    /**
+     *  PRIMARY KEY column constraint builder function (used at a single column).
+     */
+    inline constexpr internal::primary_key_t<> primary_key() {
         return {{}};
     }
 

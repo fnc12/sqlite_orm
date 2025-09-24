@@ -6,11 +6,6 @@ using namespace sqlite_orm;
 TEST_CASE("Not operator") {
     struct Object {
         int id = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        Object() = default;
-        Object(int id) : id{id} {}
-#endif
     };
 
     auto storage = make_storage("", make_table("objects", make_column("id", &Object::id, primary_key())));

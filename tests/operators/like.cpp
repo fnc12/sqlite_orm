@@ -7,11 +7,6 @@ TEST_CASE("Like operator") {
     struct User {
         int id = 0;
         std::string name;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        User() = default;
-        User(int id, std::string name) : id{id}, name{std::move(name)} {}
-#endif
     };
     struct Pattern {
         std::string value;
@@ -50,9 +45,7 @@ TEST_CASE("Like operator") {
     {
         auto rows = storage.select(like(&User::name, "S%a"));
         REQUIRE(rows.size() == 3);
-        REQUIRE(count_if(rows.begin(), rows.end(), [](bool arg) {
-                    return arg == true;
-                }) == 1);
+        REQUIRE(count(rows.begin(), rows.end(), true) == 1);
     }
 
     storage.insert(Pattern{"o%o"});

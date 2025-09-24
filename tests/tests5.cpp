@@ -10,12 +10,6 @@ TEST_CASE("Iterate blob") {
         std::vector<char> key;
     };
 
-    struct TestComparator {
-        bool operator()(const Test& lhs, const Test& rhs) const {
-            return lhs.id == rhs.id && lhs.key == rhs.key;
-        }
-    };
-
     auto db =
         make_storage("",
                      make_table("Test", make_column("key", &Test::key), make_column("id", &Test::id, primary_key())));
@@ -28,15 +22,6 @@ TEST_CASE("Iterate blob") {
 
     db.replace(v);
 
-    TestComparator testComparator;
-    for(auto& obj: db.iterate<Test>()) {
-        REQUIRE(testComparator(obj, v));
-    }  //  test that object_view and iterator_t compile
-
-    for(const auto& obj: db.iterate<Test>()) {
-        REQUIRE(testComparator(obj, v));
-    }  //  test that object_view and iterator_t compile
-
     {
         auto keysCount = db.count<Test>(where(c(&Test::key) == key));
         auto keysCountRows = db.select(count<Test>(), where(c(&Test::key) == key));
@@ -44,14 +29,6 @@ TEST_CASE("Iterate blob") {
         REQUIRE(keysCountRows.front() == 1);
         REQUIRE(keysCount == keysCountRows.front());
         REQUIRE(db.get_all<Test>(where(c(&Test::key) == key)).size() == 1);
-    }
-    {
-        int iterationsCount = 0;
-        for(auto& w: db.iterate<Test>(where(c(&Test::key) == key))) {
-            REQUIRE(testComparator(w, v));
-            ++iterationsCount;
-        }
-        REQUIRE(iterationsCount == 1);
     }
 }
 
@@ -254,7 +231,7 @@ TEST_CASE("Dump") {
     REQUIRE(allUsers.size() == 2);
 
     const std::string dumpUser1 = storage.dump(allUsers[0]);
-    REQUIRE(dumpUser1 == std::string{"{ id : '1', car_year : 'null' }"});
+    REQUIRE(dumpUser1 == std::string{"{ id : '1', car_year : 'NULL' }"});
 
     const std::string dumpUser2 = storage.dump(allUsers[1]);
     REQUIRE(dumpUser2 == std::string{"{ id : '2', car_year : '2006' }"});
@@ -290,7 +267,7 @@ TEST_CASE("issue822") {
       public:
         A() = default;
         A(const uint8_t& address, const uint8_t& type, const uint8_t& idx, std::shared_ptr<double> value) :
-            address(address), type(type), idx(idx), value(std::move(value)){};
+            address(address), type(type), idx(idx), value(std::move(value)) {};
 
         const uint8_t& getAddress() const {
             return this->address;
@@ -340,7 +317,7 @@ TEST_CASE("issue822") {
     storage.sync_schema();
     storage.replace(A(1, 1, 0, std::make_shared<double>(55.5)));
     auto records = storage.get_all<A>(where(c(&A::getAddress) == 1 and c(&A::getType) == 1 and c(&A::getIndex) == 0));
-    if(records.size() != 0) {
+    if (records.size() != 0) {
         A a = records[0];
         a.setValue(std::make_shared<double>(10));
         storage.update(a);

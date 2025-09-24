@@ -2,7 +2,6 @@
  *  This example shows you how to create a storage with a tablw with a composite primary key
  *  and another table woth foreign key to first table's primary compisite key.
  */
-#include <cstdio>
 #include <ctime>
 
 #include <string>
@@ -10,6 +9,11 @@
 
 #include <sqlite_orm/sqlite_orm.h>
 
+#if SQLITE_VERSION_NUMBER >= 3006019
+#define ENABLE_THIS_EXAMPLE
+#endif
+
+#ifdef ENABLE_THIS_EXAMPLE
 using std::cout;
 using std::endl;
 
@@ -22,10 +26,12 @@ struct User {
 struct UserVisit {
     int userId;
     std::string userFirstName;
-    time_t time;
+    std::time_t time;
 };
+#endif
 
 int main() {
+#ifdef ENABLE_THIS_EXAMPLE
     using namespace sqlite_orm;
 
     auto storage = make_storage(
@@ -53,11 +59,13 @@ int main() {
     try {
         //  2 and 'Drake' values will be ignored cause they are primary keys
         storage.insert(User{2, "Drake", "Singer"});
-    } catch(const std::system_error& e) {
+    } catch (const std::system_error& e) {
         cout << "exception = " << e.what() << endl;
     }
     storage.replace(User{2, "The Weeknd", "Singer"});
     auto weeknd = storage.get<User>(2, "The Weeknd");
     cout << "weeknd = " << storage.dump(weeknd) << endl;
+#endif
+
     return 0;
 }

@@ -1,0 +1,70 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run unit_tests",
+            "type": "shell",
+            "command": "${workspaceFolder}/build/tests/unit_tests",
+            "options": {
+                "cwd": "${workspaceFolder}/build/tests"
+            },
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Run amalgamate script",
+            "type": "shell",
+            "command": "python3",
+            "args": [
+                "third_party/amalgamate/amalgamate.py",
+                "-c",
+                "third_party/amalgamate/config.json",
+                "-s",
+                "."
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Run clang-format",
+            "type": "shell",
+            "command": "clang-format",
+            "args": [
+                "-i",
+                "-style=file",
+                "include/sqlite_orm/*.h",
+                "tests/*.cpp",
+                "tests/*/*.cpp",
+                "tests/*/*/*.cpp",
+                "dev/*.h",
+                "dev/*/*.h",
+                "tests/*/*.h",
+                "examples/*.cpp",
+                "examples/*/src/*.cpp"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        }
+    ]
+}

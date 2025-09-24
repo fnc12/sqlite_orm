@@ -1,3 +1,5 @@
+#include <cstdint>
+#include <cstdio>  //  std::remove
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 
@@ -15,7 +17,7 @@ TEST_CASE("Sync schema") {
 
     //  this is an old version of user..
     struct UserBefore {
-        int id;
+        int id = 0;
         std::string name;
         std::unique_ptr<int> categoryId;
         std::unique_ptr<std::string> surname;
@@ -23,17 +25,17 @@ TEST_CASE("Sync schema") {
 
     //  this is a new version of user
     struct UserAfter {
-        int id;
+        int id = 0;
         std::string name;
 
-        bool operator==(const UserBefore& userBefore) const {
-            return this->id == userBefore.id && this->name == userBefore.name;
+        bool operator==(const UserBefore& before) const {
+            return this->id == before.id && this->name == before.name;
         }
     };
 
     //  create an old storage
     auto filename = "sync_schema_text.sqlite";
-    ::remove(filename);
+    std::remove(filename);
     auto storage = make_storage(filename,
                                 make_table("users",
                                            make_column("id", &UserBefore::id, primary_key()),
@@ -57,7 +59,7 @@ TEST_CASE("Sync schema") {
     usersToInsert.push_back({-1, "Brad", std::make_unique<int>(65), nullptr});
     usersToInsert.push_back({-1, "Paul", std::make_unique<int>(65), nullptr});
 
-    for(auto& user: usersToInsert) {
+    for (auto& user: usersToInsert) {
         auto insertedId = storage.insert(user);
         user.id = insertedId;
     }
@@ -96,7 +98,7 @@ TEST_CASE("Sync schema") {
 
         REQUIRE(usersFromDb.size() == usersToInsert.size());
 
-        for(size_t i = 0; i < usersFromDb.size(); ++i) {
+        for (size_t i = 0; i < usersFromDb.size(); ++i) {
             auto& userFromDb = usersFromDb[i];
             auto& oldUser = usersToInsert[i];
             REQUIRE(userFromDb == oldUser);
@@ -116,12 +118,12 @@ TEST_CASE("Sync schema") {
 TEST_CASE("issue854") {
     struct Base {
         std::string name;
-        int64_t timestamp;
-        int64_t value;
+        int64_t timestamp = 0;
+        int64_t value = 0;
     };
 
     struct A : public Base {
-        int64_t id;
+        int64_t id = 0;
     };
     auto storage = make_storage({},
                                 make_table("entries",
@@ -136,20 +138,14 @@ TEST_CASE("issue521") {
     auto storagePath = "issue521.sqlite";
 
     struct MockDatabasePoco {
-        int id{-1};
+        int id = 0;
         std::string name;
-        uint32_t alpha{0};
+        std::uint32_t alpha{0};
         float beta{0.0};
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        MockDatabasePoco() = default;
-        MockDatabasePoco(int id, std::string name, uint32_t alpha, float beta) :
-            id{id}, name{std::move(name)}, alpha{alpha}, beta{beta} {}
-#endif
     };
     std::vector<MockDatabasePoco> pocosToInsert;
 
-    ::remove(storagePath);
+    std::remove(storagePath);
     {
         // --- Create the initial database
         auto storage = sqlite_orm::make_storage(
@@ -166,10 +162,10 @@ TEST_CASE("issue521") {
 
         // --- Insert two rows
         pocosToInsert.clear();
-        pocosToInsert.push_back({-1, "Michael", 10, 10.10f});
-        pocosToInsert.push_back({-1, "Joyce", 20, 20.20f});
+        pocosToInsert.push_back({0, "Michael", 10, 10.10f});
+        pocosToInsert.push_back({0, "Joyce", 20, 20.20f});
 
-        for(auto& poco: pocosToInsert) {
+        for (auto& poco: pocosToInsert) {
             auto insertedId = storage.insert(poco);
             poco.id = insertedId;
         }
@@ -179,7 +175,7 @@ TEST_CASE("issue521") {
 
         using namespace sqlite_orm;
         auto pocosFromDb = storage.get_all<MockDatabasePoco>(order_by(&MockDatabasePoco::id));
-        for(size_t i = 0; i < pocosFromDb.size(); ++i) {
+        for (size_t i = 0; i < pocosFromDb.size(); ++i) {
             auto& pocoFromDb = pocosFromDb[i];
             auto& oldPoco = pocosToInsert[i];
 
@@ -203,7 +199,7 @@ TEST_CASE("issue521") {
         REQUIRE(static_cast<size_t>(storage.count<MockDatabasePoco>()) == pocosToInsert.size());
 
         auto pocosFromDb = storage.get_all<MockDatabasePoco>(order_by(&MockDatabasePoco::id));
-        for(size_t i = 0; i < pocosFromDb.size(); ++i) {
+        for (size_t i = 0; i < pocosFromDb.size(); ++i) {
             auto& pocoFromDb = pocosFromDb[i];
             auto& oldPoco = pocosToInsert[i];
             REQUIRE(pocoFromDb.id == oldPoco.id);
@@ -228,7 +224,7 @@ TEST_CASE("issue521") {
         REQUIRE(static_cast<size_t>(storage.count<MockDatabasePoco>()) == pocosToInsert.size());
 
         auto pocosFromDb = storage.get_all<MockDatabasePoco>(order_by(&MockDatabasePoco::id));
-        for(size_t i = 0; i < pocosFromDb.size(); ++i) {
+        for (size_t i = 0; i < pocosFromDb.size(); ++i) {
             auto& pocoFromDb = pocosFromDb[i];
             auto& oldPoco = pocosToInsert[i];
             REQUIRE(pocoFromDb.id == oldPoco.id);
@@ -255,7 +251,7 @@ TEST_CASE("issue521") {
         REQUIRE(static_cast<size_t>(storage.count<MockDatabasePoco>()) == pocosToInsert.size());
 
         auto pocosFromDb = storage.get_all<MockDatabasePoco>(order_by(&MockDatabasePoco::id));
-        for(size_t i = 0; i < pocosFromDb.size(); ++i) {
+        for (size_t i = 0; i < pocosFromDb.size(); ++i) {
             auto& pocoFromDb = pocosFromDb[i];
             auto& oldPoco = pocosToInsert[i];
 
@@ -267,10 +263,10 @@ TEST_CASE("issue521") {
 }
 
 bool compareUniquePointers(const std::unique_ptr<int>& lhs, const std::unique_ptr<int>& rhs) {
-    if(!lhs && !rhs) {
+    if (!lhs && !rhs) {
         return true;
     } else {
-        if(lhs && rhs) {
+        if (lhs && rhs) {
             return *lhs == *rhs;
         } else {
             return false;
@@ -309,7 +305,7 @@ TEST_CASE("sync_schema") {
         const std::string name = "name";
         const std::string age = "age";
     } columnNames;
-    ::remove(storagePath);
+    std::remove(storagePath);
     {
         auto storage = make_storage(storagePath,
                                     make_table(tableName,
@@ -475,7 +471,7 @@ TEST_CASE("sync_schema") {
 
 TEST_CASE("sync_schema_simulate") {
     struct Cols {
-        int Col1;
+        int Col1 = 0;
     };
 
     auto storage =
@@ -483,24 +479,26 @@ TEST_CASE("sync_schema_simulate") {
 
     storage.sync_schema();
     storage.sync_schema_simulate();
+
+    std::remove("db");
 }
+
 #if SQLITE_VERSION_NUMBER >= 3031000
 TEST_CASE("sync_schema with generated columns") {
     struct User {
         int id = 0;
         int hash = 0;
 
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        User() = default;
-        User(int id, int hash = 0) : id{id}, hash{hash} {}
-#endif
-
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+        bool operator==(const User& other) const = default;
+#else
         bool operator==(const User& other) const {
             return this->id == other.id && this->hash == other.hash;
         }
+#endif
     };
     auto storagePath = "sync_schema_with_generated.sqlite";
-    ::remove(storagePath);
+    std::remove(storagePath);
     auto storage1 = make_storage(storagePath, make_table("users", make_column("id", &User::id)));
     storage1.sync_schema();
     storage1.insert(User{5});

@@ -1,13 +1,14 @@
 #pragma once
 
-#ifdef SQLITE_ORM_WITH_CTE
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #include <string>
 #include <vector>
 #include <functional>  //  std::reference_wrapper
 #include <system_error>
 #endif
+#endif
 
-#include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"
 #include "member_traits/member_traits.h"
@@ -16,20 +17,20 @@
 #include "select_constraints.h"
 #include "serializer_context.h"
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 namespace sqlite_orm {
     namespace internal {
         // collecting column names utilizes the statement serializer
-        template<class T, class C>
-        auto serialize(const T& t, const C& context);
+        template<class T, class Ctx>
+        auto serialize(const T& t, const Ctx& context);
 
         inline void unquote_identifier(std::string& identifier) {
-            if(!identifier.empty()) {
+            if (!identifier.empty()) {
                 constexpr char quoteChar = '"';
                 constexpr char sqlEscaped[] = {quoteChar, quoteChar};
                 identifier.erase(identifier.end() - 1);
                 identifier.erase(identifier.begin());
-                for(size_t pos = 0; (pos = identifier.find(sqlEscaped, pos, 2)) != identifier.npos; ++pos) {
+                for (size_t pos = 0; (pos = identifier.find(sqlEscaped, pos, 2)) != identifier.npos; ++pos) {
                     identifier.erase(pos, 1);
                 }
             }
@@ -37,7 +38,7 @@ namespace sqlite_orm {
 
         inline void unquote_or_erase(std::string& name) {
             constexpr char quoteChar = '"';
-            if(name.front() == quoteChar) {
+            if (name.front() == quoteChar) {
                 unquote_identifier(name);
             } else {
                 // unaliased expression - see 3. below
@@ -53,11 +54,12 @@ namespace sqlite_orm {
             static_assert(!is_compound_operator_v<T>);
 
             template<class Ctx>
-            std::vector<std::string> operator()(const expression_type& t, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::vector<std::string>
+            operator()(const expression_type& t, const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 auto newContext = context;
                 newContext.skip_table_name = true;
                 std::string columnName = serialize(t, newContext);
-                if(columnName.empty()) {
+                if (columnName.empty()) {
                     throw std::system_error{orm_error_code::column_not_found};
                 }
                 unquote_or_erase(columnName);
@@ -68,7 +70,7 @@ namespace sqlite_orm {
         template<class T, class Ctx>
         std::vector<std::string> get_cte_column_names(const T& t, const Ctx& context) {
             cte_column_names_collector<T> collector;
-            return collector(t, context);
+            return collector(access_column_expression(t), context);
         }
 
         template<class As>
@@ -76,7 +78,8 @@ namespace sqlite_orm {
             using expression_type = As;
 
             template<class Ctx>
-            std::vector<std::string> operator()(const expression_type& /*expression*/, const Ctx& /*context*/) const {
+            SQLITE_ORM_STATIC_CALLOP std::vector<std::string>
+            operator()(const expression_type& /*expression*/, const Ctx& /*context*/) SQLITE_ORM_OR_CONST_CALLOP {
                 return {alias_extractor<alias_type_t<As>>::extract()};
             }
         };
@@ -86,7 +89,8 @@ namespace sqlite_orm {
             using expression_type = Wrapper;
 
             template<class Ctx>
-            std::vector<std::string> operator()(const expression_type& expression, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::vector<std::string>
+            operator()(const expression_type& expression, const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 return get_cte_column_names(expression.get(), context);
             }
         };
@@ -97,7 +101,8 @@ namespace sqlite_orm {
             using T = typename Asterisk::type;
 
             template<class Ctx>
-            std::vector<std::string> operator()(const expression_type&, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::vector<std::string>
+            operator()(const expression_type&, const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 auto& table = pick_table<T>(context.db_objects);
 
                 std::vector<std::string> columnNames;
@@ -127,7 +132,8 @@ namespace sqlite_orm {
             using expression_type = Columns;
 
             template<class Ctx>
-            std::vector<std::string> operator()(const expression_type& cols, const Ctx& context) const {
+            SQLITE_ORM_STATIC_CALLOP std::vector<std::string>
+            operator()(const expression_type& cols, const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::vector<std::string> columnNames;
                 columnNames.reserve(size_t(cols.count));
                 auto newContext = context;
@@ -135,11 +141,11 @@ namespace sqlite_orm {
                 iterate_tuple(cols.columns, [&columnNames, &newContext](auto& m) {
                     using value_type = polyfill::remove_cvref_t<decltype(m)>;
 
-                    if constexpr(polyfill::is_specialization_of_v<value_type, as_t>) {
+                    if constexpr (polyfill::is_specialization_of_v<value_type, as_t>) {
                         columnNames.push_back(alias_extractor<alias_type_t<value_type>>::extract());
                     } else {
                         std::string columnName = serialize(m, newContext);
-                        if(!columnName.empty()) {
+                        if (!columnName.empty()) {
                             columnNames.push_back(std::move(columnName));
                         } else {
                             throw std::system_error{orm_error_code::column_not_found};
@@ -158,8 +164,9 @@ namespace sqlite_orm {
             std::vector<std::string> columnNames = get_cte_column_names(sel.col, context);
 
             // 2. override column names from cte expression
-            if(size_t n = std::tuple_size_v<ExplicitColRefs>) {
-                if(n != columnNames.size()) {
+            constexpr size_t nExplicitColumns = std::tuple_size_v<ExplicitColRefs>;
+            if constexpr (nExplicitColumns > 0) {
+                if (nExplicitColumns != columnNames.size()) {
                     throw std::system_error{orm_error_code::column_not_found};
                 }
 
@@ -167,24 +174,24 @@ namespace sqlite_orm {
                 iterate_tuple(explicitColRefs, [&idx, &columnNames, &context](auto& colRef) {
                     using ColRef = polyfill::remove_cvref_t<decltype(colRef)>;
 
-                    if constexpr(polyfill::is_specialization_of_v<ColRef, alias_holder>) {
+                    if constexpr (polyfill::is_specialization_of_v<ColRef, alias_holder>) {
                         columnNames[idx] = alias_extractor<type_t<ColRef>>::extract();
-                    } else if constexpr(std::is_member_pointer<ColRef>::value) {
+                    } else if constexpr (std::is_member_pointer<ColRef>::value) {
                         using O = table_type_of_t<ColRef>;
-                        if(auto* columnName = find_column_name<O>(context.db_objects, colRef)) {
+                        if (auto* columnName = find_column_name<O>(context.db_objects, colRef)) {
                             columnNames[idx] = *columnName;
                         } else {
                             // relaxed: allow any member pointer as column reference
                             columnNames[idx] = typeid(ColRef).name();
                         }
-                    } else if constexpr(polyfill::is_specialization_of_v<ColRef, column_t>) {
+                    } else if constexpr (polyfill::is_specialization_of_v<ColRef, column_t>) {
                         columnNames[idx] = colRef.name;
-                    } else if constexpr(std::is_same_v<ColRef, std::string>) {
-                        if(!colRef.empty()) {
+                    } else if constexpr (std::is_same_v<ColRef, std::string>) {
+                        if (!colRef.empty()) {
                             columnNames[idx] = colRef;
                         }
-                    } else if constexpr(std::is_same_v<ColRef, polyfill::remove_cvref_t<decltype(std::ignore)>>) {
-                        if(columnNames[idx].empty()) {
+                    } else if constexpr (std::is_same_v<ColRef, polyfill::remove_cvref_t<decltype(std::ignore)>>) {
+                        if (columnNames[idx].empty()) {
                             columnNames[idx] = std::to_string(idx + 1);
                         }
                     } else {
@@ -196,11 +203,20 @@ namespace sqlite_orm {
 
             // 3. fill in blanks with numerical column identifiers
             {
-                for(size_t i = 0, n = columnNames.size(); i < n; ++i) {
-                    if(columnNames[i].empty()) {
+#ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
+                for (size_t n = 1; std::string & name: columnNames) {
+                    if (name.empty()) {
+                        name = std::to_string(n);
+                    }
+                    ++n;
+                }
+#else
+                for (size_t i = 0, n = columnNames.size(); i < n; ++i) {
+                    if (columnNames[i].empty()) {
                         columnNames[i] = std::to_string(i + 1);
                     }
                 }
+#endif
             }
 
             return columnNames;

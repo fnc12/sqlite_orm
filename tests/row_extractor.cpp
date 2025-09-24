@@ -1,3 +1,4 @@
+#include <sqlite3.h>
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 
@@ -11,13 +12,13 @@ enum class Gender {
 };
 
 struct SuperHero {
-    int id;
+    int id = 0;
     std::string name;
     Gender gender = Gender::Invalid;
 };
 
 std::string GenderToString(Gender gender) {
-    switch(gender) {
+    switch (gender) {
         case Gender::Female:
             return "female";
         case Gender::Male:
@@ -29,9 +30,9 @@ std::string GenderToString(Gender gender) {
 }
 
 std::optional<Gender> GenderFromString(const std::string& s) {
-    if(s == "female") {
+    if (s == "female") {
         return Gender::Female;
-    } else if(s == "male") {
+    } else if (s == "male") {
         return Gender::Male;
     }
     return std::nullopt;
@@ -62,7 +63,7 @@ struct sqlite_orm::field_printer<Gender> {
 template<>
 struct sqlite_orm::row_extractor<Gender> {
     Gender extract(const char* columnText) const {
-        if(auto gender = GenderFromString(columnText)) {
+        if (auto gender = GenderFromString(columnText)) {
             return *gender;
         } else {
             throw std::runtime_error("incorrect gender string (" + std::string(columnText) + ")");
@@ -96,7 +97,7 @@ struct CustomConcatFunction {
 
     std::string operator()(const arg_values& args) const {
         std::string result;
-        for(auto arg_value: args) {
+        for (auto arg_value: args) {
             result += arg_value.get<std::string>();
         }
         return result;
@@ -131,9 +132,9 @@ TEST_CASE("Custom row extractors") {
     storage.sync_schema();
 
     storage.transaction([&storage]() {
-        storage.insert(SuperHero{-1, "Batman", Gender::Male});
-        storage.insert(SuperHero{-1, "Wonder woman", Gender::Female});
-        storage.insert(SuperHero{-1, "Superman", Gender::Male});
+        storage.insert(SuperHero{0, "Batman", Gender::Male});
+        storage.insert(SuperHero{0, "Wonder woman", Gender::Female});
+        storage.insert(SuperHero{0, "Superman", Gender::Male});
         return true;
     });
 
@@ -148,7 +149,8 @@ TEST_CASE("Custom row extractors") {
     SECTION("column text") {
         auto firstGender = select(distinct(&SuperHero::gender), order_by(&SuperHero::gender), limit(1));
         Gender gender = Gender::Invalid;
-        internal::perform_exec(db, storage.dump(firstGender), &extract_single_value<Gender>, &gender);
+        internal::sqlite_executor executor;
+        executor.perform_exec(db, storage.dump(firstGender), &extract_single_value<Gender>, &gender);
         REQUIRE(gender == Gender::Female);
     }
     SECTION("udf") {

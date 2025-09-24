@@ -5,6 +5,7 @@
 
 using namespace sqlite_orm;
 
+#if SQLITE_VERSION_NUMBER >= 3006019
 TEST_CASE("Prepared select") {
     using namespace PreparedStatementTests;
     using Catch::Matchers::UnorderedEquals;
@@ -156,7 +157,7 @@ TEST_CASE("Prepared select") {
         }
     }
     SECTION("serialize one column") {
-        for(auto i = 0; i < 2; ++i) {
+        for (auto i = 0; i < 2; ++i) {
             auto statement = storage.prepare(select(&User::id));
             testSerializing(statement);
             SECTION("nothing") {
@@ -169,7 +170,7 @@ TEST_CASE("Prepared select") {
         }
     }
     SECTION("serialize one column with order by") {
-        for(auto i = 0; i < 2; ++i) {
+        for (auto i = 0; i < 2; ++i) {
             auto statement = storage.prepare(select(&User::name, order_by(&User::id)));
             auto str = storage.dump(statement);
             testSerializing(statement);
@@ -312,10 +313,7 @@ TEST_CASE("Prepared select") {
         }
         SECTION("execute") {
             auto rows = storage.execute(statement);
-            std::vector<User> expected;
-            expected.push_back(User{1, "Team BS"});
-            expected.push_back(User{2, "Shy'm"});
-            expected.push_back(User{3, "Maître Gims"});
+            std::vector<User> expected{{1, "Team BS"}, {2, "Shy'm"}, {3, "Maître Gims"}};
             REQUIRE_THAT(rows, UnorderedEquals(expected));
         }
     }
@@ -362,12 +360,36 @@ TEST_CASE("Prepared select") {
         }
         SECTION("execute") {
             auto rows = storage.execute(statement);
-            std::vector<Z> expected;
-            expected.push_back(Z{1, "Team BS"});
-            expected.push_back(Z{2, "Shy'm"});
-            expected.push_back(Z{3, "Maître Gims"});
+            std::vector<Z> expected{{1, "Team BS"}, {2, "Shy'm"}, {3, "Maître Gims"}};
             REQUIRE_THAT(rows, UnorderedEquals(expected));
         }
+    }
+    SECTION("non-aggregate struct") {
+        // testing `struct_extractor` with a non-aggregate type,
+        // which is expected to extract sql result values in the order of arguments.
+        // This was not the case with msvc, which would extract the name before the id.
+
+        struct Z {
+            decltype(User::id) id = 0;
+            decltype(User::name) name;
+
+#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
+            Z(decltype(id) id, decltype(name) name) : id{id}, name{std::move(name)} {}
+#endif
+
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+            bool operator==(const Z&) const = default;
+#else
+            bool operator==(const Z& z) const {
+                return this->id == z.id && this->name == z.name;
+            }
+#endif
+        };
+        constexpr auto z_struct = struct_<Z>(&User::id, &User::name);
+        auto statement = storage.prepare(select(z_struct));
+        auto rows = storage.execute(statement);
+        std::vector<Z> expected{{1, "Team BS"}, {2, "Shy'm"}, {3, "Maître Gims"}};
+        REQUIRE_THAT(rows, UnorderedEquals(expected));
     }
     SECTION("multi struct") {
         using Z = User;  // for the unit test it is fine to just reuse `User` as an unmapped struct
@@ -388,6 +410,7 @@ TEST_CASE("Prepared select") {
         }
     }
 }
+#endif
 
 TEST_CASE("dumping") {
     auto storage = make_storage("");
@@ -424,5 +447,23 @@ TEST_CASE("dumping") {
             expected = "SELECT 1";
         }
     }
+#if SQLITE_VERSION_NUMBER >= 3020000
+    SECTION("with bound pointer") {
+        int64 lastSelectedId;
+        auto statement = storage.prepare(select(bind_carray_pointer_statically(&lastSelectedId)));
+        SECTION("default") {
+            value = storage.dump(statement);
+            expected = "SELECT ?";
+        }
+        SECTION("parametrized") {
+            value = storage.dump(statement, true);
+            expected = "SELECT ?";
+        }
+        SECTION("dump") {
+            value = storage.dump(statement, false);
+            expected = "SELECT NULL";
+        }
+    }
+#endif
     REQUIRE(value == expected);
 }

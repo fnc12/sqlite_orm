@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
-#include <cassert>
+#include <assert.h>
 
 using std::cout;
 using std::endl;

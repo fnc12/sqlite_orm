@@ -1,14 +1,14 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_member_pointer
 #include <string>  //  std::string
 #include <tuple>  //  std::tuple_element
 #include <utility>  //  std::move
+#endif
 
-#include "../functional/cxx_universal.h"  //  ::size_t
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/cxx_functional_polyfill.h"
-#include "../functional/static_magic.h"
 #include "../functional/mpl.h"
 #include "../functional/index_sequence_util.h"
 #include "../tuple_helper/tuple_filter.h"
@@ -16,11 +16,10 @@
 #include "../tuple_helper/tuple_iteration.h"
 #include "../tuple_helper/tuple_transformer.h"
 #include "../member_traits/member_traits.h"
-#include "../typed_comparator.h"
+#include "../field_of.h"
 #include "../type_traits.h"
 #include "../alias_traits.h"
 #include "../constraints.h"
-#include "../table_info.h"
 #include "column.h"
 
 namespace sqlite_orm {
@@ -44,11 +43,6 @@ namespace sqlite_orm {
             using elements_type = std::tuple<Cs...>;
 
             elements_type elements;
-
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            mapped_object_t(std::string name, elements_type elements) :
-                basic_table{std::move(name)}, elements{std::move(elements)} {}
-#endif
 
             /*
              *  Returns the number of elements of the specified type.
@@ -96,7 +90,7 @@ namespace sqlite_orm {
                 iterate_tuple(this->elements,
                               col_index_sequence_with_field_type<elements_type, field_type>{},
                               call_as_template_base<column_field>([&res, &memberPointer, &object](const auto& column) {
-                                  if(compare_any(column.setter, memberPointer)) {
+                                  if (compare_fields(column.setter, memberPointer)) {
                                       res = &polyfill::invoke(column.member_pointer, object);
                                   }
                               }));
@@ -108,14 +102,16 @@ namespace sqlite_orm {
              *  @return column name or empty string if nothing found.
              */
             template<class M, satisfies<std::is_member_pointer, M> = true>
-            const std::string* find_column_name(M m) const {
-                const std::string* res = nullptr;
+            const std::string* find_column_name(M memberPointer) const {
                 using field_type = member_field_type_t<M>;
+
+                const std::string* res = nullptr;
                 iterate_tuple(this->elements,
                               col_index_sequence_with_field_type<elements_type, field_type>{},
-                              [&res, m](auto& c) {
-                                  if(compare_any(c.member_pointer, m) || compare_any(c.setter, m)) {
-                                      res = &c.name;
+                              [&res, memberPointer](auto& column) {
+                                  if (compare_fields(column.member_pointer, memberPointer) ||
+                                      compare_fields(column.setter, memberPointer)) {
+                                      res = &column.name;
                                   }
                               });
                 return res;

@@ -6,7 +6,9 @@ namespace sqlite_orm {
         struct current_date_t {};
         struct current_timestamp_t {};
     }
+}
 
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     inline internal::current_time_t current_time() {
         return {};
     }

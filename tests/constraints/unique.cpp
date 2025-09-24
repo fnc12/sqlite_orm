@@ -1,42 +1,30 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include "../catch_matchers.h"
 
 using namespace sqlite_orm;
 
 TEST_CASE("Unique") {
-    using Catch::Matchers::ContainsSubstring;
+#if SQLITE_VERSION_NUMBER >= 3037002
+    const ErrorCodeExceptionMatcher uniqueExceptionMatcher(sqlite_errc(SQLITE_CONSTRAINT_UNIQUE));
+#else
+    const ErrorCodeExceptionMatcher uniqueExceptionMatcher(sqlite_errc(SQLITE_CONSTRAINT));
+#endif
 
     struct Contact {
         int id = 0;
         std::string firstName;
         std::string lastName;
         std::string email;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        Contact() = default;
-        Contact(int id, std::string firstName, std::string lastName, std::string email) :
-            id{id}, firstName{std::move(firstName)}, lastName{std::move(lastName)}, email{std::move(email)} {}
-#endif
     };
     struct Shape {
         int id = 0;
         std::string backgroundColor;
         std::string foregroundColor;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        Shape() = default;
-        Shape(int id, std::string backgroundColor, std::string foregroundColor) :
-            id{id}, backgroundColor{std::move(backgroundColor)}, foregroundColor{std::move(foregroundColor)} {}
-#endif
     };
     struct List {
         int id = 0;
         std::unique_ptr<std::string> email;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        List() = default;
-        List(int id, decltype(email) email) : id{id}, email{std::move(email)} {}
-#endif
     };
 
     auto storage = make_storage(
@@ -56,12 +44,13 @@ TEST_CASE("Unique") {
 
     storage.insert(Contact{0, "John", "Doe", "john.doe@gmail.com"});
 
-    REQUIRE_THROWS_WITH(storage.insert(Contact{0, "Johnny", "Doe", "john.doe@gmail.com"}),
-                        ContainsSubstring("constraint failed"));
+    REQUIRE_THROWS_MATCHES(storage.insert(Contact{0, "Johnny", "Doe", "john.doe@gmail.com"}),
+                           std::system_error,
+                           uniqueExceptionMatcher);
 
     storage.insert(Shape{0, "red", "green"});
     storage.insert(Shape{0, "red", "blue"});
-    REQUIRE_THROWS_WITH(storage.insert(Shape{0, "red", "green"}), ContainsSubstring("constraint failed"));
+    REQUIRE_THROWS_MATCHES(storage.insert(Shape{0, "red", "green"}), std::system_error, uniqueExceptionMatcher);
 
     std::vector<List> lists(2);
     REQUIRE_NOTHROW(storage.insert_range(lists.begin(), lists.end()));

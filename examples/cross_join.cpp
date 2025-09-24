@@ -77,7 +77,7 @@ int main(int, char**) {
                                 order_by(&Suit::suit));  //  cards is vector<tuple<string, string>>
 
     cout << "cards count = " << cards.size() << endl;
-    for(auto card: cards) {
+    for (auto card: cards) {
         cout << std::get<0>(card) << '\t' << std::get<1>(card) << endl;
     }
     cout << endl;

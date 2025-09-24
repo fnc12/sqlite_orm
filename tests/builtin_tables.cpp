@@ -17,10 +17,17 @@ TEST_CASE("builtin tables") {
         STATIC_REQUIRE(std::is_same_v<decltype(masterRows), decltype(schemaRows)>);
         REQUIRE_THAT(schemaRows, Equals(masterRows));
 
-        constexpr auto schema = c<sqlite_master>();
-        auto schemaRows2 = storage.get_all<schema>();
+        auto schemaRows2 = storage.get_all<sqlite_master_table>();
 
         STATIC_REQUIRE(std::is_same_v<decltype(masterRows), decltype(schemaRows2)>);
+        REQUIRE_THAT(schemaRows2, Equals(masterRows));
+
+#if __cpp_lib_containers_ranges >= 202202L
+        std::vector<sqlite_master> schemaRows3{std::from_range, storage.iterate<sqlite_master_table>()};
+#else
+        auto view = storage.iterate<sqlite_master_table>();
+        std::vector<sqlite_master> schemaRows3{view.begin(), view.end()};
+#endif
         REQUIRE_THAT(schemaRows2, Equals(masterRows));
 #endif
     }
@@ -43,6 +50,10 @@ TEST_CASE("builtin tables") {
 
         auto dbstatRows = storage.get_all<dbstat>();
         std::ignore = dbstatRows;
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        dbstatRows = storage.get_all<dbstat_table>();
+#endif
     }
 #endif  //  SQLITE_ENABLE_DBSTAT_VTAB
 }

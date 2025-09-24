@@ -1,11 +1,12 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <memory>
 #include <sstream>
 #include <string>
 #include <tuple>
+#endif
 
-#include "../functional/cxx_universal.h"
 #include "../optional_container.h"
 
 // NOTE Idea : Maybe also implement a custom trigger system to call a c++ callback when a trigger triggers ?
@@ -71,11 +72,6 @@ namespace sqlite_orm {
              * Statements of the triggers (to be executed when the trigger fires)
              */
             elements_type elements;
-
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            trigger_t(std::string name, T trigger_base, elements_type statements) :
-                base_trigger{std::move(name)}, base(std::move(trigger_base)), elements(std::move(statements)) {}
-#endif
         };
 
         /**
@@ -204,10 +200,6 @@ namespace sqlite_orm {
 
             type_t type = type_t::ignore;
             std::string message;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            raise_t(type_t type, std::string message) : type{type}, message{std::move(message)} {}
-#endif
         };
 
         template<class T>
@@ -223,8 +215,10 @@ namespace sqlite_orm {
 
             expression_type expression;
         };
-    }  // NAMESPACE internal
+    }
+}
 
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  NEW.expression function used within TRIGGER expressions
      */

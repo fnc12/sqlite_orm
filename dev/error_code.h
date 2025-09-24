@@ -1,13 +1,15 @@
 #pragma once
 
 #include <sqlite3.h>
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <system_error>  // std::error_code, std::system_error
 #include <string>  //  std::string
 #include <stdexcept>
 #include <sstream>  //  std::ostringstream
 #include <type_traits>
+#endif
 
-namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /** @short Enables classifying sqlite error codes.
 
@@ -28,6 +30,7 @@ namespace sqlite_orm {
         cannot_start_a_transaction_within_a_transaction,
         no_active_transaction,
         incorrect_journal_mode_string,
+        incorrect_locking_mode_string,
         invalid_collate_argument_enum,
         failed_to_init_a_backup,
         unknown_member_value,
@@ -38,8 +41,8 @@ namespace sqlite_orm {
         index_is_out_of_bounds,
         value_is_null,
         no_tables_specified,
+        empty_range,
     };
-
 }
 
 namespace std {
@@ -50,7 +53,7 @@ namespace std {
     struct is_error_code_enum<::sqlite_orm::orm_error_code> : true_type {};
 }
 
-namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     class orm_error_category : public std::error_category {
       public:
@@ -59,7 +62,7 @@ namespace sqlite_orm {
         }
 
         std::string message(int c) const override final {
-            switch(static_cast<orm_error_code>(c)) {
+            switch (static_cast<orm_error_code>(c)) {
                 case orm_error_code::not_found:
                     return "Not found";
                 case orm_error_code::type_is_not_mapped_to_storage:
@@ -110,8 +113,8 @@ namespace sqlite_orm {
             return "SQLite error";
         }
 
-        std::string message(int c) const override final {
-            return sqlite3_errstr(c);
+        std::string message(int ev) const override final {
+            return sqlite3_errstr(ev);
         }
     };
 

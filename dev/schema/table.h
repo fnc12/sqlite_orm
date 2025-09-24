@@ -1,15 +1,15 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <type_traits>  //  std::remove_const, std::is_member_pointer, std::true_type, std::false_type
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_element
 #include <utility>  //  std::forward, std::move
+#endif
 
-#include "../functional/cxx_universal.h"  //  ::size_t
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/cxx_functional_polyfill.h"
-#include "../functional/static_magic.h"
 #include "../functional/mpl.h"
 #include "../functional/index_sequence_util.h"
 #include "../tuple_helper/tuple_filter.h"
@@ -17,12 +17,13 @@
 #include "../tuple_helper/tuple_iteration.h"
 #include "../tuple_helper/tuple_transformer.h"
 #include "../member_traits/member_traits.h"
-#include "../typed_comparator.h"
+#include "../field_of.h"
 #include "../type_traits.h"
 #include "../alias_traits.h"
 #include "../constraints.h"
 #include "../table_info.h"
 #include "mapped_object.h"
+#include "index.h"
 #include "column.h"
 
 namespace sqlite_orm {
@@ -38,10 +39,11 @@ namespace sqlite_orm {
                                                                               check_if_is_template<check_t>,
                                                                               check_if_is_template<prefix_t>,
                                                                               check_if_is_template<tokenize_t>,
-                                                                              check_if_is_template<content_t>>,
+                                                                              check_if_is_template<content_t>,
+                                                                              check_if_is_template<table_content_t>>,
                                                              T>;
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         /**
          *  A subselect mapper's CTE moniker, void otherwise.
          */
@@ -61,7 +63,7 @@ namespace sqlite_orm {
          */
         template<class O, bool WithoutRowId, class... Cs>
         struct table_t : basic_table {
-#ifdef SQLITE_ORM_WITH_CTE
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             // this typename is used in contexts where it is known that the 'table' holds a subselect_mapper
             // instead of a regular object type
             using cte_mapper_type = O;
@@ -77,11 +79,6 @@ namespace sqlite_orm {
             using is_without_rowid = polyfill::bool_constant<is_without_rowid_v>;
 
             elements_type elements;
-
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            table_t(std::string name_, elements_type elements_) :
-                basic_table{std::move(name_)}, elements{std::move(elements_)} {}
-#endif
 
             table_t<O, true, Cs...> without_rowid() const {
                 return {this->name, this->elements};
@@ -133,7 +130,7 @@ namespace sqlite_orm {
                 iterate_tuple(this->elements,
                               col_index_sequence_with_field_type<elements_type, field_type>{},
                               call_as_template_base<column_field>([&res, &memberPointer, &object](const auto& column) {
-                                  if(compare_any(column.setter, memberPointer)) {
+                                  if (compare_fields(column.setter, memberPointer)) {
                                       res = &polyfill::invoke(column.member_pointer, object);
                                   }
                               }));
@@ -141,13 +138,13 @@ namespace sqlite_orm {
             }
 
             const basic_generated_always::storage_type*
-            find_column_generated_storage_type(const std::string& name) const {
+            find_column_generated_storage_type([[maybe_unused]] const std::string& name) const {
                 const basic_generated_always::storage_type* result = nullptr;
 #if SQLITE_VERSION_NUMBER >= 3031000
                 iterate_tuple(this->elements,
                               col_index_sequence_with<elements_type, is_generated_always>{},
                               [&result, &name](auto& column) {
-                                  if(column.name != name) {
+                                  if (column.name != name) {
                                       return;
                                   }
                                   using generated_op_index_sequence =
@@ -156,8 +153,6 @@ namespace sqlite_orm {
                                   constexpr size_t opIndex = index_sequence_value_at<0>(generated_op_index_sequence{});
                                   result = &std::get<opIndex>(column.constraints).storage;
                               });
-#else
-                (void)name;
 #endif
                 return result;
             }
@@ -182,7 +177,7 @@ namespace sqlite_orm {
             std::vector<std::string> primary_key_column_names() const {
                 using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
 
-                if(pkcol_index_sequence::size() > 0) {
+                if constexpr (pkcol_index_sequence::size() > 0) {
                     return create_from_tuple<std::vector<std::string>>(this->elements,
                                                                        pkcol_index_sequence{},
                                                                        &column_identifier::name);
@@ -207,8 +202,8 @@ namespace sqlite_orm {
             std::vector<std::string> composite_key_columns_names(const primary_key_t<Args...>& primaryKey) const {
                 return create_from_tuple<std::vector<std::string>>(primaryKey.columns,
                                                                    [this, empty = std::string{}](auto& memberPointer) {
-                                                                       if(const std::string* columnName =
-                                                                              this->find_column_name(memberPointer)) {
+                                                                       if (const std::string* columnName =
+                                                                               this->find_column_name(memberPointer)) {
                                                                            return *columnName;
                                                                        } else {
                                                                            return empty;
@@ -221,14 +216,16 @@ namespace sqlite_orm {
              *  @return column name or empty string if nothing found.
              */
             template<class M, satisfies<std::is_member_pointer, M> = true>
-            const std::string* find_column_name(M m) const {
-                const std::string* res = nullptr;
+            const std::string* find_column_name(M memberPointer) const {
                 using field_type = member_field_type_t<M>;
+
+                const std::string* res = nullptr;
                 iterate_tuple(this->elements,
                               col_index_sequence_with_field_type<elements_type, field_type>{},
-                              [&res, m](auto& c) {
-                                  if(compare_any(c.member_pointer, m) || compare_any(c.setter, m)) {
-                                      res = &c.name;
+                              [&res, memberPointer](auto& column) {
+                                  if (compare_fields(column.member_pointer, memberPointer) ||
+                                      compare_fields(column.setter, memberPointer)) {
+                                      res = &column.name;
                                   }
                               });
                 return res;
@@ -302,11 +299,6 @@ namespace sqlite_orm {
 
             module_details_type module_details;
 
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            virtual_table_t(std::string name, module_details_type module_details) :
-                basic_table{std::move(name)}, module_details{std::move(module_details)} {}
-#endif
-
             /**
              *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
              *  @param lambda Lambda called for each column.
@@ -333,6 +325,11 @@ namespace sqlite_orm {
             void for_each_column(L&& lambda) const {
                 this->module_details.for_each_column(lambda);
             }
+
+            template<class MP, satisfies<std::is_member_pointer, MP> = true>
+            const std::string* find_column_name(MP memberPointer) const {
+                return this->module_details.find_column_name(memberPointer);
+            }
         };
 
         template<class T>
@@ -341,6 +338,7 @@ namespace sqlite_orm {
         template<class M>
         struct is_virtual_table<virtual_table_t<M>> : std::true_type {};
 
+#if SQLITE_VERSION_NUMBER >= 3009000
         template<class T, class... Cs>
         struct using_fts5_t {
             using object_type = T;
@@ -377,7 +375,24 @@ namespace sqlite_orm {
                 using col_index_sequence = filter_tuple_sequence_t<columns_type, is_column>;
                 iterate_tuple(this->columns, col_index_sequence{}, lambda);
             }
+
+            template<class M, satisfies<std::is_member_pointer, M> = true>
+            const std::string* find_column_name(M memberPointer) const {
+                using field_type = member_field_type_t<M>;
+
+                const std::string* res = nullptr;
+                iterate_tuple(this->columns,
+                              col_index_sequence_with_field_type<columns_type, field_type>{},
+                              [&res, memberPointer](auto& column) {
+                                  if (compare_fields(column.member_pointer, memberPointer) ||
+                                      compare_fields(column.setter, memberPointer)) {
+                                      res = &column.name;
+                                  }
+                              });
+                return res;
+            }
         };
+#endif
 
         template<class O, bool WithoutRowId, class... Cs, class G, class S>
         bool exists_in_composite_primary_key(const table_t<O, WithoutRowId, Cs...>& table,
@@ -390,7 +405,8 @@ namespace sqlite_orm {
                                             check_if_is_type<member_field_type_t<G>>::template fn,
                                             member_field_type_t>;
                 iterate_tuple(primaryKey.columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
-                    if(compare_any(memberPointer, column.member_pointer) || compare_any(memberPointer, column.setter)) {
+                    if (compare_fields(memberPointer, column.member_pointer) ||
+                        compare_fields(memberPointer, column.setter)) {
                         res = true;
                     }
                 });
@@ -404,7 +420,10 @@ namespace sqlite_orm {
             return false;
         }
     }
+}
 
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+#if SQLITE_VERSION_NUMBER >= 3009000
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::using_fts5_t<T, Cs...> using_fts5(Cs... columns) {
         static_assert(polyfill::conjunction_v<internal::is_table_element_or_constraint<Cs>...>,
@@ -420,6 +439,7 @@ namespace sqlite_orm {
 
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(columns)...)});
     }
+#endif
 
     /**
      *  Factory function for a table definition.

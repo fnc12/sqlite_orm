@@ -1,10 +1,17 @@
+#include <sqlite3.h>
 #include <sqlite_orm/sqlite_orm.h>
+#ifdef __has_include
+#if __has_include(<version>)
+#include <version>
+#endif
+#endif
 #if __cpp_lib_chrono >= 201907L && __cpp_lib_format >= 201907L
 #define ENABLE_THIS_EXAMPLE
 #endif
 
 #ifdef ENABLE_THIS_EXAMPLE
-#include <cassert>
+#include <assert.h>
+#include <cstdio>  //  std::remove
 #include <string>
 #include <iostream>
 #include <chrono>
@@ -24,8 +31,7 @@
 
 //  also we need transform functions to make string from enum..
 static std::string sysDaysToString(std::chrono::sys_days pt) {
-    auto r = std::format("{:%F}", pt);
-    return r;
+    return std::format("{:%F}", pt);
 }
 
 /**
@@ -44,7 +50,7 @@ static std::optional<std::chrono::sys_days> sysDaysFromString(const std::string&
     std::stringstream ss{s};
     std::chrono::sys_days tt;
     ss >> std::chrono::parse("%F"s, tt);
-    if(!ss.fail()) {
+    if (!ss.fail()) {
         return {tt};
     }
     return std::nullopt;
@@ -58,7 +64,7 @@ static std::optional<std::chrono::sys_days> sysDaysFromString(const std::string&
 namespace sqlite_orm {
 
     /**
-     *  First of all is a type_printer template class.
+     *  First of all is a type_printer class template.
      *  It is responsible for sqlite type string representation.
      *  We want SysDays to be `TEXT` so let's just derive from
      *  text_printer. Also there are other printers: real_printer and
@@ -103,11 +109,11 @@ namespace sqlite_orm {
     template<>
     struct row_extractor<std::chrono::sys_days> {
         std::chrono::sys_days extract(const char* columnText) const {
-            if(!columnText) {
+            if (!columnText) {
                 throw std::runtime_error("incorrect date string (nullptr)");
             }
 
-            if(auto sd = sysDaysFromString(columnText)) {
+            if (auto sd = sysDaysFromString(columnText)) {
                 return sd.value();
             } else {
                 throw std::runtime_error("incorrect date string (" + std::string(columnText) + ")");
@@ -143,7 +149,7 @@ struct Person {
 int main(int, char**) {
 #ifdef ENABLE_THIS_EXAMPLE
     const std::string db_name = "sys_days.sqlite";
-    ::remove(db_name.c_str());
+    std::remove(db_name.c_str());
 
     auto storage = make_storage(db_name,
                                 make_table("Persons",

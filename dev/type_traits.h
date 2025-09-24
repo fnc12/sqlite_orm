@@ -1,10 +1,12 @@
 #pragma once
 
-#include <type_traits>  //  std::enable_if, std::is_same, std::is_empty
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::enable_if, std::is_same, std::is_empty, std::is_aggregate
 #if __cpp_lib_unwrap_ref >= 201811L
 #include <utility>  //  std::reference_wrapper
 #else
 #include <functional>  //  std::reference_wrapper
+#endif
 #endif
 
 #include "functional/cxx_core_features.h"
@@ -24,6 +26,14 @@ namespace sqlite_orm {
 
         template<class T>
         using value_unref_type_t = typename value_unref_type<T>::type;
+
+        template<class T>
+        using is_eval_order_garanteed =
+#if __cpp_lib_is_aggregate >= 201703L
+            std::is_aggregate<T>;
+#else
+            std::is_pod<T>;
+#endif
 
         // enable_if for types
         template<template<typename...> class Op, class... Args>
@@ -104,11 +114,11 @@ namespace sqlite_orm {
         template<class T>
         using udf_type_t = typename T::udf_type;
 
-        template<auto a>
-        using auto_udf_type_t = typename decltype(a)::udf_type;
+        template<decltype(auto) a>
+        using auto_udf_type_t = typename std::remove_reference_t<decltype(a)>::udf_type;
 #endif
 
-#ifdef SQLITE_ORM_WITH_CTE
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         template<typename T>
         using cte_moniker_type_t = typename T::cte_moniker_type;
 
@@ -128,7 +138,9 @@ namespace sqlite_orm {
         concept stateless = std::is_empty_v<T>;
 #endif
     }
+}
 
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     template<class T>
     concept orm_names_type = requires { typename T::type; };

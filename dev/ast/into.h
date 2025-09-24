@@ -13,7 +13,9 @@ namespace sqlite_orm {
         template<class T>
         using is_into = polyfill::is_specialization_of<T, into_t>;
     }
+}
 
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T>
     internal::into_t<T> into() {
         return {};

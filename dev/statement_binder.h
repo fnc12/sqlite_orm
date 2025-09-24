@@ -1,19 +1,24 @@
 #pragma once
 
 #include <sqlite3.h>
-#include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::true_type, std::false_type, std::make_index_sequence, std::index_sequence
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::enable_if, std::is_arithmetic, std::is_same, std::make_index_sequence, std::index_sequence
 #include <memory>  //  std::default_delete
 #include <string>  //  std::string, std::wstring
 #include <vector>  //  std::vector
-#include <cstring>  //  ::strncpy, ::strlen
+#include <cstring>  //  strncpy, strlen
 #include "functional/cxx_string_view.h"
 #ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
-#include <cwchar>  //  ::wcsncpy, ::wcslen
+#include <cwchar>  //  wcsncpy, wcslen
+#endif
+#ifndef SQLITE_ORM_OMITS_CODECVT
+#include <locale>  // std::wstring_convert
+#include <codecvt>  //  std::codecvt_utf8_utf16
+#endif
 #endif
 
-#include "functional/cxx_universal.h"
 #include "functional/cxx_type_traits_polyfill.h"
-#include "functional/cxx_functional_polyfill.h"
+#include "functional/cxx_functional_polyfill.h"  // std::invoke
 #include "is_std_ptr.h"
 #include "tuple_helper/tuple_filter.h"
 #include "type_traits.h"
@@ -22,35 +27,38 @@
 #include "xdestroy_handling.h"
 #include "pointer_value.h"
 
-namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Helper class used for binding fields to sqlite3 statements.
      */
     template<class V, typename Enable = void>
     struct statement_binder;
+}
 
+namespace sqlite_orm {
     namespace internal {
         /*
          *  Implementation note: the technique of indirect expression testing is because
          *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
-         *  It must also be a type that differs from those for `is_field_of_v`, `is_printable_v`, `is_preparable_v`.
+         *  It must also be a type that differs from those for `is_printable_v`, `is_preparable_v`.
          */
         template<class Binder>
         struct indirectly_test_bindable;
 
         template<class T, class SFINAE = void>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_bindable_v = false;
+        inline constexpr bool is_bindable_v = false;
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool
+        inline constexpr bool
             is_bindable_v<T, polyfill::void_t<indirectly_test_bindable<decltype(statement_binder<T>{})>>> = true;
 
         template<class T>
         struct is_bindable : polyfill::bool_constant<is_bindable_v<T>> {};
     }
 
+#if SQLITE_VERSION_NUMBER >= 3020000
     /**
-     *  Specialization for 'pointer-passing interface'.
+     *  Specialization for pointer bindings (part of the 'pointer-passing interface').
      */
     template<class P, class T, class D>
     struct statement_binder<pointer_binding<P, T, D>, void> {
@@ -69,6 +77,7 @@ namespace sqlite_orm {
             sqlite3_result_pointer(context, (void*)value.take_ptr(), T::value, value.get_xdestroy());
         }
     };
+#endif
 
     /**
      *  Specialization for arithmetic types.
@@ -118,7 +127,7 @@ namespace sqlite_orm {
     template<class V>
     struct statement_binder<V,
                             std::enable_if_t<polyfill::disjunction<std::is_base_of<std::string, V>,
-                                                                   std::is_same<V, const char*>
+                                                                   std::is_same<V, orm_gsl::czstring>
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
                                                                    ,
                                                                    std::is_same<V, std::string_view>
@@ -134,7 +143,7 @@ namespace sqlite_orm {
             auto stringData = this->string_data(value);
             auto dataCopy = new char[stringData.second + 1];
             constexpr auto deleter = std::default_delete<char[]>{};
-            ::strncpy(dataCopy, stringData.first, stringData.second + 1);
+            strncpy(dataCopy, stringData.first, stringData.second + 1);
             sqlite3_result_text(context, dataCopy, stringData.second, obtain_xdestroy_for(deleter, dataCopy));
         }
 
@@ -148,8 +157,8 @@ namespace sqlite_orm {
             return {s.c_str(), int(s.size())};
         }
 
-        std::pair<const char*, int> string_data(const char* s) const {
-            return {s, int(::strlen(s))};
+        std::pair<const char*, int> string_data(orm_gsl::czstring s) const {
+            return {s, int(strlen(s))};
         }
 #endif
     };
@@ -188,22 +197,22 @@ namespace sqlite_orm {
         }
 
         std::pair<const wchar_t*, int> string_data(const wchar_t* s) const {
-            return {s, int(::wcslen(s))};
+            return {s, int(wcslen(s))};
         }
 #endif
     };
 #endif
 
     /**
-     *  Specialization for nullptr_t.
+     *  Specialization for std::nullptr_t.
      */
     template<>
-    struct statement_binder<nullptr_t, void> {
-        int bind(sqlite3_stmt* stmt, int index, const nullptr_t&) const {
+    struct statement_binder<std::nullptr_t, void> {
+        int bind(sqlite3_stmt* stmt, int index, const std::nullptr_t&) const {
             return sqlite3_bind_null(stmt, index);
         }
 
-        void result(sqlite3_context* context, const nullptr_t&) const {
+        void result(sqlite3_context* context, const std::nullptr_t&) const {
             sqlite3_result_null(context);
         }
     };
@@ -232,10 +241,10 @@ namespace sqlite_orm {
         using unqualified_type = std::remove_cv_t<typename V::element_type>;
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
-            if(value) {
+            if (value) {
                 return statement_binder<unqualified_type>().bind(stmt, index, *value);
             } else {
-                return statement_binder<nullptr_t>().bind(stmt, index, nullptr);
+                return statement_binder<std::nullptr_t>().bind(stmt, index, nullptr);
             }
         }
     };
@@ -246,16 +255,16 @@ namespace sqlite_orm {
     template<>
     struct statement_binder<std::vector<char>, void> {
         int bind(sqlite3_stmt* stmt, int index, const std::vector<char>& value) const {
-            if(!value.empty()) {
-                return sqlite3_bind_blob(stmt, index, (const void*)&value.front(), int(value.size()), SQLITE_TRANSIENT);
+            if (!value.empty()) {
+                return sqlite3_bind_blob(stmt, index, value.data(), int(value.size()), SQLITE_TRANSIENT);
             } else {
                 return sqlite3_bind_blob(stmt, index, "", 0, SQLITE_TRANSIENT);
             }
         }
 
         void result(sqlite3_context* context, const std::vector<char>& value) const {
-            if(!value.empty()) {
-                sqlite3_result_blob(context, (const void*)&value.front(), int(value.size()), nullptr);
+            if (!value.empty()) {
+                sqlite3_result_blob(context, value.data(), int(value.size()), nullptr);
             } else {
                 sqlite3_result_blob(context, "", 0, nullptr);
             }
@@ -270,7 +279,7 @@ namespace sqlite_orm {
         using unqualified_type = std::remove_cv_t<typename V::value_type>;
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
-            if(value) {
+            if (value) {
                 return statement_binder<unqualified_type>().bind(stmt, index, *value);
             } else {
                 return statement_binder<std::nullopt_t>().bind(stmt, index, std::nullopt);
@@ -283,15 +292,15 @@ namespace sqlite_orm {
 
         struct conditional_binder {
             sqlite3_stmt* stmt = nullptr;
-            int index = 1;
+            int nthSqlParameter = 0;
 
             explicit conditional_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
 
             template<class T, satisfies<is_bindable, T> = true>
             void operator()(const T& t) {
-                int rc = statement_binder<T>{}.bind(this->stmt, this->index++, t);
-                if(SQLITE_OK != rc) {
-                    throw_translated_sqlite_error(this->stmt);
+                int rc = statement_binder<T>{}.bind(this->stmt, ++this->nthSqlParameter, t);
+                if (SQLITE_OK != rc) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
+                    throw_translated_sqlite_error(rc);
                 }
             }
 
@@ -308,7 +317,7 @@ namespace sqlite_orm {
 
             template<class T>
             void operator()(const T* value) {
-                if(!value) {
+                if (!value) {
                     throw std::system_error{orm_error_code::value_is_null};
                 }
                 (*this)(*value);
@@ -320,41 +329,43 @@ namespace sqlite_orm {
 
             explicit tuple_value_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
 
+#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+            void operator()(const auto& tpl, auto project) const {
+                int nthSqlParameter = 0;
+                auto& [... elements] = tpl;
+                (this->bind(std::invoke(project, elements), ++nthSqlParameter), ...);
+            }
+#else
             template<class Tpl, class Projection>
             void operator()(const Tpl& tpl, Projection project) const {
                 (*this)(tpl,
                         std::make_index_sequence<std::tuple_size<Tpl>::value>{},
                         std::forward<Projection>(project));
             }
+#endif
 
           private:
-#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
+#ifndef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
             template<class Tpl, size_t... Idx, class Projection>
             void operator()(const Tpl& tpl, std::index_sequence<Idx...>, Projection project) const {
-                (this->bind(polyfill::invoke(project, std::get<Idx>(tpl)), Idx), ...);
-            }
-#else
-            template<class Tpl, size_t... Idx, class Projection>
-            void operator()(const Tpl& tpl, std::index_sequence<Idx...>, Projection project) const {
-                using Sink = int[sizeof...(Idx)];
-                (void)Sink{(this->bind(polyfill::invoke(project, std::get<Idx>(tpl)), Idx), 0)...};
+                (this->bind(polyfill::invoke(project, std::get<Idx>(tpl)), int(Idx + 1)), ...);
             }
 #endif
 
             template<class T>
-            void bind(const T& t, size_t idx) const {
-                int rc = statement_binder<T>{}.bind(this->stmt, int(idx + 1), t);
-                if(SQLITE_OK != rc) {
-                    throw_translated_sqlite_error(this->stmt);
+            void bind(const T& t, int nthSqlParameter) const {
+                int rc = statement_binder<T>{}.bind(this->stmt, nthSqlParameter, t);
+                if (SQLITE_OK != rc) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
+                    throw_translated_sqlite_error(rc);
                 }
             }
 
             template<class T>
-            void bind(const T* value, size_t idx) const {
-                if(!value) {
+            void bind(const T* value, int nthSqlParameter) const {
+                if (!value) {
                     throw std::system_error{orm_error_code::value_is_null};
                 }
-                (*this)(*value, idx);
+                this->bind(*value, nthSqlParameter);
             }
         };
 

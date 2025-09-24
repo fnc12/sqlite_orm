@@ -8,6 +8,15 @@ TEST_CASE("statement_serializer arithmetic operators") {
     internal::serializer_context<internal::db_objects_tuple<>> context{storage};
     std::string value;
     decltype(value) expected;
+    SECTION("unary minus") {
+        SECTION("func") {
+            value = serialize(minus(20), context);
+        }
+        SECTION("operator") {
+            value = serialize(-c(20), context);
+        }
+        expected = "-20";
+    }
     SECTION("add") {
         SECTION("func") {
             value = serialize(add(3, 5), context);
@@ -55,12 +64,12 @@ TEST_CASE("statement_serializer arithmetic operators") {
     }
     SECTION("parentheses keeping order of precedence") {
         SECTION("1") {
-            value = serialize(c(4) + 5 + 3, context);
-            expected = "(4 + 5) + 3";
+            value = serialize(c(4) + 5 + -c(3), context);
+            expected = "(4 + 5) + -3";
         }
         SECTION("2") {
-            value = serialize(4 + (c(5) + 3), context);
-            expected = "4 + (5 + 3)";
+            value = serialize(4 + -(c(5) + 3), context);
+            expected = "4 + -(5 + 3)";
         }
         SECTION("3") {
             value = serialize(4 + c(5) * 3 + 1, context);

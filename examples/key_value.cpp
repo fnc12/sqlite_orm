@@ -46,7 +46,7 @@ void setValue(const std::string& key, const std::string& value) {
 
 std::string getValue(const std::string& key) {
     using namespace sqlite_orm;
-    if(auto kv = getStorage().get_pointer<KeyValue>(key)) {
+    if (auto kv = getStorage().get_pointer<KeyValue>(key)) {
         return kv->value;
     } else {
         return {};

@@ -1,3 +1,4 @@
+#include <sqlite3.h>
 #include <sqlite_orm/sqlite_orm.h>
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #define ENABLE_THIS_UT
@@ -92,8 +93,12 @@ TEST_CASE("is_extractable") {
     check_extractable<std::optional<custom_enum>>();
     check_not_extractable<std::optional<User>>();
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
-#ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
-    check_not_extractable<static_pointer_binding<std::nullptr_t, carray_pvt>>();
+#if SQLITE_VERSION_NUMBER >= 3020000
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    check_not_extractable<static_pointer_binding_t<std::nullptr_t, carray_pointer_tag>>();
+#else
+    check_not_extractable<static_pointer_binding<std::nullptr_t, carray_pointer_type>>();
+#endif
     // pointer arguments are special: they can only be passed to and from functions, but casting is prohibited
     {
         using int64_pointer_arg = carray_pointer_arg<int64>;

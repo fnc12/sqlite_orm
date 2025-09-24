@@ -2,9 +2,10 @@
 
 #include <sqlite3.h>
 
+#include "error_code.h"
 #include "row_extractor.h"
 
-namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /** @short Wrapper around a dynamically typed value object.
      */
@@ -63,7 +64,7 @@ namespace sqlite_orm {
 
             iterator& operator++() {
                 ++this->index;
-                if(this->index < int(this->container.size())) {
+                if (this->index < int(this->container.size())) {
                     this->currentValue = this->container[this->index];
                 } else {
                     this->currentValue = {};
@@ -74,7 +75,7 @@ namespace sqlite_orm {
             iterator operator++(int) {
                 auto res = *this;
                 ++this->index;
-                if(this->index < int(this->container.size())) {
+                if (this->index < int(this->container.size())) {
                     this->currentValue = this->container[this->index];
                 } else {
                     this->currentValue = {};
@@ -83,7 +84,7 @@ namespace sqlite_orm {
             }
 
             arg_value operator*() const {
-                if(this->index < int(this->container.size()) && this->index >= 0) {
+                if (this->index < int(this->container.size()) && this->index >= 0) {
                     return this->currentValue;
                 } else {
                     throw std::system_error{orm_error_code::index_is_out_of_bounds};
@@ -98,9 +99,11 @@ namespace sqlite_orm {
                 return &other.container == &this->container && other.index == this->index;
             }
 
+#ifndef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
             bool operator!=(const iterator& other) const {
                 return !(*this == other);
             }
+#endif
 
           private:
             const arg_values& container;
@@ -108,9 +111,9 @@ namespace sqlite_orm {
             mutable arg_value currentValue;
         };
 
-        arg_values() : arg_values(0, nullptr) {}
+        arg_values() = default;
 
-        arg_values(int argsCount_, sqlite3_value** values_) : argsCount(argsCount_), values(values_) {}
+        arg_values(int nValues, sqlite3_value** values) : argsCount(nValues), values(values) {}
 
         size_t size() const {
             return this->argsCount;
@@ -121,7 +124,7 @@ namespace sqlite_orm {
         }
 
         arg_value operator[](int index) const {
-            if(index < this->argsCount && index >= 0) {
+            if (index < this->argsCount && index >= 0) {
                 sqlite3_value* value = this->values[index];
                 return {value};
             } else {

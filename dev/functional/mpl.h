@@ -28,14 +28,11 @@
  *  - "higher order" denotes a metafunction that operates on another metafunction (i.e. takes it as an argument).
  */
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::true_type, std::false_type, std::is_same, std::negation, std::conjunction, std::disjunction
-#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
 #include <initializer_list>
-#else
-#include <array>
 #endif
 
-#include "cxx_universal.h"  //  ::size_t
 #include "cxx_type_traits_polyfill.h"
 #include "mpl/conditional.h"
 
@@ -49,12 +46,12 @@ namespace sqlite_orm {
              *  Determines whether a class template has a nested metafunction `fn`.
              * 
              *  Implementation note: the technique of specialiazing on the inline variable must come first because
-             *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
+             *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR].
              */
             template<class T, class SFINAE = void>
-            SQLITE_ORM_INLINE_VAR constexpr bool is_quoted_metafuntion_v = false;
+            inline constexpr bool is_quoted_metafuntion_v = false;
             template<class Q>
-            SQLITE_ORM_INLINE_VAR constexpr bool
+            inline constexpr bool
                 is_quoted_metafuntion_v<Q, polyfill::void_t<indirectly_test_metafunction<Q::template fn>>> = true;
 
             template<class T>
@@ -330,16 +327,14 @@ namespace sqlite_orm {
              *  Bind a metafunction and arguments at the front of a higher-order metafunction.
              */
             template<template<template<class...> class Fn, class... Args2> class HigherFn,
-                     template<class...>
-                     class BoundFn,
+                     template<class...> class BoundFn,
                      class... Bound>
             using bind_front_higherorder_fn =
                 bind_front<higherorder<0>::quote_fn<HigherFn>, quote_fn<BoundFn>, Bound...>;
 
-#ifdef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
             constexpr size_t find_first_true_helper(std::initializer_list<bool> values) {
                 size_t i = 0;
-                for(auto first = values.begin(); first != values.end() && !*first; ++first) {
+                for (auto first = values.begin(); first != values.end() && !*first; ++first) {
                     ++i;
                 }
                 return i;
@@ -347,22 +342,11 @@ namespace sqlite_orm {
 
             constexpr size_t count_true_helper(std::initializer_list<bool> values) {
                 size_t n = 0;
-                for(auto first = values.begin(); first != values.end(); ++first) {
+                for (auto first = values.begin(); first != values.end(); ++first) {
                     n += *first;
                 }
                 return n;
             }
-#else
-            template<size_t N>
-            constexpr size_t find_first_true_helper(const std::array<bool, N>& values, size_t i = 0) {
-                return i == N || values[i] ? 0 : 1 + find_first_true_helper(values, i + 1);
-            }
-
-            template<size_t N>
-            constexpr size_t count_true_helper(const std::array<bool, N>& values, size_t i = 0) {
-                return i == N ? 0 : values[i] + count_true_helper(values, i + 1);
-            }
-#endif
 
             /*
              *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list,
@@ -379,11 +363,8 @@ namespace sqlite_orm {
                 template<template<class...> class Pack, class... T, class ProjectQ>
                 struct invoke_this_fn<Pack<T...>, ProjectQ> {
                     // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
-                    static constexpr size_t value = find_first_true_helper
-#ifndef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
-                        <sizeof...(T)>
-#endif
-                        ({PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...});
+                    static constexpr size_t value =
+                        find_first_true_helper({PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...});
                     using type = polyfill::index_constant<value>;
                 };
 
@@ -409,11 +390,8 @@ namespace sqlite_orm {
                 template<template<class...> class Pack, class... T, class ProjectQ>
                 struct invoke_this_fn<Pack<T...>, ProjectQ> {
                     // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
-                    static constexpr size_t value = count_true_helper
-#ifndef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
-                        <sizeof...(T)>
-#endif
-                        ({PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...});
+                    static constexpr size_t value =
+                        count_true_helper({PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...});
                     using type = polyfill::index_constant<value>;
                 };
 
@@ -439,12 +417,8 @@ namespace sqlite_orm {
                 template<template<class...> class Pack, class... T, class ProjectQ>
                 struct invoke_this_fn<Pack<T...>, ProjectQ> {
                     // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
-                    static constexpr size_t value =
-                        static_cast<bool>(count_true_helper
-#ifndef SQLITE_ORM_RELAXED_CONSTEXPR_SUPPORTED
-                                          <sizeof...(T)>
-#endif
-                                          ({TraitQ::template fn<typename ProjectQ::template fn<T>>::value...}));
+                    static constexpr size_t value = static_cast<bool>(
+                        count_true_helper({TraitQ::template fn<typename ProjectQ::template fn<T>>::value...}));
                     using type = polyfill::bool_constant<value>;
                 };
 
@@ -479,7 +453,7 @@ namespace sqlite_orm {
          *  Commonly used named abbreviation for `check_if<std::is_same, Type>`.
          */
         template<class Type>
-        using check_if_is_type = mpl::bind_front_fn<std::is_same, Type>;
+        using check_if_is_type = check_if<std::is_same, Type>;
 
         /*
          *  Quoted trait metafunction that checks if a type's template matches the specified template
@@ -488,6 +462,18 @@ namespace sqlite_orm {
         template<template<class...> class Template>
         using check_if_is_template =
             mpl::pass_extracted_fn_to<mpl::bind_front_fn<std::is_same, mpl::quote_fn<Template>>>;
+
+        /*
+         *  Quoted trait metafunction that checks if a type names a nested type determined by `Op`.
+         */
+        template<template<typename...> class Op>
+        using check_if_names = mpl::bind_front_higherorder_fn<polyfill::is_detected, Op>;
+
+        /*
+         *  Quoted trait metafunction that checks if a type does not name a nested type determined by `Op`.
+         */
+        template<template<typename...> class Op>
+        using check_if_lacks = mpl::not_<check_if_names<Op>>;
 
         /*
          *  Quoted metafunction that finds the index of the given type in a tuple.

@@ -4,7 +4,7 @@
 
 #include <sqlite_orm/sqlite_orm.h>
 
-#include <cassert>
+#include <assert.h>
 #include <string>
 #include <iostream>
 
@@ -17,23 +17,12 @@ struct Employee {
     int age = 0;
     std::string address;
     float salary = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-    Employee() {}
-    Employee(int id, std::string name, int age, std::string address, float salary) :
-        id{id}, name{std::move(name)}, age{age}, address{std::move(address)}, salary{salary} {}
-#endif
 };
 
 struct Department {
     int id = 0;
     std::string dept;
     int empId = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-    Department() {}
-    Department(int id, std::string dept, int empId) : id{id}, dept{std::move(dept)}, empId{empId} {}
-#endif
 };
 
 using namespace sqlite_orm;
@@ -96,7 +85,7 @@ int main(int, char** argv) {
 
     cout << "ID" << '\t' << "NAME" << '\t' << "AGE" << '\t' << "DEPT" << endl;
     cout << "----------" << '\t' << "----------" << '\t' << "----------" << '\t' << "----------" << endl;
-    for(auto& row: simpleRows) {
+    for (auto& row: simpleRows) {
         cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row)
              << endl;
     }
@@ -105,10 +94,10 @@ int main(int, char** argv) {
     //  FROM COMPANY AS C, DEPARTMENT AS D
     //  WHERE  C.ID = D.EMP_ID;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    constexpr auto c_als = "c"_alias.for_<Employee>();
-    constexpr auto d = "d"_alias.for_<Department>();
+    constexpr orm_table_alias auto c_als = "c"_alias.for_<Employee>();
+    constexpr orm_table_alias auto d = "d"_alias.for_<Department>();
     static_assert(std::is_empty_v<EmployeeIdAlias>);
-    constexpr auto empId = EmployeeIdAlias{};
+    constexpr orm_column_alias auto empId = EmployeeIdAlias{};
     auto rowsWithTableAliases = storage.select(
         columns(c_als->*&Employee::id, c_als->*&Employee::name, c_als->*&Employee::age, d->*&Department::dept),
         where(is_equal(c_als->*&Employee::id, d->*&Department::empId)));

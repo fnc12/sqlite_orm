@@ -28,7 +28,7 @@ namespace {
             storage.insert_range(usersInput.begin(), usersInput.end());
             const auto users = storage.template get_all<TUser>();
             REQUIRE(users.size() == usersInput.size());
-            for(size_t i = 0; i < users.size(); ++i) {
+            for (size_t i = 0; i < users.size(); ++i) {
                 REQUIRE(-1 != users[i].id);
                 usersInput[i].id = users[i].id;
             }
@@ -65,16 +65,18 @@ namespace {
 
 namespace {
     struct User1 {
+        int id = 0;
+        std::string name;
+        int age = 0;
+        std::string email;
+
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+        bool operator==(const User1&) const = default;
+#else
         bool operator==(const User1& rhs) const {
             return std::tie(id, name, age, email) == std::tie(rhs.id, rhs.name, rhs.age, rhs.email);
         }
-        bool operator!=(const User1& rhs) const {
-            return !(rhs == *this);
-        }
-        int id;
-        std::string name;
-        int age;
-        std::string email;
+#endif
     };
 }
 
@@ -176,7 +178,7 @@ TEST_CASE("Issue 663 - fail test") {
     try {
         storage.insert_range(inputUsers.begin(), inputUsers.end());
         REQUIRE(false);
-    } catch(const std::system_error& e) {
+    } catch (const std::system_error& e) {
         REQUIRE(e.code() == make_error_code(orm_error_code::cannot_use_default_value));
         REQUIRE(storage.count<User3>() == 0);
     }

@@ -1,5 +1,7 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <cstdio>  //  std::remove
+#include "catch_matchers.h"
 
 using namespace sqlite_orm;
 
@@ -79,9 +81,11 @@ struct MeanFunction {
     double total = 0;
     int count = 0;
 
+    static int ctorCallsCount;
     static int objectsCount;
 
     MeanFunction() {
+        ++ctorCallsCount;
         ++objectsCount;
     }
 
@@ -105,6 +109,7 @@ struct MeanFunction {
     }
 };
 
+int MeanFunction::ctorCallsCount = 0;
 int MeanFunction::objectsCount = 0;
 
 struct FirstFunction {
@@ -128,9 +133,9 @@ struct FirstFunction {
         ++staticCallsCount;
         std::string res;
         res.reserve(args.size());
-        for(auto value: args) {
+        for (auto value: args) {
             auto stringValue = value.get<std::string>();
-            if(!stringValue.empty()) {
+            if (!stringValue.empty()) {
                 res += stringValue.front();
             }
         }
@@ -164,8 +169,8 @@ struct MultiSum {
     }
 
     void step(const arg_values& args) {
-        for(auto it = args.begin(); it != args.end(); ++it) {
-            if(!it->empty() && (it->is_integer() || it->is_float())) {
+        for (auto it = args.begin(); it != args.end(); ++it) {
+            if (!it->empty() && (it->is_integer() || it->is_float())) {
                 this->sum += it->get<double>();
             }
         }
@@ -212,6 +217,48 @@ struct alignas(2 * __STDCPP_DEFAULT_NEW_ALIGNMENT__) OverAlignedAggregateFunctio
 };
 #endif
 
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+struct StaticCallOpFunction {
+    static bool operator()(int x, int y) {
+        return x == y;
+    }
+
+    static const char* name() {
+        return "STATICCALLOP";
+    }
+};
+#endif
+
+struct NonAllocatableAggregateFunction {
+    void step(double /*arg*/) {}
+
+    double fin() const {
+        return 0;
+    }
+
+    static const char* name() {
+        return "NONALLOCATABLE";
+    }
+};
+
+template<>
+struct std::allocator<NonAllocatableAggregateFunction> {
+    using value_type = NonAllocatableAggregateFunction;
+
+    NonAllocatableAggregateFunction* allocate(size_t /*count*/) {
+        throw std::bad_alloc();
+    }
+
+    void deallocate(NonAllocatableAggregateFunction*, size_t /*count*/) {}
+
+    // legacy allocator members
+
+    template<class... Args>
+    void construct(NonAllocatableAggregateFunction*, Args&&...) {}
+
+    void destroy(NonAllocatableAggregateFunction*) {}
+};
+
 struct NonDefaultCtorScalarFunction {
     const int multiplier;
 
@@ -244,7 +291,12 @@ struct NonDefaultCtorAggregateFunction {
 };
 
 TEST_CASE("custom functions") {
-    using Catch::Matchers::ContainsSubstring;
+    const ErrorCodeExceptionMatcher noMemExceptionMatcher(sqlite_errc(SQLITE_NOMEM));
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+    const ErrorCodeExceptionMatcher notFoundExceptionMatcher(orm_error_code::function_not_found);
+#else
+    const ErrorCodeExceptionMatcher notFoundExceptionMatcher(sqlite_errc(SQLITE_ERROR));
+#endif
 
     SqrtFunction::callsCount = 0;
     StatelessHasPrefixFunction::callsCount = 0;
@@ -257,26 +309,28 @@ TEST_CASE("custom functions") {
     }
     SECTION("file") {
         path = "custom_function.sqlite";
-        ::remove(path.c_str());
+        std::remove(path.c_str());
     }
     struct User {
         int id = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        User() = default;
-        User(int id) : id{id} {}
-#endif
     };
     auto storage = make_storage(path, make_table("users", make_column("id", &User::id)));
     storage.sync_schema();
 
     storage.create_aggregate_function<MeanFunction>();
-    // test the case when `MeanFunction::step()` was never called
-    { REQUIRE_NOTHROW(storage.select(func<MeanFunction>(&User::id))); }
+    // test w/o a result set, i.e when the final aggregate call is the first to require the aggregate function
+    REQUIRE_NOTHROW(storage.select(func<MeanFunction>(&User::id)));
     storage.delete_aggregate_function<MeanFunction>();
 
+    storage.create_aggregate_function<NonAllocatableAggregateFunction>();
+    // test w/o a result set, i.e when the final aggregate call is the first to require the aggregate function
+    REQUIRE_THROWS_MATCHES(storage.select(func<NonAllocatableAggregateFunction>(&User::id)),
+                           std::system_error,
+                           noMemExceptionMatcher);
+    storage.delete_aggregate_function<NonAllocatableAggregateFunction>();
+
     //   call before creation
-    REQUIRE_THROWS_WITH(storage.select(func<SqrtFunction>(4)), ContainsSubstring("no such function"));
+    REQUIRE_THROWS_MATCHES(storage.select(func<SqrtFunction>(4)), std::system_error, notFoundExceptionMatcher);
 
     //  create function
     REQUIRE(SqrtFunction::callsCount == 0);
@@ -289,8 +343,7 @@ TEST_CASE("custom functions") {
     {
         auto rows = storage.select(func<SqrtFunction>(4));
         REQUIRE(SqrtFunction::callsCount == 1);
-        decltype(rows) expected;
-        expected.push_back(2);
+        decltype(rows) expected{2};
         REQUIRE(rows == expected);
     }
 
@@ -306,16 +359,14 @@ TEST_CASE("custom functions") {
         //  call after creation
         {
             auto rows = storage.select(func<StatelessHasPrefixFunction>("one", "o"));
-            decltype(rows) expected;
-            expected.push_back(true);
+            decltype(rows) expected{true};
             REQUIRE(rows == expected);
         }
         REQUIRE(StatelessHasPrefixFunction::callsCount == 1);
         REQUIRE(StatelessHasPrefixFunction::objectsCount == 1);
         {
             auto rows = storage.select(func<StatelessHasPrefixFunction>("two", "b"));
-            decltype(rows) expected;
-            expected.push_back(false);
+            decltype(rows) expected{false};
             REQUIRE(rows == expected);
         }
         REQUIRE(StatelessHasPrefixFunction::callsCount == 2);
@@ -338,16 +389,14 @@ TEST_CASE("custom functions") {
         //  call after creation
         {
             auto rows = storage.select(func<HasPrefixFunction>("one", "o"));
-            decltype(rows) expected;
-            expected.push_back(true);
+            decltype(rows) expected{true};
             REQUIRE(rows == expected);
         }
         REQUIRE(HasPrefixFunction::callsCount == 1);
         REQUIRE(HasPrefixFunction::objectsCount == 0);
         {
             auto rows = storage.select(func<HasPrefixFunction>("two", "b"));
-            decltype(rows) expected;
-            expected.push_back(false);
+            decltype(rows) expected{false};
             REQUIRE(rows == expected);
         }
         REQUIRE(HasPrefixFunction::callsCount == 2);
@@ -370,41 +419,57 @@ TEST_CASE("custom functions") {
         REQUIRE(MeanFunction::objectsCount == 0);
         auto rows = storage.select(func<MeanFunction>(&User::id));
         REQUIRE(MeanFunction::objectsCount == 0);
-        decltype(rows) expected;
-        expected.push_back(2);
+        decltype(rows) expected{2};
         REQUIRE(rows == expected);
     }
     storage.delete_aggregate_function<MeanFunction>();
 
+    storage.create_aggregate_function<MeanFunction>();
+    // expect two different aggregate function objects to be created, which provide two different results;
+    // This ensures that `proxy_get_aggregate_step_udf()` uses `sqlite3_aggregate_context()` correctly
+    {
+        MeanFunction::ctorCallsCount = 0;
+        REQUIRE(MeanFunction::objectsCount == 0);
+        REQUIRE(MeanFunction::ctorCallsCount == 0);
+        auto rows = storage.select(columns(func<MeanFunction>(&User::id), func<MeanFunction>(c(&User::id) * 2)));
+        REQUIRE(MeanFunction::objectsCount == 0);
+        REQUIRE(MeanFunction::ctorCallsCount == 2);
+        REQUIRE(int(std::get<0>(rows[0])) == 2);
+        REQUIRE(int(std::get<1>(rows[0])) == 4);
+    }
+    storage.delete_aggregate_function<MeanFunction>();
+
+    storage.create_aggregate_function<NonAllocatableAggregateFunction>();
+    REQUIRE_THROWS_MATCHES(storage.select(func<NonAllocatableAggregateFunction>(&User::id)),
+                           std::system_error,
+                           noMemExceptionMatcher);
+    storage.delete_aggregate_function<NonAllocatableAggregateFunction>();
+
     storage.create_scalar_function<FirstFunction>();
     {
         auto rows = storage.select(func<FirstFunction>("Vanotek", "Tinashe", "Pitbull"));
-        decltype(rows) expected;
-        expected.push_back("VTP");
+        decltype(rows) expected{"VTP"};
         REQUIRE(rows == expected);
         REQUIRE(FirstFunction::objectsCount == 0);
         REQUIRE(FirstFunction::callsCount == 1);
     }
     {
         auto rows = storage.select(func<FirstFunction>("Charli XCX", "Rita Ora"));
-        decltype(rows) expected;
-        expected.push_back("CR");
+        decltype(rows) expected{"CR"};
         REQUIRE(rows == expected);
         REQUIRE(FirstFunction::objectsCount == 0);
         REQUIRE(FirstFunction::callsCount == 2);
     }
     {
         auto rows = storage.select(func<FirstFunction>("Ted"));
-        decltype(rows) expected;
-        expected.push_back("T");
+        decltype(rows) expected{"T"};
         REQUIRE(rows == expected);
         REQUIRE(FirstFunction::objectsCount == 0);
         REQUIRE(FirstFunction::callsCount == 3);
     }
     {
         auto rows = storage.select(func<FirstFunction>());
-        decltype(rows) expected;
-        expected.push_back("");
+        decltype(rows) expected{""};
         REQUIRE(rows == expected);
         REQUIRE(FirstFunction::objectsCount == 0);
         REQUIRE(FirstFunction::callsCount == 4);
@@ -415,8 +480,7 @@ TEST_CASE("custom functions") {
     {
         REQUIRE(MultiSum::objectsCount == 0);
         auto rows = storage.select(func<MultiSum>(&User::id, 5));
-        decltype(rows) expected;
-        expected.push_back(21);
+        decltype(rows) expected{21};
         REQUIRE(rows == expected);
         REQUIRE(MultiSum::objectsCount == 0);
     }
@@ -429,6 +493,16 @@ TEST_CASE("custom functions") {
         storage.create_aggregate_function<OverAlignedAggregateFunction>();
         REQUIRE_NOTHROW(storage.delete_aggregate_function<OverAlignedAggregateFunction>());
     }
+#endif
+
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+    storage.create_scalar_function<StaticCallOpFunction>();
+    {
+        auto rows = storage.select(func<StaticCallOpFunction>(1, 1));
+        decltype(rows) expected{true};
+        REQUIRE(rows == expected);
+    }
+    storage.delete_scalar_function<StaticCallOpFunction>();
 #endif
 
     storage.create_scalar_function<NonDefaultCtorScalarFunction>(42);
@@ -474,6 +548,26 @@ struct stateful_scalar {
 inline constexpr stateful_scalar offset0{};
 
 TEST_CASE("generalized scalar udf") {
+    struct functor {
+        bool operator()(int&, int&) const = delete;
+
+        bool operator()(const int&, const int&) const {
+            return true;
+        }
+
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+        static bool operator()(int, int) {
+            return true;
+        }
+#endif
+    };
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+    // note: this static lambda lives up here because of GCC 13.2 and mangling issues
+    constexpr auto lambda_static_dummy = [](unsigned long errcode) static {
+        return errcode != 0;
+    };
+#endif
+
     auto storage = make_storage("");
     storage.sync_schema();
 
@@ -499,6 +593,20 @@ TEST_CASE("generalized scalar udf") {
         }
         storage.delete_scalar_function<is_fatal_error_f>();
     }
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+    SECTION("stateless static lambda") {
+        constexpr auto is_fatal_error_f = "is_fatal_error"_scalar.quote([](unsigned long errcode) static {
+            return errcode != 0;
+        });
+        storage.create_scalar_function<is_fatal_error_f>();
+        {
+            auto rows = storage.select(is_fatal_error_f(1));
+            decltype(rows) expected{true};
+            REQUIRE(rows == expected);
+        }
+        storage.delete_scalar_function<is_fatal_error_f>();
+    }
+#endif
     SECTION("function object instance") {
         constexpr auto equal_to_int_f = "equal_to"_scalar.quote(std::equal_to<int>{});
         storage.create_scalar_function<equal_to_int_f>();
@@ -541,6 +649,18 @@ TEST_CASE("generalized scalar udf") {
         }
         storage.delete_scalar_function<equal_to_int_f>();
     }
+#ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
+    SECTION("function object instance with static call operator") {
+        constexpr auto f = "f"_scalar.quote<bool(int, int)>(functor{});
+        storage.create_scalar_function<f>();
+        {
+            auto rows = storage.select(f(0, 1));
+            decltype(rows) expected{true};
+            REQUIRE(rows == expected);
+        }
+        storage.delete_scalar_function<f>();
+    }
+#endif
     SECTION("specialized template function") {
         constexpr auto clamp_int_f = "clamp_int"_scalar.quote(std::clamp<int>);
         storage.create_scalar_function<clamp_int_f>();
@@ -563,14 +683,17 @@ TEST_CASE("generalized scalar udf") {
         storage.delete_scalar_function<clamp_int_f>();
     }
     SECTION("non-copyable function object") {
-        constexpr auto idfunc_f = "idfunc"_scalar.quote<noncopyable_scalar>();
-        storage.create_scalar_function<idfunc_f>();
+        // note: unlike msvc, gcc+clang require a constant template parameter to be copyable (and probably rightly so);
+        // so we must explicitly use an ordinary l-value expression from a global quoted function.
+
+        static constexpr auto idfunc_f = "idfunc"_scalar.quote<noncopyable_scalar>();
+        storage.create_scalar_function<(idfunc_f)>();
         {
             auto rows = storage.select(idfunc_f(1));
             decltype(rows) expected{1};
             REQUIRE(rows == expected);
         }
-        storage.delete_scalar_function<idfunc_f>();
+        storage.delete_scalar_function<(idfunc_f)>();
     }
     SECTION("stateful function object") {
         constexpr auto offset0_f = "offset0"_scalar.quote(offset0);

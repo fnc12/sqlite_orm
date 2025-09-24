@@ -5,37 +5,22 @@ using namespace sqlite_orm;
 
 TEST_CASE("triggers_basics") {
     struct TestInsert {
-        int id;
+        int id = 0;
         std::string text;
         int x = 0;
         int y = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        TestInsert() = default;
-        TestInsert(int id, std::string text, int x, int y) : id{id}, text{std::move(text)}, x{x}, y{y} {}
-#endif
     };
     struct TestUpdate {
-        int id;
+        int id = 0;
         std::string text;
         int x = 0;
         int y = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        TestUpdate() = default;
-        TestUpdate(int id, std::string text, int x, int y) : id{id}, text{std::move(text)}, x{x}, y{y} {}
-#endif
     };
     struct TestDelete {
-        int id;
+        int id = 0;
         std::string text;
         int x = 0;
         int y = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        TestDelete() = default;
-        TestDelete(int id, std::string text, int x, int y) : id{id}, text{std::move(text)}, x{x}, y{y} {}
-#endif
     };
 
     TestInsert test_insert{4, "test", 1, 2};
@@ -116,6 +101,34 @@ TEST_CASE("triggers_basics") {
         storage.insert(TestDelete{0, "test", 1, 2});
         storage.insert(TestDelete{0, "will be removed", 1, 2});
         REQUIRE(storage.count<TestDelete>() == 2);
+    }
+}
+
+TEST_CASE("trigger_names") {
+    auto storagePath = "trigger_names.sqlite";
+    struct X {
+        int test = 0;
+    };
+
+    {
+        auto storage = make_storage(
+            storagePath,
+            make_trigger("trigger1", after().insert().on<X>().begin(update_all(set(c(&X::test) = 1))).end()),
+            make_trigger("trigger2", after().insert().on<X>().begin(update_all(set(c(&X::test) = 2))).end()),
+            make_table("x", make_column("test", &X::test)));
+        storage.sync_schema();
+    }
+    {
+        auto storage = make_storage(
+            storagePath,
+            make_trigger("trigger2", after().insert().on<X>().begin(update_all(set(c(&X::test) = 2))).end()),
+            make_trigger("trigger3", after().insert().on<X>().begin(update_all(set(c(&X::test) = 3))).end()),
+            make_table("x", make_column("test", &X::test)));
+        storage.sync_schema();
+
+        auto trigger_names = storage.trigger_names();
+        REQUIRE_THAT(trigger_names,
+                     Catch::Matchers::UnorderedEquals(std::vector<std::string>{"trigger1", "trigger2", "trigger3"}));
     }
 }
 

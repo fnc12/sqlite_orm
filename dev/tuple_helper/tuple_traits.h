@@ -12,8 +12,7 @@ namespace sqlite_orm {
          *  `ProjOp` is a metafunction
          */
         template<class Pack,
-                 template<class...>
-                 class TraitFn,
+                 template<class...> class TraitFn,
                  template<class...> class ProjOp = polyfill::type_identity_t>
         using tuple_has = mpl::invoke_t<check_if_has<TraitFn>, Pack, mpl::quote_fn<ProjOp>>;
 
@@ -31,8 +30,7 @@ namespace sqlite_orm {
          *  `ProjOp` is a metafunction
          */
         template<class Pack,
-                 template<class...>
-                 class Template,
+                 template<class...> class Template,
                  template<class...> class ProjOp = polyfill::type_identity_t>
         using tuple_has_template = mpl::invoke_t<check_if_has_template<Template>, Pack, mpl::quote_fn<ProjOp>>;
 
@@ -48,8 +46,7 @@ namespace sqlite_orm {
          *  `ProjOp` is a metafunction
          */
         template<class Pack,
-                 template<class...>
-                 class Template,
+                 template<class...> class Template,
                  template<class...> class ProjOp = polyfill::type_identity_t>
         using find_tuple_template = mpl::invoke_t<finds_if_has_template<Template>, Pack, mpl::quote_fn<ProjOp>>;
 

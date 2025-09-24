@@ -1,5 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include "../catch_matchers.h"
 
 using namespace sqlite_orm;
 
@@ -12,6 +13,10 @@ TEST_CASE("index") {
     auto table = make_table("users", make_column("id", &User::id), make_column("name", &User::name));
     SECTION("simple id") {
         auto storage = make_storage({}, make_index("id_index", &User::id), table);
+        REQUIRE_NOTHROW(storage.sync_schema());
+    }
+    SECTION("unspecified") {
+        auto storage = make_storage({}, make_index("id_index", indexed_column(&User::id)), table);
         REQUIRE_NOTHROW(storage.sync_schema());
     }
     SECTION("asc") {
@@ -62,7 +67,11 @@ TEST_CASE("index") {
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 TEST_CASE("filtered index") {
-    using Catch::Matchers::ContainsSubstring;
+#if SQLITE_VERSION_NUMBER >= 3037002
+    const ErrorCodeExceptionMatcher uniqueExceptionMatcher(sqlite_errc(SQLITE_CONSTRAINT_UNIQUE));
+#else
+    const ErrorCodeExceptionMatcher uniqueExceptionMatcher(sqlite_errc(SQLITE_CONSTRAINT));
+#endif
 
     struct Test {
         std::optional<int> field1 = 0;
@@ -76,7 +85,7 @@ TEST_CASE("filtered index") {
         REQUIRE_NOTHROW(storage.sync_schema());
 
         storage.insert(Test{1, std::nullopt});
-        REQUIRE_THROWS_WITH(storage.insert(Test{1, std::nullopt}), ContainsSubstring("constraint failed"));
+        REQUIRE_THROWS_MATCHES(storage.insert(Test{1, std::nullopt}), std::system_error, uniqueExceptionMatcher);
     }
     SECTION("2") {
         auto storage = make_storage(
@@ -102,11 +111,6 @@ TEST_CASE("Compound index") {
     struct User {
         int id = 0;
         std::string name;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        User() = default;
-        User(int id, std::string name) : id{id}, name{std::move(name)} {}
-#endif
     };
     auto table = make_table("users", make_column("id", &User::id), make_column("name", &User::name));
 

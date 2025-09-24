@@ -1,10 +1,11 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple, std::make_tuple, std::declval, std::tuple_element_t
 #include <string>  //  std::string
 #include <utility>  //  std::forward
+#endif
 
-#include "../functional/cxx_universal.h"
 #include "../tuple_helper/tuple_traits.h"
 #include "../indexed_column.h"
 #include "../table_type_of.h"
@@ -16,10 +17,6 @@ namespace sqlite_orm {
         struct index_base {
             std::string name;
             bool unique = false;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-            index_base(std::string name, bool unique) : name{std::move(name)}, unique{unique} {}
-#endif
         };
 
         template<class T, class... Els>
@@ -28,15 +25,12 @@ namespace sqlite_orm {
             using object_type = void;
             using table_mapped_type = T;
 
-#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            index_t(std::string name_, bool unique_, elements_type elements_) :
-                index_base{std::move(name_), unique_}, elements(std::move(elements_)) {}
-#endif
-
             elements_type elements;
         };
     }
+}
 
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T, class... Cols>
     internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
                                                                                                       Cols... cols) {

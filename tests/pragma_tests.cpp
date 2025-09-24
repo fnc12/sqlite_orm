@@ -1,5 +1,5 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <cstdio>  //  ::remove
+#include <cstdio>  //  std::remove
 #include <catch2/catch_all.hpp>
 
 using namespace sqlite_orm;
@@ -12,7 +12,7 @@ TEST_CASE("module_list") {
 
 TEST_CASE("recursive_triggers") {
     auto filename = "recursive_triggers.sqlite";
-    ::remove(filename);
+    std::remove(filename);
     auto storage = make_storage(filename);
     storage.open_forever();
     storage.pragma.recursive_triggers(true);
@@ -20,9 +20,24 @@ TEST_CASE("recursive_triggers") {
     REQUIRE(result);
 }
 
-TEST_CASE("Journal mode") {
+TEST_CASE("locking_mode") {
+    auto storage = make_storage("");
+
+    SECTION("EXCLUSIVE") {
+        storage.pragma.locking_mode(locking_mode::EXCLUSIVE);
+        const auto result = storage.pragma.locking_mode();
+        REQUIRE(result == locking_mode::EXCLUSIVE);
+    }
+    SECTION("NORMAL") {
+        storage.pragma.locking_mode(locking_mode::NORMAL);
+        const auto result = storage.pragma.locking_mode();
+        REQUIRE(result == locking_mode::NORMAL);
+    }
+}
+
+TEST_CASE("journal_mode") {
     auto filename = "journal_mode.sqlite";
-    ::remove(filename);
+    std::remove(filename);
     auto storage = make_storage(filename);
     auto storageCopy = storage;
     decltype(storage)* stor = nullptr;
@@ -35,15 +50,15 @@ TEST_CASE("Journal mode") {
     auto jm = stor->pragma.journal_mode();
     REQUIRE(jm == journal_mode::DELETE);
 
-    for(auto i = 0; i < 2; ++i) {
-        if(i == 0) {
+    for (auto i = 0; i < 2; ++i) {
+        if (i == 0) {
             stor->begin_transaction();
         }
         stor->pragma.journal_mode(journal_mode::MEMORY);
         jm = stor->pragma.journal_mode();
         REQUIRE(jm == journal_mode::MEMORY);
 
-        if(i == 1) {  //  WAL cannot be set within a transaction
+        if (i == 1) {  //  WAL cannot be set within a transaction
             stor->pragma.journal_mode(journal_mode::WAL);
             jm = stor->pragma.journal_mode();
             REQUIRE(jm == journal_mode::WAL);
@@ -62,7 +77,7 @@ TEST_CASE("Journal mode") {
         jm = stor->pragma.journal_mode();
         REQUIRE(jm == journal_mode::TRUNCATE);
 
-        if(i == 0) {
+        if (i == 0) {
             stor->rollback();
         }
     }
@@ -80,7 +95,7 @@ TEST_CASE("Synchronous") {
     try {
         storage.pragma.synchronous(newValue);
         throw std::runtime_error("Must not fire");
-    } catch(const std::system_error&) {
+    } catch (const std::system_error&) {
         //  Safety level may not be changed inside a transaction
         REQUIRE(storage.pragma.synchronous() == value);
     }
@@ -103,7 +118,7 @@ TEST_CASE("User version") {
 
 TEST_CASE("Auto vacuum") {
     auto filename = "autovacuum.sqlite";
-    ::remove(filename);
+    std::remove(filename);
 
     auto storage = make_storage(filename);
 
@@ -115,6 +130,8 @@ TEST_CASE("Auto vacuum") {
 
     storage.pragma.auto_vacuum(2);
     REQUIRE(storage.pragma.auto_vacuum() == 2);
+
+    std::remove(filename);
 }
 
 TEST_CASE("busy_timeout") {
@@ -145,7 +162,7 @@ TEST_CASE("Integrity Check") {
     };
 
     auto filename = "integrity.sqlite";
-    ::remove(filename);
+    std::remove(filename);
 
     std::string tablename = "users";
     auto storage = make_storage(filename,
@@ -170,7 +187,7 @@ TEST_CASE("Quick Check") {
     };
 
     auto filename = "quick_check.sqlite";
-    ::remove(filename);
+    std::remove(filename);
 
     std::string tablename = "users";
     auto storage = make_storage(filename,
@@ -186,9 +203,11 @@ TEST_CASE("Quick Check") {
 
 TEST_CASE("application_id") {
     auto filename = "application_id.sqlite";
-    ::remove(filename);
+    std::remove(filename);
 
     auto storage = make_storage(filename);
     storage.pragma.application_id(3);
     REQUIRE(storage.pragma.application_id() == 3);
+
+    std::remove(filename);
 }

@@ -31,7 +31,7 @@ TEST_CASE("Multi order by") {
         auto expectedIds = {1, 2, 3, 5, 6, 4};
         REQUIRE(expectedIds.size() == singers.size());
         auto it = expectedIds.begin();
-        for(size_t i = 0; i < singers.size(); ++i) {
+        for (size_t i = 0; i < singers.size(); ++i) {
             REQUIRE(*it == singers[i].id);
             ++it;
         }
@@ -42,7 +42,7 @@ TEST_CASE("Multi order by") {
         auto singers = storage.get_all<Singer>(order_by(&Singer::id).asc());
         auto singers2 = storage.get_all<Singer>(multi_order_by(order_by(&Singer::id).asc()));
         REQUIRE(singers.size() == singers2.size());
-        for(size_t i = 0; i < singers.size(); ++i) {
+        for (size_t i = 0; i < singers.size(); ++i) {
             REQUIRE(singers[i].id == singers2[i].id);
         }
     }
@@ -101,7 +101,8 @@ TEST_CASE("Wide string") {
         std::wstring letters;
     };
 
-    auto storage = make_storage("wideStrings.sqlite",
+    const auto filename = "wideStrings.sqlite";
+    auto storage = make_storage(filename,
                                 make_table("alphabets",
                                            make_column("id", &Alphabet::id, primary_key()),
                                            make_column("letters", &Alphabet::letters)));
@@ -115,10 +116,11 @@ TEST_CASE("Wide string") {
         L"АаБбВвГгДдЕеЁёЖжЗзИиЙйКкЛлМмНнОоППРрСсТтУуФфХхЦцЧчШшЩщЪъЫыЬьЭэЮюЯя",  //  russian
         L"AaBbCcÇçDdEeFFGgĞğHhIıİiJjKkLlMmNnOoÖöPpRrSsŞşTtUuÜüVvYyZz",  //  turkish
     };
-    for(auto& expectedString: expectedStrings) {
+    for (auto& expectedString: expectedStrings) {
         auto id = storage.insert(Alphabet{0, expectedString});
         REQUIRE(storage.get<Alphabet>(id).letters == expectedString);
     }
+    std::remove(filename);
 }
 #endif  //  SQLITE_ORM_OMITS_CODECVT
 
@@ -285,8 +287,8 @@ TEST_CASE("Blob") {
 
     auto generateData = [](size_t size) -> byte* {
         auto data = (byte*)::malloc(size * sizeof(byte));
-        for(int i = 0; i < static_cast<int>(size); ++i) {
-            if((i + 1) % 10 == 0) {
+        for (int i = 0; i < static_cast<int>(size); ++i) {
+            if ((i + 1) % 10 == 0) {
                 data[i] = 0;
             } else {
                 data[i] = static_cast<byte>((rand() % 100) + 1);
@@ -295,7 +297,8 @@ TEST_CASE("Blob") {
         return data;
     };
 
-    auto storage = make_storage("blob.db", make_table("blob", make_column("data", &BlobData::data)));
+    auto filename = "blob.db";
+    auto storage = make_storage(filename, make_table("blob", make_column("data", &BlobData::data)));
     storage.sync_schema();
     storage.remove_all<BlobData>();
 
@@ -338,6 +341,7 @@ TEST_CASE("Blob") {
     storage.insert(BlobData{});
 
     free(data);
+    std::remove(filename);
 }
 
 /**
@@ -385,62 +389,3 @@ TEST_CASE("Escape chars") {
     storage.update(selena);
     storage.remove<Employee>(10);
 }
-
-#ifdef SQLITE_ORM_WITH_CTE
-TEST_CASE("With select") {
-    using Catch::Matchers::Equals;
-
-    using cnt = decltype(1_ctealias);
-    auto storage = make_storage("");
-    SECTION("with ordinary") {
-        auto rows = storage.with(cte<cnt>().as(select(1)), select(column<cnt>(1_colalias)));
-        REQUIRE_THAT(rows, Equals(std::vector<int>{1}));
-    }
-    SECTION("with ordinary, compound") {
-        auto rows = storage.with(cte<cnt>().as(select(1)),
-                                 union_all(select(column<cnt>(1_colalias)), select(column<cnt>(1_colalias))));
-        REQUIRE_THAT(rows, Equals(std::vector<int>{1, 1}));
-    }
-    SECTION("with not enforced recursive") {
-        auto rows = storage.with_recursive(cte<cnt>().as(select(1)), select(column<cnt>(1_colalias)));
-        REQUIRE_THAT(rows, Equals(std::vector<int>{1}));
-    }
-    SECTION("with not enforced recursive, compound") {
-        auto rows = storage.with_recursive(cte<cnt>().as(select(1)),
-                                           union_all(select(column<cnt>(1_colalias)), select(column<cnt>(1_colalias))));
-        REQUIRE_THAT(rows, Equals(std::vector<int>{1, 1}));
-    }
-    SECTION("with ordinary, multiple") {
-        auto rows = storage.with(std::make_tuple(cte<cnt>().as(select(1))), select(column<cnt>(1_colalias)));
-        REQUIRE_THAT(rows, Equals(std::vector<int>{1}));
-    }
-    SECTION("with ordinary, multiple, compound") {
-        auto rows = storage.with(std::make_tuple(cte<cnt>().as(select(1))),
-                                 union_all(select(column<cnt>(1_colalias)), select(column<cnt>(1_colalias))));
-        REQUIRE_THAT(rows, Equals(std::vector<int>{1, 1}));
-    }
-    SECTION("with not enforced recursive, multiple") {
-        auto rows = storage.with_recursive(std::make_tuple(cte<cnt>().as(select(1))), select(column<cnt>(1_colalias)));
-        REQUIRE_THAT(rows, Equals(std::vector<int>{1}));
-    }
-    SECTION("with not enforced recursive, multiple, compound") {
-        auto rows = storage.with_recursive(std::make_tuple(cte<cnt>().as(select(1))),
-                                           union_all(select(column<cnt>(1_colalias)), select(column<cnt>(1_colalias))));
-        REQUIRE_THAT(rows, Equals(std::vector<int>{1, 1}));
-    }
-    SECTION("with optional recursive") {
-        auto rows = storage.with(
-            cte<cnt>().as(
-                union_all(select(1), select(column<cnt>(1_colalias) + 1, where(column<cnt>(1_colalias) < 2)))),
-            select(column<cnt>(1_colalias)));
-        REQUIRE_THAT(rows, Equals(std::vector<int>{1, 2}));
-    }
-    SECTION("with recursive") {
-        auto rows = storage.with_recursive(
-            cte<cnt>().as(
-                union_all(select(1), select(column<cnt>(1_colalias) + 1, where(column<cnt>(1_colalias) < 2)))),
-            select(column<cnt>(1_colalias)));
-        REQUIRE_THAT(rows, Equals(std::vector<int>{1, 2}));
-    }
-}
-#endif

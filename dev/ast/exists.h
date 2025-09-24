@@ -1,6 +1,8 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
+#endif
 
 #include "../tags.h"
 
@@ -17,7 +19,9 @@ namespace sqlite_orm {
             exists_t(expression_type expression_) : expression(std::move(expression_)) {}
         };
     }
+}
 
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  EXISTS(condition).
      *  Example: storage.select(columns(&Agent::code, &Agent::name, &Agent::workingArea, &Agent::comission),

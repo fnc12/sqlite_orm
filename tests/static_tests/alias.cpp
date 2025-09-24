@@ -1,5 +1,8 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <type_traits>  //  std::is_same
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+#include <concepts>  //  std::same_as
+#endif
 #include <catch2/catch_all.hpp>
 
 using namespace sqlite_orm;
@@ -10,6 +13,12 @@ using internal::column_alias;
 using internal::column_pointer;
 using internal::recordset_alias;
 using internal::using_t;
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+using internal::count_asterisk_t;
+using internal::get_all_t;
+using internal::mapped_view;
+using std::same_as;
+#endif
 
 template<class ColAlias, class E>
 void do_assert() {
@@ -22,10 +31,20 @@ void runTest(ColAlias /*colRef*/) {
 }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-template<class S, orm_table_alias auto als>
-concept storage_table_alias_callable = requires(S& storage) {
-    { storage.get_all<als>() };
-    { storage.count<als>() };
+template<auto als,
+         /*note: gcc until v13.3 had the bad habit to deduce a constant template parameter as const; remove it*/
+         typename A = std::remove_const_t<decltype(als)>,
+         typename O = internal::auto_type_t<als>>
+concept table_alias_callable = orm_table_alias<A> && requires {
+    { get_all<als>() } -> same_as<get_all_t<A, std::vector<O>>>;
+    { count<als>() } -> same_as<count_asterisk_t<A>>;
+};
+
+template<class S, auto als, typename A = decltype(als), typename O = internal::auto_type_t<als>>
+concept storage_table_alias_callable = orm_table_alias<A> && requires(S& storage) {
+    { storage.template get_all<als>() } -> same_as<std::vector<O>>;
+    { storage.template count<als>() } -> same_as<int>;
+    { storage.template iterate<als>() } -> same_as<mapped_view<O, S>>;
 };
 #endif
 
@@ -68,7 +87,7 @@ TEST_CASE("aliases") {
             alias_column<d_alias>(&User::id));
         runTest<alias_column_t<alias_d<DerivedUser>, column_pointer<DerivedUser, int User::*>>>(d_alias->*&User::id);
 #endif
-#ifdef SQLITE_ORM_WITH_CTE
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         runTest<column_alias<'1'>>(1_colalias);
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         using cte_1 = decltype(1_ctealias);
@@ -103,11 +122,16 @@ TEST_CASE("aliases") {
         runTest<internal::inner_join_t<d_alias_type, using_t<DerivedUser, decltype(&DerivedUser::id)>>>(
             inner_join<d_alias>(using_(derived_user->*&DerivedUser::id)));
 
+        STATIC_REQUIRE(table_alias_callable<d_alias>);
+        STATIC_REQUIRE(table_alias_callable<sqlite_schema>);
+
         using storage_type = decltype(make_storage(
             "",
+            make_sqlite_schema_table(),
             make_table<DerivedUser>("derived_user", make_column("id", &DerivedUser::id, primary_key()))));
 
         STATIC_REQUIRE(storage_table_alias_callable<storage_type, d_alias>);
+        STATIC_REQUIRE(storage_table_alias_callable<storage_type, sqlite_schema>);
     }
 #endif
 }

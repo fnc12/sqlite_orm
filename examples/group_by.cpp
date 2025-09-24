@@ -43,7 +43,7 @@ int main(int, char**) {
     //  FROM COMPANY
     //  GROUP BY NAME;
     auto salaryName = storage.select(columns(&Employee::name, sum(&Employee::salary)), group_by(&Employee::name));
-    for(auto& t: salaryName) {
+    for (auto& t: salaryName) {
         cout << std::get<0>(t) << '\t' << *std::get<1>(t) << endl;
     }
 
@@ -55,7 +55,7 @@ int main(int, char**) {
 
     cout << endl << "Now, our table has the following records with duplicate names:" << endl << endl;
 
-    for(auto& employee: storage.iterate<Employee>()) {
+    for (auto& employee: storage.iterate<Employee>()) {
         cout << storage.dump(employee) << endl;
     }
 
@@ -65,7 +65,7 @@ int main(int, char**) {
     salaryName = storage.select(columns(&Employee::name, sum(&Employee::salary)),
                                 group_by(&Employee::name),
                                 order_by(&Employee::name));
-    for(auto& t: salaryName) {
+    for (auto& t: salaryName) {
         cout << std::get<0>(t) << '\t' << *std::get<1>(t) << endl;
     }
 
@@ -73,7 +73,7 @@ int main(int, char**) {
     salaryName = storage.select(columns(&Employee::name, sum(&Employee::salary)),
                                 group_by(&Employee::name),
                                 order_by(&Employee::name).desc());
-    for(auto& t: salaryName) {
+    for (auto& t: salaryName) {
         cout << std::get<0>(t) << '\t' << *std::get<1>(t) << endl;
     }
 

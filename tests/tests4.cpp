@@ -74,22 +74,12 @@ TEST_CASE("join") {
     struct User {
         int id = 0;
         std::string name;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        User() = default;
-        User(int id, std::string name) : id{id}, name{std::move(name)} {}
-#endif
     };
 
     struct Visit {
         int id = 0;
         int userId = 0;
         time_t date = 0;
-
-#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        Visit() = default;
-        Visit(int id, int userId, time_t date) : id{id}, userId{userId}, date{date} {}
-#endif
     };
 
     auto storage =
@@ -144,6 +134,7 @@ TEST_CASE("join") {
     }
 }
 
+#if SQLITE_VERSION_NUMBER >= 3006019
 TEST_CASE("two joins") {
     struct Statement {
         int id_statement;
@@ -288,3 +279,4 @@ TEST_CASE("two joins") {
                                  inner_join<als_b>(on(alias_column<als_t>(&Transaccion::fkey_account_own) ==
                                                       alias_column<als_b>(&Account::id_account))));
 }
+#endif
