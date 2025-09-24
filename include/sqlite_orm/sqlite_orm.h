@@ -24710,7 +24710,7 @@ namespace sqlite_orm {
             }
 
             template<class M>
-            sync_schema_result sync_table(const virtual_table_t<M>& virtualTable, sqlite3* db, bool) {
+            sync_schema_result sync_dbo(const virtual_table_t<M>& virtualTable, sqlite3* db, bool) {
                 using context_t = serializer_context<db_objects_type>;
 
                 const auto res = sync_schema_result::already_in_sync;
@@ -24721,7 +24721,7 @@ namespace sqlite_orm {
             }
 
             template<class... Cols>
-            sync_schema_result sync_table(const index_t<Cols...>& index, sqlite3* db, bool) {
+            sync_schema_result sync_dbo(const index_t<Cols...>& index, sqlite3* db, bool) {
                 using context_t = serializer_context<db_objects_type>;
 
                 const auto res = sync_schema_result::already_in_sync;
@@ -24732,7 +24732,7 @@ namespace sqlite_orm {
             }
 
             template<class... Cols>
-            sync_schema_result sync_table(const trigger_t<Cols...>& trigger, sqlite3* db, bool) {
+            sync_schema_result sync_dbo(const trigger_t<Cols...>& trigger, sqlite3* db, bool) {
                 using context_t = serializer_context<db_objects_type>;
 
                 const auto res = sync_schema_result::already_in_sync;  // TODO Change accordingly
@@ -24743,7 +24743,7 @@ namespace sqlite_orm {
             }
 
             template<class Table, satisfies<is_table, Table> = true>
-            sync_schema_result sync_table(const Table& table, sqlite3* db, bool preserve);
+            sync_schema_result sync_dbo(const Table& table, sqlite3* db, bool preserve);
 
             template<class Table, satisfies<is_table, Table> = true>
             sync_schema_result sync_regular_table(const Table& table, sqlite3* db, bool preserve);
@@ -24849,7 +24849,7 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
                 iterate_tuple<true>(this->db_objects, [this, db = con.get(), preserve, &result](auto& schemaObject) {
-                    sync_schema_result status = this->sync_table(schemaObject, db, preserve);
+                    sync_schema_result status = this->sync_dbo(schemaObject, db, preserve);
                     result.emplace(schemaObject.name, status);
                 });
                 return result;
@@ -25798,9 +25798,9 @@ namespace sqlite_orm {
     namespace internal {
         template<class... DBO>
         template<class Table, satisfies<is_table, Table>>
-        sync_schema_result storage_t<DBO...>::sync_table([[maybe_unused]] const Table& table,
-                                                         [[maybe_unused]] sqlite3* db,
-                                                         [[maybe_unused]] bool preserve) {
+        sync_schema_result storage_t<DBO...>::sync_dbo([[maybe_unused]] const Table& table,
+                                                       [[maybe_unused]] sqlite3* db,
+                                                       [[maybe_unused]] bool preserve) {
             if constexpr (
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
                 std::is_same<object_type_t<Table>, dbstat>::value ||
