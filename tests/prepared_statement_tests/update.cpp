@@ -8,7 +8,6 @@ using namespace sqlite_orm;
 
 TEST_CASE("Prepared update") {
     using namespace PreparedStatementTests;
-    using Catch::Matchers::UnorderedEquals;
 
     const int defaultVisitTime = 50;
 

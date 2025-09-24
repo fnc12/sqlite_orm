@@ -26,6 +26,7 @@ TEST_CASE("table::find_column_name") {
                                 make_column("country_code", &Contact::countryCode),
                                 make_column("phone_number", &Contact::phoneNumber),
                                 make_column("visits_count", &Contact::visitsCount));
+        STATIC_REQUIRE(table.count_of<internal::is_column>() == 6);
         REQUIRE(*table.find_column_name(&Contact::id) == "contact_id");
         REQUIRE(*table.find_column_name(&Contact::firstName) == "first_name");
         REQUIRE(*table.find_column_name(&Contact::lastName) == "last_name");

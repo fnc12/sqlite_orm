@@ -271,6 +271,15 @@ namespace sqlite_orm {
 #endif
 
             /**
+             *  Returns the names of existing permanent view in the database. Doesn't check storage itself - works only with
+             * actual database.
+             *  @return Returns list of tables in database.
+             */
+            std::vector<std::string> view_names() {
+                return this->object_names("view");
+            }
+
+            /**
              *  Returns existing permanent table names in database. Doesn't check storage itself - works only with
              * actual database.
              *  @return Returns list of tables in database.

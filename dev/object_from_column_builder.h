@@ -57,8 +57,8 @@ namespace sqlite_orm {
                 const auto rowExtractor = row_value_extractor<field_type>();
                 auto value = rowExtractor.extract(this->stmt, ++this->columnIndex);
                 // calculate absolute address of member from relative address
-                field_type* field = reinterpret_cast<field_type*>(reinterpret_cast<std::byte*>(&object) +
-                                                                  reinterpret_cast<std::byte*>(column.member_pointer));
+                const std::byte* fieldAddress = (std::byte*)(size_t(&object) + size_t(column.member_pointer.field));
+                field_type* field = (field_type*)fieldAddress;
                 *field = std::move(value);
             }
 #endif

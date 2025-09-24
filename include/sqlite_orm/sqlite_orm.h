@@ -9144,7 +9144,17 @@ namespace sqlite_orm {
                 }
             }
         };
+
+        template<class T>
+        inline constexpr bool is_with_clause_v = polyfill::is_specialization_of<T, with_t>::value;
+#else
+
+        template<class T>
+        inline constexpr bool is_with_clause_v = false;
 #endif
+
+        template<class T>
+        using is_with_clause = polyfill::bool_constant<is_with_clause_v<T>>;
 
         template<class T>
         struct asterisk_t {
@@ -13949,8 +13959,8 @@ namespace sqlite_orm {
                 const auto rowExtractor = row_value_extractor<field_type>();
                 auto value = rowExtractor.extract(this->stmt, ++this->columnIndex);
                 // calculate absolute address of member from relative address
-                field_type* field = reinterpret_cast<field_type*>(reinterpret_cast<std::byte*>(&object) +
-                                                                  reinterpret_cast<std::byte*>(column.member_pointer));
+                const std::byte* fieldAddress = (std::byte*)(size_t(&object) + size_t(column.member_pointer.field));
+                field_type* field = (field_type*)fieldAddress;
                 *field = std::move(value);
             }
 #endif
@@ -18569,6 +18579,15 @@ namespace sqlite_orm {
 #endif
 
             /**
+             *  Returns the names of existing permanent view in the database. Doesn't check storage itself - works only with
+             * actual database.
+             *  @return Returns list of tables in database.
+             */
+            std::vector<std::string> view_names() {
+                return this->object_names("view");
+            }
+
+            /**
              *  Returns existing permanent table names in database. Doesn't check storage itself - works only with
              * actual database.
              *  @return Returns list of tables in database.
@@ -20397,6 +20416,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "schema/view.h"
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_WITH_VIEW
 #include <type_traits>  //  std::remove_cvref
 #include <utility>  // std::forward, std::move, std::index_sequence, std::make_index_sequence
@@ -20405,6 +20425,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <boost/pfr.hpp>
 // #include "../functional/cxx_universal.h"
 //  ::size_t
+#endif
 // #include "../column_pointer.h"
 
 // #include "../select_constraints.h"
@@ -20449,6 +20470,13 @@ namespace boost::pfr {
 namespace sqlite_orm::internal {
     template<class Select>
     decltype(auto) get_cte_driving_subselect(const Select& select);
+
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+    template<class... CTEs, class E>
+    decltype(auto) get_cte_driving_subselect(const with_t<E, CTEs...>& select) {
+        return get_cte_driving_subselect(select.expression);
+    }
+#endif
 
     /**
      *  Factory function for a column definition from a relative pointer to an object of the object to be mapped.
@@ -20552,9 +20580,13 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class O, class Select>
     auto make_view(std::string name, Select select) {
-        static_assert(polyfill::conjunction_v<internal::is_select<Select>>, "You must specify a select statement");
+        using namespace ::sqlite_orm::internal;
+        static_assert(polyfill::disjunction_v<is_select<Select>, is_with_clause<Select>>,
+                      "You must specify a select statement");
 
-        select.highest_level = true;
+        if constexpr (is_select_v<Select>) {
+            select.highest_level = true;
+        }
         return internal::make_view<O>(std::move(name),
                                       std::make_index_sequence<boost::pfr::tuple_size_v<O>>{},
                                       std::move(select));
@@ -23019,6 +23051,8 @@ namespace sqlite_orm {
 
 // #include "schema/table.h"
 
+// #include "schema/view.h"
+
 // #include "schema/column.h"
 
 // #include "schema/index.h"
@@ -24622,6 +24656,13 @@ namespace sqlite_orm {
                 return sync_schema_result::already_in_sync;
             }
 
+#ifdef SQLITE_ORM_WITH_VIEW
+            template<class O, class Select, class... Cs>
+            sync_schema_result schema_status(const view_t<O, Select, Cs...>&, sqlite3*, bool, bool*) {
+                return sync_schema_result::already_in_sync;
+            }
+#endif
+
             template<class T, bool WithoutRowId, class... Cs>
             sync_schema_result schema_status(const table_t<T, WithoutRowId, Cs...>& table,
                                              sqlite3* db,
@@ -24741,6 +24782,19 @@ namespace sqlite_orm {
                 this->executor.perform_void_exec(db, sql.c_str());
                 return res;
             }
+
+#ifdef SQLITE_ORM_WITH_VIEW
+            template<class O, class Select, class... Cs>
+            sync_schema_result sync_dbo(const view_t<O, Select, Cs...>& view, sqlite3* db, bool) {
+                using context_t = serializer_context<db_objects_type>;
+
+                const auto res = sync_schema_result::already_in_sync;
+                context_t context{this->db_objects};
+                const auto sql = serialize(view, context);
+                this->executor.perform_void_exec(db, sql.c_str());
+                return res;
+            }
+#endif
 
             template<class Table, satisfies<is_table, Table> = true>
             sync_schema_result sync_dbo(const Table& table, sqlite3* db, bool preserve);

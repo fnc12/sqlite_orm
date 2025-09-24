@@ -58,6 +58,7 @@
 #include "object_from_column_builder.h"
 #include "row_extractor.h"
 #include "schema/table.h"
+#include "schema/view.h"
 #include "schema/column.h"
 #include "schema/index.h"
 #include "cte_storage.h"
@@ -1126,6 +1127,13 @@ namespace sqlite_orm {
                 return sync_schema_result::already_in_sync;
             }
 
+#ifdef SQLITE_ORM_WITH_VIEW
+            template<class O, class Select, class... Cs>
+            sync_schema_result schema_status(const view_t<O, Select, Cs...>&, sqlite3*, bool, bool*) {
+                return sync_schema_result::already_in_sync;
+            }
+#endif
+
             template<class T, bool WithoutRowId, class... Cs>
             sync_schema_result schema_status(const table_t<T, WithoutRowId, Cs...>& table,
                                              sqlite3* db,
@@ -1245,6 +1253,19 @@ namespace sqlite_orm {
                 this->executor.perform_void_exec(db, sql.c_str());
                 return res;
             }
+
+#ifdef SQLITE_ORM_WITH_VIEW
+            template<class O, class Select, class... Cs>
+            sync_schema_result sync_dbo(const view_t<O, Select, Cs...>& view, sqlite3* db, bool) {
+                using context_t = serializer_context<db_objects_type>;
+
+                const auto res = sync_schema_result::already_in_sync;
+                context_t context{this->db_objects};
+                const auto sql = serialize(view, context);
+                this->executor.perform_void_exec(db, sql.c_str());
+                return res;
+            }
+#endif
 
             template<class Table, satisfies<is_table, Table> = true>
             sync_schema_result sync_dbo(const Table& table, sqlite3* db, bool preserve);

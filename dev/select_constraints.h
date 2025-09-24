@@ -318,7 +318,17 @@ namespace sqlite_orm {
                 }
             }
         };
+
+        template<class T>
+        inline constexpr bool is_with_clause_v = polyfill::is_specialization_of<T, with_t>::value;
+#else
+
+        template<class T>
+        inline constexpr bool is_with_clause_v = false;
 #endif
+
+        template<class T>
+        using is_with_clause = polyfill::bool_constant<is_with_clause_v<T>>;
 
         template<class T>
         struct asterisk_t {

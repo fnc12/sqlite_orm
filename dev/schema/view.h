@@ -1,4 +1,5 @@
 #pragma once
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_WITH_VIEW
 #include <type_traits>  //  std::remove_cvref
 #include <utility>  // std::forward, std::move, std::index_sequence, std::make_index_sequence
@@ -6,6 +7,7 @@
 #include <stddef.h>  //  offsetof
 #include <boost/pfr.hpp>
 #include "../functional/cxx_universal.h"  //  ::size_t
+#endif
 #include "../column_pointer.h"
 #include "../select_constraints.h"
 #include "column.h"
@@ -47,6 +49,13 @@ namespace boost::pfr {
 namespace sqlite_orm::internal {
     template<class Select>
     decltype(auto) get_cte_driving_subselect(const Select& select);
+
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+    template<class... CTEs, class E>
+    decltype(auto) get_cte_driving_subselect(const with_t<E, CTEs...>& select) {
+        return get_cte_driving_subselect(select.expression);
+    }
+#endif
 
     /**
      *  Factory function for a column definition from a relative pointer to an object of the object to be mapped.
@@ -150,9 +159,13 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class O, class Select>
     auto make_view(std::string name, Select select) {
-        static_assert(polyfill::conjunction_v<internal::is_select<Select>>, "You must specify a select statement");
+        using namespace ::sqlite_orm::internal;
+        static_assert(polyfill::disjunction_v<is_select<Select>, is_with_clause<Select>>,
+                      "You must specify a select statement");
 
-        select.highest_level = true;
+        if constexpr (is_select_v<Select>) {
+            select.highest_level = true;
+        }
         return internal::make_view<O>(std::move(name),
                                       std::make_index_sequence<boost::pfr::tuple_size_v<O>>{},
                                       std::move(select));
