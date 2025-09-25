@@ -29,7 +29,7 @@ TEST_CASE("sql view") {
         auto storage = make_storage(
             "",
             make_table<User>("user", make_column("id", &User::id, primary_key()), make_column("name", &User::name)),
-            make_view<UserViewTests>("user_view", select(columns(&User::id, &User::name))));
+            make_view<UserViewTests>("user_view", select(asterisk<User>())));
 
         storage.sync_schema();
 
@@ -47,7 +47,6 @@ TEST_CASE("sql view") {
             REQUIRE_THAT(users, UnorderedEquals<UserViewTests>({{1, "name"}}));
         }
     }
-#if 0
     SECTION("view with CTE") {
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -56,8 +55,7 @@ TEST_CASE("sql view") {
             "",
             make_table<User>("user", make_column("id", &User::id, primary_key()), make_column("name", &User::name)),
             make_view<UserViewTests>("user_view",
-                                     with(users_cte().as(select(asterisk<User>())),
-                                          select(columns(users_cte->*&User::id, users_cte->*&User::name)))));
+                                     with(users_cte().as(select(asterisk<User>())), select(asterisk<users_cte>()))));
 
         storage.sync_schema();
 
@@ -77,6 +75,5 @@ TEST_CASE("sql view") {
 #endif
 #endif
     }
-#endif
 }
 #endif

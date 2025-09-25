@@ -398,6 +398,37 @@ namespace sqlite_orm {
             }
         };
 
+        /**
+         *  Specialize if a type is a select statement expression.
+         */
+        template<class T, class SFINAE = void>
+        inline constexpr bool is_select_expression_v = false;
+
+        template<class T>
+        using is_select_expression = polyfill::bool_constant<is_select_expression_v<T>>;
+
+        template<class Select>
+        inline constexpr bool is_select_expression_v<Select, std::enable_if_t<is_select_v<Select>>> = true;
+
+        template<class With>
+        inline constexpr bool is_select_expression_v<
+            With,
+            std::enable_if_t<polyfill::conjunction_v<is_with_clause<With>, is_select<expression_type_t<With>>>>> = true;
+
+        /*  
+         *  Access the main select expression of a with clause or the passed in select expression.
+         */
+        template<class T, satisfies<is_select_expression, T> = true>
+        constexpr decltype(auto) access_main_select(const T& select) {
+            if constexpr (is_with_clause_v<T>) {
+                return (select.expression);
+            } else if constexpr (is_select_v<T>) {
+                return select;
+            } else {
+                static_assert(polyfill::always_false_v<T>);
+            }
+        }
+
         template<class T, std::enable_if_t<!is_rowset_deduplicator_v<T>, bool> = true>
         const T& access_column_expression(const T& expression) {
             return expression;

@@ -1,4 +1,5 @@
 #pragma once
+
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_WITH_VIEW
 #include <type_traits>  //  std::remove_cvref
@@ -9,13 +10,14 @@
 #include <meta>
 #endif
 #endif
-#if __cpp_impl_reflection < 202500L && BOOST_PFR_ENABLED == 1
-#include "../column_pointer.h"
 #endif
+
+#include "../column_pointer.h"
 #include "../select_constraints.h"
 #include "column.h"
 #include "mapped_object.h"
 
+#ifdef SQLITE_ORM_WITH_VIEW
 #if __cpp_impl_reflection >= 202500L
 #elif BOOST_PFR_ENABLED == 1
 namespace boost::pfr {
@@ -51,8 +53,10 @@ namespace boost::pfr {
     }
 }
 #endif
+#endif
 
 namespace sqlite_orm::internal {
+#ifdef SQLITE_ORM_WITH_VIEW
     /**
      *  View definition, mapping an aggregate object type to a corresponding select statement.
      */
@@ -66,17 +70,18 @@ namespace sqlite_orm::internal {
         select_type select;
     };
 
-    template<class Select>
-    decltype(auto) get_cte_driving_subselect(const Select& select);
-
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-    template<class... CTEs, class E>
-    decltype(auto) get_cte_driving_subselect(const with_t<E, CTEs...>& select) {
-        return get_cte_driving_subselect(select.expression);
-    }
+    template<class T>
+    inline constexpr bool is_view_v = polyfill::is_specialization_of_v<T, view_t>;
+#else
+    template<class T>
+    inline constexpr bool is_view_v = false;
 #endif
+
+    template<class T>
+    struct is_view : polyfill::bool_constant<is_view_v<T>> {};
 }
 
+#ifdef SQLITE_ORM_WITH_VIEW
 #if __cpp_impl_reflection >= 202500L
 #elif BOOST_PFR_ENABLED == 1
 namespace sqlite_orm::internal {
@@ -136,48 +141,41 @@ namespace sqlite_orm::internal {
         return relative.field == &(object->*m);
     }
 
-    template<class Select>
-    using columns_size_t = std::tuple_size<typename Select::return_type::columns_type>;
-
     template<class O, size_t... I, class Select>
     auto make_view(std::string name, std::index_sequence<I...>, Select select) {
         namespace pfr = boost::pfr;
         namespace pfrd = pfr::detail;
         namespace pfrs = pfrd::sequence_tuple;
 
+#if __cpp_lib_is_aggregate >= 201703L
         static_assert(std::is_aggregate_v<O>);
+#endif
 
         using PfrTpl = decltype(pfrd::tie_as_tuple(pfrd::fake_object<O>()));
         // object's member types as a tuple
-        using TS = pfrs::tuple<std::remove_cvref_t<typename pfrs::tuple_element<I, PfrTpl>::type>...>;
-
-        using DrivingSelect = std::remove_cvref_t<decltype(get_cte_driving_subselect(select))>;
-
-        using columns_size = polyfill::detected_or_t<polyfill::index_constant<1>, columns_size_t, DrivingSelect>;
-        static_assert(columns_size::value == PfrTpl::size_v);
+        using TS = pfrs::tuple<polyfill::remove_cvref_t<typename pfrs::tuple_element<I, PfrTpl>::type>...>;
 
         using view_type =
             view_t<O,
                    Select,
-                   decltype(make_column<>(std::string(pfr::get_name<I, O>()),
-                                          column_pointer<O, decltype(pfr::get_relative_address<O, I, TS>())>{
-                                              pfr::get_relative_address<O, I, TS>()}))...>;
+                   decltype(internal::make_column<>(std::string(pfr::get_name<I, O>()),
+                                                    column_pointer<O, decltype(pfr::get_relative_address<O, I, TS>())>{
+                                                        pfr::get_relative_address<O, I, TS>()}))...>;
 
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return view_type{std::move(name),
-                             {make_column<>(std::string(pfr::get_name<I, O>()),
-                                            column_pointer<O, decltype(pfr::get_relative_address<O, I, TS>())>{
-                                                pfr::get_relative_address<O, I, TS>()})...},
-                             std::move(select)});
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return view_type{
+            std::move(name),
+            {internal::make_column<>(std::string(pfr::get_name<I, O>()),
+                                     column_pointer<O, decltype(pfr::get_relative_address<O, I, TS>())>{
+                                         pfr::get_relative_address<O, I, TS>()})...},
+            std::move(select)});
     }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class O, class Select>
+        requires (internal::is_select_expression_v<Select>)
     auto make_view(std::string name, Select select) {
         using namespace ::sqlite_orm::internal;
-        static_assert(polyfill::disjunction_v<is_select<Select>, is_with_clause<Select>>,
-                      "You must specify a select statement");
 
         if constexpr (is_select_v<Select>) {
             select.highest_level = true;
@@ -192,11 +190,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
- *  Factory function for a view definition.
- *  
- *  The mapped object type is explicitly specified, columns and their names are deferred from the object type.
- *  The object type must be an aggregate.
- */
+     *  Factory function for a view definition.
+     *  
+     *  The mapped object type is explicitly specified, columns and their names are deferred from the object type.
+     *  The object type must be an aggregate.
+     */
     template<orm_table_reference auto table, class Select>
     auto make_view(std::string name, Select select) {
         return make_view<internal::auto_decay_table_ref_t<table>>(std::move(name), std::forward<Select>(select));

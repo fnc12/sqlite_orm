@@ -17,11 +17,11 @@ TEST_CASE("statement_serializer view_t") {
     };
 
     auto table = make_table<User>("user", make_column("id", &User::id), make_column("name", &User::name));
-    auto view = make_view<UserViewSerializerTests>("user_view", select(columns(&User::id, &User::name)));
+    auto view = make_view<UserViewSerializerTests>("user_view", select(asterisk<User>(true)));
     using db_objects_t = internal::db_objects_tuple<decltype(table), decltype(view)>;
-    auto dbObjects = db_objects_t{table, view};
+    const db_objects_t dbObjects{table, view};
     using context_t = internal::serializer_context<db_objects_t>;
-    context_t context{dbObjects};
+    const context_t context{dbObjects};
 
     SECTION("create") {
         std::string value = serialize(view, context);

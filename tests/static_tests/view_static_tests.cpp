@@ -21,7 +21,7 @@ TEST_CASE("view static count_of<is_column>()") {
     };
 
     SECTION("traditional") {
-        auto view = make_view<UserViewStaticTests>("user_view", select(columns(&User::id, &User::name)));
+        auto view = make_view<UserViewStaticTests>("user_view", select(asterisk<User>()));
         using elements_type = decltype(view.elements);
         STATIC_REQUIRE(view.count_of<is_column>() == 2);
         STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 2);
@@ -29,7 +29,7 @@ TEST_CASE("view static count_of<is_column>()") {
     }
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     SECTION("table reference") {
-        auto view = make_view<user_view>("user_view", select(columns(&User::id, &User::name)));
+        auto view = make_view<user_view>("user_view", select(asterisk<User>()));
         using elements_type = decltype(view.elements);
         STATIC_REQUIRE(view.count_of<is_column>() == 2);
         STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 2);

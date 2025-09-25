@@ -15,10 +15,7 @@ TEST_CASE("view::find_column_name") {
         std::string name;
     };
 
-    auto table = make_table("user",
-                            make_column("id", &User::id, primary_key().autoincrement()),
-                            make_column("name", &User::name));
-    auto view = make_view<UserViewSchemaTests>("user_view", select(columns(&User::id, &User::name)));
+    auto view = make_view<UserViewSchemaTests>("user_view", select(asterisk<User>()));
 
     SECTION("fields") {
         REQUIRE((view.find_column_name(&UserViewSchemaTests::id) &&

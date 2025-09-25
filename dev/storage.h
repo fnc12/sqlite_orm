@@ -28,6 +28,7 @@
 #include "tuple_helper/tuple_filter.h"
 #include "tuple_helper/tuple_transformer.h"
 #include "tuple_helper/tuple_iteration.h"
+#include "tuple_helper/tuple_fy.h"
 #include "type_traits.h"
 #include "alias.h"
 #include "error_code.h"
@@ -120,7 +121,11 @@ namespace sqlite_orm {
                              storage_opt_or_default<will_run_query_spec>(options),
                              storage_opt_or_default<did_run_query_spec>(options),
                              foreign_keys_count<db_objects_type>()},
-                db_objects{std::move(dbObjects)} {}
+                db_objects{std::move(dbObjects)} {
+#ifdef SQLITE_ORM_WITH_VIEW
+                this->validate_dbos();
+#endif
+            }
 
             storage_t(const storage_t&) = default;
 
@@ -142,6 +147,25 @@ namespace sqlite_orm {
             friend const db_objects_type& obtain_db_objects(const self_type& storage) noexcept {
                 return storage.db_objects;
             }
+
+#ifdef SQLITE_ORM_WITH_VIEW
+            void validate_dbos() const {
+                // validate views: a view cannot select sub-objects, and column results must be convertible to view's object type
+                iterate_tuple<db_objects_type>(views_index_sequence<db_objects_type>{}, [this](const auto* view) {
+                    using DrivingSelect = polyfill::remove_cvref_t<decltype(access_main_select(view->select))>;
+                    using ExprDBOs =
+                        polyfill::remove_cvref_t<decltype(db_objects_for_expression(this->db_objects, view->select))>;
+                    using ColResult = column_result_of_t<ExprDBOs, DrivingSelect>;
+                    using elements_type = elements_type_t<std::remove_reference_t<decltype(*view)>>;
+                    using field_types = transform_tuple_t<filter_tuple_t<elements_type, is_column>, field_type_t>;
+
+                    static_assert(std::is_same<column_result_proxy_t<ColResult>, ColResult>::value,
+                                  "A view cannot select sub-objects");
+                    static_assert(std::is_convertible<tuplify_t<ColResult>, field_types>::value,
+                                  "Column results must be convertible to view's object type");
+                });
+            }
+#endif
 
             template<class Table>
             void create_table(sqlite3* db, const std::string& tableName, const Table& table) {
@@ -1226,7 +1250,7 @@ namespace sqlite_orm {
                 using context_t = serializer_context<db_objects_type>;
 
                 const auto res = sync_schema_result::already_in_sync;
-                context_t context{this->db_objects};
+                const context_t context{this->db_objects};
                 const auto sql = serialize(virtualTable, context);
                 this->executor.perform_void_exec(db, sql.c_str());
                 return res;
@@ -1237,7 +1261,7 @@ namespace sqlite_orm {
                 using context_t = serializer_context<db_objects_type>;
 
                 const auto res = sync_schema_result::already_in_sync;
-                context_t context{this->db_objects};
+                const context_t context{this->db_objects};
                 const auto sql = serialize(index, context);
                 this->executor.perform_void_exec(db, sql.c_str());
                 return res;
@@ -1247,8 +1271,8 @@ namespace sqlite_orm {
             sync_schema_result sync_dbo(const trigger_t<Cols...>& trigger, sqlite3* db, bool) {
                 using context_t = serializer_context<db_objects_type>;
 
-                const auto res = sync_schema_result::already_in_sync;  // TODO Change accordingly
-                context_t context{this->db_objects};
+                const auto res = sync_schema_result::already_in_sync;
+                const context_t context{this->db_objects};
                 const auto sql = serialize(trigger, context);
                 this->executor.perform_void_exec(db, sql.c_str());
                 return res;
@@ -1257,10 +1281,11 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_VIEW
             template<class O, class Select, class... Cs>
             sync_schema_result sync_dbo(const view_t<O, Select, Cs...>& view, sqlite3* db, bool) {
-                using context_t = serializer_context<db_objects_type>;
+                const auto& exprDBOs = db_objects_for_expression(this->db_objects, view.select);
+                using context_t = serializer_context<polyfill::remove_cvref_t<decltype(exprDBOs)>>;
 
                 const auto res = sync_schema_result::already_in_sync;
-                context_t context{this->db_objects};
+                const context_t context{exprDBOs};
                 const auto sql = serialize(view, context);
                 this->executor.perform_void_exec(db, sql.c_str());
                 return res;
@@ -1918,7 +1943,8 @@ namespace sqlite_orm {
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
             template<class... CTEs, class T, class... Args>
             auto execute(const prepared_statement_t<with_t<select_t<T, Args...>, CTEs...>>& statement) {
-                using ExprDBOs = decltype(db_objects_for_expression(this->db_objects, statement.expression));
+                using ExprDBOs = polyfill::remove_cvref_t<decltype(db_objects_for_expression(this->db_objects,
+                                                                                             statement.expression))>;
                 // note: it is enough to only use the 'expression DBOs' at compile-time to determine the column results;
                 // because we cannot select objects/structs from a CTE, passing the permanently defined DBOs are enough.
                 using ColResult = column_result_of_t<ExprDBOs, T>;
