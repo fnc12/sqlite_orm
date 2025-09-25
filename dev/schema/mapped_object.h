@@ -123,8 +123,7 @@ namespace sqlite_orm {
              */
             template<class L>
             void for_each_column(L&& lambda) const {
-                using col_index_sequence = filter_tuple_sequence_t<elements_type, is_column>;
-                iterate_tuple(this->elements, col_index_sequence{}, lambda);
+                iterate_tuple(this->elements, col_index_sequence_of<elements_type>{}, lambda);
             }
 
             /**
