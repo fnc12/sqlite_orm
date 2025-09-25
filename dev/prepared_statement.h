@@ -310,6 +310,48 @@ namespace sqlite_orm {
 
         template<class T>
         using is_insert_constraint = std::is_same<T, insert_constraint>;
+
+        /**
+         *  Specialize if a type is a DML statement expression.
+         */
+        template<class T, class SFINAE = void>
+        inline constexpr bool is_raw_dml_expression_v = false;
+
+        template<class T>
+        using is_raw_dml_expression = polyfill::bool_constant<is_raw_dml_expression_v<T>>;
+
+        template<class DML>
+        inline constexpr bool is_raw_dml_expression_v<
+            DML,
+            std::enable_if_t<
+                polyfill::
+                    disjunction_v<is_insert_raw<DML>, is_replace_raw<DML>, is_update_all<DML>, is_remove_all<DML>>>> =
+            true;
+
+        template<class With>
+        inline constexpr bool is_raw_dml_expression_v<
+            With,
+            std::enable_if_t<polyfill::conjunction_v<is_with_clause<With>,
+                                                     polyfill::disjunction<is_insert_raw<expression_type_t<With>>,
+                                                                           is_replace_raw<expression_type_t<With>>,
+                                                                           is_update_all<expression_type_t<With>>,
+                                                                           is_remove_all<expression_type_t<With>>>>>> =
+            true;
+
+        /*  
+         *  Access the main select expression of a with clause or the passed in select expression.
+         */
+        template<class DML, satisfies<is_raw_dml_expression, DML> = true>
+        constexpr decltype(auto) access_main_dml(const DML& dml) {
+            if constexpr (is_with_clause_v<DML>) {
+                return (dml.expression);
+            } else {
+                return dml;
+            }
+        }
+
+        template<class DML>
+        using main_dml_t = polyfill::remove_cvref_t<decltype(access_main_dml(std::declval<DML>()))>;
     }
 }
 

@@ -9276,10 +9276,8 @@ namespace sqlite_orm {
         constexpr decltype(auto) access_main_select(const Select& select) {
             if constexpr (is_with_clause_v<Select>) {
                 return (select.expression);
-            } else if constexpr (is_select_v<Select>) {
-                return select;
             } else {
-                static_assert(polyfill::always_false_v<Select>);
+                return select;
             }
         }
 
@@ -15455,6 +15453,48 @@ namespace sqlite_orm {
 
         template<class T>
         using is_insert_constraint = std::is_same<T, insert_constraint>;
+
+        /**
+         *  Specialize if a type is a DML statement expression.
+         */
+        template<class T, class SFINAE = void>
+        inline constexpr bool is_raw_dml_expression_v = false;
+
+        template<class T>
+        using is_raw_dml_expression = polyfill::bool_constant<is_raw_dml_expression_v<T>>;
+
+        template<class DML>
+        inline constexpr bool is_raw_dml_expression_v<
+            DML,
+            std::enable_if_t<
+                polyfill::
+                    disjunction_v<is_insert_raw<DML>, is_replace_raw<DML>, is_update_all<DML>, is_remove_all<DML>>>> =
+            true;
+
+        template<class With>
+        inline constexpr bool is_raw_dml_expression_v<
+            With,
+            std::enable_if_t<polyfill::conjunction_v<is_with_clause<With>,
+                                                     polyfill::disjunction<is_insert_raw<expression_type_t<With>>,
+                                                                           is_replace_raw<expression_type_t<With>>,
+                                                                           is_update_all<expression_type_t<With>>,
+                                                                           is_remove_all<expression_type_t<With>>>>>> =
+            true;
+
+        /*  
+         *  Access the main select expression of a with clause or the passed in select expression.
+         */
+        template<class DML, satisfies<is_raw_dml_expression, DML> = true>
+        constexpr decltype(auto) access_main_dml(const DML& dml) {
+            if constexpr (is_with_clause_v<DML>) {
+                return (dml.expression);
+            } else {
+                return dml;
+            }
+        }
+
+        template<class DML>
+        using main_dml_t = polyfill::remove_cvref_t<decltype(access_main_dml(std::declval<DML>()))>;
     }
 }
 
@@ -24984,17 +25024,10 @@ namespace sqlite_orm {
 
             using storage_base::table_exists;  // now that it is in storage_base make it into overload set
 
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-            template<
-                class... CTEs,
-                class E,
-                std::enable_if_t<
-                    polyfill::disjunction_v<is_insert_raw<E>, is_replace_raw<E>, is_update_all<E>, is_remove_all<E>>,
-                    bool> = true>
-            prepared_statement_t<with_t<E, CTEs...>> prepare(with_t<E, CTEs...> sel) {
-                return this->prepare_impl<with_t<E, CTEs...>>(std::move(sel));
+            template<class DML, std::enable_if_t<is_raw_dml_expression_v<DML>, bool> = true>
+            prepared_statement_t<DML> prepare(DML statement) {
+                return this->prepare_impl(std::move(statement));
             }
-#endif
 
             template<class Select, satisfies<is_select_expression, Select> = true>
             prepared_statement_t<Select> prepare(Select statement) {
@@ -25014,16 +25047,6 @@ namespace sqlite_orm {
                 return this->prepare_impl(std::move(statement));
             }
 
-            template<class... Args>
-            prepared_statement_t<replace_raw_t<Args...>> prepare(replace_raw_t<Args...> statement) {
-                return this->prepare_impl(std::move(statement));
-            }
-
-            template<class... Args>
-            prepared_statement_t<insert_raw_t<Args...>> prepare(insert_raw_t<Args...> statement) {
-                return this->prepare_impl(std::move(statement));
-            }
-
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
             template<class T, class R, class... Args>
             prepared_statement_t<get_all_optional_t<T, R, Args...>>
@@ -25031,16 +25054,6 @@ namespace sqlite_orm {
                 return this->prepare_impl(std::move(statement));
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
-
-            template<class S, class... Wargs>
-            prepared_statement_t<update_all_t<S, Wargs...>> prepare(update_all_t<S, Wargs...> statement) {
-                return this->prepare_impl(std::move(statement));
-            }
-
-            template<class T, class... Args>
-            prepared_statement_t<remove_all_t<T, Args...>> prepare(remove_all_t<T, Args...> statement) {
-                return this->prepare_impl(std::move(statement));
-            }
 
             template<class T, class... Ids>
             prepared_statement_t<get_t<T, Ids...>> prepare(get_t<T, Ids...> statement) {
@@ -25117,49 +25130,8 @@ namespace sqlite_orm {
                 return this->prepare_impl(std::move(statement));
             }
 
-            template<class... Args>
-            void execute(const prepared_statement_t<replace_raw_t<Args...>>& statement) {
-                sqlite3_stmt* stmt = reset_stmt(statement.stmt);
-                iterate_ast(statement.expression, conditional_binder{stmt});
-                std::string sql;
-                if (this->executor.will_run_query || this->executor.did_run_query) {
-                    sql = statement.sql();
-                }
-                if (this->executor.will_run_query) {
-                    this->executor.will_run_query(sql);
-                }
-                perform_step(stmt);
-                if (this->executor.did_run_query) {
-                    this->executor.did_run_query(sql);
-                }
-            }
-
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-            template<
-                class... CTEs,
-                class E,
-                std::enable_if_t<
-                    polyfill::disjunction_v<is_insert_raw<E>, is_replace_raw<E>, is_update_all<E>, is_remove_all<E>>,
-                    bool> = true>
-            void execute(const prepared_statement_t<with_t<E, CTEs...>>& statement) {
-                sqlite3_stmt* stmt = reset_stmt(statement.stmt);
-                iterate_ast(statement.expression, conditional_binder{stmt});
-                std::string sql;
-                if (this->executor.will_run_query || this->executor.did_run_query) {
-                    sql = statement.sql();
-                }
-                if (this->executor.will_run_query) {
-                    this->executor.will_run_query(sql);
-                }
-                perform_step(stmt);
-                if (this->executor.did_run_query) {
-                    this->executor.did_run_query(sql);
-                }
-            }
-#endif
-
-            template<class... Args>
-            void execute(const prepared_statement_t<insert_raw_t<Args...>>& statement) {
+            template<class DML, std::enable_if_t<is_raw_dml_expression_v<DML>, bool> = true>
+            void execute(const prepared_statement_t<DML>& statement) {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
                 iterate_ast(statement.expression, conditional_binder{stmt});
                 std::string sql;
@@ -25464,42 +25436,6 @@ namespace sqlite_orm {
                     }
                 }
 #endif
-            }
-
-            template<class T, class... Args>
-            void execute(const prepared_statement_t<remove_all_t<T, Args...>>& statement) {
-                sqlite3_stmt* stmt = reset_stmt(statement.stmt);
-                iterate_ast(statement.expression.conditions, conditional_binder{stmt});
-                std::string sql;
-                if (this->executor.will_run_query || this->executor.did_run_query) {
-                    sql = statement.sql();
-                }
-                if (this->executor.will_run_query) {
-                    this->executor.will_run_query(sql);
-                }
-                perform_step(stmt);
-                if (this->executor.did_run_query) {
-                    this->executor.did_run_query(sql);
-                }
-            }
-
-            template<class S, class... Wargs>
-            void execute(const prepared_statement_t<update_all_t<S, Wargs...>>& statement) {
-                sqlite3_stmt* stmt = reset_stmt(statement.stmt);
-                conditional_binder bindNode{stmt};
-                iterate_ast(statement.expression.set, bindNode);
-                iterate_ast(statement.expression.conditions, bindNode);
-                std::string sql;
-                if (this->executor.will_run_query || this->executor.did_run_query) {
-                    sql = statement.sql();
-                }
-                if (this->executor.will_run_query) {
-                    this->executor.will_run_query(sql);
-                }
-                perform_step(stmt);
-                if (this->executor.did_run_query) {
-                    this->executor.did_run_query(sql);
-                }
             }
 
             template<class Select, satisfies<is_select_expression, Select> = true>
