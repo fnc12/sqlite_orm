@@ -418,16 +418,19 @@ namespace sqlite_orm {
         /*  
          *  Access the main select expression of a with clause or the passed in select expression.
          */
-        template<class T, satisfies<is_select_expression, T> = true>
-        constexpr decltype(auto) access_main_select(const T& select) {
-            if constexpr (is_with_clause_v<T>) {
+        template<class Select, satisfies<is_select_expression, Select> = true>
+        constexpr decltype(auto) access_main_select(const Select& select) {
+            if constexpr (is_with_clause_v<Select>) {
                 return (select.expression);
-            } else if constexpr (is_select_v<T>) {
+            } else if constexpr (is_select_v<Select>) {
                 return select;
             } else {
-                static_assert(polyfill::always_false_v<T>);
+                static_assert(polyfill::always_false_v<Select>);
             }
         }
+
+        template<class Select>
+        using main_select_t = polyfill::remove_cvref_t<decltype(access_main_select(std::declval<Select>()))>;
 
         template<class T, std::enable_if_t<!is_rowset_deduplicator_v<T>, bool> = true>
         const T& access_column_expression(const T& expression) {
