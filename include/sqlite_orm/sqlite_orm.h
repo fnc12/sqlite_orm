@@ -3976,6 +3976,18 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::table_content_t<T> content() {
         return {};
     }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  content='table' table constraint builder function. Used in FTS virtual tables.
+     * 
+     *  https://www.sqlite.org/fts5.html#external_content_tables
+     */
+    template<orm_table_reference auto table>
+    auto content() {
+        return content<internal::auto_decay_table_ref_t<table>>();
+    }
+#endif
 #endif
 
     /**
@@ -20248,6 +20260,11 @@ namespace sqlite_orm::internal {
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3009000
+    /**
+     *  Factory function for the FTS5 virtual table extension.
+     *  
+     *  The mapped object type is determined implicitly from the first column definition.
+     */
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::fts5_module<T, Cs...> using_fts5(Cs... columns) {
         static_assert(polyfill::conjunction_v<internal::is_table_element_or_constraint<Cs>...>,
@@ -20256,6 +20273,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(columns)...)});
     }
 
+    /**
+     *  Factory function for the FTS5 virtual table extension.
+     *  
+     *  The mapped object type is explicitly specified.
+     */
     template<class T, class... Cs>
     internal::fts5_module<T, Cs...> using_fts5(Cs... columns) {
         static_assert(polyfill::conjunction_v<internal::is_table_element_or_constraint<Cs>...>,
@@ -20263,8 +20285,23 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(columns)...)});
     }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Factory function for the FTS5 virtual table extension.
+     *  
+     *  The mapped object type is explicitly specified.
+     */
+    template<orm_table_reference auto table, class... Cs>
+    auto using_fts5(Cs... args) {
+        return using_fts5<internal::auto_decay_table_ref_t<table>>(std::forward<Cs>(args)...);
+    }
+#endif
 #endif
 
+    /**
+     *  Factory function for a virtual table definition.
+     */
     template<class M>
     internal::virtual_table<M> make_virtual_table(std::string name, M module) {
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name), std::move(module)});

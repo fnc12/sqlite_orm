@@ -9,6 +9,7 @@ TEST_CASE("statement_serializer FTS5") {
         std::string title;
         std::string body;
     };
+
     internal::db_objects_tuple<> storage;
     internal::serializer_context<internal::db_objects_tuple<>> context{storage};
     auto node =

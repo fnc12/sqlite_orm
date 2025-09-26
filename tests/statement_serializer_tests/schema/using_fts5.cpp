@@ -13,6 +13,11 @@ TEST_CASE("statement_serializer using_fts5") {
         int id = 0;
         std::string name;
     };
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    constexpr orm_table_reference auto post = c<Post>();
+    constexpr orm_table_reference auto user = c<User>();
+#endif
+
     std::string value;
     std::string expected;
     auto table = make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name));
@@ -22,6 +27,11 @@ TEST_CASE("statement_serializer using_fts5") {
     context_t context{dbObjects};
     SECTION("simple") {
         auto node = using_fts5(make_column("title", &Post::title), make_column("body", &Post::body));
+        value = serialize(node, context);
+        expected = R"(USING FTS5("title", "body"))";
+    }
+    SECTION("explicit object") {
+        auto node = using_fts5<Post>(make_column("title", &Post::title), make_column("body", &Post::body));
         value = serialize(node, context);
         expected = R"(USING FTS5("title", "body"))";
     }
@@ -61,6 +71,14 @@ TEST_CASE("statement_serializer using_fts5") {
         value = serialize(node, context);
         expected = R"(USING FTS5("title", "body", content="users"))";
     }
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    SECTION("simple") {
+        auto node =
+            using_fts5<post>(make_column("title", &Post::title), make_column("body", &Post::body), content<user>());
+        value = serialize(node, context);
+        expected = R"(USING FTS5("title", "body", content="users"))";
+    }
+#endif
     REQUIRE(value == expected);
 }
 #endif
