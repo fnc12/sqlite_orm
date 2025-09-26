@@ -118,6 +118,9 @@ namespace sqlite_orm {
         template<class T>
         using is_column = polyfill::bool_constant<is_column_v<T>>;
 
+        template<class Elements>
+        using col_index_sequence_of = filter_tuple_sequence_t<Elements, is_column>;
+
         template<class Elements, class F>
         using col_index_sequence_with_field_type =
             filter_tuple_sequence_t<Elements,

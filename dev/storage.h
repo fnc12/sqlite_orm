@@ -221,7 +221,7 @@ namespace sqlite_orm {
             void assert_updatable_type() const {
                 using table_type = storage_pick_table_t<O, db_objects_type>;
                 using elements_type = elements_type_t<table_type>;
-                using col_index_sequence = filter_tuple_sequence_t<elements_type, is_column>;
+                using column_index_sequence = col_index_sequence_of<elements_type>;
                 using pk_index_sequence = filter_tuple_sequence_t<elements_type, is_primary_key>;
                 using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
                 constexpr size_t dedicatedPrimaryKeyColumnsCount =
@@ -229,7 +229,7 @@ namespace sqlite_orm {
 
                 constexpr size_t primaryKeyColumnsCount =
                     dedicatedPrimaryKeyColumnsCount + pkcol_index_sequence::size();
-                constexpr ptrdiff_t nonPrimaryKeysColumnsCount = col_index_sequence::size() - primaryKeyColumnsCount;
+                constexpr ptrdiff_t nonPrimaryKeysColumnsCount = column_index_sequence::size() - primaryKeyColumnsCount;
                 static_assert(primaryKeyColumnsCount > 0, "A table without primary keys cannot be updated");
                 static_assert(
                     nonPrimaryKeysColumnsCount > 0,

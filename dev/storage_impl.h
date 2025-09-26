@@ -103,7 +103,7 @@ namespace sqlite_orm {
                                                   const column_pointer<Moniker, alias_holder<ColAlias>>&) {
             using table_type = storage_pick_table_t<Moniker, DBOs>;
             using cte_colrefs_tuple = typename cte_mapper_type_t<table_type>::final_colrefs_tuple;
-            using column_index_sequence = filter_tuple_sequence_t<elements_type_t<table_type>, is_column>;
+            using column_index_sequence = col_index_sequence_of<elements_type_t<table_type>>;
 
             // note: even though the columns contain the [`aliased_field<>::*`] we perform the lookup using the column references.
             // lookup ColAlias in the final column references

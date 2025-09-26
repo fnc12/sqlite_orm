@@ -8770,6 +8770,9 @@ namespace sqlite_orm {
         template<class T>
         using is_column = polyfill::bool_constant<is_column_v<T>>;
 
+        template<class Elements>
+        using col_index_sequence_of = filter_tuple_sequence_t<Elements, is_column>;
+
         template<class Elements, class F>
         using col_index_sequence_with_field_type =
             filter_tuple_sequence_t<Elements,
@@ -12625,8 +12628,7 @@ namespace sqlite_orm {
              */
             template<class L>
             void for_each_column(L&& lambda) const {
-                using col_index_sequence = filter_tuple_sequence_t<elements_type, is_column>;
-                iterate_tuple(this->elements, col_index_sequence{}, lambda);
+                iterate_tuple(this->elements, col_index_sequence_of<elements_type>{}, lambda);
             }
 
             /**
@@ -12740,8 +12742,7 @@ namespace sqlite_orm {
              */
             template<class L>
             void for_each_column(L&& lambda) const {
-                using col_index_sequence = filter_tuple_sequence_t<columns_type, is_column>;
-                iterate_tuple(this->columns, col_index_sequence{}, lambda);
+                iterate_tuple(this->columns, col_index_sequence_of<columns_type>{}, lambda);
             }
 
             template<class M, satisfies<std::is_member_pointer, M> = true>
@@ -12945,7 +12946,7 @@ namespace sqlite_orm {
                                                   const column_pointer<Moniker, alias_holder<ColAlias>>&) {
             using table_type = storage_pick_table_t<Moniker, DBOs>;
             using cte_colrefs_tuple = typename cte_mapper_type_t<table_type>::final_colrefs_tuple;
-            using column_index_sequence = filter_tuple_sequence_t<elements_type_t<table_type>, is_column>;
+            using column_index_sequence = col_index_sequence_of<elements_type_t<table_type>>;
 
             // note: even though the columns contain the [`aliased_field<>::*`] we perform the lookup using the column references.
             // lookup ColAlias in the final column references
@@ -23335,7 +23336,7 @@ namespace sqlite_orm {
             void assert_updatable_type() const {
                 using table_type = storage_pick_table_t<O, db_objects_type>;
                 using elements_type = elements_type_t<table_type>;
-                using col_index_sequence = filter_tuple_sequence_t<elements_type, is_column>;
+                using column_index_sequence = col_index_sequence_of<elements_type>;
                 using pk_index_sequence = filter_tuple_sequence_t<elements_type, is_primary_key>;
                 using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
                 constexpr size_t dedicatedPrimaryKeyColumnsCount =
@@ -23343,7 +23344,7 @@ namespace sqlite_orm {
 
                 constexpr size_t primaryKeyColumnsCount =
                     dedicatedPrimaryKeyColumnsCount + pkcol_index_sequence::size();
-                constexpr ptrdiff_t nonPrimaryKeysColumnsCount = col_index_sequence::size() - primaryKeyColumnsCount;
+                constexpr ptrdiff_t nonPrimaryKeysColumnsCount = column_index_sequence::size() - primaryKeyColumnsCount;
                 static_assert(primaryKeyColumnsCount > 0, "A table without primary keys cannot be updated");
                 static_assert(
                     nonPrimaryKeysColumnsCount > 0,
