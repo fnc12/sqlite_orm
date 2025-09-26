@@ -46,7 +46,7 @@ namespace sqlite_orm {
             }
         };
 
-        struct base_trigger {
+        struct trigger_base {
             /**
              * Name of the trigger
              */
@@ -59,7 +59,7 @@ namespace sqlite_orm {
          *  S is the list of trigger statments
          */
         template<class T, class... S>
-        struct trigger_t : base_trigger {
+        struct trigger_t : trigger_base {
             using object_type = void;
             using elements_type = typename partial_trigger_t<T, S...>::statements_type;
 

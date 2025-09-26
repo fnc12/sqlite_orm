@@ -18,9 +18,9 @@ namespace sqlite_orm {
         template<class... DBO>
         using db_objects_tuple = std::tuple<DBO...>;
 
-        struct basic_table;
+        struct table_base;
         struct index_base;
-        struct base_trigger;
+        struct trigger_base;
 
         template<class T>
         struct is_storage : std::false_type {};

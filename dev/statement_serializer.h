@@ -1952,8 +1952,8 @@ namespace sqlite_orm {
 
 #if SQLITE_VERSION_NUMBER >= 3009000
         template<class... Cs>
-        struct statement_serializer<using_fts5_t<Cs...>, void> {
-            using statement_type = using_fts5_t<Cs...>;
+        struct statement_serializer<fts5_module<Cs...>, void> {
+            using statement_type = fts5_module<Cs...>;
 
             template<class Ctx>
             SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -1962,15 +1962,15 @@ namespace sqlite_orm {
                 ss << "USING FTS5(";
                 auto subContext = context;
                 subContext.omit_column_type = true;
-                ss << streaming_expressions_tuple(statement.columns, subContext) << ")";
+                ss << streaming_expressions_tuple(statement.elements, subContext) << ")";
                 return ss.str();
             }
         };
 #endif
 
         template<class M>
-        struct statement_serializer<virtual_table_t<M>, void> {
-            using statement_type = virtual_table_t<M>;
+        struct statement_serializer<virtual_table<M>, void> {
+            using statement_type = virtual_table<M>;
 
             template<class Ctx>
             SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -1978,7 +1978,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "CREATE VIRTUAL TABLE IF NOT EXISTS ";
                 ss << streaming_identifier(statement.name) << ' ';
-                ss << serialize(statement.module_details, context);
+                ss << serialize(statement.module(), context);
                 return ss.str();
             }
         };

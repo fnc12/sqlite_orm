@@ -64,7 +64,7 @@ namespace sqlite_orm {
          *  Materialize column pointer:
          *  3. by moniker and alias_holder<>.
          *  
-         *  internal note: there's an overload for `find_column_name()` that avoids going through `table_t<>::find_column_name()`
+         *  internal note: there's an overload for `find_column_name()` that avoids going through `cte_table<>::find_column_name()`
          */
         template<class Moniker, class ColAlias, class DBOs, satisfies<is_db_objects, DBOs> = true>
         constexpr decltype(auto) materialize_column_pointer(const DBOs&,
@@ -111,7 +111,7 @@ namespace sqlite_orm {
             static_assert(colalias_index::value < std::tuple_size_v<cte_colrefs_tuple>,
                           "No such column mapped into the CTE.");
 
-            // note: we could "materialize" the alias to an `aliased_field<>::*` and use the regular `table_t<>::find_column_name()` mechanism;
+            // note: we could "materialize" the alias to an `aliased_field<>::*` and use the regular `cte_table<>::find_column_name()` mechanism;
             //       however we have the column index already.
             // lookup column in table_t<>'s elements
             constexpr size_t ColIdx = index_sequence_value_at<colalias_index::value>(column_index_sequence{});
