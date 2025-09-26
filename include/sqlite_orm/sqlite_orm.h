@@ -244,6 +244,10 @@ using std::nullptr_t;
 #include <version>
 #endif
 
+#if SQLITE_ORM_HAS_INCLUDE(<boost/pfr.hpp>)
+#define SQLITE_ORM_HAS_BOOST_PFR
+#endif
+
 #if __cpp_lib_constexpr_functional >= 201907L
 #define SQLITE_ORM_CONSTEXPR_CPP20 constexpr
 #else
@@ -12842,6 +12846,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <stddef.h>  //  offsetof
 #if __cpp_impl_reflection >= 202500L
 #include <meta>
+#endif
+#endif
+#endif
+
+#ifdef SQLITE_ORM_WITH_VIEW
+#if __cpp_impl_reflection < 202500L
+#ifdef SQLITE_ORM_HAS_BOOST_PFR
+#include <boost/pfr.hpp>
 #endif
 #endif
 #endif

@@ -12,6 +12,14 @@
 #endif
 #endif
 
+#ifdef SQLITE_ORM_WITH_VIEW
+#if __cpp_impl_reflection < 202500L
+#ifdef SQLITE_ORM_HAS_BOOST_PFR
+#include <boost/pfr.hpp>
+#endif
+#endif
+#endif
+
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../column_pointer.h"
 #include "../select_constraints.h"

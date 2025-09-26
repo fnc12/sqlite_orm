@@ -13,6 +13,10 @@
 #include <version>
 #endif
 
+#if SQLITE_ORM_HAS_INCLUDE(<boost/pfr.hpp>)
+#define SQLITE_ORM_HAS_BOOST_PFR
+#endif
+
 #if __cpp_lib_constexpr_functional >= 201907L
 #define SQLITE_ORM_CONSTEXPR_CPP20 constexpr
 #else

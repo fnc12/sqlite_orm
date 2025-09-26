@@ -124,6 +124,7 @@ StatementMacros:
   - _Pragma
   - Q_UNUSED
   - QT_REQUIRE_VERSION
+WhitespaceSensitiveMacros: [SQLITE_ORM_HAS_INCLUDE]
 TabWidth:        4
 UseTab:          Never
 LineEnding:      LF
