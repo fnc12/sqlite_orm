@@ -1269,7 +1269,7 @@ namespace sqlite_orm {
                 context_t context{exprDBOs};
                 context.replace_bindable_with_question = parametrized;
                 // just like prepare_impl()
-                context.skip_table_name = false;
+                context.omit_table_name = false;
                 return serialize(expression, context);
             }
 
@@ -1287,7 +1287,7 @@ namespace sqlite_orm {
                 using context_t = serializer_context<polyfill::remove_cvref_t<decltype(exprDBOs)>>;
 
                 context_t context{exprDBOs};
-                context.skip_table_name = false;
+                context.omit_table_name = false;
                 context.replace_bindable_with_question = true;
 
                 auto conection = this->get_connection();

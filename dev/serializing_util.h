@@ -433,7 +433,7 @@ namespace sqlite_orm {
                 ss << ' ' << serialize(constraint, context);
             });
             // add implicit null constraint
-            if (!context.fts5_columns) {
+            if (!context.omit_column_type) {
                 constexpr bool hasExplicitNullableConstraint =
                     mpl::invoke_t<mpl::disjunction<check_if_has_type<null_t>, check_if_has_type<not_null_t>>,
                                   constraints_tuple>::value;
