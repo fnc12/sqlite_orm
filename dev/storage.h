@@ -1220,7 +1220,7 @@ namespace sqlite_orm {
                 const auto res = sync_schema_result::already_in_sync;
                 context_t context{this->db_objects};
                 const auto sql = serialize(virtualTable, context);
-                this->executor.perform_void_exec(db, sql.data());
+                this->executor.perform_void_exec(db, sql.c_str());
                 return res;
             }
 
@@ -1231,7 +1231,7 @@ namespace sqlite_orm {
                 const auto res = sync_schema_result::already_in_sync;
                 context_t context{this->db_objects};
                 const auto sql = serialize(index, context);
-                this->executor.perform_void_exec(db, sql.data());
+                this->executor.perform_void_exec(db, sql.c_str());
                 return res;
             }
 
@@ -1242,7 +1242,7 @@ namespace sqlite_orm {
                 const auto res = sync_schema_result::already_in_sync;  // TODO Change accordingly
                 context_t context{this->db_objects};
                 const auto sql = serialize(trigger, context);
-                this->executor.perform_void_exec(db, sql.data());
+                this->executor.perform_void_exec(db, sql.c_str());
                 return res;
             }
 
