@@ -53,7 +53,7 @@ namespace sqlite_orm::internal {
             using context_t = serializer_context<ExprDBOs>;
 
             context_t context{exprDBOs};
-            context.skip_table_name = false;
+            context.omit_table_name = false;
             context.replace_bindable_with_question = true;
 
             const std::string sql = serialize(this->expression, context);

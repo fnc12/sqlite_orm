@@ -182,7 +182,7 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) {
                 auto subContext = context;
-                subContext.fts5_columns = true;
+                subContext.omit_column_type = true;
                 std::stringstream ss;
                 ss << "CREATE VIEW " << streaming_identifier(statement.name) << " ("
                    << streaming_expressions_tuple(statement.elements, subContext)
@@ -442,11 +442,11 @@ namespace sqlite_orm {
             SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
-                if (!context.skip_table_name) {
+                if (!context.omit_table_name) {
                     ss << streaming_identifier(alias_extractor<T>::extract()) << ".";
                 }
                 auto newContext = context;
-                newContext.skip_table_name = true;
+                newContext.omit_table_name = true;
                 ss << serialize(c.column, newContext);
                 return ss.str();
             }
@@ -464,7 +464,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 if (auto* columnName = find_column_name(context.db_objects, e)) {
                     ss << streaming_identifier(
-                        !context.skip_table_name ? lookup_table_name<table_type_of_t<E>>(context.db_objects) : "",
+                        !context.omit_table_name ? lookup_table_name<table_type_of_t<E>>(context.db_objects) : "",
                         *columnName,
                         "");
                 } else {
@@ -526,7 +526,7 @@ namespace sqlite_orm {
             SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
-                if (!context.skip_table_name) {
+                if (!context.omit_table_name) {
                     ss << streaming_identifier(lookup_table_name<O>(context.db_objects)) << ".";
                 }
                 ss << static_cast<std::string>(statement);
@@ -542,7 +542,7 @@ namespace sqlite_orm {
             SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
-                if (!context.skip_table_name) {
+                if (!context.omit_table_name) {
                     ss << streaming_identifier(lookup_table_name<O>(context.db_objects)) << ".";
                 }
                 ss << static_cast<std::string>(statement);
@@ -558,7 +558,7 @@ namespace sqlite_orm {
             SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
-                if (!context.skip_table_name) {
+                if (!context.omit_table_name) {
                     ss << streaming_identifier(lookup_table_name<O>(context.db_objects)) << ".";
                 }
                 ss << static_cast<std::string>(statement);
@@ -1327,7 +1327,7 @@ namespace sqlite_orm {
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << streaming_identifier(column.name);
-                if (!context.fts5_columns) {
+                if (!context.omit_column_type) {
                     ss << " " << type_printer<field_type_t<column_field<G, S>>>().print();
                 }
                 ss << streaming_column_constraints(
@@ -1474,7 +1474,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "SET ";
                 auto leftContext = context;
-                leftContext.skip_table_name = true;
+                leftContext.omit_table_name = true;
                 iterate_tuple(statement.assigns, [&ss, &context, &leftContext, first = true](auto& value) mutable {
                     static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                     ss << sep[std::exchange(first, false)] << serialize(value.lhs, leftContext) << ' '
@@ -1634,7 +1634,7 @@ namespace sqlite_orm {
                     ss << ' ';
                     if constexpr (is_columns<value_type>::value) {
                         auto newContext = context;
-                        newContext.skip_table_name = true;
+                        newContext.omit_table_name = true;
                         newContext.use_parentheses = true;
                         ss << serialize(value, newContext);
                     } else if constexpr (is_values<value_type>::value || is_select<value_type>::value) {
@@ -1899,7 +1899,7 @@ namespace sqlite_orm {
             template<class Ctx>
             SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& sel,
                                                             Ctx context) SQLITE_ORM_OR_CONST_CALLOP {
-                context.skip_table_name = false;
+                context.omit_table_name = false;
                 // subqueries should always use parentheses in column names
                 auto subCtx = context;
                 subCtx.use_parentheses = true;
@@ -1983,7 +1983,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "USING FTS5(";
                 auto subContext = context;
-                subContext.fts5_columns = true;
+                subContext.omit_column_type = true;
                 ss << streaming_expressions_tuple(statement.columns, subContext) << ")";
                 return ss.str();
             }
@@ -2073,7 +2073,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "OLD.";
                 auto newContext = context;
-                newContext.skip_table_name = true;
+                newContext.omit_table_name = true;
                 ss << serialize(statement.expression, newContext);
                 return ss.str();
             }
@@ -2089,7 +2089,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "NEW.";
                 auto newContext = context;
-                newContext.skip_table_name = true;
+                newContext.omit_table_name = true;
                 ss << serialize(statement.expression, newContext);
                 return ss.str();
             }
@@ -2332,7 +2332,7 @@ namespace sqlite_orm {
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 auto newContext = context;
-                newContext.skip_table_name = false;
+                newContext.omit_table_name = false;
                 ss << static_cast<std::string>(on) << " " << serialize(on.arg, newContext) << " ";
                 return ss.str();
             }
@@ -2347,7 +2347,7 @@ namespace sqlite_orm {
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 auto newContext = context;
-                newContext.skip_table_name = false;
+                newContext.omit_table_name = false;
                 ss << "GROUP BY " << streaming_expressions_tuple(statement.args, newContext) << " HAVING "
                    << serialize(statement.expression, context);
                 return ss.str();
@@ -2363,7 +2363,7 @@ namespace sqlite_orm {
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 auto newContext = context;
-                newContext.skip_table_name = false;
+                newContext.omit_table_name = false;
                 ss << "GROUP BY " << streaming_expressions_tuple(statement.args, newContext);
                 return ss.str();
             }
@@ -2381,7 +2381,7 @@ namespace sqlite_orm {
             SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 auto newContext = context;
-                newContext.skip_table_name = false;
+                newContext.omit_table_name = false;
                 std::stringstream ss;
                 ss << "LIMIT ";
                 if constexpr (HO) {
@@ -2423,7 +2423,7 @@ namespace sqlite_orm {
             SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 auto newContext = context;
-                newContext.skip_table_name = true;
+                newContext.omit_table_name = true;
                 return static_cast<std::string>(statement) + " (" + serialize(statement.column, newContext) + ")";
             }
         };

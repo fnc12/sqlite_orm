@@ -493,7 +493,7 @@ namespace sqlite_orm {
             template<class O>
             void push_back(order_by_t<O> orderBy) {
                 auto newContext = this->context;
-                newContext.skip_table_name = false;
+                newContext.omit_table_name = false;
                 auto columnName = serialize(orderBy._expression, newContext);
                 this->entries.emplace_back(std::move(columnName), std::move(orderBy._collate_argument), orderBy._order);
             }
@@ -1149,8 +1149,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class S>
     internal::dynamic_order_by_t<internal::serializer_context<typename S::db_objects_type>>
     dynamic_order_by(const S& storage) {
-        internal::serializer_context_builder<S> builder(storage);
-        return builder();
+        return {obtain_db_objects(storage)};
     }
 
     /**

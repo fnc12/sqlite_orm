@@ -6,9 +6,9 @@ namespace sqlite_orm {
 
         struct serializer_context_base {
             bool replace_bindable_with_question = false;
-            bool skip_table_name = true;
+            bool omit_table_name = true;
             bool use_parentheses = true;
-            bool fts5_columns = false;
+            bool omit_column_type = false;
         };
 
         template<class DBOs>
@@ -18,20 +18,6 @@ namespace sqlite_orm {
             const db_objects_type& db_objects;
 
             serializer_context(const db_objects_type& dbObjects) : db_objects{dbObjects} {}
-        };
-
-        template<class S>
-        struct serializer_context_builder {
-            using storage_type = S;
-            using db_objects_type = typename storage_type::db_objects_type;
-
-            serializer_context_builder(const storage_type& storage_) : storage{storage_} {}
-
-            serializer_context<db_objects_type> operator()() const {
-                return {obtain_db_objects(this->storage)};
-            }
-
-            const storage_type& storage;
         };
     }
 

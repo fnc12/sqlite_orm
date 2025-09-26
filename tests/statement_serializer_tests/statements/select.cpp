@@ -192,7 +192,7 @@ TEST_CASE("statement_serializer select_t") {
             // issue #1106
             SECTION("multi") {
                 auto expression = columns(asterisk<User>(), asterisk<User>(true));
-                context.skip_table_name = false;
+                context.omit_table_name = false;
                 context.use_parentheses = false;
                 stringValue = serialize(expression, context);
                 expected = R"("users".*, "users"."id", "users"."name")";
@@ -228,7 +228,7 @@ TEST_CASE("statement_serializer select_t") {
                                          where(is_null(alias_column<als_e>(&Employee::m_deptno))));
                 expression.highest_level = true;
                 internal::serializer_context<db_objects_t> context{storage};
-                context.skip_table_name = false;
+                context.omit_table_name = false;
                 stringValue = serialize(expression, context);
                 expected =
                     R"(SELECT "d".* FROM "Dept" "d" LEFT JOIN "Emp" "e" ON "d"."deptno" = "e"."deptno"  WHERE ("e"."deptno" IS NULL))";

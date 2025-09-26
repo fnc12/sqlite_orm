@@ -45,7 +45,7 @@ namespace sqlite_orm {
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 auto newContext = context;
-                newContext.skip_table_name = false;
+                newContext.omit_table_name = false;
 
                 ss << serialize(orderBy._expression, newContext);
                 seralize_collate(ss, orderBy);
