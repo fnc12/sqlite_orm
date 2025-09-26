@@ -12,10 +12,11 @@
 #endif
 #endif
 
+#include "../functional/cxx_type_traits_polyfill.h"
 #include "../column_pointer.h"
 #include "../select_constraints.h"
 #include "column.h"
-#include "mapped_object.h"
+#include "table_base.h"
 
 #ifdef SQLITE_ORM_WITH_VIEW
 #if __cpp_impl_reflection >= 202500L
@@ -61,8 +62,8 @@ namespace sqlite_orm::internal {
      *  View definition, mapping an aggregate object type to a corresponding select statement.
      */
     template<class O, class Select, class... Cs>
-    struct view_t : mapped_object_t<O, Cs...> {
-        using base_type = mapped_object_t<O, Cs...>;
+    struct view_t : table_base, mapped_object_base<O, Cs...> {
+        using base_type = mapped_object_base<O, Cs...>;
         using object_type = typename base_type::object_type;
         using elements_type = typename base_type::elements_type;
         using select_type = Select;

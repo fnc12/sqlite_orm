@@ -19,10 +19,9 @@
 #include "../member_traits/member_traits.h"
 #include "../field_of.h"
 #include "../type_traits.h"
-#include "../alias_traits.h"
 #include "../constraints.h"
 #include "../table_info.h"
-#include "mapped_object.h"
+#include "table_base.h"
 #include "index.h"
 #include "column.h"
 
@@ -43,98 +42,20 @@ namespace sqlite_orm {
                                                                               check_if_is_template<table_content_t>>,
                                                              T>;
 
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-        /**
-         *  A subselect mapper's CTE moniker, void otherwise.
-         */
-        template<typename O>
-        using moniker_of_or_void_t = polyfill::detected_or_t<void, cte_moniker_type_t, O>;
-
-        /** 
-         *  If O is a subselect_mapper then returns its nested type name O::cte_moniker_type,
-         *  otherwise O itself is a regular object type to be mapped.
-         */
-        template<typename O>
-        using mapped_object_type_for_t = polyfill::detected_or_t<O, cte_moniker_type_t, O>;
-#endif
-
         /**
          *  Table definition.
          */
         template<class O, bool WithoutRowId, class... Cs>
-        struct table_t : basic_table {
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-            // this typename is used in contexts where it is known that the 'table' holds a subselect_mapper
-            // instead of a regular object type
-            using cte_mapper_type = O;
-            using cte_moniker_type = moniker_of_or_void_t<O>;
-            using object_type = mapped_object_type_for_t<O>;
-#else
-            using object_type = O;
-#endif
-            using elements_type = std::tuple<Cs...>;
+        struct table_t : table_base, mapped_object_base<O, Cs...> {
+            using base_type = mapped_object_base<O, Cs...>;
+            using object_type = typename base_type::object_type;
+            using elements_type = typename base_type::elements_type;
 
             static constexpr bool is_without_rowid_v = WithoutRowId;
-
             using is_without_rowid = polyfill::bool_constant<is_without_rowid_v>;
-
-            elements_type elements;
 
             table_t<O, true, Cs...> without_rowid() const {
                 return {this->name, this->elements};
-            }
-
-            /*
-             *  Returns the number of elements of the specified type.
-             */
-            template<template<class...> class Trait>
-            static constexpr int count_of() {
-                using sequence_of = filter_tuple_sequence_t<elements_type, Trait>;
-                return int(sequence_of::size());
-            }
-
-            /*
-             *  Returns the number of columns having the specified constraint trait.
-             */
-            template<template<class...> class Trait>
-            static constexpr int count_of_columns_with() {
-                using filtered_index_sequence = col_index_sequence_with<elements_type, Trait>;
-                return int(filtered_index_sequence::size());
-            }
-
-            /*
-             *  Returns the number of columns having the specified constraint trait.
-             */
-            template<template<class...> class Trait>
-            static constexpr int count_of_columns_excluding() {
-                using excluded_col_index_sequence = col_index_sequence_excluding<elements_type, Trait>;
-                return int(excluded_col_index_sequence::size());
-            }
-
-            /**
-             *  Function used to get field value from object by mapped member pointer/setter/getter.
-             *  
-             *  For a setter the corresponding getter has to be searched,
-             *  so the method returns a pointer to the field as returned by the found getter.
-             *  Otherwise the method invokes the member pointer and returns its result.
-             */
-            template<class M, satisfies_not<is_setter, M> = true>
-            decltype(auto) object_field_value(const object_type& object, M memberPointer) const {
-                return polyfill::invoke(memberPointer, object);
-            }
-
-            template<class M, satisfies<is_setter, M> = true>
-            const member_field_type_t<M>* object_field_value(const object_type& object, M memberPointer) const {
-                using field_type = member_field_type_t<M>;
-                const field_type* res = nullptr;
-                iterate_tuple(this->elements,
-                              col_index_sequence_with_field_type<elements_type, field_type>{},
-                              call_as_template_base<column_field>([&res, &memberPointer, &object](const auto& column) {
-                                  if (compare_fields(column.setter, memberPointer)) {
-                                      res = &polyfill::invoke(column.member_pointer, object);
-                                  }
-                              }));
-                return res;
             }
 
             const basic_generated_always::storage_type*
@@ -212,26 +133,6 @@ namespace sqlite_orm {
             }
 
             /**
-             *  Searches column name by class member pointer passed as the first argument.
-             *  @return column name or empty string if nothing found.
-             */
-            template<class M, satisfies<std::is_member_pointer, M> = true>
-            const std::string* find_column_name(M memberPointer) const {
-                using field_type = member_field_type_t<M>;
-
-                const std::string* res = nullptr;
-                iterate_tuple(this->elements,
-                              col_index_sequence_with_field_type<elements_type, field_type>{},
-                              [&res, memberPointer](auto& column) {
-                                  if (compare_fields(column.member_pointer, memberPointer) ||
-                                      compare_fields(column.setter, memberPointer)) {
-                                      res = &column.name;
-                                  }
-                              });
-                return res;
-            }
-
-            /**
              *  Call passed lambda with all defined foreign keys.
              *  @param lambda Lambda called for each column. Function signature: `void(auto& column)`
              */
@@ -251,33 +152,6 @@ namespace sqlite_orm {
                 iterate_tuple(this->elements, filtered_index_sequence{}, lambda);
             }
 
-            /**
-             *  Call passed lambda with all defined columns.
-             *  @param lambda Lambda called for each column. Function signature: `void(auto& column)`
-             */
-            template<class L>
-            void for_each_column(L&& lambda) const {
-                iterate_tuple(this->elements, col_index_sequence_of<elements_type>{}, lambda);
-            }
-
-            /**
-             *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
-             *  @param lambda Lambda called for each column.
-             */
-            template<template<class...> class OpTraitFn, class L>
-            void for_each_column_excluding(L&& lambda) const {
-                iterate_tuple(this->elements, col_index_sequence_excluding<elements_type, OpTraitFn>{}, lambda);
-            }
-
-            /**
-             *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
-             *  @param lambda Lambda called for each column.
-             */
-            template<class OpTraitQ, class L, satisfies<mpl::is_quoted_metafuntion, OpTraitQ> = true>
-            void for_each_column_excluding(L&& lambda) const {
-                this->template for_each_column_excluding<OpTraitQ::template fn>(lambda);
-            }
-
             std::vector<table_xinfo> get_table_info() const;
         };
 
@@ -288,107 +162,25 @@ namespace sqlite_orm {
         struct is_table<table_t<O, W, Cs...>> : std::true_type {};
 
         template<class M>
-        struct virtual_table_t : basic_table {
-            using module_details_type = M;
-            using object_type = typename module_details_type::object_type;
-            using elements_type = typename module_details_type::columns_type;
+        struct virtual_table : table_base, M {
+            using module_type = M;
+            using object_type = typename module_type::object_type;
+            using elements_type = typename module_type::elements_type;
 
             static constexpr bool is_without_rowid_v = false;
             using is_without_rowid = polyfill::bool_constant<is_without_rowid_v>;
 
-            module_details_type module_details;
-
-            /**
-             *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
-             *  @param lambda Lambda called for each column.
-             */
-            template<template<class...> class OpTraitFn, class L>
-            void for_each_column_excluding(L&& lambda) const {
-                this->module_details.template for_each_column_excluding<OpTraitFn>(lambda);
-            }
-
-            /**
-             *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
-             *  @param lambda Lambda called for each column.
-             */
-            template<class OpTraitQ, class L, satisfies<mpl::is_quoted_metafuntion, OpTraitQ> = true>
-            void for_each_column_excluding(L&& lambda) const {
-                this->module_details.template for_each_column_excluding<OpTraitQ>(lambda);
-            }
-
-            /**
-             *  Call passed lambda with all defined columns.
-             *  @param lambda Lambda called for each column. Function signature: `void(auto& column)`
-             */
-            template<class L>
-            void for_each_column(L&& lambda) const {
-                this->module_details.for_each_column(lambda);
-            }
-
-            template<class MP, satisfies<std::is_member_pointer, MP> = true>
-            const std::string* find_column_name(MP memberPointer) const {
-                return this->module_details.find_column_name(memberPointer);
+            const module_type& module() const {
+                return *this;
             }
         };
 
-        template<class T>
-        struct is_virtual_table : std::false_type {};
-
-        template<class M>
-        struct is_virtual_table<virtual_table_t<M>> : std::true_type {};
-
 #if SQLITE_VERSION_NUMBER >= 3009000
         template<class T, class... Cs>
-        struct using_fts5_t {
+        struct fts5_module : mapped_columns_mixin<Cs...> {
+            using base_type = mapped_columns_mixin<Cs...>;
             using object_type = T;
-            using columns_type = std::tuple<Cs...>;
-
-            columns_type columns;
-
-            using_fts5_t(columns_type columns) : columns(std::move(columns)) {}
-
-            /**
-             *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
-             *  @param lambda Lambda called for each column.
-             */
-            template<template<class...> class OpTraitFn, class L>
-            void for_each_column_excluding(L&& lambda) const {
-                iterate_tuple(this->columns, col_index_sequence_excluding<columns_type, OpTraitFn>{}, lambda);
-            }
-
-            /**
-             *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
-             *  @param lambda Lambda called for each column.
-             */
-            template<class OpTraitQ, class L, satisfies<mpl::is_quoted_metafuntion, OpTraitQ> = true>
-            void for_each_column_excluding(L&& lambda) const {
-                this->template for_each_column_excluding<OpTraitQ::template fn>(lambda);
-            }
-
-            /**
-             *  Call passed lambda with all defined columns.
-             *  @param lambda Lambda called for each column. Function signature: `void(auto& column)`
-             */
-            template<class L>
-            void for_each_column(L&& lambda) const {
-                iterate_tuple(this->columns, col_index_sequence_of<columns_type>{}, lambda);
-            }
-
-            template<class M, satisfies<std::is_member_pointer, M> = true>
-            const std::string* find_column_name(M memberPointer) const {
-                using field_type = member_field_type_t<M>;
-
-                const std::string* res = nullptr;
-                iterate_tuple(this->columns,
-                              col_index_sequence_with_field_type<columns_type, field_type>{},
-                              [&res, memberPointer](auto& column) {
-                                  if (compare_fields(column.member_pointer, memberPointer) ||
-                                      compare_fields(column.setter, memberPointer)) {
-                                      res = &column.name;
-                                  }
-                              });
-                return res;
-            }
+            using elements_type = typename base_type::elements_type;
         };
 #endif
 
@@ -413,7 +205,7 @@ namespace sqlite_orm {
         }
 
         template<class M, class G, class S>
-        bool exists_in_composite_primary_key(const virtual_table_t<M>& /*virtualTable*/,
+        bool exists_in_composite_primary_key(const virtual_table<M>& /*virtualTable*/,
                                              const column_field<G, S>& /*column*/) {
             return false;
         }
@@ -423,7 +215,7 @@ namespace sqlite_orm {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3009000
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
-    internal::using_fts5_t<T, Cs...> using_fts5(Cs... columns) {
+    internal::fts5_module<T, Cs...> using_fts5(Cs... columns) {
         static_assert(polyfill::conjunction_v<internal::is_table_element_or_constraint<Cs>...>,
                       "Incorrect table elements or constraints");
 
@@ -431,7 +223,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 
     template<class T, class... Cs>
-    internal::using_fts5_t<T, Cs...> using_fts5(Cs... columns) {
+    internal::fts5_module<T, Cs...> using_fts5(Cs... columns) {
         static_assert(polyfill::conjunction_v<internal::is_table_element_or_constraint<Cs>...>,
                       "Incorrect table elements or constraints");
 
@@ -480,7 +272,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 
     template<class M>
-    internal::virtual_table_t<M> make_virtual_table(std::string name, M module_details) {
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name), std::move(module_details)});
+    internal::virtual_table<M> make_virtual_table(std::string name, M module) {
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name), std::move(module)});
     }
 }

@@ -58,7 +58,7 @@ namespace sqlite_orm {
             is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, alias_column_t>::value>> =
                 true;
 
-        struct basic_table;
+        struct table_base;
 
         /*
          * Encapsulates extracting the alias identifier of a non-alias.
@@ -77,7 +77,7 @@ namespace sqlite_orm {
                 return {};
             }
 
-            template<class X = basic_table>
+            template<class X = table_base>
             static const std::string& as_qualifier(const X& table) {
                 return table.name;
             }
@@ -114,7 +114,7 @@ namespace sqlite_orm {
 
             // for regular table aliases -> alias identifier
             template<class T = A, satisfies<is_table_alias, T> = true>
-            static std::string as_qualifier(const basic_table&) {
+            static std::string as_qualifier(const table_base&) {
                 return alias_extractor::extract();
             }
         };

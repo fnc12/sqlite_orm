@@ -51,7 +51,7 @@ namespace sqlite_orm {
                 if constexpr (is_alias<T>::value) {
                     collectedExpressions.push_back(quote_identifier(alias_extractor<T>::extract()) + ".*");
                 } else if (!context.omit_table_name) {
-                    const basic_table& table = pick_table<mapped_type_proxy_t<T>>(context.db_objects);
+                    const table_base& table = pick_table<mapped_type_proxy_t<T>>(context.db_objects);
                     collectedExpressions.push_back(quote_identifier(table.name) + ".*");
                 } else {
                     collectedExpressions.emplace_back("*");

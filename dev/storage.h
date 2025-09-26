@@ -1112,7 +1112,7 @@ namespace sqlite_orm {
 
           protected:
             template<class M>
-            sync_schema_result schema_status(const virtual_table_t<M>&, sqlite3*, bool, bool*) {
+            sync_schema_result schema_status(const virtual_table<M>&, sqlite3*, bool, bool*) {
                 return sync_schema_result::already_in_sync;
             }
 
@@ -1221,7 +1221,7 @@ namespace sqlite_orm {
             }
 
             template<class M>
-            sync_schema_result sync_dbo(const virtual_table_t<M>& virtualTable, sqlite3* db, bool) {
+            sync_schema_result sync_dbo(const virtual_table<M>& virtualTable, sqlite3* db, bool) {
                 using context_t = serializer_context<db_objects_type>;
 
                 const auto res = sync_schema_result::already_in_sync;
