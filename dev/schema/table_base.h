@@ -14,9 +14,23 @@
 #include "../type_traits.h"
 #include "../field_of.h"
 #include "../constraints.h"
+#include "index.h"
 #include "column.h"
 
 namespace sqlite_orm::internal {
+
+    template<class T>
+    using is_table_element_or_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_column>,
+                                                                          check_if<is_primary_key>,
+                                                                          check_if<is_foreign_key>,
+                                                                          check_if_is_template<index_t>,
+                                                                          check_if_is_template<unique_t>,
+                                                                          check_if_is_template<check_t>,
+                                                                          check_if_is_template<prefix_t>,
+                                                                          check_if_is_template<tokenize_t>,
+                                                                          check_if_is_template<content_t>,
+                                                                          check_if_is_template<table_content_t>>,
+                                                         T>;
 
     struct table_base {
 

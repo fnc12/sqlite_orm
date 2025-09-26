@@ -2,45 +2,24 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
-#include <type_traits>  //  std::remove_const, std::is_member_pointer, std::true_type, std::false_type
+#include <type_traits>  //  std::remove_const, std::true_type, std::false_type
 #include <vector>  //  std::vector
-#include <tuple>  //  std::tuple_element
+#include <tuple>  //  std::tuple_element, std::make_tuple, std::get
 #include <utility>  //  std::forward, std::move
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
-#include "../functional/cxx_functional_polyfill.h"
-#include "../functional/mpl.h"
-#include "../functional/index_sequence_util.h"
-#include "../tuple_helper/tuple_filter.h"
-#include "../tuple_helper/tuple_traits.h"
-#include "../tuple_helper/tuple_iteration.h"
-#include "../tuple_helper/tuple_transformer.h"
 #include "../member_traits/member_traits.h"
 #include "../field_of.h"
 #include "../type_traits.h"
 #include "../constraints.h"
 #include "../table_info.h"
 #include "table_base.h"
-#include "index.h"
 #include "column.h"
 
 namespace sqlite_orm {
 
     namespace internal {
-
-        template<class T>
-        using is_table_element_or_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_column>,
-                                                                              check_if<is_primary_key>,
-                                                                              check_if<is_foreign_key>,
-                                                                              check_if_is_template<index_t>,
-                                                                              check_if_is_template<unique_t>,
-                                                                              check_if_is_template<check_t>,
-                                                                              check_if_is_template<prefix_t>,
-                                                                              check_if_is_template<tokenize_t>,
-                                                                              check_if_is_template<content_t>,
-                                                                              check_if_is_template<table_content_t>>,
-                                                             T>;
 
         /**
          *  Table definition.
@@ -161,29 +140,6 @@ namespace sqlite_orm {
         template<class O, bool W, class... Cs>
         struct is_table<table_t<O, W, Cs...>> : std::true_type {};
 
-        template<class M>
-        struct virtual_table : table_base, M {
-            using module_type = M;
-            using object_type = typename module_type::object_type;
-            using elements_type = typename module_type::elements_type;
-
-            static constexpr bool is_without_rowid_v = false;
-            using is_without_rowid = polyfill::bool_constant<is_without_rowid_v>;
-
-            const module_type& module() const {
-                return *this;
-            }
-        };
-
-#if SQLITE_VERSION_NUMBER >= 3009000
-        template<class T, class... Cs>
-        struct fts5_module : mapped_columns_mixin<Cs...> {
-            using base_type = mapped_columns_mixin<Cs...>;
-            using object_type = T;
-            using elements_type = typename base_type::elements_type;
-        };
-#endif
-
         template<class O, bool WithoutRowId, class... Cs, class G, class S>
         bool exists_in_composite_primary_key(const table_t<O, WithoutRowId, Cs...>& table,
                                              const column_field<G, S>& column) {
@@ -203,34 +159,10 @@ namespace sqlite_orm {
             });
             return res;
         }
-
-        template<class M, class G, class S>
-        bool exists_in_composite_primary_key(const virtual_table<M>& /*virtualTable*/,
-                                             const column_field<G, S>& /*column*/) {
-            return false;
-        }
     }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#if SQLITE_VERSION_NUMBER >= 3009000
-    template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
-    internal::fts5_module<T, Cs...> using_fts5(Cs... columns) {
-        static_assert(polyfill::conjunction_v<internal::is_table_element_or_constraint<Cs>...>,
-                      "Incorrect table elements or constraints");
-
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(columns)...)});
-    }
-
-    template<class T, class... Cs>
-    internal::fts5_module<T, Cs...> using_fts5(Cs... columns) {
-        static_assert(polyfill::conjunction_v<internal::is_table_element_or_constraint<Cs>...>,
-                      "Incorrect table elements or constraints");
-
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(columns)...)});
-    }
-#endif
-
     /**
      *  Factory function for a table definition.
      *  
@@ -270,9 +202,4 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return make_table<internal::auto_decay_table_ref_t<table>>(std::move(name), std::forward<Cs>(args)...);
     }
 #endif
-
-    template<class M>
-    internal::virtual_table<M> make_virtual_table(std::string name, M module) {
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name), std::move(module)});
-    }
 }

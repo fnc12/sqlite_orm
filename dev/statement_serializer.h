@@ -57,6 +57,7 @@
 #include "schema/column.h"
 #include "schema/index.h"
 #include "schema/table.h"
+#include "schema/virtual_table.h"
 
 namespace sqlite_orm {
 
