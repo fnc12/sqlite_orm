@@ -421,10 +421,8 @@ namespace sqlite_orm {
         constexpr decltype(auto) access_main_select(const Select& select) {
             if constexpr (is_with_clause_v<Select>) {
                 return (select.expression);
-            } else if constexpr (is_select_v<Select>) {
-                return select;
             } else {
-                static_assert(polyfill::always_false_v<Select>);
+                return select;
             }
         }
 
