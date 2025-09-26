@@ -9141,7 +9141,16 @@ namespace sqlite_orm {
                 }
             }
         };
+
+        template<class T>
+        inline constexpr bool is_with_clause_v = polyfill::is_specialization_of<T, with_t>::value;
+#else
+        template<class T>
+        inline constexpr bool is_with_clause_v = false;
 #endif
+
+        template<class T>
+        using is_with_clause = polyfill::bool_constant<is_with_clause_v<T>>;
 
         template<class T>
         struct asterisk_t {
@@ -9210,6 +9219,40 @@ namespace sqlite_orm {
                 return {{std::move(this->case_expression)}, std::move(args), {std::move(el)}};
             }
         };
+
+        /**
+         *  Specialize if a type is a select statement expression.
+         */
+        template<class T, class SFINAE = void>
+        inline constexpr bool is_select_expression_v = false;
+
+        template<class T>
+        using is_select_expression = polyfill::bool_constant<is_select_expression_v<T>>;
+
+        template<class Select>
+        inline constexpr bool is_select_expression_v<Select, std::enable_if_t<is_select_v<Select>>> = true;
+
+        template<class With>
+        inline constexpr bool is_select_expression_v<
+            With,
+            std::enable_if_t<polyfill::conjunction_v<is_with_clause<With>, is_select<expression_type_t<With>>>>> = true;
+
+        /*  
+         *  Access the main select expression of a with clause or the passed in select expression.
+         */
+        template<class Select, satisfies<is_select_expression, Select> = true>
+        constexpr decltype(auto) access_main_select(const Select& select) {
+            if constexpr (is_with_clause_v<Select>) {
+                return (select.expression);
+            } else if constexpr (is_select_v<Select>) {
+                return select;
+            } else {
+                static_assert(polyfill::always_false_v<Select>);
+            }
+        }
+
+        template<class Select>
+        using main_select_t = polyfill::remove_cvref_t<decltype(access_main_select(std::declval<Select>()))>;
 
         template<class T, std::enable_if_t<!is_rowset_deduplicator_v<T>, bool> = true>
         const T& access_column_expression(const T& expression) {
@@ -23414,37 +23457,26 @@ namespace sqlite_orm {
 #endif
 
             /*  
-             *  Iterate over a result set of a select statement.
+             *  Iterate over a result set of a select statement or a select statement involving a common table expression.
              *  
              *  The returned C++ view models a C++ input range and is also a 'borrowed range',
              *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
              */
             template<class Select>
-#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
-                requires (is_select_v<Select>)
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+                requires (is_select_expression_v<Select>)
 #endif
             result_set_view<Select, db_objects_type> iterate(Select expression) {
-                expression.highest_level = true;
+#ifndef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+                static_assert(is_select_expression_v<Select>,
+                              "SQL expression must be a select expression or a with-clause with a select expression");
+#endif
+                if constexpr (is_select_v<Select>) {
+                    expression.highest_level = true;
+                }
                 auto con = this->get_connection();
                 return {this->db_objects, std::move(con), std::move(expression)};
             }
-
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-            /*  
-             *  Iterate over a result set of a select statement involving a common table expression.
-             *  
-             *  The returned C++ view models a C++ input range and is also a 'borrowed range',
-             *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
-             */
-            template<class... CTEs, class E>
-#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
-                requires (is_select_v<E>)
-#endif
-            result_set_view<with_t<E, CTEs...>, db_objects_type> iterate(with_t<E, CTEs...> expression) {
-                auto connection = this->get_connection();
-                return {this->db_objects, std::move(connection), std::move(expression)};
-            }
-#endif
 
 #ifdef SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
             /*  
@@ -23478,29 +23510,15 @@ namespace sqlite_orm {
             }
 
             /*  
-             *  Iterate over a result set of a select statement in a coroutine.
+             *  Iterate over a result set of a select statement or a select statement involving a common table expression in a coroutine.
              */
             template<class Select>
-                requires (is_select_v<Select>)
+                requires (is_select_expression_v<Select>)
             auto yield(Select expression) -> std::generator<decltype(*this->iterate(std::move(expression)).begin())> {
                 for (auto row: this->iterate(std::move(expression))) {
                     co_yield row;
                 }
             }
-
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-            /*  
-             *  Iterate over a result set of a select statement involving a common table expression in a coroutine.
-             */
-            template<class... CTEs, class E>
-                requires (is_select_v<E>)
-            auto yield(with_t<E, CTEs...> expression)
-                -> std::generator<decltype(*this->iterate(std::move(expression)).begin())> {
-                for (auto row: this->iterate(std::move(expression))) {
-                    co_yield row;
-                }
-            }
-#endif
 #endif
 
             /**
@@ -24492,22 +24510,22 @@ namespace sqlite_orm {
             using storage_base::table_exists;  // now that it is in storage_base make it into overload set
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-            template<class... CTEs,
-                     class E,
-                     std::enable_if_t<polyfill::disjunction_v<is_select<E>,
-                                                              is_insert_raw<E>,
-                                                              is_replace_raw<E>,
-                                                              is_update_all<E>,
-                                                              is_remove_all<E>>,
-                                      bool> = true>
+            template<
+                class... CTEs,
+                class E,
+                std::enable_if_t<
+                    polyfill::disjunction_v<is_insert_raw<E>, is_replace_raw<E>, is_update_all<E>, is_remove_all<E>>,
+                    bool> = true>
             prepared_statement_t<with_t<E, CTEs...>> prepare(with_t<E, CTEs...> sel) {
                 return this->prepare_impl<with_t<E, CTEs...>>(std::move(sel));
             }
 #endif
 
-            template<class T, class... Args>
-            prepared_statement_t<select_t<T, Args...>> prepare(select_t<T, Args...> statement) {
-                statement.highest_level = true;
+            template<class Select, satisfies<is_select_expression, Select> = true>
+            prepared_statement_t<Select> prepare(Select statement) {
+                if constexpr (is_select_v<Select>) {
+                    statement.highest_level = true;
+                }
                 return this->prepare_impl(std::move(statement));
             }
 
@@ -25009,20 +25027,13 @@ namespace sqlite_orm {
                 }
             }
 
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-            template<class... CTEs, class T, class... Args>
-            auto execute(const prepared_statement_t<with_t<select_t<T, Args...>, CTEs...>>& statement) {
-                using ExprDBOs = decltype(db_objects_for_expression(this->db_objects, statement.expression));
+            template<class Select, satisfies<is_select_expression, Select> = true>
+            auto execute(const prepared_statement_t<Select>& statement) {
+                using ExprDBOs = polyfill::remove_cvref_t<decltype(db_objects_for_expression(this->db_objects,
+                                                                                             statement.expression))>;
                 // note: it is enough to only use the 'expression DBOs' at compile-time to determine the column results;
                 // because we cannot select objects/structs from a CTE, passing the permanently defined DBOs are enough.
-                using ColResult = column_result_of_t<ExprDBOs, T>;
-                return this->execute_select<ColResult>(statement);
-            }
-#endif
-
-            template<class T, class... Args>
-            auto execute(const prepared_statement_t<select_t<T, Args...>>& statement) {
-                using ColResult = column_result_of_t<db_objects_type, T>;
+                using ColResult = column_result_of_t<ExprDBOs, main_select_t<Select>>;
                 return this->execute_select<ColResult>(statement);
             }
 
