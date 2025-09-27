@@ -33,7 +33,7 @@ namespace sqlite_orm {
             if (definedOrder) {
                 auto& table = pick_table<mapped_type_proxy_t<T>>(context.db_objects);
                 collectedExpressions.reserve(collectedExpressions.size() + table.template count_of<is_column>());
-                table.for_each_column([qualified = !context.skip_table_name,
+                table.for_each_column([qualified = !context.omit_table_name,
                                        &tableName = table.name,
                                        &collectedExpressions](const column_identifier& column) {
                     if constexpr (is_alias<T>::value) {
@@ -50,7 +50,7 @@ namespace sqlite_orm {
                 collectedExpressions.reserve(collectedExpressions.size() + 1);
                 if constexpr (is_alias<T>::value) {
                     collectedExpressions.push_back(quote_identifier(alias_extractor<T>::extract()) + ".*");
-                } else if (!context.skip_table_name) {
+                } else if (!context.omit_table_name) {
                     const basic_table& table = pick_table<mapped_type_proxy_t<T>>(context.db_objects);
                     collectedExpressions.push_back(quote_identifier(table.name) + ".*");
                 } else {

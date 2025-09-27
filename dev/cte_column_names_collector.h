@@ -57,7 +57,7 @@ namespace sqlite_orm {
             SQLITE_ORM_STATIC_CALLOP std::vector<std::string>
             operator()(const expression_type& t, const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 auto newContext = context;
-                newContext.skip_table_name = true;
+                newContext.omit_table_name = true;
                 std::string columnName = serialize(t, newContext);
                 if (columnName.empty()) {
                     throw std::system_error{orm_error_code::column_not_found};
@@ -137,7 +137,7 @@ namespace sqlite_orm {
                 std::vector<std::string> columnNames;
                 columnNames.reserve(size_t(cols.count));
                 auto newContext = context;
-                newContext.skip_table_name = true;
+                newContext.omit_table_name = true;
                 iterate_tuple(cols.columns, [&columnNames, &newContext](auto& m) {
                     using value_type = polyfill::remove_cvref_t<decltype(m)>;
 

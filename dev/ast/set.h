@@ -51,7 +51,7 @@ namespace sqlite_orm {
             template<class L, class R>
             void push_back(assign_t<L, R> assign) {
                 auto newContext = this->context;
-                newContext.skip_table_name = true;
+                newContext.omit_table_name = true;
                 // note: we are only interested in the table name on the left-hand side of the assignment operator expression
                 iterate_ast(assign.lhs, this->collector);
                 std::stringstream ss;
@@ -108,7 +108,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class S>
     internal::dynamic_set_t<internal::serializer_context<typename S::db_objects_type>> dynamic_set(const S& storage) {
-        internal::serializer_context_builder<S> builder(storage);
-        return builder();
+        return {obtain_db_objects(storage)};
     }
 }

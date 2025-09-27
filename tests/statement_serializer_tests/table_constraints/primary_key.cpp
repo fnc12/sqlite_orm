@@ -24,7 +24,7 @@ TEST_CASE("statement_serializer primary key table constraint") {
         auto dbObjects = db_objects_t{table1, table2};
         using context_t = internal::serializer_context<db_objects_t>;
         context_t context{dbObjects};
-        context.skip_table_name = false;
+        context.omit_table_name = false;
 
         SECTION("single column pk") {
             constexpr auto pk = primary_key(&User::id);
