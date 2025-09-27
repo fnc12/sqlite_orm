@@ -65,12 +65,12 @@ namespace sqlite_orm {
                                                                Result>::type;
 
         template<class Mapper, class... Cs>
-        struct cte_table : table_base, mapped_columns_mixin<Cs...> {
-            using base_type = mapped_columns_mixin<Cs...>;
+        struct cte_table : table_base, table_definition<Cs...> {
+            using definition_type = table_definition<Cs...>;
             using cte_mapper_type = Mapper;
             using cte_moniker_type = typename cte_mapper_type::cte_moniker_type;
             using object_type = cte_moniker_type;
-            using elements_type = typename base_type::elements_type;
+            using elements_type = typename definition_type::elements_type;
         };
 
         template<class Mapper, class... Cs>

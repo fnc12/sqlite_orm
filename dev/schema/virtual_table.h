@@ -40,10 +40,10 @@ namespace sqlite_orm::internal {
 
 #if SQLITE_VERSION_NUMBER >= 3009000
     template<class T, class... Cs>
-    struct fts5_module : mapped_columns_mixin<Cs...> {
-        using base_type = mapped_columns_mixin<Cs...>;
+    struct fts5_module : table_definition<Cs...> {
+        using definition_type = table_definition<Cs...>;
         using object_type = T;
-        using elements_type = typename base_type::elements_type;
+        using elements_type = typename definition_type::elements_type;
     };
 #endif
 

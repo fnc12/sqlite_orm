@@ -12315,7 +12315,7 @@ namespace sqlite_orm::internal {
      *  Mixin for fields of any mapped schema object, i.e. table or view, or any virtual or temporary table.
      */
     template<class... Cs>
-    struct mapped_columns_mixin {
+    struct table_definition {
         using elements_type = std::tuple<Cs...>;
 
         elements_type elements;
@@ -12399,10 +12399,10 @@ namespace sqlite_orm::internal {
      *  Base for a mapped schema object aka table, view.
      */
     template<class O, class... Cs>
-    struct mapped_object_base : mapped_columns_mixin<Cs...> {
-        using base_type = mapped_columns_mixin<Cs...>;
+    struct mapped_object_base : table_definition<Cs...> {
+        using definition_type = table_definition<Cs...>;
         using object_type = O;
-        using elements_type = typename base_type::elements_type;
+        using elements_type = typename definition_type::elements_type;
 
         /**
          *  Function used to get field value from object by mapped member pointer/setter/getter.
@@ -20254,10 +20254,10 @@ namespace sqlite_orm::internal {
 
 #if SQLITE_VERSION_NUMBER >= 3009000
     template<class T, class... Cs>
-    struct fts5_module : mapped_columns_mixin<Cs...> {
-        using base_type = mapped_columns_mixin<Cs...>;
+    struct fts5_module : table_definition<Cs...> {
+        using definition_type = table_definition<Cs...>;
         using object_type = T;
-        using elements_type = typename base_type::elements_type;
+        using elements_type = typename definition_type::elements_type;
     };
 #endif
 
@@ -22936,12 +22936,12 @@ namespace sqlite_orm {
                                                                Result>::type;
 
         template<class Mapper, class... Cs>
-        struct cte_table : table_base, mapped_columns_mixin<Cs...> {
-            using base_type = mapped_columns_mixin<Cs...>;
+        struct cte_table : table_base, table_definition<Cs...> {
+            using definition_type = table_definition<Cs...>;
             using cte_mapper_type = Mapper;
             using cte_moniker_type = typename cte_mapper_type::cte_moniker_type;
             using object_type = cte_moniker_type;
-            using elements_type = typename base_type::elements_type;
+            using elements_type = typename definition_type::elements_type;
         };
 
         template<class Mapper, class... Cs>
