@@ -7,10 +7,22 @@
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/mpl.h"
+#include "../constraints.h"
 #include "table_base.h"
 #include "column.h"
 
 namespace sqlite_orm::internal {
+
+#if SQLITE_VERSION_NUMBER >= 3009000
+    template<class T>
+    using is_fts5_table_element_or_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_column>,
+                                                                               check_if_is_template<prefix_t>,
+                                                                               check_if_is_template<tokenize_t>,
+                                                                               check_if_is_template<content_t>,
+                                                                               check_if_is_template<table_content_t>>,
+                                                              T>;
+#endif
 
     template<class M>
     struct virtual_table : table_base, M {
@@ -51,7 +63,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::fts5_module<T, Cs...> using_fts5(Cs... columns) {
-        static_assert(polyfill::conjunction_v<internal::is_table_element_or_constraint<Cs>...>,
+        static_assert(polyfill::conjunction_v<internal::is_fts5_table_element_or_constraint<Cs>...>,
                       "Incorrect table elements or constraints");
 
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(columns)...)});
@@ -64,7 +76,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T, class... Cs>
     internal::fts5_module<T, Cs...> using_fts5(Cs... columns) {
-        static_assert(polyfill::conjunction_v<internal::is_table_element_or_constraint<Cs>...>,
+        static_assert(polyfill::conjunction_v<internal::is_fts5_table_element_or_constraint<Cs>...>,
                       "Incorrect table elements or constraints");
 
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(columns)...)});
