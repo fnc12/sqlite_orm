@@ -65,7 +65,7 @@ namespace sqlite_orm {
                                                                Result>::type;
 
         template<class Mapper, class... Cs>
-        struct cte_table : table_base, table_definition<Cs...> {
+        struct cte_table : table_identifier, table_definition<Cs...> {
             using definition_type = table_definition<Cs...>;
             using cte_mapper_type = Mapper;
             using cte_moniker_type = typename cte_mapper_type::cte_moniker_type;

@@ -1087,8 +1087,8 @@ namespace sqlite_orm {
             }
 
           protected:
-            template<class M>
-            sync_schema_result schema_status(const virtual_table<M>&, sqlite3*, bool, bool*) {
+            template<class Table, satisfies<is_virtual_table, Table> = true>
+            sync_schema_result schema_status(const Table&, sqlite3*, bool, bool*) {
                 return sync_schema_result::already_in_sync;
             }
 
@@ -1102,11 +1102,9 @@ namespace sqlite_orm {
                 return sync_schema_result::already_in_sync;
             }
 
-            template<class T, bool WithoutRowId, class... Cs>
-            sync_schema_result schema_status(const table_t<T, WithoutRowId, Cs...>& table,
-                                             sqlite3* db,
-                                             bool preserve,
-                                             bool* attempt_to_preserve) {
+            template<class Table, satisfies<is_base_table, Table> = true>
+            sync_schema_result
+            schema_status(const Table& table, sqlite3* db, bool preserve, bool* attempt_to_preserve) {
                 if (attempt_to_preserve) {
                     *attempt_to_preserve = true;
                 }
@@ -1189,8 +1187,8 @@ namespace sqlite_orm {
                 return res;
             }
 
-            template<class M>
-            sync_schema_result sync_dbo(const virtual_table<M>& virtualTable, sqlite3* db, bool) {
+            template<class Table, satisfies<is_virtual_table, Table> = true>
+            sync_schema_result sync_dbo(const Table& virtualTable, sqlite3* db, bool) {
                 using context_t = serializer_context<db_objects_type>;
 
                 const auto res = sync_schema_result::already_in_sync;
@@ -1222,11 +1220,11 @@ namespace sqlite_orm {
                 return res;
             }
 
-            template<class Table, satisfies<is_table, Table> = true>
+            template<class Table, satisfies<is_base_table, Table> = true>
             sync_schema_result sync_dbo(const Table& table, sqlite3* db, bool preserve);
 
-            template<class Table, satisfies<is_table, Table> = true>
-            sync_schema_result sync_regular_table(const Table& table, sqlite3* db, bool preserve);
+            template<class Table, satisfies<is_base_table, Table> = true>
+            sync_schema_result sync_regular_base_table(const Table& table, sqlite3* db, bool preserve);
 
             template<class C>
             void add_column(sqlite3* db, const std::string& tableName, const C& column) const {
