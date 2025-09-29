@@ -14611,7 +14611,7 @@ namespace sqlite_orm {
             }
 
             template<class T, class X, class Y, class Z>
-            void operator()(polyfill::bool_constant<true>, const highlight_t<T, X, Y, Z>&) {
+            void operator()(std::true_type, const highlight_t<T, X, Y, Z>&) {
                 this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
             }
         };
@@ -15715,8 +15715,8 @@ namespace sqlite_orm {
             ast_iterator<T> iterator;
 
             // possibly invoke lambda with node itself
-            if constexpr (polyfill::is_invocable<L, polyfill::bool_constant<true>, const T&>::value) {
-                lambda(polyfill::bool_constant<true>{}, t);
+            if constexpr (polyfill::is_invocable<L, std::true_type, const T&>::value) {
+                lambda(std::true_type{}, t);
             }
 
             iterator(t, lambda);
@@ -23343,7 +23343,7 @@ namespace sqlite_orm::internal {
 
         // examine `function_call` node expressions
         template<class UDF, class... CallArgs>
-        void operator()(polyfill::bool_constant<true>, const function_call<UDF, CallArgs...>& udfCall) const {
+        void operator()(std::true_type, const function_call<UDF, CallArgs...>& udfCall) const {
             auto&& name = udfCall.name();
             SQLITE_ORM_CPP_UNLIKELY {
                 if (!_contains(_scalarFunctions, name) && !_contains(_aggregateFunctions, name))
@@ -23352,7 +23352,7 @@ namespace sqlite_orm::internal {
         }
 
         // examine `named_collate` node expressions
-        void operator()(polyfill::bool_constant<true>, const named_collate_base& collateCall) const {
+        void operator()(std::true_type, const named_collate_base& collateCall) const {
             if (_collatingFunctions.find(collateCall.name) == _collatingFunctions.end()) SQLITE_ORM_CPP_UNLIKELY {
 #if SQLITE_VERSION_NUMBER >= 3008008
                 throw std::system_error{sqlite_errc(SQLITE_ERROR_MISSING_COLLSEQ), std::string(collateCall.name)};

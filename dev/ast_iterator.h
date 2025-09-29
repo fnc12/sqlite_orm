@@ -72,8 +72,8 @@ namespace sqlite_orm {
             ast_iterator<T> iterator;
 
             // possibly invoke lambda with node itself
-            if constexpr (polyfill::is_invocable<L, polyfill::bool_constant<true>, const T&>::value) {
-                lambda(polyfill::bool_constant<true>{}, t);
+            if constexpr (polyfill::is_invocable<L, std::true_type, const T&>::value) {
+                lambda(std::true_type{}, t);
             }
 
             iterator(t, lambda);
