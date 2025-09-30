@@ -20289,22 +20289,26 @@ namespace sqlite_orm::internal {
     };
 #endif
 
+    template<class M>
+    struct virtual_table_traits_base {
+        using module_type = M;
+        using is_without_rowid = std::false_type;
+        using omit_column_type = std::true_type;
+    };
+
     /** 
      *  Default traits of a "normal" virtual table.
      *  
      *  Particularly this means:
      *  - it is not a WITHOUT ROWID table (i.e. it has an implicit `rowid` column).
-     *  - its definition is a `insertable_table_definition`
+     *  - its definition is a `insertable_table_definition`.
      *  
      *  Specific virtual table modules can specialize this struct to provide their own traits.
      */
     template<class M, class... Cs>
-    struct virtual_table_traits {
-        using module_type = M;
-        using is_without_rowid = std::false_type;
+    struct virtual_table_traits : virtual_table_traits_base<M> {
         using definition_type = insertable_table_definition<Cs...>;
         using elements_type = elements_type_t<definition_type>;
-        using omit_column_type = std::true_type;
     };
 
     /** 
