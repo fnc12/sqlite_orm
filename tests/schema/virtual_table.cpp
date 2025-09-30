@@ -4,7 +4,7 @@
 #if SQLITE_VERSION_NUMBER >= 3009000
 using namespace sqlite_orm;
 
-TEST_CASE("virtual table") {
+TEST_CASE("fts5 virtual table") {
     using Catch::Matchers::UnorderedEquals;
 
     struct Post {
@@ -121,6 +121,6 @@ TEST_CASE("issue1410") {
 
     for (const auto& row: rows) {
         std::ignore = row;
-    }  //  has to be compiled
+    }  // must compile
 }
 #endif

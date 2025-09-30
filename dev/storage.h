@@ -1189,10 +1189,15 @@ namespace sqlite_orm {
 
             template<class Table, satisfies<is_virtual_table, Table> = true>
             sync_schema_result sync_dbo(const Table& virtualTable, sqlite3* db, bool) {
-                using context_t = serializer_context<db_objects_type>;
+                // eponymous virtual table instances with the same name as their module exist already
+                if constexpr (Table::module_traits_type::is_eponymous::value) {
+                    if (virtualTable.name == Table::module_type::name()) {
+                        return sync_schema_result::already_in_sync;
+                    }
+                }
 
                 const auto res = sync_schema_result::already_in_sync;
-                context_t context{this->db_objects};
+                const serializer_context<db_objects_type> context{this->db_objects};
                 const auto sql = serialize(virtualTable, context);
                 this->executor.perform_void_exec(db, sql.c_str());
                 return res;
@@ -1200,10 +1205,8 @@ namespace sqlite_orm {
 
             template<class... Cols>
             sync_schema_result sync_dbo(const index_t<Cols...>& index, sqlite3* db, bool) {
-                using context_t = serializer_context<db_objects_type>;
-
                 const auto res = sync_schema_result::already_in_sync;
-                context_t context{this->db_objects};
+                const serializer_context<db_objects_type> context{this->db_objects};
                 const auto sql = serialize(index, context);
                 this->executor.perform_void_exec(db, sql.c_str());
                 return res;
@@ -1211,10 +1214,8 @@ namespace sqlite_orm {
 
             template<class... Cols>
             sync_schema_result sync_dbo(const trigger_t<Cols...>& trigger, sqlite3* db, bool) {
-                using context_t = serializer_context<db_objects_type>;
-
                 const auto res = sync_schema_result::already_in_sync;  // TODO Change accordingly
-                context_t context{this->db_objects};
+                const serializer_context<db_objects_type> context{this->db_objects};
                 const auto sql = serialize(trigger, context);
                 this->executor.perform_void_exec(db, sql.c_str());
                 return res;

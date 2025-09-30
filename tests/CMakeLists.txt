@@ -64,7 +64,7 @@ if(MSVC)
         # C4456: declaration of 'symbol' hides previous local declaration
         /wd4456
         # C4458: declaration of 'symbol' hides class member
-        /wd4458)
+        /wd4458
         # C4458: 'symbol': deprecated
         # disabled due to unit tests still testing deprecated features
         /wd4996)

@@ -20289,9 +20289,22 @@ namespace sqlite_orm::internal {
     };
 #endif
 
+    /** 
+     *  Default base traits of a "normal" virtual table module.
+     *  
+     *  Particularly this means:
+     *  - It is not eponymous.
+     *    The definition of eponymous virtual tables is built-in, fixed and implicit,
+     *    and they can only be created with optional table-values for their hidden columns.
+     *  - It is not a WITHOUT ROWID table (i.e. it has an implicit `rowid` column).
+     *  - Omits the column type in the SQL creation statement.
+     *  
+     *  Specific virtual table modules can specialize this struct to provide their own traits.
+     */
     template<class M>
-    struct virtual_table_traits_base {
+    struct virtual_table_module_traits {
         using module_type = M;
+        using is_eponymous = std::false_type;
         using is_without_rowid = std::false_type;
         using omit_column_type = std::true_type;
     };
@@ -20299,14 +20312,13 @@ namespace sqlite_orm::internal {
     /** 
      *  Default traits of a "normal" virtual table.
      *  
-     *  Particularly this means:
-     *  - it is not a WITHOUT ROWID table (i.e. it has an implicit `rowid` column).
-     *  - its definition is a `insertable_table_definition`.
+     *  Particularly this means :
+     *  - Its definition is a `insertable_table_definition`.
      *  
      *  Specific virtual table modules can specialize this struct to provide their own traits.
      */
     template<class M, class... Cs>
-    struct virtual_table_traits : virtual_table_traits_base<M> {
+    struct virtual_table_traits : virtual_table_module_traits<M> {
         using definition_type = insertable_table_definition<Cs...>;
         using elements_type = elements_type_t<definition_type>;
     };
@@ -20323,6 +20335,9 @@ namespace sqlite_orm::internal {
 
     /** 
      *  Encapsulates the intermediary (and temporary) `using_module(...)` expression.
+     * 
+     *  Implementation note: When making the virtual table this virtual table definition is unpacked into the virtual table type itself.
+     *  If desired or necessary one day, derive `virtual_table` from it, similar to `base_table` deriving from `base_table_definition`.
      */
     template<class M, class... Cs>
     struct virtual_table_definition : virtual_table_traits<M, Cs...>::definition_type {
@@ -20337,6 +20352,7 @@ namespace sqlite_orm::internal {
     template<class O, class M, class... Cs>
     struct virtual_table : table_identifier, virtual_table_traits<M, Cs...>::definition_type {
         using traits_type = virtual_table_traits<M, Cs...>;
+        using module_traits_type = virtual_table_module_traits<M>;
         using module_type = M;
         using object_type = O;
         using elements_type = typename traits_type::elements_type;
@@ -20511,6 +20527,30 @@ namespace sqlite_orm {
             }
         };
 
+        // Eponymous virtual tables serialize only table values. Their definition is built-in, fixed and implicit
+        template<class ModTraits,
+                 class Definition,
+                 class Ctx,
+                 std::enable_if_t<ModTraits::is_eponymous::value, bool> = true>
+        std::string serialize_virtual_table_definition(const Definition&, const Ctx&) {
+            return {};
+        }
+
+        template<class ModTraits,
+                 class Elements,
+                 class Ctx,
+                 std::enable_if_t<!ModTraits::is_eponymous::value, bool> = true>
+        std::string serialize_virtual_table_definition(const Elements& elements, const Ctx& context) {
+            using traits_type = ModTraits;
+
+            auto subContext = context;
+            subContext.omit_column_type = traits_type::omit_column_type::value;
+
+            std::stringstream ss;
+            ss << "(" << streaming_expressions_tuple(elements, subContext) << ")";
+            return ss.str();
+        }
+
         template<class Table>
         struct statement_serializer<Table, std::enable_if_t<is_virtual_table_v<Table>>> {
             using statement_type = Table;
@@ -20518,14 +20558,12 @@ namespace sqlite_orm {
             template<class Ctx>
             SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-                auto subContext = context;
-                subContext.omit_column_type = statement_type::traits_type::omit_column_type::value;
                 std::stringstream ss;
                 ss << "CREATE VIRTUAL TABLE IF NOT EXISTS " << streaming_identifier(statement.name) << " USING "
-                   << streaming_identifier(statement_type::module_type::name());
-                if constexpr (std::tuple_size<elements_type_t<statement_type>>::value > 0) {
-                    ss << "(" << streaming_expressions_tuple(statement.elements, subContext) << ")";
-                }
+                   << streaming_identifier(statement_type::module_type::name())
+                   << serialize_virtual_table_definition<typename statement_type::module_traits_type>(
+                          statement.elements,
+                          context);
                 return ss.str();
             }
         };
@@ -24487,10 +24525,15 @@ namespace sqlite_orm {
 
             template<class Table, satisfies<is_virtual_table, Table> = true>
             sync_schema_result sync_dbo(const Table& virtualTable, sqlite3* db, bool) {
-                using context_t = serializer_context<db_objects_type>;
+                // eponymous virtual table instances with the same name as their module exist already
+                if constexpr (Table::module_traits_type::is_eponymous::value) {
+                    if (virtualTable.name == Table::module_type::name()) {
+                        return sync_schema_result::already_in_sync;
+                    }
+                }
 
                 const auto res = sync_schema_result::already_in_sync;
-                context_t context{this->db_objects};
+                const serializer_context<db_objects_type> context{this->db_objects};
                 const auto sql = serialize(virtualTable, context);
                 this->executor.perform_void_exec(db, sql.c_str());
                 return res;
@@ -24498,10 +24541,8 @@ namespace sqlite_orm {
 
             template<class... Cols>
             sync_schema_result sync_dbo(const index_t<Cols...>& index, sqlite3* db, bool) {
-                using context_t = serializer_context<db_objects_type>;
-
                 const auto res = sync_schema_result::already_in_sync;
-                context_t context{this->db_objects};
+                const serializer_context<db_objects_type> context{this->db_objects};
                 const auto sql = serialize(index, context);
                 this->executor.perform_void_exec(db, sql.c_str());
                 return res;
@@ -24509,10 +24550,8 @@ namespace sqlite_orm {
 
             template<class... Cols>
             sync_schema_result sync_dbo(const trigger_t<Cols...>& trigger, sqlite3* db, bool) {
-                using context_t = serializer_context<db_objects_type>;
-
                 const auto res = sync_schema_result::already_in_sync;  // TODO Change accordingly
-                context_t context{this->db_objects};
+                const serializer_context<db_objects_type> context{this->db_objects};
                 const auto sql = serialize(trigger, context);
                 this->executor.perform_void_exec(db, sql.c_str());
                 return res;

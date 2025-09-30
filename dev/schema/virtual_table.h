@@ -10,6 +10,7 @@
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/gsl.h"
 #include "../functional/mpl.h"
 #include "../type_traits.h"
 #include "../constraints.h"
@@ -21,13 +22,26 @@ namespace sqlite_orm::internal {
     template<class T>
     concept module_tag = requires {
         typename T::module_type;
-        { T::name() } -> std::convertible_to<const char*>;
+        { T::name() } -> std::convertible_to<orm_gsl::czstring>;
     };
 #endif
 
+    /** 
+     *  Default base traits of a "normal" virtual table module.
+     *  
+     *  Particularly this means:
+     *  - It is not eponymous.
+     *    The definition of eponymous virtual tables is built-in, fixed and implicit,
+     *    and they can only be created with optional table-values for their hidden columns.
+     *  - It is not a WITHOUT ROWID table (i.e. it has an implicit `rowid` column).
+     *  - Omits the column type in the SQL creation statement.
+     *  
+     *  Specific virtual table modules can specialize this struct to provide their own traits.
+     */
     template<class M>
-    struct virtual_table_traits_base {
+    struct virtual_table_module_traits {
         using module_type = M;
+        using is_eponymous = std::false_type;
         using is_without_rowid = std::false_type;
         using omit_column_type = std::true_type;
     };
@@ -35,14 +49,13 @@ namespace sqlite_orm::internal {
     /** 
      *  Default traits of a "normal" virtual table.
      *  
-     *  Particularly this means:
-     *  - it is not a WITHOUT ROWID table (i.e. it has an implicit `rowid` column).
-     *  - its definition is a `insertable_table_definition`.
+     *  Particularly this means :
+     *  - Its definition is a `insertable_table_definition`.
      *  
      *  Specific virtual table modules can specialize this struct to provide their own traits.
      */
     template<class M, class... Cs>
-    struct virtual_table_traits : virtual_table_traits_base<M> {
+    struct virtual_table_traits : virtual_table_module_traits<M> {
         using definition_type = insertable_table_definition<Cs...>;
         using elements_type = elements_type_t<definition_type>;
     };
@@ -59,6 +72,9 @@ namespace sqlite_orm::internal {
 
     /** 
      *  Encapsulates the intermediary (and temporary) `using_module(...)` expression.
+     * 
+     *  Implementation note: When making the virtual table this virtual table definition is unpacked into the virtual table type itself.
+     *  If desired or necessary one day, derive `virtual_table` from it, similar to `base_table` deriving from `base_table_definition`.
      */
     template<class M, class... Cs>
     struct virtual_table_definition : virtual_table_traits<M, Cs...>::definition_type {
@@ -73,6 +89,7 @@ namespace sqlite_orm::internal {
     template<class O, class M, class... Cs>
     struct virtual_table : table_identifier, virtual_table_traits<M, Cs...>::definition_type {
         using traits_type = virtual_table_traits<M, Cs...>;
+        using module_traits_type = virtual_table_module_traits<M>;
         using module_type = M;
         using object_type = O;
         using elements_type = typename traits_type::elements_type;

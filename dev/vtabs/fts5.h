@@ -3,13 +3,14 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <tuple>  //  std::make_tuple
-#include <utility>  //  std::forward, std::move
+#include <utility>  //  std::forward
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/gsl.h"
 #include "../functional/mpl.h"
-#include "../constraints.h"
 #include "../schema/column.h"
+#include "../constraints.h"
 
 namespace sqlite_orm::internal {
 #if SQLITE_VERSION_NUMBER >= 3009000
@@ -24,7 +25,7 @@ namespace sqlite_orm::internal {
         // simplify conceptual/meta programming
         using module_type = fts5_module_tag;
 
-        static constexpr const char* name() {
+        static constexpr orm_gsl::czstring name() {
             return "fts5";
         }
     };

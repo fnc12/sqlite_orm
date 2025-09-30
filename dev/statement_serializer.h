@@ -173,6 +173,30 @@ namespace sqlite_orm {
             }
         };
 
+        // Eponymous virtual tables serialize only table values. Their definition is built-in, fixed and implicit
+        template<class ModTraits,
+                 class Definition,
+                 class Ctx,
+                 std::enable_if_t<ModTraits::is_eponymous::value, bool> = true>
+        std::string serialize_virtual_table_definition(const Definition&, const Ctx&) {
+            return {};
+        }
+
+        template<class ModTraits,
+                 class Elements,
+                 class Ctx,
+                 std::enable_if_t<!ModTraits::is_eponymous::value, bool> = true>
+        std::string serialize_virtual_table_definition(const Elements& elements, const Ctx& context) {
+            using traits_type = ModTraits;
+
+            auto subContext = context;
+            subContext.omit_column_type = traits_type::omit_column_type::value;
+
+            std::stringstream ss;
+            ss << "(" << streaming_expressions_tuple(elements, subContext) << ")";
+            return ss.str();
+        }
+
         template<class Table>
         struct statement_serializer<Table, std::enable_if_t<is_virtual_table_v<Table>>> {
             using statement_type = Table;
@@ -180,14 +204,12 @@ namespace sqlite_orm {
             template<class Ctx>
             SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-                auto subContext = context;
-                subContext.omit_column_type = statement_type::traits_type::omit_column_type::value;
                 std::stringstream ss;
                 ss << "CREATE VIRTUAL TABLE IF NOT EXISTS " << streaming_identifier(statement.name) << " USING "
-                   << streaming_identifier(statement_type::module_type::name());
-                if constexpr (std::tuple_size<elements_type_t<statement_type>>::value > 0) {
-                    ss << "(" << streaming_expressions_tuple(statement.elements, subContext) << ")";
-                }
+                   << streaming_identifier(statement_type::module_type::name())
+                   << serialize_virtual_table_definition<typename statement_type::module_traits_type>(
+                          statement.elements,
+                          context);
                 return ss.str();
             }
         };
