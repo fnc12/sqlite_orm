@@ -184,8 +184,10 @@ namespace sqlite_orm {
                 subContext.omit_column_type = statement_type::traits_type::omit_column_type::value;
                 std::stringstream ss;
                 ss << "CREATE VIRTUAL TABLE IF NOT EXISTS " << streaming_identifier(statement.name) << " USING "
-                   << streaming_identifier(statement_type::module_type::name()) << "("
-                   << streaming_expressions_tuple(statement.elements, subContext) << ")";
+                   << streaming_identifier(statement_type::module_type::name());
+                if constexpr (std::tuple_size<elements_type_t<statement_type>>::value > 0) {
+                    ss << "(" << streaming_expressions_tuple(statement.elements, subContext) << ")";
+                }
                 return ss.str();
             }
         };

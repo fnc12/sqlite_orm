@@ -65,6 +65,9 @@ if(MSVC)
         /wd4456
         # C4458: declaration of 'symbol' hides class member
         /wd4458)
+        # C4458: 'symbol': deprecated
+        # disabled due to unit tests still testing deprecated features
+        /wd4996)
     if (CMAKE_CXX_FLAGS MATCHES "/D_UNICODE")
         # explicitly set the entry point of the executable file,
         # otherwise for some reason the linker will not pick up `wmain`, which is provided by the static Catch2 library

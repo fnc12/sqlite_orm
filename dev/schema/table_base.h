@@ -195,11 +195,11 @@ namespace sqlite_orm::internal {
     }
 
     /**
-         *  Mixin for a base table, providing methods used to access a mapped object's members.
-         *  
-         *  Implementation note: it is provided as a mixin to reduce the number of involved template parameters,
-         *  which is possible in C++23 mode for 'getters'.
-         */
+     *  Mixin for a base table, providing methods used to access a mapped object's members.
+     *  
+     *  Implementation note: it is provided as a mixin to reduce the number of involved template parameters,
+     *  which is possible in C++23 mode for 'getters'.
+     */
 #ifdef SQLITE_ORM_DEDUCING_THIS_SUPPORTED
     template<class O>
 #else
@@ -209,12 +209,12 @@ namespace sqlite_orm::internal {
         using object_type = O;
 
         /**
-             *  Function used to get field value from object by mapped member pointer/setter/getter.
-             *  
-             *  For a setter the corresponding getter has to be searched,
-             *  so the method returns a pointer to the field as returned by the found getter.
-             *  Otherwise the method invokes the member pointer and returns its result.
-             */
+         *  Function used to get field value from object by mapped member pointer/setter/getter.
+         *  
+         *  For a setter the corresponding getter has to be searched,
+         *  so the method returns a pointer to the field as returned by the found getter.
+         *  Otherwise the method invokes the member pointer and returns its result.
+         */
         template<class M, satisfies_not<is_setter, M> = true>
         decltype(auto) object_field_value(const object_type& object, M memberPointer) const {
             return polyfill::invoke(memberPointer, object);

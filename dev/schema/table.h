@@ -122,42 +122,42 @@ namespace sqlite_orm {
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
-     *  Factory function for a table definition.
+     *  Factory function for a base table.
      *  
      *  The mapped object type is determined implicitly from the first column definition.
      */
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
-    internal::base_table<T, std::false_type, Cs...> make_table(std::string name, Cs... args) {
+    internal::base_table<T, std::false_type, Cs...> make_table(std::string name, Cs... definition) {
         static_assert(polyfill::conjunction_v<internal::is_base_table_element_or_constraint<Cs>...>,
                       "Incorrect table elements or constraints");
 
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
+            return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(definition)...)});
     }
 
     /**
-     *  Factory function for a table definition.
+     *  Factory function for a base table.
      *  
      *  The mapped object type is explicitly specified.
      */
     template<class T, class... Cs>
-    internal::base_table<T, std::false_type, Cs...> make_table(std::string name, Cs... args) {
+    internal::base_table<T, std::false_type, Cs...> make_table(std::string name, Cs... definition) {
         static_assert(polyfill::conjunction_v<internal::is_base_table_element_or_constraint<Cs>...>,
                       "Incorrect table elements or constraints");
 
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
+            return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(definition)...)});
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
-     *  Factory function for a table definition.
+     *  Factory function for a base table.
      *  
      *  The mapped object type is explicitly specified.
      */
     template<orm_table_reference auto table, class... Cs>
-    auto make_table(std::string name, Cs... args) {
-        return make_table<internal::auto_decay_table_ref_t<table>>(std::move(name), std::forward<Cs>(args)...);
+    auto make_table(std::string name, Cs... definition) {
+        return make_table<internal::auto_decay_table_ref_t<table>>(std::move(name), std::forward<Cs>(definition)...);
     }
 #endif
 }
