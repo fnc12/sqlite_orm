@@ -1,9 +1,11 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#ifdef SQLITE_ENABLE_RTREE
 #include <type_traits>  // std::is_same
 #include <tuple>  // std::tuple_element, std::make_tuple
 #include <utility>  // std::forward
+#endif
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
@@ -12,6 +14,7 @@
 #include "../schema/virtual_table.h"
 #include "../schema/column.h"
 
+#ifdef SQLITE_ENABLE_RTREE
 namespace sqlite_orm::internal {
     template<class T>
     using is_rtree_table_element_or_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_column>>, T>;
@@ -42,3 +45,4 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(definition)...)});
     }
 }
+#endif

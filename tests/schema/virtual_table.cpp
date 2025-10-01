@@ -174,6 +174,7 @@ TEST_CASE("dbstat virtual table schema") {
 }
 #endif
 
+#ifdef SQLITE_ENABLE_RTREE
 TEST_CASE("rtree virtual table schema") {
     struct DemoIndex {
         int64 id;
@@ -225,3 +226,4 @@ TEST_CASE("rtree virtual table schema") {
                                      c(&DemoIndex::minY) <= 35.37785 and c(&DemoIndex::maxY) >= 35.37785));
     REQUIRE(rows == std::vector<int64>{28269});
 }
+#endif

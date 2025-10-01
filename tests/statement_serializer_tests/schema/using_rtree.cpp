@@ -3,6 +3,7 @@
 
 using namespace sqlite_orm;
 
+#ifdef SQLITE_ENABLE_RTREE
 TEST_CASE("statement_serializer rtree") {
     struct DemoIndex {
         int64 id;
@@ -67,3 +68,4 @@ TEST_CASE("statement_serializer rtree") {
 #endif
     REQUIRE(value == expected);
 }
+#endif

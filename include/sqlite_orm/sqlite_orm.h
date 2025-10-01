@@ -20283,25 +20283,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "column.h"
 
 namespace sqlite_orm::internal {
-<<<<<<< HEAD
-
-#if SQLITE_VERSION_NUMBER >= 3009000
-    template<class T>
-    using is_fts5_table_element_or_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_column>,
-                                                                               check_if_is_template<prefix_t>,
-                                                                               check_if_is_template<tokenize_t>,
-                                                                               check_if_is_template<content_t>,
-                                                                               check_if_is_template<table_content_t>>,
-                                                              T>;
-#endif
-
-    template<class T>
-    using is_rtree_table_element_or_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_column>>, T>;
-
-    // ----
-
-=======
->>>>>>> upstream/restructure-table-dbos
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     template<class T>
     concept module_tag = requires {
@@ -20385,116 +20366,13 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_virtual_table = polyfill::bool_constant<is_virtual_table_v<T>>;
-<<<<<<< HEAD
-
-#if SQLITE_VERSION_NUMBER >= 3009000
-    struct fts5_module_tag {
-        // simplify conceptual/meta programming
-        using module_type = fts5_module_tag;
-
-        static constexpr const char* name() {
-            return "fts5";
-        }
-    };
-#endif
-
-    struct rtree_module_tag {
-        // simplify conceptual/meta programming
-        using module_type = rtree_module_tag;
-
-        static constexpr const char* name() {
-            return "rtree";
-        }
-    };
-=======
->>>>>>> upstream/restructure-table-dbos
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Factory function for a virtual table.
      *  
-<<<<<<< HEAD
-     *  The mapped object type is determined implicitly from the first column definition.
-     */
-    template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
-    internal::virtual_table_description<T, internal::fts5_module_tag, Cs...> using_fts5(Cs... columns) {
-        static_assert(polyfill::conjunction_v<internal::is_fts5_table_element_or_constraint<Cs>...>,
-                      "Incorrect table elements or constraints");
-
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(columns)...)});
-    }
-
-    /**
-     *  Factory function for the FTS5 virtual table extension.
-     *  
-     *  The mapped object type is explicitly specified.
-     */
-    template<class T, class... Cs>
-    internal::virtual_table_description<T, internal::fts5_module_tag, Cs...> using_fts5(Cs... columns) {
-        static_assert(polyfill::conjunction_v<internal::is_fts5_table_element_or_constraint<Cs>...>,
-                      "Incorrect table elements or constraints");
-
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(columns)...)});
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /**
-     *  Factory function for the FTS5 virtual table extension.
-     *  
-     *  The mapped object type is explicitly specified.
-     */
-    template<orm_table_reference auto table, class... Cs>
-    auto using_fts5(Cs... args) {
-        return using_fts5<internal::auto_decay_table_ref_t<table>>(std::forward<Cs>(args)...);
-    }
-#endif
-#endif
-
-    /**
-     *  Factory function for the RTREE virtual table extension.
-     *  
-     *  The mapped object type is explicitly specified.
-     */
-    template<class T, class... Cs>
-    internal::virtual_table_description<T, internal::rtree_module_tag, Cs...> using_rtree(Cs... columns) {
-        static_assert(polyfill::conjunction_v<internal::is_rtree_table_element_or_constraint<Cs>...>,
-                      "Incorrect table elements or constraints");
-        static_assert(sizeof...(Cs) >= 3 && sizeof...(Cs) <= 11 && sizeof...(Cs) % 2 == 1,
-                      "An rtree table must consist of at least 1 up to 5 dimensions");
-        static_assert(std::is_same<typename std::tuple_element_t<0, std::tuple<Cs...>>::field_type, int64>::value,
-                      "The type of the first column must be a 64-bit integer");
-
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(columns)...)});
-    }
-
-    /**
-     *  Factory function for the RTREE virtual table extension.
-     *  
-     *  The mapped object type is determined implicitly from the first column definition.
-     */
-    template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
-    internal::virtual_table_description<T, internal::rtree_module_tag, Cs...> using_rtree(Cs... columns) {
-        return using_rtree<T>(std::move(columns)...);
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /**
-     *  Factory function for the RTREE virtual table extension.
-     *  
-     *  The mapped object type is explicitly specified.
-     */
-    template<orm_table_reference auto table, class... Cs>
-    auto using_rtree(Cs... args) {
-        return using_rtree<internal::auto_decay_table_ref_t<table>>(std::forward<Cs>(args)...);
-    }
-#endif
-
-    /**
-     *  Factory function for a virtual table definition.
-=======
      *  [Deprecation notice] This factory function is deprecated and will be removed in v1.11.
->>>>>>> upstream/restructure-table-dbos
      */
     template<class O, class M, class... Cs>
     internal::virtual_table<O, M, Cs...>
@@ -26255,6 +26133,59 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 #endif
 }
+
+// #include "rtree.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#ifdef SQLITE_ENABLE_RTREE
+#include <type_traits>  // std::is_same
+#include <tuple>  // std::tuple_element, std::make_tuple
+#include <utility>  // std::forward
+#endif
+#endif
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../functional/gsl.h"
+
+// #include "../functional/mpl.h"
+
+// #include "../schema/virtual_table.h"
+
+// #include "../schema/column.h"
+
+#ifdef SQLITE_ENABLE_RTREE
+namespace sqlite_orm::internal {
+    template<class T>
+    using is_rtree_table_element_or_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_column>>, T>;
+
+    struct rtree_module_tag {
+        // simplify conceptual/meta programming
+        using module_type = rtree_module_tag;
+
+        static constexpr orm_gsl::czstring name() {
+            return "rtree";
+        }
+    };
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Factory function for the RTREE virtual table definition.
+     */
+    template<class... Cs>
+    internal::virtual_table_definition<internal::rtree_module_tag, Cs...> using_rtree(Cs... definition) {
+        static_assert(polyfill::conjunction_v<internal::is_rtree_table_element_or_constraint<Cs>...>,
+                      "Incorrect table elements or constraints");
+        static_assert(sizeof...(Cs) >= 3 && sizeof...(Cs) <= 11 && sizeof...(Cs) % 2 == 1,
+                      "An RTREE table must consist of at least 1 up to 5 dimensions");
+        static_assert(std::is_same<typename std::tuple_element_t<0, std::tuple<Cs...>>::field_type, int64>::value,
+                      "The type of the first column must be a 64-bit integer");
+
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(definition)...)});
+    }
+}
+#endif
 
 #pragma once
 
