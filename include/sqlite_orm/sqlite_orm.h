@@ -26066,9 +26066,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "fts5.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <string>  //  std::string
+#if SQLITE_VERSION_NUMBER >= 3009000
 #include <tuple>  //  std::make_tuple
 #include <utility>  //  std::forward
+#endif
 #endif
 
 // #include "../functional/cxx_type_traits_polyfill.h"
@@ -26077,12 +26078,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/mpl.h"
 
+// #include "../schema/virtual_table.h"
+
 // #include "../schema/column.h"
 
 // #include "../constraints.h"
 
-namespace sqlite_orm::internal {
 #if SQLITE_VERSION_NUMBER >= 3009000
+namespace sqlite_orm::internal {
     template<class T>
     using is_fts5_table_element_or_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_column>,
                                                                                check_if_is_template<prefix_t>,
@@ -26098,11 +26101,9 @@ namespace sqlite_orm::internal {
             return "fts5";
         }
     };
-#endif
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#if SQLITE_VERSION_NUMBER >= 3009000
     /**
      *  Factory function for a FTS5 virtual table definition.
      *  
@@ -26131,8 +26132,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(definition)...)});
     }
-#endif
 }
+#endif
 
 // #include "rtree.h"
 
