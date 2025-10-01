@@ -7,7 +7,7 @@ using internal::is_base_template_of_v;
 using internal::table_definition;
 
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
-TEST_CASE("dbstat") {
+TEST_CASE("dbstat static tests") {
     SECTION("table definition") {
         auto table = make_dbstat_table();
         using table_type = decltype(table);

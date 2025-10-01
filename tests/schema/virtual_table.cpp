@@ -4,7 +4,7 @@
 #if SQLITE_VERSION_NUMBER >= 3009000
 using namespace sqlite_orm;
 
-TEST_CASE("fts5 virtual table") {
+TEST_CASE("fts5 virtual table schema") {
     using Catch::Matchers::UnorderedEquals;
 
     struct Post {
@@ -126,7 +126,7 @@ TEST_CASE("issue1410") {
 #endif
 
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
-TEST_CASE("dbstat") {
+TEST_CASE("dbstat virtual table schema") {
     constexpr auto compareColumnName = [](const std::string* foundValue, const std::string& expectedValue) {
         if (!foundValue) {
             return false;
