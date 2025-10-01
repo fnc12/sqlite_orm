@@ -10,6 +10,7 @@
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/gsl.h"
 #include "../functional/mpl.h"
 #include "../type_traits.h"
 #include "../constraints.h"
@@ -17,57 +18,66 @@
 #include "column.h"
 
 namespace sqlite_orm::internal {
-
-#if SQLITE_VERSION_NUMBER >= 3009000
-    template<class T>
-    using is_fts5_table_element_or_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_column>,
-                                                                               check_if_is_template<prefix_t>,
-                                                                               check_if_is_template<tokenize_t>,
-                                                                               check_if_is_template<content_t>,
-                                                                               check_if_is_template<table_content_t>>,
-                                                              T>;
-#endif
-
-    template<class T>
-    using is_rtree_table_element_or_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_column>>, T>;
-
-    // ----
-
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     template<class T>
     concept module_tag = requires {
         typename T::module_type;
-        { T::name() } -> std::convertible_to<const char*>;
+        { T::name() } -> std::convertible_to<orm_gsl::czstring>;
     };
 #endif
 
     /** 
-     *  Default traits of a "normal" virtual table.
+     *  Default base traits of a "normal" virtual table module.
      *  
      *  Particularly this means:
-     *  - it is not a WITHOUT ROWID table (i.e. it has an implicit `rowid` column).
-     *  - its definition is a `insertable_table_definition`
+     *  - It is not eponymous.
+     *    The definition of eponymous virtual tables is built-in, fixed and implicit,
+     *    and they can only be created with optional table-values for their hidden columns.
+     *  - It is not a WITHOUT ROWID table (i.e. it has an implicit `rowid` column).
+     *  - Omits the column type in the SQL creation statement.
      *  
      *  Specific virtual table modules can specialize this struct to provide their own traits.
      */
-    template<class M, class... Cs>
-    struct virtual_table_traits {
+    template<class M>
+    struct virtual_table_module_traits {
         using module_type = M;
+        using is_eponymous = std::false_type;
         using is_without_rowid = std::false_type;
-        using definition_type = insertable_table_definition<Cs...>;
-        using elements_type = elements_type_t<definition_type>;
         using omit_column_type = std::true_type;
     };
 
     /** 
-     *  Encapsulates the intermediary (and temporary) `using_module<Object>(...)` expression.
-     * 
-     *  Implementation note: When making the virtual table this description is unpacked into the virtual table type itself.
-     *  If desired or necessary one day, rename it to `virtual_table_definition`, and derive `virtual_table` from it, similar to
-     *  `base_table` deriving from `base_table_definition`.
+     *  Default traits of a "normal" virtual table.
+     *  
+     *  Particularly this means :
+     *  - Its definition is a `insertable_table_definition`.
+     *  
+     *  Specific virtual table modules can specialize this struct to provide their own traits.
+     */
+    template<class M, class... Cs>
+    struct virtual_table_traits : virtual_table_module_traits<M> {
+        using definition_type = insertable_table_definition<Cs...>;
+        using elements_type = elements_type_t<definition_type>;
+    };
+
+    /** 
+     *  Encapsulates the intermediary (and temporary) (and deprecated) `using_module<Object>(...)` expression.
      */
     template<class O, class M, class... Cs>
     struct virtual_table_description : virtual_table_traits<M, Cs...>::definition_type {
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+        static_assert(module_tag<M>, "Template parameter M must be a module tag");
+#endif
+    };
+
+    /** 
+     *  Encapsulates the intermediary (and temporary) `using_module(...)` expression.
+     * 
+     *  Implementation note: When making the virtual table this virtual table definition is unpacked into the virtual table type itself.
+     *  If desired or necessary one day, derive `virtual_table` from it, similar to `base_table` deriving from `base_table_definition`.
+     */
+    template<class M, class... Cs>
+    struct virtual_table_definition : virtual_table_traits<M, Cs...>::definition_type {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
         static_assert(module_tag<M>, "Template parameter M must be a module tag");
 #endif
@@ -79,6 +89,7 @@ namespace sqlite_orm::internal {
     template<class O, class M, class... Cs>
     struct virtual_table : table_identifier, virtual_table_traits<M, Cs...>::definition_type {
         using traits_type = virtual_table_traits<M, Cs...>;
+        using module_traits_type = virtual_table_module_traits<M>;
         using module_type = M;
         using object_type = O;
         using elements_type = typename traits_type::elements_type;
@@ -90,114 +101,51 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_virtual_table = polyfill::bool_constant<is_virtual_table_v<T>>;
-
-#if SQLITE_VERSION_NUMBER >= 3009000
-    struct fts5_module_tag {
-        // simplify conceptual/meta programming
-        using module_type = fts5_module_tag;
-
-        static constexpr const char* name() {
-            return "fts5";
-        }
-    };
-#endif
-
-    struct rtree_module_tag {
-        // simplify conceptual/meta programming
-        using module_type = rtree_module_tag;
-
-        static constexpr const char* name() {
-            return "rtree";
-        }
-    };
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#if SQLITE_VERSION_NUMBER >= 3009000
     /**
-     *  Factory function for the FTS5 virtual table extension.
+     *  Factory function for a virtual table.
      *  
-     *  The mapped object type is determined implicitly from the first column definition.
-     */
-    template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
-    internal::virtual_table_description<T, internal::fts5_module_tag, Cs...> using_fts5(Cs... columns) {
-        static_assert(polyfill::conjunction_v<internal::is_fts5_table_element_or_constraint<Cs>...>,
-                      "Incorrect table elements or constraints");
-
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(columns)...)});
-    }
-
-    /**
-     *  Factory function for the FTS5 virtual table extension.
-     *  
-     *  The mapped object type is explicitly specified.
-     */
-    template<class T, class... Cs>
-    internal::virtual_table_description<T, internal::fts5_module_tag, Cs...> using_fts5(Cs... columns) {
-        static_assert(polyfill::conjunction_v<internal::is_fts5_table_element_or_constraint<Cs>...>,
-                      "Incorrect table elements or constraints");
-
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(columns)...)});
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /**
-     *  Factory function for the FTS5 virtual table extension.
-     *  
-     *  The mapped object type is explicitly specified.
-     */
-    template<orm_table_reference auto table, class... Cs>
-    auto using_fts5(Cs... args) {
-        return using_fts5<internal::auto_decay_table_ref_t<table>>(std::forward<Cs>(args)...);
-    }
-#endif
-#endif
-
-    /**
-     *  Factory function for the RTREE virtual table extension.
-     *  
-     *  The mapped object type is explicitly specified.
-     */
-    template<class T, class... Cs>
-    internal::virtual_table_description<T, internal::rtree_module_tag, Cs...> using_rtree(Cs... columns) {
-        static_assert(polyfill::conjunction_v<internal::is_rtree_table_element_or_constraint<Cs>...>,
-                      "Incorrect table elements or constraints");
-        static_assert(sizeof...(Cs) >= 3 && sizeof...(Cs) <= 11 && sizeof...(Cs) % 2 == 1,
-                      "An rtree table must consist of at least 1 up to 5 dimensions");
-        static_assert(std::is_same<typename std::tuple_element_t<0, std::tuple<Cs...>>::field_type, int64>::value,
-                      "The type of the first column must be a 64-bit integer");
-
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(columns)...)});
-    }
-
-    /**
-     *  Factory function for the RTREE virtual table extension.
-     *  
-     *  The mapped object type is determined implicitly from the first column definition.
-     */
-    template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
-    internal::virtual_table_description<T, internal::rtree_module_tag, Cs...> using_rtree(Cs... columns) {
-        return using_rtree<T>(std::move(columns)...);
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    /**
-     *  Factory function for the RTREE virtual table extension.
-     *  
-     *  The mapped object type is explicitly specified.
-     */
-    template<orm_table_reference auto table, class... Cs>
-    auto using_rtree(Cs... args) {
-        return using_rtree<internal::auto_decay_table_ref_t<table>>(std::forward<Cs>(args)...);
-    }
-#endif
-
-    /**
-     *  Factory function for a virtual table definition.
+     *  [Deprecation notice] This factory function is deprecated and will be removed in v1.11.
      */
     template<class O, class M, class... Cs>
     internal::virtual_table<O, M, Cs...>
     make_virtual_table(std::string name, internal::virtual_table_description<O, M, Cs...> description) {
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name), std::move(description)});
     }
+
+    /**
+     *  Factory function for a virtual table.
+     *  
+     *  The mapped object type is determined implicitly from the first column definition.
+     */
+    template<class M, class... Cs, class O = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
+    internal::virtual_table<O, M, Cs...> make_virtual_table(std::string name,
+                                                            internal::virtual_table_definition<M, Cs...> definition) {
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name), std::move(definition)});
+    }
+
+    /**
+     *  Factory function for a virtual table.
+     *  
+     *  The mapped object type is explicitly specified.
+     */
+    template<class O, class M, class... Cs>
+    internal::virtual_table<O, M, Cs...> make_virtual_table(std::string name,
+                                                            internal::virtual_table_definition<M, Cs...> definition) {
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name), std::move(definition)});
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Factory function for a virtual table.
+     *  
+     *  The mapped object type is explicitly specified.
+     */
+    template<orm_table_reference auto table, class M, class... Cs>
+    auto make_virtual_table(std::string name, internal::virtual_table_definition<M, Cs...> definition) {
+        return make_virtual_table<internal::auto_decay_table_ref_t<table>>(std::move(name), std::move(definition));
+    }
+#endif
 }

@@ -31,8 +31,8 @@ TEST_CASE("statement_serializer rtree") {
         expected = R"(CREATE VIRTUAL TABLE IF NOT EXISTS "demo_index" USING "rtree"("id", "minX", "maxX"))";
     }
     SECTION("explicit object") {
-        auto expression = make_virtual_table("demo_index",
-                                             using_rtree<DemoIndex>(make_column("id", &DemoIndex::id),
+        auto expression = make_virtual_table<DemoIndex>("demo_index",
+                                                        using_rtree(make_column("id", &DemoIndex::id),
                                                                     make_column("minX", &DemoIndex::minX),
                                                                     make_column("maxX", &DemoIndex::maxX)));
         value = serialize(expression, context);
@@ -57,8 +57,8 @@ TEST_CASE("statement_serializer rtree") {
     }
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     SECTION("table reference") {
-        auto expression = make_virtual_table("demo_index",
-                                             using_rtree<demo_index>(make_column("id", &DemoIndex::id),
+        auto expression = make_virtual_table<demo_index>("demo_index",
+                                                         using_rtree(make_column("id", &DemoIndex::id),
                                                                      make_column("minX", &DemoIndex::minX),
                                                                      make_column("maxX", &DemoIndex::maxX)));
         value = serialize(expression, context);

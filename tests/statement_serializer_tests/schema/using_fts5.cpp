@@ -32,10 +32,17 @@ TEST_CASE("statement_serializer fts5") {
         value = serialize(expression, context);
         expected = R"(CREATE VIRTUAL TABLE IF NOT EXISTS "posts" USING "fts5"("title", "body"))";
     }
-    SECTION("explicit object") {
+    SECTION("explicit object, deprecated") {
         auto expression =
             make_virtual_table("posts",
                                using_fts5<Post>(make_column("title", &Post::title), make_column("body", &Post::body)));
+        value = serialize(expression, context);
+        expected = R"(CREATE VIRTUAL TABLE IF NOT EXISTS "posts" USING "fts5"("title", "body"))";
+    }
+    SECTION("explicit object") {
+        auto expression =
+            make_virtual_table<Post>("posts",
+                                     using_fts5(make_column("title", &Post::title), make_column("body", &Post::body)));
         value = serialize(expression, context);
         expected = R"(CREATE VIRTUAL TABLE IF NOT EXISTS "posts" USING "fts5"("title", "body"))";
     }
@@ -89,9 +96,9 @@ TEST_CASE("statement_serializer fts5") {
     }
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     SECTION("table reference") {
-        auto expression = make_virtual_table(
+        auto expression = make_virtual_table<post>(
             "posts",
-            using_fts5<post>(make_column("title", &Post::title), make_column("body", &Post::body), content<user>()));
+            using_fts5(make_column("title", &Post::title), make_column("body", &Post::body), content<user>()));
         value = serialize(expression, context);
         expected = R"(CREATE VIRTUAL TABLE IF NOT EXISTS "posts" USING "fts5"("title", "body", content="users"))";
     }

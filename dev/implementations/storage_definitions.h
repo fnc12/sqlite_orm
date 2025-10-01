@@ -1,6 +1,5 @@
 /** @file Mainly existing to disentangle implementation details from circular and cross dependencies
- *  this file is also used to separate implementation details from the main header file,
- *  e.g. usage of the dbstat table.
+ *  this file is also used to separate implementation details from the main header file.
  */
 #pragma once
 
@@ -14,7 +13,6 @@
 
 #include "../type_traits.h"
 #include "../sqlite_schema_table.h"
-#include "../eponymous_vtabs/dbstat.h"
 #include "../type_traits.h"
 #include "../util.h"
 #include "../serializing_util.h"
@@ -27,11 +25,7 @@ namespace sqlite_orm {
         sync_schema_result storage_t<DBO...>::sync_dbo([[maybe_unused]] const Table& table,
                                                        [[maybe_unused]] sqlite3* db,
                                                        [[maybe_unused]] bool preserve) {
-            if constexpr (
-#ifdef SQLITE_ENABLE_DBSTAT_VTAB
-                std::is_same<object_type_t<Table>, dbstat>::value ||
-#endif
-                std::is_same<object_type_t<Table>, sqlite_master>::value) {
+            if constexpr (std::is_same<object_type_t<Table>, sqlite_master>::value) {
                 return sync_schema_result::already_in_sync;
             } else {
                 return this->sync_regular_base_table(table, db, preserve);
