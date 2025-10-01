@@ -124,3 +124,52 @@ TEST_CASE("issue1410") {
     }  // must compile
 }
 #endif
+
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+TEST_CASE("dbstat") {
+    constexpr auto compareColumnName = [](const std::string* foundValue, const std::string& expectedValue) {
+        if (!foundValue) {
+            return false;
+        }
+        return *foundValue == expectedValue;
+    };
+
+    SECTION("epynomous") {
+        SECTION("definition") {
+            auto virtualTable = make_dbstat_table();
+            REQUIRE(compareColumnName(virtualTable.find_column_name(&dbstat::name), "name"));
+            REQUIRE(compareColumnName(virtualTable.find_column_name(&dbstat::pgsize), "pgsize"));
+        }
+        SECTION("storage") {
+            auto storage = make_storage("", make_dbstat_table());
+            storage.sync_schema();
+            // eponymous virtual tables must not get created
+            REQUIRE_FALSE(storage.table_exists("dbstat"));
+
+            auto dbstatRows = storage.get_all<dbstat>();
+            REQUIRE(dbstatRows.size() == 0);
+        }
+    }
+
+    SECTION("virtual table instance") {
+        struct mystat : sqlite_orm::dbstat {};
+
+        SECTION("definition") {
+            auto virtualTable = make_virtual_table<mystat>("mystat", using_dbstat());
+            REQUIRE(compareColumnName(virtualTable.find_column_name(&mystat::name), "name"));
+            REQUIRE(compareColumnName(virtualTable.find_column_name(&mystat::pgsize), "pgsize"));
+        }
+        SECTION("storage") {
+            auto storage =
+                make_storage("", make_sqlite_schema_table(), make_virtual_table<mystat>("mystat", using_dbstat()));
+            storage.sync_schema();
+            storage.sync_schema_simulate();
+            REQUIRE(storage.table_exists("mystat"));
+            REQUIRE_FALSE(storage.table_exists("dbstat"));
+
+            auto mystatRows = storage.get_all<mystat>();
+            REQUIRE(mystatRows.size() == 1);
+        }
+    }
+}
+#endif

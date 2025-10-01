@@ -20270,6 +20270,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
+// #include "../functional/gsl.h"
+
 // #include "../functional/mpl.h"
 
 // #include "../type_traits.h"
@@ -20285,7 +20287,7 @@ namespace sqlite_orm::internal {
     template<class T>
     concept module_tag = requires {
         typename T::module_type;
-        { T::name() } -> std::convertible_to<const char*>;
+        { T::name() } -> std::convertible_to<orm_gsl::czstring>;
     };
 #endif
 
@@ -23198,8 +23200,8 @@ namespace sqlite_orm {
         template<class DBOs, class O>
         auto extract_colref_expressions(const DBOs& dbObjects, const asterisk_t<O>& /*col*/) {
             using table_type = storage_pick_table_t<O, DBOs>;
-            using elements_t = typename table_type::elements_type;
-            using column_idxs = filter_tuple_sequence_t<elements_t, is_column>;
+            using elements_type = typename table_type::elements_type;
+            using column_idxs = filter_tuple_sequence_t<elements_type, is_column>;
 
             auto& table = pick_table<O>(dbObjects);
             return get_table_columns_fields(table.elements, column_idxs{});
@@ -25294,8 +25296,7 @@ namespace sqlite_orm {
 
 // #include "implementations/storage_definitions.h"
 /** @file Mainly existing to disentangle implementation details from circular and cross dependencies
- *  this file is also used to separate implementation details from the main header file,
- *  e.g. usage of the dbstat table.
+ *  this file is also used to separate implementation details from the main header file.
  */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -25359,55 +25360,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 }
 
-// #include "../eponymous_vtabs/dbstat.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#ifdef SQLITE_ENABLE_DBSTAT_VTAB
-#include <string>  //  std::string
-#endif
-#endif
-
-// #include "../schema/column.h"
-
-// #include "../schema/table.h"
-
-// #include "../column_pointer.h"
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ENABLE_DBSTAT_VTAB
-    struct dbstat {
-        std::string name;
-        std::string path;
-        int pageno = 0;
-        std::string pagetype;
-        int ncell = 0;
-        int payload = 0;
-        int unused = 0;
-        int mx_payload = 0;
-        int pgoffset = 0;
-        int pgsize = 0;
-    };
-
-    inline auto make_dbstat_table() {
-        return make_table("dbstat",
-                          make_column("name", &dbstat::name),
-                          make_column("path", &dbstat::path),
-                          make_column("pageno", &dbstat::pageno),
-                          make_column("pagetype", &dbstat::pagetype),
-                          make_column("ncell", &dbstat::ncell),
-                          make_column("payload", &dbstat::payload),
-                          make_column("unused", &dbstat::unused),
-                          make_column("mx_payload", &dbstat::mx_payload),
-                          make_column("pgoffset", &dbstat::pgoffset),
-                          make_column("pgsize", &dbstat::pgsize));
-    }
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    inline constexpr orm_table_reference auto dbstat_table = c<dbstat>();
-#endif
-#endif  //  SQLITE_ENABLE_DBSTAT_VTAB
-}
-
 // #include "../type_traits.h"
 
 // #include "../util.h"
@@ -25423,11 +25375,7 @@ namespace sqlite_orm {
         sync_schema_result storage_t<DBO...>::sync_dbo([[maybe_unused]] const Table& table,
                                                        [[maybe_unused]] sqlite3* db,
                                                        [[maybe_unused]] bool preserve) {
-            if constexpr (
-#ifdef SQLITE_ENABLE_DBSTAT_VTAB
-                std::is_same<object_type_t<Table>, dbstat>::value ||
-#endif
-                std::is_same<object_type_t<Table>, sqlite_master>::value) {
+            if constexpr (std::is_same<object_type_t<Table>, sqlite_master>::value) {
                 return sync_schema_result::already_in_sync;
             } else {
                 return this->sync_regular_base_table(table, db, preserve);
@@ -26019,21 +25967,119 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #pragma once
 
+// #include "dbstat.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+#include <type_traits>  //  std::false_type, std::true_type
+#include <tuple>  //  std::make_tuple
+#include <utility>  //  std::move
+#endif
+#endif
+
+// #include "../functional/gsl.h"
+
+// #include "../schema/virtual_table.h"
+
+// #include "../schema/column.h"
+
+// #include "../column_pointer.h"
+
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+namespace sqlite_orm::internal {
+    struct dbstat_module_tag {
+        // simplify conceptual/meta programming
+        using module_type = dbstat_module_tag;
+
+        static constexpr orm_gsl::czstring name() {
+            return "dbstat";
+        }
+    };
+
+    template<>
+    struct virtual_table_module_traits<dbstat_module_tag> {
+        using module_type = dbstat_module_tag;
+        using is_eponymous = std::true_type;
+        using is_without_rowid = std::false_type;
+        using omit_column_type = std::true_type;
+    };
+
+    template<class... Cs>
+    struct virtual_table_traits<dbstat_module_tag, Cs...> : virtual_table_module_traits<dbstat_module_tag> {
+        using definition_type = table_definition<Cs...>;
+        using elements_type = typename definition_type::elements_type;
+    };
+
+    template<class... Cs>
+    inline virtual_table_definition<dbstat_module_tag, Cs...> using_dbstat(Cs... columns) {
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {{std::make_tuple(std::move(columns)...)}});
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    struct dbstat {
+        std::string name;
+        std::string path;
+        int pageno = 0;
+        std::string pagetype;
+        int ncell = 0;
+        int payload = 0;
+        int unused = 0;
+        int mx_payload = 0;
+        int pgoffset = 0;
+        int pgsize = 0;
+    };
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    inline constexpr orm_table_reference auto dbstat_table = c<dbstat>();
+#endif
+
+    /**
+     *  Factory function for a DBSTAT virtual table definition.
+     *  If no schema is specified then the main schema is used.
+     *  
+     *  Though the DBSTAT virtual table is an eponymous table SQLite allows to create a virtual table instance with a different name.
+     *  This is mostly useful with binding input arguments, e.g. a different schema than "main", which is yet unimplemented.
+     */
+    inline auto using_dbstat() {
+        return internal::using_dbstat(make_column("name", &dbstat::name),
+                                      make_column("path", &dbstat::path),
+                                      make_column("pageno", &dbstat::pageno),
+                                      make_column("pagetype", &dbstat::pagetype),
+                                      make_column("ncell", &dbstat::ncell),
+                                      make_column("payload", &dbstat::payload),
+                                      make_column("unused", &dbstat::unused),
+                                      make_column("mx_payload", &dbstat::mx_payload),
+                                      make_column("pgoffset", &dbstat::pgoffset),
+                                      make_column("pgsize", &dbstat::pgsize));
+    }
+
+    /**
+     *  Factory function for the DBSTAT default eponymous virtual table.
+     */
+    inline auto make_dbstat_table() {
+        return make_virtual_table<dbstat>(internal::dbstat_module_tag::name(), using_dbstat());
+    }
+}
+#endif  //  SQLITE_ENABLE_DBSTAT_VTAB
+
 // #include "fts5.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
 #include <tuple>  //  std::make_tuple
-#include <utility>  //  std::forward, std::move
+#include <utility>  //  std::forward
 #endif
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
+// #include "../functional/gsl.h"
+
 // #include "../functional/mpl.h"
 
-// #include "../constraints.h"
-
 // #include "../schema/column.h"
+
+// #include "../constraints.h"
 
 namespace sqlite_orm::internal {
 #if SQLITE_VERSION_NUMBER >= 3009000
@@ -26048,7 +26094,7 @@ namespace sqlite_orm::internal {
         // simplify conceptual/meta programming
         using module_type = fts5_module_tag;
 
-        static constexpr const char* name() {
+        static constexpr orm_gsl::czstring name() {
             return "fts5";
         }
     };
