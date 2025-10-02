@@ -912,10 +912,24 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {};
     }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_recordset auto alias>
+    auto cross_join() {
+        return cross_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
+
     template<class T>
     internal::natural_join_t<T> natural_join() {
         return {};
     }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_recordset auto alias>
+    auto natural_join() {
+        return natural_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
 
     template<class T, class O>
     internal::left_join_t<T, O> left_join(O o) {

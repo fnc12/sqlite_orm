@@ -2640,7 +2640,13 @@ namespace sqlite_orm {
                 return {};
             }
 
-            template<auto t>
+            template<orm_table_reference auto t>
+            [[nodiscard]] consteval auto for_() const {
+                using T = auto_decay_table_ref_t<t>;
+                return recordset_alias<T, A, X...>{};
+            }
+
+            template<orm_recordset_alias auto t>
             [[nodiscard]] consteval auto for_() const {
                 using T = std::remove_const_t<decltype(t)>;
                 return recordset_alias<T, A, X...>{};
@@ -6053,10 +6059,24 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {};
     }
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_recordset auto alias>
+    auto cross_join() {
+        return cross_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
+
     template<class T>
     internal::natural_join_t<T> natural_join() {
         return {};
     }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_refers_to_recordset auto alias>
+    auto natural_join() {
+        return natural_join<internal::auto_decay_table_ref_t<alias>>();
+    }
+#endif
 
     template<class T, class O>
     internal::left_join_t<T, O> left_join(O o) {
@@ -6342,6 +6362,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
+// #include "../table_reference.h"
+
 namespace sqlite_orm {
     namespace internal {
 
@@ -6360,6 +6382,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::into_t<T> into() {
         return {};
     }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_table_reference auto table>
+    auto into() {
+        return into<internal::auto_decay_table_ref_t<table>>();
+    }
+#endif
 }
 
 namespace sqlite_orm {
