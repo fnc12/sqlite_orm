@@ -2640,7 +2640,13 @@ namespace sqlite_orm {
                 return {};
             }
 
-            template<auto t>
+            template<orm_table_reference auto t>
+            [[nodiscard]] consteval auto for_() const {
+                using T = auto_decay_table_ref_t<t>;
+                return recordset_alias<T, A, X...>{};
+            }
+
+            template<orm_recordset_alias auto t>
             [[nodiscard]] consteval auto for_() const {
                 using T = std::remove_const_t<decltype(t)>;
                 return recordset_alias<T, A, X...>{};
