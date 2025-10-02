@@ -88,7 +88,7 @@ namespace sqlite_orm {
             }
 
             template<class T, class X, class Y, class Z>
-            void operator()(polyfill::bool_constant<true>, const highlight_t<T, X, Y, Z>&) {
+            void operator()(std::true_type, const highlight_t<T, X, Y, Z>&) {
                 this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
             }
         };

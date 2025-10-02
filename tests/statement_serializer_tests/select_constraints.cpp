@@ -96,7 +96,7 @@ TEST_CASE("statement_serializer select constraints") {
     SECTION("from CTE") {
         using cte_1 = decltype(1_ctealias);
         auto dbObjects2 =
-            internal::db_objects_cat(dbObjects, internal::make_cte_table(dbObjects, cte<cte_1>().as(select(1))));
+            internal::db_objects_cat(dbObjects, internal::make_cte_db_object(dbObjects, cte<cte_1>().as(select(1))));
         using context_t = internal::serializer_context<decltype(dbObjects2)>;
         context_t context{dbObjects2};
         SECTION("without alias 1") {

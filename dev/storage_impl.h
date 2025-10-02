@@ -20,7 +20,7 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class DBOs>
-        using tables_index_sequence = filter_tuple_sequence_t<DBOs, is_table>;
+        using tables_index_sequence = filter_tuple_sequence_t<DBOs, is_base_table>;
 
         template<class DBOs, satisfies<is_db_objects, DBOs> = true>
         constexpr int foreign_keys_count() {
@@ -64,7 +64,7 @@ namespace sqlite_orm {
          *  Materialize column pointer:
          *  3. by moniker and alias_holder<>.
          *  
-         *  internal note: there's an overload for `find_column_name()` that avoids going through `table_t<>::find_column_name()`
+         *  internal note: there's an overload for `find_column_name()` that avoids going through `cte_table<>::find_column_name()`
          */
         template<class Moniker, class ColAlias, class DBOs, satisfies<is_db_objects, DBOs> = true>
         constexpr decltype(auto) materialize_column_pointer(const DBOs&,
@@ -111,9 +111,9 @@ namespace sqlite_orm {
             static_assert(colalias_index::value < std::tuple_size_v<cte_colrefs_tuple>,
                           "No such column mapped into the CTE.");
 
-            // note: we could "materialize" the alias to an `aliased_field<>::*` and use the regular `table_t<>::find_column_name()` mechanism;
+            // note: we could "materialize" the alias to an `aliased_field<>::*` and use the regular `cte_table<>::find_column_name()` mechanism;
             //       however we have the column index already.
-            // lookup column in table_t<>'s elements
+            // lookup column in base_table<>'s elements
             constexpr size_t ColIdx = index_sequence_value_at<colalias_index::value>(column_index_sequence{});
             auto& table = pick_table<Moniker>(dboObjects);
             return &std::get<ColIdx>(table.elements).name;

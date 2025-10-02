@@ -76,7 +76,7 @@ TEST_CASE("statement_serializer insert/replace") {
                 constexpr orm_cte_moniker auto data = "data"_cte;
                 constexpr auto cteExpression = cte<data>().as(select(asterisk<UserBackup>()));
                 auto dbObjects2 =
-                    internal::db_objects_cat(dbObjects, internal::make_cte_table(dbObjects, cteExpression));
+                    internal::db_objects_cat(dbObjects, internal::make_cte_db_object(dbObjects, cteExpression));
                 using context_t = internal::serializer_context<decltype(dbObjects2)>;
                 context_t context2{dbObjects2};
 
@@ -369,7 +369,7 @@ TEST_CASE("statement_serializer insert/replace") {
                 constexpr orm_cte_moniker auto data = "data"_cte;
                 constexpr auto cteExpression = cte<data>().as(select(asterisk<UserBackup>()));
                 auto dbObjects2 =
-                    internal::db_objects_cat(dbObjects, internal::make_cte_table(dbObjects, cteExpression));
+                    internal::db_objects_cat(dbObjects, internal::make_cte_db_object(dbObjects, cteExpression));
                 using context_t = internal::serializer_context<decltype(dbObjects2)>;
                 context_t context2{dbObjects2};
 
