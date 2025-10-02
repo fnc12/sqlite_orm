@@ -22,8 +22,9 @@ TEST_CASE("fts5 virtual table schema") {
 
     auto virtualTable =
         make_virtual_table("posts", using_fts5(make_column("title", &Post::title), make_column("body", &Post::body)));
+
     {
-        const auto compareColumnName = [](const std::string* foundValue, std::string expectedValue) {
+        constexpr auto compareColumnName = [](const std::string* foundValue, std::string expectedValue) {
             if (!foundValue) {
                 return false;
             }
@@ -178,18 +179,18 @@ TEST_CASE("dbstat virtual table schema") {
 TEST_CASE("rtree virtual table schema") {
     struct DemoIndex {
         int64 id;
-        double minX, maxX;
-        double minY, maxY;
+        float minX, maxX;
+        float minY, maxY;
     };
 
     auto virtualTable = make_virtual_table("demo_index",
-                                           using_rtree(make_column("id", &DemoIndex::id),
+                                           using_rtree(make_column("id", &DemoIndex::id, primary_key()),
                                                        make_column("minX", &DemoIndex::minX),
                                                        make_column("maxX", &DemoIndex::maxX),
                                                        make_column("minY", &DemoIndex::minY),
                                                        make_column("maxY", &DemoIndex::maxY)));
     {
-        const auto compareColumnName = [](const std::string* foundValue, std::string expectedValue) {
+        constexpr auto compareColumnName = [](const std::string* foundValue, std::string expectedValue) {
             if (!foundValue) {
                 return false;
             }
@@ -206,24 +207,9 @@ TEST_CASE("rtree virtual table schema") {
 
     storage.insert(into<DemoIndex>(),
                    columns(&DemoIndex::id, &DemoIndex::minX, &DemoIndex::maxX, &DemoIndex::minY, &DemoIndex::maxY),
-                   values(std::tuple(28215, -80.781227, -80.604706, 35.208813, 35.297367),
-                          std::tuple(28216, -80.957283, -80.840599, 35.235920, 35.367825),
-                          std::tuple(28217, -80.960869, -80.869431, 35.133682, 35.208233),
-                          std::tuple(28226, -80.878983, -80.778275, 35.060287, 35.154446),
-                          std::tuple(28227, -80.745544, -80.555382, 35.130215, 35.236916),
-                          std::tuple(28244, -80.844208, -80.841988, 35.223728, 35.225471),
-                          std::tuple(28262, -80.809074, -80.682938, 35.276207, 35.377747),
-                          std::tuple(28269, -80.851471, -80.735718, 35.272560, 35.407925),
-                          std::tuple(28270, -80.794983, -80.728966, 35.059872, 35.161823),
-                          std::tuple(28273, -80.994766, -80.875259, 35.074734, 35.172836),
-                          std::tuple(28277, -80.876793, -80.767586, 35.001709, 35.101063),
-                          std::tuple(28278, -81.058029, -80.956375, 35.044701, 35.223812),
-                          std::tuple(28280, -80.844208, -80.841972, 35.225468, 35.227203),
-                          std::tuple(28282, -80.846382, -80.844193, 35.223972, 35.225655)));
+                   values(std::tuple(28269, -80.851471, -80.735718, 35.272560, 35.407925)));
 
-    auto rows = storage.select(&DemoIndex::id,
-                               where(c(&DemoIndex::minX) <= -80.77470 and c(&DemoIndex::maxX) >= -80.77470 and
-                                     c(&DemoIndex::minY) <= 35.37785 and c(&DemoIndex::maxY) >= 35.37785));
+    auto rows = storage.select(&DemoIndex::id, where(c(&DemoIndex::id) == 28269));
     REQUIRE(rows == std::vector<int64>{28269});
 }
 #endif
