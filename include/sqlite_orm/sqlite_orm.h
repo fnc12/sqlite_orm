@@ -26201,6 +26201,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <type_traits>  // std::is_same
 #include <tuple>  // std::tuple_element, std::make_tuple
 #include <utility>  // std::forward
+#include <cstdint>  //  std::int32_t
 #endif
 #endif
 
@@ -26235,22 +26236,6 @@ namespace sqlite_orm::internal {
         static constexpr orm_gsl::czstring name() {
             return "rtree_i32";
         }
-    };
-
-    template<>
-    struct virtual_table_module_traits<rtree_module_tag> {
-        using module_type = dbstat_module_tag;
-        using is_eponymous = std::false_type;
-        using is_without_rowid = std::false_type;
-        using omit_column_type = std::true_type;
-    };
-
-    template<>
-    struct virtual_table_module_traits<rtree_i32_module_tag> {
-        using module_type = dbstat_module_tag;
-        using is_eponymous = std::false_type;
-        using is_without_rowid = std::false_type;
-        using omit_column_type = std::true_type;
     };
 
     template<class ExpectedValueType, class... Cs>

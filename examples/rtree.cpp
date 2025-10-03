@@ -1,3 +1,9 @@
+/** 
+ *  These examples demonstrate how to use an R*Tree virtual table for (geo)spatial searching.
+ *  
+ *  For information about the SQLite R*Tree Module see https://www.sqlite.org/rtree.html
+ */
+
 #include <sqlite_orm/sqlite_orm.h>
 
 #if defined(SQLITE_ENABLE_RTREE) && SQLITE_VERSION_NUMBER >= 3024000 && defined(SQLITE_ORM_CPP20_RANGES_SUPPORTED) &&  \
@@ -91,12 +97,12 @@ static float haversine_distance(float lat1, float lon1, float lat2, float lon2) 
     constexpr float R = 6371.f;  // Earth radius in km
     const float dlat = d2r(lat2 - lat1);
     const float dlon = d2r(lon2 - lon1);
-    const float a = pow(std::sin(dlat / 2.f), 2) + cos(d2r(lat1)) * cos(d2r(lat2)) * pow(std::sin(dlon / 2.f), 2);
+    const float a = pow(sin(dlat / 2.f), 2) + cos(d2r(lat1)) * cos(d2r(lat2)) * pow(sin(dlon / 2.f), 2);
     const float c = 2.f * atan2(sqrt(a), sqrt(1.f - a));
     return R * c;
 }
 
-void restaurants() {
+void nearby_restaurants() {
     struct Restaurant {
         int64 id = 0;
         float minLat = 0;
@@ -112,7 +118,7 @@ void restaurants() {
     };
     constexpr orm_table_reference auto restaurant = c<Restaurant>();
 
-    struct NearestRestaurant {
+    struct NearbyRestaurant {
         int64 id = 0;
         std::string name;
         std::string cuisine;
@@ -153,19 +159,19 @@ void restaurants() {
 
     // Find restaurants within radius_km of given coordinates
     const auto find_nearby_restaurants =
-        [&storage](float lat, float lon, float radius_km) -> std::vector<NearestRestaurant> {
+        [&storage](float lat, float lon, float radius_km) -> std::vector<NearbyRestaurant> {
         // Convert radius to approximate degrees (rough approximation)
         // 1 degree ~ 111 km
         const float delta = radius_km / 111.f;
 
-        std::vector<NearestRestaurant> results;
+        std::vector<NearbyRestaurant> results;
         // Query R-tree directly with auxiliary columns
         for (auto [rid, rlat, rlon, name, cuisine]:
-             storage.iterate(select(columns(&Restaurant::id,
-                                            &Restaurant::minLat,
-                                            &Restaurant::minLon,
-                                            &Restaurant::name,
-                                            &Restaurant::cuisine),
+             storage.iterate(select(columns(restaurant->*&Restaurant::id,
+                                            restaurant->*&Restaurant::minLat,
+                                            restaurant->*&Restaurant::minLon,
+                                            restaurant->*&Restaurant::name,
+                                            restaurant->*&Restaurant::cuisine),
                                     where(restaurant->*&Restaurant::minLat >= lat - delta and
                                           restaurant->*&Restaurant::maxLat <= lat + delta and
                                           restaurant->*&Restaurant::minLon >= lon - delta and
@@ -177,24 +183,25 @@ void restaurants() {
         }
 
         // Sort by distance
-        std::ranges::sort(results, std::ranges::less{}, &NearestRestaurant::distance_km);
+        std::ranges::sort(results, std::ranges::less{}, &NearbyRestaurant::distance_km);
         return results;
     };
 
     cout << "Restaurants near Times Square (40.758, -73.985)\n" << "  Within 2 km:" << endl;
-    for (const NearestRestaurant& nearby: find_nearby_restaurants(40.758f, -73.985f, 2.f)) {
+    for (const NearbyRestaurant& nearby: find_nearby_restaurants(40.758f, -73.985f, 2.f)) {
         cout << '\t' << nearby.name << " (" << nearby.cuisine << ") - " << nearby.distance_km << " km away" << endl;
     }
 
     cout << "Restaurants near East Village (40.726, -73.982)\n" << "  Within 1 km:" << endl;
-    for (const NearestRestaurant& nearby: find_nearby_restaurants(40.726f, -73.982f, 1.f)) {
+    for (const NearbyRestaurant& nearby: find_nearby_restaurants(40.726f, -73.982f, 1.f)) {
         cout << '\t' << nearby.name << " (" << nearby.cuisine << ") - " << nearby.distance_km << " km away" << endl;
     }
 
     cout << "All Italian Restaurants" << endl;
-    for (auto [name, minLat, minLon]:
-         storage.iterate(select(columns(&Restaurant::name, &Restaurant::minLat, &Restaurant::minLon),
-                                where(restaurant->*&Restaurant::cuisine == "Italian")))) {
+    for (auto [name, minLat, minLon]: storage.iterate(select(columns(restaurant->*&Restaurant::name,
+                                                                     restaurant->*&Restaurant::minLat,
+                                                                     restaurant->*&Restaurant::minLon),
+                                                             where(restaurant->*&Restaurant::cuisine == "Italian")))) {
         cout << '\t' << name << " - Location : (" << minLat << ", " << minLon << endl;
     }
 }
@@ -204,7 +211,7 @@ int main() {
 #ifdef ENABLE_THIS_EXAMPLE
     try {
         sqlite_office();
-        restaurants();
+        nearby_restaurants();
     } catch (const std::system_error& e) {
         cout << "[" << e.code() << "] " << e.what();
     }
