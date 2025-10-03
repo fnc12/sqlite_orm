@@ -70,7 +70,7 @@ namespace sqlite_orm::internal {
      *  View definition, mapping an aggregate object type to a corresponding select statement.
      */
     template<class O, class Select, class... Cs>
-    struct view_t : table_identifier, table_definition<Cs...> {
+    struct query_view : table_identifier, table_definition<Cs...> {
         using definition_base_type = table_definition<Cs...>;
         using object_type = O;
         using elements_type = typename definition_base_type::elements_type;
@@ -80,7 +80,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_view_v = polyfill::is_specialization_of_v<T, view_t>;
+    inline constexpr bool is_view_v = polyfill::is_specialization_of_v<T, query_view>;
 #else
     template<class T>
     inline constexpr bool is_view_v = false;
@@ -164,12 +164,12 @@ namespace sqlite_orm::internal {
         // object's member types as a tuple
         using TS = pfrs::tuple<polyfill::remove_cvref_t<typename pfrs::tuple_element<I, PfrTpl>::type>...>;
 
-        using view_type =
-            view_t<O,
-                   Select,
-                   decltype(internal::make_column<>(std::string(pfr::get_name<I, O>()),
-                                                    column_pointer<O, decltype(pfr::get_relative_address<O, I, TS>())>{
-                                                        pfr::get_relative_address<O, I, TS>()}))...>;
+        using view_type = query_view<O,
+                                     Select,
+                                     decltype(internal::make_column<>(
+                                         std::string(pfr::get_name<I, O>()),
+                                         column_pointer<O, decltype(pfr::get_relative_address<O, I, TS>())>{
+                                             pfr::get_relative_address<O, I, TS>()}))...>;
 
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return view_type{
             std::move(name),

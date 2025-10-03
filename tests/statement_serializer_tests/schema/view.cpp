@@ -10,7 +10,7 @@ struct UserViewSerializerTests {
     std::string name;
 };
 
-TEST_CASE("statement_serializer view_t") {
+TEST_CASE("statement_serializer query_view") {
     struct User {
         int id = 0;
         std::string name;
