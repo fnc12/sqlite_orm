@@ -55,13 +55,14 @@
 #include "expression_object_type.h"
 #include "statement_serializer.h"
 #include "serializer_context.h"
-#include "schema/triggers.h"
 #include "object_from_column_builder.h"
 #include "row_extractor.h"
 #include "schema/table.h"
 #include "schema/view.h"
+#include "schema/virtual_table.h"
 #include "schema/column.h"
 #include "schema/index.h"
+#include "schema/triggers.h"
 #include "cte_storage.h"
 #include "util.h"
 #include "serializing_util.h"
@@ -1111,8 +1112,8 @@ namespace sqlite_orm {
             }
 
           protected:
-            template<class M>
-            sync_schema_result schema_status(const virtual_table<M>&, sqlite3*, bool, bool*) {
+            template<class Table, satisfies<is_virtual_table, Table> = true>
+            sync_schema_result schema_status(const Table&, sqlite3*, bool, bool*) {
                 return sync_schema_result::already_in_sync;
             }
 
@@ -1133,11 +1134,9 @@ namespace sqlite_orm {
             }
 #endif
 
-            template<class T, bool WithoutRowId, class... Cs>
-            sync_schema_result schema_status(const table_t<T, WithoutRowId, Cs...>& table,
-                                             sqlite3* db,
-                                             bool preserve,
-                                             bool* attempt_to_preserve) {
+            template<class Table, satisfies<is_base_table, Table> = true>
+            sync_schema_result
+            schema_status(const Table& table, sqlite3* db, bool preserve, bool* attempt_to_preserve) {
                 if (attempt_to_preserve) {
                     *attempt_to_preserve = true;
                 }
@@ -1220,12 +1219,17 @@ namespace sqlite_orm {
                 return res;
             }
 
-            template<class M>
-            sync_schema_result sync_dbo(const virtual_table<M>& virtualTable, sqlite3* db, bool) {
-                using context_t = serializer_context<db_objects_type>;
+            template<class Table, satisfies<is_virtual_table, Table> = true>
+            sync_schema_result sync_dbo(const Table& virtualTable, sqlite3* db, bool) {
+                // eponymous virtual table instances with the same name as their module exist already
+                if constexpr (Table::module_traits_type::is_eponymous::value) {
+                    if (virtualTable.name == Table::module_type::name()) {
+                        return sync_schema_result::already_in_sync;
+                    }
+                }
 
                 const auto res = sync_schema_result::already_in_sync;
-                const context_t context{this->db_objects};
+                const serializer_context<db_objects_type> context{this->db_objects};
                 const auto sql = serialize(virtualTable, context);
                 this->executor.perform_void_exec(db, sql.c_str());
                 return res;
@@ -1233,10 +1237,8 @@ namespace sqlite_orm {
 
             template<class... Cols>
             sync_schema_result sync_dbo(const index_t<Cols...>& index, sqlite3* db, bool) {
-                using context_t = serializer_context<db_objects_type>;
-
                 const auto res = sync_schema_result::already_in_sync;
-                const context_t context{this->db_objects};
+                const serializer_context<db_objects_type> context{this->db_objects};
                 const auto sql = serialize(index, context);
                 this->executor.perform_void_exec(db, sql.c_str());
                 return res;
@@ -1244,10 +1246,8 @@ namespace sqlite_orm {
 
             template<class... Cols>
             sync_schema_result sync_dbo(const trigger_t<Cols...>& trigger, sqlite3* db, bool) {
-                using context_t = serializer_context<db_objects_type>;
-
-                const auto res = sync_schema_result::already_in_sync;
-                const context_t context{this->db_objects};
+                const auto res = sync_schema_result::already_in_sync;  // TODO Change accordingly
+                const serializer_context<db_objects_type> context{this->db_objects};
                 const auto sql = serialize(trigger, context);
                 this->executor.perform_void_exec(db, sql.c_str());
                 return res;
@@ -1267,11 +1267,11 @@ namespace sqlite_orm {
             }
 #endif
 
-            template<class Table, satisfies<is_table, Table> = true>
+            template<class Table, satisfies<is_base_table, Table> = true>
             sync_schema_result sync_dbo(const Table& table, sqlite3* db, bool preserve);
 
-            template<class Table, satisfies<is_table, Table> = true>
-            sync_schema_result sync_regular_table(const Table& table, sqlite3* db, bool preserve);
+            template<class Table, satisfies<is_base_table, Table> = true>
+            sync_schema_result sync_regular_base_table(const Table& table, sqlite3* db, bool preserve);
 
             template<class C>
             void add_column(sqlite3* db, const std::string& tableName, const C& column) const {

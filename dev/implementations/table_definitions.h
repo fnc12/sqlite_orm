@@ -1,5 +1,5 @@
 /** @file Mainly existing to disentangle implementation details from circular and cross dependencies
- *  (e.g. column_t -> default_value_extractor -> serializer_context -> db_objects_tuple -> table_t -> column_t)
+ *  (e.g. column_t -> default_value_extractor -> serializer_context -> db_objects_tuple -> base_table -> column_t)
  *  this file is also used to provide definitions of interface methods 'hitting the database'.
  */
 #pragma once
@@ -19,10 +19,10 @@
 namespace sqlite_orm {
     namespace internal {
 
-        template<class T, bool WithoutRowId, class... Cs>
-        std::vector<table_xinfo> table_t<T, WithoutRowId, Cs...>::get_table_info() const {
+        template<class T, class WithoutRowId, class... Cs>
+        std::vector<table_xinfo> base_table<T, WithoutRowId, Cs...>::get_table_info() const {
             std::vector<table_xinfo> res;
-            res.reserve(filter_tuple_sequence_t<elements_type, is_column>::size());
+            res.reserve(col_index_sequence_of<elements_type>::size());
             this->for_each_column([&res](auto& column) {
                 using field_type = field_type_t<std::remove_reference_t<decltype(column)>>;
                 std::string dft;

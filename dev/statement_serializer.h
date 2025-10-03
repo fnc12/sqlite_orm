@@ -58,7 +58,7 @@
 #include "schema/index.h"
 #include "schema/table.h"
 #include "schema/view.h"
-#include "util.h"
+#include "schema/virtual_table.h"
 
 namespace sqlite_orm {
 
@@ -151,9 +151,9 @@ namespace sqlite_orm {
 #endif
         };
 
-        template<class O, bool WithoutRowId, class... Cs>
-        struct statement_serializer<table_t<O, WithoutRowId, Cs...>, void> {
-            using statement_type = table_t<O, WithoutRowId, Cs...>;
+        template<class Table>
+        struct statement_serializer<Table, std::enable_if_t<is_base_table_v<Table>>> {
+            using statement_type = Table;
 
             template<class Ctx>
             SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -167,7 +167,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "CREATE TABLE " << streaming_identifier(tableName) << " ("
                    << streaming_expressions_tuple(statement.elements, context) << ")";
-                if constexpr (statement_type::is_without_rowid_v) {
+                if constexpr (statement_type::is_without_rowid::value) {
                     ss << " WITHOUT ROWID";
                 }
                 return ss.str();
@@ -193,6 +193,47 @@ namespace sqlite_orm {
             }
         };
 #endif
+
+        // Eponymous virtual tables serialize only table values. Their definition is built-in, fixed and implicit
+        template<class ModTraits,
+                 class Definition,
+                 class Ctx,
+                 std::enable_if_t<ModTraits::is_eponymous::value, bool> = true>
+        std::string serialize_virtual_table_definition(const Definition&, const Ctx&) {
+            return {};
+        }
+
+        template<class ModTraits,
+                 class Elements,
+                 class Ctx,
+                 std::enable_if_t<!ModTraits::is_eponymous::value, bool> = true>
+        std::string serialize_virtual_table_definition(const Elements& elements, const Ctx& context) {
+            using traits_type = ModTraits;
+
+            auto subContext = context;
+            subContext.omit_column_type = traits_type::omit_column_type::value;
+
+            std::stringstream ss;
+            ss << "(" << streaming_expressions_tuple(elements, subContext) << ")";
+            return ss.str();
+        }
+
+        template<class Table>
+        struct statement_serializer<Table, std::enable_if_t<is_virtual_table_v<Table>>> {
+            using statement_type = Table;
+
+            template<class Ctx>
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+                std::stringstream ss;
+                ss << "CREATE VIRTUAL TABLE IF NOT EXISTS " << streaming_identifier(statement.name) << " USING "
+                   << streaming_identifier(statement_type::module_type::name())
+                   << serialize_virtual_table_definition<typename statement_type::module_traits_type>(
+                          statement.elements,
+                          context);
+                return ss.str();
+            }
+        };
 
         template<>
         struct statement_serializer<current_time_t, void> {
@@ -1326,6 +1367,11 @@ namespace sqlite_orm {
             SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& column,
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
+#if SQLITE_VERSION_NUMBER >= 3024000
+                if constexpr (statement_type::template is<is_auxiliary>()) {
+                    ss << '+';
+                }
+#endif
                 ss << streaming_identifier(column.name);
                 if (!context.omit_column_type) {
                     ss << " " << type_printer<field_type_t<column_field<G, S>>>().print();
@@ -1968,39 +2014,6 @@ namespace sqlite_orm {
                             break;
                     }
                 }
-                return ss.str();
-            }
-        };
-
-#if SQLITE_VERSION_NUMBER >= 3009000
-        template<class... Cs>
-        struct statement_serializer<fts5_module<Cs...>, void> {
-            using statement_type = fts5_module<Cs...>;
-
-            template<class Ctx>
-            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-                std::stringstream ss;
-                ss << "USING FTS5(";
-                auto subContext = context;
-                subContext.omit_column_type = true;
-                ss << streaming_expressions_tuple(statement.elements, subContext) << ")";
-                return ss.str();
-            }
-        };
-#endif
-
-        template<class M>
-        struct statement_serializer<virtual_table<M>, void> {
-            using statement_type = virtual_table<M>;
-
-            template<class Ctx>
-            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-                std::stringstream ss;
-                ss << "CREATE VIRTUAL TABLE IF NOT EXISTS ";
-                ss << streaming_identifier(statement.name) << ' ';
-                ss << serialize(statement.module(), context);
                 return ss.str();
             }
         };

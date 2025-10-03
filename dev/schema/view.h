@@ -70,10 +70,10 @@ namespace sqlite_orm::internal {
      *  View definition, mapping an aggregate object type to a corresponding select statement.
      */
     template<class O, class Select, class... Cs>
-    struct view_t : table_base, mapped_object_base<O, Cs...> {
-        using base_type = mapped_object_base<O, Cs...>;
-        using object_type = typename base_type::object_type;
-        using elements_type = typename base_type::elements_type;
+    struct view_t : table_identifier, table_definition<Cs...> {
+        using definition_base_type = table_definition<Cs...>;
+        using object_type = O;
+        using elements_type = typename definition_base_type::elements_type;
         using select_type = Select;
 
         select_type select;
@@ -173,9 +173,9 @@ namespace sqlite_orm::internal {
 
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return view_type{
             std::move(name),
-            {internal::make_column<>(std::string(pfr::get_name<I, O>()),
-                                     column_pointer<O, decltype(pfr::get_relative_address<O, I, TS>())>{
-                                         pfr::get_relative_address<O, I, TS>()})...},
+            std::tuple{internal::make_column<>(std::string(pfr::get_name<I, O>()),
+                                               column_pointer<O, decltype(pfr::get_relative_address<O, I, TS>())>{
+                                                   pfr::get_relative_address<O, I, TS>()})...},
             std::move(select)});
     }
 }

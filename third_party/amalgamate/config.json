@@ -8,6 +8,7 @@
     "dev/storage.h",
     "dev/interface_definitions.h",
     "dev/get_prepared_statement.h",
+    "dev/vtabs/vtabs.h",
     "dev/carray.h",
     "dev/functional/finish_macros.h"
   ],

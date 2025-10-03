@@ -107,6 +107,8 @@ TEST_CASE("aliases") {
     SECTION("table alias expressions") {
         constexpr auto derived_user = c<DerivedUser>();
         constexpr auto d_alias = "d"_alias.for_<DerivedUser>();
+        constexpr auto tableref_alias = "d"_alias.for_<derived_user>();
+        STATIC_REQUIRE(std::is_same_v<decltype(tableref_alias), decltype(d_alias)>);
         using d_alias_type = decltype("d"_alias.for_<DerivedUser>());
         runTest<internal::from_t<d_alias_type>>(from<d_alias>());
         runTest<internal::asterisk_t<d_alias_type>>(asterisk<d_alias>());

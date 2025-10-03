@@ -115,13 +115,13 @@ namespace sqlite_orm {
             std::function<void(serialize_arg_type sql)> will_run_query;
             std::function<void(serialize_arg_type sql)> did_run_query;
 
-            inline void perform_void_exec(sqlite3* db, orm_gsl::czstring sql) const {
+            void perform_void_exec(sqlite3* db, orm_gsl::czstring sql) const {
                 if (this->will_run_query) {
                     this->will_run_query(sql);
                 }
 
                 const int rc = sqlite3_exec(db, sql, nullptr, nullptr, nullptr);
-                if (rc != SQLITE_OK) {
+                if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
                     throw_translated_sqlite_error(rc);
                 }
 
@@ -130,16 +130,16 @@ namespace sqlite_orm {
                 }
             }
 
-            inline void perform_exec(sqlite3* db,
-                                     orm_gsl::czstring sql,
-                                     int (*callback)(void*, int, orm_gsl::zstring*, orm_gsl::zstring*),
-                                     void* user_data) const {
+            void perform_exec(sqlite3* db,
+                              orm_gsl::czstring sql,
+                              int (*callback)(void*, int, orm_gsl::zstring*, orm_gsl::zstring*),
+                              void* user_data) const {
                 if (this->will_run_query) {
                     this->will_run_query(sql);
                 }
 
                 const int rc = sqlite3_exec(db, sql, callback, user_data, nullptr);
-                if (rc != SQLITE_OK) {
+                if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
                     throw_translated_sqlite_error(rc);
                 }
 
@@ -148,10 +148,10 @@ namespace sqlite_orm {
                 }
             }
 
-            inline void perform_exec(sqlite3* db,
-                                     const std::string& query,
-                                     int (*callback)(void*, int, orm_gsl::zstring*, orm_gsl::zstring*),
-                                     void* user_data) const {
+            void perform_exec(sqlite3* db,
+                              const std::string& query,
+                              int (*callback)(void*, int, orm_gsl::zstring*, orm_gsl::zstring*),
+                              void* user_data) const {
                 return perform_exec(db, query.c_str(), callback, user_data);
             }
 
@@ -165,7 +165,7 @@ namespace sqlite_orm {
                     this->will_run_query(sql);
                 }
 
-                internal::perform_single_step(stmt);
+                internal::perform_single_step<expected>(stmt);
 
                 if (this->did_run_query) {
                     this->did_run_query(sql);

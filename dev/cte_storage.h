@@ -65,12 +65,12 @@ namespace sqlite_orm {
                                                                Result>::type;
 
         template<class Mapper, class... Cs>
-        struct cte_table : table_base, mapped_columns_mixin<Cs...> {
-            using base_type = mapped_columns_mixin<Cs...>;
+        struct cte_table : table_identifier, table_definition<Cs...> {
+            using definition_type = table_definition<Cs...>;
             using cte_mapper_type = Mapper;
             using cte_moniker_type = typename cte_mapper_type::cte_moniker_type;
             using object_type = cte_moniker_type;
-            using elements_type = typename base_type::elements_type;
+            using elements_type = typename definition_type::elements_type;
         };
 
         template<class Mapper, class... Cs>
@@ -224,8 +224,8 @@ namespace sqlite_orm {
         template<class DBOs, class O>
         auto extract_colref_expressions(const DBOs& dbObjects, const asterisk_t<O>& /*col*/) {
             using table_type = storage_pick_table_t<O, DBOs>;
-            using elements_t = typename table_type::elements_type;
-            using column_idxs = filter_tuple_sequence_t<elements_t, is_column>;
+            using elements_type = typename table_type::elements_type;
+            using column_idxs = filter_tuple_sequence_t<elements_type, is_column>;
 
             auto& table = pick_table<O>(dbObjects);
             return get_table_columns_fields(table.elements, column_idxs{});

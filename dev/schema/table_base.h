@@ -10,15 +10,15 @@
 #include "../functional/mpl.h"
 #include "../tuple_helper/tuple_filter.h"
 #include "../tuple_helper/tuple_iteration.h"
+#include "../tuple_helper/tuple_transformer.h"
 #include "../member_traits/member_traits.h"
 #include "../type_traits.h"
 #include "../field_of.h"
-#include "../constraints.h"
 #include "column.h"
 
 namespace sqlite_orm::internal {
 
-    struct table_base {
+    struct table_identifier {
 
         /**
          *  Table name.
@@ -26,11 +26,11 @@ namespace sqlite_orm::internal {
         std::string name;
     };
 
-    /**
-     *  Mixin for fields of any mapped schema object, i.e. table or view, or any virtual or temporary table.
+    /** 
+     *  Encapsulates table elements, i.e. columns and constraints for any type of table.
      */
     template<class... Cs>
-    struct mapped_columns_mixin {
+    struct table_definition {
         using elements_type = std::tuple<Cs...>;
 
         elements_type elements;
@@ -90,9 +90,9 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  Searches column name by class member pointer passed as the first argument.
-             *  @return column name or empty string if nothing found.
-             */
+         *  Finds the column name by the given class member pointer.
+         *  @return column name or nullptr if nothing found.
+         */
         template<class M, satisfies<std::is_member_pointer, M> = true>
         const std::string* find_column_name(M memberPointer) const {
             using field_type = member_field_type_t<M>;
@@ -110,14 +110,103 @@ namespace sqlite_orm::internal {
         }
     };
 
-    /**
-     *  Base for a mapped schema object aka table, view.
+    /** 
+     *  Encapsulates table elements, i.e. columns and constraints for a type of table that can have primary keys - base tables and usually virtual tables -,
+     *  and provides additional methods to those of a generic table definition in order to deal with primary key columns.
      */
-    template<class O, class... Cs>
-    struct mapped_object_base : mapped_columns_mixin<Cs...> {
-        using base_type = mapped_columns_mixin<Cs...>;
+    template<class... Cs>
+    struct insertable_table_definition : table_definition<Cs...> {
+        using definition_base_type = table_definition<Cs...>;
+        using elements_type = elements_type_t<definition_base_type>;
+
+        /**
+         *  Call passed lambda with all defined primary keys.
+         */
+        template<class L>
+        void for_each_primary_key(L&& lambda) const {
+            using pk_index_sequence = filter_tuple_sequence_t<elements_type, is_primary_key>;
+            iterate_tuple(this->elements, pk_index_sequence{}, lambda);
+        }
+
+        std::vector<std::string> composite_key_columns_names() const {
+            std::vector<std::string> res;
+            this->for_each_primary_key([this, &res](auto& primaryKey) {
+                res = this->composite_key_columns_names(primaryKey);
+            });
+            return res;
+        }
+
+        std::vector<std::string> primary_key_column_names() const {
+            using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
+
+            if constexpr (pkcol_index_sequence::size() > 0) {
+                return create_from_tuple<std::vector<std::string>>(this->elements,
+                                                                   pkcol_index_sequence{},
+                                                                   &column_identifier::name);
+            } else {
+                return this->composite_key_columns_names();
+            }
+        }
+
+        template<class L>
+        void for_each_primary_key_column(L&& lambda) const {
+            iterate_tuple(this->elements,
+                          col_index_sequence_with<elements_type, is_primary_key>{},
+                          call_as_template_base<column_field>([&lambda](const auto& column) {
+                              lambda(column.member_pointer);
+                          }));
+            this->for_each_primary_key([&lambda](auto& primaryKey) {
+                iterate_tuple(primaryKey.columns, lambda);
+            });
+        }
+
+        template<class... Args>
+        std::vector<std::string> composite_key_columns_names(const primary_key_t<Args...>& primaryKey) const {
+            return create_from_tuple<std::vector<std::string>>(primaryKey.columns,
+                                                               [this, empty = std::string{}](auto& memberPointer) {
+                                                                   if (const std::string* columnName =
+                                                                           this->find_column_name(memberPointer)) {
+                                                                       return *columnName;
+                                                                   } else {
+                                                                       return empty;
+                                                                   }
+                                                               });
+        }
+    };
+
+    template<class... Cs, class G, class S>
+    bool exists_in_composite_primary_key(const insertable_table_definition<Cs...>& definition,
+                                         const column_field<G, S>& column) {
+        bool res = false;
+        definition.for_each_primary_key([&column, &res](auto& primaryKey) {
+            using colrefs_tuple = decltype(primaryKey.columns);
+            using same_type_index_sequence =
+                filter_tuple_sequence_t<colrefs_tuple,
+                                        check_if_is_type<member_field_type_t<G>>::template fn,
+                                        member_field_type_t>;
+            iterate_tuple(primaryKey.columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
+                if (compare_fields(memberPointer, column.member_pointer) ||
+                    compare_fields(memberPointer, column.setter)) {
+                    res = true;
+                }
+            });
+        });
+        return res;
+    }
+
+    /**
+     *  Mixin for a base table, providing methods used to access a mapped object's member variables for insertion.
+     *  
+     *  Implementation note: it is provided as a mixin to reduce the number of involved template parameters,
+     *  which is possible in C++23 mode for 'getters'.
+     */
+#ifdef SQLITE_ORM_DEDUCING_THIS_SUPPORTED
+    template<class O>
+#else
+    template<class O, class Definition>
+#endif
+    struct mapped_object_mixin {
         using object_type = O;
-        using elements_type = typename base_type::elements_type;
 
         /**
          *  Function used to get field value from object by mapped member pointer/setter/getter.
@@ -131,11 +220,20 @@ namespace sqlite_orm::internal {
             return polyfill::invoke(memberPointer, object);
         }
 
-        template<class M, satisfies<is_setter, M> = true>
-        const member_field_type_t<M>* object_field_value(const object_type& object, M memberPointer) const {
+        template<class M, class... Cs, satisfies<is_setter, M> = true>
+        const member_field_type_t<M>*
+#ifdef SQLITE_ORM_DEDUCING_THIS_SUPPORTED
+        object_field_value(this const table_definition<Cs...>& self, const object_type& object, M memberPointer) {
+            using elements_type = elements_type_t<table_definition<Cs...>>;
+#else
+        object_field_value(const object_type& object, M memberPointer) const {
+            using elements_type = elements_type_t<Definition>;
+            auto& self = static_cast<const Definition&>(*this);
+
+#endif
             using field_type = member_field_type_t<M>;
             const field_type* res = nullptr;
-            iterate_tuple(this->elements,
+            iterate_tuple(self.elements,
                           col_index_sequence_with_field_type<elements_type, field_type>{},
                           call_as_template_base<column_field>([&res, &memberPointer, &object](const auto& column) {
                               if (compare_fields(column.setter, memberPointer)) {

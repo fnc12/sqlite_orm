@@ -147,8 +147,9 @@ TEST_CASE("column pointers") {
     }
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     SECTION("table reference expressions") {
-        runTest<internal::table_t<DerivedUser, false>>(make_table<derived_user>("derived_user"));
+        runTest<internal::base_table<DerivedUser, std::false_type>>(make_table<derived_user>("derived_user"));
         runTest<internal::from_t<DerivedUser>>(from<derived_user>());
+        runTest<internal::into_t<DerivedUser>>(into<derived_user>());
         runTest<internal::asterisk_t<DerivedUser>>(asterisk<derived_user>());
         runTest<internal::object_t<DerivedUser>>(object<derived_user>());
         runTest<internal::count_asterisk_t<DerivedUser>>(count<derived_user>());
@@ -162,6 +163,8 @@ TEST_CASE("column pointers") {
             left_outer_join<derived_user>(using_(derived_user->*&DerivedUser::id)));
         runTest<internal::inner_join_t<DerivedUser, using_t<DerivedUser, decltype(&DerivedUser::id)>>>(
             inner_join<derived_user>(using_(derived_user->*&DerivedUser::id)));
+        runTest<internal::cross_join_t<DerivedUser>>(cross_join<derived_user>());
+        runTest<internal::natural_join_t<DerivedUser>>(natural_join<derived_user>());
 
         STATIC_REQUIRE(refers_to_recordset_callable<derived_user>);
         STATIC_REQUIRE(refers_to_table_callable<derived_user>);

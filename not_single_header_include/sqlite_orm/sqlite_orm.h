@@ -8,5 +8,6 @@
 #include "../../dev/storage.h"
 #include "../../dev/interface_definitions.h"
 #include "../../dev/get_prepared_statement.h"
+#include "../../dev/vtabs/vtabs.h"
 #include "../../dev/carray.h"
 #include "../../dev/functional/finish_macros.h"

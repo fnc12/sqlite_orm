@@ -4,7 +4,7 @@
 #if SQLITE_VERSION_NUMBER >= 3009000
 using namespace sqlite_orm;
 
-TEST_CASE("virtual table") {
+TEST_CASE("fts5 virtual table schema") {
     using Catch::Matchers::UnorderedEquals;
 
     struct Post {
@@ -22,8 +22,9 @@ TEST_CASE("virtual table") {
 
     auto virtualTable =
         make_virtual_table("posts", using_fts5(make_column("title", &Post::title), make_column("body", &Post::body)));
+
     {
-        const auto compareColumnName = [](const std::string* foundValue, std::string expectedValue) {
+        constexpr auto compareColumnName = [](const std::string* foundValue, std::string expectedValue) {
             if (!foundValue) {
                 return false;
             }
@@ -121,6 +122,94 @@ TEST_CASE("issue1410") {
 
     for (const auto& row: rows) {
         std::ignore = row;
-    }  //  has to be compiled
+    }  // must compile
+}
+#endif
+
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+TEST_CASE("dbstat virtual table schema") {
+    constexpr auto compareColumnName = [](const std::string* foundValue, const std::string& expectedValue) {
+        if (!foundValue) {
+            return false;
+        }
+        return *foundValue == expectedValue;
+    };
+
+    SECTION("epynomous") {
+        SECTION("definition") {
+            auto virtualTable = make_dbstat_table();
+            REQUIRE(compareColumnName(virtualTable.find_column_name(&dbstat::name), "name"));
+            REQUIRE(compareColumnName(virtualTable.find_column_name(&dbstat::pgsize), "pgsize"));
+        }
+        SECTION("storage") {
+            auto storage = make_storage("", make_dbstat_table());
+            storage.sync_schema();
+            // eponymous virtual tables must not get created
+            REQUIRE_FALSE(storage.table_exists("dbstat"));
+
+            auto dbstatRows = storage.get_all<dbstat>();
+            REQUIRE(dbstatRows.size() == 0);
+        }
+    }
+
+    SECTION("virtual table instance") {
+        struct mystat : sqlite_orm::dbstat {};
+
+        SECTION("definition") {
+            auto virtualTable = make_virtual_table<mystat>("mystat", using_dbstat());
+            REQUIRE(compareColumnName(virtualTable.find_column_name(&mystat::name), "name"));
+            REQUIRE(compareColumnName(virtualTable.find_column_name(&mystat::pgsize), "pgsize"));
+        }
+        SECTION("storage") {
+            auto storage =
+                make_storage("", make_sqlite_schema_table(), make_virtual_table<mystat>("mystat", using_dbstat()));
+            storage.sync_schema();
+            storage.sync_schema_simulate();
+            REQUIRE(storage.table_exists("mystat"));
+            REQUIRE_FALSE(storage.table_exists("dbstat"));
+
+            auto mystatRows = storage.get_all<mystat>();
+            REQUIRE(mystatRows.size() == 1);
+        }
+    }
+}
+#endif
+
+#ifdef SQLITE_ENABLE_RTREE
+TEST_CASE("rtree virtual table schema") {
+    struct DemoIndex {
+        int64 id;
+        float minX, maxX;
+        float minY, maxY;
+    };
+
+    auto virtualTable = make_virtual_table("demo_index",
+                                           using_rtree(make_column("id", &DemoIndex::id, primary_key()),
+                                                       make_column("minX", &DemoIndex::minX),
+                                                       make_column("maxX", &DemoIndex::maxX),
+                                                       make_column("minY", &DemoIndex::minY),
+                                                       make_column("maxY", &DemoIndex::maxY)));
+    {
+        constexpr auto compareColumnName = [](const std::string* foundValue, std::string expectedValue) {
+            if (!foundValue) {
+                return false;
+            }
+            return *foundValue == expectedValue;
+        };
+        REQUIRE(compareColumnName(virtualTable.find_column_name(&DemoIndex::id), "id"));
+        REQUIRE(compareColumnName(virtualTable.find_column_name(&DemoIndex::maxY), "maxY"));
+    }
+
+    auto storage = make_storage("", std::move(virtualTable));
+    storage.sync_schema();
+    storage.sync_schema_simulate();
+    REQUIRE(storage.table_exists("demo_index"));
+
+    storage.insert(into<DemoIndex>(),
+                   columns(&DemoIndex::id, &DemoIndex::minX, &DemoIndex::maxX, &DemoIndex::minY, &DemoIndex::maxY),
+                   values(std::tuple(28269, -80.851471, -80.735718, 35.272560, 35.407925)));
+
+    auto rows = storage.select(&DemoIndex::id, where(c(&DemoIndex::id) == 28269));
+    REQUIRE(rows == std::vector<int64>{28269});
 }
 #endif
