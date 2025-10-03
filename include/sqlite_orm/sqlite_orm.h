@@ -3522,6 +3522,19 @@ namespace sqlite_orm {
             using mapped_type = T;
         };
 
+#if SQLITE_VERSION_NUMBER >= 3024000
+        /** 
+         *  Auxiliary virtual table column
+         */
+        struct auxiliary_t {};
+
+        template<class T>
+        using is_auxiliary = std::is_same<T, auxiliary_t>;
+#else
+        template<class T>
+        using is_auxiliary = std::false_type;
+#endif
+
         /**
          *  DEFAULT constraint class.
          *  T is a value type.
@@ -3869,7 +3882,8 @@ namespace sqlite_orm {
                                                                     check_if_is_template<check_t>,
                                                                     check_if_is_type<collate_constraint_t>,
                                                                     check_if<is_generated_always>,
-                                                                    check_if_is_type<unindexed_t>>,
+                                                                    check_if_is_type<unindexed_t>,
+                                                                    check_if<is_auxiliary>>,
                                                    T>;
     }
 }
@@ -3986,6 +4000,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::table_content_t<T> content() {
         return {};
     }
+
+#if SQLITE_VERSION_NUMBER >= 3024000
+    /** 
+     *  Auxiliary virtual table column
+     */
+    inline internal::auxiliary_t auxiliary() {
+        return {};
+    }
+#endif
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
@@ -17194,7 +17217,10 @@ namespace sqlite_orm {
             auto& context = std::get<3>(tpl);
 
             using constraints_tuple = decltype(column.constraints);
-            iterate_tuple(column.constraints, [&ss, &context](auto& constraint) {
+            // always append explicit constraints even when omitting type affinity and implicit constraints
+            using excluding_auxiliary_index_sequence =
+                filter_tuple_sequence_t<constraints_tuple, check_if_not<is_auxiliary>::template fn>;
+            iterate_tuple(column.constraints, excluding_auxiliary_index_sequence{}, [&ss, &context](auto& constraint) {
                 ss << ' ' << serialize(constraint, context);
             });
             // add implicit null constraint
@@ -20375,6 +20401,7 @@ namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
         static_assert(module_tag<M>, "Template parameter M must be a module tag");
 #endif
+        using module_type = M;
     };
 
     /**
@@ -21731,6 +21758,11 @@ namespace sqlite_orm {
             SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& column,
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
+#if SQLITE_VERSION_NUMBER >= 3024000
+                if constexpr (statement_type::template is<is_auxiliary>()) {
+                    ss << '+';
+                }
+#endif
                 ss << streaming_identifier(column.name);
                 if (!context.omit_column_type) {
                     ss << " " << type_printer<field_type_t<column_field<G, S>>>().print();
@@ -26135,8 +26167,6 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Factory function for a FTS5 virtual table definition.
-     *  
-     *  The mapped object type will be determined implicitly from the first column definition when calling `make_virtual_table()`.
      */
     template<class... Cs>
     internal::virtual_table_definition<internal::fts5_module_tag, Cs...> using_fts5(Cs... definition) {
@@ -26158,6 +26188,95 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::virtual_table_description<T, internal::fts5_module_tag, Cs...> using_fts5(Cs... definition) {
         static_assert(polyfill::conjunction_v<internal::is_fts5_table_element_or_constraint<Cs>...>,
                       "Incorrect table elements or constraints");
+
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(definition)...)});
+    }
+}
+#endif
+
+// #include "rtree.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#ifdef SQLITE_ENABLE_RTREE
+#include <type_traits>  // std::is_same
+#include <tuple>  // std::tuple_element, std::make_tuple
+#include <utility>  // std::forward
+#include <cstdint>  //  std::int32_t
+#endif
+#endif
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../functional/gsl.h"
+
+// #include "../functional/mpl.h"
+
+// #include "../schema/virtual_table.h"
+
+// #include "../schema/column.h"
+
+#ifdef SQLITE_ENABLE_RTREE
+namespace sqlite_orm::internal {
+    template<class T>
+    using is_rtree_table_element_or_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_column>>, T>;
+
+    struct rtree_module_tag {
+        // simplify conceptual/meta programming
+        using module_type = rtree_module_tag;
+
+        static constexpr orm_gsl::czstring name() {
+            return "rtree";
+        }
+    };
+
+    struct rtree_i32_module_tag {
+        // simplify conceptual/meta programming
+        using module_type = rtree_i32_module_tag;
+
+        static constexpr orm_gsl::czstring name() {
+            return "rtree_i32";
+        }
+    };
+
+    template<class ExpectedValueType, class... Cs>
+    constexpr void validate_rtree_definition() {
+        using elements_type = std::tuple<Cs...>;
+        using rtree_col_index_sequence = col_index_sequence_excluding<elements_type, is_auxiliary>;
+        constexpr size_t nRTreeColumns = rtree_col_index_sequence::size();
+        constexpr size_t nRTreeColumnsOfExpectedType =
+            count_filtered_tuple<elements_type,
+                                 check_if_is_type<ExpectedValueType>::template fn,
+                                 rtree_col_index_sequence,
+                                 field_type_t>::value;
+
+        static_assert(polyfill::conjunction_v<is_rtree_table_element_or_constraint<Cs>...>,
+                      "Incorrect table elements or constraints");
+        static_assert(nRTreeColumns >= 3 && nRTreeColumns <= 11 && nRTreeColumns % 2 == 1,
+                      "An RTREE table must have between 1 and 5 dimensions consisting of min/max-value pair columns");
+        static_assert(
+            nRTreeColumnsOfExpectedType == nRTreeColumns - 1,
+            R"(The min/max-value pair columns need to be 32-bit floating point values for RTREE virtual tables and 32-bit signed integers for RTREE_I32 virtual tables, as they are stored as such)");
+        static_assert(std::is_same<typename std::tuple_element_t<0, elements_type>::field_type, int64>::value,
+                      "The type of the first column must be a 64-bit integer");
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Factory function for a RTREE virtual table definition.
+     */
+    template<class... Cs>
+    internal::virtual_table_definition<internal::rtree_module_tag, Cs...> using_rtree(Cs... definition) {
+        internal::validate_rtree_definition<float, Cs...>();
+
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(definition)...)});
+    }
+    /**
+     *  Factory function for a RTREE_I32 virtual table definition.
+     */
+    template<class... Cs>
+    internal::virtual_table_definition<internal::rtree_i32_module_tag, Cs...> using_rtree_i32(Cs... definition) {
+        internal::validate_rtree_definition<std::int32_t, Cs...>();
 
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(definition)...)});
     }

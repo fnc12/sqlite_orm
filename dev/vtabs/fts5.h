@@ -36,8 +36,6 @@ namespace sqlite_orm::internal {
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Factory function for a FTS5 virtual table definition.
-     *  
-     *  The mapped object type will be determined implicitly from the first column definition when calling `make_virtual_table()`.
      */
     template<class... Cs>
     internal::virtual_table_definition<internal::fts5_module_tag, Cs...> using_fts5(Cs... definition) {

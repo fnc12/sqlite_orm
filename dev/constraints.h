@@ -167,6 +167,19 @@ namespace sqlite_orm {
             using mapped_type = T;
         };
 
+#if SQLITE_VERSION_NUMBER >= 3024000
+        /** 
+         *  Auxiliary virtual table column
+         */
+        struct auxiliary_t {};
+
+        template<class T>
+        using is_auxiliary = std::is_same<T, auxiliary_t>;
+#else
+        template<class T>
+        using is_auxiliary = std::false_type;
+#endif
+
         /**
          *  DEFAULT constraint class.
          *  T is a value type.
@@ -514,7 +527,8 @@ namespace sqlite_orm {
                                                                     check_if_is_template<check_t>,
                                                                     check_if_is_type<collate_constraint_t>,
                                                                     check_if<is_generated_always>,
-                                                                    check_if_is_type<unindexed_t>>,
+                                                                    check_if_is_type<unindexed_t>,
+                                                                    check_if<is_auxiliary>>,
                                                    T>;
     }
 }
@@ -631,6 +645,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::table_content_t<T> content() {
         return {};
     }
+
+#if SQLITE_VERSION_NUMBER >= 3024000
+    /** 
+     *  Auxiliary virtual table column
+     */
+    inline internal::auxiliary_t auxiliary() {
+        return {};
+    }
+#endif
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**

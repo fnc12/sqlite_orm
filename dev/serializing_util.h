@@ -429,7 +429,10 @@ namespace sqlite_orm {
             auto& context = std::get<3>(tpl);
 
             using constraints_tuple = decltype(column.constraints);
-            iterate_tuple(column.constraints, [&ss, &context](auto& constraint) {
+            // always append explicit constraints even when omitting type affinity and implicit constraints
+            using excluding_auxiliary_index_sequence =
+                filter_tuple_sequence_t<constraints_tuple, check_if_not<is_auxiliary>::template fn>;
+            iterate_tuple(column.constraints, excluding_auxiliary_index_sequence{}, [&ss, &context](auto& constraint) {
                 ss << ' ' << serialize(constraint, context);
             });
             // add implicit null constraint
