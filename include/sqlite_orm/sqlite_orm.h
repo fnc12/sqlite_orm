@@ -21759,7 +21759,7 @@ namespace sqlite_orm {
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
 #if SQLITE_VERSION_NUMBER >= 3024000
-                if constexpr (column.template is<is_auxiliary>()) {
+                if constexpr (statement_type::template is<is_auxiliary>()) {
                     ss << '+';
                 }
 #endif
