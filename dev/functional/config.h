@@ -4,6 +4,7 @@
 #include "platform_definitions.h"
 // pull in SQLite3 configuration early, such that version and feature macros are globally available in sqlite_orm
 #include "sqlite3_config.h"
+#include "pfr_config.h"
 
 #ifdef BUILD_SQLITE_ORM_MODULE
 #define SQLITE_ORM_EXPORT export
@@ -13,10 +14,6 @@
 
 #if SQLITE_ORM_HAS_INCLUDE(<version>)
 #include <version>
-#endif
-
-#if SQLITE_ORM_HAS_INCLUDE(<boost/pfr.hpp>)
-#define SQLITE_ORM_HAS_BOOST_PFR
 #endif
 
 #if __cpp_lib_constexpr_functional >= 201907L

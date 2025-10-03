@@ -240,6 +240,16 @@ using std::nullptr_t;
 
 #include <sqlite3.h>
 
+// #include "pfr_config.h"
+
+#if SQLITE_ORM_HAS_INCLUDE(<boost/pfr.hpp>)
+#define SQLITE_ORM_HAS_BOOST_PFR
+#endif
+
+#ifdef SQLITE_ORM_HAS_BOOST_PFR
+#include <boost/pfr/config.hpp>
+#endif
+
 #ifdef BUILD_SQLITE_ORM_MODULE
 #define SQLITE_ORM_EXPORT export
 #else
@@ -248,10 +258,6 @@ using std::nullptr_t;
 
 #if SQLITE_ORM_HAS_INCLUDE(<version>)
 #include <version>
-#endif
-
-#if SQLITE_ORM_HAS_INCLUDE(<boost/pfr.hpp>)
-#define SQLITE_ORM_HAS_BOOST_PFR
 #endif
 
 #if __cpp_lib_constexpr_functional >= 201907L
