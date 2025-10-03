@@ -3,7 +3,6 @@
   "target": "include/sqlite_orm/sqlite_orm.h",
   "sources": [
     "dev/functional/start_macros.h",
-    "dev/functional/sqlite3_config.h",
     "dev/functional/config.h",
     "dev/storage.h",
     "dev/interface_definitions.h",

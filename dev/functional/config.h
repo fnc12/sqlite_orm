@@ -2,6 +2,8 @@
 
 #include "cxx_universal.h"
 #include "platform_definitions.h"
+// pull in SQLite3 configuration early, such that version and feature macros are globally available in sqlite_orm
+#include "sqlite3_config.h"
 
 #ifdef BUILD_SQLITE_ORM_MODULE
 #define SQLITE_ORM_EXPORT export
