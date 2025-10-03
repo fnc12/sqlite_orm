@@ -86,8 +86,7 @@ void sqlite_office() {
     }
 }
 
-// Degrees to radians
-static float d2r(float d) {
+static float degrees_to_radians(float d) {
     return (d / 180.0f) * (std::numbers::pi_v<float>);
 }
 
@@ -95,9 +94,10 @@ static float d2r(float d) {
 static float haversine_distance(float lat1, float lon1, float lat2, float lon2) {
     using std::pow, std::sqrt, std::sin, std::cos, std::atan2;
     constexpr float R = 6371.f;  // Earth radius in km
-    const float dlat = d2r(lat2 - lat1);
-    const float dlon = d2r(lon2 - lon1);
-    const float a = pow(sin(dlat / 2.f), 2) + cos(d2r(lat1)) * cos(d2r(lat2)) * pow(sin(dlon / 2.f), 2);
+    const float dlat = degrees_to_radians(lat2 - lat1);
+    const float dlon = degrees_to_radians(lon2 - lon1);
+    const float a = pow(sin(dlat / 2.f), 2) +
+                    cos(degrees_to_radians(lat1)) * cos(degrees_to_radians(lat2)) * pow(sin(dlon / 2.f), 2);
     const float c = 2.f * atan2(sqrt(a), sqrt(1.f - a));
     return R * c;
 }
