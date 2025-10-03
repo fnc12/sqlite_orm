@@ -111,15 +111,6 @@ namespace sqlite_orm {
             }
 
             /**
-             *  `VACUUM` query.
-             *  More info: https://www.sqlite.org/lang_vacuum.html
-             */
-            void vacuum() {
-                auto connection = this->get_connection();
-                this->executor.perform_void_exec(connection.get(), "VACUUM");
-            }
-
-            /**
              *  Drops table with given name. 
              *  Calls `DROP TABLE tableName`.
              *  More info: https://www.sqlite.org/lang_droptable.html
@@ -140,11 +131,40 @@ namespace sqlite_orm {
             }
 
             /**
+             *  Drops the view with the specified name.
+             *  Calls `DROP VIEW "viewName"`.
+             *  More info: https://www.sqlite.org/lang_droptable.html
+             */
+            void drop_view(const std::string& tableName) {
+                auto connection = this->get_connection();
+                this->drop_view_internal(connection.get(), tableName, false);
+            }
+
+            /**
+             *  Drops the view with the specified name if it exists. 
+             *  Calls `DROP VIEW IF EXISTS "viewName"`.
+             *  More info: https://www.sqlite.org/lang_droptable.html
+             */
+            void drop_view_if_exists(const std::string& tableName) {
+                auto connection = this->get_connection();
+                this->drop_view_internal(connection.get(), tableName, true);
+            }
+
+            /**
              * Rename table named `from` to `to`.
              */
             void rename_table(const std::string& from, const std::string& to) {
                 auto connection = this->get_connection();
                 this->rename_table(connection.get(), from, to);
+            }
+
+            /**
+             *  `VACUUM` query.
+             *  More info: https://www.sqlite.org/lang_vacuum.html
+             */
+            void vacuum() {
+                auto connection = this->get_connection();
+                this->executor.perform_void_exec(connection.get(), "VACUUM");
             }
 
           protected:
@@ -175,6 +195,36 @@ namespace sqlite_orm {
                 {
                     std::stringstream ss;
                     ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal("table")
+                       << " AND name = " << quote_string_literal(tableName) << std::flush;
+                    sql = ss.str();
+                }
+                this->executor.perform_exec(
+                    db,
+                    sql,
+                    [](void* userData, int /*argc*/, orm_gsl::zstring* argv, orm_gsl::zstring* /*azColName*/) -> int {
+                        auto& res = *(bool*)userData;
+                        res = !!atoi(argv[0]);
+                        return 0;
+                    },
+                    &result);
+                return result;
+            }
+
+            /**
+             *  Directly checks the actual database whether the specified view exists, bypassing the library's 'storage' mapping.
+             *  @return true if view with the specified name exists in the database, false otherwise.
+             */
+            bool view_exists(const std::string& tableName) {
+                auto connection = this->get_connection();
+                return this->view_exists(connection.get(), tableName);
+            }
+
+            bool view_exists(sqlite3* db, const std::string& tableName) const {
+                bool result = false;
+                std::string sql;
+                {
+                    std::stringstream ss;
+                    ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal("view")
                        << " AND name = " << quote_string_literal(tableName) << std::flush;
                     sql = ss.str();
                 }
@@ -768,7 +818,8 @@ namespace sqlite_orm {
                 auto connection = this->get_connection();
                 data_t objectNames;
                 std::stringstream ss;
-                ss << "SELECT name FROM sqlite_master WHERE type=" << quote_string_literal(std::string(type));
+                ss << "SELECT name FROM sqlite_master WHERE type=" << quote_string_literal(std::string(type))
+                   << std::flush;
                 this->executor.perform_exec(
                     connection.get(),
                     ss.str(),
@@ -1011,6 +1062,20 @@ namespace sqlite_orm {
                         ss << " IF EXISTS";
                     }
                     ss << ' ' << streaming_identifier(tableName) << std::flush;
+                    sql = ss.str();
+                }
+                this->executor.perform_void_exec(db, sql.c_str());
+            }
+
+            void drop_view_internal(sqlite3* db, const std::string& viewName, bool ifExists) {
+                std::string sql;
+                {
+                    std::stringstream ss;
+                    ss << "DROP VIEW";
+                    if (ifExists) {
+                        ss << " IF EXISTS";
+                    }
+                    ss << ' ' << streaming_identifier(viewName) << std::flush;
                     sql = ss.str();
                 }
                 this->executor.perform_void_exec(db, sql.c_str());

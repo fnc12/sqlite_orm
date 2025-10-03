@@ -1128,8 +1128,8 @@ namespace sqlite_orm {
             }
 
 #ifdef SQLITE_ORM_WITH_VIEW
-            template<class O, class Select, class... Cs>
-            sync_schema_result schema_status(const view_t<O, Select, Cs...>&, sqlite3*, bool, bool*) {
+            template<class View, satisfies<is_view, View> = true>
+            sync_schema_result schema_status(const View&, sqlite3*, bool, bool*) {
                 return sync_schema_result::already_in_sync;
             }
 #endif
@@ -1254,8 +1254,8 @@ namespace sqlite_orm {
             }
 
 #ifdef SQLITE_ORM_WITH_VIEW
-            template<class O, class Select, class... Cs>
-            sync_schema_result sync_dbo(const view_t<O, Select, Cs...>& view, sqlite3* db, bool) {
+            template<class View, satisfies<is_view, View> = true>
+            sync_schema_result sync_dbo(const View& view, sqlite3* db, bool) {
                 const auto& exprDBOs = db_objects_for_expression(this->db_objects, view.select);
                 using context_t = serializer_context<polyfill::remove_cvref_t<decltype(exprDBOs)>>;
 
@@ -1395,7 +1395,8 @@ namespace sqlite_orm {
                 return result;
             }
 
-            using storage_base::table_exists;  // now that it is in storage_base make it into overload set
+            using storage_base::table_exists;
+            using storage_base::view_exists;
 
             template<class DML, std::enable_if_t<is_raw_dml_expression_v<DML>, bool> = true>
             prepared_statement_t<DML> prepare(DML statement) {

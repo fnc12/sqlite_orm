@@ -23,6 +23,12 @@ struct DidLogsCollector {
 
 std::vector<std::string> DidLogsCollector::logs;
 
+#ifdef SQLITE_ORM_WITH_VIEW
+struct UserViewLoggerTests {
+    int id = 0;
+    std::string name;
+};
+#endif
 TEST_CASE("logger") {
     using Logs = std::vector<std::string>;
     using Callback = std::function<void(std::string_view)>;
@@ -62,7 +68,7 @@ TEST_CASE("logger") {
             }
         };
 
-    auto requireLogsAreEmpty = [] {
+    constexpr auto requireLogsAreEmpty = [] {
         REQUIRE(WillLogsCollector::logs.empty());
         REQUIRE(DidLogsCollector::logs.empty());
     };
@@ -89,6 +95,9 @@ TEST_CASE("logger") {
                      make_table("visits_log",
                                 make_column("id", &VisitLog::id, primary_key()),
                                 make_column("message", &VisitLog::message)),
+#ifdef SQLITE_ORM_WITH_VIEW
+                     make_view<UserViewLoggerTests>("users_view", select(asterisk<User>())),
+#endif
                      will_run_query(willRunQuery),
                      did_run_query(didRunQuery));
     storage.sync_schema();
@@ -150,10 +159,6 @@ TEST_CASE("logger") {
             storage.drop_trigger_if_exists(value);
             pushExpected(expected);
         }
-        SECTION("vacuum") {
-            storage.vacuum();
-            pushExpected("VACUUM");
-        }
         SECTION("drop_table") {
             const auto [value, expected] = GENERATE(table<std::string, std::string>({
                 {"users", R"(DROP TABLE "users")"},
@@ -169,6 +174,24 @@ TEST_CASE("logger") {
             }));
             storage.drop_table_if_exists(value);
             pushExpected(expected);
+        }
+#ifdef SQLITE_ORM_WITH_VIEW
+        SECTION("drop_view") {
+            storage.drop_view("users_view");
+            pushExpected(R"(DROP VIEW "users_view")");
+        }
+        SECTION("drop_view_if_exists") {
+            const auto [value, expected] = GENERATE(table<std::string, std::string>({
+                {"users_view", R"(DROP VIEW IF EXISTS "users_view")"},
+                {"xyz_view", R"(DROP VIEW IF EXISTS "xyz_view")"},
+            }));
+            storage.drop_view_if_exists(value);
+            pushExpected(expected);
+        }
+#endif
+        SECTION("vacuum") {
+            storage.vacuum();
+            pushExpected("VACUUM");
         }
         SECTION("changes") {
             std::ignore = storage.changes();
