@@ -26,6 +26,7 @@
 #include "tags.h"
 #include "type_printer.h"
 #include "literal.h"
+#include "ast/cross_join.h"
 
 namespace sqlite_orm {
 
@@ -595,33 +596,12 @@ namespace sqlite_orm {
             glob_t(arg_t arg_, pattern_t pattern_) : arg(std::move(arg_)), pattern(std::move(pattern_)) {}
         };
 
-        struct cross_join_string {
-            operator std::string() const {
-                return "CROSS JOIN";
-            }
-        };
-
-        /**
-         *  CROSS JOIN holder.
-         *  T is joined type which represents any mapped table.
-         */
-        template<class T>
-        struct cross_join_t : cross_join_string {
-            using type = T;
-        };
-
-        struct natural_join_string {
-            operator std::string() const {
-                return "NATURAL JOIN";
-            }
-        };
-
         /**
          *  NATURAL JOIN holder.
          *  T is joined type which represents any mapped table.
          */
         template<class T>
-        struct natural_join_t : natural_join_string {
+        struct natural_join_t {
             using type = T;
         };
 
@@ -905,11 +885,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T>
     internal::on_t<T> on(T t) {
         return {std::move(t)};
-    }
-
-    template<class T>
-    internal::cross_join_t<T> cross_join() {
-        return {};
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
