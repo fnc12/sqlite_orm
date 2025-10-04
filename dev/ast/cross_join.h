@@ -1,4 +1,3 @@
-#include "../functional/config.h"
 #include "../functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
@@ -12,9 +11,6 @@ namespace sqlite_orm {
         struct cross_join_t {
             using type = T;
         };
-
-        template<class T>
-        using is_cross_join = polyfill::is_specialization_of<T, cross_join_t>;
     }
 }
 

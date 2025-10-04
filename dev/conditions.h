@@ -31,7 +31,6 @@
 namespace sqlite_orm {
 
     namespace internal {
-
         /**
          *  Collated something
          */
@@ -730,6 +729,13 @@ namespace sqlite_orm {
 
         template<class T>
         using is_constrained_join = polyfill::is_detected<on_type_t, T>;
+
+        template<class T>
+        using is_any_join = mpl::invoke_t<mpl::disjunction<check_if<is_constrained_join>,
+                                                           check_if_is_template<cross_join_t>,
+                                                           check_if_is_template<natural_join_t>>,
+                                          T>;
+
     }
 }
 

@@ -308,9 +308,17 @@ TEST_CASE("statement_serializer select_t") {
         db_objects_t dbObjects{rankTable, suitTable};
         internal::serializer_context<db_objects_t> context{dbObjects};
 
-        auto expression = select(columns(&Rank::rank, &Suit::suit), cross_join<Suit>(), order_by(&Suit::suit));
-        expression.highest_level = true;
-        stringValue = serialize(expression, context);
+        SECTION("straight") {
+            auto expression = select(columns(&Rank::rank, &Suit::suit), cross_join<Suit>(), order_by(&Suit::suit));
+            expression.highest_level = true;
+            stringValue = serialize(expression, context);
+        }
+        SECTION("alias") {
+            using suit_s = alias_s<Suit>;
+            auto expression = select(columns(&Rank::rank, &Suit::suit), cross_join<suit_s>(), order_by(&Suit::suit));
+            expression.highest_level = true;
+            stringValue = serialize(expression, context);
+        }
         expected = R"(SELECT "ranks"."rank", "suits"."suit" FROM "ranks" CROSS JOIN "suits" ORDER BY "suits"."suit")";
     }
     REQUIRE(stringValue == expected);

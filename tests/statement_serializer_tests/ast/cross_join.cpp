@@ -16,7 +16,15 @@ TEST_CASE("cross_join") {
     auto dbObjects = db_objects_t{table};
     using context_t = internal::serializer_context<db_objects_t>;
     context_t context{dbObjects};
-    auto node = cross_join<User>();
-    auto value = serialize(node, context);
+    std::string value;
+    SECTION("straight") {
+        auto node = cross_join<User>();
+        value = serialize(node, context);
+    }
+    SECTION("alias") {
+        using user_s = alias_s<User>;
+        auto node = cross_join<user_s>();
+        value = serialize(node, context);
+    }
     REQUIRE(value == R"(CROSS JOIN "users")");
 }
