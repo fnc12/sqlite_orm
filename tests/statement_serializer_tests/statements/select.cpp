@@ -1,3 +1,4 @@
+#include <chrono>
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 
@@ -293,7 +294,7 @@ TEST_CASE("statement_serializer select_t") {
             }
         }
     }
-    SECTION("cross join") {
+    SECTION("{cross, natural} join") {
         struct Rank {
             std::string rank;
         };
@@ -307,19 +308,39 @@ TEST_CASE("statement_serializer select_t") {
         using db_objects_t = internal::db_objects_tuple<decltype(rankTable), decltype(suitTable)>;
         db_objects_t dbObjects{rankTable, suitTable};
         internal::serializer_context<db_objects_t> context{dbObjects};
-
-        SECTION("straight") {
-            auto expression = select(columns(&Rank::rank, &Suit::suit), cross_join<Suit>(), order_by(&Suit::suit));
-            expression.highest_level = true;
-            stringValue = serialize(expression, context);
+        SECTION("cross join") {
+            SECTION("straight") {
+                auto expression = select(columns(&Rank::rank, &Suit::suit), cross_join<Suit>(), order_by(&Suit::suit));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+            }
+            SECTION("alias") {
+                using suit_s = alias_s<Suit>;
+                auto expression =
+                    select(columns(&Rank::rank, &Suit::suit), cross_join<suit_s>(), order_by(&Suit::suit));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+            }
+            expected =
+                R"(SELECT "ranks"."rank", "suits"."suit" FROM "ranks" CROSS JOIN "suits" ORDER BY "suits"."suit")";
         }
-        SECTION("alias") {
-            using suit_s = alias_s<Suit>;
-            auto expression = select(columns(&Rank::rank, &Suit::suit), cross_join<suit_s>(), order_by(&Suit::suit));
-            expression.highest_level = true;
-            stringValue = serialize(expression, context);
+        SECTION("natural join") {
+            SECTION("straight") {
+                auto expression =
+                    select(columns(&Rank::rank, &Suit::suit), natural_join<Suit>(), order_by(&Suit::suit));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+            }
+            SECTION("alias") {
+                using suit_s = alias_s<Suit>;
+                auto expression =
+                    select(columns(&Rank::rank, &Suit::suit), natural_join<suit_s>(), order_by(&Suit::suit));
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+            }
+            expected =
+                R"(SELECT "ranks"."rank", "suits"."suit" FROM "ranks" NATURAL JOIN "suits" ORDER BY "suits"."suit")";
         }
-        expected = R"(SELECT "ranks"."rank", "suits"."suit" FROM "ranks" CROSS JOIN "suits" ORDER BY "suits"."suit")";
     }
     REQUIRE(stringValue == expected);
 }

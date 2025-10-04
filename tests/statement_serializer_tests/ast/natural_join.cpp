@@ -3,7 +3,7 @@
 
 using namespace sqlite_orm;
 
-TEST_CASE("cross_join") {
+TEST_CASE("natural_join") {
     using internal::serialize;
 
     struct User {
@@ -17,13 +17,13 @@ TEST_CASE("cross_join") {
     context_t context{dbObjects};
     std::string value;
     SECTION("straight") {
-        auto node = cross_join<User>();
+        auto node = natural_join<User>();
         value = serialize(node, context);
     }
     SECTION("alias") {
         using user_s = alias_s<User>;
-        auto node = cross_join<user_s>();
+        auto node = natural_join<user_s>();
         value = serialize(node, context);
     }
-    REQUIRE(value == R"(CROSS JOIN "users")");
+    REQUIRE(value == R"(NATURAL JOIN "users")");
 }
