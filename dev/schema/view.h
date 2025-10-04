@@ -5,7 +5,6 @@
 #include <type_traits>  //  std::remove_cvref
 #include <utility>  // std::forward, std::move, std::index_sequence, std::make_index_sequence
 #include <cstddef>  //  std::byte
-#include <stddef.h>  //  offsetof
 #if __cpp_impl_reflection >= 202500L
 #include <meta>
 #endif
@@ -44,7 +43,10 @@ namespace boost::pfr {
                 static_assert(N < Tpl::size_v);
                 using nth_type = decltype(get_nth_base<N>(std::declval<Tpl>()));
                 using field_type = decltype(nth_type::value);
-                return (field_type*)(std::byte*)offsetof(Tpl, nth_type::value);
+
+                return (field_type*)(std::byte*)
+                    // offsetof - the official one cannot be used because of some implementations using the compiler intrinsic builtin
+                    ((::size_t)&reinterpret_cast<char const volatile&>((((Tpl*)0)->nth_type::value)));
             }
         }
     }
