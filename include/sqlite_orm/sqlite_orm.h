@@ -5211,10 +5211,38 @@ namespace sqlite_orm::internal {
     using is_table_value = is_literal<T>;
 }
 
+// #include "ast/cross_join.h"
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+namespace sqlite_orm {
+    namespace internal {
+
+        /**
+         *  CROSS JOIN holder.
+         *  T is joined type which represents any mapped table.
+         */
+        template<class T>
+        struct cross_join_t {
+            using type = T;
+        };
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+
+    /**
+     *  CROSS JOIN function. Usage:
+     *  `cross_join<User>();`
+     */
+    template<class T>
+    internal::cross_join_t<T> cross_join() {
+        return {};
+    }
+}
+
 namespace sqlite_orm {
 
     namespace internal {
-
         /**
          *  Collated something
          */
@@ -5779,33 +5807,12 @@ namespace sqlite_orm {
             glob_t(arg_t arg_, pattern_t pattern_) : arg(std::move(arg_)), pattern(std::move(pattern_)) {}
         };
 
-        struct cross_join_string {
-            operator std::string() const {
-                return "CROSS JOIN";
-            }
-        };
-
-        /**
-         *  CROSS JOIN holder.
-         *  T is joined type which represents any mapped table.
-         */
-        template<class T>
-        struct cross_join_t : cross_join_string {
-            using type = T;
-        };
-
-        struct natural_join_string {
-            operator std::string() const {
-                return "NATURAL JOIN";
-            }
-        };
-
         /**
          *  NATURAL JOIN holder.
          *  T is joined type which represents any mapped table.
          */
         template<class T>
-        struct natural_join_t : natural_join_string {
+        struct natural_join_t {
             using type = T;
         };
 
@@ -5934,6 +5941,13 @@ namespace sqlite_orm {
 
         template<class T>
         using is_constrained_join = polyfill::is_detected<on_type_t, T>;
+
+        template<class T>
+        using is_any_join = mpl::invoke_t<mpl::disjunction<check_if<is_constrained_join>,
+                                                           check_if_is_template<cross_join_t>,
+                                                           check_if_is_template<natural_join_t>>,
+                                          T>;
+
     }
 }
 
@@ -6089,11 +6103,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T>
     internal::on_t<T> on(T t) {
         return {std::move(t)};
-    }
-
-    template<class T>
-    internal::cross_join_t<T> cross_join() {
-        return {};
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -22448,17 +22457,24 @@ namespace sqlite_orm {
                 using conditions_tuple = typename statement_type::conditions_type;
                 constexpr bool hasExplicitFrom = tuple_has<conditions_tuple, is_from>::value;
                 if constexpr (!hasExplicitFrom) {
+                    using joins_index_sequence = filter_tuple_sequence_t<conditions_tuple, is_any_join>;
+
                     auto tableNames = collect_table_names(sel, context);
-                    using joins_index_sequence = filter_tuple_sequence_t<conditions_tuple, is_constrained_join>;
                     // deduplicate table names of constrained join statements
                     iterate_tuple(sel.conditions, joins_index_sequence{}, [&tableNames, &context](auto& join) {
                         using original_join_type = typename std::remove_reference_t<decltype(join)>::type;
-                        using cross_join_type = mapped_type_proxy_t<original_join_type>;
-                        std::pair<const std::string&, std::string> tableNameWithAlias{
-                            lookup_table_name<cross_join_type>(context.db_objects),
-                            alias_extractor<original_join_type>::as_alias()};
-                        tableNames.erase(tableNameWithAlias);
+                        using join_type = mapped_type_proxy_t<original_join_type>;
+
+                        const auto& tableName = lookup_table_name<join_type>(context.db_objects);
+                        auto it = std::find_if(tableNames.begin(), tableNames.end(), [&tableName](const auto& pair) {
+                            return pair.first == tableName;
+                        });
+                        if (it == tableNames.end()) {
+                            return;
+                        }
+                        tableNames.erase(it);
                     });
+
                     if (!tableNames.empty() && !is_compound_operator<T>::value) {
                         ss << " FROM " << streaming_identifiers(tableNames);
                     }
@@ -22792,11 +22808,19 @@ namespace sqlite_orm {
             using statement_type = Join;
 
             template<class Ctx>
-            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& join,
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& /*join*/,
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
-                ss << static_cast<std::string>(join) << " "
-                   << streaming_identifier(lookup_table_name<type_t<Join>>(context.db_objects));
+                if constexpr (polyfill::is_specialization_of<statement_type, cross_join_t>::value) {
+                    ss << "CROSS JOIN";
+                } else if constexpr (polyfill::is_specialization_of<statement_type, natural_join_t>::value) {
+                    ss << "NATURAL JOIN";
+                } else {
+                    static_assert(polyfill::always_false_v<statement_type>);
+                }
+                ss << " "
+                   << streaming_identifier(
+                          lookup_table_name<mapped_type_proxy_t<type_t<statement_type>>>(context.db_objects));
                 return ss.str();
             }
         };
