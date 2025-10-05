@@ -2319,6 +2319,8 @@ namespace sqlite_orm {
          */
         struct condition_t {};
 
+        struct hidden_columns_tag {};
+
         /**
          *  Specialize if a type participates as an argument to overloaded operators (arithmetic, conditional, negation, chaining)
          */
@@ -2333,7 +2335,7 @@ namespace sqlite_orm {
 // #include "column_pointer.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::is_convertible
+#include <type_traits>  //  std::enable_if, std::is_convertible, std::is_base_of
 #include <utility>  // std::move
 #endif
 
@@ -2389,7 +2391,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class O, class Base, class F, internal::satisfies_not<internal::is_recordset_alias, O> = true>
     constexpr internal::column_pointer<O, F Base::*> column(F Base::* field) {
-        static_assert(std::is_convertible<F Base::*, F O::*>::value, "Field must be from derived class");
+        static_assert(std::is_convertible<F Base::*, F O::*>::value ||
+                          std::is_base_of<internal::hidden_columns_tag, Base>::value,
+                      "Field must be from derived class");
         return {field};
     }
 
@@ -3524,7 +3528,7 @@ namespace sqlite_orm {
 
 #if SQLITE_VERSION_NUMBER >= 3024000
         /** 
-         *  Auxiliary virtual table column
+         *  Auxiliary virtual table column constraint
          */
         struct auxiliary_t {};
 
@@ -5181,20 +5185,28 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "literal.h"
 
-namespace sqlite_orm {
-    namespace internal {
+// #include "functional/cxx_type_traits_polyfill.h"
 
-        /* 
-         *  Protect an otherwise bindable element so that it is always serialized as a literal value.
-         */
-        template<class T>
-        struct literal_holder {
-            using type = T;
+namespace sqlite_orm::internal {
 
-            type value;
-        };
+    /* 
+     *  Protect an otherwise bindable element so that it is always serialized as a literal value.
+     */
+    template<class T>
+    struct literal_holder {
+        using type = T;
 
-    }
+        type value;
+    };
+
+    template<class T>
+    using is_literal = polyfill::is_specialization_of<T, literal_holder>;
+
+    template<class T>
+    using table_value_t = literal_holder<T>;
+
+    template<class T>
+    using is_table_value = is_literal<T>;
 }
 
 namespace sqlite_orm {
@@ -8804,6 +8816,15 @@ namespace sqlite_orm {
         template<class G, class S, class... Op>
         struct column_t : column_identifier, column_field<G, S>, column_constraints<Op...> {};
 
+        /**
+         *  Definition of a hidden column.
+         *  
+         *  Implementation note: it is a separate type to make coding easier - hidden columns do not participate in normal column handling,
+         *  e.g. they are not counted as columns when constructing objects, and are only needed when finding columns or for table-valued functions.
+         */
+        template<class G, class S, class... Op>
+        struct hidden_column : column_identifier, column_field<G, S>, column_constraints<Op...> {};
+
         template<class T, class SFINAE = void>
         struct column_field_expression {
             using type = void;
@@ -8822,6 +8843,12 @@ namespace sqlite_orm {
 
         template<class T>
         using is_column = polyfill::bool_constant<is_column_v<T>>;
+
+        template<class T>
+        inline constexpr bool is_hidden_column_v = polyfill::is_specialization_of<T, hidden_column>::value;
+
+        template<class T>
+        using is_hidden_column = polyfill::bool_constant<is_hidden_column_v<T>>;
 
         template<class Elements>
         using col_index_sequence_of = filter_tuple_sequence_t<Elements, is_column>;
@@ -8844,6 +8871,31 @@ namespace sqlite_orm {
                                                                      check_if_has_not<TraitFn>::template fn,
                                                                      constraints_type_t,
                                                                      filter_tuple_sequence_t<Elements, is_column>>;
+
+        template<class Elements>
+        using hidden_col_index_sequence_of = filter_tuple_sequence_t<Elements, is_hidden_column>;
+
+        template<class Elements, class F>
+        using all_col_index_sequence_with_field_type = filter_tuple_sequence_t<
+            Elements,
+            check_if_is_type<F>::template fn,
+            field_type_t,
+            filter_tuple_sequence_t<Elements, mpl::disjunction_fn<is_column, is_hidden_column>::template fn>>;
+
+#if SQLITE_VERSION_NUMBER >= 3031000
+        /**
+         *  Factory function for a column definition from a member object pointer for hidden virtual table columns.
+         */
+        template<class M, class... Op, satisfies<std::is_member_object_pointer, M> = true>
+        hidden_column<M, empty_setter, Op...> make_hidden_column(std::string name, M memberPointer, Op... constraints) {
+            static_assert(polyfill::conjunction_v<is_column_constraint<Op>...>, "Incorrect constraints pack");
+
+            // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
+            // as this will lead to UB with Clang on MinGW!
+            SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
+                return {std::move(name), memberPointer, {}, std::tuple<Op...>{std::move(constraints)...}});
+        }
+#endif
     }
 }
 
@@ -12442,7 +12494,7 @@ namespace sqlite_orm::internal {
 
             const std::string* res = nullptr;
             iterate_tuple(this->elements,
-                          col_index_sequence_with_field_type<elements_type, field_type>{},
+                          all_col_index_sequence_with_field_type<elements_type, field_type>{},
                           [&res, memberPointer](auto& column) {
                               if (compare_fields(column.member_pointer, memberPointer) ||
                                   compare_fields(column.setter, memberPointer)) {
@@ -16895,6 +16947,7 @@ namespace sqlite_orm {
             conditions_tuple,
             actions_tuple,
             expressions_tuple,
+            filtered_expressions_tuple,
             dynamic_expressions,
             compound_expressions,
             serialized,
@@ -16925,6 +16978,7 @@ namespace sqlite_orm {
         constexpr streaming<stream_as::conditions_tuple> streaming_conditions_tuple{};
         constexpr streaming<stream_as::actions_tuple> streaming_actions_tuple{};
         constexpr streaming<stream_as::expressions_tuple> streaming_expressions_tuple{};
+        constexpr streaming<stream_as::filtered_expressions_tuple> streaming_filtered_expressions_tuple{};
         constexpr streaming<stream_as::dynamic_expressions> streaming_dynamic_expressions{};
         constexpr streaming<stream_as::compound_expressions> streaming_compound_expressions{};
         constexpr streaming<stream_as::serialized> streaming_serialized{};
@@ -16975,6 +17029,22 @@ namespace sqlite_orm {
             auto& context = std::get<2>(tpl);
 
             iterate_tuple(args, [&ss, &context, first = true](auto& arg) mutable {
+                static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
+                ss << sep[std::exchange(first, false)] << serialize(arg, context);
+            });
+            return ss;
+        }
+
+        // serialize and stream a tuple of expressions including only those specified by an index sequence;
+        // comma-separated
+        template<class T, class Seq, class Ctx>
+        std::ostream& operator<<(std::ostream& ss,
+                                 std::tuple<const streaming<stream_as::filtered_expressions_tuple>&, Seq, T, Ctx> tpl) {
+            const auto& args = std::get<1>(tpl);
+            const auto& included_index_sequence = std::get<2>(tpl);
+            auto& context = std::get<3>(tpl);
+
+            iterate_tuple(args, included_index_sequence, [&ss, &context, first = true](auto& arg) mutable {
                 static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)] << serialize(arg, context);
             });
@@ -17204,7 +17274,7 @@ namespace sqlite_orm {
             return ss;
         }
 
-        // serialize and stream a tuple of column constraints;
+        // serialize and stream a tuple of column constraints exluding auxiliary columns;
         // space + space-separated
         template<class... Op, class Ctx>
         std::ostream& operator<<(std::ostream& ss,
@@ -19517,6 +19587,10 @@ namespace sqlite_orm {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /** 
+     *  [Deprecation notice] This expression factory function is deprecated and will be removed in v1.11.
+     */
+    [[deprecated("Use the hidden FTS5 rank column instead")]]
     inline internal::rank_t rank() {
         return {};
     }
@@ -20585,13 +20659,25 @@ namespace sqlite_orm {
             }
         };
 
+        static_assert(mpl::invoke_t<check_if_is_template<literal_holder>, table_value_t<int>>::value,
+                      "Internal: Create a serializer for `table_value_t`");
+
         // Eponymous virtual tables serialize only table values. Their definition is built-in, fixed and implicit
         template<class ModTraits,
-                 class Definition,
+                 class Elements,
                  class Ctx,
                  std::enable_if_t<ModTraits::is_eponymous::value, bool> = true>
-        std::string serialize_virtual_table_definition(const Definition&, const Ctx&) {
-            return {};
+        std::string serialize_virtual_table_definition(const Elements& elements, const Ctx& context) {
+            using table_values_index_sequence = filter_tuple_sequence_t<Elements, is_table_value>;
+
+            if constexpr (table_values_index_sequence::size() == 0) {
+                return {};
+            } else {
+                std::stringstream ss;
+                ss << "(" << streaming_filtered_expressions_tuple(elements, table_values_index_sequence{}, context)
+                   << ")";
+                return ss.str();
+            }
         }
 
         template<class ModTraits,
@@ -20600,12 +20686,15 @@ namespace sqlite_orm {
                  std::enable_if_t<!ModTraits::is_eponymous::value, bool> = true>
         std::string serialize_virtual_table_definition(const Elements& elements, const Ctx& context) {
             using traits_type = ModTraits;
+            using exluding_hidden_index_sequence =
+                filter_tuple_sequence_t<Elements, check_if_not<is_hidden_column>::template fn>;
 
             auto subContext = context;
             subContext.omit_column_type = traits_type::omit_column_type::value;
 
             std::stringstream ss;
-            ss << "(" << streaming_expressions_tuple(elements, subContext) << ")";
+            ss << "(" << streaming_filtered_expressions_tuple(elements, exluding_hidden_index_sequence{}, subContext)
+               << ")";
             return ss.str();
         }
 
@@ -20688,10 +20777,9 @@ namespace sqlite_orm {
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 static_assert(is_bindable_v<type_t<statement_type>>, "A literal value must be also bindable");
 
-                Ctx literalCtx = context;
+                auto literalCtx = context;
                 literalCtx.replace_bindable_with_question = false;
-                statement_serializer<type_t<statement_type>> serializer{};
-                return serializer(literal.value, literalCtx);
+                return serialize(literal.value, literalCtx);
             }
         };
 
@@ -26026,9 +26114,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
-#include <type_traits>  //  std::false_type, std::true_type
+#include <type_traits>  //  std::false_type, std::true_type, std::is_convertible
 #include <tuple>  //  std::make_tuple
-#include <utility>  //  std::move
+#include <utility>  //  std::move, std::unreachable
 #endif
 #endif
 
@@ -26037,6 +26125,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../schema/virtual_table.h"
 
 // #include "../schema/column.h"
+
+// #include "../tags.h"
+
+// #include "../literal.h"
 
 // #include "../column_pointer.h"
 
@@ -26066,7 +26158,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class... Cs>
-    inline virtual_table_definition<dbstat_module_tag, Cs...> using_dbstat(Cs... columns) {
+    inline virtual_table_definition<dbstat_module_tag, Cs...> make_dbstat_definition(Cs... columns) {
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {{std::make_tuple(std::move(columns)...)}});
     }
 }
@@ -26083,6 +26175,28 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         int mx_payload = 0;
         int pgoffset = 0;
         int pgsize = 0;
+
+        // hidden columns of the `dbstat` virtual table
+        struct hidden : internal::hidden_columns_tag {
+            std::string schema;
+#if SQLITE_VERSION_NUMBER >= 3031000
+            bool aggregate = false;
+#endif
+        };
+
+      protected:
+        // A clever way of defining and using column pointers for structs derived from `dbstat` in a class namespace
+        template<class O>
+        struct hidden_columns_for {
+            static constexpr internal::column_pointer<O, decltype(&hidden::schema)> schema_column{&hidden::schema};
+
+#if SQLITE_VERSION_NUMBER >= 3031000
+            static constexpr internal::column_pointer<O, decltype(&hidden::aggregate)> aggregate_column{
+                &hidden::aggregate};
+#endif
+
+            hidden_columns_for() = delete;
+        };
     };
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -26094,10 +26208,27 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  If no schema is specified then the main schema is used.
      *  
      *  Though the DBSTAT virtual table is an eponymous table SQLite allows to create a virtual table instance with a different name.
-     *  This is mostly useful with binding input arguments, e.g. a different schema than "main", which is yet unimplemented.
+     *  This is mostly useful with binding input arguments (so-called table values), e.g. a different schema than "main" or whether to query aggregated results.
      */
-    inline auto using_dbstat() {
-        return internal::using_dbstat(make_column("name", &dbstat::name),
+    template<class... Value>
+    auto using_dbstat(Value... tableValues) {
+        using namespace ::sqlite_orm::internal;
+        using expected_hidden_types = std::tuple<member_field_type_t<decltype(&dbstat::hidden::schema)>
+#if SQLITE_VERSION_NUMBER >= 3031000
+                                                 ,
+                                                 member_field_type_t<decltype(&dbstat::hidden::aggregate)>
+#endif
+                                                 >;
+        static_assert(sizeof...(Value) <= std::tuple_size<expected_hidden_types>::value,
+                      "You may only pass the schema name and the aggregation flag");
+        using input_value_types = std::tuple<Value...>;
+        // make a tuple of types from expected types limited to the number of passed in table values
+        using final_expected_types =
+            tuple_from_index_sequence_t<expected_hidden_types, std::index_sequence_for<Value...>>;
+        static_assert(std::is_convertible<input_value_types, final_expected_types>::value,
+                      "The schema name must be a string value, the aggregate flag a boolean value");
+
+        return make_dbstat_definition(make_column("name", &dbstat::name),
                                       make_column("path", &dbstat::path),
                                       make_column("pageno", &dbstat::pageno),
                                       make_column("pagetype", &dbstat::pagetype),
@@ -26106,7 +26237,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                       make_column("unused", &dbstat::unused),
                                       make_column("mx_payload", &dbstat::mx_payload),
                                       make_column("pgoffset", &dbstat::pgoffset),
-                                      make_column("pgsize", &dbstat::pgsize));
+                                      make_column("pgsize", &dbstat::pgsize),
+                                      make_hidden_column("schema", &dbstat::hidden::schema),
+#if SQLITE_VERSION_NUMBER >= 3031000
+                                      make_hidden_column("aggregate", &dbstat::hidden::aggregate),
+#endif
+                                      table_value_t{std::move(tableValues)}...);
     }
 
     /**
@@ -26123,9 +26259,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if SQLITE_VERSION_NUMBER >= 3009000
 #include <tuple>  //  std::make_tuple
-#include <utility>  //  std::forward
+#include <utility>  //  std::forward, std::unreachable
 #endif
 #endif
+
+// #include "../functional/cxx_optional.h"
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
@@ -26156,18 +26294,45 @@ namespace sqlite_orm::internal {
             return "fts5";
         }
     };
+
+    template<class... Cs>
+    inline virtual_table_definition<fts5_module_tag, Cs...> make_fts5_definition(Cs... definition) {
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {{std::make_tuple(std::move(definition)...)}});
+    }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
+    // Class namespace for hidden `fts5` columns
+    struct fts5 {
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        // hidden columns of the `fts5` virtual table
+        struct hidden : internal::hidden_columns_tag {
+            std::optional<int> rank;
+        };
+
+        // A clever way of defining and using column pointers for structs derived from `dbstat` in a class namespace
+        template<class O>
+        struct hidden_columns_for {
+            static constexpr internal::column_pointer<O, decltype(&hidden::rank)> rank_column{&hidden::rank};
+
+            hidden_columns_for() = delete;
+        };
+#endif
+
+        fts5() = delete;
+    };
+
     /**
      *  Factory function for a FTS5 virtual table definition.
      */
     template<class... Cs>
-    internal::virtual_table_definition<internal::fts5_module_tag, Cs...> using_fts5(Cs... definition) {
-        static_assert(polyfill::conjunction_v<internal::is_fts5_table_element_or_constraint<Cs>...>,
-                      "Incorrect table elements or constraints");
-
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(definition)...)});
+    auto using_fts5(Cs... definition) {
+        using namespace ::sqlite_orm::internal;
+        return make_fts5_definition(std::forward<Cs>(definition)...,
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+                                    make_hidden_column("rank", &fts5::hidden::rank)
+#endif
+        );
     }
 
     /**
@@ -26180,6 +26345,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T, class... Cs>
     [[deprecated("Specify the explicit object type when calling `make_virtual_table()`.")]]
     internal::virtual_table_description<T, internal::fts5_module_tag, Cs...> using_fts5(Cs... definition) {
+        using namespace ::sqlite_orm::internal;
         static_assert(polyfill::conjunction_v<internal::is_fts5_table_element_or_constraint<Cs>...>,
                       "Incorrect table elements or constraints");
 

@@ -169,7 +169,7 @@ namespace sqlite_orm {
 
 #if SQLITE_VERSION_NUMBER >= 3024000
         /** 
-         *  Auxiliary virtual table column
+         *  Auxiliary virtual table column constraint
          */
         struct auxiliary_t {};
 

@@ -11,6 +11,9 @@ TEST_CASE("fts5 virtual table schema") {
         std::string title;
         std::string body;
 
+        // A clever way of defining and using explicit column pointers for hidden `fts5` member fields
+        using hidden = fts5::hidden_columns_for<Post>;
+
 #ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
         bool operator==(const Post&) const = default;
 #else
@@ -32,6 +35,7 @@ TEST_CASE("fts5 virtual table schema") {
         };
         REQUIRE(compareColumnName(virtualTable.find_column_name(&Post::title), std::string("title")));
         REQUIRE(compareColumnName(virtualTable.find_column_name(&Post::body), std::string("body")));
+        REQUIRE(compareColumnName(virtualTable.find_column_name(&fts5::hidden::rank), std::string("rank")));
     }
 
     /// CREATE VIRTUAL TABLE posts
@@ -43,9 +47,9 @@ TEST_CASE("fts5 virtual table schema") {
     REQUIRE(storage.table_exists("posts"));
 
     const std::vector<Post> postsToInsert = {
-        Post{"Learn SQlite FTS5", "This tutorial teaches you how to perform full-text search in SQLite using FTS5"},
-        Post{"Advanced SQlite Full-text Search", "Show you some advanced techniques in SQLite full-text searching"},
-        Post{"SQLite Tutorial", "Help you learn SQLite quickly and effectively"},
+        {"Learn SQlite FTS5", "This tutorial teaches you how to perform full-text search in SQLite using FTS5"},
+        {"Advanced SQlite Full-text Search", "Show you some advanced techniques in SQLite full-text searching"},
+        {"SQLite Tutorial", "Help you learn SQLite quickly and effectively"},
     };
 
     /// INSERT INTO posts(title,body)
@@ -80,6 +84,9 @@ TEST_CASE("fts5 virtual table schema") {
     ///    WHERE posts MATCH 'text'
     ///    ORDER BY rank;
     auto orderedPosts = storage.get_all<Post>(where(match<Post>("fts5")), order_by(rank()));
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    orderedPosts = storage.get_all<Post>(where(match<Post>("fts5")), order_by(Post::hidden::rank_column));
+#endif
 
     ///    SELECT highlight(posts,0, '<b>', '</b>'),
     ///           highlight(posts,1, '<b>', '</b>')
@@ -91,6 +98,11 @@ TEST_CASE("fts5 virtual table schema") {
         storage.select(columns(highlight<Post>(0, "<b>", "</b>"), highlight<Post>(1, "<b>", "</b>")),
                        where(match<Post>("SQLite")),
                        order_by(rank()));
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    highlightedPosts = storage.select(columns(highlight<Post>(0, "<b>", "</b>"), highlight<Post>(1, "<b>", "</b>")),
+                                      where(match<Post>("SQLite")),
+                                      order_by(Post::hidden::rank_column));
+#endif
 }
 
 TEST_CASE("issue1410") {
@@ -140,6 +152,7 @@ TEST_CASE("dbstat virtual table schema") {
             auto virtualTable = make_dbstat_table();
             REQUIRE(compareColumnName(virtualTable.find_column_name(&dbstat::name), "name"));
             REQUIRE(compareColumnName(virtualTable.find_column_name(&dbstat::pgsize), "pgsize"));
+            REQUIRE(compareColumnName(virtualTable.find_column_name(&dbstat::hidden::schema), "schema"));
         }
         SECTION("storage") {
             auto storage = make_storage("", make_dbstat_table());
@@ -149,26 +162,38 @@ TEST_CASE("dbstat virtual table schema") {
 
             auto dbstatRows = storage.get_all<dbstat>();
             REQUIRE(dbstatRows.size() == 0);
+
+            dbstatRows = storage.get_all<dbstat>(where(column<dbstat>(&dbstat::hidden::schema) == "main"));
+            REQUIRE(dbstatRows.size() == 0);
         }
     }
 
     SECTION("virtual table instance") {
-        struct mystat : sqlite_orm::dbstat {};
+        struct mystat : dbstat {
+            // A clever way of defining and using explicit column pointers for hidden `dbstat` member fields
+            using hidden = dbstat::hidden_columns_for<mystat>;
+        };
 
         SECTION("definition") {
             auto virtualTable = make_virtual_table<mystat>("mystat", using_dbstat());
-            REQUIRE(compareColumnName(virtualTable.find_column_name(&mystat::name), "name"));
-            REQUIRE(compareColumnName(virtualTable.find_column_name(&mystat::pgsize), "pgsize"));
+            REQUIRE(compareColumnName(virtualTable.find_column_name(&dbstat::name), "name"));
+            REQUIRE(compareColumnName(virtualTable.find_column_name(&dbstat::pgsize), "pgsize"));
+            REQUIRE(compareColumnName(virtualTable.find_column_name(&dbstat::hidden::schema), "schema"));
         }
         SECTION("storage") {
-            auto storage =
-                make_storage("", make_sqlite_schema_table(), make_virtual_table<mystat>("mystat", using_dbstat()));
+            auto storage = make_storage("", make_virtual_table<mystat>("mystat", using_dbstat()));
             storage.sync_schema();
             storage.sync_schema_simulate();
             REQUIRE(storage.table_exists("mystat"));
             REQUIRE_FALSE(storage.table_exists("dbstat"));
 
             auto mystatRows = storage.get_all<mystat>();
+            REQUIRE(mystatRows.size() == 1);
+
+            mystatRows = storage.get_all<mystat>(where(column<mystat>(&dbstat::hidden::schema) == "main"));
+            REQUIRE(mystatRows.size() == 1);
+
+            mystatRows = storage.get_all<mystat>(where(mystat::hidden::schema_column == "main"));
             REQUIRE(mystatRows.size() == 1);
         }
     }

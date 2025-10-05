@@ -3,10 +3,11 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if SQLITE_VERSION_NUMBER >= 3009000
 #include <tuple>  //  std::make_tuple
-#include <utility>  //  std::forward
+#include <utility>  //  std::forward, std::unreachable
 #endif
 #endif
 
+#include "../functional/cxx_optional.h"
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/gsl.h"
 #include "../functional/mpl.h"
@@ -31,18 +32,45 @@ namespace sqlite_orm::internal {
             return "fts5";
         }
     };
+
+    template<class... Cs>
+    inline virtual_table_definition<fts5_module_tag, Cs...> make_fts5_definition(Cs... definition) {
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {{std::make_tuple(std::move(definition)...)}});
+    }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
+    // Class namespace for hidden `fts5` columns
+    struct fts5 {
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        // hidden columns of the `fts5` virtual table
+        struct hidden : internal::hidden_columns_tag {
+            std::optional<int> rank;
+        };
+
+        // A clever way of defining and using column pointers for structs derived from `dbstat` in a class namespace
+        template<class O>
+        struct hidden_columns_for {
+            static constexpr internal::column_pointer<O, decltype(&hidden::rank)> rank_column{&hidden::rank};
+
+            hidden_columns_for() = delete;
+        };
+#endif
+
+        fts5() = delete;
+    };
+
     /**
      *  Factory function for a FTS5 virtual table definition.
      */
     template<class... Cs>
-    internal::virtual_table_definition<internal::fts5_module_tag, Cs...> using_fts5(Cs... definition) {
-        static_assert(polyfill::conjunction_v<internal::is_fts5_table_element_or_constraint<Cs>...>,
-                      "Incorrect table elements or constraints");
-
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(definition)...)});
+    auto using_fts5(Cs... definition) {
+        using namespace ::sqlite_orm::internal;
+        return make_fts5_definition(std::forward<Cs>(definition)...,
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+                                    make_hidden_column("rank", &fts5::hidden::rank)
+#endif
+        );
     }
 
     /**
@@ -55,6 +83,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T, class... Cs>
     [[deprecated("Specify the explicit object type when calling `make_virtual_table()`.")]]
     internal::virtual_table_description<T, internal::fts5_module_tag, Cs...> using_fts5(Cs... definition) {
+        using namespace ::sqlite_orm::internal;
         static_assert(polyfill::conjunction_v<internal::is_fts5_table_element_or_constraint<Cs>...>,
                       "Incorrect table elements or constraints");
 

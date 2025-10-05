@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::is_convertible
+#include <type_traits>  //  std::enable_if, std::is_convertible, std::is_base_of
 #include <utility>  // std::move
 #endif
 
@@ -53,7 +53,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class O, class Base, class F, internal::satisfies_not<internal::is_recordset_alias, O> = true>
     constexpr internal::column_pointer<O, F Base::*> column(F Base::* field) {
-        static_assert(std::is_convertible<F Base::*, F O::*>::value, "Field must be from derived class");
+        static_assert(std::is_convertible<F Base::*, F O::*>::value ||
+                          std::is_base_of<internal::hidden_columns_tag, Base>::value,
+                      "Field must be from derived class");
         return {field};
     }
 

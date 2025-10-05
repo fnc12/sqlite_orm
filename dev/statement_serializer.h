@@ -173,13 +173,25 @@ namespace sqlite_orm {
             }
         };
 
+        static_assert(mpl::invoke_t<check_if_is_template<literal_holder>, table_value_t<int>>::value,
+                      "Internal: Create a serializer for `table_value_t`");
+
         // Eponymous virtual tables serialize only table values. Their definition is built-in, fixed and implicit
         template<class ModTraits,
-                 class Definition,
+                 class Elements,
                  class Ctx,
                  std::enable_if_t<ModTraits::is_eponymous::value, bool> = true>
-        std::string serialize_virtual_table_definition(const Definition&, const Ctx&) {
-            return {};
+        std::string serialize_virtual_table_definition(const Elements& elements, const Ctx& context) {
+            using table_values_index_sequence = filter_tuple_sequence_t<Elements, is_table_value>;
+
+            if constexpr (table_values_index_sequence::size() == 0) {
+                return {};
+            } else {
+                std::stringstream ss;
+                ss << "(" << streaming_filtered_expressions_tuple(elements, table_values_index_sequence{}, context)
+                   << ")";
+                return ss.str();
+            }
         }
 
         template<class ModTraits,
@@ -188,12 +200,15 @@ namespace sqlite_orm {
                  std::enable_if_t<!ModTraits::is_eponymous::value, bool> = true>
         std::string serialize_virtual_table_definition(const Elements& elements, const Ctx& context) {
             using traits_type = ModTraits;
+            using exluding_hidden_index_sequence =
+                filter_tuple_sequence_t<Elements, check_if_not<is_hidden_column>::template fn>;
 
             auto subContext = context;
             subContext.omit_column_type = traits_type::omit_column_type::value;
 
             std::stringstream ss;
-            ss << "(" << streaming_expressions_tuple(elements, subContext) << ")";
+            ss << "(" << streaming_filtered_expressions_tuple(elements, exluding_hidden_index_sequence{}, subContext)
+               << ")";
             return ss.str();
         }
 
@@ -276,10 +291,9 @@ namespace sqlite_orm {
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 static_assert(is_bindable_v<type_t<statement_type>>, "A literal value must be also bindable");
 
-                Ctx literalCtx = context;
+                auto literalCtx = context;
                 literalCtx.replace_bindable_with_question = false;
-                statement_serializer<type_t<statement_type>> serializer{};
-                return serializer(literal.value, literalCtx);
+                return serialize(literal.value, literalCtx);
             }
         };
 
