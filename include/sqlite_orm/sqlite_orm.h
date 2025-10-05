@@ -26268,7 +26268,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3031000
                                       make_hidden_column("aggregate", &dbstat::hidden::aggregate),
 #endif
-                                      table_value_t{std::move(tableValues)}...);
+                                      table_value_t<Value>{std::move(tableValues)}...);
     }
 
     /**
