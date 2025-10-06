@@ -11,7 +11,7 @@ TEST_CASE("fts5 virtual table schema") {
         std::string title;
         std::string body;
 
-        // A clever way of defining and using explicit column pointers for hidden `fts5` member fields
+        // A clever way of defining and using explicit column pointers for hidden `fts5` member fields mapped as columns into the Post table
         using hidden = fts5::hidden_columns_for<Post>;
 
 #ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
@@ -165,12 +165,15 @@ TEST_CASE("dbstat virtual table schema") {
 
             dbstatRows = storage.get_all<dbstat>(where(column<dbstat>(&dbstat::hidden::schema) == "main"));
             REQUIRE(dbstatRows.size() == 0);
+
+            dbstatRows = storage.select(object<dbstat>(), from<dbstat>("main"));
+            REQUIRE(dbstatRows.size() == 0);
         }
     }
 
     SECTION("virtual table instance") {
         struct mystat : dbstat {
-            // A clever way of defining and using explicit column pointers for hidden `dbstat` member fields
+            // A clever way of defining and using explicit column pointers for hidden `dbstat` member fields mapped as columns into the mystat table
             using hidden = dbstat::hidden_columns_for<mystat>;
         };
 
@@ -194,6 +197,9 @@ TEST_CASE("dbstat virtual table schema") {
             REQUIRE(mystatRows.size() == 1);
 
             mystatRows = storage.get_all<mystat>(where(mystat::hidden::schema_column == "main"));
+            REQUIRE(mystatRows.size() == 1);
+
+            mystatRows = storage.select(object<mystat>(), from<mystat>("main"));
             REQUIRE(mystatRows.size() == 1);
         }
     }

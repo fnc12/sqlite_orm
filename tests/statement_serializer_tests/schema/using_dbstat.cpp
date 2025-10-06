@@ -7,7 +7,7 @@ using namespace sqlite_orm;
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
 TEST_CASE("statement_serializer dbstat") {
     struct mystat : dbstat {
-        // A clever way of defining and using explicit column pointers for hidden `dbstat` member fields
+        // A clever way of defining and using explicit column pointers for hidden `dbstat` member fields mapped as columns into the mystat table
         using hidden = dbstat::hidden_columns_for<mystat>;
     };
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -27,7 +27,7 @@ TEST_CASE("statement_serializer dbstat") {
             value = serialize(expression, context);
             expected = R"(CREATE VIRTUAL TABLE IF NOT EXISTS "mystat" USING "dbstat")";
         }
-        SECTION("table value") {
+        SECTION("table value 1") {
             auto expression = make_virtual_table<mystat>("mystat", using_dbstat("main"));
             value = serialize(expression, context);
             expected = R"(CREATE VIRTUAL TABLE IF NOT EXISTS "mystat" USING "dbstat"('main'))";
@@ -47,7 +47,7 @@ TEST_CASE("statement_serializer dbstat") {
         }
 #endif
     }
-    SECTION("select") {
+    SECTION("expressions") {
         auto table = make_virtual_table<mystat>("dbstat", using_dbstat());
         using table_type = decltype(table);
         using db_objects_t = internal::db_objects_tuple<table_type>;
@@ -86,6 +86,28 @@ TEST_CASE("statement_serializer dbstat") {
             value = serialize(expression, context);
             expected = R"(SELECT "dbstat"."name", "dbstat"."schema" FROM "dbstat" WHERE ("dbstat"."schema" = 'main'))";
         }
+#endif
+        SECTION("table-valued function 1") {
+            value = serialize(from<mystat>("main"), context);
+            expected = R"(FROM "dbstat"('main'))";
+        }
+#if SQLITE_VERSION_NUMBER >= 3031000
+        SECTION("table-valued function 2") {
+            value = serialize(from<mystat>("main", true), context);
+            expected = R"(FROM "dbstat"('main', 1))";
+        }
+#endif
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        SECTION("table-valued function 1 [table reference]") {
+            value = serialize(from<mystat_table>("main"), context);
+            expected = R"(FROM "dbstat"('main'))";
+        }
+#if SQLITE_VERSION_NUMBER >= 3031000
+        SECTION("table-valued function 2 [table reference]") {
+            value = serialize(from<mystat_table>("main", true), context);
+            expected = R"(FROM "dbstat"('main', 1))";
+        }
+#endif
 #endif
     }
     REQUIRE(value == expected);

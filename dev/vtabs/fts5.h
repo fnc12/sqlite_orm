@@ -40,15 +40,20 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-    // Class namespace for hidden `fts5` columns
+    /** 
+     *  Class namespace for hidden `fts5` columns.
+     */
     struct fts5 {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-        // hidden columns of the `fts5` virtual table
+        /** 
+            Hidden columns of the `fts5` virtual table, which can be referred to using a 'column pointer'.
+         */
         struct hidden : internal::hidden_columns_tag {
             std::optional<int> rank;
         };
 
-        // A clever way of defining and using column pointers for structs derived from `dbstat` in a class namespace
+        // A clever way of defining and using column pointers for structs
+        // using hidden `fts5` member fields mapped as columns into a table
         template<class O>
         struct hidden_columns_for {
             static constexpr internal::column_pointer<O, decltype(&hidden::rank)> rank_column{&hidden::rank};

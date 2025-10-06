@@ -719,9 +719,19 @@ namespace sqlite_orm {
             inner_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
         };
 
-        template<class... Args>
+        template<class SFINAE, class... Tables>
         struct from_t {
-            using tuple_type = std::tuple<Args...>;
+            using tuple_type = std::tuple<Tables...>;
+        };
+
+        template<class VTab, class... TableValues>
+        struct from_t<std::enable_if_t<(sizeof...(TableValues) > 0) && (is_table_value_v<TableValues> && ...)>,
+                      VTab,
+                      TableValues...> {
+            using tuple_type = std::tuple<VTab>;
+            using constraints_type = std::tuple<TableValues...>;
+
+            constraints_type table_values;
         };
 
         template<class T>
@@ -745,9 +755,20 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  `storage.select(&User::id, from<User>());`
      */
     template<class... Tables>
-    internal::from_t<Tables...> from() {
-        static_assert(sizeof...(Tables) > 0, "");
+    constexpr internal::from_t<void, Tables...> from() {
+        static_assert(sizeof...(Tables) > 0);
         return {};
+    }
+
+    /**
+     *  Explicit FROM for an eponymous virtual table used as a table-valued function. Usage:
+     *  `storage.select(asterisk<dbstat>(), from<dbstat>("main", true));`
+     */
+    template<class VTab, class Value, class... Values>
+    constexpr auto from(Value firstTableValue, Values... tableValues) {
+        using namespace ::sqlite_orm::internal;
+        using from_type = from_t<void, VTab, table_value_t<Value>, table_value_t<Values>...>;
+        return from_type{{{std::move(firstTableValue)}, {std::move(tableValues)}...}};
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -756,8 +777,20 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  `storage.select(&User::id, from<"a"_alias.for_<User>>());`
      */
     template<orm_refers_to_recordset auto... recordsets>
-    auto from() {
+    constexpr auto from() {
         return from<internal::auto_decay_table_ref_t<recordsets>...>();
+    }
+
+    /**
+     *  Explicit FROM for an eponymous virtual table used as a table-valued function. Usage:
+     *  `storage.select(asterisk<dbstat>(), from<dbstat_table>("main", true));`
+     */
+    template<orm_table_reference auto vtab, class Value, class... Values>
+    constexpr auto from(Value firstTableValue, Values... tableValues) {
+        using namespace ::sqlite_orm::internal;
+
+        using from_type = from_t<void, auto_type_t<vtab>, table_value_t<Value>, table_value_t<Values>...>;
+        return from_type{{{std::move(firstTableValue)}, {std::move(tableValues)}...}};
     }
 #endif
 

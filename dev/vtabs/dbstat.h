@@ -47,6 +47,9 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /** 
+     *  Data structure for the `dbstat` eponymous virtual table.
+     */
     struct dbstat {
         std::string name;
         std::string path;
@@ -59,7 +62,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         int pgoffset = 0;
         int pgsize = 0;
 
-        // hidden columns of the `dbstat` virtual table
+        /** 
+            Hidden columns of the `dbstat` virtual table, which can be referred to using a 'column pointer'.
+         */
         struct hidden : internal::hidden_columns_tag {
             std::string schema;
 #if SQLITE_VERSION_NUMBER >= 3031000
@@ -68,7 +73,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         };
 
       protected:
-        // A clever way of defining and using column pointers for structs derived from `dbstat` in a class namespace
+        // A clever way of defining and using column pointers for structs derived from `dbstat`
+        // using hidden `dbstat` member fields mapped as columns into a table
         template<class O>
         struct hidden_columns_for {
             static constexpr internal::column_pointer<O, decltype(&hidden::schema)> schema_column{&hidden::schema};

@@ -2060,18 +2060,21 @@ namespace sqlite_orm {
             using statement_type = From;
 
             template<class Ctx>
-            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type&,
+            SQLITE_ORM_STATIC_CALLOP std::string operator()([[maybe_unused]] const statement_type& from,
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << "FROM ";
-                iterate_tuple<typename From::tuple_type>([&context, &ss, first = true](auto* dummyItem) mutable {
-                    using table_type = std::remove_pointer_t<decltype(dummyItem)>;
+                iterate_tuple<typename From::tuple_type>([&context, &ss, first = true](auto* dummy) mutable {
+                    using table_type = std::remove_pointer_t<decltype(dummy)>;
 
                     static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                     ss << sep[std::exchange(first, false)]
                        << streaming_identifier(lookup_table_name<mapped_type_proxy_t<table_type>>(context.db_objects),
                                                alias_extractor<table_type>::as_alias());
                 });
+                if constexpr (polyfill::is_detected_v<constraints_type_t, statement_type>) {
+                    ss << '(' << streaming_expressions_tuple(from.table_values, context) << ')';
+                }
                 return ss.str();
             }
         };

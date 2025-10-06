@@ -106,7 +106,7 @@ TEST_CASE("CTE expressions") {
     constexpr auto x = 1_colalias;
     using x_t = decltype(1_colalias);
     SECTION("moniker expressions") {
-        runTest<internal::from_t<cte_1>>(from<cte1>());
+        runTest<internal::from_t<void, cte_1>>(from<cte1>());
         runTest<internal::asterisk_t<cte_1>>(asterisk<cte1>());
         runTest<internal::count_asterisk_t<cte_1>>(count<cte1>());
         runTest<internal::left_join_t<cte_1, using_t<cte_1, alias_holder<x_t>>>>(left_join<cte1>(using_(cte1->*x)));

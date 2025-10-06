@@ -22,6 +22,7 @@ using internal::mapped_view;
 using internal::remove_all_t;
 using internal::remove_t;
 using internal::table_reference;
+using internal::table_value_t;
 using internal::using_t;
 using std::same_as;
 #endif
@@ -148,7 +149,8 @@ TEST_CASE("column pointers") {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     SECTION("table reference expressions") {
         runTest<internal::base_table<DerivedUser, std::false_type>>(make_table<derived_user>("derived_user"));
-        runTest<internal::from_t<DerivedUser>>(from<derived_user>());
+        runTest<internal::from_t<void, DerivedUser>>(from<derived_user>());
+        runTest<internal::from_t<void, dbstat, table_value_t<const char*>>>(from<dbstat_table>("main"));
         runTest<internal::into_t<DerivedUser>>(into<derived_user>());
         runTest<internal::asterisk_t<DerivedUser>>(asterisk<derived_user>());
         runTest<internal::object_t<DerivedUser>>(object<derived_user>());
