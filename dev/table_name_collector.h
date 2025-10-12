@@ -92,12 +92,6 @@ namespace sqlite_orm {
                 this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
             }
         };
-
-        template<class DBOs, satisfies<is_db_objects, DBOs> = true>
-        table_name_collector<DBOs> make_table_name_collector(const DBOs& dbObjects) {
-            return {dbObjects};
-        }
-
     }
 
 }

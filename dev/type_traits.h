@@ -9,7 +9,6 @@
 #endif
 #endif
 
-#include "functional/cxx_core_features.h"
 #include "functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
