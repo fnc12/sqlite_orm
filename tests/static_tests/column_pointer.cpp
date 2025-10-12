@@ -7,6 +7,8 @@
 
 using namespace sqlite_orm;
 using internal::column_pointer;
+using internal::is_recordset_alias_v;
+using internal::is_table_alias_v;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 using internal::count_asterisk_t;
 using internal::decay_table_ref_t;
@@ -16,13 +18,12 @@ using internal::get_all_t;
 using internal::get_optional_t;
 using internal::get_pointer_t;
 using internal::get_t;
-using internal::is_recordset_alias_v;
-using internal::is_table_alias_v;
 using internal::mapped_view;
 using internal::remove_all_t;
 using internal::remove_t;
 using internal::table_reference;
 using internal::table_value_t;
+using internal::table_valued_expression;
 using internal::using_t;
 using std::same_as;
 #endif
@@ -114,15 +115,15 @@ TEST_CASE("column pointers") {
         int id;
     };
     struct DerivedUser : User {};
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     constexpr auto derived_user = c<DerivedUser>();
-#endif
 
     SECTION("table reference") {
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        STATIC_REQUIRE(orm_table_reference<decltype(derived_user)>);
         STATIC_REQUIRE_FALSE(is_table_alias_v<decltype(derived_user)>);
         STATIC_REQUIRE_FALSE(is_recordset_alias_v<decltype(derived_user)>);
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+        STATIC_REQUIRE(orm_table_reference<decltype(derived_user)>);
+#endif
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         STATIC_REQUIRE_FALSE(orm_table_alias<decltype(derived_user)>);
         STATIC_REQUIRE_FALSE(orm_recordset_alias<decltype(derived_user)>);
         runTest<table_reference<DerivedUser>>(derived_user);
@@ -149,8 +150,12 @@ TEST_CASE("column pointers") {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     SECTION("table reference expressions") {
         runTest<internal::base_table<DerivedUser, std::false_type>>(make_table<derived_user>("derived_user"));
-        runTest<internal::from_t<void, DerivedUser>>(from<derived_user>());
-        runTest<internal::from_t<void, dbstat, table_value_t<const char*>>>(from<dbstat_table>("main"));
+        runTest<internal::from_t<DerivedUser>>(from<derived_user>());
+        runTest<internal::from2_t<table_valued_expression<dbstat, table_value_t<const char*>>>>(
+            from(dbstat_table("main")));
+        runTest<
+            internal::from2_t<table_reference<dbstat>, table_valued_expression<dbstat, table_value_t<const char*>>>>(
+            from(dbstat_table, dbstat_table("main")));
         runTest<internal::into_t<DerivedUser>>(into<derived_user>());
         runTest<internal::asterisk_t<DerivedUser>>(asterisk<derived_user>());
         runTest<internal::object_t<DerivedUser>>(object<derived_user>());

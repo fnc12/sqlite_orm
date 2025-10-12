@@ -4,7 +4,7 @@
 using namespace sqlite_orm;
 using internal::col_index_sequence_of, internal::col_index_sequence_with, internal::col_index_sequence_with_field_type,
     internal::hidden_col_index_sequence_of, internal::all_col_index_sequence_with_field_type;
-using internal::is_base_template_of_v;
+using internal::is_base_template_of_v, internal::is_table_reference_v;
 using internal::table_definition, internal::insertable_table_definition;
 
 template<class Elements>
@@ -15,7 +15,8 @@ TEST_CASE("generic vtab and dbstat layout tests") {
     using internal::dbstat_module_tag;
     struct mystat : dbstat {};
 
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    STATIC_REQUIRE(is_table_reference_v<decltype(dbstat_table)>);
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     STATIC_REQUIRE(orm_table_reference<decltype(dbstat_table)>);
 #endif
 
@@ -25,6 +26,7 @@ TEST_CASE("generic vtab and dbstat layout tests") {
         using elements_type = decltype(table.elements);
         STATIC_REQUIRE(std::is_same<table_type::module_type, dbstat_module_tag>::value);
         STATIC_REQUIRE(std::is_same<table_type::object_type, dbstat>::value);
+        STATIC_REQUIRE(std::is_same<table_type::object_type::hidden::enclosing_type, dbstat>::value);
         STATIC_REQUIRE(is_base_template_of_v<table_definition, table_type>);
         STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 10);
         STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, std::string>::size() == 3);
@@ -151,6 +153,7 @@ TEST_CASE("rtree layout tests") {
 }
 
 TEST_CASE("rtree_i32 static tests") {
+    using internal::rtree_i32_module_tag;
     SECTION("table definition") {
         struct DemoIndex {
             int64 id;
@@ -162,7 +165,7 @@ TEST_CASE("rtree_i32 static tests") {
                                           make_column("maxX", &DemoIndex::maxX));
         using definition_type = decltype(definition);
         using elements_type = decltype(definition.elements);
-        STATIC_REQUIRE(std::is_same<definition_type::module_type, internal::rtree_i32_module_tag>::value);
+        STATIC_REQUIRE(std::is_same<definition_type::module_type, rtree_i32_module_tag>::value);
         STATIC_REQUIRE(is_base_template_of_v<insertable_table_definition, definition_type>);
         STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 3);
         STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int64>::size() == 1);

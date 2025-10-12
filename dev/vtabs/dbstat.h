@@ -3,17 +3,19 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
 #include <type_traits>  //  std::false_type, std::true_type, std::is_convertible
-#include <tuple>  //  std::make_tuple
-#include <utility>  //  std::move, std::unreachable
+#include <tuple>  //  std::tuple_size, std::make_tuple, std::tuple
+#include <utility>  //  std::move, std::index_sequence_for
+#include <string>  //  std::string
 #endif
 #endif
 
 #include "../functional/gsl.h"
+#include "../tuple_helper/tuple_filter.h"
+#include "../member_traits/member_traits.h"
 #include "../schema/virtual_table.h"
 #include "../schema/column.h"
-#include "../tags.h"
 #include "../literal.h"
-#include "../column_pointer.h"
+#include "../table_reference.h"
 
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
 namespace sqlite_orm::internal {
@@ -63,38 +65,30 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         int pgsize = 0;
 
         /** 
-            Hidden columns of the `dbstat` virtual table, which can be referred to using a 'column pointer'.
+         *  Hidden columns of the `dbstat` virtual table, which can be referred to using a 'column pointer'.
+         *  See `hidden_columns`.
          */
-        struct hidden : internal::hidden_columns_tag {
+        struct hidden {
             std::string schema;
 #if SQLITE_VERSION_NUMBER >= 3031000
             bool aggregate = false;
 #endif
-        };
 
-      protected:
-        // A clever way of defining and using column pointers for structs derived from `dbstat`
-        // using hidden `dbstat` member fields mapped as columns into a table
-        template<class O>
-        struct hidden_columns_for {
-            static constexpr internal::column_pointer<O, decltype(&hidden::schema)> schema_column{&hidden::schema};
-
-#if SQLITE_VERSION_NUMBER >= 3031000
-            static constexpr internal::column_pointer<O, decltype(&hidden::aggregate)> aggregate_column{
-                &hidden::aggregate};
-#endif
-
-            hidden_columns_for() = delete;
+            using enclosing_type = dbstat;
         };
     };
 
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     inline constexpr orm_table_reference auto dbstat_table = c<dbstat>();
+#else
+    inline constexpr auto dbstat_table = c<dbstat>();
 #endif
 
     /**
      *  Factory function for a DBSTAT virtual table definition.
      *  If no schema is specified then the main schema is used.
+     *  
+     *  The hidden DBSTAT columns 'schema' and 'aggregate' are mapped into each table definition and can be used via an explicit column pointer.
      *  
      *  Though the DBSTAT virtual table is an eponymous table SQLite allows to create a virtual table instance with a different name.
      *  This is mostly useful with binding input arguments (so-called table values), e.g. a different schema than "main" or whether to query aggregated results.

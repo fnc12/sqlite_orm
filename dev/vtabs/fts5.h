@@ -3,7 +3,7 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if SQLITE_VERSION_NUMBER >= 3009000
 #include <tuple>  //  std::make_tuple
-#include <utility>  //  std::forward, std::unreachable
+#include <utility>  //  std::forward, std::move
 #endif
 #endif
 
@@ -48,17 +48,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         /** 
             Hidden columns of the `fts5` virtual table, which can be referred to using a 'column pointer'.
          */
-        struct hidden : internal::hidden_columns_tag {
+        struct hidden {
             std::optional<int> rank;
-        };
 
-        // A clever way of defining and using column pointers for structs
-        // using hidden `fts5` member fields mapped as columns into a table
-        template<class O>
-        struct hidden_columns_for {
-            static constexpr internal::column_pointer<O, decltype(&hidden::rank)> rank_column{&hidden::rank};
-
-            hidden_columns_for() = delete;
+            using enclosing_type = fts5;
         };
 #endif
 
@@ -67,12 +60,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Factory function for a FTS5 virtual table definition.
+     *  
+     *  The hidden FTS5 column 'rank' is mapped into each table definition and can be used via an explicit column pointer.
      */
     template<class... Cs>
     auto using_fts5(Cs... definition) {
         using namespace ::sqlite_orm::internal;
-        return make_fts5_definition(std::forward<Cs>(definition)...,
+        return make_fts5_definition(std::forward<Cs>(definition)...
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+                                    ,
                                     make_hidden_column("rank", &fts5::hidden::rank)
 #endif
         );

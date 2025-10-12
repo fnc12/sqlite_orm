@@ -1,18 +1,12 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 
-#pragma warning(default : 4996)
 using namespace sqlite_orm;
 
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
 TEST_CASE("statement_serializer dbstat") {
-    struct mystat : dbstat {
-        // A clever way of defining and using explicit column pointers for hidden `dbstat` member fields mapped as columns into the mystat table
-        using hidden = dbstat::hidden_columns_for<mystat>;
-    };
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    constexpr orm_table_reference auto mystat_table = c<mystat>();
-#endif
+    struct mystat : dbstat {};
+    constexpr auto mystat_table = c<mystat>();
 
     std::string value;
     std::string expected;
@@ -68,46 +62,30 @@ TEST_CASE("statement_serializer dbstat") {
                 R"(SELECT "dbstat"."name", "dbstat"."path", "dbstat"."pageno", "dbstat"."pagetype", "dbstat"."ncell", "dbstat"."payload", "dbstat"."unused", "dbstat"."mx_payload", "dbstat"."pgoffset", "dbstat"."pgsize" FROM "dbstat")";
         }
         SECTION("with hidden column in query") {
-            auto expression = select(columns(column<mystat>(&dbstat::name), column<mystat>(&dbstat::hidden::schema)),
-                                     where(column<mystat>(&dbstat::hidden::schema) == "main"));
-            value = serialize(expression, context);
-            expected = R"(SELECT "dbstat"."name", "dbstat"."schema" FROM "dbstat" WHERE ("dbstat"."schema" = 'main'))";
-        }
-        SECTION("with hidden column in query v2") {
-            auto expression = select(columns(column<mystat>(&dbstat::name), mystat::hidden::schema_column),
-                                     where(mystat::hidden::schema_column == "main"));
-            value = serialize(expression, context);
-            expected = R"(SELECT "dbstat"."name", "dbstat"."schema" FROM "dbstat" WHERE ("dbstat"."schema" = 'main'))";
-        }
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        SECTION("with hidden column in query [table reference]") {
             auto expression = select(columns(mystat_table->*&dbstat::name, mystat_table->*&dbstat::hidden::schema),
                                      where(mystat_table->*&dbstat::hidden::schema == "main"));
             value = serialize(expression, context);
             expected = R"(SELECT "dbstat"."name", "dbstat"."schema" FROM "dbstat" WHERE ("dbstat"."schema" = 'main'))";
         }
-#endif
+        SECTION("with hidden column in query v2") {
+            auto expression = select(columns(mystat_table->*&dbstat::name, mystat_table->*&dbstat::hidden::schema),
+                                     where(mystat_table->*&dbstat::hidden::schema == "main"));
+            value = serialize(expression, context);
+            expected = R"(SELECT "dbstat"."name", "dbstat"."schema" FROM "dbstat" WHERE ("dbstat"."schema" = 'main'))";
+        }
+        SECTION("table-valued function 0") {
+            value = serialize(from(mystat_table()), context);
+            expected = R"(FROM "dbstat"())";
+        }
         SECTION("table-valued function 1") {
-            value = serialize(from<mystat>("main"), context);
+            value = serialize(from(mystat_table("main")), context);
             expected = R"(FROM "dbstat"('main'))";
         }
 #if SQLITE_VERSION_NUMBER >= 3031000
         SECTION("table-valued function 2") {
-            value = serialize(from<mystat>("main", true), context);
+            value = serialize(from(mystat_table("main", true)), context);
             expected = R"(FROM "dbstat"('main', 1))";
         }
-#endif
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        SECTION("table-valued function 1 [table reference]") {
-            value = serialize(from<mystat_table>("main"), context);
-            expected = R"(FROM "dbstat"('main'))";
-        }
-#if SQLITE_VERSION_NUMBER >= 3031000
-        SECTION("table-valued function 2 [table reference]") {
-            value = serialize(from<mystat_table>("main", true), context);
-            expected = R"(FROM "dbstat"('main', 1))";
-        }
-#endif
 #endif
     }
     REQUIRE(value == expected);

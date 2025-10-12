@@ -719,24 +719,6 @@ namespace sqlite_orm {
             inner_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
         };
 
-        template<class SFINAE, class... Tables>
-        struct from_t {
-            using tuple_type = std::tuple<Tables...>;
-        };
-
-        template<class VTab, class... TableValues>
-        struct from_t<std::enable_if_t<(sizeof...(TableValues) > 0) && (is_table_value_v<TableValues> && ...)>,
-                      VTab,
-                      TableValues...> {
-            using tuple_type = std::tuple<VTab>;
-            using constraints_type = std::tuple<TableValues...>;
-
-            constraints_type table_values;
-        };
-
-        template<class T>
-        using is_from = polyfill::is_specialization_of<T, from_t>;
-
         template<class T>
         using is_constrained_join = polyfill::is_detected<on_type_t, T>;
 
@@ -746,6 +728,21 @@ namespace sqlite_orm {
                                                            check_if_is_template<natural_join_t>>,
                                           T>;
 
+        template<class... Tables>
+        struct from_t {
+            using tuple_type = std::tuple<Tables...>;
+        };
+
+        template<class T>
+        using is_from = polyfill::is_specialization_of<T, from_t>;
+
+        template<class... TableExpr>
+        struct from2_t {
+            std::tuple<TableExpr...> table_expressions;
+        };
+
+        template<class T>
+        using is_from2 = polyfill::is_specialization_of<T, from2_t>;
     }
 }
 
@@ -755,20 +752,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  `storage.select(&User::id, from<User>());`
      */
     template<class... Tables>
-    constexpr internal::from_t<void, Tables...> from() {
+    constexpr internal::from_t<Tables...> from() {
         static_assert(sizeof...(Tables) > 0);
         return {};
-    }
-
-    /**
-     *  Explicit FROM for an eponymous virtual table used as a table-valued function. Usage:
-     *  `storage.select(asterisk<dbstat>(), from<dbstat>("main", true));`
-     */
-    template<class VTab, class Value, class... Values>
-    constexpr auto from(Value firstTableValue, Values... tableValues) {
-        using namespace ::sqlite_orm::internal;
-        using from_type = from_t<void, VTab, table_value_t<Value>, table_value_t<Values>...>;
-        return from_type{{{std::move(firstTableValue)}, {std::move(tableValues)}...}};
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -780,17 +766,29 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     constexpr auto from() {
         return from<internal::auto_decay_table_ref_t<recordsets>...>();
     }
+#endif
 
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     /**
      *  Explicit FROM for an eponymous virtual table used as a table-valued function. Usage:
-     *  `storage.select(asterisk<dbstat>(), from<dbstat_table>("main", true));`
+     *  `storage.select(asterisk<dbstat>(), from(dbstat_table("main", true)));`
      */
-    template<orm_table_reference auto vtab, class Value, class... Values>
-    constexpr auto from(Value firstTableValue, Values... tableValues) {
-        using namespace ::sqlite_orm::internal;
-
-        using from_type = from_t<void, auto_type_t<vtab>, table_value_t<Value>, table_value_t<Values>...>;
-        return from_type{{{std::move(firstTableValue)}, {std::move(tableValues)}...}};
+    template<class... TableExpr>
+        requires ((orm_refers_to_recordset<TableExpr> || orm_table_valued_expression<TableExpr>) && ...)
+    constexpr internal::from2_t<TableExpr...> from(TableExpr... tableExpressions) {
+        return {{std::move(tableExpressions)...}};
+    }
+#else
+    /**
+     *  Explicit FROM for an eponymous virtual table used as a table-valued function. Usage:
+     *  `storage.select(asterisk<dbstat>(), from(dbstat_table("main", true)));`
+     */
+    template<class... TableExpr>
+    constexpr internal::from2_t<TableExpr...> from(TableExpr... tableExpressions) {
+        static_assert(
+            ((internal::is_referring_to_recordset_v<TableExpr> || internal::is_table_valued_expression_v<TableExpr>) &&
+             ...));
+        return {{std::move(tableExpressions)...}};
     }
 #endif
 

@@ -11,9 +11,6 @@ TEST_CASE("fts5 virtual table schema") {
         std::string title;
         std::string body;
 
-        // A clever way of defining and using explicit column pointers for hidden `fts5` member fields mapped as columns into the Post table
-        using hidden = fts5::hidden_columns_for<Post>;
-
 #ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
         bool operator==(const Post&) const = default;
 #else
@@ -22,6 +19,7 @@ TEST_CASE("fts5 virtual table schema") {
         }
 #endif
     };
+    constexpr auto post_table = c<Post>();
 
     auto virtualTable =
         make_virtual_table("posts", using_fts5(make_column("title", &Post::title), make_column("body", &Post::body)));
@@ -85,7 +83,7 @@ TEST_CASE("fts5 virtual table schema") {
     ///    ORDER BY rank;
     auto orderedPosts = storage.get_all<Post>(where(match<Post>("fts5")), order_by(rank()));
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-    orderedPosts = storage.get_all<Post>(where(match<Post>("fts5")), order_by(Post::hidden::rank_column));
+    orderedPosts = storage.get_all<Post>(where(match<Post>("fts5")), order_by(post_table->*&fts5::hidden::rank));
 #endif
 
     ///    SELECT highlight(posts,0, '<b>', '</b>'),
@@ -101,7 +99,7 @@ TEST_CASE("fts5 virtual table schema") {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     highlightedPosts = storage.select(columns(highlight<Post>(0, "<b>", "</b>"), highlight<Post>(1, "<b>", "</b>")),
                                       where(match<Post>("SQLite")),
-                                      order_by(Post::hidden::rank_column));
+                                      order_by(post_table->*&fts5::hidden::rank));
 #endif
 }
 
@@ -163,19 +161,19 @@ TEST_CASE("dbstat virtual table schema") {
             auto dbstatRows = storage.get_all<dbstat>();
             REQUIRE(dbstatRows.size() == 0);
 
-            dbstatRows = storage.get_all<dbstat>(where(column<dbstat>(&dbstat::hidden::schema) == "main"));
+            dbstatRows = storage.get_all<dbstat>(where(dbstat_table->*&dbstat::hidden::schema == "main"));
             REQUIRE(dbstatRows.size() == 0);
 
-            dbstatRows = storage.select(object<dbstat>(), from<dbstat>("main"));
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            dbstatRows = storage.select(object<dbstat_table>(), from(dbstat_table("main")));
             REQUIRE(dbstatRows.size() == 0);
+#endif
         }
     }
 
     SECTION("virtual table instance") {
-        struct mystat : dbstat {
-            // A clever way of defining and using explicit column pointers for hidden `dbstat` member fields mapped as columns into the mystat table
-            using hidden = dbstat::hidden_columns_for<mystat>;
-        };
+        struct mystat : dbstat {};
+        constexpr auto mystat_table = c<mystat>();
 
         SECTION("definition") {
             auto virtualTable = make_virtual_table<mystat>("mystat", using_dbstat());
@@ -193,13 +191,7 @@ TEST_CASE("dbstat virtual table schema") {
             auto mystatRows = storage.get_all<mystat>();
             REQUIRE(mystatRows.size() == 1);
 
-            mystatRows = storage.get_all<mystat>(where(column<mystat>(&dbstat::hidden::schema) == "main"));
-            REQUIRE(mystatRows.size() == 1);
-
-            mystatRows = storage.get_all<mystat>(where(mystat::hidden::schema_column == "main"));
-            REQUIRE(mystatRows.size() == 1);
-
-            mystatRows = storage.select(object<mystat>(), from<mystat>("main"));
+            mystatRows = storage.get_all<mystat>(where(mystat_table->*&dbstat::hidden::schema == "main"));
             REQUIRE(mystatRows.size() == 1);
         }
     }

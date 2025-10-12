@@ -89,9 +89,6 @@ namespace sqlite_orm {
         using elements_type_t = typename T::elements_type;
 
         template<typename T>
-        using table_type_t = typename T::table_type;
-
-        template<typename T>
         using target_type_t = typename T::target_type;
 
         template<typename T>
@@ -108,6 +105,9 @@ namespace sqlite_orm {
 
         template<class As>
         using alias_type_t = typename As::alias_type;
+
+        template<class T>
+        using enclosing_type_t = typename T::enclosing_type;
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         template<class T>

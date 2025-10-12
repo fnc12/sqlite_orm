@@ -52,7 +52,25 @@ TEST_CASE("table name collector") {
         }
         REQUIRE(collector.table_names == expected);
     }
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+    SECTION("from hidden") {
+        const std::tuple dbObjects2{make_dbstat_table()};
+        const std::string& tableName = std::get<0>(dbObjects2).name;
+        internal::table_name_collector collector(dbObjects2);
 
+        SECTION("regular column") {
+            auto expression = &dbstat::hidden::schema;
+            expected.emplace(tableName, "");
+            iterate_ast(expression, collector);
+        }
+        SECTION("regular column pointer") {
+            auto expression = dbstat_table->*&dbstat::hidden::schema;
+            expected.emplace(tableName, "");
+            iterate_ast(expression, collector);
+        }
+        REQUIRE(collector.table_names == expected);
+    }
+#endif
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     SECTION("from CTE") {
         const auto dbObjects2 =

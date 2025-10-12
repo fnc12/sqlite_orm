@@ -16,8 +16,6 @@ namespace sqlite_orm {
          */
         struct condition_t {};
 
-        struct hidden_columns_tag {};
-
         /**
          *  Specialize if a type participates as an argument to overloaded operators (arithmetic, conditional, negation, chaining)
          */
