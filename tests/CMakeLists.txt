@@ -48,13 +48,13 @@ endif()
 file(GLOB_RECURSE UNIT_TEST_SOURCES "*.cpp")
 ucm_remove_directories(named_module FROM UNIT_TEST_SOURCES)
 # Download .c file for the generate_series module
-file(DOWNLOAD "https://github.com/sqlite/sqlite/blob/version-3.50.4/ext/misc/series.c" "${CMAKE_CURRENT_SOURCE_DIR}/series.c")
+file(DOWNLOAD "https://raw.githubusercontent.com/sqlite/sqlite/refs/tags/version-3.50.4/ext/misc/series.c" "${CMAKE_CURRENT_SOURCE_DIR}/.sqlite3/ext/misc/series.c")
 # Build series.c as a static module, which will be directly initialized and used by the unit tests target
-set_source_files_properties(series.c PROPERTIES
+set_source_files_properties(.sqlite3/ext/misc/series.c PROPERTIES
     SKIP_PRECOMPILE_HEADERS ON
     COMPILE_DEFINITIONS "SQLITE_CORE")
 
-add_executable(unit_tests ${UNIT_TEST_SOURCES} series.c)
+add_executable(unit_tests ${UNIT_TEST_SOURCES} .sqlite3/ext/misc/series.c)
 
 if(SQLITE_ORM_OMITS_CODECVT)
     message(STATUS "SQLITE_ORM_OMITS_CODECVT is enabled")
