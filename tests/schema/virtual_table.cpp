@@ -1,5 +1,8 @@
+#include <sqlite3.h>
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+
+extern "C" int sqlite3_series_init(sqlite3*, char**, const sqlite3_api_routines*);
 
 #if SQLITE_VERSION_NUMBER >= 3009000
 using namespace sqlite_orm;
@@ -193,6 +196,84 @@ TEST_CASE("dbstat virtual table schema") {
 
             mystatRows = storage.get_all<mystat>(where(mystat_table->*&dbstat::hidden::schema == "main"));
             REQUIRE(mystatRows.size() == 1);
+        }
+    }
+}
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3008012
+TEST_CASE("generate_series virtual table schema") {
+    using Catch::Matchers::Equals, Catch::Matchers::UnorderedEquals;
+    constexpr auto compareColumnName = [](const std::string* foundValue, const std::string& expectedValue) {
+        if (!foundValue) {
+            return false;
+        }
+        return *foundValue == expectedValue;
+    };
+
+    SECTION("epynomous") {
+        SECTION("definition") {
+            auto virtualTable = make_generate_series_table();
+            REQUIRE(compareColumnName(virtualTable.find_column_name(&generate_series::value), "value"));
+            REQUIRE(compareColumnName(virtualTable.find_column_name(&generate_series::hidden::step), "step"));
+        }
+        SECTION("storage") {
+            struct Customer {
+                int64 id = 0;
+                std::string name;
+            };
+            constexpr auto customer_table = c<Customer>();
+
+            auto storage = make_storage("",
+                                        make_generate_series_table(),
+                                        make_table("customer",
+                                                   make_column("id", &Customer::id, primary_key()),
+                                                   make_column("name", &Customer::name)),
+                                        on_open([](sqlite3* db) {
+                                            sqlite3_series_init(db, nullptr, nullptr);
+                                        }));
+            storage.sync_schema();
+            storage.insert(into<Customer>(),
+                           columns(&Customer::id, &Customer::name),
+                           values(std::tuple(1, "c1"),
+                                  std::tuple(100, "c100"),
+                                  std::tuple(15000, "c15000"),
+                                  std::tuple(15100, "c15100"),
+                                  std::tuple(20100, "c20100")));
+            SECTION("eponymous") {
+                // eponymous virtual tables must not get created
+                REQUIRE_FALSE(storage.table_exists("generate_series"));
+            }
+            SECTION("equivalent query") {
+                auto rows = storage.select(&generate_series::value,
+                                           where(c(&generate_series::hidden::start) == 5 and
+                                                 c(&generate_series::hidden::stop) == 30 and
+                                                 c(&generate_series::hidden::step) == 5));
+                REQUIRE_THAT(rows, Equals(std::vector<int>{5, 10, 15, 20, 25, 30}));
+            }
+            SECTION("series") {
+                auto rows = storage.select(&generate_series::value, from(generate_series_table(5, 30, 5)));
+                REQUIRE_THAT(rows, Equals(std::vector<int>{5, 10, 15, 20, 25, 30}));
+            }
+            SECTION("random") {
+                auto rows = storage.select(random(), from(generate_series_table(1, 6)));
+                REQUIRE(rows.size() == 6);
+            }
+            SECTION("customer 1") {
+                auto rows = storage.select(
+                    &Customer::name,
+                    from(customer_table, generate_series_table(10000, 20000, 100)),
+                    where(customer_table->*&Customer::id == generate_series_table->*&generate_series::value));
+                REQUIRE_THAT(rows, UnorderedEquals(std::vector<std::string>{"c15000", "c15100"}));
+            }
+            SECTION("customer 2") {
+                auto rows = storage.select(&Customer::name,
+                                           from(customer_table),
+                                           where(in(customer_table->*&Customer::id,
+                                                    select(generate_series_table->*&generate_series::value,
+                                                           from(generate_series_table(10000, 20000, 100))))));
+                REQUIRE_THAT(rows, UnorderedEquals(std::vector<std::string>{"c15000", "c15100"}));
+            }
         }
     }
 }

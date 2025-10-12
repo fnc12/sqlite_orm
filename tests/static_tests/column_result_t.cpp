@@ -179,3 +179,7 @@ TEST_CASE("mapped type proxy") {
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
     STATIC_REQUIRE(std::is_same<mapped_type_proxy_t<dbstat::hidden>, dbstat>::value);
 #endif
+#if SQLITE_VERSION_NUMBER >= 3008012
+    STATIC_REQUIRE(std::is_same<mapped_type_proxy_t<generate_series::hidden>, generate_series>::value);
+#endif
+}

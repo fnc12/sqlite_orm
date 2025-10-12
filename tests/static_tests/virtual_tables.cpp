@@ -59,6 +59,31 @@ TEST_CASE("generic vtab and dbstat layout tests") {
 }
 #endif
 
+#if SQLITE_VERSION_NUMBER >= 3008012
+TEST_CASE("generate_series layout tests") {
+    using internal::generate_series_module_tag;
+
+    STATIC_REQUIRE(is_table_reference_v<decltype(generate_series_table)>);
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    STATIC_REQUIRE(orm_table_reference<decltype(generate_series_table)>);
+#endif
+
+    SECTION("default table definition") {
+        auto table = make_generate_series_table();
+        using table_type = decltype(table);
+        using elements_type = decltype(table.elements);
+        STATIC_REQUIRE(std::is_same<table_type::module_type, generate_series_module_tag>::value);
+        STATIC_REQUIRE(std::is_same<table_type::object_type, generate_series>::value);
+        STATIC_REQUIRE(std::is_same<table_type::object_type::hidden::enclosing_type, generate_series>::value);
+        STATIC_REQUIRE(is_base_template_of_v<table_definition, table_type>);
+        STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 1);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int>::size() == 1);
+        STATIC_REQUIRE(all_col_index_sequence_with_field_type<elements_type, int>::size() == 4);
+        STATIC_REQUIRE(hidden_col_index_sequence_of<elements_type>::size() == 3);
+    }
+}
+#endif
+
 #if SQLITE_VERSION_NUMBER >= 3009000
 TEST_CASE("fts5 layout tests") {
     using internal::fts5_module_tag;
