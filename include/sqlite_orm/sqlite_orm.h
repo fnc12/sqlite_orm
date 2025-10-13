@@ -2391,7 +2391,7 @@ namespace sqlite_orm::internal {
             return {{ {std::move(inputValues)}... }};
         }
 #else
-        template<class... Values, class = polyfill::void_t<typename O::hidden>>
+        template<class... Values, class X = O, class Requires = typename X::hidden>
         table_valued_expression<O, table_value_t<Values>...> operator()(Values... inputValues) const {
             return {{ {std::move(inputValues)}... }};
         }
