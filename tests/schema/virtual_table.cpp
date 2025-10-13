@@ -256,7 +256,7 @@ TEST_CASE("generate_series virtual table schema") {
                 REQUIRE_THAT(rows, Equals(std::vector<int>{5, 10, 15, 20, 25, 30}));
             }
             SECTION("random") {
-                auto rows = storage.select(random(), from(generate_series_table(1, 6)));
+                auto rows = storage.select(sqlite_orm::random(), from(generate_series_table(1, 6)));
                 REQUIRE(rows.size() == 6);
             }
             SECTION("customer 1") {
