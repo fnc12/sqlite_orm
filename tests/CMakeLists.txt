@@ -80,6 +80,11 @@ if(MSVC)
         target_link_options(unit_tests PRIVATE "/ENTRY:wmainCRTStartup")
     endif()
 endif()
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(unit_tests PUBLIC
+        # disabled due to unit tests still testing deprecated features
+        -Wdeprecated-declarations)
+endif()
 
 target_precompile_headers(unit_tests PRIVATE
     <sqlite3.h>
