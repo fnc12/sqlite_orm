@@ -31,18 +31,21 @@ namespace sqlite_orm::internal {
      */
     template<class O>
     struct table_reference : polyfill::type_identity<O> {
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
         /** 
          *  Make a table-valued function call.
          */
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
         template<class... Values>
             requires requires { typename O::hidden; }
-        table_valued_expression<O, table_value_t<Values>...> operator()(Values... inputValues) const {
+        constexpr table_valued_expression<O, table_value_t<Values>...> operator()(Values... inputValues) const {
             return {{ {std::move(inputValues)}... }};
         }
 #else
+        /** 
+         *  Make a table-valued function call.
+         */
         template<class... Values, class X = O, class Requires = typename X::hidden>
-        table_valued_expression<O, table_value_t<Values>...> operator()(Values... inputValues) const {
+        constexpr table_valued_expression<O, table_value_t<Values>...> operator()(Values... inputValues) const {
             return {{{std::move(inputValues)}...}};
         }
 #endif

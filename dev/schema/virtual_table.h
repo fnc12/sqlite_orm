@@ -119,9 +119,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Factory function for a virtual table.
      *  
-     *  The mapped object type is determined implicitly from the first column definition.
+     *  The mapped object type is explicitly specified.
      */
-    template<class M, class... Cs, class O = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
+    template<class O, class M, class... Cs>
     internal::virtual_table<O, M, Cs...> make_virtual_table(std::string name,
                                                             internal::virtual_table_definition<M, Cs...> definition) {
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name), std::move(definition)});
@@ -130,12 +130,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Factory function for a virtual table.
      *  
-     *  The mapped object type is explicitly specified.
+     *  The mapped object type is determined implicitly from the first column definition.
      */
-    template<class O, class M, class... Cs>
+    template<class M, class... Cs, class O = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::virtual_table<O, M, Cs...> make_virtual_table(std::string name,
                                                             internal::virtual_table_definition<M, Cs...> definition) {
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name), std::move(definition)});
+        return make_virtual_table<O>(std::move(name), std::move(definition));
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES

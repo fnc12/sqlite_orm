@@ -7,7 +7,6 @@
 #endif
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/gsl.h"
 #include "../schema/virtual_table.h"
 #include "../schema/column.h"

@@ -2389,18 +2389,21 @@ namespace sqlite_orm::internal {
      */
     template<class O>
     struct table_reference : polyfill::type_identity<O> {
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
         /** 
          *  Make a table-valued function call.
          */
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
         template<class... Values>
             requires requires { typename O::hidden; }
-        table_valued_expression<O, table_value_t<Values>...> operator()(Values... inputValues) const {
+        constexpr table_valued_expression<O, table_value_t<Values>...> operator()(Values... inputValues) const {
             return {{ {std::move(inputValues)}... }};
         }
 #else
+        /** 
+         *  Make a table-valued function call.
+         */
         template<class... Values, class X = O, class Requires = typename X::hidden>
-        table_valued_expression<O, table_value_t<Values>...> operator()(Values... inputValues) const {
+        constexpr table_valued_expression<O, table_value_t<Values>...> operator()(Values... inputValues) const {
             return {{ {std::move(inputValues)}... }};
         }
 #endif
@@ -20622,9 +20625,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Factory function for a virtual table.
      *  
-     *  The mapped object type is determined implicitly from the first column definition.
+     *  The mapped object type is explicitly specified.
      */
-    template<class M, class... Cs, class O = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
+    template<class O, class M, class... Cs>
     internal::virtual_table<O, M, Cs...> make_virtual_table(std::string name,
                                                             internal::virtual_table_definition<M, Cs...> definition) {
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name), std::move(definition)});
@@ -20633,12 +20636,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Factory function for a virtual table.
      *  
-     *  The mapped object type is explicitly specified.
+     *  The mapped object type is determined implicitly from the first column definition.
      */
-    template<class O, class M, class... Cs>
+    template<class M, class... Cs, class O = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::virtual_table<O, M, Cs...> make_virtual_table(std::string name,
                                                             internal::virtual_table_definition<M, Cs...> definition) {
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name), std::move(definition)});
+        return make_virtual_table<O>(std::move(name), std::move(definition));
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -26422,8 +26425,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
-
 // #include "../functional/gsl.h"
 
 // #include "../schema/virtual_table.h"
@@ -26524,8 +26525,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cxx_optional.h"
 
-// #include "../functional/cxx_type_traits_polyfill.h"
-
 // #include "../functional/gsl.h"
 
 // #include "../functional/mpl.h"
@@ -26539,12 +26538,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3009000
 namespace sqlite_orm::internal {
     template<class T>
-    using is_fts5_table_element_or_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_column>,
-                                                                               check_if_is_template<prefix_t>,
-                                                                               check_if_is_template<tokenize_t>,
-                                                                               check_if_is_template<content_t>,
-                                                                               check_if_is_template<table_content_t>>,
-                                                              T>;
+    inline constexpr bool is_fts5_table_element_or_constraint_v =
+        mpl::invoke_t<mpl::disjunction<check_if<is_column>,
+                                       check_if_is_template<prefix_t>,
+                                       check_if_is_template<tokenize_t>,
+                                       check_if_is_template<content_t>,
+                                       check_if_is_template<table_content_t>>,
+                      T>::value;
     struct fts5_module_tag {
         // simplify conceptual/meta programming
         using module_type = fts5_module_tag;
@@ -26605,8 +26605,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T, class... Cs>
     [[deprecated("Specify the explicit object type when calling `make_virtual_table()`.")]]
     internal::virtual_table_description<T, internal::fts5_module_tag, Cs...> using_fts5(Cs... definition) {
-        using namespace ::sqlite_orm::internal;
-        static_assert(polyfill::conjunction_v<internal::is_fts5_table_element_or_constraint<Cs>...>,
+        static_assert((internal::is_fts5_table_element_or_constraint_v<Cs> && ...),
                       "Incorrect table elements or constraints");
 
         SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(definition)...)});
@@ -26625,8 +26624,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 
-// #include "../functional/cxx_type_traits_polyfill.h"
-
 // #include "../functional/gsl.h"
 
 // #include "../functional/mpl.h"
@@ -26642,7 +26639,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ENABLE_RTREE
 namespace sqlite_orm::internal {
     template<class T>
-    using is_rtree_table_element_or_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_column>>, T>;
+    inline constexpr bool is_rtree_table_element_or_constraint_v =
+        mpl::invoke_t<mpl::disjunction<check_if<is_column>>, T>::value;
 
     struct rtree_module_tag {
         // simplify conceptual/meta programming
@@ -26673,14 +26671,13 @@ namespace sqlite_orm::internal {
                                  rtree_col_index_sequence,
                                  field_type_t>::value;
 
-        static_assert(polyfill::conjunction_v<is_rtree_table_element_or_constraint<Cs>...>,
-                      "Incorrect table elements or constraints");
+        static_assert((is_rtree_table_element_or_constraint_v<Cs> && ...), "Incorrect table elements or constraints");
         static_assert(nRTreeColumns >= 3 && nRTreeColumns <= 11 && nRTreeColumns % 2 == 1,
                       "An RTREE table must have between 1 and 5 dimensions consisting of min/max-value pair columns");
         static_assert(
             nRTreeColumnsOfExpectedType == nRTreeColumns - 1,
             R"(The min/max-value pair columns need to be 32-bit floating point values for RTREE virtual tables and 32-bit signed integers for RTREE_I32 virtual tables, as they are stored as such)");
-        static_assert(std::is_same<typename std::tuple_element_t<0, elements_type>::field_type, int64>::value,
+        static_assert(std::is_same<field_type_t<std::tuple_element_t<0, elements_type>>, int64>::value,
                       "The type of the first column must be a 64-bit integer");
     }
 }
