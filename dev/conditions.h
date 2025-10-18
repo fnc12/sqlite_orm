@@ -738,7 +738,9 @@ namespace sqlite_orm {
 
         template<class... TableExpr>
         struct from2_t {
-            std::tuple<TableExpr...> table_expressions;
+            using tuple_type = std::tuple<TableExpr...>;
+
+            tuple_type table_expressions;
         };
 
         template<class T>

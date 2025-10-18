@@ -173,16 +173,13 @@ namespace sqlite_orm {
             }
         };
 
-        static_assert(mpl::invoke_t<check_if_is_template<literal_holder>, table_value_t<int>>::value,
-                      "Internal: Create a serializer for `table_value_t`");
-
         // Eponymous virtual tables serialize only table values. Their definition is built-in, fixed and implicit
         template<class ModTraits,
                  class Elements,
                  class Ctx,
                  std::enable_if_t<ModTraits::is_eponymous::value, bool> = true>
         std::string serialize_virtual_table_definition(const Elements& elements, const Ctx& context) {
-            using table_values_index_sequence = filter_tuple_sequence_t<Elements, is_table_value>;
+            using table_values_index_sequence = filter_tuple_sequence_t<Elements, is_literal>;
 
             if constexpr (table_values_index_sequence::size() == 0) {
                 return {};

@@ -2327,7 +2327,9 @@ namespace sqlite_orm {
 // #include "table_reference.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::remove_const, std::type_identity
+#include <type_traits>  //  std::enable_if, std::remove_const, std::type_identity
+#include <utility>  // std::move
+#include <tuple>
 #endif
 
 // #include "functional/cxx_type_traits_polyfill.h"
@@ -2355,25 +2357,16 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_literal = polyfill::bool_constant<is_literal_v<T>>;
-
-    template<class T>
-    using table_value_t = literal_holder<T>;
-
-    template<class T>
-    inline constexpr bool is_table_value_v = is_literal_v<T>;
-
-    template<class T>
-    using is_table_value = polyfill::bool_constant<is_table_value_v<T>>;
 }
 
 namespace sqlite_orm::internal {
     /*
-     *  Bound input values.
+     *  Bound input arguments.
      */
-    template<class Table, class... TableValues>
+    template<class Table, class... Args>
     struct table_valued_expression {
         using type = Table;
-        using constraints_type = std::tuple<TableValues...>;
+        using constraints_type = std::tuple<Args...>;
 
         constraints_type table_values;
     };
@@ -2393,18 +2386,17 @@ namespace sqlite_orm::internal {
         /** 
          *  Make a table-valued function call.
          */
-        template<class... Values>
-            requires requires { typename O::hidden; }
-        constexpr table_valued_expression<O, table_value_t<Values>...> operator()(Values... inputValues) const {
-            return {{ {std::move(inputValues)}... }};
+        template<class... Args>
+        constexpr table_valued_expression<O, Args...> operator()(Args... arguments) const {
+            return {{ {std::move(arguments)}... }};
         }
 #else
         /** 
          *  Make a table-valued function call.
          */
-        template<class... Values, class X = O, class Requires = typename X::hidden>
-        constexpr table_valued_expression<O, table_value_t<Values>...> operator()(Values... inputValues) const {
-            return {{ {std::move(inputValues)}... }};
+        template<class... Args>
+        constexpr table_valued_expression<O, Args...> operator()(Args... arguments) const {
+            return {{ {std::move(arguments)}... }};
         }
 #endif
     };
@@ -6021,7 +6013,9 @@ namespace sqlite_orm {
 
         template<class... TableExpr>
         struct from2_t {
-            std::tuple<TableExpr...> table_expressions;
+            using tuple_type = std::tuple<TableExpr...>;
+
+            tuple_type table_expressions;
         };
 
         template<class T>
@@ -16017,6 +16011,27 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T>
+        struct ast_iterator<T, match_if<is_table_valued_expression, T>> {
+            using node_type = T;
+
+            template<class L>
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& expression,
+                                                     L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
+                iterate_ast(expression.table_values, lambda);
+            }
+        };
+
+        template<class T>
+        struct ast_iterator<T, match_if<is_from2, T>> {
+            using node_type = T;
+
+            template<class L>
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& from, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
+                iterate_ast(from.table_expressions, lambda);
+            }
+        };
+
         template<class C>
         struct ast_iterator<where_t<C>, void> {
             using node_type = where_t<C>;
@@ -20771,22 +20786,21 @@ namespace sqlite_orm {
             }
         };
 
-        static_assert(mpl::invoke_t<check_if_is_template<literal_holder>, table_value_t<int>>::value,
-                      "Internal: Create a serializer for `table_value_t`");
-
         // Eponymous virtual tables serialize only table values. Their definition is built-in, fixed and implicit
         template<class ModTraits,
                  class Elements,
                  class Ctx,
                  std::enable_if_t<ModTraits::is_eponymous::value, bool> = true>
         std::string serialize_virtual_table_definition(const Elements& elements, const Ctx& context) {
-            using table_values_index_sequence = filter_tuple_sequence_t<Elements, is_table_value>;
+            using table_values_index_sequence = filter_tuple_sequence_t<Elements, is_literal>;
 
             if constexpr (table_values_index_sequence::size() == 0) {
                 return {};
             } else {
+                auto subContext = context;
+                subContext.replace_bindable_with_question = false;
                 std::stringstream ss;
-                ss << "(" << streaming_filtered_expressions_tuple(elements, table_values_index_sequence{}, context)
+                ss << "(" << streaming_filtered_expressions_tuple(elements, table_values_index_sequence{}, subContext)
                    << ")";
                 return ss.str();
             }
@@ -26107,6 +26121,18 @@ namespace sqlite_orm {
 
         template<class T, class O>
         struct node_tuple<limit_t<T, true, true, O>, void> : node_tuple_for<O, T> {};
+
+        template<class... TableExpr>
+        struct node_tuple<from2_t<TableExpr...>, void> : node_tuple_for<TableExpr...> {};
+
+        /*
+         *  Table reference as part of FROM clause: skip
+         */
+        template<class R>
+        struct node_tuple<R, match_if<is_table_reference, R>> : node_tuple<void> {};
+
+        template<class Table, class... Args>
+        struct node_tuple<table_valued_expression<Table, Args...>, void> : node_tuple_for<Args...> {};
     }
 }
 
@@ -26404,7 +26430,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3031000
                                       make_hidden_column("aggregate", &dbstat::hidden::aggregate),
 #endif
-                                      table_value_t<Value>{std::move(tableValues)}...);
+                                      literal_holder<Value>{std::move(tableValues)}...);
     }
 
     /**

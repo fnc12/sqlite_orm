@@ -8,7 +8,7 @@ using internal::is_base_template_of_v, internal::is_table_reference_v;
 using internal::table_definition, internal::insertable_table_definition;
 
 template<class Elements>
-using table_values_index_sequence = internal::filter_tuple_sequence_t<Elements, internal::is_table_value>;
+using table_values_index_sequence = internal::filter_tuple_sequence_t<Elements, internal::is_literal>;
 
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
 TEST_CASE("generic vtab and dbstat layout tests") {

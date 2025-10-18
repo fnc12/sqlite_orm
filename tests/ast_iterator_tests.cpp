@@ -460,5 +460,12 @@ TEST_CASE("ast_iterator") {
         iterate_ast(expression3, nodeLambda);
     }
 #endif
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+    SECTION("table-valued") {
+        auto expression = from(dbstat_table("main"));
+        expected.push_back(typeid(const char*));
+        iterate_ast(expression, lambda);
+    }
+#endif
     REQUIRE(typeIndexes == expected);
 }

@@ -1047,4 +1047,11 @@ TEST_CASE("Node tuple") {
         STATIC_REQUIRE(std::is_same_v<Tuple, ExpectedTuple>);
     }
 #endif
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+    SECTION("table-valued") {
+        auto expression = from(dbstat_table, dbstat_table("main", true));
+        using Tuple = typename node_tuple<decltype(expression)>::type;
+        STATIC_REQUIRE(is_same<Tuple, tuple<const char*, bool>>::value);
+    }
+#endif
 }

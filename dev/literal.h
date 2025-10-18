@@ -19,13 +19,4 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_literal = polyfill::bool_constant<is_literal_v<T>>;
-
-    template<class T>
-    using table_value_t = literal_holder<T>;
-
-    template<class T>
-    inline constexpr bool is_table_value_v = is_literal_v<T>;
-
-    template<class T>
-    using is_table_value = polyfill::bool_constant<is_table_value_v<T>>;
 }

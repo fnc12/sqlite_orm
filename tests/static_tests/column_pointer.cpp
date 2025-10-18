@@ -22,7 +22,6 @@ using internal::mapped_view;
 using internal::remove_all_t;
 using internal::remove_t;
 using internal::table_reference;
-using internal::table_value_t;
 using internal::table_valued_expression;
 using internal::using_t;
 using std::same_as;
@@ -151,10 +150,8 @@ TEST_CASE("column pointers") {
     SECTION("table reference expressions") {
         runTest<internal::base_table<DerivedUser, std::false_type>>(make_table<derived_user>("derived_user"));
         runTest<internal::from_t<DerivedUser>>(from<derived_user>());
-        runTest<internal::from2_t<table_valued_expression<dbstat, table_value_t<const char*>>>>(
-            from(dbstat_table("main")));
-        runTest<
-            internal::from2_t<table_reference<dbstat>, table_valued_expression<dbstat, table_value_t<const char*>>>>(
+        runTest<internal::from2_t<table_valued_expression<dbstat, const char*>>>(from(dbstat_table("main")));
+        runTest<internal::from2_t<table_reference<dbstat>, table_valued_expression<dbstat, const char*>>>(
             from(dbstat_table, dbstat_table("main")));
         runTest<internal::into_t<DerivedUser>>(into<derived_user>());
         runTest<internal::asterisk_t<DerivedUser>>(asterisk<derived_user>());

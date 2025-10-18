@@ -158,6 +158,27 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T>
+        struct ast_iterator<T, match_if<is_table_valued_expression, T>> {
+            using node_type = T;
+
+            template<class L>
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& expression,
+                                                     L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
+                iterate_ast(expression.table_values, lambda);
+            }
+        };
+
+        template<class T>
+        struct ast_iterator<T, match_if<is_from2, T>> {
+            using node_type = T;
+
+            template<class L>
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& from, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
+                iterate_ast(from.table_expressions, lambda);
+            }
+        };
+
         template<class C>
         struct ast_iterator<where_t<C>, void> {
             using node_type = where_t<C>;

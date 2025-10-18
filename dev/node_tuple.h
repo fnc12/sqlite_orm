@@ -255,5 +255,17 @@ namespace sqlite_orm {
 
         template<class T, class O>
         struct node_tuple<limit_t<T, true, true, O>, void> : node_tuple_for<O, T> {};
+
+        template<class... TableExpr>
+        struct node_tuple<from2_t<TableExpr...>, void> : node_tuple_for<TableExpr...> {};
+
+        /*
+         *  Table reference as part of FROM clause: skip
+         */
+        template<class R>
+        struct node_tuple<R, match_if<is_table_reference, R>> : node_tuple<void> {};
+
+        template<class Table, class... Args>
+        struct node_tuple<table_valued_expression<Table, Args...>, void> : node_tuple_for<Args...> {};
     }
 }

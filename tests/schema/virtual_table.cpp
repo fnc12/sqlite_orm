@@ -73,6 +73,8 @@ TEST_CASE("fts5 virtual table schema") {
         {"Learn SQlite FTS5", "This tutorial teaches you how to perform full-text search in SQLite using FTS5"},
     };
     REQUIRE(specificPosts == expectedSpecificPosts);
+    specificPosts = storage.select(object<Post>(), from(post_table("fts5")));
+    REQUIRE(specificPosts == expectedSpecificPosts);
 
     ///    SELECT *
     ///    FROM posts
@@ -252,6 +254,7 @@ TEST_CASE("generate_series virtual table schema") {
                 REQUIRE_THAT(rows, Equals(std::vector<int>{5, 10, 15, 20, 25, 30}));
             }
             SECTION("series") {
+                auto sql = storage.dump(select(&generate_series::value, from(generate_series_table(5, 30, 5))), true);
                 auto rows = storage.select(&generate_series::value, from(generate_series_table(5, 30, 5)));
                 REQUIRE_THAT(rows, Equals(std::vector<int>{5, 10, 15, 20, 25, 30}));
             }

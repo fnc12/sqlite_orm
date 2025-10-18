@@ -1,7 +1,9 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::remove_const, std::type_identity
+#include <type_traits>  //  std::enable_if, std::remove_const, std::type_identity
+#include <utility>  // std::move
+#include <tuple>
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
@@ -10,12 +12,12 @@
 
 namespace sqlite_orm::internal {
     /*
-     *  Bound input values.
+     *  Bound input arguments.
      */
-    template<class Table, class... TableValues>
+    template<class Table, class... Args>
     struct table_valued_expression {
         using type = Table;
-        using constraints_type = std::tuple<TableValues...>;
+        using constraints_type = std::tuple<Args...>;
 
         constraints_type table_values;
     };
@@ -35,18 +37,17 @@ namespace sqlite_orm::internal {
         /** 
          *  Make a table-valued function call.
          */
-        template<class... Values>
-            requires requires { typename O::hidden; }
-        constexpr table_valued_expression<O, table_value_t<Values>...> operator()(Values... inputValues) const {
-            return {{ {std::move(inputValues)}... }};
+        template<class... Args>
+        constexpr table_valued_expression<O, Args...> operator()(Args... arguments) const {
+            return {{ {std::move(arguments)}... }};
         }
 #else
         /** 
          *  Make a table-valued function call.
          */
-        template<class... Values, class X = O, class Requires = typename X::hidden>
-        constexpr table_valued_expression<O, table_value_t<Values>...> operator()(Values... inputValues) const {
-            return {{{std::move(inputValues)}...}};
+        template<class... Args>
+        constexpr table_valued_expression<O, Args...> operator()(Args... arguments) const {
+            return {{{std::move(arguments)}...}};
         }
 #endif
     };
