@@ -87,6 +87,11 @@ TEST_CASE("statement_serializer dbstat") {
             expected = R"(FROM "dbstat"('main', 1))";
         }
 #endif
+        SECTION("get all from table-valued function") {
+            value = serialize(get_all<mystat>(from(mystat_table("main"))), context);
+            expected =
+                R"(SELECT "dbstat"."name", "dbstat"."path", "dbstat"."pageno", "dbstat"."pagetype", "dbstat"."ncell", "dbstat"."payload", "dbstat"."unused", "dbstat"."mx_payload", "dbstat"."pgoffset", "dbstat"."pgsize" FROM "dbstat"('main'))";
+        }
     }
     REQUIRE(value == expected);
 }

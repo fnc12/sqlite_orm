@@ -1781,13 +1781,16 @@ namespace sqlite_orm {
         std::string serialize_get_all_impl(const T& getAll, const Ctx& context) {
             using table_type = type_t<T>;
             using mapped_type = mapped_type_proxy_t<table_type>;
+            constexpr bool hasExplicitFrom2 = tuple_has<typename T::conditions_type, is_from2>::value;
 
             auto& table = pick_table<mapped_type>(context.db_objects);
 
             std::stringstream ss;
-            ss << "SELECT " << streaming_table_column_names(table, alias_extractor<table_type>::as_qualifier(table))
-               << " FROM " << streaming_identifier(table.name, alias_extractor<table_type>::as_alias())
-               << streaming_conditions_tuple(getAll.conditions, context);
+            ss << "SELECT " << streaming_table_column_names(table, alias_extractor<table_type>::as_qualifier(table));
+            if constexpr (!hasExplicitFrom2) {
+                ss << " FROM " << streaming_identifier(table.name, alias_extractor<table_type>::as_alias());
+            }
+            ss << streaming_conditions_tuple(getAll.conditions, context);
             return ss.str();
         }
 

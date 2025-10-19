@@ -1382,6 +1382,9 @@ namespace sqlite_orm {
          */
         template<template<class...> class Template>
         using check_if_has_template = mpl::contains<check_if_is_template<Template>>;
+
+        template<template<class...> class ProjOp, class T>
+        using check_if_projected_is_type = mpl::pass_result_of_fn<check_if_is_type<T>, ProjOp>;
     }
 }
 
@@ -9483,7 +9486,6 @@ namespace sqlite_orm {
             static_assert(count_tuple<T, is_group_by>::value <= 1, "a single query cannot contain > 1 GROUP BY blocks");
             static_assert(count_tuple<T, is_order_by>::value <= 1, "a single query cannot contain > 1 ORDER BY blocks");
             static_assert(count_tuple<T, is_limit>::value <= 1, "a single query cannot contain > 1 LIMIT blocks");
-            static_assert(count_tuple<T, is_from>::value <= 1, "a single query cannot contain > 1 FROM blocks");
             static_assert(mpl::invoke_t<mpl::counts<mpl::disjunction_fn<is_from, is_from2>>, T>::value <= 1,
                           "a single query cannot contain > 1 FROM blocks");
         }
@@ -14338,6 +14340,8 @@ namespace sqlite_orm {
 
 // #include "tuple_helper/tuple_traits.h"
 
+// #include "type_traits.h"
+
 // #include "connection_holder.h"
 
 #include <sqlite3.h>
@@ -15267,6 +15271,17 @@ namespace sqlite_orm {
 
         template<class DML>
         using main_dml_t = polyfill::remove_cvref_t<decltype(access_main_dml(std::declval<DML>()))>;
+
+        template<class T, class Tpl>
+        constexpr void validate_get_all_conditions() {
+            using from2_index_sequence = filter_tuple_sequence_t<Tpl, is_from2>;
+            if constexpr (from2_index_sequence::size() > 0) {
+                using from_type = std::tuple_element_t<index_sequence_value_at<0>(from2_index_sequence{}), Tpl>;
+                // check whether one of table expressions' type is the same as the requested table type
+                static_assert(mpl::invoke_t<mpl::contains<check_if_projected_is_type<type_t, T>>, from_type>::value,
+                              "Requested object type must be listed in explicit FROM clause");
+            }
+        }
     }
 }
 
@@ -15685,6 +15700,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::get_all_t<T, R, Args...> get_all(Args... conditions) {
         using conditions_tuple = std::tuple<Args...>;
         internal::validate_conditions<conditions_tuple>();
+        internal::validate_get_all_conditions<T, conditions_tuple>();
         return {{std::forward<Args>(conditions)...}};
     }
 
@@ -15725,6 +15741,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::get_all_pointer_t<T, R, Args...> get_all_pointer(Args... conditions) {
         using conditions_tuple = std::tuple<Args...>;
         internal::validate_conditions<conditions_tuple>();
+        internal::validate_get_all_conditions<T, conditions_tuple>();
         return {{std::forward<Args>(conditions)...}};
     }
 
@@ -15754,6 +15771,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::get_all_optional_t<T, R, Args...> get_all_optional(Args... conditions) {
         using conditions_tuple = std::tuple<Args...>;
         internal::validate_conditions<conditions_tuple>();
+        internal::validate_get_all_conditions<T, conditions_tuple>();
         return {{std::forward<Args>(conditions)...}};
     }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -20797,10 +20815,8 @@ namespace sqlite_orm {
             if constexpr (table_values_index_sequence::size() == 0) {
                 return {};
             } else {
-                auto subContext = context;
-                subContext.replace_bindable_with_question = false;
                 std::stringstream ss;
-                ss << "(" << streaming_filtered_expressions_tuple(elements, table_values_index_sequence{}, subContext)
+                ss << "(" << streaming_filtered_expressions_tuple(elements, table_values_index_sequence{}, context)
                    << ")";
                 return ss.str();
             }
@@ -22396,13 +22412,16 @@ namespace sqlite_orm {
         std::string serialize_get_all_impl(const T& getAll, const Ctx& context) {
             using table_type = type_t<T>;
             using mapped_type = mapped_type_proxy_t<table_type>;
+            constexpr bool hasExplicitFrom2 = tuple_has<typename T::conditions_type, is_from2>::value;
 
             auto& table = pick_table<mapped_type>(context.db_objects);
 
             std::stringstream ss;
-            ss << "SELECT " << streaming_table_column_names(table, alias_extractor<table_type>::as_qualifier(table))
-               << " FROM " << streaming_identifier(table.name, alias_extractor<table_type>::as_alias())
-               << streaming_conditions_tuple(getAll.conditions, context);
+            ss << "SELECT " << streaming_table_column_names(table, alias_extractor<table_type>::as_qualifier(table));
+            if constexpr (!hasExplicitFrom2) {
+                ss << " FROM " << streaming_identifier(table.name, alias_extractor<table_type>::as_alias());
+            }
+            ss << streaming_conditions_tuple(getAll.conditions, context);
             return ss.str();
         }
 

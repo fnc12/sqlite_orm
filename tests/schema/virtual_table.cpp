@@ -73,7 +73,7 @@ TEST_CASE("fts5 virtual table schema") {
         {"Learn SQlite FTS5", "This tutorial teaches you how to perform full-text search in SQLite using FTS5"},
     };
     REQUIRE(specificPosts == expectedSpecificPosts);
-    specificPosts = storage.select(object<Post>(), from(post_table("fts5")));
+    specificPosts = storage.get_all<Post>(from(post_table("fts5")));
     REQUIRE(specificPosts == expectedSpecificPosts);
 
     ///    SELECT *
