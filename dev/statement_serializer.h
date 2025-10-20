@@ -362,8 +362,8 @@ namespace sqlite_orm {
         };
 
         template<class T, class X>
-        struct statement_serializer<match_t<T, X>, void> {
-            using statement_type = match_t<T, X>;
+        struct statement_serializer<match_with_table_t<T, X>, void> {
+            using statement_type = match_with_table_t<T, X>;
 
             template<class Ctx>
             SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -371,6 +371,19 @@ namespace sqlite_orm {
                 auto& table = pick_table<T>(context.db_objects);
                 std::stringstream ss;
                 ss << streaming_identifier(table.name) << " MATCH " << serialize(statement.argument, context);
+                return ss.str();
+            }
+        };
+
+        template<class Field, class X>
+        struct statement_serializer<match_t<Field, X>, void> {
+            using statement_type = match_t<Field, X>;
+
+            template<class Ctx>
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+                std::stringstream ss;
+                ss << serialize(statement.field, context) << " MATCH " << serialize(statement.argument, context);
                 return ss.str();
             }
         };

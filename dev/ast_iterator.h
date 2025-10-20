@@ -103,8 +103,18 @@ namespace sqlite_orm {
         };
 
         template<class T, class X>
-        struct ast_iterator<match_t<T, X>, void> {
-            using node_type = match_t<T, X>;
+        struct ast_iterator<match_with_table_t<T, X>, void> {
+            using node_type = match_with_table_t<T, X>;
+
+            template<class L>
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
+                iterate_ast(node.argument, lambda);
+            }
+        };
+
+        template<class Field, class X>
+        struct ast_iterator<match_t<Field, X>, void> {
+            using node_type = match_t<Field, X>;
 
             template<class L>
             SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {

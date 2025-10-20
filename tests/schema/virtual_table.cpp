@@ -9,10 +9,18 @@ using namespace sqlite_orm;
 
 TEST_CASE("fts5 virtual table schema") {
     using Catch::Matchers::UnorderedEquals;
+    constexpr auto compareColumnName = [](const std::string* foundValue, std::string expectedValue) {
+        if (!foundValue) {
+            return false;
+        }
+        return *foundValue == expectedValue;
+    };
 
     struct Post {
         std::string title;
         std::string body;
+
+        using hidden = fts5::hidden_fields_of<Post>;
 
 #ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
         bool operator==(const Post&) const = default;
@@ -27,85 +35,96 @@ TEST_CASE("fts5 virtual table schema") {
     auto virtualTable =
         make_virtual_table("posts", using_fts5(make_column("title", &Post::title), make_column("body", &Post::body)));
 
-    {
-        constexpr auto compareColumnName = [](const std::string* foundValue, std::string expectedValue) {
-            if (!foundValue) {
-                return false;
-            }
-            return *foundValue == expectedValue;
-        };
-        REQUIRE(compareColumnName(virtualTable.find_column_name(&Post::title), std::string("title")));
-        REQUIRE(compareColumnName(virtualTable.find_column_name(&Post::body), std::string("body")));
-        REQUIRE(compareColumnName(virtualTable.find_column_name(&fts5::hidden::rank), std::string("rank")));
+    SECTION("eponymous") {
+        SECTION("definition") {
+            REQUIRE(compareColumnName(virtualTable.find_column_name(&Post::title), std::string("title")));
+            REQUIRE(compareColumnName(virtualTable.find_column_name(&Post::body), std::string("body")));
+            REQUIRE(compareColumnName(virtualTable.find_column_name(&fts5::hidden::any), std::string("posts")));
+            REQUIRE(compareColumnName(virtualTable.find_column_name(&fts5::hidden::rank), std::string("rank")));
+        }
     }
+    SECTION("storage") {
 
-    /// CREATE VIRTUAL TABLE posts
-    /// USING FTS5(title, body);
-    auto storage = make_storage("", std::move(virtualTable));
+        /// CREATE VIRTUAL TABLE posts
+        /// USING FTS5(title, body);
+        auto storage = make_storage("", std::move(virtualTable));
 
-    storage.sync_schema();
-    storage.sync_schema_simulate();
-    REQUIRE(storage.table_exists("posts"));
+        storage.sync_schema();
+        storage.sync_schema_simulate();
+        REQUIRE(storage.table_exists("posts"));
 
-    const std::vector<Post> postsToInsert = {
-        {"Learn SQlite FTS5", "This tutorial teaches you how to perform full-text search in SQLite using FTS5"},
-        {"Advanced SQlite Full-text Search", "Show you some advanced techniques in SQLite full-text searching"},
-        {"SQLite Tutorial", "Help you learn SQLite quickly and effectively"},
-    };
+        const std::vector<Post> postsToInsert = {
+            {"Learn SQlite FTS5", "This tutorial teaches you how to perform full-text search in SQLite using FTS5"},
+            {"Advanced SQlite Full-text Search", "Show you some advanced techniques in SQLite full-text searching"},
+            {"SQLite Tutorial", "Help you learn SQLite quickly and effectively"},
+        };
 
-    /// INSERT INTO posts(title,body)
-    /// VALUES('Learn SQlite FTS5','This tutorial teaches you how to perform full-text search in SQLite using FTS5'),
-    /// ('Advanced SQlite Full-text Search','Show you some advanced techniques in SQLite full-text searching'),
-    /// ('SQLite Tutorial','Help you learn SQLite quickly and effectively');
-    storage.insert_range(postsToInsert.begin(), postsToInsert.end());
+        /// INSERT INTO posts(title,body)
+        /// VALUES('Learn SQlite FTS5','This tutorial teaches you how to perform full-text search in SQLite using FTS5'),
+        /// ('Advanced SQlite Full-text Search','Show you some advanced techniques in SQLite full-text searching'),
+        /// ('SQLite Tutorial','Help you learn SQLite quickly and effectively');
+        storage.insert_range(postsToInsert.begin(), postsToInsert.end());
 
-    /// SELECT * FROM posts;
-    auto posts = storage.get_all<Post>();
+        /// SELECT * FROM posts;
+        auto posts = storage.get_all<Post>();
 
-    //  check that all the posts are there
-    REQUIRE_THAT(posts, UnorderedEquals(postsToInsert));
+        //  check that all the posts are there
+        REQUIRE_THAT(posts, UnorderedEquals(postsToInsert));
 
-    /// SELECT *
-    /// FROM posts
-    /// WHERE posts MATCH 'fts5';
-    auto specificPosts = storage.get_all<Post>(where(match<Post>("fts5")));
-    decltype(specificPosts) expectedSpecificPosts = {
-        {"Learn SQlite FTS5", "This tutorial teaches you how to perform full-text search in SQLite using FTS5"},
-    };
-    REQUIRE(specificPosts == expectedSpecificPosts);
-    specificPosts = storage.get_all<Post>(from(post_table("fts5")));
-    REQUIRE(specificPosts == expectedSpecificPosts);
-
-    ///    SELECT *
-    ///    FROM posts
-    ///    WHERE posts = 'fts5';
-    auto specificPosts2 = storage.get_all<Post>(where(is_equal<Post>("fts5")));
-    REQUIRE(specificPosts2 == specificPosts);
-
-    ///    SELECT *
-    ///    FROM posts
-    ///    WHERE posts MATCH 'text'
-    ///    ORDER BY rank;
-    auto orderedPosts = storage.get_all<Post>(where(match<Post>("fts5")), order_by(rank()));
+        /// SELECT *
+        /// FROM posts
+        /// WHERE posts MATCH 'fts5';
+        auto specificPosts = storage.get_all<Post>(where(match<Post>("fts5")));
+        decltype(specificPosts) expectedSpecificPosts = {
+            {"Learn SQlite FTS5", "This tutorial teaches you how to perform full-text search in SQLite using FTS5"},
+        };
+        REQUIRE(specificPosts == expectedSpecificPosts);
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-    orderedPosts = storage.get_all<Post>(where(match<Post>("fts5")), order_by(post_table->*&fts5::hidden::rank));
+        specificPosts = storage.get_all<Post>(where(match(post_table->*&fts5::hidden::any, "fts5")));
+        REQUIRE(specificPosts == expectedSpecificPosts);
+        specificPosts = storage.get_all<Post>(where(match(Post::hidden::any_field, "fts5")));
+        REQUIRE(specificPosts == expectedSpecificPosts);
+#endif
+        specificPosts = storage.get_all<Post>(from(post_table("fts5")));
+        REQUIRE(specificPosts == expectedSpecificPosts);
+
+        ///    SELECT *
+        ///    FROM posts
+        ///    WHERE posts = 'fts5';
+        auto specificPosts2 = storage.get_all<Post>(where(is_equal<Post>("fts5")));
+        REQUIRE(specificPosts2 == specificPosts);
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        specificPosts2 = storage.get_all<Post>(where(post_table->*Post::hidden::any_field == "fts5"));
+        REQUIRE(specificPosts2 == specificPosts);
 #endif
 
-    ///    SELECT highlight(posts,0, '<b>', '</b>'),
-    ///           highlight(posts,1, '<b>', '</b>')
-    ///    FROM posts
-    ///    WHERE posts MATCH 'SQLite'
-    ///    ORDER BY rank;
-    ///
-    auto highlightedPosts =
-        storage.select(columns(highlight<Post>(0, "<b>", "</b>"), highlight<Post>(1, "<b>", "</b>")),
-                       where(match<Post>("SQLite")),
-                       order_by(rank()));
+        ///    SELECT *
+        ///    FROM posts
+        ///    WHERE posts MATCH 'text'
+        ///    ORDER BY rank;
+        auto orderedPosts = storage.get_all<Post>(where(match<Post>("fts5")), order_by(rank()));
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-    highlightedPosts = storage.select(columns(highlight<Post>(0, "<b>", "</b>"), highlight<Post>(1, "<b>", "</b>")),
-                                      where(match<Post>("SQLite")),
-                                      order_by(post_table->*&fts5::hidden::rank));
+        orderedPosts =
+            storage.get_all<Post>(where(match(Post::hidden::any_field, "fts5")), order_by(Post::hidden::rank_field));
 #endif
+
+        ///    SELECT highlight(posts, 0, '<b>', '</b>'),
+        ///           highlight(posts, 1, '<b>', '</b>')
+        ///    FROM posts
+        ///    WHERE posts MATCH 'SQLite'
+        ///    ORDER BY rank;
+        ///
+        auto highlightedPosts =
+            storage.select(columns(highlight<Post>(0, "<b>", "</b>"), highlight<Post>(1, "<b>", "</b>")),
+                           where(match<Post>("SQLite")),
+                           order_by(rank()));
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        highlightedPosts = storage.select(columns(highlight(Post::hidden::any_field, 0, "<b>", "</b>"),
+                                                  highlight(Post::hidden::any_field, 1, "<b>", "</b>")),
+                                          where(match(Post::hidden::any_field, "SQLite")),
+                                          order_by(Post::hidden::rank_field));
+#endif
+    }
 }
 
 TEST_CASE("issue1410") {
@@ -150,12 +169,15 @@ TEST_CASE("dbstat virtual table schema") {
         return *foundValue == expectedValue;
     };
 
-    SECTION("epynomous") {
+    SECTION("eponymous") {
         SECTION("definition") {
             auto virtualTable = make_dbstat_table();
             REQUIRE(compareColumnName(virtualTable.find_column_name(&dbstat::name), "name"));
             REQUIRE(compareColumnName(virtualTable.find_column_name(&dbstat::pgsize), "pgsize"));
             REQUIRE(compareColumnName(virtualTable.find_column_name(&dbstat::hidden::schema), "schema"));
+#if SQLITE_VERSION_NUMBER >= 3031000
+            REQUIRE(compareColumnName(virtualTable.find_column_name(&dbstat::hidden::aggregate), "aggregate"));
+#endif
         }
         SECTION("storage") {
             auto storage = make_storage("", make_dbstat_table());
@@ -213,7 +235,7 @@ TEST_CASE("generate_series virtual table schema") {
         return *foundValue == expectedValue;
     };
 
-    SECTION("epynomous") {
+    SECTION("eponymous") {
         SECTION("definition") {
             auto virtualTable = make_generate_series_table();
             REQUIRE(compareColumnName(virtualTable.find_column_name(&generate_series::value), "value"));
@@ -284,6 +306,13 @@ TEST_CASE("generate_series virtual table schema") {
 
 #ifdef SQLITE_ENABLE_RTREE
 TEST_CASE("rtree virtual table schema") {
+    constexpr auto compareColumnName = [](const std::string* foundValue, std::string expectedValue) {
+        if (!foundValue) {
+            return false;
+        }
+        return *foundValue == expectedValue;
+    };
+
     struct DemoIndex {
         int64 id;
         float minX, maxX;
@@ -296,27 +325,25 @@ TEST_CASE("rtree virtual table schema") {
                                                        make_column("maxX", &DemoIndex::maxX),
                                                        make_column("minY", &DemoIndex::minY),
                                                        make_column("maxY", &DemoIndex::maxY)));
-    {
-        constexpr auto compareColumnName = [](const std::string* foundValue, std::string expectedValue) {
-            if (!foundValue) {
-                return false;
-            }
-            return *foundValue == expectedValue;
-        };
-        REQUIRE(compareColumnName(virtualTable.find_column_name(&DemoIndex::id), "id"));
-        REQUIRE(compareColumnName(virtualTable.find_column_name(&DemoIndex::maxY), "maxY"));
+
+    SECTION("eponymous") {
+        SECTION("definition") {
+            REQUIRE(compareColumnName(virtualTable.find_column_name(&DemoIndex::id), "id"));
+            REQUIRE(compareColumnName(virtualTable.find_column_name(&DemoIndex::maxY), "maxY"));
+        }
     }
+    SECTION("storage") {
+        auto storage = make_storage("", std::move(virtualTable));
+        storage.sync_schema();
+        storage.sync_schema_simulate();
+        REQUIRE(storage.table_exists("demo_index"));
 
-    auto storage = make_storage("", std::move(virtualTable));
-    storage.sync_schema();
-    storage.sync_schema_simulate();
-    REQUIRE(storage.table_exists("demo_index"));
+        storage.insert(into<DemoIndex>(),
+                       columns(&DemoIndex::id, &DemoIndex::minX, &DemoIndex::maxX, &DemoIndex::minY, &DemoIndex::maxY),
+                       values(std::tuple(28269, -80.851471, -80.735718, 35.272560, 35.407925)));
 
-    storage.insert(into<DemoIndex>(),
-                   columns(&DemoIndex::id, &DemoIndex::minX, &DemoIndex::maxX, &DemoIndex::minY, &DemoIndex::maxY),
-                   values(std::tuple(28269, -80.851471, -80.735718, 35.272560, 35.407925)));
-
-    auto rows = storage.select(&DemoIndex::id, where(c(&DemoIndex::id) == 28269));
-    REQUIRE(rows == std::vector<int64>{28269});
+        auto rows = storage.select(&DemoIndex::id, where(c(&DemoIndex::id) == 28269));
+        REQUIRE(rows == std::vector<int64>{28269});
+    }
 }
 #endif

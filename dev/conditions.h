@@ -856,7 +856,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                         std::is_base_of<condition_t, L>,
                                                         std::is_base_of<condition_t, R>,
                                                         is_operator_argument<L>,
-                                                        is_operator_argument<R>>::value,
+                                                        is_operator_argument<R>>::value
+#ifndef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+                                      && !is_table_reference_v<L>
+#endif
+                                  ,
                                   bool> = true>
         constexpr is_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator==(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -1057,8 +1061,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(l), std::move(r)};
     }
 
-    template<class L, class R>
-    constexpr internal::is_equal_with_table_t<L, R> is_equal(R rhs) {
+    /** 
+     *  [Deprecation notice] This expression factory function is deprecated and will be removed in v1.11.
+     */
+    template<class O, class R, std::enable_if_t<!internal::is_recordset_alias_v<O>, bool> = true>
+    [[deprecated("Use the usual `is_equal` function to compare the hidden FTS5 'any' field or a field of your FTS "
+                 "table instead")]]
+    constexpr internal::is_equal_with_table_t<O, R> is_equal(R rhs) {
         return {std::move(rhs)};
     }
 

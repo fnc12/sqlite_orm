@@ -109,6 +109,9 @@ namespace sqlite_orm {
         template<class T>
         using enclosing_type_t = typename T::enclosing_type;
 
+        template<class T, class O>
+        using enclosing_type_of_t = typename T::template _of<O>::enclosing_type;
+
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         template<class T>
         using udf_type_t = typename T::udf_type;

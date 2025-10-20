@@ -17,11 +17,16 @@ namespace sqlite_orm {
          *  Defines the `type` typename to be:
          *  - The unqualified unwrapped table reference type if T is a table reference.
          *  - The unqualified aliased type if T is a recordset alias.
-         *  - The enclosing data struct of eponymous virtual tables with hidden columns.
+         *  - The enclosing data struct for eponymous virtual tables with hidden columns.
          *  - ... otherwise unqualified T.
          */
         template<class T, class SFINAE = void>
-        struct mapped_type_proxy : polyfill::detected_or<std::remove_const_t<T>, enclosing_type_t, T> {};
+        struct mapped_type_proxy : std::remove_const<T> {};
+
+        template<class T>
+        struct mapped_type_proxy<T, polyfill::void_t<typename T::enclosing_type>> {
+            using type = enclosing_type_t<T>;
+        };
 
         template<class R>
         struct mapped_type_proxy<R, match_if<is_table_reference, R>> : R {};

@@ -19,7 +19,6 @@
 #include "field_of.h"
 #include "table_type_of.h"
 #include "type_printer.h"
-#include "table_reference.h"
 
 namespace sqlite_orm {
 

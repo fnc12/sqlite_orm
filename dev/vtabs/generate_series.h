@@ -73,6 +73,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 namespace sqlite_orm::internal {
     /**
      *  Factory function for a `generate_series` virtual table definition.
+     *  
+     *  The hidden generate_series columns 'start', 'stop' and 'step' are mapped into each table definition.
      */
     inline auto using_generate_series() {
         return make_generate_series_definition(make_column("value", &generate_series::value),

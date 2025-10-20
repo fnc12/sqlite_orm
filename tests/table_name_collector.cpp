@@ -121,20 +121,23 @@ TEST_CASE("table name collector") {
         REQUIRE(collector.table_names == expected);
     }
 #endif
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     SECTION("highlight") {
+        using user_hidden = fts5::hidden_fields_of<User>;
         const std::string& tableName = std::get<0>(dbObjects).name;
         internal::table_name_collector collector(dbObjects);
 
         SECTION("simple") {
-            auto expression = highlight<User>(0, "<b>", "</b>");
+            auto expression = highlight(user_hidden::any_field, 0, "<b>", "</b>");
             expected.emplace(tableName, "");
             iterate_ast(expression, collector);
         }
         SECTION("in columns") {
-            auto expression = columns(highlight<User>(0, "<b>", "</b>"));
+            auto expression = columns(highlight(user_hidden::any_field, 0, "<b>", "</b>"));
             expected.emplace(tableName, "");
             iterate_ast(expression, collector);
         }
         REQUIRE(collector.table_names == expected);
     }
+#endif
 }

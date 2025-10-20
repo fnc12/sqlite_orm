@@ -88,7 +88,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a DBSTAT virtual table definition.
      *  If no schema is specified then the main schema is used.
      *  
-     *  The hidden DBSTAT columns 'schema' and 'aggregate' are mapped into each table definition and can be used via an explicit column pointer.
+     *  The hidden DBSTAT columns 'schema' and 'aggregate' are mapped into each table definition.
      *  
      *  Though the DBSTAT virtual table is an eponymous table SQLite allows to create a virtual table instance with a different name.
      *  This is mostly useful with binding input arguments (so-called table values), e.g. a different schema than "main" or whether to query aggregated results.

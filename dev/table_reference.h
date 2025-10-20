@@ -12,7 +12,7 @@
 
 namespace sqlite_orm::internal {
     /*
-     *  Bound input arguments.
+     *  Bound input arguments for eponymous virtual tables used in table-valued function calls.
      */
     template<class Table, class... Args>
     struct table_valued_expression {
@@ -51,20 +51,6 @@ namespace sqlite_orm::internal {
         }
 #endif
     };
-
-    template<class RecordSet>
-    struct decay_table_ref : std::remove_const<RecordSet> {};
-    template<class O>
-    struct decay_table_ref<table_reference<O>> : polyfill::type_identity<O> {};
-    template<class O>
-    struct decay_table_ref<const table_reference<O>> : polyfill::type_identity<O> {};
-
-    template<class RecordSet>
-    using decay_table_ref_t = typename decay_table_ref<RecordSet>::type;
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    template<auto recordset>
-    using auto_decay_table_ref_t = typename decay_table_ref<decltype(recordset)>::type;
-#endif
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

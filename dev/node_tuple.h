@@ -84,7 +84,10 @@ namespace sqlite_orm {
         struct node_tuple<where_t<C>, void> : node_tuple<C> {};
 
         template<class T, class X>
-        struct node_tuple<match_t<T, X>, void> : node_tuple<X> {};
+        struct node_tuple<match_with_table_t<T, X>, void> : node_tuple<X> {};
+
+        template<class Field, class X>
+        struct node_tuple<match_t<Field, X>, void> : node_tuple<X> {};
 
         /**
          *  Column alias

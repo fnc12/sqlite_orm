@@ -102,7 +102,8 @@ TEST_CASE("fts5 layout tests") {
         STATIC_REQUIRE(is_base_template_of_v<insertable_table_definition, definition_type>);
         STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, std::string>::size() == 2);
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-        STATIC_REQUIRE(hidden_col_index_sequence_of<elements_type>::size() == 1);
+        STATIC_REQUIRE(hidden_col_index_sequence_of<elements_type>::size() == 2);
+        STATIC_REQUIRE(all_col_index_sequence_with_field_type<elements_type, std::vector<char>>::size() == 1);
         STATIC_REQUIRE(all_col_index_sequence_with_field_type<elements_type, std::optional<int>>::size() == 1);
 #endif
     }
