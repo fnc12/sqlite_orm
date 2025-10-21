@@ -18950,7 +18950,7 @@ namespace sqlite_orm {
                     *other.connection,
                     std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))),
                 cachedForeignKeysCount(other.cachedForeignKeysCount),
-                executor{std::move(other.executor.will_run_query), std::move(other.executor.did_run_query)} {
+                executor{other.executor.will_run_query, other.executor.did_run_query} {
                 if (this->inMemory) {
                     this->connection->retain();
                 }
