@@ -8,9 +8,6 @@ __pragma(push_macro("max"))
 #endif  // defined(_MSC_VER)
 #pragma once
 
-#include <sqlite3.h>
-#pragma once
-
 // #include "cxx_universal.h"
 
 /*
@@ -237,6 +234,11 @@ using std::nullptr_t;
 #else
 #error "Unknown target platform detected"
 #endif
+
+// pull in SQLite3 configuration early, such that version and feature macros are globally available in sqlite_orm
+// #include "sqlite3_config.h"
+
+#include <sqlite3.h>
 
 #ifdef BUILD_SQLITE_ORM_MODULE
 #define SQLITE_ORM_EXPORT export
