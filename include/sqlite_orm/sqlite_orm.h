@@ -1828,8 +1828,6 @@ namespace sqlite_orm {
 #endif
 #endif
 
-// #include "functional/cxx_core_features.h"
-
 // #include "functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm {
@@ -14678,12 +14676,6 @@ namespace sqlite_orm {
                 this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
             }
         };
-
-        template<class DBOs, satisfies<is_db_objects, DBOs> = true>
-        table_name_collector<DBOs> make_table_name_collector(const DBOs& dbObjects) {
-            return {dbObjects};
-        }
-
     }
 
 }
@@ -21934,7 +21926,7 @@ namespace sqlite_orm {
 
         template<class Ctx, class... Args>
         std::set<std::pair<std::string, std::string>> collect_table_names(const set_t<Args...>& set, const Ctx& ctx) {
-            auto collector = make_table_name_collector(ctx.db_objects);
+            table_name_collector collector{ctx.db_objects};
             // note: we are only interested in the table name on the left-hand side of the assignment operator expression
             iterate_tuple(set.assigns, [&collector](const auto& assignmentOperator) {
                 iterate_ast(assignmentOperator.lhs, collector);
@@ -21950,7 +21942,7 @@ namespace sqlite_orm {
 
         template<class Ctx, class T, satisfies<is_select, T> = true>
         std::set<std::pair<std::string, std::string>> collect_table_names(const T& sel, const Ctx& ctx) {
-            auto collector = make_table_name_collector(ctx.db_objects);
+            table_name_collector collector{ctx.db_objects};
             iterate_ast(sel, collector);
             return std::move(collector.table_names);
         }
