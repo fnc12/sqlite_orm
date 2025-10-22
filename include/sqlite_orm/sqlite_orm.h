@@ -163,6 +163,16 @@ using std::nullptr_t;
 #define SQLITE_ORM_CLANG_SUPPRESS(warnoption, ...) __VA_ARGS__
 #endif
 
+#if defined(_MSC_VER) && !defined(__clang__)
+#define SQLITE_ORM_DO_PRAGMA(...) __pragma(__VA_ARGS__)
+#endif
+
+#if defined(_MSC_VER) && !defined(__clang__)
+#define SQLITE_ORM_MSVC_SUPPRESS(warncode, ...) SQLITE_ORM_DO_PRAGMA(warning(suppress : warncode))
+#else
+#define SQLITE_ORM_MSVC_SUPPRESS(warcode, ...) __VA_ARGS__
+#endif
+
 // clang has the bad habit of diagnosing missing brace-init-lists when constructing aggregates with base classes.
 // This is a false positive, since the C++ standard is quite clear that braces for nested or base objects may be omitted,
 // see https://en.cppreference.com/w/cpp/language/aggregate_initialization:
@@ -172,6 +182,9 @@ using std::nullptr_t;
 // In this sense clang should only warn about missing field initializers.
 // Because we know what we are doing, we suppress the diagnostic message
 #define SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(...) SQLITE_ORM_CLANG_SUPPRESS("-Wmissing-braces", __VA_ARGS__)
+
+// msvc has the bad habit of diagnosing overalignment of types with an explicit alignment specifier.
+#define SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(...) SQLITE_ORM_MSVC_SUPPRESS(4324, __VA_ARGS__)
 
 #if defined(_MSC_VER) && (_MSC_VER < 1920)
 #define SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
