@@ -55,8 +55,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     constexpr internal::column_pointer<O, F Base::*> column(F Base::* field) {
         static_assert(std::is_convertible<F Base::*, F O::*>::value ||
                           std::is_same<polyfill::detected_t<internal::enclosing_type_of_t, Base, O>, O>::value ||
+                          // trust the `enclosing_type` alias template defined in the virtual table's data struct
                           polyfill::is_detected_v<internal::enclosing_type_t, Base>,
-                      "Field must be from derived class");
+                      "Field must be from derived or related class");
         return {field};
     }
 

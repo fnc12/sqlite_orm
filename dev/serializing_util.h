@@ -434,7 +434,7 @@ namespace sqlite_orm {
             return ss;
         }
 
-        // serialize and stream a tuple of column constraints exluding auxiliary columns;
+        // serialize and stream a tuple of column constraints excluding auxiliary columns;
         // space + space-separated
         template<class... Op, class Ctx>
         std::ostream& operator<<(std::ostream& ss,

@@ -2511,8 +2511,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     constexpr internal::column_pointer<O, F Base::*> column(F Base::* field) {
         static_assert(std::is_convertible<F Base::*, F O::*>::value ||
                           std::is_same<polyfill::detected_t<internal::enclosing_type_of_t, Base, O>, O>::value ||
+                          // trust the `enclosing_type` alias template defined in the virtual table's data struct
                           polyfill::is_detected_v<internal::enclosing_type_t, Base>,
-                      "Field must be from derived class");
+                      "Field must be from derived or related class");
         return {field};
     }
 
@@ -17588,7 +17589,7 @@ namespace sqlite_orm {
             return ss;
         }
 
-        // serialize and stream a tuple of column constraints exluding auxiliary columns;
+        // serialize and stream a tuple of column constraints excluding auxiliary columns;
         // space + space-separated
         template<class... Op, class Ctx>
         std::ostream& operator<<(std::ostream& ss,
@@ -20997,14 +20998,14 @@ namespace sqlite_orm {
                  std::enable_if_t<!ModTraits::is_eponymous::value, bool> = true>
         std::string serialize_virtual_table_definition(const Elements& elements, const Ctx& context) {
             using traits_type = ModTraits;
-            using exluding_hidden_index_sequence =
+            using excluding_hidden_index_sequence =
                 filter_tuple_sequence_t<Elements, check_if_not<is_hidden_column>::template fn>;
 
             auto subContext = context;
             subContext.omit_column_type = traits_type::omit_column_type::value;
 
             std::stringstream ss;
-            ss << "(" << streaming_filtered_expressions_tuple(elements, exluding_hidden_index_sequence{}, subContext)
+            ss << "(" << streaming_filtered_expressions_tuple(elements, excluding_hidden_index_sequence{}, subContext)
                << ")";
             return ss.str();
         }
