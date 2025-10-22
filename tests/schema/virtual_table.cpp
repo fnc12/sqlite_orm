@@ -4,18 +4,20 @@
 
 extern "C" int sqlite3_series_init(sqlite3*, char**, const sqlite3_api_routines*);
 
-#if SQLITE_VERSION_NUMBER >= 3009000
-using namespace sqlite_orm;
-
-TEST_CASE("fts5 virtual table schema") {
-    using Catch::Matchers::UnorderedEquals;
+namespace {
     constexpr auto compareColumnName = [](const std::string* foundValue, std::string expectedValue) {
         if (!foundValue) {
             return false;
         }
         return *foundValue == expectedValue;
     };
+}
 
+#if SQLITE_VERSION_NUMBER >= 3009000
+using namespace sqlite_orm;
+
+TEST_CASE("fts5 virtual table schema") {
+    using Catch::Matchers::UnorderedEquals;
     struct Post {
         std::string title;
         std::string body;
@@ -162,13 +164,6 @@ TEST_CASE("issue1410") {
 
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
 TEST_CASE("dbstat virtual table schema") {
-    constexpr auto compareColumnName = [](const std::string* foundValue, const std::string& expectedValue) {
-        if (!foundValue) {
-            return false;
-        }
-        return *foundValue == expectedValue;
-    };
-
     SECTION("eponymous") {
         SECTION("definition") {
             auto virtualTable = make_dbstat_table();
@@ -228,12 +223,6 @@ TEST_CASE("dbstat virtual table schema") {
 #if SQLITE_VERSION_NUMBER >= 3008012
 TEST_CASE("generate_series virtual table schema") {
     using Catch::Matchers::Equals, Catch::Matchers::UnorderedEquals;
-    constexpr auto compareColumnName = [](const std::string* foundValue, const std::string& expectedValue) {
-        if (!foundValue) {
-            return false;
-        }
-        return *foundValue == expectedValue;
-    };
 
     SECTION("eponymous") {
         SECTION("definition") {
@@ -306,13 +295,6 @@ TEST_CASE("generate_series virtual table schema") {
 
 #ifdef SQLITE_ENABLE_RTREE
 TEST_CASE("rtree virtual table schema") {
-    constexpr auto compareColumnName = [](const std::string* foundValue, std::string expectedValue) {
-        if (!foundValue) {
-            return false;
-        }
-        return *foundValue == expectedValue;
-    };
-
     struct DemoIndex {
         int64 id;
         float minX, maxX;
