@@ -34,15 +34,14 @@ TEST_CASE("ast_iterator") {
     };
 #ifdef SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED
     const auto nodeLambda = overloaded{
-        [&typeIndexes]<class UDF, class... CallArgs>(polyfill::bool_constant<true>,
+        [&typeIndexes]<class UDF, class... CallArgs>(std::true_type,
                                                      const internal::function_call<UDF, CallArgs...>& udfCall) {
             typeIndexes.push_back(typeid(udfCall.name));
         },
-        [&typeIndexes](polyfill::bool_constant<true>, const internal::named_collate_base& collateCall) {
+        [&typeIndexes](std::true_type, const internal::named_collate_base& collateCall) {
             typeIndexes.push_back(typeid(collateCall));
         },
-        [&typeIndexes]<class T, class X, class Y, class Z>(polyfill::bool_constant<true>,
-                                                           const internal::highlight_t<T, X, Y, Z>&) {
+        [&typeIndexes]<class T, class X, class Y, class Z>(std::true_type, const internal::highlight_t<T, X, Y, Z>&) {
             typeIndexes.push_back(typeid(T));
         },
         // swallow leaf expressions

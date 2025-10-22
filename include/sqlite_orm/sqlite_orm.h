@@ -1,14 +1,19 @@
 #pragma once
 
+// Clang has the annoying habit of warning about future C++ features that it claims to support through a feature macro.
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wc++20-extensions"
+#pragma clang diagnostic ignored "-Wc++23-extensions"
+#pragma clang diagnostic ignored "-Wc++26-extensions"
+#endif
+
 #if defined(_MSC_VER)
 __pragma(push_macro("min"))
 #undef min
 __pragma(push_macro("max"))
 #undef max
 #endif  // defined(_MSC_VER)
-#pragma once
-
-#include <sqlite3.h>
 #pragma once
 
 // #include "cxx_universal.h"
@@ -158,6 +163,16 @@ using std::nullptr_t;
 #define SQLITE_ORM_CLANG_SUPPRESS(warnoption, ...) __VA_ARGS__
 #endif
 
+#if defined(_MSC_VER) && !defined(__clang__)
+#define SQLITE_ORM_DO_PRAGMA(...) __pragma(__VA_ARGS__)
+#endif
+
+#if defined(_MSC_VER) && !defined(__clang__)
+#define SQLITE_ORM_MSVC_SUPPRESS(warncode, ...) SQLITE_ORM_DO_PRAGMA(warning(suppress : warncode))
+#else
+#define SQLITE_ORM_MSVC_SUPPRESS(warcode, ...) __VA_ARGS__
+#endif
+
 // clang has the bad habit of diagnosing missing brace-init-lists when constructing aggregates with base classes.
 // This is a false positive, since the C++ standard is quite clear that braces for nested or base objects may be omitted,
 // see https://en.cppreference.com/w/cpp/language/aggregate_initialization:
@@ -167,6 +182,9 @@ using std::nullptr_t;
 // In this sense clang should only warn about missing field initializers.
 // Because we know what we are doing, we suppress the diagnostic message
 #define SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(...) SQLITE_ORM_CLANG_SUPPRESS("-Wmissing-braces", __VA_ARGS__)
+
+// msvc has the bad habit of diagnosing overalignment of types with an explicit alignment specifier.
+#define SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(...) SQLITE_ORM_MSVC_SUPPRESS(4324, __VA_ARGS__)
 
 #if defined(_MSC_VER) && (_MSC_VER < 1920)
 #define SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
@@ -237,6 +255,11 @@ using std::nullptr_t;
 #else
 #error "Unknown target platform detected"
 #endif
+
+// pull in SQLite3 configuration early, such that version and feature macros are globally available in sqlite_orm
+// #include "sqlite3_config.h"
+
+#include <sqlite3.h>
 
 #ifdef BUILD_SQLITE_ORM_MODULE
 #define SQLITE_ORM_EXPORT export
@@ -1825,8 +1848,6 @@ namespace sqlite_orm {
 #include <functional>  //  std::reference_wrapper
 #endif
 #endif
-
-// #include "functional/cxx_core_features.h"
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
@@ -14676,12 +14697,6 @@ namespace sqlite_orm {
                 this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
             }
         };
-
-        template<class DBOs, satisfies<is_db_objects, DBOs> = true>
-        table_name_collector<DBOs> make_table_name_collector(const DBOs& dbObjects) {
-            return {dbObjects};
-        }
-
     }
 
 }
@@ -18948,7 +18963,7 @@ namespace sqlite_orm {
                     *other.connection,
                     std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))),
                 cachedForeignKeysCount(other.cachedForeignKeysCount),
-                executor{std::move(other.executor.will_run_query), std::move(other.executor.did_run_query)} {
+                executor{other.executor.will_run_query, other.executor.did_run_query} {
                 if (this->inMemory) {
                     this->connection->retain();
                 }
@@ -21932,7 +21947,7 @@ namespace sqlite_orm {
 
         template<class Ctx, class... Args>
         std::set<std::pair<std::string, std::string>> collect_table_names(const set_t<Args...>& set, const Ctx& ctx) {
-            auto collector = make_table_name_collector(ctx.db_objects);
+            table_name_collector collector{ctx.db_objects};
             // note: we are only interested in the table name on the left-hand side of the assignment operator expression
             iterate_tuple(set.assigns, [&collector](const auto& assignmentOperator) {
                 iterate_ast(assignmentOperator.lhs, collector);
@@ -21948,7 +21963,7 @@ namespace sqlite_orm {
 
         template<class Ctx, class T, satisfies<is_select, T> = true>
         std::set<std::pair<std::string, std::string>> collect_table_names(const T& sel, const Ctx& ctx) {
-            auto collector = make_table_name_collector(ctx.db_objects);
+            table_name_collector collector{ctx.db_objects};
             iterate_ast(sel, collector);
             return std::move(collector.table_names);
         }
@@ -26449,7 +26464,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #pragma once
 
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
+
 #if defined(_MSC_VER)
 __pragma(pop_macro("max"))
 __pragma(pop_macro("min"))
-#endif  // defined(_MSC_VER)
+#endif
