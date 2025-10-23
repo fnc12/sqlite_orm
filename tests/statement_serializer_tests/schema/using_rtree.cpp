@@ -14,9 +14,6 @@ TEST_CASE("statement_serializer rtree") {
         std::string objtype;
         std::vector<char> boundary;
     };
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-    constexpr orm_table_reference auto demo_index = c<DemoIndex>();
-#endif
 
     std::string value;
     std::string expected;

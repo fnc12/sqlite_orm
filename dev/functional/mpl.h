@@ -525,5 +525,8 @@ namespace sqlite_orm {
          */
         template<template<class...> class Template>
         using check_if_has_template = mpl::contains<check_if_is_template<Template>>;
+
+        template<template<class...> class ProjOp, class T>
+        using check_if_projected_is_type = mpl::pass_result_of_fn<check_if_is_type<T>, ProjOp>;
     }
 }

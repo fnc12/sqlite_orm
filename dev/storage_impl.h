@@ -50,9 +50,9 @@ namespace sqlite_orm {
         /**
          *  Find column name by its type and member pointer.
          */
-        template<class O, class F, class DBOs, satisfies<is_db_objects, DBOs> = true>
-        const std::string* find_column_name(const DBOs& dbObjects, F O::* field) {
-            return pick_table<O>(dbObjects).find_column_name(field);
+        template<class Lookup, class F, class DBOs, satisfies<is_db_objects, DBOs> = true>
+        const std::string* find_column_name(const DBOs& dbObjects, F Lookup::* field) {
+            return pick_table<mapped_type_proxy_t<Lookup>>(dbObjects).find_column_name(field);
         }
 
         /**

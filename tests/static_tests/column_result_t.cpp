@@ -168,3 +168,18 @@ TEST_CASE("column_result_of_t") {
 #endif
 #endif
 }
+
+TEST_CASE("mapped type proxy") {
+    using internal::mapped_type_proxy_t;
+
+    STATIC_REQUIRE(std::is_same<mapped_type_proxy_t<decltype(sqlite_master_table)>, sqlite_master>::value);
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    STATIC_REQUIRE(std::is_same<mapped_type_proxy_t<decltype(sqlite_schema)>, sqlite_master>::value);
+#endif
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+    STATIC_REQUIRE(std::is_same<mapped_type_proxy_t<dbstat::hidden>, dbstat>::value);
+#endif
+#if SQLITE_VERSION_NUMBER >= 3008012
+    STATIC_REQUIRE(std::is_same<mapped_type_proxy_t<generate_series::hidden>, generate_series>::value);
+#endif
+}

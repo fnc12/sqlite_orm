@@ -4,6 +4,7 @@
 #include <type_traits>  //  std::remove_const
 #endif
 
+#include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"
 #include "table_reference.h"
 #include "alias_traits.h"
@@ -12,17 +13,23 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        /**
-         *  If T is a table reference or recordset alias then the typename mapped_type_proxy<T>::type is the unqualified aliased type,
-         *  otherwise unqualified T.
+        /** 
+         *  Defines the `type` typename to be:
+         *  - The unqualified unwrapped table reference type if T is a table reference.
+         *  - The unqualified aliased type if T is a recordset alias.
+         *  - The enclosing data struct for eponymous virtual tables with hidden columns.
+         *  - ... otherwise unqualified T.
          */
         template<class T, class SFINAE = void>
         struct mapped_type_proxy : std::remove_const<T> {};
 
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        template<orm_table_reference R>
-        struct mapped_type_proxy<R, void> : R {};
-#endif
+        template<class T>
+        struct mapped_type_proxy<T, polyfill::void_t<typename T::enclosing_type>> {
+            using type = enclosing_type_t<T>;
+        };
+
+        template<class R>
+        struct mapped_type_proxy<R, match_if<is_table_reference, R>> : R {};
 
         template<class A>
         struct mapped_type_proxy<A, match_if<is_recordset_alias, A>> : std::remove_const<type_t<A>> {};

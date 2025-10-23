@@ -16,8 +16,10 @@
 #include "serialize_result_type.h"
 #include "operators.h"
 #include "tags.h"
-#include "table_reference.h"
+#include "field_traits.h"
+#include "alias_traits.h"
 #include "ast/into.h"
+#include "field_of.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -2156,8 +2158,68 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
     }
 
-    template<class T, class X, class Y, class Z>
-    internal::highlight_t<T, X, Y, Z> highlight(X x, Y y, Z z) {
+    struct fts5;
+
+    /** 
+     *  The FTS5 highlight function. The table type is specified as a template argument.
+     *  See https://www.sqlite.org/fts5.html#the_highlight_function
+     *  
+     *  [Deprecation notice] This expression factory function is deprecated and will be removed in v1.11.
+     */
+    template<class O, class X, class Y, class Z, std::enable_if_t<!internal::is_recordset_alias_v<O>, bool> = true>
+    [[deprecated("Use the `highlight` function accepting the hidden FTS5 'any' field instead")]]
+    constexpr internal::highlight_t<O, X, Y, Z> highlight(X x, Y y, Z z) {
         return {std::move(x), std::move(y), std::move(z)};
     }
+
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    /** 
+     *  The FTS5 highlight function.
+     *  See https://www.sqlite.org/fts5.html#the_highlight_function
+     */
+    template<class CP, class X, class Y, class Z>
+        requires (internal::hidden_column_of_vtab<CP, fts5>)
+    constexpr internal::highlight_t<typename CP::type, X, Y, Z> highlight(const CP& /*theAnyField*/, X x, Y y, Z z) {
+        return {std::move(x), std::move(y), std::move(z)};
+    }
+
+    /** 
+     *  The FTS5 highlight function.
+     *  See https://www.sqlite.org/fts5.html#the_highlight_function
+     */
+    template<class Hidden, class F, class X, class Y, class Z>
+        requires (internal::hidden_field_of_vtab<Hidden, F, fts5>)
+    constexpr internal::highlight_t<typename Hidden::enclosing_type, X, Y, Z>
+    highlight(F Hidden::* /*theAnyField*/, X x, Y y, Z z) {
+        return {std::move(x), std::move(y), std::move(z)};
+    }
+#else
+    /** 
+     *  The FTS5 highlight function.
+     *  See https://www.sqlite.org/fts5.html#the_highlight_function
+     */
+    template<class CP,
+             class X,
+             class Y,
+             class Z,
+             std::enable_if_t<internal::is_hidden_column_of_vtab_v<CP, fts5>, bool> = true>
+    constexpr internal::highlight_t<typename CP::type, X, Y, Z> highlight(const CP& /*theAnyField*/, X x, Y y, Z z) {
+        return {std::move(x), std::move(y), std::move(z)};
+    }
+
+    /** 
+     *  The FTS5 highlight function.
+     *  See https://www.sqlite.org/fts5.html#the_highlight_function
+     */
+    template<class Hidden,
+             class F,
+             class X,
+             class Y,
+             class Z,
+             std::enable_if_t<internal::is_hidden_field_of_vtab_v<Hidden, F, fts5>, bool> = true>
+    constexpr internal::highlight_t<typename Hidden::enclosing_type, X, Y, Z>
+    highlight(F Hidden::* /*theAnyField*/, X x, Y y, Z z) {
+        return {std::move(x), std::move(y), std::move(z)};
+    }
+#endif
 }

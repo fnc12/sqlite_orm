@@ -9,16 +9,18 @@
 #endif
 #endif
 
-#include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/gsl.h"
 #include "../functional/mpl.h"
+#include "../tuple_helper/tuple_filter.h"
+#include "../type_traits.h"
 #include "../schema/virtual_table.h"
 #include "../schema/column.h"
 
 #ifdef SQLITE_ENABLE_RTREE
 namespace sqlite_orm::internal {
     template<class T>
-    using is_rtree_table_element_or_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_column>>, T>;
+    inline constexpr bool is_rtree_table_element_or_constraint_v =
+        mpl::invoke_t<mpl::disjunction<check_if<is_column>>, T>::value;
 
     struct rtree_module_tag {
         // simplify conceptual/meta programming
@@ -49,14 +51,13 @@ namespace sqlite_orm::internal {
                                  rtree_col_index_sequence,
                                  field_type_t>::value;
 
-        static_assert(polyfill::conjunction_v<is_rtree_table_element_or_constraint<Cs>...>,
-                      "Incorrect table elements or constraints");
+        static_assert((is_rtree_table_element_or_constraint_v<Cs> && ...), "Incorrect table elements or constraints");
         static_assert(nRTreeColumns >= 3 && nRTreeColumns <= 11 && nRTreeColumns % 2 == 1,
                       "An RTREE table must have between 1 and 5 dimensions consisting of min/max-value pair columns");
         static_assert(
             nRTreeColumnsOfExpectedType == nRTreeColumns - 1,
             R"(The min/max-value pair columns need to be 32-bit floating point values for RTREE virtual tables and 32-bit signed integers for RTREE_I32 virtual tables, as they are stored as such)");
-        static_assert(std::is_same<typename std::tuple_element_t<0, elements_type>::field_type, int64>::value,
+        static_assert(std::is_same<field_type_t<std::tuple_element_t<0, elements_type>>, int64>::value,
                       "The type of the first column must be a 64-bit integer");
     }
 }
