@@ -42,7 +42,7 @@ namespace sqlite_orm {
 
                 auto& dbObjects = obtain_db_objects(this->storage);
                 context_t context{dbObjects};
-                context.skip_table_name = false;
+                context.omit_table_name = false;
                 context.replace_bindable_with_question = true;
 
                 const std::string sql = serialize(this->expression, context);

@@ -89,7 +89,7 @@ TEST_CASE("CTE storage") {
         auto idx1 = make_unique_index("idx1_org", &Org::id);
         auto idx2 = make_index("idx2_org", &Org::id);
         auto dbObjects = tuple{idx1, idx2, table};
-        auto cteTable = internal::make_cte_table(dbObjects, 1_ctealias().as(select(1)));
+        auto cteTable = internal::make_cte_db_object(dbObjects, 1_ctealias().as(select(1)));
         auto dbObjects2 = internal::db_objects_cat(dbObjects, cteTable);
 
         // note: deliberately make indexes resulting in the same index_t<> type, such that we know `db_objects_cat()` is working properly
@@ -100,12 +100,13 @@ TEST_CASE("CTE storage") {
 }
 
 TEST_CASE("CTE expressions") {
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     constexpr auto cte1 = 1_ctealias;
     using cte_1 = decltype(1_ctealias);
     constexpr auto x = 1_colalias;
     using x_t = decltype(1_colalias);
     SECTION("moniker expressions") {
+        runTest<internal::from2_t<cte_1>>(from(cte1));
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         runTest<internal::from_t<cte_1>>(from<cte1>());
         runTest<internal::asterisk_t<cte_1>>(asterisk<cte1>());
         runTest<internal::count_asterisk_t<cte_1>>(count<cte1>());
@@ -114,7 +115,7 @@ TEST_CASE("CTE expressions") {
         runTest<internal::left_outer_join_t<cte_1, using_t<cte_1, alias_holder<x_t>>>>(
             left_outer_join<cte1>(using_(cte1->*x)));
         runTest<internal::inner_join_t<cte_1, using_t<cte_1, alias_holder<x_t>>>>(inner_join<cte1>(using_(cte1->*x)));
-    }
 #endif
+    }
 }
 #endif

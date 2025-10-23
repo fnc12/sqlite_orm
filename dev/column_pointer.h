@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::is_convertible
+#include <type_traits>  //  std::enable_if, std::is_convertible, std::is_base_of
 #include <utility>  // std::move
 #endif
 
@@ -53,7 +53,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class O, class Base, class F, internal::satisfies_not<internal::is_recordset_alias, O> = true>
     constexpr internal::column_pointer<O, F Base::*> column(F Base::* field) {
-        static_assert(std::is_convertible<F Base::*, F O::*>::value, "Field must be from derived class");
+        static_assert(std::is_convertible<F Base::*, F O::*>::value ||
+                          std::is_same<polyfill::detected_t<internal::enclosing_type_of_t, Base, O>, O>::value ||
+                          // trust the `enclosing_type` alias template defined in the virtual table's data struct
+                          polyfill::is_detected_v<internal::enclosing_type_t, Base>,
+                      "Field must be from derived or related class");
         return {field};
     }
 
@@ -61,41 +65,33 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Explicitly refer to a column.
      */
-    template<orm_table_reference auto table, class O, class F>
-    constexpr auto column(F O::* field) {
+    template<orm_table_reference auto table, class Base, class F>
+    constexpr auto column(F Base::* field) {
         return column<internal::auto_type_t<table>>(field);
     }
+#endif
 
     // Intentionally place pointer-to-member operator for table references in the internal namespace
     // to facilitate ADL (Argument Dependent Lookup)
     namespace internal {
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         /**
          *  Explicitly refer to a column.
          */
-        template<orm_table_reference R, class O, class F>
-        constexpr auto operator->*(const R& /*table*/, F O::* field) {
+        template<orm_table_reference R, class Base, class F>
+        constexpr auto operator->*(const R& /*table*/, F Base::* field) {
             return column<typename R::type>(field);
         }
-    }
-
-    /**
-     *  Make a table reference.
-     */
-    template<class O>
-        requires (!orm_recordset_alias<O>)
-    consteval internal::table_reference<O> column() {
-        return {};
-    }
-
-    /**
-     *  Make a table reference.
-     */
-    template<class O>
-        requires (!orm_recordset_alias<O>)
-    consteval internal::table_reference<O> c() {
-        return {};
-    }
+#else
+        /**
+         *  Explicitly refer to a column.
+         */
+        template<class R, class Base, class F, std::enable_if_t<internal::is_table_reference_v<R>, bool> = true>
+        constexpr auto operator->*(const R& /*table*/, F Base::* field) {
+            return column<typename R::type>(field);
+        }
 #endif
+    }
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     /**

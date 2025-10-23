@@ -27,7 +27,7 @@ namespace sqlite_orm {
 
         /**
          *  This class captures various properties and aspects of a subselect's column expression,
-         *  and is used as a proxy in table_t<>.
+         *  and is used as a proxy in base_table<>.
          */
         template<typename Moniker,
                  typename ExplicitColRefs,

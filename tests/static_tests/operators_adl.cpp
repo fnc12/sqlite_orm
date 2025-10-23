@@ -142,24 +142,25 @@ TEST_CASE("inline namespace literals expressions") {
 #endif
 }
 
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 TEST_CASE("ADL and pointer-to-member expressions") {
     struct User {
         int id;
     };
     constexpr auto user_table = c<User>();
+
+    user_table->*&User::id;
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     constexpr auto u_alias = "u"_alias.for_<User>();
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     constexpr auto cte = "1"_cte;
 #endif
 
-    user_table->*&User::id;
     u_alias->*&User::id;
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     cte->*&User::id;
 #endif
-}
 #endif
+}
 
 TEST_CASE("ADL and expression operators") {
     struct User {

@@ -2,7 +2,7 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::true_type, std::false_type, std::remove_const, std::enable_if, std::is_base_of, std::is_void
-#include <tuple>
+#include <tuple>  // std::tuple_size, std::get
 #include <utility>  //  std::index_sequence, std::make_index_sequence
 #endif
 
@@ -17,10 +17,6 @@ namespace sqlite_orm {
 
         template<class... DBO>
         using db_objects_tuple = std::tuple<DBO...>;
-
-        struct basic_table;
-        struct index_base;
-        struct base_trigger;
 
         template<class T>
         struct is_storage : std::false_type {};
@@ -43,7 +39,7 @@ namespace sqlite_orm {
         /**
          *  `std::true_type` if given object is mapped, `std::false_type` otherwise.
          * 
-         *  Note: unlike table_t<>, index_t<>::object_type and trigger_t<>::object_type is always void.
+         *  Note: unlike base_table<>, index_t<>::object_type and trigger_t<>::object_type is always void.
          */
         template<typename DBO, typename Lookup>
         struct object_type_matches : polyfill::conjunction<polyfill::negation<std::is_void<object_type_t<DBO>>>,
@@ -66,7 +62,7 @@ namespace sqlite_orm {
         struct enable_found_table : std::enable_if<lookup_type_matches<DBO, Lookup>::value, DBO> {};
 
         /**
-         *  SFINAE friendly facility to pick a table definition (`table_t`) from a tuple of database objects.
+         *  SFINAE friendly facility to pick a table definition (`base_table`) from a tuple of database objects.
          *  
          *  Lookup - mapped data type
          *  Seq - index sequence matching the number of DBOs
@@ -80,7 +76,7 @@ namespace sqlite_orm {
             : enable_found_table<Lookup, Ix, DBO>... {};
 
         /**
-         *  SFINAE friendly facility to pick a table definition (`table_t`) from a tuple of database objects.
+         *  SFINAE friendly facility to pick a table definition (`base_table`) from a tuple of database objects.
          *
          *  Lookup - 'table' type, mapped data type
          *  DBOs - db_objects_tuple type, possibly const-qualified
@@ -91,7 +87,7 @@ namespace sqlite_orm {
                                                                  std::remove_const_t<DBOs>>::type;
 
         /**
-         *  Find a table definition (`table_t`) from a tuple of database objects;
+         *  Find a table definition (`base_table`) from a tuple of database objects;
          *  `std::nonesuch` if not found.
          *
          *  DBOs - db_objects_tuple type
@@ -101,7 +97,7 @@ namespace sqlite_orm {
         struct storage_find_table : polyfill::detected<storage_pick_table_t, Lookup, DBOs> {};
 
         /**
-         *  Find a table definition (`table_t`) from a tuple of database objects;
+         *  Find a table definition (`base_table`) from a tuple of database objects;
          *  `std::nonesuch` if not found.
          *
          *  DBOs - db_objects_tuple type, possibly const-qualified

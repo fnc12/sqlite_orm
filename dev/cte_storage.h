@@ -13,7 +13,7 @@
 #include "table_type_of.h"
 #include "column_result.h"
 #include "select_constraints.h"
-#include "schema/table.h"
+#include "schema/table_base.h"
 #include "alias.h"
 #include "cte_types.h"
 #include "cte_column_names_collector.h"
@@ -63,6 +63,21 @@ namespace sqlite_orm {
                                                                SubselectColRefs,
                                                                FinalColRefs,
                                                                Result>::type;
+
+        template<class Mapper, class... Cs>
+        struct cte_table : table_identifier, table_definition<Cs...> {
+            using definition_type = table_definition<Cs...>;
+            using cte_mapper_type = Mapper;
+            using cte_moniker_type = typename cte_mapper_type::cte_moniker_type;
+            using object_type = cte_moniker_type;
+            using elements_type = typename definition_type::elements_type;
+        };
+
+        template<class Mapper, class... Cs>
+        cte_table<Mapper, Cs...> make_cte_table(std::string name, Cs... args) {
+            SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
+                return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
+        }
 
         // aliased column expressions, explicit or implicitly numbered
         template<typename F, typename ColRef, satisfies_is_specialization_of<ColRef, alias_holder> = true>
@@ -209,8 +224,8 @@ namespace sqlite_orm {
         template<class DBOs, class O>
         auto extract_colref_expressions(const DBOs& dbObjects, const asterisk_t<O>& /*col*/) {
             using table_type = storage_pick_table_t<O, DBOs>;
-            using elements_t = typename table_type::elements_type;
-            using column_idxs = filter_tuple_sequence_t<elements_t, is_column>;
+            using elements_type = typename table_type::elements_type;
+            using column_idxs = filter_tuple_sequence_t<elements_type, is_column>;
 
             auto& table = pick_table<O>(dbObjects);
             return get_table_columns_fields(table.elements, column_idxs{});
@@ -270,14 +285,14 @@ namespace sqlite_orm {
                                                  std::vector<std::string> columnNames,
                                                  const ColRefs& finalColRefs,
                                                  std::index_sequence<CIs...>) {
-            return make_table<Mapper>(
+            return make_cte_table<Mapper>(
                 std::move(tableName),
                 make_cte_column<std::tuple_element_t<CIs, typename Mapper::fields_type>>(std::move(columnNames.at(CIs)),
                                                                                          get<CIs>(finalColRefs))...);
         }
 
         template<typename DBOs, typename CTE>
-        auto make_cte_table(const DBOs& dbObjects, const CTE& cte) {
+        auto make_cte_db_object(const DBOs& dbObjects, const CTE& cte) {
             using cte_type = CTE;
 
             auto subSelect = get_cte_driving_subselect(cte.subselect);
@@ -315,7 +330,7 @@ namespace sqlite_orm {
         decltype(auto) make_recursive_cte_db_objects(const DBOs& dbObjects,
                                                      const common_table_expressions<CTEs...>& cte,
                                                      std::index_sequence<Ii, In...>) {
-            auto tbl = make_cte_table(dbObjects, get<Ii>(cte));
+            auto tbl = make_cte_db_object(dbObjects, get<Ii>(cte));
 
             if constexpr (sizeof...(In) > 0) {
                 return make_recursive_cte_db_objects(

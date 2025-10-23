@@ -107,6 +107,7 @@ namespace sqlite_orm {
             conditions_tuple,
             actions_tuple,
             expressions_tuple,
+            filtered_expressions_tuple,
             dynamic_expressions,
             compound_expressions,
             serialized,
@@ -137,6 +138,7 @@ namespace sqlite_orm {
         constexpr streaming<stream_as::conditions_tuple> streaming_conditions_tuple{};
         constexpr streaming<stream_as::actions_tuple> streaming_actions_tuple{};
         constexpr streaming<stream_as::expressions_tuple> streaming_expressions_tuple{};
+        constexpr streaming<stream_as::filtered_expressions_tuple> streaming_filtered_expressions_tuple{};
         constexpr streaming<stream_as::dynamic_expressions> streaming_dynamic_expressions{};
         constexpr streaming<stream_as::compound_expressions> streaming_compound_expressions{};
         constexpr streaming<stream_as::serialized> streaming_serialized{};
@@ -187,6 +189,22 @@ namespace sqlite_orm {
             auto& context = std::get<2>(tpl);
 
             iterate_tuple(args, [&ss, &context, first = true](auto& arg) mutable {
+                static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
+                ss << sep[std::exchange(first, false)] << serialize(arg, context);
+            });
+            return ss;
+        }
+
+        // serialize and stream a tuple of expressions including only those specified by an index sequence;
+        // comma-separated
+        template<class T, class Seq, class Ctx>
+        std::ostream& operator<<(std::ostream& ss,
+                                 std::tuple<const streaming<stream_as::filtered_expressions_tuple>&, Seq, T, Ctx> tpl) {
+            const auto& args = std::get<1>(tpl);
+            const auto& included_index_sequence = std::get<2>(tpl);
+            auto& context = std::get<3>(tpl);
+
+            iterate_tuple(args, included_index_sequence, [&ss, &context, first = true](auto& arg) mutable {
                 static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)] << serialize(arg, context);
             });
@@ -416,7 +434,7 @@ namespace sqlite_orm {
             return ss;
         }
 
-        // serialize and stream a tuple of column constraints;
+        // serialize and stream a tuple of column constraints excluding auxiliary columns;
         // space + space-separated
         template<class... Op, class Ctx>
         std::ostream& operator<<(std::ostream& ss,
@@ -429,11 +447,14 @@ namespace sqlite_orm {
             auto& context = std::get<3>(tpl);
 
             using constraints_tuple = decltype(column.constraints);
-            iterate_tuple(column.constraints, [&ss, &context](auto& constraint) {
+            // always append explicit constraints even when omitting type affinity and implicit constraints
+            using excluding_auxiliary_index_sequence =
+                filter_tuple_sequence_t<constraints_tuple, check_if_not<is_auxiliary>::template fn>;
+            iterate_tuple(column.constraints, excluding_auxiliary_index_sequence{}, [&ss, &context](auto& constraint) {
                 ss << ' ' << serialize(constraint, context);
             });
             // add implicit null constraint
-            if (!context.fts5_columns) {
+            if (!context.omit_column_type) {
                 constexpr bool hasExplicitNullableConstraint =
                     mpl::invoke_t<mpl::disjunction<check_if_has_type<null_t>, check_if_has_type<not_null_t>>,
                                   constraints_tuple>::value;

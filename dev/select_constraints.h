@@ -318,7 +318,16 @@ namespace sqlite_orm {
                 }
             }
         };
+
+        template<class T>
+        inline constexpr bool is_with_clause_v = polyfill::is_specialization_of<T, with_t>::value;
+#else
+        template<class T>
+        inline constexpr bool is_with_clause_v = false;
 #endif
+
+        template<class T>
+        using is_with_clause = polyfill::bool_constant<is_with_clause_v<T>>;
 
         template<class T>
         struct asterisk_t {
@@ -388,6 +397,38 @@ namespace sqlite_orm {
             }
         };
 
+        /**
+         *  Specialize if a type is a select statement expression.
+         */
+        template<class T, class SFINAE = void>
+        inline constexpr bool is_select_expression_v = false;
+
+        template<class T>
+        using is_select_expression = polyfill::bool_constant<is_select_expression_v<T>>;
+
+        template<class Select>
+        inline constexpr bool is_select_expression_v<Select, std::enable_if_t<is_select_v<Select>>> = true;
+
+        template<class With>
+        inline constexpr bool is_select_expression_v<
+            With,
+            std::enable_if_t<polyfill::conjunction_v<is_with_clause<With>, is_select<expression_type_t<With>>>>> = true;
+
+        /*  
+         *  Access the main select expression of a with clause or the passed in select expression.
+         */
+        template<class Select, satisfies<is_select_expression, Select> = true>
+        constexpr decltype(auto) access_main_select(const Select& select) {
+            if constexpr (is_with_clause_v<Select>) {
+                return (select.expression);
+            } else {
+                return select;
+            }
+        }
+
+        template<class Select>
+        using main_select_t = polyfill::remove_cvref_t<decltype(access_main_select(std::declval<Select>()))>;
+
         template<class T, std::enable_if_t<!is_rowset_deduplicator_v<T>, bool> = true>
         const T& access_column_expression(const T& expression) {
             return expression;
@@ -407,7 +448,8 @@ namespace sqlite_orm {
             static_assert(count_tuple<T, is_group_by>::value <= 1, "a single query cannot contain > 1 GROUP BY blocks");
             static_assert(count_tuple<T, is_order_by>::value <= 1, "a single query cannot contain > 1 ORDER BY blocks");
             static_assert(count_tuple<T, is_limit>::value <= 1, "a single query cannot contain > 1 LIMIT blocks");
-            static_assert(count_tuple<T, is_from>::value <= 1, "a single query cannot contain > 1 FROM blocks");
+            static_assert(mpl::invoke_t<mpl::counts<mpl::disjunction_fn<is_from, is_from2>>, T>::value <= 1,
+                          "a single query cannot contain > 1 FROM blocks");
         }
     }
 }

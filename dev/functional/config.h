@@ -2,6 +2,8 @@
 
 #include "cxx_universal.h"
 #include "platform_definitions.h"
+// pull in SQLite3 configuration early, such that version and feature macros are globally available in sqlite_orm
+#include "sqlite3_config.h"
 
 #ifdef BUILD_SQLITE_ORM_MODULE
 #define SQLITE_ORM_EXPORT export
@@ -49,6 +51,10 @@
 
 #if __cpp_lib_semaphore >= 201907L
 #define SQLITE_ORM_CPP20_SEMAPHORE_SUPPORTED
+#endif
+
+#if __cpp_lib_generator >= 202207L
+#define SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
 #endif
 
 #ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED

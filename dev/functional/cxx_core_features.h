@@ -41,6 +41,10 @@
 #define SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
 #endif
 
+#if __cpp_constexpr >= 201907L
+#define SQLITE_ORM_TRIVIAL_DEFAULTINIT_SUPPORTED
+#endif
+
 #if __cpp_concepts >= 201907L
 #define SQLITE_ORM_CONCEPTS_SUPPORTED
 #endif
@@ -51,6 +55,10 @@
 
 #if __cpp_nontype_template_args >= 201911L
 #define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
+#endif
+
+#if __cpp_explicit_this_parameter >= 202110L
+#define SQLITE_ORM_DEDUCING_THIS_SUPPORTED
 #endif
 
 #if __cpp_static_call_operator >= 202207L

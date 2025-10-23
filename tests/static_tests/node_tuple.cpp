@@ -6,6 +6,7 @@ using namespace sqlite_orm;
 using internal::alias_holder;
 using internal::column_alias;
 using internal::column_pointer;
+using internal::literal_holder;
 
 template<class T>
 struct is_pair : std::false_type {};
@@ -60,9 +61,8 @@ TEST_CASE("Node tuple") {
         }
     }
     SECTION("non-bindable literals") {
-        using namespace internal;
         using Tuple = node_tuple_t<literal_holder<int>>;
-        using Expected = tuple<>;
+        using Expected = tuple<literal_holder<int>>;
         static_assert(is_same<Tuple, Expected>::value, "literal int");
         STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<>>::value);
     }
@@ -622,7 +622,7 @@ TEST_CASE("Node tuple") {
             STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(""))>, tuple<const char*>>::value);
         }
         SECTION("positional ordinal") {
-            STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(1))>, tuple<>>::value);
+            STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(1))>, tuple<literal_holder<int>>>::value);
         }
         SECTION("sole column alias") {
             STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(get<colalias_a>()))>, tuple<>>::value);
@@ -1045,6 +1045,13 @@ TEST_CASE("Node tuple") {
                                     int,
                                     column_pointer<cte_1, alias_holder<column_alias<'1'>>>>;
         STATIC_REQUIRE(std::is_same_v<Tuple, ExpectedTuple>);
+    }
+#endif
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+    SECTION("table-valued") {
+        auto expression = from(dbstat_table, dbstat_table("main", true));
+        using Tuple = typename node_tuple<decltype(expression)>::type;
+        STATIC_REQUIRE(is_same<Tuple, tuple<const char*, bool>>::value);
     }
 #endif
 }

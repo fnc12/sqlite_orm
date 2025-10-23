@@ -21,7 +21,7 @@ TEST_CASE("statement_serializer column names") {
                     REQUIRE(value == R"("id")");
                 }
                 SECTION("don't skip table name") {
-                    context.skip_table_name = false;
+                    context.omit_table_name = false;
                     auto value = serialize(&User::id, context);
                     REQUIRE(value == R"("users"."id")");
                 }
@@ -159,7 +159,7 @@ TEST_CASE("statement_serializer column names") {
         SECTION("regular") {
             using context_t = internal::serializer_context<db_objects_t>;
             context_t context{dbObjects};
-            context.skip_table_name = false;
+            context.omit_table_name = false;
             using als = alias_a<Object>;
             auto value = serialize(alias_column<als>(&Object::id), context);
             REQUIRE(value == R"("a"."id")");
@@ -168,10 +168,11 @@ TEST_CASE("statement_serializer column names") {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         SECTION("cte") {
             auto dbObjects2 =
-                internal::db_objects_cat(dbObjects, internal::make_cte_table(dbObjects, 1_ctealias().as(select(1))));
+                internal::db_objects_cat(dbObjects,
+                                         internal::make_cte_db_object(dbObjects, 1_ctealias().as(select(1))));
             using context_t = internal::serializer_context<decltype(dbObjects2)>;
             context_t context{dbObjects2};
-            context.skip_table_name = false;
+            context.omit_table_name = false;
             constexpr auto als = "a"_alias.for_<1_ctealias>();
             auto value = serialize(als->*1_colalias, context);
             REQUIRE(value == R"("a"."1")");

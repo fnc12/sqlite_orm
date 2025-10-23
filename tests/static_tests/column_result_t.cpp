@@ -148,7 +148,7 @@ TEST_CASE("column_result_of_t") {
     // note: even though used with the CTE, &User::id doesn't need to be mapped into the CTE to make column results work;
     //       this is because the result type is taken from the member pointer just because we can't look it up in the storage definition
     auto dbObjects2 =
-        internal::db_objects_cat(dbObjects, internal::make_cte_table(dbObjects, cte<cte_1>().as(select(1))));
+        internal::db_objects_cat(dbObjects, internal::make_cte_db_object(dbObjects, cte<cte_1>().as(select(1))));
     using db_objects2_t = decltype(dbObjects2);
     runTest<db_objects_t, int>(column<cte_1>(&User::id));
     runTest<db_objects2_t, int>(column<cte_1>(1_colalias));
@@ -166,5 +166,20 @@ TEST_CASE("column_result_of_t") {
     runTest<db_objects_t, int>(cte1->*&User::id);
     runTest<db_objects_t, int>(count<cte1>());
 #endif
+#endif
+}
+
+TEST_CASE("mapped type proxy") {
+    using internal::mapped_type_proxy_t;
+
+    STATIC_REQUIRE(std::is_same<mapped_type_proxy_t<decltype(sqlite_master_table)>, sqlite_master>::value);
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    STATIC_REQUIRE(std::is_same<mapped_type_proxy_t<decltype(sqlite_schema)>, sqlite_master>::value);
+#endif
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+    STATIC_REQUIRE(std::is_same<mapped_type_proxy_t<dbstat::hidden>, dbstat>::value);
+#endif
+#if SQLITE_VERSION_NUMBER >= 3008012
+    STATIC_REQUIRE(std::is_same<mapped_type_proxy_t<generate_series::hidden>, generate_series>::value);
 #endif
 }

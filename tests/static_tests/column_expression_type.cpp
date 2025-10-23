@@ -56,9 +56,9 @@ TEST_CASE("column_expression_of_t") {
 #endif
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     using cte_1 = decltype(1_ctealias);
-    auto dbObjects2 =
-        internal::db_objects_cat(dbObjects,
-                                 internal::make_cte_table(dbObjects, cte<cte_1>().as(select(columns(&Org::id, 1)))));
+    auto dbObjects2 = internal::db_objects_cat(
+        dbObjects,
+        internal::make_cte_db_object(dbObjects, cte<cte_1>().as(select(columns(&Org::id, 1)))));
     using db_objects2_t = decltype(dbObjects2);
     runTest<db_objects_t, column_pointer<cte_1, int64 Org::*>>(column<cte_1>(&Org::id));
     runTest<db_objects_t, column_pointer<cte_1, alias_holder<column_alias<'1'>>>>(column<cte_1>(1_colalias));

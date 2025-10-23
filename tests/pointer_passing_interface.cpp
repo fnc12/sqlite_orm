@@ -48,8 +48,6 @@ TEST_CASE("pointer-passing") {
 
         int64_pointer_binding operator()() const {
             return bind_pointer<int64_pointer_binding>(new int64{-1});
-            // outline: low-level; must compile
-            return bind_carray_pointer(new int64{-1}, delete_int64{});
         }
 
         static const char* name() {

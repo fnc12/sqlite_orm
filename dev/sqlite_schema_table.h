@@ -6,7 +6,7 @@
 
 #include "schema/column.h"
 #include "schema/table.h"
-#include "column_pointer.h"
+#include "table_reference.h"
 #include "alias.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -40,8 +40,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                           make_column("sql", &sqlite_master::sql));
     }
 
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     inline constexpr orm_table_reference auto sqlite_master_table = c<sqlite_master>();
+#else
+    inline constexpr auto sqlite_master_table = c<sqlite_master>();
+#endif
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     inline constexpr orm_table_alias auto sqlite_schema = "sqlite_schema"_alias.for_<sqlite_master>();
 #endif
 }
