@@ -291,11 +291,11 @@ namespace sqlite_orm {
             /**
              *  Call it once during storage lifetime to make it keeping its connection opened till dtor call.
              *  By default if storage is not in-memory it calls `sqlite3_open` only when the connection is really
-             *  needed and closes when it is not needed. This function breaks this rule. In memory storage always
-             *  keeps connection opened so calling this for in-memory storage changes nothing.
-             *  Note about multithreading: in multithreading context avoiding using this function for not in-memory
-             *  storage may lead to data races. If you have data races in such a configuration try to call `open_forever()`
-             *  before accessing your storage - it may fix data races.
+             *  needed and closes when it is not needed. This function establishes a permanent connection.
+             *  In-memory storage always establishes a permanent connection, so calling this method is a no-op.
+             *  
+             *  Attention: You must ensure that you cal lthis method in a single-threaded context.
+             *  An alternative way to establish a permanent connection is to specify control options to `make_storage()`.
              */
             void open_forever() {
                 if (!this->isOpenedForever) {
