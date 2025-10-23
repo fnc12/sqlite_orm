@@ -14516,6 +14516,8 @@ namespace sqlite_orm {
     namespace polyfill = internal::polyfill;
 }
 
+// #include "functional/gsl.h"
+
 // #include "error_code.h"
 
 // #include "vfs_name.h"
@@ -14675,15 +14677,15 @@ namespace sqlite_orm {
 
             connection_holder(std::string filename,
                               std::function<void(sqlite3*)> didOpenDb,
-                              const connection_control& options = {}) :
-                _didOpenDb{std::move(didOpenDb)}, filename(std::move(filename)), vfs_name(options.vfs_name),
-                open_mode(options.open_mode) {}
+                              const connection_control& options) :
+                _openedForeverHint{options.open_forever}, _didOpenDb{std::move(didOpenDb)},
+                filename{std::move(filename)}, vfs_name{options.vfs_name}, open_mode{options.open_mode} {}
 
             connection_holder(const connection_holder&) = delete;
 
             connection_holder(const connection_holder& other, std::function<void(sqlite3*)> didOpenDb) :
-                _didOpenDb{std::move(didOpenDb)}, filename{other.filename}, vfs_name(other.vfs_name),
-                open_mode{other.open_mode} {}
+                _openedForeverHint{other._openedForeverHint}, _didOpenDb{std::move(didOpenDb)},
+                filename{other.filename}, vfs_name{other.vfs_name}, open_mode{other.open_mode} {}
 
             void retain() {
                 const maybe_lock maybeLock{_sync, !_openedForeverHint};
@@ -14769,14 +14771,14 @@ namespace sqlite_orm {
         struct connection_holder {
             connection_holder(std::string filename,
                               std::function<void(sqlite3*)> didOpenDb,
-                              const connection_control& options = {}) :
-                _didOpenDb{std::move(didOpenDb)}, filename(std::move(filename)), vfs_name(options.vfs_name),
-                open_mode(options.open_mode) {}
+                              const connection_control& options) :
+                _didOpenDb{std::move(didOpenDb)}, filename{std::move(filename)}, vfs_name{options.vfs_name},
+                open_mode{options.open_mode} {}
 
             connection_holder(const connection_holder&) = delete;
 
             connection_holder(const connection_holder& other, std::function<void(sqlite3*)> didOpenDb) :
-                _didOpenDb{std::move(didOpenDb)}, filename{other.filename}, vfs_name(other.vfs_name),
+                _didOpenDb{std::move(didOpenDb)}, filename{other.filename}, vfs_name{other.vfs_name},
                 open_mode{other.open_mode} {}
 
             void retain() {
