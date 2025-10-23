@@ -19,7 +19,6 @@
 #include "field_of.h"
 #include "table_type_of.h"
 #include "type_printer.h"
-#include "table_reference.h"
 
 namespace sqlite_orm {
 
@@ -169,7 +168,7 @@ namespace sqlite_orm {
 
 #if SQLITE_VERSION_NUMBER >= 3024000
         /** 
-         *  Auxiliary virtual table column
+         *  Auxiliary virtual table column constraint
          */
         struct auxiliary_t {};
 

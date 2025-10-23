@@ -1,15 +1,14 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::is_base_of, std::is_same
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+#include <type_traits>  //  std::is_base_of, std::is_same, std::remove_const
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
 #include <concepts>
 #endif
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"
-#include "table_reference.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
@@ -20,6 +19,22 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 namespace sqlite_orm {
     namespace internal {
+        template<class O>
+        struct table_reference;
+
+        template<class RecordSet>
+        struct decay_table_ref : std::remove_const<RecordSet> {};
+        template<class O>
+        struct decay_table_ref<table_reference<O>> : polyfill::type_identity<O> {};
+        template<class O>
+        struct decay_table_ref<const table_reference<O>> : polyfill::type_identity<O> {};
+
+        template<class RecordSet>
+        using decay_table_ref_t = typename decay_table_ref<RecordSet>::type;
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        template<auto recordset>
+        using auto_decay_table_ref_t = typename decay_table_ref<decltype(recordset)>::type;
+#endif
 
         template<class A>
         inline constexpr bool is_alias_v = std::is_base_of<alias_tag, A>::value;
@@ -35,6 +50,13 @@ namespace sqlite_orm {
 
         template<class A>
         struct is_column_alias : is_alias<A> {};
+
+        template<class O>
+        inline constexpr bool is_table_reference_v =
+            polyfill::is_specialization_of_v<std::remove_const_t<O>, table_reference>;
+
+        template<class R>
+        struct is_table_reference : polyfill::bool_constant<is_table_reference_v<R>> {};
 
         /** @short Alias of any type of record set, see `orm_recordset_alias`.
          */
@@ -68,11 +90,20 @@ namespace sqlite_orm {
 
         template<class A>
         using is_cte_moniker = polyfill::bool_constant<is_cte_moniker_v<A>>;
+
+        /** @short Referring to a recordset.
+         */
+        template<class T>
+        inline constexpr bool is_referring_to_recordset_v =
+            polyfill::disjunction_v<is_table_reference<T>, is_recordset_alias<T>>;
+
+        template<class T>
+        using is_referring_to_recordset = polyfill::bool_constant<is_referring_to_recordset_v<T>>;
     }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     template<class A>
     concept orm_alias = std::derived_from<A, alias_tag>;
 
@@ -84,6 +115,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class A>
     concept orm_column_alias = (orm_alias<A> && !orm_names_type<A>);
+
+    /** @short Specifies that a type is a reference of a concrete table, especially of a derived class.
+     *
+     *  A concrete table reference has the following traits:
+     *  - specialization of `table_reference`, whose `type` typename references a mapped object.
+     */
+    template<class O>
+    concept orm_table_reference = polyfill::is_specialization_of_v<std::remove_const_t<O>, internal::table_reference>;
 
     /** @short Specifies that a type is an alias of any type of record set.
      *

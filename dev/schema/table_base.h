@@ -99,7 +99,7 @@ namespace sqlite_orm::internal {
 
             const std::string* res = nullptr;
             iterate_tuple(this->elements,
-                          col_index_sequence_with_field_type<elements_type, field_type>{},
+                          all_col_index_sequence_with_field_type<elements_type, field_type>{},
                           [&res, memberPointer](auto& column) {
                               if (compare_fields(column.member_pointer, memberPointer) ||
                                   compare_fields(column.setter, memberPointer)) {

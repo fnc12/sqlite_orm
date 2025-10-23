@@ -7,6 +7,10 @@
 
 using namespace sqlite_orm;
 using internal::column_pointer;
+using internal::is_recordset_alias_v;
+using internal::is_table_alias_v;
+using internal::table_reference;
+using internal::table_valued_expression;
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 using internal::count_asterisk_t;
 using internal::decay_table_ref_t;
@@ -16,12 +20,9 @@ using internal::get_all_t;
 using internal::get_optional_t;
 using internal::get_pointer_t;
 using internal::get_t;
-using internal::is_recordset_alias_v;
-using internal::is_table_alias_v;
 using internal::mapped_view;
 using internal::remove_all_t;
 using internal::remove_t;
-using internal::table_reference;
 using internal::using_t;
 using std::same_as;
 #endif
@@ -113,15 +114,15 @@ TEST_CASE("column pointers") {
         int id;
     };
     struct DerivedUser : User {};
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     constexpr auto derived_user = c<DerivedUser>();
-#endif
 
     SECTION("table reference") {
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        STATIC_REQUIRE(orm_table_reference<decltype(derived_user)>);
         STATIC_REQUIRE_FALSE(is_table_alias_v<decltype(derived_user)>);
         STATIC_REQUIRE_FALSE(is_recordset_alias_v<decltype(derived_user)>);
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+        STATIC_REQUIRE(orm_table_reference<decltype(derived_user)>);
+#endif
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         STATIC_REQUIRE_FALSE(orm_table_alias<decltype(derived_user)>);
         STATIC_REQUIRE_FALSE(orm_recordset_alias<decltype(derived_user)>);
         runTest<table_reference<DerivedUser>>(derived_user);
@@ -145,8 +146,13 @@ TEST_CASE("column pointers") {
         STATIC_REQUIRE(storage_field_callable<storage_type, decltype(derived_user->*&DerivedUser::id)>);
 #endif
     }
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     SECTION("table reference expressions") {
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+        runTest<internal::from2_t<table_valued_expression<dbstat, const char*>>>(from(dbstat_table("main")));
+        runTest<internal::from2_t<table_reference<dbstat>, table_valued_expression<dbstat, const char*>>>(
+            from(dbstat_table, dbstat_table("main")));
+#endif
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         runTest<internal::base_table<DerivedUser, std::false_type>>(make_table<derived_user>("derived_user"));
         runTest<internal::from_t<DerivedUser>>(from<derived_user>());
         runTest<internal::into_t<DerivedUser>>(into<derived_user>());
@@ -185,6 +191,6 @@ TEST_CASE("column pointers") {
         STATIC_REQUIRE(storage_refers_to_table_callable<storage_type, sqlite_master_table>);
         STATIC_REQUIRE(storage_table_reference_callable<storage_type, sqlite_master_table>);
         STATIC_REQUIRE(storage_refers_to_table_callable<storage_type, sqlite_schema>);
-    }
 #endif
+    }
 }

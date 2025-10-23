@@ -13,6 +13,7 @@
 #include "functional/cxx_functional_polyfill.h"
 #include "functional/gsl.h"
 #include "tuple_helper/tuple_traits.h"
+#include "type_traits.h"
 #include "connection_holder.h"
 #include "select_constraints.h"
 #include "values.h"
@@ -352,6 +353,17 @@ namespace sqlite_orm {
 
         template<class DML>
         using main_dml_t = polyfill::remove_cvref_t<decltype(access_main_dml(std::declval<DML>()))>;
+
+        template<class T, class Tpl>
+        constexpr void validate_get_all_conditions() {
+            using from2_index_sequence = filter_tuple_sequence_t<Tpl, is_from2>;
+            if constexpr (from2_index_sequence::size() > 0) {
+                using from_type = std::tuple_element_t<index_sequence_value_at<0>(from2_index_sequence{}), Tpl>;
+                // check whether one of table expressions' type is the same as the requested table type
+                static_assert(mpl::invoke_t<mpl::contains<check_if_projected_is_type<type_t, T>>, from_type>::value,
+                              "Requested object type must be listed in explicit FROM clause");
+            }
+        }
     }
 }
 
@@ -770,6 +782,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::get_all_t<T, R, Args...> get_all(Args... conditions) {
         using conditions_tuple = std::tuple<Args...>;
         internal::validate_conditions<conditions_tuple>();
+        internal::validate_get_all_conditions<T, conditions_tuple>();
         return {{std::forward<Args>(conditions)...}};
     }
 
@@ -810,6 +823,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::get_all_pointer_t<T, R, Args...> get_all_pointer(Args... conditions) {
         using conditions_tuple = std::tuple<Args...>;
         internal::validate_conditions<conditions_tuple>();
+        internal::validate_get_all_conditions<T, conditions_tuple>();
         return {{std::forward<Args>(conditions)...}};
     }
 
@@ -839,6 +853,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::get_all_optional_t<T, R, Args...> get_all_optional(Args... conditions) {
         using conditions_tuple = std::tuple<Args...>;
         internal::validate_conditions<conditions_tuple>();
+        internal::validate_get_all_conditions<T, conditions_tuple>();
         return {{std::forward<Args>(conditions)...}};
     }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED

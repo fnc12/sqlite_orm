@@ -84,7 +84,10 @@ namespace sqlite_orm {
         struct node_tuple<where_t<C>, void> : node_tuple<C> {};
 
         template<class T, class X>
-        struct node_tuple<match_t<T, X>, void> : node_tuple<X> {};
+        struct node_tuple<match_with_table_t<T, X>, void> : node_tuple<X> {};
+
+        template<class Field, class X>
+        struct node_tuple<match_t<Field, X>, void> : node_tuple<X> {};
 
         /**
          *  Column alias
@@ -97,12 +100,6 @@ namespace sqlite_orm {
          */
         template<char... C>
         struct node_tuple<column_alias<C...>, void> : node_tuple<void> {};
-
-        /**
-         *  Literal
-         */
-        template<class T>
-        struct node_tuple<literal_holder<T>, void> : node_tuple<void> {};
 
         template<class E>
         struct node_tuple<order_by_t<E>, void> : node_tuple<E> {};
@@ -261,5 +258,17 @@ namespace sqlite_orm {
 
         template<class T, class O>
         struct node_tuple<limit_t<T, true, true, O>, void> : node_tuple_for<O, T> {};
+
+        template<class... TableExpr>
+        struct node_tuple<from2_t<TableExpr...>, void> : node_tuple_for<TableExpr...> {};
+
+        /*
+         *  Table reference as part of FROM clause: skip
+         */
+        template<class R>
+        struct node_tuple<R, match_if<is_table_reference, R>> : node_tuple<void> {};
+
+        template<class Table, class... Args>
+        struct node_tuple<table_valued_expression<Table, Args...>, void> : node_tuple_for<Args...> {};
     }
 }

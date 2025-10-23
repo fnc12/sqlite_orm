@@ -719,14 +719,6 @@ namespace sqlite_orm {
             inner_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
         };
 
-        template<class... Args>
-        struct from_t {
-            using tuple_type = std::tuple<Args...>;
-        };
-
-        template<class T>
-        using is_from = polyfill::is_specialization_of<T, from_t>;
-
         template<class T>
         using is_constrained_join = polyfill::is_detected<on_type_t, T>;
 
@@ -736,6 +728,23 @@ namespace sqlite_orm {
                                                            check_if_is_template<natural_join_t>>,
                                           T>;
 
+        template<class... Tables>
+        struct from_t {
+            using tuple_type = std::tuple<Tables...>;
+        };
+
+        template<class T>
+        using is_from = polyfill::is_specialization_of<T, from_t>;
+
+        template<class... TableExpr>
+        struct from2_t {
+            using tuple_type = std::tuple<TableExpr...>;
+
+            tuple_type table_expressions;
+        };
+
+        template<class T>
+        using is_from2 = polyfill::is_specialization_of<T, from2_t>;
     }
 }
 
@@ -745,8 +754,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  `storage.select(&User::id, from<User>());`
      */
     template<class... Tables>
-    internal::from_t<Tables...> from() {
-        static_assert(sizeof...(Tables) > 0, "");
+    constexpr internal::from_t<Tables...> from() {
+        static_assert(sizeof...(Tables) > 0);
         return {};
     }
 
@@ -756,8 +765,32 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  `storage.select(&User::id, from<"a"_alias.for_<User>>());`
      */
     template<orm_refers_to_recordset auto... recordsets>
-    auto from() {
+    constexpr auto from() {
         return from<internal::auto_decay_table_ref_t<recordsets>...>();
+    }
+#endif
+
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    /**
+     *  Explicit FROM for an eponymous virtual table used as a table-valued function. Usage:
+     *  `storage.select(asterisk<dbstat>(), from(dbstat_table("main", true)));`
+     */
+    template<class... TableExpr>
+        requires ((orm_refers_to_recordset<TableExpr> || orm_table_valued_expression<TableExpr>) && ...)
+    constexpr internal::from2_t<TableExpr...> from(TableExpr... tableExpressions) {
+        return {{std::move(tableExpressions)...}};
+    }
+#else
+    /**
+     *  Explicit FROM for an eponymous virtual table used as a table-valued function. Usage:
+     *  `storage.select(asterisk<dbstat>(), from(dbstat_table("main", true)));`
+     */
+    template<class... TableExpr>
+    constexpr internal::from2_t<TableExpr...> from(TableExpr... tableExpressions) {
+        static_assert(
+            ((internal::is_referring_to_recordset_v<TableExpr> || internal::is_table_valued_expression_v<TableExpr>) &&
+             ...));
+        return {{std::move(tableExpressions)...}};
     }
 #endif
 
@@ -823,7 +856,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                         std::is_base_of<condition_t, L>,
                                                         std::is_base_of<condition_t, R>,
                                                         is_operator_argument<L>,
-                                                        is_operator_argument<R>>::value,
+                                                        is_operator_argument<R>>::value
+#ifndef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+                                      && !is_table_reference_v<L>
+#endif
+                                  ,
                                   bool> = true>
         constexpr is_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator==(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
@@ -1024,8 +1061,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(l), std::move(r)};
     }
 
-    template<class L, class R>
-    constexpr internal::is_equal_with_table_t<L, R> is_equal(R rhs) {
+    /** 
+     *  [Deprecation notice] This expression factory function is deprecated and will be removed in v1.11.
+     */
+    template<class O, class R, std::enable_if_t<!internal::is_recordset_alias_v<O>, bool> = true>
+    [[deprecated("Use the usual `is_equal` function to compare the hidden FTS5 'any' field or a field of your FTS "
+                 "table instead")]]
+    constexpr internal::is_equal_with_table_t<O, R> is_equal(R rhs) {
         return {std::move(rhs)};
     }
 

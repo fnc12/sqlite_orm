@@ -35,9 +35,9 @@ namespace sqlite_orm {
             template<class T>
             SQLITE_ORM_STATIC_CALLOP void operator()(const T&) SQLITE_ORM_OR_CONST_CALLOP {}
 
-            template<class F, class O>
-            void operator()(F O::*) {
-                this->table_names.emplace(lookup_table_name<O>(this->db_objects), "");
+            template<class F, class Lookup>
+            void operator()(F Lookup::*) {
+                this->table_names.emplace(lookup_table_name<mapped_type_proxy_t<Lookup>>(this->db_objects), "");
             }
 
             template<class T, class F>

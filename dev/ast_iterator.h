@@ -103,8 +103,18 @@ namespace sqlite_orm {
         };
 
         template<class T, class X>
-        struct ast_iterator<match_t<T, X>, void> {
-            using node_type = match_t<T, X>;
+        struct ast_iterator<match_with_table_t<T, X>, void> {
+            using node_type = match_with_table_t<T, X>;
+
+            template<class L>
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
+                iterate_ast(node.argument, lambda);
+            }
+        };
+
+        template<class Field, class X>
+        struct ast_iterator<match_t<Field, X>, void> {
+            using node_type = match_t<Field, X>;
 
             template<class L>
             SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -155,6 +165,27 @@ namespace sqlite_orm {
             SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& expression,
                                                      L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
                 iterate_ast(expression.actions, lambda);
+            }
+        };
+
+        template<class T>
+        struct ast_iterator<T, match_if<is_table_valued_expression, T>> {
+            using node_type = T;
+
+            template<class L>
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& expression,
+                                                     L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
+                iterate_ast(expression.table_values, lambda);
+            }
+        };
+
+        template<class T>
+        struct ast_iterator<T, match_if<is_from2, T>> {
+            using node_type = T;
+
+            template<class L>
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& from, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
+                iterate_ast(from.table_expressions, lambda);
             }
         };
 

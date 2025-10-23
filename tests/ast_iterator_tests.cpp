@@ -26,6 +26,8 @@ TEST_CASE("ast_iterator") {
         int id = 0;
         std::string name;
     };
+    constexpr auto user_table = c<User>();
+    using user_hidden = fts5::hidden_fields_of<User>;
 
     std::vector<std::type_index> typeIndexes;
     decltype(typeIndexes) expected;
@@ -263,9 +265,24 @@ TEST_CASE("ast_iterator") {
         auto node = into<User>();
         iterate_ast(node, lambda);
     }
-    SECTION("match") {
-        auto node = match<User>(std::string("Plazma"));
-        expected.push_back(typeid(std::string));
+    SECTION("match using explicit template parameter") {
+        constexpr auto node = match<User>("Plazma");
+        expected.push_back(typeid(const char*));
+        iterate_ast(node, lambda);
+    }
+    SECTION("match any column") {
+        constexpr auto node = match(user_table->*&fts5::hidden::any, "Plazma");
+        expected.push_back(typeid(const char*));
+        iterate_ast(node, lambda);
+    }
+    SECTION("match any column, rebound") {
+        constexpr auto node = match(user_hidden::any_field, "Claude");
+        expected.push_back(typeid(const char*));
+        iterate_ast(node, lambda);
+    }
+    SECTION("match specific column") {
+        constexpr auto node = match(&User::name, "Claude");
+        expected.push_back(typeid(const char*));
         iterate_ast(node, lambda);
     }
     SECTION("replace") {
@@ -437,8 +454,22 @@ TEST_CASE("ast_iterator") {
     }
 #endif
 #endif
-    SECTION("highlight") {
+    SECTION("highlight using explicit template parameter") {
         auto expression = highlight<User>(0, std::string("<b>"), std::string("</b>"));
+        expected.push_back(typeid(int));
+        expected.push_back(typeid(std::string));
+        expected.push_back(typeid(std::string));
+        iterate_ast(expression, lambda);
+    }
+    SECTION("highlight using the any column") {
+        auto expression = highlight(user_table->*&fts5::hidden::any, 0, std::string("<b>"), std::string("</b>"));
+        expected.push_back(typeid(int));
+        expected.push_back(typeid(std::string));
+        expected.push_back(typeid(std::string));
+        iterate_ast(expression, lambda);
+    }
+    SECTION("highlight using the any column, rebound") {
+        auto expression = highlight(user_hidden::any_field, 0, std::string("<b>"), std::string("</b>"));
         expected.push_back(typeid(int));
         expected.push_back(typeid(std::string));
         expected.push_back(typeid(std::string));
@@ -457,6 +488,13 @@ TEST_CASE("ast_iterator") {
         iterate_ast(expression1, nodeLambda);
         iterate_ast(expression2, nodeLambda);
         iterate_ast(expression3, nodeLambda);
+    }
+#endif
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+    SECTION("table-valued") {
+        auto expression = from(dbstat_table("main"));
+        expected.push_back(typeid(const char*));
+        iterate_ast(expression, lambda);
     }
 #endif
     REQUIRE(typeIndexes == expected);
