@@ -14648,10 +14648,10 @@ namespace sqlite_orm {
     namespace internal {
 
 #ifdef SQLITE_ORM_CPP20_SEMAPHORE_SUPPORTED
-        /** 
-         *  The connection holder should be performant in all variants:
+        /*  
+            The connection holder should be performant in all variants:
             1. single-threaded use
-            2. opened once (open forever)
+            2. opened permanently (open forever)
             3. concurrent open/close
 
             Hence, a light-weight binary semaphore is used to synchronize opening and closing a database connection.
@@ -14660,19 +14660,26 @@ namespace sqlite_orm {
             struct maybe_lock {
                 maybe_lock(std::binary_semaphore& sync, bool shouldLock) noexcept(noexcept(sync.acquire())) :
                     isSynced{shouldLock}, sync{sync} {
-                    if (shouldLock) {
-                        sync.acquire();
+                    if (isSynced) {
+                        if (++nRecursionsPerThread == 1) [[likely]] {
+                            sync.acquire();
+                        }
                     }
                 }
 
                 ~maybe_lock() {
                     if (isSynced) {
-                        sync.release();
+                        if (--nRecursionsPerThread == 0) [[likely]] {
+                            sync.release();
+                        }
                     }
                 }
 
                 const bool isSynced;
                 std::binary_semaphore& sync;
+
+                // guard against recursive locking from the same thread in `on_open` callbacks
+                inline static thread_local int nRecursionsPerThread = 0;
             };
 
             connection_holder(std::string filename,
@@ -14742,6 +14749,10 @@ namespace sqlite_orm {
                 return this->db;
             }
 
+            void propagate_open_forever_hint() {
+                _openedForeverHint = true;
+            }
+
             /** 
              *  @attention While retrieving the reference count value is atomic it makes only sense at single-threaded points in code.
              */
@@ -14755,7 +14766,7 @@ namespace sqlite_orm {
 
           private:
             std::atomic_int _retainCount{};
-            const bool _openedForeverHint = false;
+            bool _openedForeverHint = false;
             std::binary_semaphore _sync{1};
 
           private:
@@ -14821,6 +14832,8 @@ namespace sqlite_orm {
                 // note: ensuring a valid DB handle was already memory ordered with `retain()`
                 return this->db;
             }
+
+            void propagate_open_forever_hint() {}
 
             /** 
              *  @attention While retrieving the reference count value is atomic it makes only sense at single-threaded points in code.
@@ -19049,12 +19062,13 @@ namespace sqlite_orm {
              *  needed and closes when it is not needed. This function establishes a permanent connection.
              *  In-memory storage always establishes a permanent connection, so calling this method is a no-op.
              *  
-             *  Attention: You must ensure that you cal lthis method in a single-threaded context.
+             *  Attention: You must ensure that to call this method only in a single-threaded context.
              *  An alternative way to establish a permanent connection is to specify control options to `make_storage()`.
              */
             void open_forever() {
                 if (!this->isOpenedForever) {
                     this->isOpenedForever = true;
+                    this->connection->propagate_open_forever_hint();
                     this->connection->retain();
                 }
             }
@@ -19456,16 +19470,14 @@ namespace sqlite_orm {
                          int foreignKeysCount) :
                 on_open{std::move(onOpenSpec.onOpen)}, pragma(std::bind(&storage_base::get_connection, this), executor),
                 limit(std::bind(&storage_base::get_connection, this)),
-                inMemory(filename.empty() || filename == ":memory:"), isOpenedForever{connectionCtrl.open_forever},
+                inMemory(filename.empty() || filename == ":memory:"),
+                isOpenedForever{connectionCtrl.open_forever || this->inMemory},
                 connection(std::make_unique<connection_holder>(
                     std::move(filename),
                     std::bind(&storage_base::on_open_internal, this, std::placeholders::_1),
                     connectionCtrl)),
                 cachedForeignKeysCount(foreignKeysCount),
                 executor{std::move(willRunQuerySpec.willRunQuery), std::move(didRunQuerySpec.didRunQuery)} {
-                if (this->inMemory) {
-                    this->connection->retain();
-                }
                 if (this->isOpenedForever) {
                     this->connection->retain();
                 }
@@ -19474,15 +19486,12 @@ namespace sqlite_orm {
             storage_base(const storage_base& other) :
                 on_open(other.on_open), pragma(std::bind(&storage_base::get_connection, this), executor),
                 limit(std::bind(&storage_base::get_connection, this)), inMemory(other.inMemory),
-                isOpenedForever{other.isOpenedForever},
+                isOpenedForever{other.isOpenedForever || this->inMemory},
                 connection(std::make_unique<connection_holder>(
                     *other.connection,
                     std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))),
                 cachedForeignKeysCount(other.cachedForeignKeysCount),
                 executor{other.executor.will_run_query, other.executor.did_run_query} {
-                if (this->inMemory) {
-                    this->connection->retain();
-                }
                 if (this->isOpenedForever) {
                     this->connection->retain();
                 }
@@ -19490,9 +19499,6 @@ namespace sqlite_orm {
 
             ~storage_base() {
                 if (this->isOpenedForever) {
-                    this->connection->release();
-                }
-                if (this->inMemory) {
                     this->connection->release();
                 }
             }
@@ -19504,8 +19510,7 @@ namespace sqlite_orm {
             }
 
             connection_ref get_connection() {
-                connection_ref res{*this->connection};
-                return res;
+                return {*this->connection};
             }
 
             std::vector<std::string> object_names(string_constant_type type) {

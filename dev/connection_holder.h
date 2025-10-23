@@ -21,10 +21,10 @@ namespace sqlite_orm {
     namespace internal {
 
 #ifdef SQLITE_ORM_CPP20_SEMAPHORE_SUPPORTED
-        /** 
-         *  The connection holder should be performant in all variants:
+        /*  
+            The connection holder should be performant in all variants:
             1. single-threaded use
-            2. opened once (open forever)
+            2. opened permanently (open forever)
             3. concurrent open/close
 
             Hence, a light-weight binary semaphore is used to synchronize opening and closing a database connection.
@@ -33,19 +33,26 @@ namespace sqlite_orm {
             struct maybe_lock {
                 maybe_lock(std::binary_semaphore& sync, bool shouldLock) noexcept(noexcept(sync.acquire())) :
                     isSynced{shouldLock}, sync{sync} {
-                    if (shouldLock) {
-                        sync.acquire();
+                    if (isSynced) {
+                        if (++nRecursionsPerThread == 1) [[likely]] {
+                            sync.acquire();
+                        }
                     }
                 }
 
                 ~maybe_lock() {
                     if (isSynced) {
-                        sync.release();
+                        if (--nRecursionsPerThread == 0) [[likely]] {
+                            sync.release();
+                        }
                     }
                 }
 
                 const bool isSynced;
                 std::binary_semaphore& sync;
+
+                // guard against recursive locking from the same thread in `on_open` callbacks
+                inline static thread_local int nRecursionsPerThread = 0;
             };
 
             connection_holder(std::string filename,
@@ -115,6 +122,10 @@ namespace sqlite_orm {
                 return this->db;
             }
 
+            void propagate_open_forever_hint() {
+                _openedForeverHint = true;
+            }
+
             /** 
              *  @attention While retrieving the reference count value is atomic it makes only sense at single-threaded points in code.
              */
@@ -128,7 +139,7 @@ namespace sqlite_orm {
 
           private:
             std::atomic_int _retainCount{};
-            const bool _openedForeverHint = false;
+            bool _openedForeverHint = false;
             std::binary_semaphore _sync{1};
 
           private:
@@ -194,6 +205,8 @@ namespace sqlite_orm {
                 // note: ensuring a valid DB handle was already memory ordered with `retain()`
                 return this->db;
             }
+
+            void propagate_open_forever_hint() {}
 
             /** 
              *  @attention While retrieving the reference count value is atomic it makes only sense at single-threaded points in code.
