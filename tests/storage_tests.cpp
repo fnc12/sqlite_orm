@@ -1,10 +1,106 @@
+#include <memory>  //  std::unique_ptr, std::make_unique
 #include <cstdint>
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 
 using namespace sqlite_orm;
 
-TEST_CASE("connection control") {
+TEST_CASE("connection holder tests") {
+    using namespace sqlite_orm::internal;
+
+    const bool openForever = GENERATE(false, true);
+    SECTION("") {
+        std::unique_ptr<connection_holder> connection;
+        connection = std::make_unique<connection_holder>(
+            "",
+            // openForever==false: test whether executed under the lock when opening repeatedly
+            // openForever==true: test whether no lock is held when opening permanently
+            [&connection, openForever](sqlite3* db) {
+                // alias
+                auto& controlBlock = connection->_control;
+
+                REQUIRE(controlBlock.db == db);
+
+                REQUIRE(controlBlock.retainCount == 1);
+#ifdef SQLITE_ORM_CPP20_SEMAPHORE_SUPPORTED
+                REQUIRE(controlBlock.openedForeverHint == openForever);
+                REQUIRE(connection_holder::maybe_lock::nRecursionsPerThread == (openForever ? 0 : 1));
+                REQUIRE(controlBlock.sync.try_acquire() == openForever);
+                // RAII
+                controlBlock.sync.release(openForever ? 1 : 0);
+#endif
+
+#ifdef SQLITE_ORM_CPP20_SEMAPHORE_SUPPORTED
+                // test `maybe_lock` - re-entrance at the lowest level
+                {
+                    const connection_holder::maybe_lock ml{controlBlock.sync, !openForever};
+                    REQUIRE(&ml.sync == &controlBlock.sync);
+                    REQUIRE(ml.isSynced == !openForever);
+                    REQUIRE(connection_holder::maybe_lock::nRecursionsPerThread == (openForever ? 0 : 2));
+                    REQUIRE(ml.sync.try_acquire() == openForever);
+                    ml.sync.release(openForever ? 1 : 0);
+                }
+                // ... after destruction
+                {
+                    REQUIRE(connection_holder::maybe_lock::nRecursionsPerThread == (openForever ? 0 : 1));
+                    REQUIRE(controlBlock.sync.try_acquire() == openForever);
+                    // RAII
+                    controlBlock.sync.release(openForever ? 1 : 0);
+                }
+#endif
+
+                // test re-entrance
+                connection->retain();
+                {
+                    REQUIRE(controlBlock.retainCount == 2);
+#ifdef SQLITE_ORM_CPP20_SEMAPHORE_SUPPORTED
+                    REQUIRE(connection_holder::maybe_lock::nRecursionsPerThread == (openForever ? 0 : 1));
+                    REQUIRE(controlBlock.sync.try_acquire() == openForever);
+                    // RAII
+                    controlBlock.sync.release(openForever ? 1 : 0);
+#endif
+                }
+
+                connection->release();
+                {
+                    REQUIRE(controlBlock.retainCount == 1);
+#ifdef SQLITE_ORM_CPP20_SEMAPHORE_SUPPORTED
+                    REQUIRE(controlBlock.openedForeverHint == openForever);
+                    REQUIRE(connection_holder::maybe_lock::nRecursionsPerThread == (openForever ? 0 : 1));
+                    REQUIRE(controlBlock.sync.try_acquire() == openForever);
+                    // RAII
+                    controlBlock.sync.release(openForever ? 1 : 0);
+#endif
+                }
+            },
+            connection_control{openForever});
+
+        // alias
+        auto& controlBlock = connection->_control;
+
+        connection->retain();
+        {
+            REQUIRE(controlBlock.retainCount == 1);
+#ifdef SQLITE_ORM_CPP20_SEMAPHORE_SUPPORTED
+            REQUIRE(connection_holder::maybe_lock::nRecursionsPerThread == 0);
+            REQUIRE(controlBlock.sync.try_acquire());
+            // RAII
+            controlBlock.sync.release();
+#endif
+        }
+
+        connection->release();
+        {
+            REQUIRE(controlBlock.db == nullptr);
+            REQUIRE(controlBlock.retainCount == 0);
+#ifdef SQLITE_ORM_CPP20_SEMAPHORE_SUPPORTED
+            REQUIRE(connection_holder::maybe_lock::nRecursionsPerThread == 0);
+#endif
+        }
+    }
+}
+
+TEST_CASE("connection control tests") {
     const auto openForever = GENERATE(false, true);
     SECTION("") {
         bool onOpenCalled = false;

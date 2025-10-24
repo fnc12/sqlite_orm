@@ -2,7 +2,7 @@
 
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <atomic>
+#include <atomic>  // memory order flags
 #ifdef SQLITE_ORM_CPP20_SEMAPHORE_SUPPORTED
 #include <semaphore>
 #endif
@@ -68,6 +68,7 @@ namespace sqlite_orm {
                 _didOpenDb{std::move(didOpenDb)} {}
 
             connection_holder(const connection_holder&) = delete;
+            connection_holder& operator=(const connection_holder&) = delete;
 
             connection_holder(const connection_holder& other, std::function<void(sqlite3*)> didOpenDb) :
                 _control{.openedForeverHint = other._control.openedForeverHint}, dbArgs{other.dbArgs},
@@ -165,6 +166,7 @@ namespace sqlite_orm {
                 _didOpenDb{std::move(didOpenDb)} {}
 
             connection_holder(const connection_holder&) = delete;
+            connection_holder& operator=(const connection_holder&) = delete;
 
             connection_holder(const connection_holder& other, std::function<void(sqlite3*)> didOpenDb) :
                 _control{}, dbArgs{other.dbArgs}, _didOpenDb{std::move(didOpenDb)} {}
