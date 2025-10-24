@@ -14,10 +14,8 @@
  *  BLOB is mapped to std::vector<char>.
 */
 #include <sqlite_orm/sqlite_orm.h>
-#ifdef __has_include
 #if __has_include(<any>)
 #include <any>
-#endif
 #endif
 
 #if __cpp_lib_any >= 201606L

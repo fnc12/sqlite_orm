@@ -88,19 +88,15 @@ namespace sqlite_orm {
 
         template<class Opt, class OptionsTpl>
         decltype(auto) storage_opt_or_default(OptionsTpl& options) {
-#ifdef SQLITE_ORM_CTAD_SUPPORTED
             if constexpr (tuple_has_type<OptionsTpl, Opt>::value) {
                 return std::move(std::get<Opt>(options));
             } else {
                 return Opt{};
             }
-#else
-            return Opt{};
-#endif
         }
 
         /**
-         *  Storage class itself. Create an instanse to use it as an interfacto to sqlite db by calling `make_storage`
+         *  Storage class itself. Create an instance to use it as an interfacto to sqlite db by calling `make_storage`
          *  function.
          */
         template<class... DBO>
@@ -1759,7 +1755,6 @@ namespace sqlite_orm {
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
         };  // struct storage_t
 
-#ifdef SQLITE_ORM_CTAD_SUPPORTED
         template<class Elements>
         using dbo_index_sequence = filter_tuple_sequence_t<Elements, check_if_lacks<storage_opt_tag_t>::template fn>;
 
@@ -1770,12 +1765,10 @@ namespace sqlite_orm {
         storage_t<DBO...> make_storage(std::string filename, std::tuple<DBO...> dbObjects, OptionsTpl options) {
             return {std::move(filename), std::move(dbObjects), std::move(options)};
         }
-#endif
     }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_CTAD_SUPPORTED
     /*
      *  Factory function for a storage instance, from a database file, a set of database object definitions
      *  and option storage options like connection control options and an 'on open' callback.
@@ -1793,15 +1786,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             create_from_tuple<std::tuple>(std::move(specTuple), dbo_index_sequence<decltype(specTuple)>{}),
             create_from_tuple<std::tuple>(std::move(specTuple), opt_index_sequence<decltype(specTuple)>{}));
     }
-#else
-    /*
-     *  Factory function for a storage instance, from a database file and a bunch of database object definitions.
-     */
-    template<class... DBO>
-    internal::storage_t<DBO...> make_storage(std::string filename, DBO... dbObjects) {
-        return {std::move(filename), {std::forward<DBO>(dbObjects)...}, std::tuple<>{}};
-    }
-#endif
 
     /**
      *  sqlite3_threadsafe() interface.

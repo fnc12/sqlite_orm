@@ -52,7 +52,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     static_assert(std::is_aggregate_v<connection_control>);
 #endif
 
-#ifdef SQLITE_ORM_CTAD_SUPPORTED
     /** 
      *  Callback function to be passed to `make_storage()`.
      *  The provided function is called immdediately after the database connection has been established and set up.
@@ -60,7 +59,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     inline internal::on_open_spec on_open(std::function<void(sqlite3*)> onOpen) {
         return {std::move(onOpen)};
     }
-#endif
+
     inline internal::will_run_query_spec
     will_run_query(std::function<void(internal::serialize_arg_type)> willRunQuery) {
         return {std::move(willRunQuery)};
