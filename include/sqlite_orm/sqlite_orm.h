@@ -46,14 +46,16 @@ using std::nullptr_t;
 
 // note: Before the C++17 language standard was made the baseline, the library had workarounds for these specific missing C++14 language features,
 // so they are kept here as explicit checks for reference.
-#if __cpp_aggregate_nsdmi < 201304L || __cpp_constexpr < 201304L
+#if (__cpp_aggregate_nsdmi < 201304L || __cpp_constexpr < 201304L)
 #error A fully C++17-compliant compiler is required.
 #endif
 
-#if (__cpp_noexcept_function_type < 201510L) ||                                                                        \
-    (__cpp_fold_expressions < 201603L || __cpp_constexpr < 201603L || __cpp_aggregate_bases < 201603L ||               \
-     __cpp_range_based_for < 201603L) ||                                                                               \
-    (__cpp_if_constexpr < 201606L || __cpp_inline_variables < 201606L || __cpp_structured_bindings < 201606L)
+#if (!defined(__has_include)) ||                                                                                       \
+    ((__cpp_noexcept_function_type < 201510L) ||                                                                       \
+     (__cpp_fold_expressions < 201603L || __cpp_constexpr < 201603L || __cpp_aggregate_bases < 201603L ||              \
+      __cpp_range_based_for < 201603L) ||                                                                              \
+     (__cpp_if_constexpr < 201606L || __cpp_inline_variables < 201606L || __cpp_structured_bindings < 201606L) ||      \
+     (__cpp_deduction_guides < 201703L))
 #error A fully C++17-compliant compiler is required.
 #endif
 
@@ -68,16 +70,6 @@ using std::nullptr_t;
 #define SQLITE_ORM_HAS_CPP_ATTRIBUTE(attr) __has_cpp_attribute(attr)
 #else
 #define SQLITE_ORM_HAS_CPP_ATTRIBUTE(attr) 0L
-#endif
-
-#ifdef __has_include
-#define SQLITE_ORM_HAS_INCLUDE(file) __has_include(file)
-#else
-#define SQLITE_ORM_HAS_INCLUDE(file) 0L
-#endif
-
-#if __cpp_deduction_guides >= 201703L
-#define SQLITE_ORM_CTAD_SUPPORTED
 #endif
 
 #if __cpp_generic_lambdas >= 201707L
@@ -267,7 +259,7 @@ using std::nullptr_t;
 #define SQLITE_ORM_EXPORT
 #endif
 
-#if SQLITE_ORM_HAS_INCLUDE(<version>)
+#if __has_include(<version>)
 #include <version>
 #endif
 
@@ -366,10 +358,8 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_IMPORT_STD_MODULE
 #include <version>
-#else
-#if SQLITE_ORM_HAS_INCLUDE(<optional>)
+#elif __has_include(<optional>)
 #include <optional>
-#endif
 #endif
 
 #if __cpp_lib_optional >= 201606L
@@ -1741,7 +1731,6 @@ namespace sqlite_orm {
         }
 #endif
 
-#ifdef SQLITE_ORM_CTAD_SUPPORTED
         template<template<typename...> class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
         constexpr auto create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, Projection project = {}) {
             return R{polyfill::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
@@ -1767,7 +1756,6 @@ namespace sqlite_orm {
                 std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
                 std::forward<Projection>(project));
         }
-#endif
 #endif
     }
 }
@@ -4514,10 +4502,8 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_IMPORT_STD_MODULE
 #include <version>
-#else
-#if SQLITE_ORM_HAS_INCLUDE(<string_view>)
+#elif __has_include(<string_view>)
 #include <string_view>
-#endif
 #endif
 
 #if __cpp_lib_string_view >= 201606L
@@ -14594,7 +14580,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     static_assert(std::is_aggregate_v<connection_control>);
 #endif
 
-#ifdef SQLITE_ORM_CTAD_SUPPORTED
     /** 
      *  Callback function to be passed to `make_storage()`.
      *  The provided function is called immdediately after the database connection has been established and set up.
@@ -14602,7 +14587,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     inline internal::on_open_spec on_open(std::function<void(sqlite3*)> onOpen) {
         return {std::move(onOpen)};
     }
-#endif
+
     inline internal::will_run_query_spec
     will_run_query(std::function<void(internal::serialize_arg_type)> willRunQuery) {
         return {std::move(willRunQuery)};
@@ -23948,19 +23933,15 @@ namespace sqlite_orm {
 
         template<class Opt, class OptionsTpl>
         decltype(auto) storage_opt_or_default(OptionsTpl& options) {
-#ifdef SQLITE_ORM_CTAD_SUPPORTED
             if constexpr (tuple_has_type<OptionsTpl, Opt>::value) {
                 return std::move(std::get<Opt>(options));
             } else {
                 return Opt{};
             }
-#else
-            return Opt{};
-#endif
         }
 
         /**
-         *  Storage class itself. Create an instanse to use it as an interfacto to sqlite db by calling `make_storage`
+         *  Storage class itself. Create an instance to use it as an interfacto to sqlite db by calling `make_storage`
          *  function.
          */
         template<class... DBO>
@@ -25619,7 +25600,6 @@ namespace sqlite_orm {
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
         };  // struct storage_t
 
-#ifdef SQLITE_ORM_CTAD_SUPPORTED
         template<class Elements>
         using dbo_index_sequence = filter_tuple_sequence_t<Elements, check_if_lacks<storage_opt_tag_t>::template fn>;
 
@@ -25630,12 +25610,10 @@ namespace sqlite_orm {
         storage_t<DBO...> make_storage(std::string filename, std::tuple<DBO...> dbObjects, OptionsTpl options) {
             return {std::move(filename), std::move(dbObjects), std::move(options)};
         }
-#endif
     }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_CTAD_SUPPORTED
     /*
      *  Factory function for a storage instance, from a database file, a set of database object definitions
      *  and option storage options like connection control options and an 'on open' callback.
@@ -25653,15 +25631,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             create_from_tuple<std::tuple>(std::move(specTuple), dbo_index_sequence<decltype(specTuple)>{}),
             create_from_tuple<std::tuple>(std::move(specTuple), opt_index_sequence<decltype(specTuple)>{}));
     }
-#else
-    /*
-     *  Factory function for a storage instance, from a database file and a bunch of database object definitions.
-     */
-    template<class... DBO>
-    internal::storage_t<DBO...> make_storage(std::string filename, DBO... dbObjects) {
-        return {std::move(filename), {std::forward<DBO>(dbObjects)...}, std::tuple<>{}};
-    }
-#endif
 
     /**
      *  sqlite3_threadsafe() interface.

@@ -4,7 +4,6 @@
 
 using namespace sqlite_orm;
 
-#ifdef SQLITE_ORM_CTAD_SUPPORTED
 TEST_CASE("connection control") {
     const auto openForever = GENERATE(false, true);
     SECTION("") {
@@ -57,7 +56,6 @@ TEST_CASE("connection control") {
         }
     }
 }
-#endif
 
 TEST_CASE("Current time/date/timestamp") {
     auto storage = make_storage("");
