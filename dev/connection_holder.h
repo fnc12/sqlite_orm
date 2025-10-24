@@ -34,7 +34,7 @@ namespace sqlite_orm {
                 maybe_lock(std::binary_semaphore& sync, bool shouldLock) noexcept(noexcept(sync.acquire())) :
                     isSynced{shouldLock}, sync{sync} {
                     if (isSynced) {
-                        if (++nRecursionsPerThread == 1) [[likely]] {
+                        if (nRecursionsPerThread++ == 0) [[likely]] {
                             sync.acquire();
                         }
                     }
