@@ -11,7 +11,7 @@
 #define SQLITE_ORM_EXPORT
 #endif
 
-#if SQLITE_ORM_HAS_INCLUDE(<version>)
+#if __has_include(<version>)
 #include <version>
 #endif
 

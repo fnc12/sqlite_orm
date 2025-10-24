@@ -122,7 +122,6 @@ namespace sqlite_orm {
         }
 #endif
 
-#ifdef SQLITE_ORM_CTAD_SUPPORTED
         template<template<typename...> class R, class Tpl, size_t... Idx, class Projection = polyfill::identity>
         constexpr auto create_from_tuple(Tpl&& tpl, std::index_sequence<Idx...>, Projection project = {}) {
             return R{polyfill::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
@@ -148,7 +147,6 @@ namespace sqlite_orm {
                 std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
                 std::forward<Projection>(project));
         }
-#endif
 #endif
     }
 }

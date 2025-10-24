@@ -1,23 +1,22 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 #include <cstdio>  //  std::remove
-#if SQLITE_ORM_HAS_INCLUDE(<filesystem>)
+#if __has_include(<filesystem>)
 #include <filesystem>
 #endif
 #include "catch_matchers.h"
 
-#ifdef SQLITE_ORM_CTAD_SUPPORTED
-
-struct User {
-    std::string id;
-};
-
 using namespace sqlite_orm;
 
-static const auto default_table = make_table("users", make_column("id", &User::id, primary_key()));
+namespace {
+    struct User {
+        std::string id;
+    };
+
+    const auto default_table = make_table("users", make_column("id", &User::id, primary_key()));
+}
 
 TEST_CASE("vfs modes open successfully") {
-
 #if defined(SQLITE_ORM_APPLE)
     internal::string_constant_type vfs =
         GENERATE(unix_vfs_name, unix_posix_vfs_name, unix_dotfile_vfs_name, unix_afp_vfs_name);
@@ -102,4 +101,3 @@ TEST_CASE("readwrite/readonly open modes behaves as expected") {
                                cantOpenExceptionMatcher);
     }
 }
-#endif
