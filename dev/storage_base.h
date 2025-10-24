@@ -638,12 +638,13 @@ namespace sqlite_orm {
             }
 
             const std::string& filename() const {
-                return this->connection->filename;
+                return this->connection->dbArgs.filename;
             }
 
-            /**
+            /** 
              * Checks whether connection to database is opened right now.
              * Returns always `true` for in memory databases.
+             * @note While retrieving the reference count value is atomic it makes only sense in single-threaded contexts.
              */
             bool is_opened() const {
                 return this->connection->retain_count() > 0;
@@ -653,14 +654,14 @@ namespace sqlite_orm {
              * Return the name of the VFS object used by the database connection.
              */
             const std::string& vfs_name() const {
-                return this->connection->vfs_name;
+                return this->connection->dbArgs.vfs_name;
             }
 
             /**
              * Return the current open_mode for this storage object. 
              */
             db_open_mode open_mode() const {
-                return this->connection->open_mode;
+                return this->connection->dbArgs.open_mode;
             }
 
             /**
