@@ -8,13 +8,44 @@ using namespace sqlite_orm;
 TEST_CASE("connection holder tests") {
     using namespace sqlite_orm::internal;
 
+#ifdef SQLITE_ORM_CPP20_SEMAPHORE_SUPPORTED
+    struct try_acquire_sync {
+        try_acquire_sync(std::binary_semaphore& sem) : sem{sem}, acquired{sem.try_acquire()} {}
+        ~try_acquire_sync() {
+            if (acquired) {
+                sem.release();
+            }
+        }
+        operator bool() const {
+            return acquired;
+        }
+
+        std::binary_semaphore& sem;
+        const bool acquired;
+    };
+#else
+    struct try_acquire_sync {
+        try_acquire_sync(std::mutex& mtx) : mtx{mtx}, locked{mtx.try_lock()} {}
+        ~try_acquire_sync() {
+            if (locked) {
+                mtx.unlock();
+            }
+        }
+        operator bool() const {
+            return locked;
+        }
+
+        std::mutex& mtx;
+        const bool locked;
+    };
+#endif
+
     const bool openForever = GENERATE(false, true);
     SECTION("") {
         std::unique_ptr<connection_holder> connection;
         connection = std::make_unique<connection_holder>(
             "",
-            // openForever==false: test whether executed under the lock when opening repeatedly
-            // openForever==true: test whether no lock is held when opening permanently
+            // test whether executed under the lock while opening
             [&connection, openForever](sqlite3* db) {
                 // alias
                 auto& controlBlock = connection->_control;
@@ -22,55 +53,37 @@ TEST_CASE("connection holder tests") {
                 REQUIRE(controlBlock.db == db);
 
                 REQUIRE(controlBlock.retainCount == 1);
-#ifdef SQLITE_ORM_CPP20_SEMAPHORE_SUPPORTED
                 REQUIRE(controlBlock.openedForeverHint == openForever);
                 REQUIRE(connection_holder::maybe_lock::nRecursionsPerThread == (openForever ? 0 : 1));
-                REQUIRE(controlBlock.sync.try_acquire() == openForever);
-                // RAII
-                controlBlock.sync.release(openForever ? 1 : 0);
-#endif
+                REQUIRE(try_acquire_sync(controlBlock.sync) == openForever);
 
-#ifdef SQLITE_ORM_CPP20_SEMAPHORE_SUPPORTED
                 // test `maybe_lock` - re-entrance at the lowest level
                 {
-                    const connection_holder::maybe_lock ml{controlBlock.sync, !openForever};
+                    const connection_holder::maybe_lock ml{controlBlock.sync};
                     REQUIRE(&ml.sync == &controlBlock.sync);
-                    REQUIRE(ml.isSynced == !openForever);
-                    REQUIRE(connection_holder::maybe_lock::nRecursionsPerThread == (openForever ? 0 : 2));
-                    REQUIRE(ml.sync.try_acquire() == openForever);
-                    ml.sync.release(openForever ? 1 : 0);
+                    REQUIRE(connection_holder::maybe_lock::nRecursionsPerThread == (openForever ? 1 : 2));
+                    REQUIRE_FALSE(try_acquire_sync(ml.sync));
                 }
                 // ... after destruction
                 {
                     REQUIRE(connection_holder::maybe_lock::nRecursionsPerThread == (openForever ? 0 : 1));
-                    REQUIRE(controlBlock.sync.try_acquire() == openForever);
-                    // RAII
-                    controlBlock.sync.release(openForever ? 1 : 0);
+                    REQUIRE(try_acquire_sync(controlBlock.sync) == openForever);
                 }
-#endif
 
                 // test re-entrance
                 connection->retain();
                 {
-                    REQUIRE(controlBlock.retainCount == 2);
-#ifdef SQLITE_ORM_CPP20_SEMAPHORE_SUPPORTED
+                    REQUIRE(controlBlock.retainCount == (openForever ? 1 : 2));
                     REQUIRE(connection_holder::maybe_lock::nRecursionsPerThread == (openForever ? 0 : 1));
-                    REQUIRE(controlBlock.sync.try_acquire() == openForever);
-                    // RAII
-                    controlBlock.sync.release(openForever ? 1 : 0);
-#endif
+                    REQUIRE(try_acquire_sync(controlBlock.sync) == openForever);
                 }
 
                 connection->release();
                 {
                     REQUIRE(controlBlock.retainCount == 1);
-#ifdef SQLITE_ORM_CPP20_SEMAPHORE_SUPPORTED
                     REQUIRE(controlBlock.openedForeverHint == openForever);
                     REQUIRE(connection_holder::maybe_lock::nRecursionsPerThread == (openForever ? 0 : 1));
-                    REQUIRE(controlBlock.sync.try_acquire() == openForever);
-                    // RAII
-                    controlBlock.sync.release(openForever ? 1 : 0);
-#endif
+                    REQUIRE(try_acquire_sync(controlBlock.sync) == openForever);
                 }
             },
             connection_control{openForever});
@@ -78,24 +91,33 @@ TEST_CASE("connection holder tests") {
         // alias
         auto& controlBlock = connection->_control;
 
+        if (openForever) {
+            connection->open();
+            // note: state is tested in `on_open` handler above
+        }
         connection->retain();
         {
             REQUIRE(controlBlock.retainCount == 1);
-#ifdef SQLITE_ORM_CPP20_SEMAPHORE_SUPPORTED
             REQUIRE(connection_holder::maybe_lock::nRecursionsPerThread == 0);
-            REQUIRE(controlBlock.sync.try_acquire());
-            // RAII
-            controlBlock.sync.release();
-#endif
+            REQUIRE(try_acquire_sync(controlBlock.sync));
         }
 
         connection->release();
         {
+            if (openForever) {
+                REQUIRE(controlBlock.db != nullptr);
+            } else {
+                REQUIRE(controlBlock.db == nullptr);
+            }
+            REQUIRE(controlBlock.retainCount == (openForever ? 1 : 0));
+            REQUIRE(connection_holder::maybe_lock::nRecursionsPerThread == 0);
+        }
+        if (openForever) {
+            connection->close();
+
             REQUIRE(controlBlock.db == nullptr);
             REQUIRE(controlBlock.retainCount == 0);
-#ifdef SQLITE_ORM_CPP20_SEMAPHORE_SUPPORTED
             REQUIRE(connection_holder::maybe_lock::nRecursionsPerThread == 0);
-#endif
         }
     }
 }

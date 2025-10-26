@@ -300,8 +300,8 @@ namespace sqlite_orm {
             void open_forever() {
                 if (!this->isOpenedForever) {
                     this->isOpenedForever = true;
-                    this->connection->propagate_open_forever_hint();
-                    this->connection->retain();
+                    this->connection = std::make_unique<connection_holder>(*this->connection, std::true_type{});
+                    this->connection->open();
                 }
             }
 
@@ -705,14 +705,14 @@ namespace sqlite_orm {
                 limit(std::bind(&storage_base::get_connection, this)),
                 inMemory(filename.empty() || filename == ":memory:"),
                 isOpenedForever{connectionCtrl.open_forever || this->inMemory},
-                connection(std::make_unique<connection_holder>(
+                connection{std::make_unique<connection_holder>(
                     std::move(filename),
                     std::bind(&storage_base::on_open_internal, this, std::placeholders::_1),
-                    connectionCtrl)),
+                    connectionCtrl)},
                 cachedForeignKeysCount(foreignKeysCount),
                 executor{std::move(willRunQuerySpec.willRunQuery), std::move(didRunQuerySpec.didRunQuery)} {
                 if (this->isOpenedForever) {
-                    this->connection->retain();
+                    this->connection->open();
                 }
             }
 
@@ -726,13 +726,13 @@ namespace sqlite_orm {
                 cachedForeignKeysCount(other.cachedForeignKeysCount),
                 executor{other.executor.will_run_query, other.executor.did_run_query} {
                 if (this->isOpenedForever) {
-                    this->connection->retain();
+                    this->connection->open();
                 }
             }
 
             ~storage_base() {
                 if (this->isOpenedForever) {
-                    this->connection->release();
+                    this->connection->close();
                 }
             }
 
