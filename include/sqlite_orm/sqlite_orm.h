@@ -14703,10 +14703,10 @@ namespace sqlite_orm {
             explicit connection_holder(const connection_holder& other, std::true_type /*openForever*/) :
                 _control{true}, dbArgs{other.dbArgs}, _didOpenDb{other._didOpenDb} {}
 
-            void open() {
+            sqlite3* open() {
                 // we can presume that this method gets called under a lock or in a single-threaded context (due to `openedForeverHint==true`)
                 if (_control.retainCount++ > 0) {
-                    return;
+                    return _control.db;
                 }
 
                 // first one opens and sets up the connection.
@@ -14728,6 +14728,8 @@ namespace sqlite_orm {
                 if (_didOpenDb) {
                     _didOpenDb(_control.db);
                 }
+
+                return _control.db;
             }
 
             void close() {
@@ -14746,13 +14748,13 @@ namespace sqlite_orm {
                 }
             }
 
-            void retain() {
+            sqlite3* retain() {
                 if (_control.openedForeverHint) {
-                    return;
+                    return _control.db;
                 }
 
                 const maybe_lock _{_control.sync};
-                open();
+                return open();
             }
 
             void release() {
@@ -14795,24 +14797,20 @@ namespace sqlite_orm {
         };
 
         struct connection_ref {
-            connection_ref(connection_holder& holder) : holder(&holder) {
-                this->holder->retain();
-            }
+            connection_ref(connection_holder& holder) : holder{&holder}, db{holder.retain()} {}
 
-            connection_ref(const connection_ref& other) noexcept : holder(other.holder) {
-                this->holder->retain();
-            }
+            connection_ref(connection_ref&& other) : holder{other.holder}, db{this->holder->retain()} {}
 
-            // rebind connection reference;
-            // this function is actually unused in the library, but required for concepts compliance (moveable type).
-            // Unfortunately it is not `noexcept` because of the `release()` call.
-            connection_ref& operator=(const connection_ref& other) & {
-                if (other.holder != this->holder) {
-                    this->holder->release();
-                    this->holder = other.holder;
-                    this->holder->retain();
-                }
-                return *this;
+            /*
+                Rebind connection reference;
+                This function is actually unused in the library, but required for concepts compliance (moveable type).
+                Unfortunately it is not `noexcept` because of the `release()` call.
+             */
+            connection_ref& operator=(connection_ref&& other) {
+                this->holder->release();
+                this->holder = other.holder;
+                this->db = other.db;
+                this->holder->retain();
             }
 
             ~connection_ref() {
@@ -14820,11 +14818,12 @@ namespace sqlite_orm {
             }
 
             sqlite3* get() const {
-                return this->holder->get();
+                return this->db;
             }
 
           private:
-            connection_holder* holder = nullptr;
+            connection_holder* holder;
+            sqlite3* db = nullptr;
         };
     }
 }
@@ -18254,15 +18253,15 @@ namespace sqlite_orm {
                      const std::string& zSourceName,
                      std::unique_ptr<connection_holder> holder_) :
                 handle(sqlite3_backup_init(to_.get(), zDestName.c_str(), from_.get(), zSourceName.c_str())),
-                holder(std::move(holder_)), to(to_), from(from_) {
+                holder(std::move(holder_)), to(std::move(to_)), from(std::move(from_)) {
                 if (!this->handle) {
                     throw std::system_error{orm_error_code::failed_to_init_a_backup};
                 }
             }
 
             backup_t(backup_t&& other) :
-                handle(std::exchange(other.handle, nullptr)), holder(std::move(other.holder)), to(other.to),
-                from(other.from) {}
+                handle(std::exchange(other.handle, nullptr)), holder(std::move(other.holder)), to(std::move(other.to)),
+                from(std::move(other.from)) {}
 
             ~backup_t() {
                 if (this->handle) {
@@ -19323,7 +19322,7 @@ namespace sqlite_orm {
             backup_t make_backup_to(const std::string& filename) {
                 auto holder = std::make_unique<connection_holder>(filename, nullptr, connection_control{});
                 connection_ref conRef{*holder};
-                return {conRef, "main", this->get_connection(), "main", std::move(holder)};
+                return {std::move(conRef), "main", this->get_connection(), "main", std::move(holder)};
             }
 
             backup_t make_backup_to(storage_base& other) {
@@ -19333,7 +19332,7 @@ namespace sqlite_orm {
             backup_t make_backup_from(const std::string& filename) {
                 auto holder = std::make_unique<connection_holder>(filename, nullptr, connection_control{});
                 connection_ref conRef{*holder};
-                return {this->get_connection(), "main", conRef, "main", std::move(holder)};
+                return {this->get_connection(), "main", std::move(conRef), "main", std::move(holder)};
             }
 
             backup_t make_backup_from(storage_base& other) {

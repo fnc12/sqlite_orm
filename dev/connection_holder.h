@@ -91,10 +91,10 @@ namespace sqlite_orm {
             explicit connection_holder(const connection_holder& other, std::true_type /*openForever*/) :
                 _control{true}, dbArgs{other.dbArgs}, _didOpenDb{other._didOpenDb} {}
 
-            void open() {
+            sqlite3* open() {
                 // we can presume that this method gets called under a lock or in a single-threaded context (due to `openedForeverHint==true`)
                 if (_control.retainCount++ > 0) {
-                    return;
+                    return _control.db;
                 }
 
                 // first one opens and sets up the connection.
@@ -116,6 +116,8 @@ namespace sqlite_orm {
                 if (_didOpenDb) {
                     _didOpenDb(_control.db);
                 }
+
+                return _control.db;
             }
 
             void close() {
@@ -134,13 +136,13 @@ namespace sqlite_orm {
                 }
             }
 
-            void retain() {
+            sqlite3* retain() {
                 if (_control.openedForeverHint) {
-                    return;
+                    return _control.db;
                 }
 
                 const maybe_lock _{_control.sync};
-                open();
+                return open();
             }
 
             void release() {
@@ -183,24 +185,20 @@ namespace sqlite_orm {
         };
 
         struct connection_ref {
-            connection_ref(connection_holder& holder) : holder(&holder) {
-                this->holder->retain();
-            }
+            connection_ref(connection_holder& holder) : holder{&holder}, db{holder.retain()} {}
 
-            connection_ref(const connection_ref& other) noexcept : holder(other.holder) {
-                this->holder->retain();
-            }
+            connection_ref(connection_ref&& other) : holder{other.holder}, db{this->holder->retain()} {}
 
-            // rebind connection reference;
-            // this function is actually unused in the library, but required for concepts compliance (moveable type).
-            // Unfortunately it is not `noexcept` because of the `release()` call.
-            connection_ref& operator=(const connection_ref& other) & {
-                if (other.holder != this->holder) {
-                    this->holder->release();
-                    this->holder = other.holder;
-                    this->holder->retain();
-                }
-                return *this;
+            /*
+                Rebind connection reference;
+                This function is actually unused in the library, but required for concepts compliance (moveable type).
+                Unfortunately it is not `noexcept` because of the `release()` call.
+             */
+            connection_ref& operator=(connection_ref&& other) {
+                this->holder->release();
+                this->holder = other.holder;
+                this->db = other.db;
+                this->holder->retain();
             }
 
             ~connection_ref() {
@@ -208,11 +206,12 @@ namespace sqlite_orm {
             }
 
             sqlite3* get() const {
-                return this->holder->get();
+                return this->db;
             }
 
           private:
-            connection_holder* holder = nullptr;
+            connection_holder* holder;
+            sqlite3* db = nullptr;
         };
     }
 }
