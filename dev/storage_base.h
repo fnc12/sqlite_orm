@@ -301,7 +301,7 @@ namespace sqlite_orm {
              *  needed and closes when it is not needed. This function establishes a permanent connection.
              *  In-memory storage always establishes a permanent connection, so calling this method is a no-op.
              *  
-             *  Attention: You must ensure that to call this method only in a single-threaded context.
+             *  Attention: You must ensure to call this method only in a single-threaded context.
              *  An alternative way to establish a permanent connection is to specify control options to `make_storage()`.
              */
             void open_forever() {
@@ -411,8 +411,8 @@ namespace sqlite_orm {
                     nullptr,
                     std::pair{nullptr, null_xdestroy_f});
 
-                if (sqlite3* db = this->connection->get()) {
-                    try_to_create_scalar_function(db, this->scalarFunctions.back());
+                if (connection_ptr maybeConnection = *this->connection) {
+                    try_to_create_scalar_function(maybeConnection.get(), this->scalarFunctions.back());
                 }
             }
 #endif
@@ -575,8 +575,8 @@ namespace sqlite_orm {
                 }
 
                 //  create collations if db is open
-                if (sqlite3* db = this->connection->get()) {
-                    const int rc = sqlite3_create_collation(db,
+                if (connection_ptr maybeConnection = *this->connection) {
+                    const int rc = sqlite3_create_collation(maybeConnection.get(),
                                                             name.c_str(),
                                                             SQLITE_UTF8,
                                                             function,
@@ -622,23 +622,23 @@ namespace sqlite_orm {
             }
 
             void commit() {
-                sqlite3* db = this->connection->get();
+                if (connection_ptr maybeConnection = *this->connection) {
+                    this->executor.perform_void_exec(maybeConnection.get(), "COMMIT");
+                }
                 // check for programming error on user's side not having called `begin_transaction()` before
-                if (!db) {
+                else {
                     throw std::system_error{orm_error_code::no_active_transaction};
                 }
-                this->executor.perform_void_exec(db, "COMMIT");
-                this->connection->release();
             }
 
             void rollback() {
-                sqlite3* db = this->connection->get();
+                if (connection_ptr maybeConnection = *this->connection) {
+                    this->executor.perform_void_exec(maybeConnection.get(), "ROLLBACK");
+                }
                 // check for programming error on user's side not having called `begin_transaction()` before
-                if (!db) {
+                else {
                     throw std::system_error{orm_error_code::no_active_transaction};
                 }
-                this->executor.perform_void_exec(db, "ROLLBACK");
-                this->connection->release();
             }
 
             void backup_to(const std::string& filename) {
@@ -691,7 +691,8 @@ namespace sqlite_orm {
              * @attention While retrieving the reference count value is atomic it makes only sense in single-threaded contexts.
              */
             bool is_opened() const {
-                return this->connection->get() || false;
+                connection_ptr maybeConnection = *this->connection;
+                return maybeConnection || false;
             }
 
             /**
@@ -727,11 +728,11 @@ namespace sqlite_orm {
 
             int busy_handler(std::function<int(int)> handler) {
                 _busy_handler = std::move(handler);
-                if (sqlite3* db = this->connection->get()) {
+                if (connection_ptr maybeConnection = *this->connection) {
                     if (_busy_handler) {
-                        return sqlite3_busy_handler(db, busy_handler_callback, this);
+                        return sqlite3_busy_handler(maybeConnection.get(), busy_handler_callback, this);
                     } else {
-                        return sqlite3_busy_handler(db, nullptr, nullptr);
+                        return sqlite3_busy_handler(maybeConnection.get(), nullptr, nullptr);
                     }
                 } else {
                     return SQLITE_OK;
@@ -893,8 +894,8 @@ namespace sqlite_orm {
                     },
                     udfMemorySpace);
 
-                if (sqlite3* db = this->connection->get()) {
-                    try_to_create_scalar_function(db, this->scalarFunctions.back());
+                if (connection_ptr maybeConnection = *this->connection) {
+                    try_to_create_scalar_function(maybeConnection.get(), this->scalarFunctions.back());
                 }
             }
 
@@ -940,8 +941,8 @@ namespace sqlite_orm {
                     },
                     obtain_udf_allocator<F>());
 
-                if (sqlite3* db = this->connection->get()) {
-                    try_to_create_aggregate_function(db, this->aggregateFunctions.back());
+                if (connection_ptr maybeConnection = *this->connection) {
+                    try_to_create_aggregate_function(maybeConnection.get(), this->aggregateFunctions.back());
                 }
             }
 
@@ -953,25 +954,25 @@ namespace sqlite_orm {
                     return udfProxy.name == name;
                 });
 #endif
-                if (it != functions.end()) {
-                    if (sqlite3* db = this->connection->get()) {
-                        const int rc = sqlite3_create_function_v2(db,
-                                                                  name.c_str(),
-                                                                  it->argumentsCount,
-                                                                  SQLITE_UTF8,
-                                                                  nullptr,
-                                                                  nullptr,
-                                                                  nullptr,
-                                                                  nullptr,
-                                                                  nullptr);
-                        if (rc != SQLITE_OK) {
-                            throw_translated_sqlite_error(rc);
-                        }
-                    }
-                    it = functions.erase(it);
-                } else {
+                if (it == functions.end()) {
                     throw std::system_error{orm_error_code::function_not_found};
                 }
+
+                if (connection_ptr maybeConnection = *this->connection) {
+                    const int rc = sqlite3_create_function_v2(maybeConnection.get(),
+                                                              name.c_str(),
+                                                              it->argumentsCount,
+                                                              SQLITE_UTF8,
+                                                              nullptr,
+                                                              nullptr,
+                                                              nullptr,
+                                                              nullptr,
+                                                              nullptr);
+                    if (rc != SQLITE_OK) {
+                        throw_translated_sqlite_error(rc);
+                    }
+                }
+                it = functions.erase(it);
             }
 
             static void try_to_create_scalar_function(sqlite3* db, udf_proxy& udfProxy) {

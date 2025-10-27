@@ -39,14 +39,16 @@ TEST_CASE("connection holder tests") {
 
                 // retain count is still zero while holding the lock
                 REQUIRE(controlBlock.retainCount == (openForever ? 1 : 0));
-                REQUIRE(controlBlock.lockingThread == (openForever ? std::thread::id{} : std::this_thread::get_id()));
+                REQUIRE(controlBlock.initializingThreadId ==
+                        (openForever ? std::thread::id{} : std::this_thread::get_id()));
                 REQUIRE(try_acquire_sync(connection->_sync) == openForever);
 
                 // test re-entrance
-                connection->retain();
+
+                REQUIRE(connection->retain_if_open() == controlBlock.db);
                 {
                     REQUIRE(controlBlock.retainCount == (openForever ? 1 : 0));
-                    REQUIRE(controlBlock.lockingThread ==
+                    REQUIRE(controlBlock.initializingThreadId ==
                             (openForever ? std::thread::id{} : std::this_thread::get_id()));
                     REQUIRE(try_acquire_sync(connection->_sync) == openForever);
                 }
@@ -55,10 +57,19 @@ TEST_CASE("connection holder tests") {
                 {
                     REQUIRE(controlBlock.retainCount == (openForever ? 1 : 0));
                     REQUIRE(controlBlock.openedForeverHint == openForever);
-                    REQUIRE(controlBlock.lockingThread ==
+                    REQUIRE(controlBlock.initializingThreadId ==
                             (openForever ? std::thread::id{} : std::this_thread::get_id()));
                     REQUIRE(try_acquire_sync(connection->_sync) == openForever);
                 }
+
+                REQUIRE(connection->retain() == controlBlock.db);
+                {
+                    REQUIRE(controlBlock.retainCount == (openForever ? 1 : 0));
+                    REQUIRE(controlBlock.initializingThreadId ==
+                            (openForever ? std::thread::id{} : std::this_thread::get_id()));
+                    REQUIRE(try_acquire_sync(connection->_sync) == openForever);
+                }
+                connection->release();
             });
 
         // alias
@@ -68,10 +79,19 @@ TEST_CASE("connection holder tests") {
             connection->open();
             // note: state is tested in `on_open` handler above
         }
-        connection->retain();
+
+        REQUIRE(connection->retain_if_open() == (openForever ? controlBlock.db : nullptr));
+        {
+            REQUIRE(controlBlock.retainCount == (openForever ? 1 : 0));
+            REQUIRE(controlBlock.initializingThreadId == std::thread::id{});
+            REQUIRE(try_acquire_sync(connection->_sync));
+        }
+        // note: must not release() if not opened
+
+        REQUIRE(connection->retain() == controlBlock.db);
         {
             REQUIRE(controlBlock.retainCount == 1);
-            REQUIRE(controlBlock.lockingThread == std::thread::id{});
+            REQUIRE(controlBlock.initializingThreadId == std::thread::id{});
             REQUIRE(try_acquire_sync(connection->_sync));
         }
 
@@ -83,14 +103,15 @@ TEST_CASE("connection holder tests") {
                 REQUIRE(controlBlock.db == nullptr);
             }
             REQUIRE(controlBlock.retainCount == (openForever ? 1 : 0));
-            REQUIRE(controlBlock.lockingThread == std::thread::id{});
+            REQUIRE(controlBlock.initializingThreadId == std::thread::id{});
         }
+
         if (openForever) {
             connection->close();
 
             REQUIRE(controlBlock.db == nullptr);
             REQUIRE(controlBlock.retainCount == 0);
-            REQUIRE(controlBlock.lockingThread == std::thread::id{});
+            REQUIRE(controlBlock.initializingThreadId == std::thread::id{});
         }
     }
 }

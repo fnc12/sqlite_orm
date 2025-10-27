@@ -5,11 +5,13 @@
 #include <atomic>  // std::atomic_int, memory order flags
 #include <mutex>  //  std::mutex, std::lock_guard
 #include <thread>  // std::thread::id
+#include <utility>  // std::swap, std::exchange
 #include <functional>  //  std::function
 #include <string>  //  std::string
 #endif
 
 #include "functional/cxx_new.h"
+#include "functional/cxx_scope_guard.h"
 #include "functional/gsl.h"
 #include "error_code.h"
 #include "vfs_name.h"
@@ -45,7 +47,7 @@ namespace sqlite_orm {
             explicit connection_holder(const connection_holder& other, std::function<void(sqlite3*)> didOpenDb) :
                 _control{other._control.openedForeverHint}, dbArgs{other.dbArgs}, _didOpenDb{std::move(didOpenDb)} {}
 
-            explicit connection_holder(const connection_holder& other, std::true_type /*openForever*/) :
+            explicit connection_holder(const connection_holder& other, std::true_type /*openedForeverHint*/) :
                 _control{true}, dbArgs{other.dbArgs}, _didOpenDb{other._didOpenDb} {}
 
             /*  
@@ -107,8 +109,8 @@ namespace sqlite_orm {
                 _do_close();
             }
 
-            sqlite3* retain() {
-                // optimize for permanently opened connections
+            sqlite3* retain_if_open() {
+                // optional marginal optimization for permanently opened connections;
                 if (_control.openedForeverHint) {
 #ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
                     contract_assert(_control.db);
@@ -116,21 +118,11 @@ namespace sqlite_orm {
                     return _control.db;
                 }
 
-                // recursive and fast path
-                {
-                    int currentCount = _control.retainCount.load(std::memory_order_acquire);
-
-                    // test for recursion from the same thread
-                    if (currentCount == 0) {
-                        if (_control.lockingThread == std::this_thread::get_id()) SQLITE_ORM_CPP_UNLIKELY {
-                            return _control.db;
-                        }
-                    }
-
-                    // optional fast path: if connection is already open, just increment counter;
-                    // this can make a difference while a transaction is active where all things happen in memory only;
-                    // it makes a difference if the `_didOpenDb` callback has a lot of work to do.
-                    while (currentCount > 0) {
+                // optional fast path: if connection is already open, just increment counter;
+                // this can make a difference while a transaction is active where all things happen in memory only;
+                // it makes a difference if the `_didOpenDb` callback has a lot of work to do.
+                if (int currentCount = _control.retainCount.load(std::memory_order_acquire)) {
+                    do {
                         if (_control.retainCount.compare_exchange_weak(currentCount,
                                                                        currentCount + 1,
                                                                        std::memory_order_release,
@@ -139,33 +131,50 @@ namespace sqlite_orm {
                             return _control.db;
                         }
                         // CAS failed - retry
+                    } while (currentCount > 0);
+                }
+                // test for recursion from the same thread
+                else {
+                    const std::thread::id threadId = _control.initializingThreadId.load(std::memory_order_acquire);
+                    if (threadId != std::thread::id{} && std::this_thread::get_id() == threadId)
+                        SQLITE_ORM_CPP_UNLIKELY {
+                        return _control.db;
                     }
+                }
+
+                return nullptr;
+            }
+
+            sqlite3* retain() {
+                if (sqlite3* db = retain_if_open()) {
+                    return db;
                 }
 
                 // slow path: need to open connection or wait for it
-                {
-                    const std::lock_guard _{_sync};
 
-                    // double-check: another thread might have opened it
-                    const bool needsToBeOpened = _control.retainCount == 0;
-                    if (needsToBeOpened) {
-                        _do_open();
-                        if (_didOpenDb) {
-                            _control.lockingThread = std::this_thread::get_id();
-                            // note: may incur recursion in user-provided `on_open` callback
-                            _didOpenDb(_control.db);
-                            _control.lockingThread = std::thread::id{};
-                        }
+                const std::lock_guard _{_sync};
+
+                // double-check: another thread might have opened it
+                const bool needsToBeOpened = _control.retainCount == 0;
+                if (needsToBeOpened) {
+                    _do_open();
+                    if (_didOpenDb) {
+                        _control.initializingThreadId.store(std::this_thread::get_id(), std::memory_order_release);
+                        const scope_guard threadIdGuard{[&threadId = _control.initializingThreadId] {
+                            threadId.store(std::thread::id{}, std::memory_order_release);
+                        }};
+                        // note: may incur recursion in user-provided `on_open` callback
+                        _didOpenDb(_control.db);
                     }
-
-                    // attention: only increase the reference count after successful open in order to propagate a fully setup connection to other threads
-                    _control.retainCount.fetch_add(1, std::memory_order_release);
-                    return _control.db;
                 }
+
+                // attention: only increase the reference count after successful open in order to propagate a fully setup connection to other threads
+                _control.retainCount.fetch_add(1, std::memory_order_release);
+                return _control.db;
             }
 
             void release() {
-                // optimize for permanently opened connections
+                // optional marginal optimization for permanently opened connections;
                 if (_control.openedForeverHint) {
 #ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
                     contract_assert(_control.db);
@@ -175,12 +184,13 @@ namespace sqlite_orm {
 
                 // test for recursion from the same thread;
                 // testing against an empty thread id is sufficient because recursion is only possible while calling the `_didOpenDb` callback in `retain()`
-                if (_control.lockingThread != std::thread::id{}) SQLITE_ORM_CPP_UNLIKELY {
+                if (_control.initializingThreadId.load(std::memory_order_acquire) != std::thread::id{})
+                    SQLITE_ORM_CPP_UNLIKELY {
                     return;
                 }
 
-                const int previous = _control.retainCount.fetch_sub(1, std::memory_order_release);
-                if (previous == 1) {
+                const int previousCount = _control.retainCount.fetch_sub(1, std::memory_order_release);
+                if (previousCount == 1) {
                     // last one closes the connection
 
                     const std::lock_guard _{_sync};
@@ -192,21 +202,19 @@ namespace sqlite_orm {
                 }
             }
 
-            /*  
-                Precondition: Call from a single-threaded context or after `retain()`.
-             */
-            sqlite3* get() const {
-                return _control.db;
-            }
-
             // note: members of the `control_block` are deliberately put on the same cache-line
             SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(alignas(polyfill::hardware_destructive_interference_size))
             struct control_block {
+                // the optimization gain is very small;
+                // at some design point it served as a flag to not use a mutex at all;
+                // now it merely saves all the atomic operations, which actually perform without noticeable difference;
+                // however it may be kept for conveying logic or future optimizations.
                 const bool openedForeverHint = false;
                 std::atomic_int retainCount{};
+                // `db` synchronizes with `retainCount`
                 orm_gsl::owner<sqlite3*> db = nullptr;
                 // we don't know what the user-provided `on_open` callback might do, so we need to track recursion;
-                std::thread::id lockingThread;
+                std::atomic<std::thread::id> initializingThreadId{};
             } _control;
 
             SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(alignas(polyfill::hardware_destructive_interference_size))
@@ -223,13 +231,10 @@ namespace sqlite_orm {
             /*
                 Rebind connection reference;
                 This function is actually unused in the library, but required for concepts compliance (moveable type).
-                Unfortunately it is not `noexcept` because of the `release()` call.
              */
-            connection_ref& operator=(connection_ref&& other) {
-                this->holder->release();
-                this->holder = other.holder;
-                this->db = other.db;
-                this->holder->retain();
+            connection_ref& operator=(connection_ref&& other) noexcept {
+                std::swap(this->holder, other.holder);
+                std::swap(this->db, other.db);
                 return *this;
             }
 
@@ -243,7 +248,41 @@ namespace sqlite_orm {
 
           private:
             connection_holder* holder;
-            sqlite3* db = nullptr;
+            sqlite3* db;
+        };
+
+        struct connection_ptr {
+            connection_ptr(connection_holder& holder) : holder{&holder}, db{holder.retain_if_open()} {}
+
+            connection_ptr(connection_ptr&& other) noexcept :
+                holder{other.holder}, db{std::exchange(other.db, nullptr)} {}
+
+            /*
+                Rebind connection pointer;
+             */
+            connection_ptr& operator=(connection_ptr&& other) noexcept {
+                std::swap(this->holder, other.holder);
+                std::swap(this->db, other.db);
+                return *this;
+            }
+
+            ~connection_ptr() {
+                if (this->db) {
+                    this->holder->release();
+                }
+            }
+
+            explicit operator bool() const {
+                return this->db || false;
+            }
+
+            sqlite3* get() const {
+                return this->db;
+            }
+
+          private:
+            connection_holder* holder;
+            sqlite3* db;
         };
     }
 }
