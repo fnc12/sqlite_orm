@@ -39,10 +39,29 @@ namespace sqlite_orm {
     namespace internal {
 
         struct storage_base {
+          public:
             using collating_function = std::function<int(int, const void*, int, const void*)>;
 
+          protected:
+            const bool inMemory;
+            bool isOpenedForever = false;
+            std::unique_ptr<connection_holder> connection;
+            std::map<std::string, collating_function> collatingFunctions;
+            const int cachedForeignKeysCount;
+            std::function<int(int)> _busy_handler;
+            std::list<udf_proxy> scalarFunctions;
+            std::list<udf_proxy> aggregateFunctions;
+            const sqlite_executor executor;
+
+          public:
+            /** 
+             *  Attention: You must ensure that to set this function only from a single-threaded context.
+             */
             std::function<void(sqlite3*)> on_open;
             pragma_t pragma;
+            /** 
+             *  Attention: You must ensure that to set database limite only from a single-threaded context.
+             */
             limit_accessor limit;
 
             transaction_guard_t transaction_guard() {
@@ -746,30 +765,30 @@ namespace sqlite_orm {
                          will_run_query_spec willRunQuerySpec,
                          did_run_query_spec didRunQuerySpec,
                          int foreignKeysCount) :
-                on_open{std::move(onOpenSpec.onOpen)}, pragma(std::bind(&storage_base::get_connection, this), executor),
-                limit(std::bind(&storage_base::get_connection, this)),
-                inMemory(filename.empty() || filename == ":memory:"),
+                inMemory{filename.empty() || filename == ":memory:"},
                 isOpenedForever{connectionCtrl.open_forever || this->inMemory},
                 connection{std::make_unique<connection_holder>(
                     this->isOpenedForever,
                     db_arguments{std::move(filename), connectionCtrl},
                     std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))},
                 cachedForeignKeysCount(foreignKeysCount),
-                executor{std::move(willRunQuerySpec.willRunQuery), std::move(didRunQuerySpec.didRunQuery)} {
+                executor{std::move(willRunQuerySpec.willRunQuery), std::move(didRunQuerySpec.didRunQuery)},
+                on_open{std::move(onOpenSpec.onOpen)}, pragma(std::bind(&storage_base::get_connection, this), executor),
+                limit{std::ref(storage_base::connection)} {
                 if (this->isOpenedForever) {
                     this->connection->open();
                 }
             }
 
             storage_base(const storage_base& other) :
-                on_open(other.on_open), pragma(std::bind(&storage_base::get_connection, this), executor),
-                limit(std::bind(&storage_base::get_connection, this)), inMemory(other.inMemory),
-                isOpenedForever{other.isOpenedForever},
+                inMemory{other.inMemory}, isOpenedForever{other.isOpenedForever},
                 connection{std::make_unique<connection_holder>(
                     *other.connection,
                     std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))},
                 cachedForeignKeysCount(other.cachedForeignKeysCount),
-                executor{other.executor.will_run_query, other.executor.did_run_query} {
+                executor{other.executor.will_run_query, other.executor.did_run_query}, on_open(other.on_open),
+                pragma(std::bind(&storage_base::get_connection, this), executor),
+                limit{std::ref(storage_base::connection)} {
                 if (this->isOpenedForever) {
                     this->connection->open();
                 }
@@ -1074,11 +1093,11 @@ namespace sqlite_orm {
 
             static int busy_handler_callback(void* selfPointer, int triesCount) {
                 auto& storage = *static_cast<storage_base*>(selfPointer);
-                if (storage._busy_handler) {
-                    return storage._busy_handler(triesCount);
-                } else {
-                    return 0;
-                }
+#ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
+                // `sqlite3_busy_handler()` was called properly before so `busy_handler_callback()` will not be called.
+                contract_assert(storage._busy_handler);
+#endif
+                return storage._busy_handler(triesCount);
             }
 
             bool calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,
@@ -1123,16 +1142,6 @@ namespace sqlite_orm {
                 }
                 return notEqual;
             }
-
-            const bool inMemory;
-            bool isOpenedForever = false;
-            std::unique_ptr<connection_holder> connection;
-            std::map<std::string, collating_function> collatingFunctions;
-            const int cachedForeignKeysCount;
-            std::function<int(int)> _busy_handler;
-            std::list<udf_proxy> scalarFunctions;
-            std::list<udf_proxy> aggregateFunctions;
-            const sqlite_executor executor;
         };
     }
 }
