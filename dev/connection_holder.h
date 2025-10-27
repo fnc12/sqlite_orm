@@ -118,7 +118,9 @@ namespace sqlite_orm {
                     return _control.db;
                 }
 
-                // optional fast path: if connection is already open, just increment counter;
+                // required fast path: if connection is already open, just increment counter;
+                // it is required otherwise 'retain if open' would be useless;
+                // with respect to performance,
                 // this can make a difference while a transaction is active where all things happen in memory only;
                 // it makes a difference if the `_didOpenDb` callback has a lot of work to do.
                 if (int currentCount = _control.retainCount.load(std::memory_order_acquire)) {
@@ -134,7 +136,7 @@ namespace sqlite_orm {
                     } while (currentCount > 0);
                 }
                 // test for recursion from the same thread
-                else {
+                else /*currentCount==0*/ {
                     const std::thread::id threadId = _control.initializingThreadId.load(std::memory_order_acquire);
                     if (threadId != std::thread::id{} && std::this_thread::get_id() == threadId)
                         SQLITE_ORM_CPP_UNLIKELY {
@@ -146,6 +148,7 @@ namespace sqlite_orm {
             }
 
             sqlite3* retain() {
+                // optional fast path: if connection is already open, just increment counter;
                 if (sqlite3* db = retain_if_open()) {
                     return db;
                 }
@@ -223,6 +226,9 @@ namespace sqlite_orm {
             const std::function<void(sqlite3* db)> _didOpenDb;
         };
 
+        /*  
+            Acquires a database connection upon construction and releases it upon destruction.
+         */
         struct connection_ref {
             connection_ref(connection_holder& holder) : holder{&holder}, db{holder.retain()} {}
 
@@ -251,6 +257,9 @@ namespace sqlite_orm {
             sqlite3* db;
         };
 
+        /*  
+            Increases the reference count of an existing open connection upon construction and releases it upon destruction.
+         */
         struct connection_ptr {
             connection_ptr(connection_holder& holder) : holder{&holder}, db{holder.retain_if_open()} {}
 
