@@ -3,7 +3,7 @@
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <cstdlib>  // atoi
-#include <memory>  //  std::allocator
+#include <memory>  //  std::allocator, std::unique_ptr, std::make_unique
 #include <functional>  //  std::function, std::bind, std::bind_front
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
@@ -12,7 +12,6 @@
 #include <system_error>  //  std::system_error
 #include <vector>  //  std::vector
 #include <list>  //  std::list
-#include <memory>  //  std::make_unique, std::unique_ptr
 #include <map>  //  std::map
 #include <type_traits>  //  std::is_same, std::is_aggregate
 #include <algorithm>  //  std::find_if, std::ranges::find
@@ -309,6 +308,8 @@ namespace sqlite_orm {
              * Create an application-defined scalar SQL function.
              * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
              * 
+             * Attention: You must ensure that to call this method only in a single-threaded context.
+             * 
              * Note: `create_scalar_function()` merely creates a closure to generate an instance of the scalar function object,
              * together with a copy of the passed initialization arguments.
              * If `F` is a stateless function object, an instance of the function object is created once, otherwise
@@ -352,6 +353,8 @@ namespace sqlite_orm {
              * Create an application-defined scalar function.
              * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
              * 
+             * Attention: You must ensure that to call this method only in a single-threaded context.
+             * 
              * Note: `create_scalar_function()` merely creates a closure to generate an instance of the scalar function object,
              * together with a copy of the passed initialization arguments.
              * If `F` is a stateless function object, an instance of the function object is created once, otherwise
@@ -366,6 +369,8 @@ namespace sqlite_orm {
             /**
              * Create an application-defined scalar function.
              * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
+             * 
+             * Attention: You must ensure that to call this method only in a single-threaded context.
              *
              * If `quotedF` contains a freestanding function, stateless lambda or stateless function object,
              * `quoted_scalar_function::_callable()` uses the original function object, assuming it is free of side effects;
@@ -398,8 +403,7 @@ namespace sqlite_orm {
                     nullptr,
                     std::pair{nullptr, null_xdestroy_f});
 
-                if (this->connection->retain_count() > 0) {
-                    sqlite3* db = this->connection->get();
+                if (sqlite3* db = this->connection->get()) {
                     try_to_create_scalar_function(db, this->scalarFunctions.back());
                 }
             }
@@ -408,6 +412,8 @@ namespace sqlite_orm {
             /**
              * Create an application-defined aggregate SQL function.
              * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
+             * 
+             * Attention: You must ensure that to call this method only in a single-threaded context.
              * 
              * Note: `create_aggregate_function()` merely creates a closure to generate an instance of the aggregate function object,
              * together with a copy of the passed initialization arguments.
@@ -458,6 +464,8 @@ namespace sqlite_orm {
              * Create an application-defined aggregate function.
              * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
              * 
+             * Attention: You must ensure that to call this method only in a single-threaded context.
+             * 
              * Note: `create_aggregate_function()` merely creates a closure to generate an instance of the aggregate function object,
              * together with a copy of the passed initialization arguments.
              * An instance of the function object is repeatedly recreated for each result row,
@@ -472,6 +480,8 @@ namespace sqlite_orm {
             /**
              *  Delete a scalar function you created before.
              *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
+             * 
+             *  Attention: You must ensure that to call this method only in a single-threaded context.
              */
             template<class F>
             void delete_scalar_function() {
@@ -484,6 +494,8 @@ namespace sqlite_orm {
             /**
              *  Delete a scalar function you created before.
              *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
+             * 
+             *  Attention: You must ensure that to call this method only in a single-threaded context.
              */
             template<orm_scalar_function auto f>
             void delete_scalar_function() {
@@ -493,6 +505,8 @@ namespace sqlite_orm {
             /**
              *  Delete a quoted scalar function you created before.
              *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
+             * 
+             *  Attention: You must ensure that to call this method only in a single-threaded context.
              */
             template<decltype(auto) quotedF>
                 requires (orm_quoted_scalar_function<decltype(quotedF)>)
@@ -504,6 +518,8 @@ namespace sqlite_orm {
             /**
              *  Delete aggregate function you created before.
              *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
+             * 
+             * Attention: You must ensure that to call this method only in a single-threaded context.
              */
             template<class F>
             void delete_aggregate_function() {
@@ -513,12 +529,21 @@ namespace sqlite_orm {
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            /**
+             *  Delete aggregate function you created before.
+             *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
+             * 
+             * Attention: You must ensure that to call this method only in a single-threaded context.
+             */
             template<orm_aggregate_function auto f>
             void delete_aggregate_function() {
                 this->delete_function_impl(f.name(), this->aggregateFunctions);
             }
 #endif
 
+            /** 
+             *  Attention: You must ensure that to call this method only in a single-threaded context.
+             */
             template<class C>
             void create_collation() {
                 collating_function func = [](int leftLength, const void* lhs, int rightLength, const void* rhs)
@@ -531,6 +556,9 @@ namespace sqlite_orm {
                 this->create_collation(ss.str(), std::move(func));
             }
 
+            /** 
+             *  Attention: You must ensure that to call this method only in a single-threaded context.
+             */
             void create_collation(const std::string& name, collating_function f) {
                 const auto functionExists = bool(f);
                 collating_function* function = nullptr;
@@ -539,13 +567,12 @@ namespace sqlite_orm {
                 }
 
                 //  create collations if db is open
-                if (this->connection->retain_count() > 0) {
-                    sqlite3* db = this->connection->get();
-                    int rc = sqlite3_create_collation(db,
-                                                      name.c_str(),
-                                                      SQLITE_UTF8,
-                                                      function,
-                                                      functionExists ? collate_callback : nullptr);
+                if (sqlite3* db = this->connection->get()) {
+                    const int rc = sqlite3_create_collation(db,
+                                                            name.c_str(),
+                                                            SQLITE_UTF8,
+                                                            function,
+                                                            functionExists ? collate_callback : nullptr);
                     if (rc != SQLITE_OK) {
                         throw_translated_sqlite_error(rc);
                     }
@@ -556,6 +583,9 @@ namespace sqlite_orm {
                 }
             }
 
+            /** 
+             *  Attention: You must ensure that to call this method only in a single-threaded context.
+             */
             template<class C>
             void delete_collation() {
                 std::stringstream ss;
@@ -581,20 +611,22 @@ namespace sqlite_orm {
 
             void commit() {
                 sqlite3* db = this->connection->get();
-                this->executor.perform_void_exec(db, "COMMIT");
-                this->connection->release();
-                if (this->connection->retain_count() < 0) {
+                // check for programming error on user's side not having called `begin_transaction()` before
+                if (!db) {
                     throw std::system_error{orm_error_code::no_active_transaction};
                 }
+                this->executor.perform_void_exec(db, "COMMIT");
+                this->connection->release();
             }
 
             void rollback() {
                 sqlite3* db = this->connection->get();
-                this->executor.perform_void_exec(db, "ROLLBACK");
-                this->connection->release();
-                if (this->connection->retain_count() < 0) {
+                // check for programming error on user's side not having called `begin_transaction()` before
+                if (!db) {
                     throw std::system_error{orm_error_code::no_active_transaction};
                 }
+                this->executor.perform_void_exec(db, "ROLLBACK");
+                this->connection->release();
             }
 
             void backup_to(const std::string& filename) {
@@ -618,9 +650,9 @@ namespace sqlite_orm {
             }
 
             backup_t make_backup_to(const std::string& filename) {
-                auto holder = std::make_unique<connection_holder>(filename, nullptr, connection_control{});
-                connection_ref conRef{*holder};
-                return {std::move(conRef), "main", this->get_connection(), "main", std::move(holder)};
+                auto connection = std::make_unique<connection_holder>(false, db_arguments{filename}, nullptr);
+                connection_ref conRef{*connection};
+                return {std::move(conRef), "main", this->get_connection(), "main", std::move(connection)};
             }
 
             backup_t make_backup_to(storage_base& other) {
@@ -628,9 +660,9 @@ namespace sqlite_orm {
             }
 
             backup_t make_backup_from(const std::string& filename) {
-                auto holder = std::make_unique<connection_holder>(filename, nullptr, connection_control{});
-                connection_ref conRef{*holder};
-                return {this->get_connection(), "main", std::move(conRef), "main", std::move(holder)};
+                auto connection = std::make_unique<connection_holder>(false, db_arguments{filename}, nullptr);
+                connection_ref conRef{*connection};
+                return {this->get_connection(), "main", std::move(conRef), "main", std::move(connection)};
             }
 
             backup_t make_backup_from(storage_base& other) {
@@ -644,10 +676,10 @@ namespace sqlite_orm {
             /** 
              * Checks whether connection to database is opened right now.
              * Returns always `true` for in memory databases.
-             * @note While retrieving the reference count value is atomic it makes only sense in single-threaded contexts.
+             * @attention While retrieving the reference count value is atomic it makes only sense in single-threaded contexts.
              */
             bool is_opened() const {
-                return this->connection->retain_count() > 0;
+                return this->connection->get() || false;
             }
 
             /**
@@ -668,11 +700,11 @@ namespace sqlite_orm {
              * Return true if this database object is opened in a readonly state. 
              */
             bool db_readonly() {
-                auto con = this->get_connection();
-                return static_cast<bool>(sqlite3_db_readonly(con.get(), "main"));
+                auto connection = this->get_connection();
+                return static_cast<bool>(sqlite3_db_readonly(connection.get(), "main"));
             }
 
-            /*
+            /* 
              * returning false when there is a transaction in place
              * otherwise true; function is not const because it has to call get_connection()
              */
@@ -683,11 +715,11 @@ namespace sqlite_orm {
 
             int busy_handler(std::function<int(int)> handler) {
                 _busy_handler = std::move(handler);
-                if (this->is_opened()) {
+                if (sqlite3* db = this->connection->get()) {
                     if (_busy_handler) {
-                        return sqlite3_busy_handler(this->connection->get(), busy_handler_callback, this);
+                        return sqlite3_busy_handler(db, busy_handler_callback, this);
                     } else {
-                        return sqlite3_busy_handler(this->connection->get(), nullptr, nullptr);
+                        return sqlite3_busy_handler(db, nullptr, nullptr);
                     }
                 } else {
                     return SQLITE_OK;
@@ -706,9 +738,9 @@ namespace sqlite_orm {
                 inMemory(filename.empty() || filename == ":memory:"),
                 isOpenedForever{connectionCtrl.open_forever || this->inMemory},
                 connection{std::make_unique<connection_holder>(
-                    std::move(filename),
-                    std::bind(&storage_base::on_open_internal, this, std::placeholders::_1),
-                    connectionCtrl)},
+                    this->isOpenedForever,
+                    db_arguments{std::move(filename), connectionCtrl},
+                    std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))},
                 cachedForeignKeysCount(foreignKeysCount),
                 executor{std::move(willRunQuerySpec.willRunQuery), std::move(didRunQuerySpec.didRunQuery)} {
                 if (this->isOpenedForever) {
@@ -719,10 +751,10 @@ namespace sqlite_orm {
             storage_base(const storage_base& other) :
                 on_open(other.on_open), pragma(std::bind(&storage_base::get_connection, this), executor),
                 limit(std::bind(&storage_base::get_connection, this)), inMemory(other.inMemory),
-                isOpenedForever{other.isOpenedForever || this->inMemory},
-                connection(std::make_unique<connection_holder>(
+                isOpenedForever{other.isOpenedForever},
+                connection{std::make_unique<connection_holder>(
                     *other.connection,
-                    std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))),
+                    std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))},
                 cachedForeignKeysCount(other.cachedForeignKeysCount),
                 executor{other.executor.will_run_query, other.executor.did_run_query} {
                 if (this->isOpenedForever) {
@@ -800,7 +832,7 @@ namespace sqlite_orm {
                 }
 
                 for (auto& [name, collatingFunction]: this->collatingFunctions) {
-                    int rc =
+                    const int rc =
                         sqlite3_create_collation(db, name.c_str(), SQLITE_UTF8, &collatingFunction, collate_callback);
                     if (rc != SQLITE_OK) {
                         throw_translated_sqlite_error(rc);
@@ -812,7 +844,7 @@ namespace sqlite_orm {
                 }
 
                 if (_busy_handler) {
-                    sqlite3_busy_handler(this->connection->get(), busy_handler_callback, this);
+                    sqlite3_busy_handler(db, busy_handler_callback, this);
                 }
 
                 for (auto& udfProxy: this->scalarFunctions) {
@@ -855,8 +887,7 @@ namespace sqlite_orm {
                     },
                     udfMemorySpace);
 
-                if (this->connection->retain_count() > 0) {
-                    sqlite3* db = this->connection->get();
+                if (sqlite3* db = this->connection->get()) {
                     try_to_create_scalar_function(db, this->scalarFunctions.back());
                 }
             }
@@ -903,8 +934,7 @@ namespace sqlite_orm {
                     },
                     obtain_udf_allocator<F>());
 
-                if (this->connection->retain_count() > 0) {
-                    sqlite3* db = this->connection->get();
+                if (sqlite3* db = this->connection->get()) {
                     try_to_create_aggregate_function(db, this->aggregateFunctions.back());
                 }
             }
@@ -918,17 +948,16 @@ namespace sqlite_orm {
                 });
 #endif
                 if (it != functions.end()) {
-                    if (this->connection->retain_count() > 0) {
-                        sqlite3* db = this->connection->get();
-                        int rc = sqlite3_create_function_v2(db,
-                                                            name.c_str(),
-                                                            it->argumentsCount,
-                                                            SQLITE_UTF8,
-                                                            nullptr,
-                                                            nullptr,
-                                                            nullptr,
-                                                            nullptr,
-                                                            nullptr);
+                    if (sqlite3* db = this->connection->get()) {
+                        const int rc = sqlite3_create_function_v2(db,
+                                                                  name.c_str(),
+                                                                  it->argumentsCount,
+                                                                  SQLITE_UTF8,
+                                                                  nullptr,
+                                                                  nullptr,
+                                                                  nullptr,
+                                                                  nullptr,
+                                                                  nullptr);
                         if (rc != SQLITE_OK) {
                             throw_translated_sqlite_error(rc);
                         }

@@ -8,22 +8,6 @@ using namespace sqlite_orm;
 TEST_CASE("connection holder tests") {
     using namespace sqlite_orm::internal;
 
-#ifdef SQLITE_ORM_CPP20_SEMAPHORE_SUPPORTED
-    struct try_acquire_sync {
-        try_acquire_sync(std::binary_semaphore& sem) : sem{sem}, acquired{sem.try_acquire()} {}
-        ~try_acquire_sync() {
-            if (acquired) {
-                sem.release();
-            }
-        }
-        operator bool() const {
-            return acquired;
-        }
-
-        std::binary_semaphore& sem;
-        const bool acquired;
-    };
-#else
     struct try_acquire_sync {
         try_acquire_sync(std::mutex& mtx) : mtx{mtx}, locked{mtx.try_lock()} {}
         ~try_acquire_sync() {
@@ -38,55 +22,44 @@ TEST_CASE("connection holder tests") {
         std::mutex& mtx;
         const bool locked;
     };
-#endif
 
     const bool openForever = GENERATE(false, true);
     SECTION("") {
         std::unique_ptr<connection_holder> connection;
         connection = std::make_unique<connection_holder>(
-            "",
+            openForever,
+            db_arguments{""},
             // test whether executed under the lock while opening
             [&connection, openForever](sqlite3* db) {
                 // alias
                 auto& controlBlock = connection->_control;
 
+                REQUIRE(controlBlock.openedForeverHint == openForever);
                 REQUIRE(controlBlock.db == db);
 
-                REQUIRE(controlBlock.retainCount == 1);
-                REQUIRE(controlBlock.openedForeverHint == openForever);
-                REQUIRE(connection_holder::maybe_lock::nRecursionsPerThread == (openForever ? 0 : 1));
-                REQUIRE(try_acquire_sync(controlBlock.sync) == openForever);
-
-                // test `maybe_lock` - re-entrance at the lowest level
-                {
-                    const connection_holder::maybe_lock ml{controlBlock.sync};
-                    REQUIRE(&ml.sync == &controlBlock.sync);
-                    REQUIRE(connection_holder::maybe_lock::nRecursionsPerThread == (openForever ? 1 : 2));
-                    REQUIRE_FALSE(try_acquire_sync(ml.sync));
-                }
-                // ... after destruction
-                {
-                    REQUIRE(connection_holder::maybe_lock::nRecursionsPerThread == (openForever ? 0 : 1));
-                    REQUIRE(try_acquire_sync(controlBlock.sync) == openForever);
-                }
+                // retain count is still zero while holding the lock
+                REQUIRE(controlBlock.retainCount == (openForever ? 1 : 0));
+                REQUIRE(controlBlock.lockingThread == (openForever ? std::thread::id{} : std::this_thread::get_id()));
+                REQUIRE(try_acquire_sync(connection->_sync) == openForever);
 
                 // test re-entrance
                 connection->retain();
                 {
-                    REQUIRE(controlBlock.retainCount == (openForever ? 1 : 2));
-                    REQUIRE(connection_holder::maybe_lock::nRecursionsPerThread == (openForever ? 0 : 1));
-                    REQUIRE(try_acquire_sync(controlBlock.sync) == openForever);
+                    REQUIRE(controlBlock.retainCount == (openForever ? 1 : 0));
+                    REQUIRE(controlBlock.lockingThread ==
+                            (openForever ? std::thread::id{} : std::this_thread::get_id()));
+                    REQUIRE(try_acquire_sync(connection->_sync) == openForever);
                 }
 
                 connection->release();
                 {
-                    REQUIRE(controlBlock.retainCount == 1);
+                    REQUIRE(controlBlock.retainCount == (openForever ? 1 : 0));
                     REQUIRE(controlBlock.openedForeverHint == openForever);
-                    REQUIRE(connection_holder::maybe_lock::nRecursionsPerThread == (openForever ? 0 : 1));
-                    REQUIRE(try_acquire_sync(controlBlock.sync) == openForever);
+                    REQUIRE(controlBlock.lockingThread ==
+                            (openForever ? std::thread::id{} : std::this_thread::get_id()));
+                    REQUIRE(try_acquire_sync(connection->_sync) == openForever);
                 }
-            },
-            connection_control{openForever});
+            });
 
         // alias
         auto& controlBlock = connection->_control;
@@ -98,8 +71,8 @@ TEST_CASE("connection holder tests") {
         connection->retain();
         {
             REQUIRE(controlBlock.retainCount == 1);
-            REQUIRE(connection_holder::maybe_lock::nRecursionsPerThread == 0);
-            REQUIRE(try_acquire_sync(controlBlock.sync));
+            REQUIRE(controlBlock.lockingThread == std::thread::id{});
+            REQUIRE(try_acquire_sync(connection->_sync));
         }
 
         connection->release();
@@ -110,14 +83,14 @@ TEST_CASE("connection holder tests") {
                 REQUIRE(controlBlock.db == nullptr);
             }
             REQUIRE(controlBlock.retainCount == (openForever ? 1 : 0));
-            REQUIRE(connection_holder::maybe_lock::nRecursionsPerThread == 0);
+            REQUIRE(controlBlock.lockingThread == std::thread::id{});
         }
         if (openForever) {
             connection->close();
 
             REQUIRE(controlBlock.db == nullptr);
             REQUIRE(controlBlock.retainCount == 0);
-            REQUIRE(connection_holder::maybe_lock::nRecursionsPerThread == 0);
+            REQUIRE(controlBlock.lockingThread == std::thread::id{});
         }
     }
 }
