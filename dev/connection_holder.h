@@ -228,6 +228,8 @@ namespace sqlite_orm {
 
         /*  
             Acquires a database connection upon construction and releases it upon destruction.
+
+            Note: It is important to cache the `sqlite3*` pointer for cache-friendliness (thus avoiding to access the holder on each `get()` call).
          */
         struct connection_ref {
             connection_ref(connection_holder& holder) : holder{&holder}, db{holder.retain()} {}
@@ -259,6 +261,8 @@ namespace sqlite_orm {
 
         /*  
             Increases the reference count of an existing open connection upon construction and releases it upon destruction.
+
+            Note: It is important to cache the `sqlite3*` pointer for cache-friendliness (thus avoiding to access the holder on each `get()` call).
          */
         struct connection_ptr {
             connection_ptr(connection_holder& holder) : holder{&holder}, db{holder.retain_if_open()} {}
