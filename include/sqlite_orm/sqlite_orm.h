@@ -297,10 +297,6 @@ using std::nullptr_t;
 #define SQLITE_ORM_CPP20_RANGES_SUPPORTED
 #endif
 
-#if __cpp_lib_semaphore >= 201907L
-#define SQLITE_ORM_CPP20_SEMAPHORE_SUPPORTED
-#endif
-
 #if __cpp_lib_generator >= 202207L
 #define SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
 #endif
