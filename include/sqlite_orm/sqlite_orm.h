@@ -18780,31 +18780,39 @@ namespace sqlite_orm {
             limit_accessor limit;
 
             transaction_guard_t transaction_guard() {
-                this->begin_transaction();
-                return {this->get_connection(),
-                        std::bind(&storage_base::commit, this),
-                        std::bind(&storage_base::rollback, this)};
+                auto connection = this->get_connection();
+                sqlite3* db = connection.get();
+                this->executor.perform_void_exec(db, "BEGIN TRANSACTION");
+                return {std::move(connection),
+                        std::bind(&sqlite_executor::perform_void_exec, &executor, db, "COMMIT"),
+                        std::bind(&sqlite_executor::perform_void_exec, &executor, db, "ROLLBACK")};
             }
 
             transaction_guard_t deferred_transaction_guard() {
-                this->begin_deferred_transaction();
-                return {this->get_connection(),
-                        std::bind(&storage_base::commit, this),
-                        std::bind(&storage_base::rollback, this)};
+                auto connection = this->get_connection();
+                sqlite3* db = connection.get();
+                this->executor.perform_void_exec(db, "BEGIN DEFERRED TRANSACTION");
+                return {std::move(connection),
+                        std::bind(&sqlite_executor::perform_void_exec, &executor, db, "COMMIT"),
+                        std::bind(&sqlite_executor::perform_void_exec, &executor, db, "ROLLBACK")};
             }
 
             transaction_guard_t immediate_transaction_guard() {
-                this->begin_immediate_transaction();
-                return {this->get_connection(),
-                        std::bind(&storage_base::commit, this),
-                        std::bind(&storage_base::rollback, this)};
+                auto connection = this->get_connection();
+                sqlite3* db = connection.get();
+                this->executor.perform_void_exec(db, "BEGIN IMMEDIATE TRANSACTION");
+                return {std::move(connection),
+                        std::bind(&sqlite_executor::perform_void_exec, &executor, db, "COMMIT"),
+                        std::bind(&sqlite_executor::perform_void_exec, &executor, db, "ROLLBACK")};
             }
 
             transaction_guard_t exclusive_transaction_guard() {
-                this->begin_exclusive_transaction();
-                return {this->get_connection(),
-                        std::bind(&storage_base::commit, this),
-                        std::bind(&storage_base::rollback, this)};
+                auto connection = this->get_connection();
+                sqlite3* db = connection.get();
+                this->executor.perform_void_exec(db, "BEGIN EXCLUSIVE TRANSACTION");
+                return {std::move(connection),
+                        std::bind(&sqlite_executor::perform_void_exec, &executor, db, "COMMIT"),
+                        std::bind(&sqlite_executor::perform_void_exec, &executor, db, "ROLLBACK")};
             }
 
             /**
@@ -19328,19 +19336,23 @@ namespace sqlite_orm {
             }
 
             void begin_transaction() {
-                this->begin_transaction_internal("BEGIN TRANSACTION");
+                sqlite3* db = this->connection->retain();
+                this->executor.perform_void_exec(db, "BEGIN TRANSACTION");
             }
 
             void begin_deferred_transaction() {
-                this->begin_transaction_internal("BEGIN DEFERRED TRANSACTION");
+                sqlite3* db = this->connection->retain();
+                this->executor.perform_void_exec(db, "BEGIN DEFERRED TRANSACTION");
             }
 
             void begin_immediate_transaction() {
-                this->begin_transaction_internal("BEGIN IMMEDIATE TRANSACTION");
+                sqlite3* db = this->connection->retain();
+                this->executor.perform_void_exec(db, "BEGIN IMMEDIATE TRANSACTION");
             }
 
             void begin_exclusive_transaction() {
-                this->begin_transaction_internal("BEGIN EXCLUSIVE TRANSACTION");
+                sqlite3* db = this->connection->retain();
+                this->executor.perform_void_exec(db, "BEGIN EXCLUSIVE TRANSACTION");
             }
 
             void commit() {
@@ -19500,12 +19512,6 @@ namespace sqlite_orm {
                 if (this->isOpenedForever) {
                     this->connection->close();
                 }
-            }
-
-            void begin_transaction_internal(const std::string& sql) {
-                this->connection->retain();
-                sqlite3* db = this->connection->get();
-                this->executor.perform_void_exec(db, sql.c_str());
             }
 
             connection_ref get_connection() {
