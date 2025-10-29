@@ -14648,9 +14648,9 @@ namespace sqlite_orm {
             db_arguments(std::string filename, const connection_control& connectionCtrl = {}) :
                 filename{std::move(filename)}, vfs_name{connectionCtrl.vfs_name}, open_mode{connectionCtrl.open_mode} {}
 
-            const std::string filename;
-            const std::string vfs_name;
-            const db_open_mode open_mode;
+            std::string filename;
+            std::string vfs_name;
+            db_open_mode open_mode;
         };
 
         /*  
@@ -14846,7 +14846,7 @@ namespace sqlite_orm {
 
             SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(alignas(polyfill::hardware_destructive_interference_size))
             std::mutex _sync;
-            db_arguments dbArgs;
+            const db_arguments dbArgs;
             const std::function<void(sqlite3* db)> _didOpenDb;
         };
 
