@@ -20078,6 +20078,9 @@ namespace sqlite_orm {
 #include <memory>
 #include <array>
 #include <list>  //  std::list
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#include <ranges>  //  std::views::transform
+#endif
 #endif
 // #include "functional/cxx_string_view.h"
 
@@ -22537,6 +22540,9 @@ namespace sqlite_orm {
                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << "SET ";
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+                ss << streaming_serialized(statement | std::views::transform(&dynamic_set_entry::serialized_value));
+#else
                 int index = 0;
                 for (const dynamic_set_entry& entry: statement) {
                     if (index > 0) {
@@ -22545,6 +22551,7 @@ namespace sqlite_orm {
                     ss << entry.serialized_value;
                     ++index;
                 }
+#endif
                 return ss.str();
             }
         };
