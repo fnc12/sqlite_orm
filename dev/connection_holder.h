@@ -51,6 +51,102 @@ namespace sqlite_orm {
                 _control{true}, dbArgs{other.dbArgs}, _didOpenDb{other._didOpenDb} {}
 
             /*  
+                Open the database once and for all from a single-threaded context when it should be opened permanently.
+             */
+            void open() {
+#ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
+                contract_assert(_control.openedForeverHint);
+                contract_assert(!_control.db);
+#endif
+                _control.retainCount.fetch_add(1, std::memory_order_relaxed);
+                _do_open();
+
+                if (_didOpenDb) {
+                    _didOpenDb(_control.db);
+                }
+            }
+
+            /*  
+                Close the database from a single-threaded context when the database has already been opened permanently.
+             */
+            void close() {
+#ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
+                contract_assert(_control.openedForeverHint);
+                contract_assert(_control.db);
+#endif
+                _control.retainCount.fetch_sub(1, std::memory_order_relaxed);
+                _do_close();
+            }
+
+            /*
+                Retain the database handle if the database is already open, `nullptr` otherwise.
+             */
+            sqlite3* retain_if_open() {
+                return _try_retain_if_open(false);
+            }
+
+            /*
+                Retain the database handle if the database is already open, otherwise open the database.
+             */
+            sqlite3* retain() {
+                // optional fast path: if connection is already open, just try incrementing the counter;
+                if (sqlite3* db = _try_retain_if_open(true)) {
+                    return db;
+                }
+
+                // slow path: need to open connection or wait for it
+
+                const std::lock_guard _{_sync};
+
+                // double-check: another thread might have opened it
+                const bool needsToBeOpened = _control.retainCount == 0;
+                if (needsToBeOpened) {
+                    _do_open();
+                    if (_didOpenDb) {
+                        _control.initializingThreadId.store(std::this_thread::get_id(), std::memory_order_release);
+                        const scope_guard threadIdGuard{[&threadId = _control.initializingThreadId] {
+                            threadId.store(std::thread::id{}, std::memory_order_release);
+                        }};
+                        // note: may incur recursion in user-provided `on_open` callback
+                        _didOpenDb(_control.db);
+                    }
+                }
+
+                // attention: only increase the reference count after successful open in order to propagate a fully setup connection to other threads
+                _control.retainCount.fetch_add(1, std::memory_order_release);
+                return _control.db;
+            }
+
+            void release() {
+                // optional optimization for permanently opened connections;
+                if (_control.openedForeverHint) {
+#ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
+                    contract_assert(_control.db);
+#endif
+                    return;
+                }
+
+                // test for recursion from the same thread;
+                // testing against an empty thread id is sufficient because recursion is only possible while the `_didOpenDb` callback is executing in `retain()`
+                if (_control.initializingThreadId.load(std::memory_order_acquire) != std::thread::id{})
+                    SQLITE_ORM_CPP_UNLIKELY {
+                    return;
+                }
+
+                const int previousCount = _control.retainCount.fetch_sub(1, std::memory_order_release);
+                if (previousCount == 1) {
+                    // last one closes the connection
+
+                    const std::lock_guard _{_sync};
+
+                    // double-check: another thread might have acquired in the meantime
+                    if (_control.retainCount.load(std::memory_order_acquire) == 0) {
+                        _do_close();
+                    }
+                }
+            }
+
+            /*  
                 Open from a single-threaded context.
              */
             void _do_open() {
@@ -81,36 +177,8 @@ namespace sqlite_orm {
                 }
             }
 
-            /*  
-                Open the database once and for all from a single-threaded context when it should be opened permanently.
-             */
-            void open() {
-#ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
-                contract_assert(_control.openedForeverHint);
-                contract_assert(!_control.db);
-#endif
-                _control.retainCount.fetch_add(1, std::memory_order_relaxed);
-                _do_open();
-
-                if (_didOpenDb) {
-                    _didOpenDb(_control.db);
-                }
-            }
-
-            /*  
-                Close the database from a single-threaded context when the database has already been opened permanently.
-             */
-            void close() {
-#ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
-                contract_assert(_control.openedForeverHint);
-                contract_assert(_control.db);
-#endif
-                _control.retainCount.fetch_sub(1, std::memory_order_relaxed);
-                _do_close();
-            }
-
-            sqlite3* retain_if_open() {
-                // optional marginal optimization for permanently opened connections;
+            sqlite3* _try_retain_if_open(const bool yieldIfContended) {
+                // optional optimization for permanently opened connections;
                 if (_control.openedForeverHint) {
 #ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
                     contract_assert(_control.db);
@@ -118,12 +186,7 @@ namespace sqlite_orm {
                     return _control.db;
                 }
 
-                // required fast path: if connection is already open, just increment counter;
-                // it is required otherwise 'retain if open' would be useless;
-                // with respect to performance,
-                // this can make a difference while a transaction is active where all things happen in memory only;
-                // it makes a difference if the `_didOpenDb` callback has a lot of work to do.
-                if (int currentCount = _control.retainCount.load(std::memory_order_acquire)) {
+                if (int currentCount = _control.retainCount.load(std::memory_order_relaxed)) {
                     do {
                         if (_control.retainCount.compare_exchange_weak(currentCount,
                                                                        currentCount + 1,
@@ -132,11 +195,13 @@ namespace sqlite_orm {
                             // successfully incremented, connection is guaranteed to be open
                             return _control.db;
                         }
-                        // CAS failed - retry
-                    } while (currentCount > 0);
+                        // CAS failed due to contention;
+                        // 1. !yieldIfContended (compete) : retry until successful or count reaches zero because another thread closed the database;
+                        // 2. yieldIfContended: do not try again; it does not have to be lock-free at all costs, which avoids CPUs competing for incrementation.
+                    } while (!yieldIfContended && currentCount > 0);
                 }
                 // test for recursion from the same thread
-                else /*currentCount==0*/ {
+                else /*currentCount == 0*/ {
                     const std::thread::id threadId = _control.initializingThreadId.load(std::memory_order_acquire);
                     if (threadId != std::thread::id{} && std::this_thread::get_id() == threadId)
                         SQLITE_ORM_CPP_UNLIKELY {
@@ -147,76 +212,17 @@ namespace sqlite_orm {
                 return nullptr;
             }
 
-            sqlite3* retain() {
-                // optional fast path: if connection is already open, just increment counter;
-                if (sqlite3* db = retain_if_open()) {
-                    return db;
-                }
-
-                // slow path: need to open connection or wait for it
-
-                const std::lock_guard _{_sync};
-
-                // double-check: another thread might have opened it
-                const bool needsToBeOpened = _control.retainCount == 0;
-                if (needsToBeOpened) {
-                    _do_open();
-                    if (_didOpenDb) {
-                        _control.initializingThreadId.store(std::this_thread::get_id(), std::memory_order_release);
-                        const scope_guard threadIdGuard{[&threadId = _control.initializingThreadId] {
-                            threadId.store(std::thread::id{}, std::memory_order_release);
-                        }};
-                        // note: may incur recursion in user-provided `on_open` callback
-                        _didOpenDb(_control.db);
-                    }
-                }
-
-                // attention: only increase the reference count after successful open in order to propagate a fully setup connection to other threads
-                _control.retainCount.fetch_add(1, std::memory_order_release);
-                return _control.db;
-            }
-
-            void release() {
-                // optional marginal optimization for permanently opened connections;
-                if (_control.openedForeverHint) {
-#ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
-                    contract_assert(_control.db);
-#endif
-                    return;
-                }
-
-                // test for recursion from the same thread;
-                // testing against an empty thread id is sufficient because recursion is only possible while calling the `_didOpenDb` callback in `retain()`
-                if (_control.initializingThreadId.load(std::memory_order_acquire) != std::thread::id{})
-                    SQLITE_ORM_CPP_UNLIKELY {
-                    return;
-                }
-
-                const int previousCount = _control.retainCount.fetch_sub(1, std::memory_order_release);
-                if (previousCount == 1) {
-                    // last one closes the connection
-
-                    const std::lock_guard _{_sync};
-
-                    // double-check: another thread might have acquired in the meantime
-                    if (_control.retainCount.load(std::memory_order_acquire) == 0) {
-                        _do_close();
-                    }
-                }
-            }
-
             // note: members of the `control_block` are deliberately put on the same cache-line
             SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(alignas(polyfill::hardware_destructive_interference_size))
             struct control_block {
-                // the optimization gain is very small;
-                // at some design point it served as a flag to not use a mutex at all;
-                // now it merely saves all the atomic operations, which actually perform without noticeable difference;
-                // however it may be kept for conveying logic or future optimizations.
-                const bool openedForeverHint = false;
+                // Optional optimization hint that also serves to convey logic.
+                // in a test scenario involving a tight retain()/releae() loop from multiple threads the performance gain is outstanding;
+                // in a real-world scenario it merely saves all the atomic operations and the CPU cache updates they entail;
+                bool openedForeverHint = false;
                 std::atomic_int retainCount{};
                 // `db` synchronizes with `retainCount`
                 orm_gsl::owner<sqlite3*> db = nullptr;
-                // we don't know what the user-provided `on_open` callback might do, so we need to track recursion;
+                // we don't know what the user-provided `on_open` callback might do, so we need to track recursion during the `_didOpenDb` callback;
                 std::atomic<std::thread::id> initializingThreadId{};
             } _control;
 
