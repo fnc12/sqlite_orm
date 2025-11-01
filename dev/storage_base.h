@@ -60,7 +60,7 @@ namespace sqlite_orm {
             std::function<void(sqlite3*)> on_open;
             pragma_t pragma;
             /** 
-             *  Attention: You must ensure that to set database limite only from a single-threaded context.
+             *  Attention: You must ensure that to set database limit only from a single-threaded context.
              */
             limit_accessor limit;
 
@@ -546,7 +546,7 @@ namespace sqlite_orm {
              *  Delete aggregate function you created before.
              *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
              * 
-             * Attention: You must ensure that to call this method only in a single-threaded context.
+             *  Attention: You must ensure that to call this method only in a single-threaded context.
              */
             template<class F>
             void delete_aggregate_function() {
@@ -560,7 +560,7 @@ namespace sqlite_orm {
              *  Delete aggregate function you created before.
              *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
              * 
-             * Attention: You must ensure that to call this method only in a single-threaded context.
+             *  Attention: You must ensure that to call this method only in a single-threaded context.
              */
             template<orm_aggregate_function auto f>
             void delete_aggregate_function() {
