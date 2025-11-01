@@ -24,7 +24,7 @@ TEST_CASE("connection holder tests") {
     };
 
     const bool openForever = GENERATE(false, true);
-    SECTION("") {
+    {
         std::unique_ptr<connection_holder> connection;
         connection = std::make_unique<connection_holder>(
             openForever,
@@ -118,7 +118,7 @@ TEST_CASE("connection holder tests") {
 
 TEST_CASE("connection control tests") {
     const auto openForever = GENERATE(false, true);
-    SECTION("") {
+    {
         bool onOpenCalled = false;
         int nOnOpenCalled = 0;
         SECTION("empty") {
