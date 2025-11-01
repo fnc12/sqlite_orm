@@ -1,12 +1,124 @@
+#include <memory>  //  std::unique_ptr, std::make_unique
 #include <cstdint>
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
 
 using namespace sqlite_orm;
 
-TEST_CASE("connection control") {
+TEST_CASE("connection holder tests") {
+    using namespace sqlite_orm::internal;
+
+    struct try_acquire_sync {
+        try_acquire_sync(std::mutex& mtx) : mtx{mtx}, locked{mtx.try_lock()} {}
+        ~try_acquire_sync() {
+            if (locked) {
+                mtx.unlock();
+            }
+        }
+        operator bool() const {
+            return locked;
+        }
+
+        std::mutex& mtx;
+        const bool locked;
+    };
+
+    const bool openForever = GENERATE(false, true);
+    {
+        std::unique_ptr<connection_holder> connection;
+        connection = std::make_unique<connection_holder>(
+            openForever,
+            db_arguments{""},
+            // test whether executed under the lock while opening
+            [&connection, openForever](sqlite3* db) {
+                // alias
+                auto& controlBlock = connection->_control;
+
+                REQUIRE(controlBlock.openedForeverHint == openForever);
+                REQUIRE(controlBlock.db == db);
+
+                // retain count is still zero while holding the lock
+                REQUIRE(controlBlock.retainCount == (openForever ? 1 : 0));
+                REQUIRE(controlBlock.initializingThreadId ==
+                        (openForever ? std::thread::id{} : std::this_thread::get_id()));
+                REQUIRE(try_acquire_sync(connection->_sync) == openForever);
+
+                // test re-entrance
+
+                REQUIRE(connection->retain_if_open() == controlBlock.db);
+                {
+                    REQUIRE(controlBlock.retainCount == (openForever ? 1 : 0));
+                    REQUIRE(controlBlock.initializingThreadId ==
+                            (openForever ? std::thread::id{} : std::this_thread::get_id()));
+                    REQUIRE(try_acquire_sync(connection->_sync) == openForever);
+                }
+
+                connection->release();
+                {
+                    REQUIRE(controlBlock.retainCount == (openForever ? 1 : 0));
+                    REQUIRE(controlBlock.openedForeverHint == openForever);
+                    REQUIRE(controlBlock.initializingThreadId ==
+                            (openForever ? std::thread::id{} : std::this_thread::get_id()));
+                    REQUIRE(try_acquire_sync(connection->_sync) == openForever);
+                }
+
+                REQUIRE(connection->retain() == controlBlock.db);
+                {
+                    REQUIRE(controlBlock.retainCount == (openForever ? 1 : 0));
+                    REQUIRE(controlBlock.initializingThreadId ==
+                            (openForever ? std::thread::id{} : std::this_thread::get_id()));
+                    REQUIRE(try_acquire_sync(connection->_sync) == openForever);
+                }
+                connection->release();
+            });
+
+        // alias
+        auto& controlBlock = connection->_control;
+
+        if (openForever) {
+            connection->open();
+            // note: state is tested in `on_open` handler above
+        }
+
+        REQUIRE(connection->retain_if_open() == (openForever ? controlBlock.db : nullptr));
+        {
+            REQUIRE(controlBlock.retainCount == (openForever ? 1 : 0));
+            REQUIRE(controlBlock.initializingThreadId == std::thread::id{});
+            REQUIRE(try_acquire_sync(connection->_sync));
+        }
+        // note: must not release() if not opened
+
+        REQUIRE(connection->retain() == controlBlock.db);
+        {
+            REQUIRE(controlBlock.retainCount == 1);
+            REQUIRE(controlBlock.initializingThreadId == std::thread::id{});
+            REQUIRE(try_acquire_sync(connection->_sync));
+        }
+
+        connection->release();
+        {
+            if (openForever) {
+                REQUIRE(controlBlock.db != nullptr);
+            } else {
+                REQUIRE(controlBlock.db == nullptr);
+            }
+            REQUIRE(controlBlock.retainCount == (openForever ? 1 : 0));
+            REQUIRE(controlBlock.initializingThreadId == std::thread::id{});
+        }
+
+        if (openForever) {
+            connection->close();
+
+            REQUIRE(controlBlock.db == nullptr);
+            REQUIRE(controlBlock.retainCount == 0);
+            REQUIRE(controlBlock.initializingThreadId == std::thread::id{});
+        }
+    }
+}
+
+TEST_CASE("connection control tests") {
     const auto openForever = GENERATE(false, true);
-    SECTION("") {
+    {
         bool onOpenCalled = false;
         int nOnOpenCalled = 0;
         SECTION("empty") {

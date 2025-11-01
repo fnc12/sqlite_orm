@@ -28,15 +28,15 @@ namespace sqlite_orm {
                      const std::string& zSourceName,
                      std::unique_ptr<connection_holder> holder_) :
                 handle(sqlite3_backup_init(to_.get(), zDestName.c_str(), from_.get(), zSourceName.c_str())),
-                holder(std::move(holder_)), to(to_), from(from_) {
+                holder(std::move(holder_)), to(std::move(to_)), from(std::move(from_)) {
                 if (!this->handle) {
                     throw std::system_error{orm_error_code::failed_to_init_a_backup};
                 }
             }
 
             backup_t(backup_t&& other) :
-                handle(std::exchange(other.handle, nullptr)), holder(std::move(other.holder)), to(other.to),
-                from(other.from) {}
+                handle(std::exchange(other.handle, nullptr)), holder(std::move(other.holder)), to(std::move(other.to)),
+                from(std::move(other.from)) {}
 
             ~backup_t() {
                 if (this->handle) {

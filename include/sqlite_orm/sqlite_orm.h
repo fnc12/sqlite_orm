@@ -14466,10 +14466,61 @@ namespace sqlite_orm {
 
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <atomic>
+#include <atomic>  // std::atomic_int, memory order flags
+#include <mutex>  //  std::mutex, std::lock_guard
+#include <thread>  // std::thread::id
+#include <utility>  // std::swap, std::exchange
 #include <functional>  //  std::function
 #include <string>  //  std::string
 #endif
+
+// #include "functional/cxx_new.h"
+
+#ifdef SQLITE_ORM_IMPORT_STD_MODULE
+#include <version>
+#else
+#include <new>
+#endif
+
+namespace sqlite_orm {
+    namespace internal {
+        namespace polyfill {
+#if __cpp_lib_hardware_interference_size >= 201703L
+            using std::hardware_constructive_interference_size;
+            using std::hardware_destructive_interference_size;
+#else
+            constexpr size_t hardware_constructive_interference_size = 64;
+            constexpr size_t hardware_destructive_interference_size = 64;
+#endif
+        }
+    }
+
+    namespace polyfill = internal::polyfill;
+}
+
+// #include "functional/cxx_scope_guard.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <utility>  // std::forward
+#endif
+
+namespace sqlite_orm::internal {
+    /*  
+        Poor-man's scope (exit) guard until C++29 finally comes with proper standard facilities [Draft D3610].
+     */
+    template<class F>
+    class scope_guard {
+      public:
+        explicit scope_guard(F&& exitFunction) : _exitFunction{std::forward<F>(exitFunction)} {}
+
+        ~scope_guard() {
+            _exitFunction();
+        }
+
+      private:
+        F _exitFunction;
+    };
+}
 
 // #include "functional/gsl.h"
 
@@ -14600,100 +14651,235 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 namespace sqlite_orm {
     namespace internal {
+        struct db_arguments {
+            db_arguments(std::string filename, const connection_control& connectionCtrl = {}) :
+                filename{std::move(filename)}, vfs_name{connectionCtrl.vfs_name}, open_mode{connectionCtrl.open_mode} {}
 
+            std::string filename;
+            std::string vfs_name;
+            db_open_mode open_mode;
+        };
+
+        /*  
+            The connection holder should be performant in all variants:
+            1. single-threaded use
+            2. opened permanently (open forever)
+            3. concurrent open/close
+        */
         struct connection_holder {
-            connection_holder(std::string filename,
-                              std::function<void(sqlite3*)> didOpenDb,
-                              const connection_control& options = {}) :
-                _didOpenDb{std::move(didOpenDb)}, filename(std::move(filename)), vfs_name(options.vfs_name),
-                open_mode(options.open_mode) {}
+            explicit connection_holder(bool openedForeverHint,
+                                       db_arguments dbArgs,
+                                       std::function<void(sqlite3*)> didOpenDb) :
+                _control{openedForeverHint}, dbArgs{std::move(dbArgs)}, _didOpenDb{std::move(didOpenDb)} {}
 
             connection_holder(const connection_holder&) = delete;
+            connection_holder& operator=(const connection_holder&) = delete;
 
-            connection_holder(const connection_holder& other, std::function<void(sqlite3*)> didOpenDb) :
-                _didOpenDb{std::move(didOpenDb)}, filename{other.filename}, vfs_name(other.vfs_name),
-                open_mode{other.open_mode} {}
+            explicit connection_holder(const connection_holder& other, std::function<void(sqlite3*)> didOpenDb) :
+                _control{other._control.openedForeverHint}, dbArgs{other.dbArgs}, _didOpenDb{std::move(didOpenDb)} {}
 
-            void retain() {
-                // first one opens the connection.
-                // we presume that the connection is opened once in a single-threaded context [also open forever].
-                // therefore we can just use an atomic increment but don't need sequencing due to `prevCount > 0`.
-                if (_retainCount.fetch_add(1, std::memory_order_relaxed) == 0) {
-                    int open_flags = internal::db_open_mode_to_int_flags(this->open_mode);
-#if SQLITE_VERSION_NUMBER >= 3037002
-                    open_flags |= SQLITE_OPEN_EXRESCODE;
+            explicit connection_holder(const connection_holder& other, std::true_type /*openedForeverHint*/) :
+                _control{true}, dbArgs{other.dbArgs}, _didOpenDb{other._didOpenDb} {}
+
+            /*  
+                Open the database once and for all from a single-threaded context when it should be opened permanently.
+             */
+            void open() {
+#ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
+                contract_assert(_control.openedForeverHint);
+                contract_assert(!_control.db);
 #endif
+                _control.retainCount.fetch_add(1, std::memory_order_relaxed);
+                _do_open();
 
-                    const int rc =
-                        sqlite3_open_v2(this->filename.c_str(), &this->db, open_flags, this->vfs_name.c_str());
+                if (_didOpenDb) {
+                    _didOpenDb(_control.db);
+                }
+            }
 
-                    if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible, but unexpected*/ {
-                        throw_translated_sqlite_error(rc);
-                    }
+            /*  
+                Close the database from a single-threaded context when the database has already been opened permanently.
+             */
+            void close() {
+#ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
+                contract_assert(_control.openedForeverHint);
+                contract_assert(_control.db);
+#endif
+                _control.retainCount.fetch_sub(1, std::memory_order_relaxed);
+                _do_close();
+            }
 
+            /*
+                Retain the database handle if the database is already open, `nullptr` otherwise.
+             */
+            sqlite3* retain_if_open() {
+                return _try_retain_if_open(false);
+            }
+
+            /*
+                Retain the database handle if the database is already open, otherwise open the database.
+             */
+            sqlite3* retain() {
+                // optional fast path: if connection is already open, just try incrementing the counter;
+                if (sqlite3* db = _try_retain_if_open(true)) {
+                    return db;
+                }
+
+                // slow path: need to open connection or wait for it
+
+                const std::lock_guard _{_sync};
+
+                // double-check: another thread might have opened it
+                const bool needsToBeOpened = _control.retainCount == 0;
+                if (needsToBeOpened) {
+                    _do_open();
                     if (_didOpenDb) {
-                        _didOpenDb(this->db);
+                        _control.initializingThreadId.store(std::this_thread::get_id(), std::memory_order_release);
+                        const scope_guard threadIdGuard{[&threadId = _control.initializingThreadId] {
+                            threadId.store(std::thread::id{}, std::memory_order_release);
+                        }};
+                        // note: may incur recursion in user-provided `on_open` callback
+                        _didOpenDb(_control.db);
                     }
                 }
+
+                // attention: only increase the reference count after successful open in order to propagate a fully setup connection to other threads
+                _control.retainCount.fetch_add(1, std::memory_order_release);
+                return _control.db;
             }
 
             void release() {
-                // last one closes the connection.
-                // we assume that this might happen by any thread, therefore the counter must serve as a synchronization point.
-                if (_retainCount.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-                    int rc = sqlite3_close_v2(this->db);
-                    if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY {
-                        throw_translated_sqlite_error(this->db);
-                    } else {
-                        this->db = nullptr;
+                // optional optimization for permanently opened connections;
+                if (_control.openedForeverHint) {
+#ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
+                    contract_assert(_control.db);
+#endif
+                    return;
+                }
+
+                // test for recursion from the same thread;
+                // testing against an empty thread id is sufficient because recursion is only possible while the `_didOpenDb` callback is executing in `retain()`
+                if (_control.initializingThreadId.load(std::memory_order_acquire) != std::thread::id{})
+                    SQLITE_ORM_CPP_UNLIKELY {
+                    return;
+                }
+
+                const int previousCount = _control.retainCount.fetch_sub(1, std::memory_order_release);
+                if (previousCount == 1) {
+                    // last one closes the connection
+
+                    const std::lock_guard _{_sync};
+
+                    // double-check: another thread might have acquired in the meantime
+                    if (_control.retainCount.load(std::memory_order_acquire) == 0) {
+                        _do_close();
                     }
                 }
             }
 
-            sqlite3* get() const {
-                // note: ensuring a valid DB handle was already memory ordered with `retain()`
-                return this->db;
-            }
-
-            /** 
-             *  @attention While retrieving the reference count value is atomic it makes only sense at single-threaded points in code.
+            /*  
+                Open from a single-threaded context.
              */
-            int retain_count() const {
-                return _retainCount.load(std::memory_order_relaxed);
+            void _do_open() {
+                int openFlags = db_open_mode_to_int_flags(this->dbArgs.open_mode);
+#if SQLITE_VERSION_NUMBER >= 3037002
+                openFlags |= SQLITE_OPEN_EXRESCODE;
+#endif
+
+                const int rc = sqlite3_open_v2(this->dbArgs.filename.c_str(),
+                                               &_control.db,
+                                               openFlags,
+                                               this->dbArgs.vfs_name.c_str());
+
+                if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible, but unexpected*/ {
+                    throw_translated_sqlite_error(rc);
+                }
             }
 
-          protected:
-            orm_gsl::owner<sqlite3*> db = nullptr;
-
-          private:
-            std::atomic_int _retainCount{};
-
-          private:
-            const std::function<void(sqlite3* db)> _didOpenDb;
-
-          public:
-            const std::string filename;
-            const std::string vfs_name;
-            const db_open_mode open_mode;
-        };
-
-        struct connection_ref {
-            connection_ref(connection_holder& holder) : holder(&holder) {
-                this->holder->retain();
+            /*  
+                Close from a single-threaded context.
+             */
+            void _do_close() {
+                const int rc = sqlite3_close_v2(_control.db);
+                if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY {
+                    throw_translated_sqlite_error(_control.db);
+                } else {
+                    _control.db = nullptr;
+                }
             }
 
-            connection_ref(const connection_ref& other) : holder(other.holder) {
-                this->holder->retain();
-            }
-
-            // rebind connection reference
-            connection_ref& operator=(const connection_ref& other) {
-                if (other.holder != this->holder) {
-                    this->holder->release();
-                    this->holder = other.holder;
-                    this->holder->retain();
+            sqlite3* _try_retain_if_open(const bool yieldIfContended) {
+                // optional optimization for permanently opened connections;
+                if (_control.openedForeverHint) {
+#ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
+                    contract_assert(_control.db);
+#endif
+                    return _control.db;
                 }
 
+                if (int currentCount = _control.retainCount.load(std::memory_order_relaxed)) {
+                    do {
+                        if (_control.retainCount.compare_exchange_weak(currentCount,
+                                                                       currentCount + 1,
+                                                                       std::memory_order_release,
+                                                                       std::memory_order_acquire)) {
+                            // successfully incremented, connection is guaranteed to be open
+                            return _control.db;
+                        }
+                        // CAS failed due to contention;
+                        // 1. !yieldIfContended (compete) : retry until successful or count reaches zero because another thread closed the database;
+                        // 2. yieldIfContended: do not try again; it does not have to be lock-free at all costs, which avoids CPUs competing for incrementation.
+                    } while (!yieldIfContended && currentCount > 0);
+                }
+                // test for recursion from the same thread
+                else /*currentCount == 0*/ {
+                    const std::thread::id threadId = _control.initializingThreadId.load(std::memory_order_acquire);
+                    if (threadId != std::thread::id{} && std::this_thread::get_id() == threadId)
+                        SQLITE_ORM_CPP_UNLIKELY {
+                        return _control.db;
+                    }
+                }
+
+                return nullptr;
+            }
+
+            // note: members of the `control_block` are deliberately put on the same cache-line
+            SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(alignas(polyfill::hardware_destructive_interference_size))
+            struct control_block {
+                // Optional optimization hint that also serves to convey logic.
+                // in a test scenario involving a tight retain()/releae() loop from multiple threads the performance gain is outstanding;
+                // in a real-world scenario it merely saves all the atomic operations and the CPU cache updates they entail;
+                bool openedForeverHint = false;
+                std::atomic_int retainCount{};
+                // `db` synchronizes with `retainCount`
+                orm_gsl::owner<sqlite3*> db = nullptr;
+                // we don't know what the user-provided `on_open` callback might do, so we need to track recursion during the `_didOpenDb` callback;
+                std::atomic<std::thread::id> initializingThreadId{};
+            } _control;
+
+            SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(alignas(polyfill::hardware_destructive_interference_size))
+            std::mutex _sync;
+            const db_arguments dbArgs;
+            const std::function<void(sqlite3* db)> _didOpenDb;
+        };
+
+        /*  
+            Acquires a database connection upon construction and releases it upon destruction.
+
+            Note: It is important to cache the `sqlite3*` pointer for cache-friendliness (thus avoiding to access the holder on each `get()` call).
+         */
+        struct connection_ref {
+            connection_ref(connection_holder& holder) : holder{&holder}, db{holder.retain()} {}
+
+            connection_ref(connection_ref&& other) : holder{other.holder}, db{this->holder->retain()} {}
+
+            /*
+                Rebind connection reference;
+                This function is actually unused in the library, but required for concepts compliance (moveable type).
+             */
+            connection_ref& operator=(connection_ref&& other) noexcept {
+                std::swap(this->holder, other.holder);
+                std::swap(this->db, other.db);
                 return *this;
             }
 
@@ -14702,11 +14888,51 @@ namespace sqlite_orm {
             }
 
             sqlite3* get() const {
-                return this->holder->get();
+                return this->db;
             }
 
           private:
-            connection_holder* holder = nullptr;
+            connection_holder* holder;
+            sqlite3* db;
+        };
+
+        /*  
+            Increases the reference count of an existing open connection upon construction and releases it upon destruction.
+
+            Note: It is important to cache the `sqlite3*` pointer for cache-friendliness (thus avoiding to access the holder on each `get()` call).
+         */
+        struct connection_ptr {
+            connection_ptr(connection_holder& holder) : holder{&holder}, db{holder.retain_if_open()} {}
+
+            connection_ptr(connection_ptr&& other) noexcept :
+                holder{other.holder}, db{std::exchange(other.db, nullptr)} {}
+
+            /*
+                Rebind connection pointer;
+             */
+            connection_ptr& operator=(connection_ptr&& other) noexcept {
+                std::swap(this->holder, other.holder);
+                std::swap(this->db, other.db);
+                return *this;
+            }
+
+            ~connection_ptr() {
+                if (this->db) {
+                    this->holder->release();
+                }
+            }
+
+            explicit operator bool() const {
+                return this->db || false;
+            }
+
+            sqlite3* get() const {
+                return this->db;
+            }
+
+          private:
+            connection_holder* holder;
+            sqlite3* db;
         };
     }
 }
@@ -17047,7 +17273,7 @@ inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::r
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <cstdlib>  // atoi
-#include <memory>  //  std::allocator
+#include <memory>  //  std::allocator, std::unique_ptr, std::make_unique
 #include <functional>  //  std::function, std::bind, std::bind_front
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
@@ -17056,7 +17282,6 @@ inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::r
 #include <system_error>  //  std::system_error
 #include <vector>  //  std::vector
 #include <list>  //  std::list
-#include <memory>  //  std::make_unique, std::unique_ptr
 #include <map>  //  std::map
 #include <type_traits>  //  std::is_same, std::is_aggregate
 #include <algorithm>  //  std::find_if, std::ranges::find
@@ -17881,8 +18106,8 @@ namespace sqlite_orm {
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <map>  //  std::map
-#include <functional>  //  std::function
-#include <memory>  //  std::shared_ptr
+#include <functional>  //  std::function, std::reference_wrapper
+#include <utility>  //  std::move
 #endif
 
 // #include "connection_holder.h"
@@ -17892,9 +18117,7 @@ namespace sqlite_orm {
     namespace internal {
 
         struct limit_accessor {
-            using get_connection_t = std::function<connection_ref()>;
-
-            limit_accessor(get_connection_t get_connection_) : get_connection(std::move(get_connection_)) {}
+            limit_accessor(std::unique_ptr<connection_holder>& connection) : connection{connection} {}
 
             int length() {
                 return this->get(SQLITE_LIMIT_LENGTH);
@@ -17995,7 +18218,7 @@ namespace sqlite_orm {
 #endif
 
           protected:
-            get_connection_t get_connection;
+            std::reference_wrapper<std::unique_ptr<connection_holder>> connection;
 
             friend struct storage_base;
 
@@ -18005,14 +18228,15 @@ namespace sqlite_orm {
             std::map<int, int> limits;
 
             int get(int id) {
-                auto connection = this->get_connection();
+                connection_ref connection = *this->connection.get();
                 return sqlite3_limit(connection.get(), id, -1);
             }
 
             void set(int id, int newValue) {
                 this->limits[id] = newValue;
-                auto connection = this->get_connection();
-                sqlite3_limit(connection.get(), id, newValue);
+                if (connection_ptr maybeConnection = *this->connection.get()) {
+                    sqlite3_limit(maybeConnection.get(), id, newValue);
+                }
             }
         };
     }
@@ -18136,15 +18360,15 @@ namespace sqlite_orm {
                      const std::string& zSourceName,
                      std::unique_ptr<connection_holder> holder_) :
                 handle(sqlite3_backup_init(to_.get(), zDestName.c_str(), from_.get(), zSourceName.c_str())),
-                holder(std::move(holder_)), to(to_), from(from_) {
+                holder(std::move(holder_)), to(std::move(to_)), from(std::move(from_)) {
                 if (!this->handle) {
                     throw std::system_error{orm_error_code::failed_to_init_a_backup};
                 }
             }
 
             backup_t(backup_t&& other) :
-                handle(std::exchange(other.handle, nullptr)), holder(std::move(other.holder)), to(other.to),
-                from(other.from) {}
+                handle(std::exchange(other.handle, nullptr)), holder(std::move(other.holder)), to(std::move(other.to)),
+                from(std::move(other.from)) {}
 
             ~backup_t() {
                 if (this->handle) {
@@ -18625,38 +18849,65 @@ namespace sqlite_orm {
     namespace internal {
 
         struct storage_base {
+          public:
             using collating_function = std::function<int(int, const void*, int, const void*)>;
 
+          protected:
+            const bool inMemory;
+            bool isOpenedForever = false;
+            std::unique_ptr<connection_holder> connection;
+            std::map<std::string, collating_function> collatingFunctions;
+            const int cachedForeignKeysCount;
+            std::function<int(int)> _busy_handler;
+            std::list<udf_proxy> scalarFunctions;
+            std::list<udf_proxy> aggregateFunctions;
+            const sqlite_executor executor;
+
+          public:
+            /** 
+             *  Attention: You must ensure that to set this function only from a single-threaded context.
+             */
             std::function<void(sqlite3*)> on_open;
             pragma_t pragma;
+            /** 
+             *  Attention: You must ensure that to set database limit only from a single-threaded context.
+             */
             limit_accessor limit;
 
             transaction_guard_t transaction_guard() {
-                this->begin_transaction();
-                return {this->get_connection(),
-                        std::bind(&storage_base::commit, this),
-                        std::bind(&storage_base::rollback, this)};
+                auto connection = this->get_connection();
+                sqlite3* db = connection.get();
+                this->executor.perform_void_exec(db, "BEGIN TRANSACTION");
+                return {std::move(connection),
+                        std::bind(&sqlite_executor::perform_void_exec, &executor, db, "COMMIT"),
+                        std::bind(&sqlite_executor::perform_void_exec, &executor, db, "ROLLBACK")};
             }
 
             transaction_guard_t deferred_transaction_guard() {
-                this->begin_deferred_transaction();
-                return {this->get_connection(),
-                        std::bind(&storage_base::commit, this),
-                        std::bind(&storage_base::rollback, this)};
+                auto connection = this->get_connection();
+                sqlite3* db = connection.get();
+                this->executor.perform_void_exec(db, "BEGIN DEFERRED TRANSACTION");
+                return {std::move(connection),
+                        std::bind(&sqlite_executor::perform_void_exec, &executor, db, "COMMIT"),
+                        std::bind(&sqlite_executor::perform_void_exec, &executor, db, "ROLLBACK")};
             }
 
             transaction_guard_t immediate_transaction_guard() {
-                this->begin_immediate_transaction();
-                return {this->get_connection(),
-                        std::bind(&storage_base::commit, this),
-                        std::bind(&storage_base::rollback, this)};
+                auto connection = this->get_connection();
+                sqlite3* db = connection.get();
+                this->executor.perform_void_exec(db, "BEGIN IMMEDIATE TRANSACTION");
+                return {std::move(connection),
+                        std::bind(&sqlite_executor::perform_void_exec, &executor, db, "COMMIT"),
+                        std::bind(&sqlite_executor::perform_void_exec, &executor, db, "ROLLBACK")};
             }
 
             transaction_guard_t exclusive_transaction_guard() {
-                this->begin_exclusive_transaction();
-                return {this->get_connection(),
-                        std::bind(&storage_base::commit, this),
-                        std::bind(&storage_base::rollback, this)};
+                auto connection = this->get_connection();
+                sqlite3* db = connection.get();
+                this->executor.perform_void_exec(db, "BEGIN EXCLUSIVE TRANSACTION");
+                return {std::move(connection),
+                        std::bind(&sqlite_executor::perform_void_exec, &executor, db, "COMMIT"),
+                        std::bind(&sqlite_executor::perform_void_exec, &executor, db, "ROLLBACK")};
             }
 
             /**
@@ -18876,22 +19127,25 @@ namespace sqlite_orm {
             /**
              *  Call it once during storage lifetime to make it keeping its connection opened till dtor call.
              *  By default if storage is not in-memory it calls `sqlite3_open` only when the connection is really
-             *  needed and closes when it is not needed. This function breaks this rule. In memory storage always
-             *  keeps connection opened so calling this for in-memory storage changes nothing.
-             *  Note about multithreading: in multithreading context avoiding using this function for not in-memory
-             *  storage may lead to data races. If you have data races in such a configuration try to call `open_forever()`
-             *  before accessing your storage - it may fix data races.
+             *  needed and closes when it is not needed. This function establishes a permanent connection.
+             *  In-memory storage always establishes a permanent connection, so calling this method is a no-op.
+             *  
+             *  Attention: You must ensure to call this method only in a single-threaded context.
+             *  An alternative way to establish a permanent connection is to specify control options to `make_storage()`.
              */
             void open_forever() {
                 if (!this->isOpenedForever) {
                     this->isOpenedForever = true;
-                    this->connection->retain();
+                    this->connection = std::make_unique<connection_holder>(*this->connection, std::true_type{});
+                    this->connection->open();
                 }
             }
 
             /**
              * Create an application-defined scalar SQL function.
              * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
+             * 
+             * Attention: You must ensure that to call this method only in a single-threaded context.
              * 
              * Note: `create_scalar_function()` merely creates a closure to generate an instance of the scalar function object,
              * together with a copy of the passed initialization arguments.
@@ -18936,6 +19190,8 @@ namespace sqlite_orm {
              * Create an application-defined scalar function.
              * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
              * 
+             * Attention: You must ensure that to call this method only in a single-threaded context.
+             * 
              * Note: `create_scalar_function()` merely creates a closure to generate an instance of the scalar function object,
              * together with a copy of the passed initialization arguments.
              * If `F` is a stateless function object, an instance of the function object is created once, otherwise
@@ -18950,6 +19206,8 @@ namespace sqlite_orm {
             /**
              * Create an application-defined scalar function.
              * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
+             * 
+             * Attention: You must ensure that to call this method only in a single-threaded context.
              *
              * If `quotedF` contains a freestanding function, stateless lambda or stateless function object,
              * `quoted_scalar_function::_callable()` uses the original function object, assuming it is free of side effects;
@@ -18982,9 +19240,8 @@ namespace sqlite_orm {
                     nullptr,
                     std::pair{nullptr, null_xdestroy_f});
 
-                if (this->connection->retain_count() > 0) {
-                    sqlite3* db = this->connection->get();
-                    try_to_create_scalar_function(db, this->scalarFunctions.back());
+                if (connection_ptr maybeConnection = *this->connection) {
+                    try_to_create_scalar_function(maybeConnection.get(), this->scalarFunctions.back());
                 }
             }
 #endif
@@ -18992,6 +19249,8 @@ namespace sqlite_orm {
             /**
              * Create an application-defined aggregate SQL function.
              * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
+             * 
+             * Attention: You must ensure that to call this method only in a single-threaded context.
              * 
              * Note: `create_aggregate_function()` merely creates a closure to generate an instance of the aggregate function object,
              * together with a copy of the passed initialization arguments.
@@ -19042,6 +19301,8 @@ namespace sqlite_orm {
              * Create an application-defined aggregate function.
              * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
              * 
+             * Attention: You must ensure that to call this method only in a single-threaded context.
+             * 
              * Note: `create_aggregate_function()` merely creates a closure to generate an instance of the aggregate function object,
              * together with a copy of the passed initialization arguments.
              * An instance of the function object is repeatedly recreated for each result row,
@@ -19056,6 +19317,8 @@ namespace sqlite_orm {
             /**
              *  Delete a scalar function you created before.
              *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
+             * 
+             *  Attention: You must ensure that to call this method only in a single-threaded context.
              */
             template<class F>
             void delete_scalar_function() {
@@ -19068,6 +19331,8 @@ namespace sqlite_orm {
             /**
              *  Delete a scalar function you created before.
              *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
+             * 
+             *  Attention: You must ensure that to call this method only in a single-threaded context.
              */
             template<orm_scalar_function auto f>
             void delete_scalar_function() {
@@ -19077,6 +19342,8 @@ namespace sqlite_orm {
             /**
              *  Delete a quoted scalar function you created before.
              *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
+             * 
+             *  Attention: You must ensure that to call this method only in a single-threaded context.
              */
             template<decltype(auto) quotedF>
                 requires (orm_quoted_scalar_function<decltype(quotedF)>)
@@ -19088,6 +19355,8 @@ namespace sqlite_orm {
             /**
              *  Delete aggregate function you created before.
              *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
+             * 
+             *  Attention: You must ensure that to call this method only in a single-threaded context.
              */
             template<class F>
             void delete_aggregate_function() {
@@ -19097,12 +19366,21 @@ namespace sqlite_orm {
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            /**
+             *  Delete aggregate function you created before.
+             *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
+             * 
+             *  Attention: You must ensure that to call this method only in a single-threaded context.
+             */
             template<orm_aggregate_function auto f>
             void delete_aggregate_function() {
                 this->delete_function_impl(f.name(), this->aggregateFunctions);
             }
 #endif
 
+            /** 
+             *  Attention: You must ensure that to call this method only in a single-threaded context.
+             */
             template<class C>
             void create_collation() {
                 collating_function func = [](int leftLength, const void* lhs, int rightLength, const void* rhs)
@@ -19115,6 +19393,9 @@ namespace sqlite_orm {
                 this->create_collation(ss.str(), std::move(func));
             }
 
+            /** 
+             *  Attention: You must ensure that to call this method only in a single-threaded context.
+             */
             void create_collation(const std::string& name, collating_function f) {
                 const auto functionExists = bool(f);
                 collating_function* function = nullptr;
@@ -19123,13 +19404,12 @@ namespace sqlite_orm {
                 }
 
                 //  create collations if db is open
-                if (this->connection->retain_count() > 0) {
-                    sqlite3* db = this->connection->get();
-                    int rc = sqlite3_create_collation(db,
-                                                      name.c_str(),
-                                                      SQLITE_UTF8,
-                                                      function,
-                                                      functionExists ? collate_callback : nullptr);
+                if (connection_ptr maybeConnection = *this->connection) {
+                    const int rc = sqlite3_create_collation(maybeConnection.get(),
+                                                            name.c_str(),
+                                                            SQLITE_UTF8,
+                                                            function,
+                                                            functionExists ? collate_callback : nullptr);
                     if (rc != SQLITE_OK) {
                         throw_translated_sqlite_error(rc);
                     }
@@ -19140,6 +19420,9 @@ namespace sqlite_orm {
                 }
             }
 
+            /** 
+             *  Attention: You must ensure that to call this method only in a single-threaded context.
+             */
             template<class C>
             void delete_collation() {
                 std::stringstream ss;
@@ -19148,35 +19431,41 @@ namespace sqlite_orm {
             }
 
             void begin_transaction() {
-                this->begin_transaction_internal("BEGIN TRANSACTION");
+                sqlite3* db = this->connection->retain();
+                this->executor.perform_void_exec(db, "BEGIN TRANSACTION");
             }
 
             void begin_deferred_transaction() {
-                this->begin_transaction_internal("BEGIN DEFERRED TRANSACTION");
+                sqlite3* db = this->connection->retain();
+                this->executor.perform_void_exec(db, "BEGIN DEFERRED TRANSACTION");
             }
 
             void begin_immediate_transaction() {
-                this->begin_transaction_internal("BEGIN IMMEDIATE TRANSACTION");
+                sqlite3* db = this->connection->retain();
+                this->executor.perform_void_exec(db, "BEGIN IMMEDIATE TRANSACTION");
             }
 
             void begin_exclusive_transaction() {
-                this->begin_transaction_internal("BEGIN EXCLUSIVE TRANSACTION");
+                sqlite3* db = this->connection->retain();
+                this->executor.perform_void_exec(db, "BEGIN EXCLUSIVE TRANSACTION");
             }
 
             void commit() {
-                sqlite3* db = this->connection->get();
-                this->executor.perform_void_exec(db, "COMMIT");
-                this->connection->release();
-                if (this->connection->retain_count() < 0) {
+                if (connection_ptr maybeConnection = *this->connection) {
+                    this->executor.perform_void_exec(maybeConnection.get(), "COMMIT");
+                }
+                // check for programming error on user's side not having called `begin_transaction()` before
+                else {
                     throw std::system_error{orm_error_code::no_active_transaction};
                 }
             }
 
             void rollback() {
-                sqlite3* db = this->connection->get();
-                this->executor.perform_void_exec(db, "ROLLBACK");
-                this->connection->release();
-                if (this->connection->retain_count() < 0) {
+                if (connection_ptr maybeConnection = *this->connection) {
+                    this->executor.perform_void_exec(maybeConnection.get(), "ROLLBACK");
+                }
+                // check for programming error on user's side not having called `begin_transaction()` before
+                else {
                     throw std::system_error{orm_error_code::no_active_transaction};
                 }
             }
@@ -19202,9 +19491,9 @@ namespace sqlite_orm {
             }
 
             backup_t make_backup_to(const std::string& filename) {
-                auto holder = std::make_unique<connection_holder>(filename, nullptr, connection_control{});
-                connection_ref conRef{*holder};
-                return {conRef, "main", this->get_connection(), "main", std::move(holder)};
+                auto connection = std::make_unique<connection_holder>(false, db_arguments{filename}, nullptr);
+                connection_ref conRef{*connection};
+                return {std::move(conRef), "main", this->get_connection(), "main", std::move(connection)};
             }
 
             backup_t make_backup_to(storage_base& other) {
@@ -19212,9 +19501,9 @@ namespace sqlite_orm {
             }
 
             backup_t make_backup_from(const std::string& filename) {
-                auto holder = std::make_unique<connection_holder>(filename, nullptr, connection_control{});
-                connection_ref conRef{*holder};
-                return {this->get_connection(), "main", conRef, "main", std::move(holder)};
+                auto connection = std::make_unique<connection_holder>(false, db_arguments{filename}, nullptr);
+                connection_ref conRef{*connection};
+                return {this->get_connection(), "main", std::move(conRef), "main", std::move(connection)};
             }
 
             backup_t make_backup_from(storage_base& other) {
@@ -19222,40 +19511,42 @@ namespace sqlite_orm {
             }
 
             const std::string& filename() const {
-                return this->connection->filename;
+                return this->connection->dbArgs.filename;
             }
 
-            /**
+            /** 
              * Checks whether connection to database is opened right now.
              * Returns always `true` for in memory databases.
+             * @attention While retrieving the reference count value is atomic it makes only sense in single-threaded contexts.
              */
             bool is_opened() const {
-                return this->connection->retain_count() > 0;
+                connection_ptr maybeConnection = *this->connection;
+                return maybeConnection || false;
             }
 
             /**
              * Return the name of the VFS object used by the database connection.
              */
             const std::string& vfs_name() const {
-                return this->connection->vfs_name;
+                return this->connection->dbArgs.vfs_name;
             }
 
             /**
              * Return the current open_mode for this storage object. 
              */
             db_open_mode open_mode() const {
-                return this->connection->open_mode;
+                return this->connection->dbArgs.open_mode;
             }
 
             /**
              * Return true if this database object is opened in a readonly state. 
              */
             bool db_readonly() {
-                auto con = this->get_connection();
-                return static_cast<bool>(sqlite3_db_readonly(con.get(), "main"));
+                auto connection = this->get_connection();
+                return static_cast<bool>(sqlite3_db_readonly(connection.get(), "main"));
             }
 
-            /*
+            /* 
              * returning false when there is a transaction in place
              * otherwise true; function is not const because it has to call get_connection()
              */
@@ -19266,11 +19557,11 @@ namespace sqlite_orm {
 
             int busy_handler(std::function<int(int)> handler) {
                 _busy_handler = std::move(handler);
-                if (this->is_opened()) {
+                if (connection_ptr maybeConnection = *this->connection) {
                     if (_busy_handler) {
-                        return sqlite3_busy_handler(this->connection->get(), busy_handler_callback, this);
+                        return sqlite3_busy_handler(maybeConnection.get(), busy_handler_callback, this);
                     } else {
-                        return sqlite3_busy_handler(this->connection->get(), nullptr, nullptr);
+                        return sqlite3_busy_handler(maybeConnection.get(), nullptr, nullptr);
                     }
                 } else {
                     return SQLITE_OK;
@@ -19284,58 +19575,43 @@ namespace sqlite_orm {
                          will_run_query_spec willRunQuerySpec,
                          did_run_query_spec didRunQuerySpec,
                          int foreignKeysCount) :
-                on_open{std::move(onOpenSpec.onOpen)}, pragma(std::bind(&storage_base::get_connection, this), executor),
-                limit(std::bind(&storage_base::get_connection, this)),
-                inMemory(filename.empty() || filename == ":memory:"), isOpenedForever{connectionCtrl.open_forever},
-                connection(std::make_unique<connection_holder>(
-                    std::move(filename),
-                    std::bind(&storage_base::on_open_internal, this, std::placeholders::_1),
-                    connectionCtrl)),
+                inMemory{filename.empty() || filename == ":memory:"},
+                isOpenedForever{connectionCtrl.open_forever || this->inMemory},
+                connection{std::make_unique<connection_holder>(
+                    this->isOpenedForever,
+                    db_arguments{std::move(filename), connectionCtrl},
+                    std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))},
                 cachedForeignKeysCount(foreignKeysCount),
-                executor{std::move(willRunQuerySpec.willRunQuery), std::move(didRunQuerySpec.didRunQuery)} {
-                if (this->inMemory) {
-                    this->connection->retain();
-                }
+                executor{std::move(willRunQuerySpec.willRunQuery), std::move(didRunQuerySpec.didRunQuery)},
+                on_open{std::move(onOpenSpec.onOpen)}, pragma(std::bind(&storage_base::get_connection, this), executor),
+                limit{std::ref(storage_base::connection)} {
                 if (this->isOpenedForever) {
-                    this->connection->retain();
+                    this->connection->open();
                 }
             }
 
             storage_base(const storage_base& other) :
-                on_open(other.on_open), pragma(std::bind(&storage_base::get_connection, this), executor),
-                limit(std::bind(&storage_base::get_connection, this)), inMemory(other.inMemory),
-                isOpenedForever{other.isOpenedForever},
-                connection(std::make_unique<connection_holder>(
+                inMemory{other.inMemory}, isOpenedForever{other.isOpenedForever},
+                connection{std::make_unique<connection_holder>(
                     *other.connection,
-                    std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))),
+                    std::bind(&storage_base::on_open_internal, this, std::placeholders::_1))},
                 cachedForeignKeysCount(other.cachedForeignKeysCount),
-                executor{other.executor.will_run_query, other.executor.did_run_query} {
-                if (this->inMemory) {
-                    this->connection->retain();
-                }
+                executor{other.executor.will_run_query, other.executor.did_run_query}, on_open(other.on_open),
+                pragma(std::bind(&storage_base::get_connection, this), executor),
+                limit{std::ref(storage_base::connection)} {
                 if (this->isOpenedForever) {
-                    this->connection->retain();
+                    this->connection->open();
                 }
             }
 
             ~storage_base() {
                 if (this->isOpenedForever) {
-                    this->connection->release();
+                    this->connection->close();
                 }
-                if (this->inMemory) {
-                    this->connection->release();
-                }
-            }
-
-            void begin_transaction_internal(const std::string& sql) {
-                this->connection->retain();
-                sqlite3* db = this->connection->get();
-                this->executor.perform_void_exec(db, sql.c_str());
             }
 
             connection_ref get_connection() {
-                connection_ref res{*this->connection};
-                return res;
+                return {*this->connection};
             }
 
             std::vector<std::string> object_names(string_constant_type type) {
@@ -19392,7 +19668,7 @@ namespace sqlite_orm {
                 }
 
                 for (auto& [name, collatingFunction]: this->collatingFunctions) {
-                    int rc =
+                    const int rc =
                         sqlite3_create_collation(db, name.c_str(), SQLITE_UTF8, &collatingFunction, collate_callback);
                     if (rc != SQLITE_OK) {
                         throw_translated_sqlite_error(rc);
@@ -19404,7 +19680,7 @@ namespace sqlite_orm {
                 }
 
                 if (_busy_handler) {
-                    sqlite3_busy_handler(this->connection->get(), busy_handler_callback, this);
+                    sqlite3_busy_handler(db, busy_handler_callback, this);
                 }
 
                 for (auto& udfProxy: this->scalarFunctions) {
@@ -19447,9 +19723,8 @@ namespace sqlite_orm {
                     },
                     udfMemorySpace);
 
-                if (this->connection->retain_count() > 0) {
-                    sqlite3* db = this->connection->get();
-                    try_to_create_scalar_function(db, this->scalarFunctions.back());
+                if (connection_ptr maybeConnection = *this->connection) {
+                    try_to_create_scalar_function(maybeConnection.get(), this->scalarFunctions.back());
                 }
             }
 
@@ -19495,9 +19770,8 @@ namespace sqlite_orm {
                     },
                     obtain_udf_allocator<F>());
 
-                if (this->connection->retain_count() > 0) {
-                    sqlite3* db = this->connection->get();
-                    try_to_create_aggregate_function(db, this->aggregateFunctions.back());
+                if (connection_ptr maybeConnection = *this->connection) {
+                    try_to_create_aggregate_function(maybeConnection.get(), this->aggregateFunctions.back());
                 }
             }
 
@@ -19509,26 +19783,25 @@ namespace sqlite_orm {
                     return udfProxy.name == name;
                 });
 #endif
-                if (it != functions.end()) {
-                    if (this->connection->retain_count() > 0) {
-                        sqlite3* db = this->connection->get();
-                        int rc = sqlite3_create_function_v2(db,
-                                                            name.c_str(),
-                                                            it->argumentsCount,
-                                                            SQLITE_UTF8,
-                                                            nullptr,
-                                                            nullptr,
-                                                            nullptr,
-                                                            nullptr,
-                                                            nullptr);
-                        if (rc != SQLITE_OK) {
-                            throw_translated_sqlite_error(rc);
-                        }
-                    }
-                    it = functions.erase(it);
-                } else {
+                if (it == functions.end()) {
                     throw std::system_error{orm_error_code::function_not_found};
                 }
+
+                if (connection_ptr maybeConnection = *this->connection) {
+                    const int rc = sqlite3_create_function_v2(maybeConnection.get(),
+                                                              name.c_str(),
+                                                              it->argumentsCount,
+                                                              SQLITE_UTF8,
+                                                              nullptr,
+                                                              nullptr,
+                                                              nullptr,
+                                                              nullptr,
+                                                              nullptr);
+                    if (rc != SQLITE_OK) {
+                        throw_translated_sqlite_error(rc);
+                    }
+                }
+                it = functions.erase(it);
             }
 
             static void try_to_create_scalar_function(sqlite3* db, udf_proxy& udfProxy) {
@@ -19630,11 +19903,11 @@ namespace sqlite_orm {
 
             static int busy_handler_callback(void* selfPointer, int triesCount) {
                 auto& storage = *static_cast<storage_base*>(selfPointer);
-                if (storage._busy_handler) {
-                    return storage._busy_handler(triesCount);
-                } else {
-                    return 0;
-                }
+#ifdef SQLITE_ORM_CONTRACTS_SUPPORTED
+                // `sqlite3_busy_handler()` was called properly before so `busy_handler_callback()` will not be called.
+                contract_assert(storage._busy_handler);
+#endif
+                return storage._busy_handler(triesCount);
             }
 
             bool calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,
@@ -19679,16 +19952,6 @@ namespace sqlite_orm {
                 }
                 return notEqual;
             }
-
-            const bool inMemory;
-            bool isOpenedForever = false;
-            std::unique_ptr<connection_holder> connection;
-            std::map<std::string, collating_function> collatingFunctions;
-            const int cachedForeignKeysCount;
-            std::function<int(int)> _busy_handler;
-            std::list<udf_proxy> scalarFunctions;
-            std::list<udf_proxy> aggregateFunctions;
-            const sqlite_executor executor;
         };
     }
 }
@@ -19828,6 +20091,9 @@ namespace sqlite_orm {
 #include <memory>
 #include <array>
 #include <list>  //  std::list
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#include <ranges>  //  std::views::transform
+#endif
 #endif
 // #include "functional/cxx_string_view.h"
 
@@ -22287,6 +22553,9 @@ namespace sqlite_orm {
                                                             const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
                 ss << "SET ";
+#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+                ss << streaming_serialized(statement | std::views::transform(&dynamic_set_entry::serialized_value));
+#else
                 int index = 0;
                 for (const dynamic_set_entry& entry: statement) {
                     if (index > 0) {
@@ -22295,6 +22564,7 @@ namespace sqlite_orm {
                     ss << entry.serialized_value;
                     ++index;
                 }
+#endif
                 return ss.str();
             }
         };
@@ -23991,7 +24261,7 @@ namespace sqlite_orm {
                 context_t context{this->db_objects};
                 statement_serializer<Table, void> serializer;
                 const std::string sql = serializer.serialize(table, context, tableName);
-                this->executor.perform_void_exec(db, sql.data());
+                this->executor.perform_void_exec(db, sql.c_str());
             }
 
             /**
@@ -24014,7 +24284,7 @@ namespace sqlite_orm {
                        << streaming_identifier(columnName) << std::flush;
                     sql = ss.str();
                 }
-                this->executor.perform_void_exec(db, sql.data());
+                this->executor.perform_void_exec(db, sql.c_str());
             }
 #endif
 
@@ -24123,8 +24393,8 @@ namespace sqlite_orm {
             mapped_view<O, self_type, Args...> iterate(Args&&... args) {
                 this->assert_mapped_type<O>();
 
-                auto connection = this->get_connection();
-                return {*this, std::move(connection), std::forward<Args>(args)...};
+                auto conRef = this->get_connection();
+                return {*this, std::move(conRef), std::forward<Args>(args)...};
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -24158,8 +24428,8 @@ namespace sqlite_orm {
                 if constexpr (is_select_v<Select>) {
                     expression.highest_level = true;
                 }
-                auto con = this->get_connection();
-                return {this->db_objects, std::move(con), std::move(expression)};
+                auto conRef = this->get_connection();
+                return {this->db_objects, std::move(conRef), std::move(expression)};
             }
 
 #ifdef SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
@@ -25080,7 +25350,7 @@ namespace sqlite_orm {
                        << serialize(column, context) << std::flush;
                     sql = ss.str();
                 }
-                this->executor.perform_void_exec(db, sql.data());
+                this->executor.perform_void_exec(db, sql.c_str());
             }
 
             template<class ColResult, class S>
@@ -25131,10 +25401,10 @@ namespace sqlite_orm {
                 context.omit_table_name = false;
                 context.replace_bindable_with_question = true;
 
-                auto conection = this->get_connection();
                 const std::string sql = serialize(statement, context);
-                sqlite3_stmt* stmt = prepare_stmt(conection.get(), sql);
-                return prepared_statement_t<S>{std::forward<S>(statement), stmt, std::move(conection)};
+                auto conRef = this->get_connection();
+                sqlite3_stmt* stmt = prepare_stmt(conRef.get(), sql);
+                return prepared_statement_t<S>{std::forward<S>(statement), stmt, std::move(conRef)};
             }
 
           public:
@@ -25166,9 +25436,9 @@ namespace sqlite_orm {
              * can be printed out on std::ostream with `operator<<`.
              */
             std::map<std::string, sync_schema_result> sync_schema(bool preserve = false) {
-                auto con = this->get_connection();
+                auto conRef = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
-                iterate_tuple<true>(this->db_objects, [this, db = con.get(), preserve, &result](auto& schemaObject) {
+                iterate_tuple<true>(this->db_objects, [this, db = conRef.get(), preserve, &result](auto& schemaObject) {
                     sync_schema_result status = this->sync_dbo(schemaObject, db, preserve);
                     result.emplace(schemaObject.name, status);
                 });
@@ -25181,9 +25451,9 @@ namespace sqlite_orm {
              *  what will happen if you sync your schema.
              */
             std::map<std::string, sync_schema_result> sync_schema_simulate(bool preserve = false) {
-                auto con = this->get_connection();
+                auto conRef = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
-                iterate_tuple<true>(this->db_objects, [this, db = con.get(), preserve, &result](auto& schemaObject) {
+                iterate_tuple<true>(this->db_objects, [this, db = conRef.get(), preserve, &result](auto& schemaObject) {
                     sync_schema_result status = this->schema_status(schemaObject, db, preserve, nullptr);
                     result.emplace(schemaObject.name, status);
                 });

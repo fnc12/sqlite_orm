@@ -146,7 +146,7 @@ namespace sqlite_orm {
                 context_t context{this->db_objects};
                 statement_serializer<Table, void> serializer;
                 const std::string sql = serializer.serialize(table, context, tableName);
-                this->executor.perform_void_exec(db, sql.data());
+                this->executor.perform_void_exec(db, sql.c_str());
             }
 
             /**
@@ -169,7 +169,7 @@ namespace sqlite_orm {
                        << streaming_identifier(columnName) << std::flush;
                     sql = ss.str();
                 }
-                this->executor.perform_void_exec(db, sql.data());
+                this->executor.perform_void_exec(db, sql.c_str());
             }
 #endif
 
@@ -278,8 +278,8 @@ namespace sqlite_orm {
             mapped_view<O, self_type, Args...> iterate(Args&&... args) {
                 this->assert_mapped_type<O>();
 
-                auto connection = this->get_connection();
-                return {*this, std::move(connection), std::forward<Args>(args)...};
+                auto conRef = this->get_connection();
+                return {*this, std::move(conRef), std::forward<Args>(args)...};
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -313,8 +313,8 @@ namespace sqlite_orm {
                 if constexpr (is_select_v<Select>) {
                     expression.highest_level = true;
                 }
-                auto con = this->get_connection();
-                return {this->db_objects, std::move(con), std::move(expression)};
+                auto conRef = this->get_connection();
+                return {this->db_objects, std::move(conRef), std::move(expression)};
             }
 
 #ifdef SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
@@ -1235,7 +1235,7 @@ namespace sqlite_orm {
                        << serialize(column, context) << std::flush;
                     sql = ss.str();
                 }
-                this->executor.perform_void_exec(db, sql.data());
+                this->executor.perform_void_exec(db, sql.c_str());
             }
 
             template<class ColResult, class S>
@@ -1286,10 +1286,10 @@ namespace sqlite_orm {
                 context.omit_table_name = false;
                 context.replace_bindable_with_question = true;
 
-                auto conection = this->get_connection();
                 const std::string sql = serialize(statement, context);
-                sqlite3_stmt* stmt = prepare_stmt(conection.get(), sql);
-                return prepared_statement_t<S>{std::forward<S>(statement), stmt, std::move(conection)};
+                auto conRef = this->get_connection();
+                sqlite3_stmt* stmt = prepare_stmt(conRef.get(), sql);
+                return prepared_statement_t<S>{std::forward<S>(statement), stmt, std::move(conRef)};
             }
 
           public:
@@ -1321,9 +1321,9 @@ namespace sqlite_orm {
              * can be printed out on std::ostream with `operator<<`.
              */
             std::map<std::string, sync_schema_result> sync_schema(bool preserve = false) {
-                auto con = this->get_connection();
+                auto conRef = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
-                iterate_tuple<true>(this->db_objects, [this, db = con.get(), preserve, &result](auto& schemaObject) {
+                iterate_tuple<true>(this->db_objects, [this, db = conRef.get(), preserve, &result](auto& schemaObject) {
                     sync_schema_result status = this->sync_dbo(schemaObject, db, preserve);
                     result.emplace(schemaObject.name, status);
                 });
@@ -1336,9 +1336,9 @@ namespace sqlite_orm {
              *  what will happen if you sync your schema.
              */
             std::map<std::string, sync_schema_result> sync_schema_simulate(bool preserve = false) {
-                auto con = this->get_connection();
+                auto conRef = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
-                iterate_tuple<true>(this->db_objects, [this, db = con.get(), preserve, &result](auto& schemaObject) {
+                iterate_tuple<true>(this->db_objects, [this, db = conRef.get(), preserve, &result](auto& schemaObject) {
                     sync_schema_result status = this->schema_status(schemaObject, db, preserve, nullptr);
                     result.emplace(schemaObject.name, status);
                 });
