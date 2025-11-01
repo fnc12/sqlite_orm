@@ -14,6 +14,8 @@
 # SQLite ORM
 SQLite ORM light header only library for modern C++. Please read the license precisely. The project has AGPL license for open source project and MIT license after purchasing it for 50$ (using [PayPal](https://paypal.me/fnc12) or any different way (contact using email fnc12@me.com)).
 
+Documentation is found in [docs](docs/home.md).
+
 # Status
 | Branch | Travis | Appveyor |
 | :----- | :----- | :------- |

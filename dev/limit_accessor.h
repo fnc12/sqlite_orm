@@ -3,8 +3,8 @@
 #include <sqlite3.h>
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <map>  //  std::map
-#include <functional>  //  std::function
-#include <memory>  //  std::shared_ptr
+#include <functional>  //  std::function, std::reference_wrapper
+#include <utility>  //  std::move
 #endif
 
 #include "connection_holder.h"
@@ -14,9 +14,7 @@ namespace sqlite_orm {
     namespace internal {
 
         struct limit_accessor {
-            using get_connection_t = std::function<connection_ref()>;
-
-            limit_accessor(get_connection_t get_connection_) : get_connection(std::move(get_connection_)) {}
+            limit_accessor(std::unique_ptr<connection_holder>& connection) : connection{connection} {}
 
             int length() {
                 return this->get(SQLITE_LIMIT_LENGTH);
@@ -117,7 +115,7 @@ namespace sqlite_orm {
 #endif
 
           protected:
-            get_connection_t get_connection;
+            std::reference_wrapper<std::unique_ptr<connection_holder>> connection;
 
             friend struct storage_base;
 
@@ -127,14 +125,15 @@ namespace sqlite_orm {
             std::map<int, int> limits;
 
             int get(int id) {
-                auto connection = this->get_connection();
+                connection_ref connection = *this->connection.get();
                 return sqlite3_limit(connection.get(), id, -1);
             }
 
             void set(int id, int newValue) {
                 this->limits[id] = newValue;
-                auto connection = this->get_connection();
-                sqlite3_limit(connection.get(), id, newValue);
+                if (connection_ptr maybeConnection = *this->connection.get()) {
+                    sqlite3_limit(maybeConnection.get(), id, newValue);
+                }
             }
         };
     }

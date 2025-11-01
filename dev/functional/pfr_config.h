@@ -1,6 +1,6 @@
 #pragma once
 
-#if SQLITE_ORM_HAS_INCLUDE(<boost/pfr.hpp>)
+#if __has_include(<boost/pfr.hpp>)
 #define SQLITE_ORM_HAS_BOOST_PFR
 #endif
 

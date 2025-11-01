@@ -90,19 +90,15 @@ namespace sqlite_orm {
 
         template<class Opt, class OptionsTpl>
         decltype(auto) storage_opt_or_default(OptionsTpl& options) {
-#ifdef SQLITE_ORM_CTAD_SUPPORTED
             if constexpr (tuple_has_type<OptionsTpl, Opt>::value) {
                 return std::move(std::get<Opt>(options));
             } else {
                 return Opt{};
             }
-#else
-            return Opt{};
-#endif
         }
 
         /**
-         *  Storage class itself. Create an instanse to use it as an interfacto to sqlite db by calling `make_storage`
+         *  Storage class itself. Create an instance to use it as an interfacto to sqlite db by calling `make_storage`
          *  function.
          */
         template<class... DBO>
@@ -175,7 +171,7 @@ namespace sqlite_orm {
                 context_t context{this->db_objects};
                 statement_serializer<Table, void> serializer;
                 const std::string sql = serializer.serialize(table, context, tableName);
-                this->executor.perform_void_exec(db, sql.data());
+                this->executor.perform_void_exec(db, sql.c_str());
             }
 
             /**
@@ -198,7 +194,7 @@ namespace sqlite_orm {
                        << streaming_identifier(columnName) << std::flush;
                     sql = ss.str();
                 }
-                this->executor.perform_void_exec(db, sql.data());
+                this->executor.perform_void_exec(db, sql.c_str());
             }
 #endif
 
@@ -307,8 +303,8 @@ namespace sqlite_orm {
             mapped_view<O, self_type, Args...> iterate(Args&&... args) {
                 this->assert_mapped_type<O>();
 
-                auto connection = this->get_connection();
-                return {*this, std::move(connection), std::forward<Args>(args)...};
+                auto conRef = this->get_connection();
+                return {*this, std::move(conRef), std::forward<Args>(args)...};
             }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -342,8 +338,8 @@ namespace sqlite_orm {
                 if constexpr (is_select_v<Select>) {
                     expression.highest_level = true;
                 }
-                auto con = this->get_connection();
-                return {this->db_objects, std::move(con), std::move(expression)};
+                auto conRef = this->get_connection();
+                return {this->db_objects, std::move(conRef), std::move(expression)};
             }
 
 #ifdef SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
@@ -1285,7 +1281,7 @@ namespace sqlite_orm {
                        << serialize(column, context) << std::flush;
                     sql = ss.str();
                 }
-                this->executor.perform_void_exec(db, sql.data());
+                this->executor.perform_void_exec(db, sql.c_str());
             }
 
             template<class ColResult, class S>
@@ -1336,10 +1332,10 @@ namespace sqlite_orm {
                 context.omit_table_name = false;
                 context.replace_bindable_with_question = true;
 
-                auto conection = this->get_connection();
                 const std::string sql = serialize(statement, context);
-                sqlite3_stmt* stmt = prepare_stmt(conection.get(), sql);
-                return prepared_statement_t<S>{std::forward<S>(statement), stmt, std::move(conection)};
+                auto conRef = this->get_connection();
+                sqlite3_stmt* stmt = prepare_stmt(conRef.get(), sql);
+                return prepared_statement_t<S>{std::forward<S>(statement), stmt, std::move(conRef)};
             }
 
           public:
@@ -1371,9 +1367,9 @@ namespace sqlite_orm {
              * can be printed out on std::ostream with `operator<<`.
              */
             std::map<std::string, sync_schema_result> sync_schema(bool preserve = false) {
-                auto con = this->get_connection();
+                auto conRef = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
-                iterate_tuple<true>(this->db_objects, [this, db = con.get(), preserve, &result](auto& schemaObject) {
+                iterate_tuple<true>(this->db_objects, [this, db = conRef.get(), preserve, &result](auto& schemaObject) {
                     sync_schema_result status = this->sync_dbo(schemaObject, db, preserve);
                     result.emplace(schemaObject.name, status);
                 });
@@ -1386,9 +1382,9 @@ namespace sqlite_orm {
              *  what will happen if you sync your schema.
              */
             std::map<std::string, sync_schema_result> sync_schema_simulate(bool preserve = false) {
-                auto con = this->get_connection();
+                auto conRef = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
-                iterate_tuple<true>(this->db_objects, [this, db = con.get(), preserve, &result](auto& schemaObject) {
+                iterate_tuple<true>(this->db_objects, [this, db = conRef.get(), preserve, &result](auto& schemaObject) {
                     sync_schema_result status = this->schema_status(schemaObject, db, preserve, nullptr);
                     result.emplace(schemaObject.name, status);
                 });
@@ -1806,7 +1802,6 @@ namespace sqlite_orm {
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
         };  // struct storage_t
 
-#ifdef SQLITE_ORM_CTAD_SUPPORTED
         template<class Elements>
         using dbo_index_sequence = filter_tuple_sequence_t<Elements, check_if_lacks<storage_opt_tag_t>::template fn>;
 
@@ -1817,12 +1812,10 @@ namespace sqlite_orm {
         storage_t<DBO...> make_storage(std::string filename, std::tuple<DBO...> dbObjects, OptionsTpl options) {
             return {std::move(filename), std::move(dbObjects), std::move(options)};
         }
-#endif
     }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-#ifdef SQLITE_ORM_CTAD_SUPPORTED
     /*
      *  Factory function for a storage instance, from a database file, a set of database object definitions
      *  and option storage options like connection control options and an 'on open' callback.
@@ -1840,15 +1833,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             create_from_tuple<std::tuple>(std::move(specTuple), dbo_index_sequence<decltype(specTuple)>{}),
             create_from_tuple<std::tuple>(std::move(specTuple), opt_index_sequence<decltype(specTuple)>{}));
     }
-#else
-    /*
-     *  Factory function for a storage instance, from a database file and a bunch of database object definitions.
-     */
-    template<class... DBO>
-    internal::storage_t<DBO...> make_storage(std::string filename, DBO... dbObjects) {
-        return {std::move(filename), {std::forward<DBO>(dbObjects)...}, std::tuple<>{}};
-    }
-#endif
 
     /**
      *  sqlite3_threadsafe() interface.
