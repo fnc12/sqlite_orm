@@ -46,7 +46,7 @@ namespace boost::pfr {
 
                 return (field_type*)(std::byte*)
                     // offsetof - the official one cannot be used because of some implementations using the compiler intrinsic builtin
-                    ((::size_t)&reinterpret_cast<char const volatile&>((((Tpl*)0)->nth_type::value)));
+                    ((std::size_t)&reinterpret_cast<char const volatile&>((((Tpl*)0)->nth_type::value)));
             }
         }
     }
