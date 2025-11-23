@@ -15,7 +15,6 @@
     SQLITE_ORM_DO_PRAGMA(clang diagnostic ignored warnoption)                                                          \
     __VA_ARGS__                                                                                                        \
     SQLITE_ORM_DO_PRAGMA(clang diagnostic pop)
-
 #else
 #define SQLITE_ORM_CLANG_SUPPRESS(warnoption, ...) __VA_ARGS__
 #endif
@@ -28,6 +27,10 @@
 #define SQLITE_ORM_MSVC_SUPPRESS(warncode, ...) SQLITE_ORM_DO_PRAGMA(warning(suppress : warncode))
 #else
 #define SQLITE_ORM_MSVC_SUPPRESS(warcode, ...) __VA_ARGS__
+#endif
+
+#if defined(_MSC_VER) && defined(__clang__)
+#define SQLITE_ORM_CLANG_ON_WIN
 #endif
 
 // clang has the bad habit of diagnosing missing brace-init-lists when constructing aggregates with base classes.
