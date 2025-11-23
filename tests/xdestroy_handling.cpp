@@ -23,8 +23,10 @@ template<typename T>
 inline constexpr delete_default_t<T> delete_default_f{};
 #endif
 
+#ifndef SQLITE_ORM_CLANG_ON_WIN
 using free_t = std::integral_constant<decltype(&free), free>;
 inline constexpr free_t free_f{};
+#endif
 
 TEST_CASE("obtain_xdestroy_for") {
 
@@ -62,6 +64,7 @@ TEST_CASE("obtain_xdestroy_for") {
         STATIC_REQUIRE(xDestroy1 == nullptr);
         REQUIRE(xDestroy1 == nullptr);
 
+#ifndef SQLITE_ORM_CLANG_ON_WIN
         // free(int*)
         constexpr xdestroy_fn_t xDestroy2 = obtain_xdestroy_for(free, int_nullptr);
         STATIC_REQUIRE(xDestroy2 == &free);
@@ -71,6 +74,7 @@ TEST_CASE("obtain_xdestroy_for") {
         constexpr xdestroy_fn_t xDestroy3 = obtain_xdestroy_for(free_f, int_nullptr);
         STATIC_REQUIRE(xDestroy3 == &free);
         REQUIRE(xDestroy3 == &free);
+#endif
 
 #if __cpp_constexpr >= 201603L  //  constexpr lambda
         // [](void* p){}
@@ -116,6 +120,7 @@ TEST_CASE("obtain_xdestroy_for") {
 #endif
 
 #if __cpp_constexpr >= 201907L  //  Trivial default initialization in constexpr functions
+#ifndef SQLITE_ORM_CLANG_ON_WIN
         // xdestroy_holder{ free }(int*)
         constexpr xdestroy_fn_t xDestroy8 = obtain_xdestroy_for(xdestroy_holder{free}, int_nullptr);
         STATIC_REQUIRE(xDestroy8 == &free);
@@ -130,6 +135,7 @@ TEST_CASE("obtain_xdestroy_for") {
         constexpr xdestroy_fn_t xDestroy10 = obtain_xdestroy_for(xdestroy_holder{nullptr}, const_int_nullptr);
         STATIC_REQUIRE(xDestroy10 == nullptr);
         REQUIRE(xDestroy10 == nullptr);
+#endif
 #endif
 
         // expressions that do not work

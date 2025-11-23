@@ -150,7 +150,6 @@ using std::nullptr_t;
     SQLITE_ORM_DO_PRAGMA(clang diagnostic ignored warnoption)                                                          \
     __VA_ARGS__                                                                                                        \
     SQLITE_ORM_DO_PRAGMA(clang diagnostic pop)
-
 #else
 #define SQLITE_ORM_CLANG_SUPPRESS(warnoption, ...) __VA_ARGS__
 #endif
@@ -163,6 +162,10 @@ using std::nullptr_t;
 #define SQLITE_ORM_MSVC_SUPPRESS(warncode, ...) SQLITE_ORM_DO_PRAGMA(warning(suppress : warncode))
 #else
 #define SQLITE_ORM_MSVC_SUPPRESS(warcode, ...) __VA_ARGS__
+#endif
+
+#if defined(_MSC_VER) && defined(__clang__)
+#define SQLITE_ORM_CLANG_ON_WIN
 #endif
 
 // clang has the bad habit of diagnosing missing brace-init-lists when constructing aggregates with base classes.
@@ -14322,13 +14325,27 @@ namespace sqlite_orm {
 #include <type_traits>  // std::integral_constant
 #endif
 
+#ifdef SQLITE_ORM_CLANG_ON_WIN
+namespace sqlite_orm::internal {
+    struct statement_deleter {
+        SQLITE_ORM_STATIC_CALLOP void operator()(sqlite3_stmt* stmt) SQLITE_ORM_OR_CONST_CALLOP noexcept {
+            sqlite3_finalize(stmt);
+        }
+    };
+}
+#endif
+
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
+#ifndef SQLITE_ORM_CLANG_ON_WIN
     /**
      *  Guard class which finalizes `sqlite3_stmt` in dtor
      */
     using statement_finalizer =
         std::unique_ptr<sqlite3_stmt, std::integral_constant<decltype(&sqlite3_finalize), sqlite3_finalize>>;
+#else
+    using statement_finalizer = std::unique_ptr<sqlite3_stmt, internal::statement_deleter>;
+#endif
 }
 
 // #include "error_code.h"
@@ -15643,7 +15660,17 @@ namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3014000
             std::string expanded_sql() const {
                 // note: must check return value due to SQLITE_OMIT_TRACE
+#ifndef SQLITE_ORM_CLANG_ON_WIN
                 using char_ptr = std::unique_ptr<char[], std::integral_constant<decltype(&sqlite3_free), sqlite3_free>>;
+#else
+                struct sqlite3_memory_deleter {
+                    SQLITE_ORM_STATIC_CALLOP void operator()(void* mem) SQLITE_ORM_OR_CONST_CALLOP noexcept {
+                        sqlite3_free(mem);
+                    }
+                };
+                using char_ptr = std::unique_ptr<char[], sqlite3_memory_deleter>;
+#endif
+
                 if (char_ptr sql{sqlite3_expanded_sql(this->stmt)}) {
                     return sql.get();
                 } else {
