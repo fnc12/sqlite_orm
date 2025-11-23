@@ -379,7 +379,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T>
     internal::alias_holder<T> get() {
-        static_assert(internal::is_column_alias_v<T>, "");
+        static_assert(internal::is_column_alias_v<T>);
         return {};
     }
 

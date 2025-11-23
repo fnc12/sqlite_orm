@@ -51,7 +51,7 @@ using std::nullptr_t;
 #endif
 
 #if (!defined(__has_include)) ||                                                                                       \
-    ((__cpp_noexcept_function_type < 201510L) ||                                                                       \
+    ((__cpp_static_assert < 201411L) || (__cpp_noexcept_function_type < 201510L) ||                                    \
      (__cpp_fold_expressions < 201603L || __cpp_constexpr < 201603L || __cpp_aggregate_bases < 201603L ||              \
       __cpp_range_based_for < 201603L) ||                                                                              \
      (__cpp_if_constexpr < 201606L || __cpp_inline_variables < 201606L || __cpp_structured_bindings < 201606L) ||      \
@@ -2960,7 +2960,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T>
     internal::alias_holder<T> get() {
-        static_assert(internal::is_column_alias_v<T>, "");
+        static_assert(internal::is_column_alias_v<T>);
         return {};
     }
 
@@ -17448,7 +17448,7 @@ namespace sqlite_orm {
 
         template<typename Tpl, size_t... Is>
         void stream_identifier(std::ostream& ss, const Tpl& tpl, std::index_sequence<Is...>) {
-            static_assert(sizeof...(Is) > 0 && sizeof...(Is) <= 3, "");
+            static_assert(sizeof...(Is) > 0 && sizeof...(Is) <= 3);
             return stream_identifier(ss, std::get<Is>(tpl)...);
         }
 
@@ -21150,7 +21150,7 @@ namespace sqlite_orm {
                                       ,
                                       bool> = true>
             static std::string do_serialize(const X& c) {
-                static_assert(std::is_same<X, T>::value, "");
+                static_assert(std::is_same<X, T>::value);
 
                 // implementation detail: utilizing field_printer
                 return field_printer<X>{}(c);
