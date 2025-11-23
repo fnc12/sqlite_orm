@@ -5,14 +5,11 @@
 #include <type_traits>  //  std::remove_cvref
 #include <utility>  // std::forward, std::move, std::index_sequence, std::make_index_sequence
 #include <cstddef>  //  std::byte
-#if __cpp_impl_reflection >= 202500L
-#include <meta>
-#endif
 #endif
 #endif
 
 #ifdef SQLITE_ORM_WITH_VIEW
-#if __cpp_impl_reflection < 202500L
+#if __cpp_impl_reflection < 202506L
 #ifdef SQLITE_ORM_HAS_BOOST_PFR
 #include <boost/pfr.hpp>
 #endif
@@ -20,13 +17,14 @@
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/meta_util.h"
 #include "../column_pointer.h"
 #include "../select_constraints.h"
 #include "column.h"
 #include "table_base.h"
 
 #ifdef SQLITE_ORM_WITH_VIEW
-#if __cpp_impl_reflection >= 202500L
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 #elif BOOST_PFR_ENABLED == 1
 namespace boost::pfr {
     namespace detail {
@@ -89,11 +87,43 @@ namespace sqlite_orm::internal {
 #endif
 
     template<class T>
-    struct is_view : polyfill::bool_constant<is_view_v<T>> {};
+    using is_view = polyfill::bool_constant<is_view_v<T>>;
 }
 
 #ifdef SQLITE_ORM_WITH_VIEW
-#if __cpp_impl_reflection >= 202500L
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+namespace sqlite_orm::internal {
+    template<class O, class Select, std::size_t... I>
+    auto make_view(std::string name, std::index_sequence<I...>, Select select) {
+        constexpr auto memberNames = extract_member_names<O>();
+        constexpr auto memberPointers = extract_member_pointers<O>();
+
+        using view_type =
+            query_view<O,
+                       Select,
+                       decltype(make_column(std::string(std::get<I>(memberNames)), std::get<I>(memberPointers)))...>;
+
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return view_type{
+            std::move(name),
+            std::tuple{make_column(std::string(std::get<I>(memberNames)), std::get<I>(memberPointers))...},
+            std::move(select)});
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    template<class O, class Select>
+        requires (internal::is_select_expression_v<Select>)
+    auto make_view(std::string name, Select select) {
+        using namespace ::sqlite_orm::internal;
+
+        if constexpr (is_select_v<Select>) {
+            select.highest_level = true;
+        }
+        return internal::make_view<O>(std::move(name),
+                                      std::make_index_sequence<count_members<O>()>{},
+                                      std::move(select));
+    }
+}
 #elif BOOST_PFR_ENABLED == 1
 namespace sqlite_orm::internal {
     /**

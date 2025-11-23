@@ -104,10 +104,6 @@ using std::nullptr_t;
 #define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
 #endif
 
-#if __cpp_nontype_template_args >= 201911L
-#define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED
-#endif
-
 #if __cpp_explicit_this_parameter >= 202110L
 #define SQLITE_ORM_DEDUCING_THIS_SUPPORTED
 #endif
@@ -126,6 +122,10 @@ using std::nullptr_t;
 
 #if __cpp_contracts >= 202502L
 #define SQLITE_ORM_CONTRACTS_SUPPORTED
+#endif
+
+#if __cpp_impl_reflection >= 202506L
+#define SQLITE_ORM_REFLECTION_SUPPORTED
 #endif
 
 #if __cplusplus >= 202002L
@@ -13177,14 +13177,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <type_traits>  //  std::remove_cvref
 #include <utility>  // std::forward, std::move, std::index_sequence, std::make_index_sequence
 #include <cstddef>  //  std::byte
-#if __cpp_impl_reflection >= 202500L
-#include <meta>
-#endif
 #endif
 #endif
 
 #ifdef SQLITE_ORM_WITH_VIEW
-#if __cpp_impl_reflection < 202500L
+#if __cpp_impl_reflection < 202506L
 #ifdef SQLITE_ORM_HAS_BOOST_PFR
 #include <boost/pfr.hpp>
 #endif
@@ -13192,6 +13189,47 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 
 // #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../functional/meta_util.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#include <meta>  //  std::meta::access_context, std::meta::nonstatic_data_members_of, std::meta::identifier_of
+#include <tuple>  //  std::tuple, std::get
+#include <utility>  //  std::index_sequence, std::make_index_sequence
+#endif
+#endif
+
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+namespace sqlite_orm::internal {
+    template<class T>
+    consteval auto extract_member_names() {
+        constexpr auto ctx = std::meta::access_context::current();
+        constexpr size_t N = nonstatic_data_members_of(^^T, ctx).size();
+        auto members = nonstatic_data_members_of(^^T, ctx);
+
+        return [&members]<size_t... I>(std::index_sequence<I...>) consteval {
+            return std::tuple{std::meta::identifier_of(members[I])...};
+        }(std::make_index_sequence<N>{});
+    }
+
+    template<class T>
+    consteval auto extract_member_pointers() {
+        constexpr auto ctx = std::meta::access_context::current();
+        constexpr size_t N = nonstatic_data_members_of(^^T, ctx).size();
+
+        return [&ctx]<size_t... I>(std::index_sequence<I...>) consteval {
+            return std::tuple{&[:nonstatic_data_members_of(^^T, ctx)[I]:]...};
+        }(std::make_index_sequence<N>{});
+    }
+
+    template<class T>
+    consteval auto count_members() {
+        constexpr auto ctx = std::meta::access_context::current();
+        return nonstatic_data_members_of(^^T, ctx).size();
+    }
+}
+#endif
 
 // #include "../column_pointer.h"
 
@@ -13202,7 +13240,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "table_base.h"
 
 #ifdef SQLITE_ORM_WITH_VIEW
-#if __cpp_impl_reflection >= 202500L
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 #elif BOOST_PFR_ENABLED == 1
 namespace boost::pfr {
     namespace detail {
@@ -13222,7 +13260,7 @@ namespace boost::pfr {
 
                 return (field_type*)(std::byte*)
                     // offsetof - the official one cannot be used because of some implementations using the compiler intrinsic builtin
-                    ((::size_t)&reinterpret_cast<char const volatile&>((((Tpl*)0)->nth_type::value)));
+                    ((std::size_t)&reinterpret_cast<char const volatile&>((((Tpl*)0)->nth_type::value)));
             }
         }
     }
@@ -13265,11 +13303,43 @@ namespace sqlite_orm::internal {
 #endif
 
     template<class T>
-    struct is_view : polyfill::bool_constant<is_view_v<T>> {};
+    using is_view = polyfill::bool_constant<is_view_v<T>>;
 }
 
 #ifdef SQLITE_ORM_WITH_VIEW
-#if __cpp_impl_reflection >= 202500L
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+namespace sqlite_orm::internal {
+    template<class O, class Select, std::size_t... I>
+    auto make_view(std::string name, std::index_sequence<I...>, Select select) {
+        constexpr auto memberNames = extract_member_names<O>();
+        constexpr auto memberPointers = extract_member_pointers<O>();
+
+        using view_type =
+            query_view<O,
+                       Select,
+                       decltype(make_column(std::string(std::get<I>(memberNames)), std::get<I>(memberPointers)))...>;
+
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return view_type{
+            std::move(name),
+            std::tuple{make_column(std::string(std::get<I>(memberNames)), std::get<I>(memberPointers))...},
+            std::move(select)});
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    template<class O, class Select>
+        requires (internal::is_select_expression_v<Select>)
+    auto make_view(std::string name, Select select) {
+        using namespace ::sqlite_orm::internal;
+
+        if constexpr (is_select_v<Select>) {
+            select.highest_level = true;
+        }
+        return internal::make_view<O>(std::move(name),
+                                      std::make_index_sequence<count_members<O>()>{},
+                                      std::move(select));
+    }
+}
 #elif BOOST_PFR_ENABLED == 1
 namespace sqlite_orm::internal {
     /**

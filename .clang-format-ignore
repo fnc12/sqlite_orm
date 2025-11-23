@@ -1,0 +1,2 @@
+# exclude until clang-format understands C++ reflection syntax
+dev/functional/meta_util.h
