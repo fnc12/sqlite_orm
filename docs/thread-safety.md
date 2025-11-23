@@ -35,11 +35,11 @@ However, there are things you should only do from a single-threaded context, pre
 
 1. Synchronization of the database schema.
 2. Actions for which `sqlite_orm` must keep state independent of whether a database connection exists:
-   a. Creation or deletion of application-defined scalar, aggregate, and collating functions with `storage.create_scalar_function()`, `storage.delete_scalar_function()`, `storage.create_aggregate_function()`, `storage.delete_aggregate_function()`, `storage.create_quoted_scalar_function()`, `storage.delete_quoted_scalar_function()`, `storage.create_collate_function()`, and `storage.delete_collate_function()`.
-   b. Configuration of database limits with `storage.limit.set()`.
-   c. Installation of the busy handler with `storage.busy_handler()`.
-   d. Installation of an 'on open' handler with `storage.on_open`.
-   e. Opening a permanent connection to a database on disk by calling `storage.open_forever()`.
+   - Creation or deletion of application-defined scalar, aggregate, and collating functions with `storage.create_scalar_function()`, `storage.delete_scalar_function()`, `storage.create_aggregate_function()`, `storage.delete_aggregate_function()`, `storage.create_quoted_scalar_function()`, `storage.delete_quoted_scalar_function()`, `storage.create_collate_function()`, and `storage.delete_collate_function()`.
+   - Configuration of database limits with `storage.limit.set()`.
+   - Installation of the busy handler with `storage.busy_handler()`.
+   - Installation of an 'on open' handler with `storage.on_open`.
+   - Opening a permanent connection to a database on disk by calling `storage.open_forever()`.
 
 ## A word about performance
 
