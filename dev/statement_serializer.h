@@ -102,7 +102,7 @@ namespace sqlite_orm {
                                       ,
                                       bool> = true>
             static std::string do_serialize(const X& c) {
-                static_assert(std::is_same<X, T>::value, "");
+                static_assert(std::is_same<X, T>::value);
 
                 // implementation detail: utilizing field_printer
                 return field_printer<X>{}(c);
