@@ -16,6 +16,9 @@
 // In this sense clang should only warn about missing field initializers.
 // Because we know what we are doing, we suppress the diagnostic message
 #pragma clang diagnostic ignored "-Wmissing-braces"
+
+// Unused lambda captures are common in generic code that involves `if contexpr` or `this`-capture.
+#pragma clang diagnostic ignored "-Wunused-lambda-capture"
 #endif
 
 #if defined(_MSC_VER)
