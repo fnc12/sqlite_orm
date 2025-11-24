@@ -76,7 +76,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
          *  E.g. 1_ctealias, 2_ctealias
          */
         template<char... Chars>
-        [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator"" _ctealias() {
+        [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator""_ctealias() {
             return internal::cte_moniker<Chars...>{};
         }
 
@@ -86,7 +86,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
          *  E.g. "1"_cte, "2"_cte
          */
         template<internal::cstring_literal moniker>
-        [[nodiscard]] consteval auto operator"" _cte() {
+        [[nodiscard]] consteval auto operator""_cte() {
             return internal::explode_into<internal::cte_moniker, moniker>(std::make_index_sequence<moniker.size()>{});
         }
 #endif

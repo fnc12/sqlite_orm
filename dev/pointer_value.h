@@ -32,7 +32,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     inline namespace literals {
         template<internal::cstring_literal tag>
-        [[nodiscard]] consteval auto operator"" _pointer_type() {
+        [[nodiscard]] consteval auto operator""_pointer_type() {
             return internal::explode_into<internal::pointer_type, tag>(std::make_index_sequence<tag.size()>{});
         }
     }
