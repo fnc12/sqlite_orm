@@ -175,8 +175,7 @@ namespace sqlite_orm {
 
             // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
             // as this will lead to UB with Clang on MinGW!
-            SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-                return {std::move(name), memberPointer, {}, std::tuple<Op...>{std::move(constraints)...}});
+            return {std::move(name), memberPointer, {}, std::tuple<Op...>{std::move(constraints)...}};
         }
 #endif
     }
@@ -193,8 +192,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
         // as this will lead to UB with Clang on MinGW!
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {std::move(name), memberPointer, {}, std::tuple<Op...>{std::move(constraints)...}});
+        return {std::move(name), memberPointer, {}, std::tuple<Op...>{std::move(constraints)...}};
     }
 
     /**
@@ -212,8 +210,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
         // as this will lead to UB with Clang on MinGW!
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {std::move(name), getter, setter, std::tuple<Op...>{std::move(constraints)...}});
+        return {std::move(name), getter, setter, std::tuple<Op...>{std::move(constraints)...}};
     }
 
     /**
@@ -231,7 +228,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
         // as this will lead to UB with Clang on MinGW!
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {std::move(name), getter, setter, std::tuple<Op...>{std::move(constraints)...}});
+        return {std::move(name), getter, setter, std::tuple<Op...>{std::move(constraints)...}};
     }
 }

@@ -298,7 +298,7 @@ namespace sqlite_orm {
 
             template<class T, satisfies<is_bindable, T> = true>
             void operator()(const T& t) {
-                int rc = statement_binder<T>{}.bind(this->stmt, ++this->nthSqlParameter, t);
+                const int rc = statement_binder<T>{}.bind(this->stmt, ++this->nthSqlParameter, t);
                 if (SQLITE_OK != rc) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
                     throw_translated_sqlite_error(rc);
                 }
@@ -330,10 +330,11 @@ namespace sqlite_orm {
             explicit tuple_value_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
 
 #ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
-            void operator()(const auto& tpl, auto project) const {
+            template<class Tpl, class Projection>
+            void operator()(const Tpl& tpl, Projection project) const {
                 int nthSqlParameter = 0;
                 auto& [... elements] = tpl;
-                (this->bind(std::invoke(project, elements), ++nthSqlParameter), ...);
+                (this->bind(polyfill::invoke(project, elements), ++nthSqlParameter), ...);
             }
 #else
             template<class Tpl, class Projection>
@@ -354,7 +355,7 @@ namespace sqlite_orm {
 
             template<class T>
             void bind(const T& t, int nthSqlParameter) const {
-                int rc = statement_binder<T>{}.bind(this->stmt, nthSqlParameter, t);
+                const int rc = statement_binder<T>{}.bind(this->stmt, nthSqlParameter, t);
                 if (SQLITE_OK != rc) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
                     throw_translated_sqlite_error(rc);
                 }

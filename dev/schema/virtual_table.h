@@ -113,7 +113,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class O, class M, class... Cs>
     internal::virtual_table<O, M, Cs...>
     make_virtual_table(std::string name, internal::virtual_table_description<O, M, Cs...> description) {
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name), std::move(description)});
+        return {std::move(name), std::move(description)};
     }
 
     /**
@@ -124,7 +124,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class O, class M, class... Cs>
     internal::virtual_table<O, M, Cs...> make_virtual_table(std::string name,
                                                             internal::virtual_table_definition<M, Cs...> definition) {
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name), std::move(definition)});
+        return {std::move(name), std::move(definition)};
     }
 
     /**

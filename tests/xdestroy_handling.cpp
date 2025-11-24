@@ -23,7 +23,7 @@ template<typename T>
 inline constexpr delete_default_t<T> delete_default_f{};
 #endif
 
-#ifndef SQLITE_ORM_CLANG_ON_WIN
+#ifndef SQLITE_ORM_CLANG_MSVC
 using free_t = std::integral_constant<decltype(&free), free>;
 inline constexpr free_t free_f{};
 #endif
@@ -64,7 +64,7 @@ TEST_CASE("obtain_xdestroy_for") {
         STATIC_REQUIRE(xDestroy1 == nullptr);
         REQUIRE(xDestroy1 == nullptr);
 
-#ifndef SQLITE_ORM_CLANG_ON_WIN
+#ifndef SQLITE_ORM_CLANG_MSVC
         // free(int*)
         constexpr xdestroy_fn_t xDestroy2 = obtain_xdestroy_for(free, int_nullptr);
         STATIC_REQUIRE(xDestroy2 == &free);
@@ -120,7 +120,7 @@ TEST_CASE("obtain_xdestroy_for") {
 #endif
 
 #if __cpp_constexpr >= 201907L  //  Trivial default initialization in constexpr functions
-#ifndef SQLITE_ORM_CLANG_ON_WIN
+#ifndef SQLITE_ORM_CLANG_MSVC
         // xdestroy_holder{ free }(int*)
         constexpr xdestroy_fn_t xDestroy8 = obtain_xdestroy_for(xdestroy_holder{free}, int_nullptr);
         STATIC_REQUIRE(xDestroy8 == &free);

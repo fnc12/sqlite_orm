@@ -38,7 +38,8 @@ namespace sqlite_orm::internal {
          *  Make a table-valued function call.
          */
         template<class... Args>
-        constexpr table_valued_expression<O, Args...> operator()(Args... arguments) const {
+        constexpr SQLITE_ORM_STATIC_CALLOP table_valued_expression<O, Args...>
+        operator()(Args... arguments) SQLITE_ORM_OR_CONST_CALLOP {
             return {{ {std::move(arguments)}... }};
         }
 #else
@@ -46,7 +47,8 @@ namespace sqlite_orm::internal {
          *  Make a table-valued function call.
          */
         template<class... Args>
-        constexpr table_valued_expression<O, Args...> operator()(Args... arguments) const {
+        constexpr SQLITE_ORM_STATIC_CALLOP table_valued_expression<O, Args...>
+        operator()(Args... arguments) SQLITE_ORM_OR_CONST_CALLOP {
             return {{{std::move(arguments)}...}};
         }
 #endif

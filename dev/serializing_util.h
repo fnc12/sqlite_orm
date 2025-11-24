@@ -87,7 +87,7 @@ namespace sqlite_orm {
             return stream_identifier(ss, std::get<Is>(tpl)...);
         }
 
-#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+#if defined(SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED) && defined(SQLITE_ORM_CONCEPTS_SUPPORTED)
         template<typename Tpl>
             requires polyfill::is_detected_v<type_t, std::tuple_size<Tpl>>
         void stream_identifier(std::ostream& ss, const Tpl& tpl) {

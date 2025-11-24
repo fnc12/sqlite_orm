@@ -72,7 +72,7 @@ if(MSVC)
         # C4458: declaration of 'symbol' hides class member
         /wd4458
         # C4458: 'symbol': deprecated
-        # disabled due to unit tests still testing deprecated features
+        # disabled due to unit tests testing deprecated features
         /wd4996)
     if (CMAKE_CXX_FLAGS MATCHES "/D_UNICODE")
         # explicitly set the entry point of the executable file,
@@ -82,8 +82,13 @@ if(MSVC)
 endif()
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_compile_options(unit_tests PUBLIC
-        # disabled due to unit tests still testing deprecated features
-        -Wno-deprecated-declarations)
+        -Wno-c++23-extensions
+        # disabled due to unit tests testing deprecated features
+        -Wno-deprecated-declarations
+        # perfectly valid to have missing field initializers in library's test code
+        -Wno-missing-field-initializers
+        # suppress warnings about unused variables in test code
+        -Wno-unused-variable)
 endif()
 
 target_precompile_headers(unit_tests PRIVATE

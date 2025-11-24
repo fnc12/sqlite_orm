@@ -1,11 +1,21 @@
 #pragma once
 
-// Clang has the annoying habit of warning about future C++ features that it claims to support through a feature macro.
 #ifdef __clang__
 #pragma clang diagnostic push
+// Clang has the annoying habit of warning about future C++ features that it claims to support through a feature macro.
 #pragma clang diagnostic ignored "-Wc++20-extensions"
 #pragma clang diagnostic ignored "-Wc++23-extensions"
 #pragma clang diagnostic ignored "-Wc++26-extensions"
+
+// clang has the bad habit of diagnosing missing brace-init-lists when constructing aggregates with base classes.
+// This is a false positive, since the C++ standard is quite clear that braces for nested or base objects may be omitted,
+// see https://en.cppreference.com/w/cpp/language/aggregate_initialization:
+// "The braces around the nested initializer lists may be elided (omitted),
+//  in which case as many initializer clauses as necessary are used to initialize every member or element of the corresponding subaggregate,
+//  and the subsequent initializer clauses are used to initialize the following members of the object."
+// In this sense clang should only warn about missing field initializers.
+// Because we know what we are doing, we suppress the diagnostic message
+#pragma clang diagnostic ignored "-Wmissing-braces"
 #endif
 
 #if defined(_MSC_VER)
@@ -161,22 +171,12 @@ using std::nullptr_t;
 #if defined(_MSC_VER) && !defined(__clang__)
 #define SQLITE_ORM_MSVC_SUPPRESS(warncode, ...) SQLITE_ORM_DO_PRAGMA(warning(suppress : warncode))
 #else
-#define SQLITE_ORM_MSVC_SUPPRESS(warcode, ...) __VA_ARGS__
+#define SQLITE_ORM_MSVC_SUPPRESS(warncode, ...) __VA_ARGS__
 #endif
 
 #if defined(_MSC_VER) && defined(__clang__)
-#define SQLITE_ORM_CLANG_ON_WIN
+#define SQLITE_ORM_CLANG_MSVC
 #endif
-
-// clang has the bad habit of diagnosing missing brace-init-lists when constructing aggregates with base classes.
-// This is a false positive, since the C++ standard is quite clear that braces for nested or base objects may be omitted,
-// see https://en.cppreference.com/w/cpp/language/aggregate_initialization:
-// "The braces around the nested initializer lists may be elided (omitted),
-//  in which case as many initializer clauses as necessary are used to initialize every member or element of the corresponding subaggregate,
-//  and the subsequent initializer clauses are used to initialize the following members of the object."
-// In this sense clang should only warn about missing field initializers.
-// Because we know what we are doing, we suppress the diagnostic message
-#define SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(...) SQLITE_ORM_CLANG_SUPPRESS("-Wmissing-braces", __VA_ARGS__)
 
 // msvc has the bad habit of diagnosing overalignment of types with an explicit alignment specifier.
 #define SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(...) SQLITE_ORM_MSVC_SUPPRESS(4324, __VA_ARGS__)
@@ -1712,7 +1712,7 @@ namespace sqlite_orm {
             return R{polyfill::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
         }
 
-#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+#if defined(SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED) && __cpp_lib_forward_like >= 202207L
         /*
          *  Like `std::make_from_tuple()`, but using a projection on the tuple elements.
          */
@@ -1739,7 +1739,7 @@ namespace sqlite_orm {
             return R{polyfill::invoke(project, std::get<Idx>(std::forward<Tpl>(tpl)))...};
         }
 
-#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+#if defined(SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED) && __cpp_lib_forward_like >= 202207L
         /*
          *  Similar to `create_from_tuple()`, but the result type is specified as a class template.
          */
@@ -2413,7 +2413,8 @@ namespace sqlite_orm::internal {
          *  Make a table-valued function call.
          */
         template<class... Args>
-        constexpr table_valued_expression<O, Args...> operator()(Args... arguments) const {
+        constexpr SQLITE_ORM_STATIC_CALLOP table_valued_expression<O, Args...>
+        operator()(Args... arguments) SQLITE_ORM_OR_CONST_CALLOP {
             return {{ {std::move(arguments)}... }};
         }
 #else
@@ -2421,7 +2422,8 @@ namespace sqlite_orm::internal {
          *  Make a table-valued function call.
          */
         template<class... Args>
-        constexpr table_valued_expression<O, Args...> operator()(Args... arguments) const {
+        constexpr SQLITE_ORM_STATIC_CALLOP table_valued_expression<O, Args...>
+        operator()(Args... arguments) SQLITE_ORM_OR_CONST_CALLOP {
             return {{ {std::move(arguments)}... }};
         }
 #endif
@@ -9120,8 +9122,7 @@ namespace sqlite_orm {
 
             // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
             // as this will lead to UB with Clang on MinGW!
-            SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-                return {std::move(name), memberPointer, {}, std::tuple<Op...>{std::move(constraints)...}});
+            return {std::move(name), memberPointer, {}, std::tuple<Op...>{std::move(constraints)...}};
         }
 #endif
     }
@@ -9138,8 +9139,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
         // as this will lead to UB with Clang on MinGW!
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {std::move(name), memberPointer, {}, std::tuple<Op...>{std::move(constraints)...}});
+        return {std::move(name), memberPointer, {}, std::tuple<Op...>{std::move(constraints)...}};
     }
 
     /**
@@ -9157,8 +9157,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
         // as this will lead to UB with Clang on MinGW!
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {std::move(name), getter, setter, std::tuple<Op...>{std::move(constraints)...}});
+        return {std::move(name), getter, setter, std::tuple<Op...>{std::move(constraints)...}};
     }
 
     /**
@@ -9176,8 +9175,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
         // as this will lead to UB with Clang on MinGW!
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {std::move(name), getter, setter, std::tuple<Op...>{std::move(constraints)...}});
+        return {std::move(name), getter, setter, std::tuple<Op...>{std::move(constraints)...}};
     }
 }
 
@@ -10880,7 +10878,7 @@ namespace sqlite_orm {
 
             template<class T, satisfies<is_bindable, T> = true>
             void operator()(const T& t) {
-                int rc = statement_binder<T>{}.bind(this->stmt, ++this->nthSqlParameter, t);
+                const int rc = statement_binder<T>{}.bind(this->stmt, ++this->nthSqlParameter, t);
                 if (SQLITE_OK != rc) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
                     throw_translated_sqlite_error(rc);
                 }
@@ -10912,10 +10910,11 @@ namespace sqlite_orm {
             explicit tuple_value_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
 
 #ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
-            void operator()(const auto& tpl, auto project) const {
+            template<class Tpl, class Projection>
+            void operator()(const Tpl& tpl, Projection project) const {
                 int nthSqlParameter = 0;
                 auto& [... elements] = tpl;
-                (this->bind(std::invoke(project, elements), ++nthSqlParameter), ...);
+                (this->bind(polyfill::invoke(project, elements), ++nthSqlParameter), ...);
             }
 #else
             template<class Tpl, class Projection>
@@ -10936,7 +10935,7 @@ namespace sqlite_orm {
 
             template<class T>
             void bind(const T& t, int nthSqlParameter) const {
-                int rc = statement_binder<T>{}.bind(this->stmt, nthSqlParameter, t);
+                const int rc = statement_binder<T>{}.bind(this->stmt, nthSqlParameter, t);
                 if (SQLITE_OK != rc) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
                     throw_translated_sqlite_error(rc);
                 }
@@ -12986,8 +12985,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         using cols_tuple = std::tuple<Cols...>;
         static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
                       "amount of where arguments can be 0 or 1");
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {std::move(name), false, std::make_tuple(internal::make_indexed_column(std::move(cols))...)});
+        return {std::move(name), false, std::make_tuple(internal::make_indexed_column(std::move(cols))...)};
     }
 
     template<class... Cols>
@@ -12997,8 +12995,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         using cols_tuple = std::tuple<Cols...>;
         static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
                       "amount of where arguments can be 0 or 1");
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {std::move(name), false, std::make_tuple(internal::make_indexed_column(std::move(cols))...)});
+        return {std::move(name), false, std::make_tuple(internal::make_indexed_column(std::move(cols))...)};
     }
 
     template<class... Cols>
@@ -13008,8 +13005,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         using cols_tuple = std::tuple<Cols...>;
         static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
                       "amount of where arguments can be 0 or 1");
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {std::move(name), true, std::make_tuple(internal::make_indexed_column(std::move(cols))...)});
+        return {std::move(name), true, std::make_tuple(internal::make_indexed_column(std::move(cols))...)};
     }
 }
 
@@ -13123,8 +13119,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         static_assert(polyfill::conjunction_v<internal::is_base_table_element_or_constraint<Cs>...>,
                       "Incorrect table elements or constraints");
 
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(definition)...)});
+        return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(definition)...)};
     }
 
     /**
@@ -13137,8 +13132,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         static_assert(polyfill::conjunction_v<internal::is_base_table_element_or_constraint<Cs>...>,
                       "Incorrect table elements or constraints");
 
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(definition)...)});
+        return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(definition)...)};
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -14011,7 +14005,7 @@ namespace sqlite_orm {
 #include <type_traits>  // std::integral_constant
 #endif
 
-#ifdef SQLITE_ORM_CLANG_ON_WIN
+#ifdef SQLITE_ORM_CLANG_MSVC
 namespace sqlite_orm::internal {
     struct statement_deleter {
         SQLITE_ORM_STATIC_CALLOP void operator()(sqlite3_stmt* stmt) SQLITE_ORM_OR_CONST_CALLOP noexcept {
@@ -14023,7 +14017,7 @@ namespace sqlite_orm::internal {
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
-#ifndef SQLITE_ORM_CLANG_ON_WIN
+#ifndef SQLITE_ORM_CLANG_MSVC
     /**
      *  Guard class which finalizes `sqlite3_stmt` in dtor
      */
@@ -14207,7 +14201,7 @@ namespace sqlite_orm {
 
         template<class L>
         void perform_step(sqlite3_stmt* stmt, L&& lambda) {
-            switch (int rc = sqlite3_step(stmt)) {
+            switch (/*int rc =*/sqlite3_step(stmt)) {
                 case SQLITE_ROW: {
                     lambda(stmt);
                 } break;
@@ -14223,7 +14217,7 @@ namespace sqlite_orm {
         template<class L>
         void perform_steps(sqlite3_stmt* stmt, L&& lambda) {
             for (;;) {
-                switch (int rc = sqlite3_step(stmt)) {
+                switch (/*int rc =*/sqlite3_step(stmt)) {
                     case SQLITE_ROW: {
                         lambda(stmt);
                     } break;
@@ -15327,7 +15321,7 @@ namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3014000
             std::string expanded_sql() const {
                 // note: must check return value due to SQLITE_OMIT_TRACE
-#ifndef SQLITE_ORM_CLANG_ON_WIN
+#ifndef SQLITE_ORM_CLANG_MSVC
                 using char_ptr = std::unique_ptr<char[], std::integral_constant<decltype(&sqlite3_free), sqlite3_free>>;
 #else
                 struct sqlite3_memory_deleter {
@@ -17479,7 +17473,7 @@ namespace sqlite_orm {
             return stream_identifier(ss, std::get<Is>(tpl)...);
         }
 
-#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+#if defined(SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED) && defined(SQLITE_ORM_CONCEPTS_SUPPORTED)
         template<typename Tpl>
             requires polyfill::is_detected_v<type_t, std::tuple_size<Tpl>>
         void stream_identifier(std::ostream& ss, const Tpl& tpl) {
@@ -20956,8 +20950,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     template<class T, class... S>
     internal::trigger_t<T, S...> make_trigger(std::string name, const internal::partial_trigger_t<T, S...>& part) {
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {std::move(name), std::move(part.base), std::move(part.statements)});
+        return {std::move(name), std::move(part.base), std::move(part.statements)};
     }
 
     inline internal::trigger_timing_t before() {
@@ -21100,7 +21093,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class O, class M, class... Cs>
     internal::virtual_table<O, M, Cs...>
     make_virtual_table(std::string name, internal::virtual_table_description<O, M, Cs...> description) {
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name), std::move(description)});
+        return {std::move(name), std::move(description)};
     }
 
     /**
@@ -21111,7 +21104,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class O, class M, class... Cs>
     internal::virtual_table<O, M, Cs...> make_virtual_table(std::string name,
                                                             internal::virtual_table_definition<M, Cs...> definition) {
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(name), std::move(definition)});
+        return {std::move(name), std::move(definition)};
     }
 
     /**
@@ -23855,8 +23848,7 @@ namespace sqlite_orm {
 
         template<class Mapper, class... Cs>
         cte_table<Mapper, Cs...> make_cte_table(std::string name, Cs... args) {
-            SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-                return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
+            return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)};
         }
 
         // aliased column expressions, explicit or implicitly numbered
@@ -25798,7 +25790,7 @@ namespace sqlite_orm {
                     this->executor.will_run_query(sql);
                 }
 
-                switch (int rc = sqlite3_step(stmt)) {
+                switch (/*int rc =*/sqlite3_step(stmt)) {
                     case SQLITE_ROW:
                         break;
                     case SQLITE_DONE: {
@@ -26820,7 +26812,7 @@ namespace sqlite_orm::internal {
 
     template<class... Cs>
     inline virtual_table_definition<dbstat_module_tag, Cs...> make_dbstat_definition(Cs... columns) {
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {{std::make_tuple(std::move(columns)...)}});
+        return {{std::make_tuple(std::move(columns)...)}};
     }
 }
 
@@ -26958,7 +26950,7 @@ namespace sqlite_orm::internal {
 
     template<class... Cs>
     inline virtual_table_definition<generate_series_module_tag, Cs...> make_generate_series_definition(Cs... columns) {
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {{std::make_tuple(std::move(columns)...)}});
+        return {{std::make_tuple(std::move(columns)...)}};
     }
 }
 
@@ -27059,7 +27051,7 @@ namespace sqlite_orm::internal {
 
     template<class... Cs>
     inline virtual_table_definition<fts5_module_tag, Cs...> make_fts5_definition(Cs... definition) {
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {{std::make_tuple(std::move(definition)...)}});
+        return {{std::make_tuple(std::move(definition)...)}};
     }
 }
 
@@ -27142,7 +27134,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         static_assert((internal::is_fts5_table_element_or_constraint_v<Cs> && ...),
                       "Incorrect table elements or constraints");
 
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(definition)...)});
+        return {std::make_tuple(std::forward<Cs>(definition)...)};
     }
 
     template<class O, class... Cs>
@@ -27158,7 +27150,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         std::get<eponymous_column_index>(definition.elements).name = tableName;
 #endif
 
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(tableName), std::move(definition)});
+        return {std::move(tableName), std::move(definition)};
     }
 }
 #endif
@@ -27240,7 +27232,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::virtual_table_definition<internal::rtree_module_tag, Cs...> using_rtree(Cs... definition) {
         internal::validate_rtree_definition<float, Cs...>();
 
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(definition)...)});
+        return {std::make_tuple(std::forward<Cs>(definition)...)};
     }
     /**
      *  Factory function for a RTREE_I32 virtual table definition.
@@ -27249,7 +27241,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::virtual_table_definition<internal::rtree_i32_module_tag, Cs...> using_rtree_i32(Cs... definition) {
         internal::validate_rtree_definition<std::int32_t, Cs...>();
 
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(definition)...)});
+        return {std::make_tuple(std::forward<Cs>(definition)...)};
     }
 }
 #endif

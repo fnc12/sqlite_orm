@@ -13,7 +13,6 @@ using internal::tuple_has_template;
 using internal::tuple_has_type;
 
 TEST_CASE("tuple traits") {
-    using empty_tuple_type = std::tuple<>;
     using tuple_type = std::tuple<int, char, default_t<int>, primary_key_t<>, std::string>;
 
     STATIC_REQUIRE(internal::tuple_has<tuple_type, is_primary_key>::value);
