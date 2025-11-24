@@ -29,7 +29,7 @@
 #define SQLITE_ORM_MSVC_SUPPRESS(warncode, ...) __VA_ARGS__
 #endif
 
-#if defined(_MSC_VER) && defined(__clang__)
+#if defined(__clang__) && defined(_MSC_VER)
 #define SQLITE_ORM_CLANG_MSVC
 #endif
 
