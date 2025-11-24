@@ -580,7 +580,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
          *  auto rows = storage.select(equal_to_int_3_f(1, 1));
          */
         template<internal::quoted_function_builder builder>
-        [[nodiscard]] consteval auto operator"" _scalar() {
+        [[nodiscard]] consteval auto operator""_scalar() {
             return builder;
         }
     }

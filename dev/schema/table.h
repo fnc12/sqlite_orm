@@ -131,8 +131,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         static_assert(polyfill::conjunction_v<internal::is_base_table_element_or_constraint<Cs>...>,
                       "Incorrect table elements or constraints");
 
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(definition)...)});
+        return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(definition)...)};
     }
 
     /**
@@ -145,8 +144,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         static_assert(polyfill::conjunction_v<internal::is_base_table_element_or_constraint<Cs>...>,
                       "Incorrect table elements or constraints");
 
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(definition)...)});
+        return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(definition)...)};
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES

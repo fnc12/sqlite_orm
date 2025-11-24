@@ -6,7 +6,7 @@
 #include <type_traits>  // std::integral_constant
 #endif
 
-#ifdef SQLITE_ORM_CLANG_ON_WIN
+#ifdef SQLITE_ORM_CLANG_MSVC
 namespace sqlite_orm::internal {
     struct statement_deleter {
         SQLITE_ORM_STATIC_CALLOP void operator()(sqlite3_stmt* stmt) SQLITE_ORM_OR_CONST_CALLOP noexcept {
@@ -18,7 +18,7 @@ namespace sqlite_orm::internal {
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
-#ifndef SQLITE_ORM_CLANG_ON_WIN
+#ifndef SQLITE_ORM_CLANG_MSVC
     /**
      *  Guard class which finalizes `sqlite3_stmt` in dtor
      */

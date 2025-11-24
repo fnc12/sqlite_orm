@@ -40,7 +40,7 @@ namespace sqlite_orm::internal {
 
     template<class... Cs>
     inline virtual_table_definition<generate_series_module_tag, Cs...> make_generate_series_definition(Cs... columns) {
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {{std::make_tuple(std::move(columns)...)}});
+        return {{std::make_tuple(std::move(columns)...)}};
     }
 }
 

@@ -137,8 +137,7 @@ namespace sqlite_orm::internal {
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
         // as this will lead to UB with Clang on MinGW!
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-            return {std::move(name), relativeField, {}, std::tuple<Op...>{std::move(constraints)...}});
+        return {std::move(name), relativeField, {}, std::tuple<Op...>{std::move(constraints)...}};
     }
 
     /*  
@@ -203,12 +202,12 @@ namespace sqlite_orm::internal {
                                          column_pointer<O, decltype(pfr::get_relative_address<O, I, TS>())>{
                                              pfr::get_relative_address<O, I, TS>()}))...>;
 
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return view_type{
+        return view_type{
             std::move(name),
             std::tuple{internal::make_column<>(std::string(pfr::get_name<I, O>()),
                                                column_pointer<O, decltype(pfr::get_relative_address<O, I, TS>())>{
                                                    pfr::get_relative_address<O, I, TS>()})...},
-            std::move(select)});
+            std::move(select)};
     }
 }
 

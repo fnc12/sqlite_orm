@@ -1703,7 +1703,7 @@ namespace sqlite_orm {
                     this->executor.will_run_query(sql);
                 }
 
-                switch (int rc = sqlite3_step(stmt)) {
+                switch (/*int rc =*/sqlite3_step(stmt)) {
                     case SQLITE_ROW:
                         break;
                     case SQLITE_DONE: {

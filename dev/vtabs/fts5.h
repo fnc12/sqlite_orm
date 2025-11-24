@@ -38,7 +38,7 @@ namespace sqlite_orm::internal {
 
     template<class... Cs>
     inline virtual_table_definition<fts5_module_tag, Cs...> make_fts5_definition(Cs... definition) {
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {{std::make_tuple(std::move(definition)...)}});
+        return {{std::make_tuple(std::move(definition)...)}};
     }
 }
 
@@ -121,7 +121,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         static_assert((internal::is_fts5_table_element_or_constraint_v<Cs> && ...),
                       "Incorrect table elements or constraints");
 
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(definition)...)});
+        return {std::make_tuple(std::forward<Cs>(definition)...)};
     }
 
     template<class O, class... Cs>
@@ -137,7 +137,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         std::get<eponymous_column_index>(definition.elements).name = tableName;
 #endif
 
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::move(tableName), std::move(definition)});
+        return {std::move(tableName), std::move(definition)};
     }
 }
 #endif

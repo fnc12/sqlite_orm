@@ -75,8 +75,7 @@ namespace sqlite_orm {
 
         template<class Mapper, class... Cs>
         cte_table<Mapper, Cs...> make_cte_table(std::string name, Cs... args) {
-            SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
-                return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
+            return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(args)...)};
         }
 
         // aliased column expressions, explicit or implicitly numbered
