@@ -14204,7 +14204,7 @@ namespace sqlite_orm {
 
         template<class L>
         void perform_step(sqlite3_stmt* stmt, L&& lambda) {
-            switch (/*int rc =*/sqlite3_step(stmt)) {
+            switch ([[maybe_unused]] int rc = sqlite3_step(stmt)) {
                 case SQLITE_ROW: {
                     lambda(stmt);
                 } break;
@@ -14220,7 +14220,7 @@ namespace sqlite_orm {
         template<class L>
         void perform_steps(sqlite3_stmt* stmt, L&& lambda) {
             for (;;) {
-                switch (/*int rc =*/sqlite3_step(stmt)) {
+                switch ([[maybe_unused]] int rc = sqlite3_step(stmt)) {
                     case SQLITE_ROW: {
                         lambda(stmt);
                     } break;
@@ -25793,7 +25793,7 @@ namespace sqlite_orm {
                     this->executor.will_run_query(sql);
                 }
 
-                switch (/*int rc =*/sqlite3_step(stmt)) {
+                switch ([[maybe_unused]] int rc = sqlite3_step(stmt)) {
                     case SQLITE_ROW:
                         break;
                     case SQLITE_DONE: {
