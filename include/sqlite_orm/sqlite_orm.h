@@ -175,11 +175,11 @@ using std::nullptr_t;
 #define SQLITE_ORM_CLANG_MSVC
 #endif
 
-#if defined(_MSC_VER) && !defined(__clang__)
+#ifdef SQLITE_ORM_MS_MSVC
 #define SQLITE_ORM_DO_PRAGMA(...) __pragma(__VA_ARGS__)
 #endif
 
-#if defined(SQLITE_ORM_MS_MSVC)
+#ifdef SQLITE_ORM_MS_MSVC
 #define SQLITE_ORM_MSVC_SUPPRESS(warncode, ...) SQLITE_ORM_DO_PRAGMA(warning(suppress : warncode))
 #else
 #define SQLITE_ORM_MSVC_SUPPRESS(warncode, ...) __VA_ARGS__
