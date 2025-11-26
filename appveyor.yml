@@ -57,8 +57,8 @@ environment:
 
     - job_name: clang, C++20 (with examples)
       appveyor_build_worker_image: Ubuntu
-      CC: clang-14
-      CXX: clang++-14
+      CC: clang
+      CXX: clang++
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
       # clang was stuck with a parallel build of examples
       cmake_build_parallel: ""
