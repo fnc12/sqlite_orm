@@ -54,8 +54,7 @@ TEST_CASE("obtain_xdestroy_for") {
 
     {
         constexpr int* int_nullptr = nullptr;
-#if !defined(SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION) ||                                                             \
-    (__cpp_constexpr >= 201907L)  //  Trivial default initialization in constexpr functions
+#if !defined(SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION) || defined(SQLITE_ORM_TRIVIAL_DEFAULTINIT_SUPPORTED)
         constexpr const int* const_int_nullptr = nullptr;
 #endif
 
@@ -76,20 +75,11 @@ TEST_CASE("obtain_xdestroy_for") {
         REQUIRE(xDestroy3 == &free);
 #endif
 
-#if __cpp_constexpr >= 201603L  //  constexpr lambda
         // [](void* p){}
         constexpr auto lambda4_1 = [](void*) {};
         constexpr xdestroy_fn_t xDestroy4_1 = obtain_xdestroy_for(lambda4_1, int_nullptr);
         STATIC_REQUIRE(xDestroy4_1 == lambda4_1);
         REQUIRE(xDestroy4_1 == lambda4_1);
-#else
-#if !defined(_MSC_VER) || (_MSC_VER >= 1914)  //  conversion of lambda closure to function pointer using `+`
-        // [](void* p){}
-        auto lambda4_1 = [](void*) {};
-        xdestroy_fn_t xDestroy4_1 = obtain_xdestroy_for(lambda4_1, int_nullptr);
-        REQUIRE(xDestroy4_1 == lambda4_1);
-#endif
-#endif
 
         // [](int* p) { delete p; }
 #if __cplusplus >= 202002L  //  default-constructible non-capturing lambdas
@@ -119,7 +109,7 @@ TEST_CASE("obtain_xdestroy_for") {
         REQUIRE((xDestroy7 == &xdestroy_proxy<delete_default_t<int>, const int>));
 #endif
 
-#if __cpp_constexpr >= 201907L  //  Trivial default initialization in constexpr functions
+#ifdef SQLITE_ORM_TRIVIAL_DEFAULTINIT_SUPPORTED
 #ifndef SQLITE_ORM_CLANG_MSVC
         // xdestroy_holder{ free }(int*)
         constexpr xdestroy_fn_t xDestroy8 = obtain_xdestroy_for(xdestroy_holder{free}, int_nullptr);
