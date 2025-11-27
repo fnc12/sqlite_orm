@@ -18,11 +18,20 @@ TEST_CASE("statement_serializer insert/replace") {
         int id = 0;
         std::string name;
     };
+    struct UserData1 {
+        int userId = 0;
+    };
+    struct UserData2 {
+        int userId = 0;
+    };
     auto table = make_table("users", make_column("id", &User::id), make_column("name", &User::name));
     auto table2 =
         make_table("users_backup", make_column("id", &UserBackup::id), make_column("name", &UserBackup::name));
-    using db_objects_t = internal::db_objects_tuple<decltype(table), decltype(table2)>;
-    auto dbObjects = db_objects_t{table, table2};
+    auto table3 = make_table("user_data1", make_column("user_id", &UserData1::userId, primary_key())).without_rowid();
+    auto table4 = make_table("user_data2", make_column("user_id", &UserData2::userId), primary_key(&UserData2::userId))
+                      .without_rowid();
+    std::tuple dbObjects = {table, table2, table3, table4};
+    using db_objects_t = decltype(dbObjects);
     using context_t = internal::serializer_context<db_objects_t>;
     context_t context{dbObjects};
     std::string value;
@@ -138,6 +147,8 @@ TEST_CASE("statement_serializer insert/replace") {
     }
     SECTION("insert") {
         User user{5, "Gambit"};
+        UserData1 userData1{5};
+        UserData2 userData2{5};
         SECTION("crud") {
             auto statement = insert(user);
             SECTION("question marks") {
@@ -148,6 +159,18 @@ TEST_CASE("statement_serializer insert/replace") {
                 context.replace_bindable_with_question = false;
                 expected = R"(INSERT INTO "users" ("id", "name") VALUES (5, 'Gambit'))";
             }
+            value = serialize(statement, context);
+        }
+        SECTION("crud without rowid 1") {
+            context.replace_bindable_with_question = false;
+            auto statement = insert(userData1);
+            expected = R"(INSERT INTO "user_data1" ("user_id") VALUES (5))";
+            value = serialize(statement, context);
+        }
+        SECTION("crud without rowid 2") {
+            context.replace_bindable_with_question = false;
+            auto statement = insert(userData2);
+            expected = R"(INSERT INTO "user_data2" ("user_id") VALUES (5))";
             value = serialize(statement, context);
         }
         SECTION("explicit") {
@@ -385,6 +408,8 @@ TEST_CASE("statement_serializer insert/replace") {
             context.replace_bindable_with_question = false;
 
             std::vector<User> users(1);
+            std::vector<UserData1> userData1(1);
+            std::vector<UserData2> userData2(1);
             SECTION("objects") {
                 auto expression = insert_range<User>(users.begin(), users.end());
                 // deduced object type
@@ -426,6 +451,16 @@ TEST_CASE("statement_serializer insert/replace") {
                     value = serialize(expression, context);
                     expected = R"(INSERT INTO "users" ("id", "name") VALUES (?, ?))";
                 }
+            }
+            SECTION("without rowid 1") {
+                auto expression = insert_range<UserData1>(userData1.begin(), userData1.end());
+                value = serialize(expression, context);
+                expected = R"(INSERT INTO "user_data1" ("user_id") VALUES (?))";
+            }
+            SECTION("without rowid 2") {
+                auto expression = insert_range<UserData2>(userData2.begin(), userData2.end());
+                value = serialize(expression, context);
+                expected = R"(INSERT INTO "user_data2" ("user_id") VALUES (?))";
             }
         }
     }
