@@ -6,8 +6,9 @@
 
 #include <sqlite_orm/sqlite_orm.h>
 
+// note: clang currently has problems to use constexpr variables in lambdas
 #if defined(SQLITE_ENABLE_RTREE) && SQLITE_VERSION_NUMBER >= 3024000 && defined(SQLITE_ORM_CPP20_RANGES_SUPPORTED) &&  \
-    defined(SQLITE_ORM_WITH_CPP20_ALIASES)
+    defined(SQLITE_ORM_WITH_CPP20_ALIASES) && !defined(__clang__)
 #define ENABLE_THIS_EXAMPLE
 #endif
 

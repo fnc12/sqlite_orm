@@ -48,7 +48,6 @@ TEST_CASE("generic vtab and dbstat layout tests") {
                                                              true
 #endif
                                                              ));
-        using table_type = decltype(table);
         using elements_type = decltype(table.elements);
 #if SQLITE_VERSION_NUMBER >= 3031000
         STATIC_REQUIRE(table_values_index_sequence<elements_type>::size() == 2);

@@ -81,7 +81,13 @@ namespace sqlite_orm {
             return stream_identifier(ss, "", identifier, "");
         }
 
-#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
+        template<typename Tpl, size_t... Is>
+        void stream_identifier(std::ostream& ss, const Tpl& tpl, std::index_sequence<Is...>) {
+            static_assert(sizeof...(Is) > 0 && sizeof...(Is) <= 3);
+            return stream_identifier(ss, std::get<Is>(tpl)...);
+        }
+
+#if defined(SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED) && defined(SQLITE_ORM_CONCEPTS_SUPPORTED)
         template<typename Tpl>
             requires polyfill::is_detected_v<type_t, std::tuple_size<Tpl>>
         void stream_identifier(std::ostream& ss, const Tpl& tpl) {
@@ -90,12 +96,6 @@ namespace sqlite_orm {
             return stream_identifier(ss, elements...);
         }
 #else
-        template<typename Tpl, size_t... Is>
-        void stream_identifier(std::ostream& ss, const Tpl& tpl, std::index_sequence<Is...>) {
-            static_assert(sizeof...(Is) > 0 && sizeof...(Is) <= 3, "");
-            return stream_identifier(ss, std::get<Is>(tpl)...);
-        }
-
         template<typename Tpl,
                  std::enable_if_t<polyfill::is_detected<type_t, std::tuple_size<Tpl>>::value, bool> = true>
         void stream_identifier(std::ostream& ss, const Tpl& tpl) {

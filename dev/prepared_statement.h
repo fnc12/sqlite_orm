@@ -47,7 +47,17 @@ namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3014000
             std::string expanded_sql() const {
                 // note: must check return value due to SQLITE_OMIT_TRACE
+#ifndef SQLITE_ORM_CLANG_MSVC
                 using char_ptr = std::unique_ptr<char[], std::integral_constant<decltype(&sqlite3_free), sqlite3_free>>;
+#else
+                struct sqlite3_memory_deleter {
+                    SQLITE_ORM_STATIC_CALLOP void operator()(void* mem) SQLITE_ORM_OR_CONST_CALLOP noexcept {
+                        sqlite3_free(mem);
+                    }
+                };
+                using char_ptr = std::unique_ptr<char[], sqlite3_memory_deleter>;
+#endif
+
                 if (char_ptr sql{sqlite3_expanded_sql(this->stmt)}) {
                     return sql.get();
                 } else {

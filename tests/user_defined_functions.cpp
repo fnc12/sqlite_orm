@@ -200,8 +200,8 @@ struct SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(alignas(2 * __STDCPP_DEFAULT_NEW_A
     }
 };
 
-struct SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(alignas(2 *
-                                                      __STDCPP_DEFAULT_NEW_ALIGNMENT__)) OverAlignedAggregateFunction {
+struct SQLITE_ORM_MSVC_SUPPRESS_OVERALIGNMENT(alignas(2 * __STDCPP_DEFAULT_NEW_ALIGNMENT__))
+    OverAlignedAggregateFunction {
     double sum = 0;
 
     void step(double arg) {

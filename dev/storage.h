@@ -1656,7 +1656,7 @@ namespace sqlite_orm {
                     this->executor.will_run_query(sql);
                 }
 
-                switch (int rc = sqlite3_step(stmt)) {
+                switch (SQLITE_ORM_SWITCH_MAYBE_UNUSED int rc = sqlite3_step(stmt)) {
                     case SQLITE_ROW:
                         break;
                     case SQLITE_DONE: {

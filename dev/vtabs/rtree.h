@@ -70,7 +70,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::virtual_table_definition<internal::rtree_module_tag, Cs...> using_rtree(Cs... definition) {
         internal::validate_rtree_definition<float, Cs...>();
 
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(definition)...)});
+        return {std::make_tuple(std::forward<Cs>(definition)...)};
     }
     /**
      *  Factory function for a RTREE_I32 virtual table definition.
@@ -79,7 +79,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::virtual_table_definition<internal::rtree_i32_module_tag, Cs...> using_rtree_i32(Cs... definition) {
         internal::validate_rtree_definition<std::int32_t, Cs...>();
 
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {std::make_tuple(std::forward<Cs>(definition)...)});
+        return {std::make_tuple(std::forward<Cs>(definition)...)};
     }
 }
 #endif
