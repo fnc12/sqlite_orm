@@ -14471,7 +14471,7 @@ namespace sqlite_orm {
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <memory>  //  std::unique_ptr
 #include <string>  //  std::string
-#include <type_traits>  //  std::integral_constant, std::declval
+#include <type_traits>  //  std::integral_constant, std::declval, std::is_convertible
 #include <utility>  //  std::move, std::forward, std::exchange, std::pair
 #include <tuple>  //  std::tuple
 #endif
@@ -15869,6 +15869,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class O, class It, class Projection = polyfill::identity>
     internal::replace_range_t<It, Projection, O> replace_range(It from, It to, Projection project = {}) {
+        // validate up front that projected type is convertible to mapped object type, avoiding hard to read error messages later;
+        // note: we use `is_convertible` instead of `is_invocable_r` because we do not create dangling references in `storage_t<>::execute()`
+        using projected_type = decltype(polyfill::invoke(std::declval<Projection>(), *std::declval<It>()));
+        static_assert(std::is_convertible<projected_type, const O&>::value,
+                      "Projected type must be convertible to mapped object type");
+
         return {{std::move(from), std::move(to)}, std::move(project)};
     }
 
@@ -15903,6 +15909,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class O, class It, class Projection = polyfill::identity>
     internal::insert_range_t<It, Projection, O> insert_range(It from, It to, Projection project = {}) {
+        // validate up front that projected type is convertible to mapped object type, avoiding hard to read error messages later;
+        // note: we use `is_convertible` instead of `is_invocable_r` because we do not create dangling references in `storage_t<>::execute()`
+        using projected_type = decltype(polyfill::invoke(std::declval<Projection>(), *std::declval<It>()));
+        static_assert(std::is_convertible<projected_type, const O&>::value,
+                      "Projected type must be convertible to mapped object type");
+
         return {{std::move(from), std::move(to)}, std::move(project)};
     }
 
@@ -25638,7 +25650,7 @@ namespace sqlite_orm {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
                 auto processObject = [&table = this->get_table<object_type>(),
-                                      bindValue = field_value_binder{stmt}](auto& object) mutable {
+                                      bindValue = field_value_binder{stmt}](const object_type& object) mutable {
                     table.template for_each_column_excluding<is_generated_always>(
                         call_as_template_base<column_field>([&bindValue, &object](auto& column) {
                             bindValue(polyfill::invoke(column.member_pointer, object));
@@ -25655,8 +25667,10 @@ namespace sqlite_orm {
                     auto& transformer = statement.expression.transformer;
                     std::for_each(statement.expression.range.first,
                                   statement.expression.range.second,
-                                  [&processObject, &transformer](auto& item) {
-                                      const object_type& object = polyfill::invoke(transformer, item);
+                                  [&processObject, &transformer](auto&& item) {
+                                      using item_type = decltype(item);
+                                      const object_type& object =
+                                          polyfill::invoke(transformer, std::forward<item_type>(item));
                                       processObject(object);
                                   });
 #endif
@@ -25680,7 +25694,7 @@ namespace sqlite_orm {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
                 auto processObject = [&table = this->get_table<object_type>(),
-                                      bindValue = field_value_binder{stmt}](auto& object) mutable {
+                                      bindValue = field_value_binder{stmt}](const object_type& object) mutable {
                     using table_type = polyfill::remove_cvref_t<decltype(table)>;
                     using is_without_rowid = typename table_type::is_without_rowid;
 
@@ -25705,8 +25719,10 @@ namespace sqlite_orm {
                     auto& transformer = statement.expression.transformer;
                     std::for_each(statement.expression.range.first,
                                   statement.expression.range.second,
-                                  [&processObject, &transformer](auto& item) {
-                                      const object_type& object = polyfill::invoke(transformer, item);
+                                  [&processObject, &transformer](auto&& item) {
+                                      using item_type = decltype(item);
+                                      const object_type& object =
+                                          polyfill::invoke(transformer, std::forward<item_type>(item));
                                       processObject(object);
                                   });
 #endif

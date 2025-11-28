@@ -75,9 +75,17 @@ TEST_CASE("Prepared replace range") {
         SECTION("pointers") {
             userPointers.push_back(std::make_unique<User>(user));
             auto statement = storage.prepare(
-                replace_range<User>(userPointers.begin(), userPointers.end(), &std::unique_ptr<User>::operator*));
+                replace_range(userPointers.begin(), userPointers.end(), &std::unique_ptr<User>::operator*));
             REQUIRE(get<0>(statement) == userPointers.begin());
             REQUIRE(get<1>(statement) == userPointers.end());
+            storage.execute(statement);
+        }
+        SECTION("references") {
+            users.push_back(user);
+            std::vector<std::reference_wrapper<User>> usersRefs{users.begin(), users.end()};
+            auto statement = storage.prepare(replace_range<User>(usersRefs.begin(), usersRefs.end()));
+            REQUIRE(get<0>(statement) == usersRefs.begin());
+            REQUIRE(get<1>(statement) == usersRefs.end());
             storage.execute(statement);
         }
     }

@@ -80,6 +80,13 @@ TEST_CASE("Prepared insert range") {
             REQUIRE(get<1>(statement) == usersPointers.end());
             storage.execute(statement);
         }
+        SECTION("container with references") {
+            std::vector<std::reference_wrapper<User>> usersRefs{users.begin(), users.end()};
+            auto statement = storage.prepare(insert_range<User>(usersRefs.begin(), usersRefs.end()));
+            REQUIRE(get<0>(statement) == usersRefs.begin());
+            REQUIRE(get<1>(statement) == usersRefs.end());
+            storage.execute(statement);
+        }
         expected.push_back(user);
     }
     SECTION("two") {

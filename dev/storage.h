@@ -1491,7 +1491,7 @@ namespace sqlite_orm {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
                 auto processObject = [&table = this->get_table<object_type>(),
-                                      bindValue = field_value_binder{stmt}](auto& object) mutable {
+                                      bindValue = field_value_binder{stmt}](const object_type& object) mutable {
                     table.template for_each_column_excluding<is_generated_always>(
                         call_as_template_base<column_field>([&bindValue, &object](auto& column) {
                             bindValue(polyfill::invoke(column.member_pointer, object));
@@ -1508,8 +1508,10 @@ namespace sqlite_orm {
                     auto& transformer = statement.expression.transformer;
                     std::for_each(statement.expression.range.first,
                                   statement.expression.range.second,
-                                  [&processObject, &transformer](auto& item) {
-                                      const object_type& object = polyfill::invoke(transformer, item);
+                                  [&processObject, &transformer](auto&& item) {
+                                      using item_type = decltype(item);
+                                      const object_type& object =
+                                          polyfill::invoke(transformer, std::forward<item_type>(item));
                                       processObject(object);
                                   });
 #endif
@@ -1533,7 +1535,7 @@ namespace sqlite_orm {
                 sqlite3_stmt* stmt = reset_stmt(statement.stmt);
 
                 auto processObject = [&table = this->get_table<object_type>(),
-                                      bindValue = field_value_binder{stmt}](auto& object) mutable {
+                                      bindValue = field_value_binder{stmt}](const object_type& object) mutable {
                     using table_type = polyfill::remove_cvref_t<decltype(table)>;
                     using is_without_rowid = typename table_type::is_without_rowid;
 
@@ -1558,8 +1560,10 @@ namespace sqlite_orm {
                     auto& transformer = statement.expression.transformer;
                     std::for_each(statement.expression.range.first,
                                   statement.expression.range.second,
-                                  [&processObject, &transformer](auto& item) {
-                                      const object_type& object = polyfill::invoke(transformer, item);
+                                  [&processObject, &transformer](auto&& item) {
+                                      using item_type = decltype(item);
+                                      const object_type& object =
+                                          polyfill::invoke(transformer, std::forward<item_type>(item));
                                       processObject(object);
                                   });
 #endif
