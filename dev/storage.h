@@ -936,9 +936,12 @@ namespace sqlite_orm {
             }
 
             /**
-             *  Insert routine. Inserts object with all non primary key fields in passed object. Id of passed
-             *  object doesn't matter.
-             *  @return id of just created object.
+             *  Insert routine.
+             *  
+             *  - For objects mapped to a table with rowid: Inserts a record with all fields of a mapped object that are not primary key columns.
+             *      The 'ID' of the specified object is irrelevant.
+             *  - For objects mapped to a table without rowid: Inserts a record with all fields of a mapped object.
+             *  @return The ID of the newly created record.
              */
             template<class O>
             int insert(const O& o) {

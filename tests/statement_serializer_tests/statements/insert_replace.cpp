@@ -161,13 +161,13 @@ TEST_CASE("statement_serializer insert/replace") {
             }
             value = serialize(statement, context);
         }
-        SECTION("crud without rowid 1") {
+        SECTION("crud without rowid, column pk") {
             context.replace_bindable_with_question = false;
             auto statement = insert(userData1);
             expected = R"(INSERT INTO "user_data1" ("user_id") VALUES (5))";
             value = serialize(statement, context);
         }
-        SECTION("crud without rowid 2") {
+        SECTION("crud without rowid, table pk") {
             context.replace_bindable_with_question = false;
             auto statement = insert(userData2);
             expected = R"(INSERT INTO "user_data2" ("user_id") VALUES (5))";
@@ -452,12 +452,12 @@ TEST_CASE("statement_serializer insert/replace") {
                     expected = R"(INSERT INTO "users" ("id", "name") VALUES (?, ?))";
                 }
             }
-            SECTION("without rowid 1") {
+            SECTION("without rowid, column pk") {
                 auto expression = insert_range<UserData1>(userData1.begin(), userData1.end());
                 value = serialize(expression, context);
                 expected = R"(INSERT INTO "user_data1" ("user_id") VALUES (?))";
             }
-            SECTION("without rowid 2") {
+            SECTION("without rowid, table pk") {
                 auto expression = insert_range<UserData2>(userData2.begin(), userData2.end());
                 value = serialize(expression, context);
                 expected = R"(INSERT INTO "user_data2" ("user_id") VALUES (?))";

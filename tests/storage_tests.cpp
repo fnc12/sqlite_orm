@@ -486,6 +486,9 @@ TEST_CASE("insert") {
         int id;
         std::string name;
     };
+    struct ObjectWithoutRowid2 {
+        int id = 0;
+    };
 
     auto storage = make_storage(
         "test_insert.sqlite",
@@ -493,30 +496,38 @@ TEST_CASE("insert") {
         make_table("objects_without_rowid",
                    make_column("id", &ObjectWithoutRowid::id, primary_key()),
                    make_column("name", &ObjectWithoutRowid::name))
+            .without_rowid(),
+        make_table("objects_without_rowid2",
+                   make_column("id", &ObjectWithoutRowid2::id),
+                   primary_key(&ObjectWithoutRowid2::id))
             .without_rowid());
 
     storage.sync_schema();
     storage.remove_all<Object>();
     storage.remove_all<ObjectWithoutRowid>();
+    storage.remove_all<ObjectWithoutRowid2>();
 
-    for (auto i = 0; i < 100; ++i) {
-        storage.insert(Object{
-            0,
-            "Skillet",
-        });
-        REQUIRE(storage.count<Object>() == i + 1);
-    }
+    storage.transaction([&storage]() {
+        for (auto i = 0; i < 100; ++i) {
+            REQUIRE(storage.insert(Object{
+                        0,
+                        "Skillet",
+                    }) == i + 1);
+        }
+        return true;
+    });
+    REQUIRE(storage.count<Object>() == 100);
 
-    auto initList = {
-        Object{
+    const std::initializer_list<Object> initList = {
+        {
             0,
             "Insane",
         },
-        Object{
+        {
             0,
             "Super",
         },
-        Object{
+        {
             0,
             "Sun",
         },
@@ -544,12 +555,16 @@ TEST_CASE("insert") {
         REQUIRE_NOTHROW(
             storage.insert_range(emptyVector.begin(), emptyVector.end(), &std::unique_ptr<Object>::operator*));
     }
-
-    //  test insert without rowid
-    storage.insert(ObjectWithoutRowid{10, "Life"});
-    REQUIRE(storage.get<ObjectWithoutRowid>(10).name == "Life");
-    storage.insert(ObjectWithoutRowid{20, "Death"});
-    REQUIRE(storage.get<ObjectWithoutRowid>(20).name == "Death");
+    SECTION("without rowid, column pk") {
+        REQUIRE(storage.insert(ObjectWithoutRowid{10, "Life"}) == 0);
+        REQUIRE(storage.get<ObjectWithoutRowid>(10).name == "Life");
+        REQUIRE(storage.insert(ObjectWithoutRowid{20, "Death"}) == 0);
+        REQUIRE(storage.get<ObjectWithoutRowid>(20).name == "Death");
+    }
+    SECTION("without rowid, table pk") {
+        REQUIRE(storage.insert(ObjectWithoutRowid2{2}) == 0);
+        REQUIRE_NOTHROW(storage.get<ObjectWithoutRowid2>(2));
+    }
 }
 
 TEST_CASE("Empty storage") {
