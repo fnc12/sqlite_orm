@@ -54,7 +54,7 @@ namespace sqlite_orm {
         // No CTE for object expression.
         template<class DBOs, class E>
         struct column_expression_type<DBOs, object_t<E>, void> {
-            static_assert(polyfill::always_false_v<E>, "Selecting an object in a subselect is not allowed.");
+            static_assert(polyfill::always_false_v<E>, "Selecting an object in a subselect is not allowed");
         };
 
         /**

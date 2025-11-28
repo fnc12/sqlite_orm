@@ -1233,7 +1233,7 @@ namespace sqlite_orm {
                 template<class Pack, class ProjectQ>
                 struct invoke_this_fn {
                     static_assert(polyfill::always_false_v<Pack>,
-                                  "`finds` must be invoked with a type list as first argument.");
+                                  "`finds` must be invoked with a type list as first argument");
                 };
 
                 template<template<class...> class Pack, class... T, class ProjectQ>
@@ -1260,7 +1260,7 @@ namespace sqlite_orm {
                 template<class Pack, class ProjectQ>
                 struct invoke_this_fn {
                     static_assert(polyfill::always_false_v<Pack>,
-                                  "`counts` must be invoked with a type list as first argument.");
+                                  "`counts` must be invoked with a type list as first argument");
                 };
 
                 template<template<class...> class Pack, class... T, class ProjectQ>
@@ -1287,7 +1287,7 @@ namespace sqlite_orm {
                 template<class Pack, class ProjectQ>
                 struct invoke_this_fn {
                     static_assert(polyfill::always_false_v<Pack>,
-                                  "`contains` must be invoked with a type list as first argument.");
+                                  "`contains` must be invoked with a type list as first argument");
                 };
 
                 template<template<class...> class Pack, class... T, class ProjectQ>
@@ -9773,7 +9773,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         using namespace ::sqlite_orm::internal;
         static_assert(is_cte_moniker_v<Moniker>, "Moniker must be a CTE moniker");
         static_assert((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
-                      "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
+                      "Numeric column aliases are reserved for referencing columns locally within a single CTE");
 
         using builder_type =
             cte_builder<Moniker, transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
@@ -9790,7 +9790,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     constexpr auto cte(ExplicitCols... explicitColumns) {
         using namespace ::sqlite_orm::internal;
         static_assert((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
-                      "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
+                      "Numeric column aliases are reserved for referencing columns locally within a single CTE");
 
         using builder_type = cte_builder<std::remove_const_t<decltype(moniker)>,
                                          transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
@@ -10249,7 +10249,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         requires (internal::is_unusable_for_xdestroy<D>)
     {
         static_assert(polyfill::always_false_v<D>,
-                      "A function pointer, which is not of type xdestroy_fn_t, is prohibited.");
+                      "A function pointer, which is not of type xdestroy_fn_t, is prohibited");
         return nullptr;
     }
 
@@ -10296,7 +10296,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<typename P, typename D, std::enable_if_t<internal::is_unusable_for_xdestroy_v<D>, bool> = true>
     constexpr xdestroy_fn_t obtain_xdestroy_for(D, P* = nullptr) {
         static_assert(polyfill::always_false_v<D>,
-                      "A function pointer, which is not of type xdestroy_fn_t, is prohibited.");
+                      "A function pointer, which is not of type xdestroy_fn_t, is prohibited");
         return nullptr;
     }
 
@@ -12368,7 +12368,7 @@ namespace sqlite_orm {
             using colalias_index =
                 find_tuple_type<typename cte_mapper_type::final_colrefs_tuple, alias_holder<ColAlias>>;
             static_assert(colalias_index::value < std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
-                          "No such column mapped into the CTE.");
+                          "No such column mapped into the CTE");
             using type = std::tuple_element_t<colalias_index::value, typename cte_mapper_type::fields_type>;
         };
 #endif
@@ -13224,7 +13224,7 @@ namespace sqlite_orm {
             // lookup ColAlias in the final column references
             using colalias_index = find_tuple_type<cte_colrefs_tuple, alias_holder<ColAlias>>;
             static_assert(colalias_index::value < std::tuple_size_v<cte_colrefs_tuple>,
-                          "No such column mapped into the CTE.");
+                          "No such column mapped into the CTE");
 
             return &aliased_field<ColAlias, std::tuple_element_t<colalias_index::value, cte_fields_type>>::field;
         }
@@ -13257,7 +13257,7 @@ namespace sqlite_orm {
             // lookup ColAlias in the final column references
             using colalias_index = find_tuple_type<cte_colrefs_tuple, alias_holder<ColAlias>>;
             static_assert(colalias_index::value < std::tuple_size_v<cte_colrefs_tuple>,
-                          "No such column mapped into the CTE.");
+                          "No such column mapped into the CTE");
 
             // note: we could "materialize" the alias to an `aliased_field<>::*` and use the regular `cte_table<>::find_column_name()` mechanism;
             //       however we have the column index already.
@@ -20504,13 +20504,13 @@ namespace sqlite_orm {
         // No CTE for object expressions.
         template<class Object>
         struct cte_column_names_collector<Object, match_specialization_of<Object, object_t>> {
-            static_assert(polyfill::always_false_v<Object>, "Selecting an object in a subselect is not allowed.");
+            static_assert(polyfill::always_false_v<Object>, "Selecting an object in a subselect is not allowed");
         };
 
         // No CTE for object expressions.
         template<class Object>
         struct cte_column_names_collector<Object, match_if<is_struct, Object>> {
-            static_assert(polyfill::always_false_v<Object>, "Repacking columns in a subselect is not allowed.");
+            static_assert(polyfill::always_false_v<Object>, "Repacking columns in a subselect is not allowed");
         };
 
         template<class Columns>
@@ -23761,7 +23761,7 @@ namespace sqlite_orm {
         // No CTE for object expression.
         template<class DBOs, class E>
         struct column_expression_type<DBOs, object_t<E>, void> {
-            static_assert(polyfill::always_false_v<E>, "Selecting an object in a subselect is not allowed.");
+            static_assert(polyfill::always_false_v<E>, "Selecting an object in a subselect is not allowed");
         };
 
         /**
@@ -24067,7 +24067,7 @@ namespace sqlite_orm {
                     (!is_builtin_numeric_column_alias_v<
                          alias_holder_type_or_none_t<std::tuple_element_t<Idx, ExplicitColRefs>>> &&
                      ...),
-                    "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
+                    "Numeric column aliases are reserved for referencing columns locally within a single CTE");
 
                 return std::tuple{
                     determine_cte_colref(dbObjects, get<Idx>(subselectColRefs), get<Idx>(explicitColRefs))...};
