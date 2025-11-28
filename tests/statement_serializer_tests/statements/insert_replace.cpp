@@ -18,6 +18,14 @@ TEST_CASE("statement_serializer insert/replace") {
         int id = 0;
         std::string name;
     };
+    struct User2 {
+        int id = 0;
+        std::string name;
+    };
+    struct User3 {
+        int id = 0;
+        std::string name;
+    };
     struct UserData1 {
         int userId = 0;
     };
@@ -27,10 +35,13 @@ TEST_CASE("statement_serializer insert/replace") {
     auto table = make_table("users", make_column("id", &User::id), make_column("name", &User::name));
     auto table2 =
         make_table("users_backup", make_column("id", &UserBackup::id), make_column("name", &UserBackup::name));
-    auto table3 = make_table("user_data1", make_column("user_id", &UserData1::userId, primary_key())).without_rowid();
-    auto table4 = make_table("user_data2", make_column("user_id", &UserData2::userId), primary_key(&UserData2::userId))
+    auto table3 = make_table("users2", make_column("id", &User2::id, primary_key()), make_column("name", &User2::name));
+    auto table4 =
+        make_table("users3", make_column("id", &User3::id), make_column("name", &User3::name), primary_key(&User3::id));
+    auto table5 = make_table("user_data1", make_column("user_id", &UserData1::userId, primary_key())).without_rowid();
+    auto table6 = make_table("user_data2", make_column("user_id", &UserData2::userId), primary_key(&UserData2::userId))
                       .without_rowid();
-    std::tuple dbObjects = {table, table2, table3, table4};
+    std::tuple dbObjects = {table, table2, table3, table4, table5, table6};
     using db_objects_t = decltype(dbObjects);
     using context_t = internal::serializer_context<db_objects_t>;
     context_t context{dbObjects};
@@ -147,6 +158,8 @@ TEST_CASE("statement_serializer insert/replace") {
     }
     SECTION("insert") {
         User user{5, "Gambit"};
+        User2 user2{5, "Gambit"};
+        User3 user3{5, "Gambit"};
         UserData1 userData1{5};
         UserData2 userData2{5};
         SECTION("crud") {
@@ -159,6 +172,18 @@ TEST_CASE("statement_serializer insert/replace") {
                 context.replace_bindable_with_question = false;
                 expected = R"(INSERT INTO "users" ("id", "name") VALUES (5, 'Gambit'))";
             }
+            value = serialize(statement, context);
+        }
+        SECTION("crud with rowid, column pk") {
+            context.replace_bindable_with_question = false;
+            auto statement = insert(user2);
+            expected = R"(INSERT INTO "users2" ("name") VALUES ('Gambit'))";
+            value = serialize(statement, context);
+        }
+        SECTION("crud with rowid, table pk") {
+            context.replace_bindable_with_question = false;
+            auto statement = insert(user3);
+            expected = R"(INSERT INTO "users3" ("name") VALUES ('Gambit'))";
             value = serialize(statement, context);
         }
         SECTION("crud without rowid, column pk") {
@@ -408,6 +433,8 @@ TEST_CASE("statement_serializer insert/replace") {
             context.replace_bindable_with_question = false;
 
             std::vector<User> users(1);
+            std::vector<User2> users2(1);
+            std::vector<User3> users3(1);
             std::vector<UserData1> userData1(1);
             std::vector<UserData2> userData2(1);
             SECTION("objects") {
@@ -451,6 +478,16 @@ TEST_CASE("statement_serializer insert/replace") {
                     value = serialize(expression, context);
                     expected = R"(INSERT INTO "users" ("id", "name") VALUES (?, ?))";
                 }
+            }
+            SECTION("wit rowid, column pk") {
+                auto expression = insert_range<User2>(users2.begin(), users2.end());
+                value = serialize(expression, context);
+                expected = R"(INSERT INTO "users2" ("name") VALUES (?))";
+            }
+            SECTION("with rowid, table pk") {
+                auto expression = insert_range<User3>(users3.begin(), users3.end());
+                value = serialize(expression, context);
+                expected = R"(INSERT INTO "users3" ("name") VALUES (?))";
             }
             SECTION("without rowid, column pk") {
                 auto expression = insert_range<UserData1>(userData1.begin(), userData1.end());
