@@ -12819,8 +12819,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class... Cs, class G, class S>
-    bool exists_in_table_primary_key(const insertable_table_definition<Cs...>& definition,
-                                     const column_field<G, S>& column) {
+    bool table_primary_key_contains(const insertable_table_definition<Cs...>& definition,
+                                    const column_field<G, S>& column) {
         bool res = false;
         definition.for_each_primary_key([&column, &res](auto& primaryKey) {
             using colrefs_tuple = decltype(primaryKey.columns);
@@ -22585,7 +22585,7 @@ namespace sqlite_orm {
                 ss << "UPDATE " << streaming_identifier(table.name) << " SET ";
                 table.template for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
                     [&table, &ss, &context, &object = get_ref(statement.object), first = true](auto& column) mutable {
-                        if (exists_in_table_primary_key(table, column)) {
+                        if (table_primary_key_contains(table, column)) {
                             return;
                         }
 
@@ -22596,7 +22596,7 @@ namespace sqlite_orm {
                 ss << " WHERE ";
                 table.for_each_column(
                     [&table, &context, &ss, &object = get_ref(statement.object), first = true](auto& column) mutable {
-                        if (!column.template is<is_primary_key>() && !exists_in_table_primary_key(table, column)) {
+                        if (!column.template is<is_primary_key>() && !table_primary_key_contains(table, column)) {
                             return;
                         }
 
@@ -25779,13 +25779,13 @@ namespace sqlite_orm {
                 auto& object = get_object(statement.expression);
                 table.template for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
                     call_as_template_base<column_field>([&table, &bindValue, &object](auto& column) {
-                        if (exists_in_table_primary_key(table, column)) {
+                        if (table_primary_key_contains(table, column)) {
                             return;
                         }
                         bindValue(polyfill::invoke(column.member_pointer, object));
                     }));
                 table.for_each_column([&table, &bindValue, &object](auto& column) {
-                    if (!column.template is<is_primary_key>() && !exists_in_table_primary_key(table, column)) {
+                    if (!column.template is<is_primary_key>() && !table_primary_key_contains(table, column)) {
                         return;
                     }
                     bindValue(polyfill::invoke(column.member_pointer, object));

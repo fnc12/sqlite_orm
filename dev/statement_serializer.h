@@ -1472,7 +1472,7 @@ namespace sqlite_orm {
                 ss << "UPDATE " << streaming_identifier(table.name) << " SET ";
                 table.template for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
                     [&table, &ss, &context, &object = get_ref(statement.object), first = true](auto& column) mutable {
-                        if (exists_in_table_primary_key(table, column)) {
+                        if (table_primary_key_contains(table, column)) {
                             return;
                         }
 
@@ -1483,7 +1483,7 @@ namespace sqlite_orm {
                 ss << " WHERE ";
                 table.for_each_column(
                     [&table, &context, &ss, &object = get_ref(statement.object), first = true](auto& column) mutable {
-                        if (!column.template is<is_primary_key>() && !exists_in_table_primary_key(table, column)) {
+                        if (!column.template is<is_primary_key>() && !table_primary_key_contains(table, column)) {
                             return;
                         }
 

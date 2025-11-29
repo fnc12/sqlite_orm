@@ -946,7 +946,9 @@ namespace sqlite_orm {
              *  - For objects mapped to a table without rowid:
              *    Inserts a record with all fields of a mapped object.
              *  
-             *  @return The ID of the newly created record for a table with rowid, 0 otherwise.
+             *  @return The ID of the last inserted record for a table with rowid, otherwise a meaningless value.
+             *          Attention: While SQLite returns a 64-bit integer as rowid, this function returns an `int` that most likely has less precision.
+             *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
              */
             template<class O>
             int insert(const O& o) {
@@ -1599,13 +1601,13 @@ namespace sqlite_orm {
                 auto& object = get_object(statement.expression);
                 table.template for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
                     call_as_template_base<column_field>([&table, &bindValue, &object](auto& column) {
-                        if (exists_in_table_primary_key(table, column)) {
+                        if (table_primary_key_contains(table, column)) {
                             return;
                         }
                         bindValue(polyfill::invoke(column.member_pointer, object));
                     }));
                 table.for_each_column([&table, &bindValue, &object](auto& column) {
-                    if (!column.template is<is_primary_key>() && !exists_in_table_primary_key(table, column)) {
+                    if (!column.template is<is_primary_key>() && !table_primary_key_contains(table, column)) {
                         return;
                     }
                     bindValue(polyfill::invoke(column.member_pointer, object));

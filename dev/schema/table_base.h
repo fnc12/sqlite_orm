@@ -175,8 +175,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class... Cs, class G, class S>
-    bool exists_in_table_primary_key(const insertable_table_definition<Cs...>& definition,
-                                     const column_field<G, S>& column) {
+    bool table_primary_key_contains(const insertable_table_definition<Cs...>& definition,
+                                    const column_field<G, S>& column) {
         bool res = false;
         definition.for_each_primary_key([&column, &res](auto& primaryKey) {
             using colrefs_tuple = decltype(primaryKey.columns);
