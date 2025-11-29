@@ -142,17 +142,17 @@ TEST_CASE("statement_serializer insert/replace") {
                     value = serialize(expression, context);
                     expected = R"(REPLACE INTO "users" ("id", "name") VALUES (?, ?))";
                 }
+#ifdef _MSC_VER /* `&std::reference_wrapper<long>::get` is only invocable with Microsoft STL and libstdc++ 15 */
                 SECTION("projected") {
                     auto expression =
                         replace_range<User>(userRefs.begin(), userRefs.end(), &std::reference_wrapper<User>::get);
-#ifdef _MSC_VER /* `&std::reference_wrapper<long>::get` is only invocable with Microsoft STL */
                     // deduced object type
                     assert_same(replace_range(userRefs.begin(), userRefs.end(), &std::reference_wrapper<User>::get),
                                 expression);
-#endif
                     value = serialize(expression, context);
                     expected = R"(REPLACE INTO "users" ("id", "name") VALUES (?, ?))";
                 }
+#endif
             }
         }
     }
@@ -467,17 +467,17 @@ TEST_CASE("statement_serializer insert/replace") {
                     value = serialize(expression, context);
                     expected = R"(INSERT INTO "users" ("id", "name") VALUES (?, ?))";
                 }
+#ifdef _MSC_VER /* `&std::reference_wrapper<long>::get` is only invocable with Microsoft STL and libstdc++ 15 */
                 SECTION("projected") {
                     auto expression =
                         insert_range<User>(userRefs.begin(), userRefs.end(), &std::reference_wrapper<User>::get);
-#ifdef _MSC_VER /* `&std::reference_wrapper<long>::get` is only invocable with Microsoft STL */
                     // deduced object type
                     assert_same(insert_range(userRefs.begin(), userRefs.end(), &std::reference_wrapper<User>::get),
                                 expression);
-#endif
                     value = serialize(expression, context);
                     expected = R"(INSERT INTO "users" ("id", "name") VALUES (?, ?))";
                 }
+#endif
             }
             SECTION("wit rowid, column pk") {
                 auto expression = insert_range<User2>(users2.begin(), users2.end());
