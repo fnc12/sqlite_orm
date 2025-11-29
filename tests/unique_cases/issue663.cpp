@@ -80,7 +80,7 @@ namespace {
     };
 }
 
-TEST_CASE("Issue 663 - pk inside") {
+TEST_CASE("Issue 663 - column pk") {
 
     auto storage = make_storage("",
                                 make_table("users",
@@ -99,7 +99,7 @@ TEST_CASE("Issue 663 - pk inside") {
     }
 }
 
-TEST_CASE("Issue 663 - pk outside") {
+TEST_CASE("Issue 663 - single table pk") {
 
     auto storage = make_storage("",
                                 make_table("users",
@@ -125,7 +125,7 @@ namespace {
         std::string name;
     };
 }
-TEST_CASE("Issue 663 - pk outside, with default") {
+TEST_CASE("Issue 663 - composite table pk with default") {
     auto storage =
         make_storage("",
                      make_table("users",
@@ -148,7 +148,7 @@ namespace {
         std::string id;
     };
 }
-TEST_CASE("Issue 663 - pk inside, with default") {
+TEST_CASE("Issue 663 - column pk with default") {
     auto storage =
         make_storage("", make_table("users", make_column("id", &User3::id, primary_key(), default_value("200"))));
     storage.sync_schema();

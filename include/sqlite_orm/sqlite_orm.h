@@ -12755,7 +12755,7 @@ namespace sqlite_orm::internal {
     };
 
     /** 
-     *  Encapsulates table elements, i.e. columns and constraints for a type of table that can have primary keys - base tables and usually virtual tables -,
+     *  Encapsulates table elements, i.e. columns and constraints for a type of table that can have a primary key - base tables and usually virtual tables -,
      *  and provides additional methods to those of a generic table definition in order to deal with primary key columns.
      */
     template<class... Cs>
@@ -12764,7 +12764,7 @@ namespace sqlite_orm::internal {
         using elements_type = elements_type_t<definition_base_type>;
 
         /**
-         *  Call passed lambda with all defined primary keys.
+         *  Call passed lambda with the defined table primary key.
          */
         template<class L>
         void for_each_primary_key(L&& lambda) const {
@@ -12772,10 +12772,10 @@ namespace sqlite_orm::internal {
             iterate_tuple(this->elements, pk_index_sequence{}, lambda);
         }
 
-        std::vector<std::string> composite_key_columns_names() const {
+        std::vector<std::string> table_key_columns_names() const {
             std::vector<std::string> res;
             this->for_each_primary_key([this, &res](auto& primaryKey) {
-                res = this->composite_key_columns_names(primaryKey);
+                res = this->table_key_columns_names(primaryKey);
             });
             return res;
         }
@@ -12788,7 +12788,7 @@ namespace sqlite_orm::internal {
                                                                    pkcol_index_sequence{},
                                                                    &column_identifier::name);
             } else {
-                return this->composite_key_columns_names();
+                return this->table_key_columns_names();
             }
         }
 
@@ -12805,7 +12805,7 @@ namespace sqlite_orm::internal {
         }
 
         template<class... Args>
-        std::vector<std::string> composite_key_columns_names(const primary_key_t<Args...>& primaryKey) const {
+        std::vector<std::string> table_key_columns_names(const primary_key_t<Args...>& primaryKey) const {
             return create_from_tuple<std::vector<std::string>>(primaryKey.columns,
                                                                [this, empty = std::string{}](auto& memberPointer) {
                                                                    if (const std::string* columnName =
@@ -12819,8 +12819,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class... Cs, class G, class S>
-    bool exists_in_composite_primary_key(const insertable_table_definition<Cs...>& definition,
-                                         const column_field<G, S>& column) {
+    bool exists_in_table_primary_key(const insertable_table_definition<Cs...>& definition,
+                                     const column_field<G, S>& column) {
         bool res = false;
         definition.for_each_primary_key([&column, &res](auto& primaryKey) {
             using colrefs_tuple = decltype(primaryKey.columns);
@@ -22566,7 +22566,7 @@ namespace sqlite_orm {
                 ss << "UPDATE " << streaming_identifier(table.name) << " SET ";
                 table.template for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
                     [&table, &ss, &context, &object = get_ref(statement.object), first = true](auto& column) mutable {
-                        if (exists_in_composite_primary_key(table, column)) {
+                        if (exists_in_table_primary_key(table, column)) {
                             return;
                         }
 
@@ -22577,7 +22577,7 @@ namespace sqlite_orm {
                 ss << " WHERE ";
                 table.for_each_column(
                     [&table, &context, &ss, &object = get_ref(statement.object), first = true](auto& column) mutable {
-                        if (!column.template is<is_primary_key>() && !exists_in_composite_primary_key(table, column)) {
+                        if (!column.template is<is_primary_key>() && !exists_in_table_primary_key(table, column)) {
                             return;
                         }
 
@@ -22693,7 +22693,7 @@ namespace sqlite_orm {
                     mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                      mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
                     [&table, &columnNames](auto& column) {
-                        if (!is_without_rowid::value && exists_in_composite_primary_key(table, column)) {
+                        if (!is_without_rowid::value && exists_in_table_primary_key(table, column)) {
                             return;
                         }
 
@@ -22715,7 +22715,7 @@ namespace sqlite_orm {
                               mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                                mpl::disjunction_fn<is_primary_key, is_generated_always>>{},
                               [&table](auto& column) {
-                                  return !is_without_rowid::value && exists_in_composite_primary_key(table, column);
+                                  return !is_without_rowid::value && exists_in_table_primary_key(table, column);
                               },
                               context,
                               get_ref(statement.object))
@@ -22865,7 +22865,7 @@ namespace sqlite_orm {
                     mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                      mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
                     [&table, &columnNames](auto& column) {
-                        if (!is_without_rowid::value && exists_in_composite_primary_key(table, column)) {
+                        if (!is_without_rowid::value && exists_in_table_primary_key(table, column)) {
                             return;
                         }
 
@@ -25702,7 +25702,7 @@ namespace sqlite_orm {
                         mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                          mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
                         call_as_template_base<column_field>([&table, &bindValue, &object](auto& column) {
-                            if (!is_without_rowid::value && exists_in_composite_primary_key(table, column)) {
+                            if (!is_without_rowid::value && exists_in_table_primary_key(table, column)) {
                                 return;
                             }
                             bindValue(polyfill::invoke(column.member_pointer, object));
@@ -25753,14 +25753,16 @@ namespace sqlite_orm {
                 auto& object = get_object(statement.expression);
                 table.template for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
                     call_as_template_base<column_field>([&table, &bindValue, &object](auto& column) {
-                        if (!exists_in_composite_primary_key(table, column)) {
-                            bindValue(polyfill::invoke(column.member_pointer, object));
+                        if (exists_in_table_primary_key(table, column)) {
+                            return;
                         }
+                        bindValue(polyfill::invoke(column.member_pointer, object));
                     }));
                 table.for_each_column([&table, &bindValue, &object](auto& column) {
-                    if (column.template is<is_primary_key>() || exists_in_composite_primary_key(table, column)) {
-                        bindValue(polyfill::invoke(column.member_pointer, object));
+                    if (!column.template is<is_primary_key>() && !exists_in_table_primary_key(table, column)) {
+                        return;
                     }
+                    bindValue(polyfill::invoke(column.member_pointer, object));
                 });
 
                 this->executor.perform_single_step(stmt);
@@ -26083,17 +26085,17 @@ namespace sqlite_orm {
                                  column.template is<is_primary_key>(),
                                  column.template is<is_generated_always>());
             });
-            auto compositeKeyColumnNames = this->composite_key_columns_names();
+            const auto tableKeyColumnNames = this->table_key_columns_names();
 #if defined(SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_CPP20_RANGES_SUPPORTED)
-            for (int n = 1; const std::string& columnName: compositeKeyColumnNames) {
+            for (int n = 1; const std::string& columnName: tableKeyColumnNames) {
                 if (auto it = std::ranges::find(res, columnName, &table_xinfo::name); it != res.end()) {
                     it->pk = n;
                 }
                 ++n;
             }
 #else
-            for (size_t i = 0; i < compositeKeyColumnNames.size(); ++i) {
-                const std::string& columnName = compositeKeyColumnNames[i];
+            for (size_t i = 0; i < tableKeyColumnNames.size(); ++i) {
+                const std::string& columnName = tableKeyColumnNames[i];
                 auto it = std::find_if(res.begin(), res.end(), [&columnName](const table_xinfo& ti) {
                     return ti.name == columnName;
                 });

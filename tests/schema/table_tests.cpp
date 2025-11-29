@@ -134,7 +134,7 @@ TEST_CASE("Composite key column names") {
                                 make_column("name", &User::name),
                                 make_column("info", &User::info),
                                 primary_key(&User::id, &User::name));
-        auto compositeKeyColumnsNames = table.composite_key_columns_names();
+        auto compositeKeyColumnsNames = table.table_key_columns_names();
         std::vector<std::string> expected = {"id", "name"};
         REQUIRE(std::equal(compositeKeyColumnsNames.begin(), compositeKeyColumnsNames.end(), expected.begin()));
     }
@@ -144,7 +144,7 @@ TEST_CASE("Composite key column names") {
                                 make_column("name", &User::name),
                                 make_column("info", &User::info),
                                 primary_key(&User::name, &User::id));
-        auto compositeKeyColumnsNames = table.composite_key_columns_names();
+        auto compositeKeyColumnsNames = table.table_key_columns_names();
         std::vector<std::string> expected = {"name", "id"};
         REQUIRE(std::equal(compositeKeyColumnsNames.begin(), compositeKeyColumnsNames.end(), expected.begin()));
     }
@@ -154,7 +154,7 @@ TEST_CASE("Composite key column names") {
                                 make_column("name", &User::name),
                                 make_column("info", &User::info),
                                 primary_key(&User::name, &User::id, &User::info));
-        auto compositeKeyColumnsNames = table.composite_key_columns_names();
+        auto compositeKeyColumnsNames = table.table_key_columns_names();
         std::vector<std::string> expected = {"name", "id", "info"};
         REQUIRE(std::equal(compositeKeyColumnsNames.begin(), compositeKeyColumnsNames.end(), expected.begin()));
     }
@@ -163,7 +163,7 @@ TEST_CASE("Composite key column names") {
                                 make_column("id", &User::id),
                                 make_column("name", &User::name),
                                 make_column("info", &User::info));
-        auto compositeKeyColumnsNames = table.composite_key_columns_names();
+        auto compositeKeyColumnsNames = table.table_key_columns_names();
         REQUIRE(compositeKeyColumnsNames.empty());
     }
 }

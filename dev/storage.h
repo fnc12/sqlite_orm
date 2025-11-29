@@ -1543,7 +1543,7 @@ namespace sqlite_orm {
                         mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                          mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
                         call_as_template_base<column_field>([&table, &bindValue, &object](auto& column) {
-                            if (!is_without_rowid::value && exists_in_composite_primary_key(table, column)) {
+                            if (!is_without_rowid::value && exists_in_table_primary_key(table, column)) {
                                 return;
                             }
                             bindValue(polyfill::invoke(column.member_pointer, object));
@@ -1594,14 +1594,16 @@ namespace sqlite_orm {
                 auto& object = get_object(statement.expression);
                 table.template for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
                     call_as_template_base<column_field>([&table, &bindValue, &object](auto& column) {
-                        if (!exists_in_composite_primary_key(table, column)) {
-                            bindValue(polyfill::invoke(column.member_pointer, object));
+                        if (exists_in_table_primary_key(table, column)) {
+                            return;
                         }
+                        bindValue(polyfill::invoke(column.member_pointer, object));
                     }));
                 table.for_each_column([&table, &bindValue, &object](auto& column) {
-                    if (column.template is<is_primary_key>() || exists_in_composite_primary_key(table, column)) {
-                        bindValue(polyfill::invoke(column.member_pointer, object));
+                    if (!column.template is<is_primary_key>() && !exists_in_table_primary_key(table, column)) {
+                        return;
                     }
+                    bindValue(polyfill::invoke(column.member_pointer, object));
                 });
 
                 this->executor.perform_single_step(stmt);

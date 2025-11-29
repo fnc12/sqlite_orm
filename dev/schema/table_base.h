@@ -111,7 +111,7 @@ namespace sqlite_orm::internal {
     };
 
     /** 
-     *  Encapsulates table elements, i.e. columns and constraints for a type of table that can have primary keys - base tables and usually virtual tables -,
+     *  Encapsulates table elements, i.e. columns and constraints for a type of table that can have a primary key - base tables and usually virtual tables -,
      *  and provides additional methods to those of a generic table definition in order to deal with primary key columns.
      */
     template<class... Cs>
@@ -120,7 +120,7 @@ namespace sqlite_orm::internal {
         using elements_type = elements_type_t<definition_base_type>;
 
         /**
-         *  Call passed lambda with all defined primary keys.
+         *  Call passed lambda with the defined table primary key.
          */
         template<class L>
         void for_each_primary_key(L&& lambda) const {
@@ -128,10 +128,10 @@ namespace sqlite_orm::internal {
             iterate_tuple(this->elements, pk_index_sequence{}, lambda);
         }
 
-        std::vector<std::string> composite_key_columns_names() const {
+        std::vector<std::string> table_key_columns_names() const {
             std::vector<std::string> res;
             this->for_each_primary_key([this, &res](auto& primaryKey) {
-                res = this->composite_key_columns_names(primaryKey);
+                res = this->table_key_columns_names(primaryKey);
             });
             return res;
         }
@@ -144,7 +144,7 @@ namespace sqlite_orm::internal {
                                                                    pkcol_index_sequence{},
                                                                    &column_identifier::name);
             } else {
-                return this->composite_key_columns_names();
+                return this->table_key_columns_names();
             }
         }
 
@@ -161,7 +161,7 @@ namespace sqlite_orm::internal {
         }
 
         template<class... Args>
-        std::vector<std::string> composite_key_columns_names(const primary_key_t<Args...>& primaryKey) const {
+        std::vector<std::string> table_key_columns_names(const primary_key_t<Args...>& primaryKey) const {
             return create_from_tuple<std::vector<std::string>>(primaryKey.columns,
                                                                [this, empty = std::string{}](auto& memberPointer) {
                                                                    if (const std::string* columnName =
@@ -175,8 +175,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class... Cs, class G, class S>
-    bool exists_in_composite_primary_key(const insertable_table_definition<Cs...>& definition,
-                                         const column_field<G, S>& column) {
+    bool exists_in_table_primary_key(const insertable_table_definition<Cs...>& definition,
+                                     const column_field<G, S>& column) {
         bool res = false;
         definition.for_each_primary_key([&column, &res](auto& primaryKey) {
             using colrefs_tuple = decltype(primaryKey.columns);
