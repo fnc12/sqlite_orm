@@ -936,12 +936,17 @@ namespace sqlite_orm {
             }
 
             /**
-             *  Insert routine.
+             *  Ordinary insert routine.
              *  
-             *  - For objects mapped to a table with rowid: Inserts a record with all fields of a mapped object that are not primary key columns.
+             *  - For objects mapped to a table with rowid and a single primary key:
+             *      Inserts a record with all fields of a mapped object that are not primary key columns.
              *      The 'ID' of the specified object is irrelevant.
-             *  - For objects mapped to a table without rowid: Inserts a record with all fields of a mapped object.
-             *  @return The ID of the newly created record.
+             *  - For objects mapped to a table with rowid and a composite primary key or no primary key:
+             *    Inserts a record with all fields of a mapped object.
+             *  - For objects mapped to a table without rowid:
+             *    Inserts a record with all fields of a mapped object.
+             *  
+             *  @return The ID of the newly created record for a table with rowid, 0 otherwise.
              */
             template<class O>
             int insert(const O& o) {
@@ -1543,7 +1548,7 @@ namespace sqlite_orm {
                         mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                          mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
                         call_as_template_base<column_field>([&table, &bindValue, &object](auto& column) {
-                            if (!is_without_rowid::value && exists_in_table_primary_key(table, column)) {
+                            if (!is_without_rowid::value && is_single_table_primary_key(table, column)) {
                                 return;
                             }
                             bindValue(polyfill::invoke(column.member_pointer, object));

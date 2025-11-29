@@ -1599,7 +1599,7 @@ namespace sqlite_orm {
                     mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                      mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
                     [&table, &columnNames](auto& column) {
-                        if (!is_without_rowid::value && exists_in_table_primary_key(table, column)) {
+                        if (!is_without_rowid::value && is_single_table_primary_key(table, column)) {
                             return;
                         }
 
@@ -1621,7 +1621,7 @@ namespace sqlite_orm {
                               mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                                mpl::disjunction_fn<is_primary_key, is_generated_always>>{},
                               [&table](auto& column) {
-                                  return !is_without_rowid::value && exists_in_table_primary_key(table, column);
+                                  return !is_without_rowid::value && is_single_table_primary_key(table, column);
                               },
                               context,
                               get_ref(statement.object))
@@ -1771,7 +1771,7 @@ namespace sqlite_orm {
                     mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                      mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
                     [&table, &columnNames](auto& column) {
-                        if (!is_without_rowid::value && exists_in_table_primary_key(table, column)) {
+                        if (!is_without_rowid::value && is_single_table_primary_key(table, column)) {
                             return;
                         }
 

@@ -481,7 +481,14 @@ TEST_CASE("insert") {
         int id;
         std::string name;
     };
-
+    struct Object2 {
+        int id = 0;
+        std::string name;
+    };
+    struct Object3 {
+        int objectId = 0;
+        int discriminatingId = 0;
+    };
     struct ObjectWithoutRowid {
         int id;
         std::string name;
@@ -492,11 +499,24 @@ TEST_CASE("insert") {
 
     auto storage = make_storage(
         "test_insert.sqlite",
+        // with rowid, column pk
         make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name)),
+        // with rowid, single table pk
+        make_table("objects2",
+                   make_column("id", &Object2::id),
+                   make_column("name", &Object2::name),
+                   primary_key(&Object2::id)),
+        // with rowid, composite table pk
+        make_table("objects3",
+                   make_column("object_id", &Object3::objectId),
+                   make_column("discriminating_id", &Object3::discriminatingId),
+                   primary_key(&Object3::objectId, &Object3::discriminatingId)),
+        // without rowid, column pk
         make_table("objects_without_rowid",
                    make_column("id", &ObjectWithoutRowid::id, primary_key()),
                    make_column("name", &ObjectWithoutRowid::name))
             .without_rowid(),
+        // without rowid, table pk
         make_table("objects_without_rowid2",
                    make_column("id", &ObjectWithoutRowid2::id),
                    primary_key(&ObjectWithoutRowid2::id))
@@ -504,6 +524,8 @@ TEST_CASE("insert") {
 
     storage.sync_schema();
     storage.remove_all<Object>();
+    storage.remove_all<Object2>();
+    storage.remove_all<Object3>();
     storage.remove_all<ObjectWithoutRowid>();
     storage.remove_all<ObjectWithoutRowid2>();
 
@@ -554,6 +576,16 @@ TEST_CASE("insert") {
         std::vector<std::unique_ptr<Object>> emptyVector;
         REQUIRE_NOTHROW(
             storage.insert_range(emptyVector.begin(), emptyVector.end(), &std::unique_ptr<Object>::operator*));
+    }
+    SECTION("with rowid, single table pk") {
+        REQUIRE(storage.insert(Object2{2}) == 1);
+        REQUIRE(storage.insert(Object2{4}) == 2);
+        REQUIRE_NOTHROW(storage.get<Object2>(1));
+    }
+    SECTION("with rowid, composite table pk") {
+        REQUIRE(storage.insert(Object3{2, 2}) == 1);
+        REQUIRE(storage.insert(Object3{4, 4}) == 2);
+        REQUIRE_NOTHROW(storage.get<Object3>(2, 2));
     }
     SECTION("without rowid, column pk") {
         REQUIRE(storage.insert(ObjectWithoutRowid{10, "Life"}) == 0);
@@ -612,13 +644,13 @@ TEST_CASE("Remove") {
                                                make_column("name", &Object::name),
                                                primary_key(&Object::id, &Object::name)));
         storage.sync_schema();
-        storage.replace(Object{1, "Skillet"});
+        storage.insert(Object{1, "Skillet"});
         REQUIRE(storage.count<Object>() == 1);
         storage.remove<Object>(1, "Skillet");
         REQUIRE(storage.count<Object>() == 0);
 
-        storage.replace(Object{1, "Skillet"});
-        storage.replace(Object{2, "Paul Cless"});
+        storage.insert(Object{1, "Skillet"});
+        storage.insert(Object{2, "Paul Cless"});
         REQUIRE(storage.count<Object>() == 2);
         storage.remove<Object>(1, "Skillet");
         REQUIRE(storage.count<Object>() == 1);

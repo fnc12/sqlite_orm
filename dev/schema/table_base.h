@@ -3,7 +3,7 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_member_pointer
 #include <string>  //  std::string
-#include <tuple>  // std::tuple
+#include <tuple>  // std::tuple, std::tuple_size
 #endif
 
 #include "../functional/cxx_functional_polyfill.h"
@@ -190,6 +190,25 @@ namespace sqlite_orm::internal {
                     res = true;
                 }
             });
+        });
+        return res;
+    }
+
+    template<class... Cs, class G, class S>
+    bool is_single_table_primary_key(const insertable_table_definition<Cs...>& definition,
+                                     const column_field<G, S>& column) {
+        bool res = false;
+        definition.for_each_primary_key([&column, &res](auto& primaryKey) {
+            using colrefs_tuple = decltype(primaryKey.columns);
+            if constexpr (std::tuple_size<colrefs_tuple>::value != 1) {
+                return;
+            } else {
+                auto& memberPointer = std::get<0>(primaryKey.columns);
+                if (compare_fields(memberPointer, column.member_pointer) ||
+                    compare_fields(memberPointer, column.setter)) {
+                    res = true;
+                }
+            }
         });
         return res;
     }

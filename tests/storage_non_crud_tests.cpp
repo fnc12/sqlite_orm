@@ -123,6 +123,14 @@ TEST_CASE("InsertRange") {
         Object(int id, std::string name) : id{id}, name{std::move(name)} {}
 #endif
     };
+    struct Object2 {
+        int id = 0;
+        std::string name;
+    };
+    struct Object3 {
+        int objectId = 0;
+        int discriminatingId = 0;
+    };
     struct ObjectWithoutRowid {
         int id = 0;
         std::string name;
@@ -138,11 +146,24 @@ TEST_CASE("InsertRange") {
 
     auto storage = make_storage(
         "test_insert_range.sqlite",
+        // with rowid, column pk
         make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name)),
+        // with rowid, single table pk
+        make_table("objects2",
+                   make_column("id", &Object2::id),
+                   make_column("name", &Object2::name),
+                   primary_key(&Object2::id)),
+        // with rowid, composite table pk
+        make_table("objects3",
+                   make_column("object_id", &Object3::objectId),
+                   make_column("discriminating_id", &Object3::discriminatingId),
+                   primary_key(&Object3::objectId, &Object3::discriminatingId)),
+        // without rowid, column pk
         make_table("objects_without_rowid",
                    make_column("id", &ObjectWithoutRowid::id, primary_key()),
                    make_column("name", &ObjectWithoutRowid::name))
             .without_rowid(),
+        // without rowid, table pk
         make_table("objects_without_rowid2",
                    make_column("id", &ObjectWithoutRowid2::id),
                    primary_key(&ObjectWithoutRowid2::id))
@@ -150,6 +171,8 @@ TEST_CASE("InsertRange") {
 
     storage.sync_schema();
     storage.remove_all<Object>();
+    storage.remove_all<Object2>();
+    storage.remove_all<Object3>();
     storage.remove_all<ObjectWithoutRowid>();
     storage.remove_all<ObjectWithoutRowid2>();
 
@@ -164,16 +187,26 @@ TEST_CASE("InsertRange") {
 
         //  test empty container
         std::vector<Object> emptyVector;
-        storage.insert_range(emptyVector.begin(), emptyVector.end());
+        REQUIRE_NOTHROW(storage.insert_range(emptyVector.begin(), emptyVector.end()));
+
+        //  test insert_range with rowid, single table pk
+        std::vector<Object2> objects2 = {{2}, {4}};
+        storage.insert_range(objects2.begin(), objects2.end());
+        REQUIRE_NOTHROW(storage.get<Object2>(1));
+
+        //  test insert_range with rowid, composite table pk
+        std::vector<Object3> objects3 = {{2, 2}, {4, 4}};
+        storage.insert_range(objects3.begin(), objects3.end());
+        REQUIRE_NOTHROW(storage.get<Object3>(2, 2));
 
         //  test insert_range without rowid, column pk
-        std::vector<ObjectWithoutRowid> objectsWR1 = {ObjectWithoutRowid{10, "Life"}, ObjectWithoutRowid{20, "Death"}};
+        std::vector<ObjectWithoutRowid> objectsWR1 = {{10, "Life"}, {20, "Death"}};
         storage.insert_range(objectsWR1.begin(), objectsWR1.end());
         REQUIRE(storage.get<ObjectWithoutRowid>(10).name == "Life");
         REQUIRE(storage.get<ObjectWithoutRowid>(20).name == "Death");
 
         //  test insert_range without rowid, table pk
-        std::vector<ObjectWithoutRowid2> objectsWR2 = {ObjectWithoutRowid2{2}};
+        std::vector<ObjectWithoutRowid2> objectsWR2 = {{2}};
         storage.insert_range(objectsWR2.begin(), objectsWR2.end());
         REQUIRE_NOTHROW(storage.get<ObjectWithoutRowid2>(2));
     }
@@ -188,7 +221,8 @@ TEST_CASE("InsertRange") {
 
         //  test empty container
         std::vector<std::unique_ptr<Object>> emptyVector;
-        storage.insert_range(emptyVector.begin(), emptyVector.end(), &std::unique_ptr<Object>::operator*);
+        REQUIRE_NOTHROW(
+            storage.insert_range(emptyVector.begin(), emptyVector.end(), &std::unique_ptr<Object>::operator*));
 
         //  test insert_range without rowid
         std::vector<std::unique_ptr<ObjectWithoutRowid>> objectsWR;

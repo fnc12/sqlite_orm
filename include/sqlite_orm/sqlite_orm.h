@@ -12639,7 +12639,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_member_pointer
 #include <string>  //  std::string
-#include <tuple>  // std::tuple
+#include <tuple>  // std::tuple, std::tuple_size
 #endif
 
 // #include "../functional/cxx_functional_polyfill.h"
@@ -12834,6 +12834,25 @@ namespace sqlite_orm::internal {
                     res = true;
                 }
             });
+        });
+        return res;
+    }
+
+    template<class... Cs, class G, class S>
+    bool is_single_table_primary_key(const insertable_table_definition<Cs...>& definition,
+                                     const column_field<G, S>& column) {
+        bool res = false;
+        definition.for_each_primary_key([&column, &res](auto& primaryKey) {
+            using colrefs_tuple = decltype(primaryKey.columns);
+            if constexpr (std::tuple_size<colrefs_tuple>::value != 1) {
+                return;
+            } else {
+                auto& memberPointer = std::get<0>(primaryKey.columns);
+                if (compare_fields(memberPointer, column.member_pointer) ||
+                    compare_fields(memberPointer, column.setter)) {
+                    res = true;
+                }
+            }
         });
         return res;
     }
@@ -22693,7 +22712,7 @@ namespace sqlite_orm {
                     mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                      mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
                     [&table, &columnNames](auto& column) {
-                        if (!is_without_rowid::value && exists_in_table_primary_key(table, column)) {
+                        if (!is_without_rowid::value && is_single_table_primary_key(table, column)) {
                             return;
                         }
 
@@ -22715,7 +22734,7 @@ namespace sqlite_orm {
                               mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                                mpl::disjunction_fn<is_primary_key, is_generated_always>>{},
                               [&table](auto& column) {
-                                  return !is_without_rowid::value && exists_in_table_primary_key(table, column);
+                                  return !is_without_rowid::value && is_single_table_primary_key(table, column);
                               },
                               context,
                               get_ref(statement.object))
@@ -22865,7 +22884,7 @@ namespace sqlite_orm {
                     mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                      mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
                     [&table, &columnNames](auto& column) {
-                        if (!is_without_rowid::value && exists_in_table_primary_key(table, column)) {
+                        if (!is_without_rowid::value && is_single_table_primary_key(table, column)) {
                             return;
                         }
 
@@ -25095,12 +25114,19 @@ namespace sqlite_orm {
             }
 
             /**
-             *  Insert routine.
+             *  Ordinary insert routine.
              *  
-             *  - For objects mapped to a table with rowid: Inserts a record with all fields of a mapped object that are not primary key columns.
+             *  - For objects mapped to a table with rowid and a single primary key:
+             *      Inserts a record with all fields of a mapped object that are not primary key columns.
              *      The 'ID' of the specified object is irrelevant.
-             *  - For objects mapped to a table without rowid: Inserts a record with all fields of a mapped object.
-             *  @return The ID of the newly created record.
+             *  - For objects mapped to a table with rowid and a composite primary key or no primary key:
+             *    Inserts a record with all fields of a mapped object.
+             *  - For objects mapped to a table without rowid:
+             *    Inserts a record with all fields of a mapped object.
+             *  
+             *  @return The ID of the last inserted record for a table with rowid, otherwise a meaningless value.
+             *          Attention: While SQLite returns a 64-bit integer as rowid, this function returns an `int` that most likely has less precision.
+             *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
              */
             template<class O>
             int insert(const O& o) {
@@ -25702,7 +25728,7 @@ namespace sqlite_orm {
                         mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
                                          mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
                         call_as_template_base<column_field>([&table, &bindValue, &object](auto& column) {
-                            if (!is_without_rowid::value && exists_in_table_primary_key(table, column)) {
+                            if (!is_without_rowid::value && is_single_table_primary_key(table, column)) {
                                 return;
                             }
                             bindValue(polyfill::invoke(column.member_pointer, object));
