@@ -1,11 +1,12 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::is_member_pointer
+#include <type_traits>  //  std::is_member_pointer, std::remove_cvref
 #include <string>  //  std::string
 #include <tuple>  // std::tuple, std::tuple_size
 #endif
 
+#include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/cxx_functional_polyfill.h"
 #include "../functional/mpl.h"
 #include "../tuple_helper/tuple_filter.h"
@@ -199,7 +200,8 @@ namespace sqlite_orm::internal {
                                      const column_field<G, S>& column) {
         bool res = false;
         definition.for_each_primary_key([&column, &res](auto& primaryKey) {
-            using colrefs_tuple = decltype(primaryKey.columns);
+            // note: use `decltype(primaryKey)` instead of `decltype(primaryKey.columns)` otherwise msvc 141 chokes on the `if constexpr` below
+            using colrefs_tuple = columns_tuple_t<polyfill::remove_cvref_t<decltype(primaryKey)>>;
             if constexpr (std::tuple_size<colrefs_tuple>::value != 1) {
                 return;
             } else {
