@@ -109,7 +109,7 @@ namespace sqlite_orm {
          */
         template<typename DBOs, size_t... Idx, typename... CTETables>
         auto db_objects_cat(const DBOs& dbObjects, std::index_sequence<Idx...>, CTETables&&... cteTables) {
-            return std::tuple{std::forward<CTETables>(cteTables)..., get<Idx>(dbObjects)...};
+            return std::tuple{std::forward<CTETables>(cteTables)..., std::get<Idx>(dbObjects)...};
         }
 
         /**
@@ -210,7 +210,8 @@ namespace sqlite_orm {
         auto extract_colref_expressions(const DBOs& dbObjects,
                                         const std::tuple<Args...>& cols,
                                         std::index_sequence<Idx...>) {
-            return std::tuple_cat(extract_colref_expressions(dbObjects, get<Idx>(cols), std::index_sequence<Idx>{})...);
+            return std::tuple_cat(
+                extract_colref_expressions(dbObjects, std::get<Idx>(cols), std::index_sequence<Idx>{})...);
         }
 
         // columns_t<>
@@ -271,8 +272,9 @@ namespace sqlite_orm {
                      ...),
                     "Numeric column aliases are reserved for referencing columns locally within a single CTE");
 
-                return std::tuple{
-                    determine_cte_colref(dbObjects, get<Idx>(subselectColRefs), get<Idx>(explicitColRefs))...};
+                return std::tuple{determine_cte_colref(dbObjects,
+                                                       std::get<Idx>(subselectColRefs),
+                                                       std::get<Idx>(explicitColRefs))...};
             } else {
                 return subselectColRefs;
             }
@@ -284,10 +286,10 @@ namespace sqlite_orm {
                                                  std::vector<std::string> columnNames,
                                                  const ColRefs& finalColRefs,
                                                  std::index_sequence<CIs...>) {
-            return make_cte_table<Mapper>(
-                std::move(tableName),
-                make_cte_column<std::tuple_element_t<CIs, typename Mapper::fields_type>>(std::move(columnNames.at(CIs)),
-                                                                                         get<CIs>(finalColRefs))...);
+            return make_cte_table<Mapper>(std::move(tableName),
+                                          make_cte_column<std::tuple_element_t<CIs, typename Mapper::fields_type>>(
+                                              std::move(columnNames.at(CIs)),
+                                              std::get<CIs>(finalColRefs))...);
         }
 
         template<typename DBOs, typename CTE>
@@ -329,7 +331,7 @@ namespace sqlite_orm {
         decltype(auto) make_recursive_cte_db_objects(const DBOs& dbObjects,
                                                      const common_table_expressions<CTEs...>& cte,
                                                      std::index_sequence<Ii, In...>) {
-            auto tbl = make_cte_db_object(dbObjects, get<Ii>(cte));
+            auto tbl = make_cte_db_object(dbObjects, std::get<Ii>(cte));
 
             if constexpr (sizeof...(In) > 0) {
                 return make_recursive_cte_db_objects(

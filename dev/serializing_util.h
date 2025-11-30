@@ -425,8 +425,8 @@ namespace sqlite_orm {
         template<class T, class Ctx>
         std::ostream& operator<<(std::ostream& ss,
                                  std::tuple<const streaming<stream_as::constraints_tuple>&, T, Ctx> tpl) {
-            const auto& constraints = get<1>(tpl);
-            auto& context = get<2>(tpl);
+            const auto& constraints = std::get<1>(tpl);
+            auto& context = std::get<2>(tpl);
 
             iterate_tuple(constraints, [&ss, &context](auto& constraint) mutable {
                 ss << ' ' << serialize(constraint, context);
