@@ -34,7 +34,7 @@ namespace sqlite_orm {
 
         template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs>>
         decltype(auto) lookup_table_name(const DBOs& dbObjects) {
-            if constexpr (is_mapped<DBOs, Lookup>::value) {
+            if constexpr (is_mapped_v<DBOs, Lookup>) {
                 return (pick_table<Lookup>(dbObjects).name);
             } else {
                 return std::string{};
@@ -75,7 +75,7 @@ namespace sqlite_orm {
 
             // lookup ColAlias in the final column references
             using colalias_index = find_tuple_type<cte_colrefs_tuple, alias_holder<ColAlias>>;
-            static_assert(colalias_index::value < std::tuple_size_v<cte_colrefs_tuple>,
+            static_assert(colalias_index::value < std::tuple_size<cte_colrefs_tuple>::value,
                           "No such column mapped into the CTE");
 
             return &aliased_field<ColAlias, std::tuple_element_t<colalias_index::value, cte_fields_type>>::field;
@@ -108,7 +108,7 @@ namespace sqlite_orm {
             // note: even though the columns contain the [`aliased_field<>::*`] we perform the lookup using the column references.
             // lookup ColAlias in the final column references
             using colalias_index = find_tuple_type<cte_colrefs_tuple, alias_holder<ColAlias>>;
-            static_assert(colalias_index::value < std::tuple_size_v<cte_colrefs_tuple>,
+            static_assert(colalias_index::value < std::tuple_size<cte_colrefs_tuple>::value,
                           "No such column mapped into the CTE");
 
             // note: we could "materialize" the alias to an `aliased_field<>::*` and use the regular `cte_table<>::find_column_name()` mechanism;

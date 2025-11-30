@@ -1711,7 +1711,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                                             internal::field_type_or_type_t<Y>>>,
                               bool> = true>
     auto nullif(X x, Y y) {
-        if constexpr (std::is_void_v<R>) {
+        if constexpr (std::is_void<R>::value) {
             using F = internal::built_in_function_t<
                 std::optional<std::common_type_t<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>>,
                 internal::nullif_string,

@@ -36,7 +36,7 @@ namespace sqlite_orm {
                 table.for_each_column([qualified = !context.omit_table_name,
                                        &tableName = table.name,
                                        &collectedExpressions](const column_identifier& column) {
-                    if constexpr (is_alias<T>::value) {
+                    if constexpr (is_alias_v<T>) {
                         collectedExpressions.push_back(quote_identifier(alias_extractor<T>::extract()) + "." +
                                                        quote_identifier(column.name));
                     } else if (qualified) {
@@ -48,7 +48,7 @@ namespace sqlite_orm {
                 });
             } else {
                 collectedExpressions.reserve(collectedExpressions.size() + 1);
-                if constexpr (is_alias<T>::value) {
+                if constexpr (is_alias_v<T>) {
                     collectedExpressions.push_back(quote_identifier(alias_extractor<T>::extract()) + ".*");
                 } else if (!context.omit_table_name) {
                     const table_identifier& table = pick_table<mapped_type_proxy_t<T>>(context.db_objects);

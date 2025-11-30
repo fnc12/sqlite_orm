@@ -968,13 +968,13 @@ namespace sqlite_orm {
                     ss << "NOT IN";
                 }
                 ss << " ";
-                if constexpr (is_compound_operator<C>::value) {
+                if constexpr (is_compound_operator_v<C>) {
                     ss << '(';
                 }
                 auto newContext = context;
                 newContext.use_parentheses = true;
                 ss << serialize(statement.argument, newContext);
-                if constexpr (is_compound_operator<C>::value) {
+                if constexpr (is_compound_operator_v<C>) {
                     ss << ')';
                 }
                 return ss.str();
@@ -1680,7 +1680,7 @@ namespace sqlite_orm {
             SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
-                if constexpr (is_insert_raw<T>::value) {
+                if constexpr (is_insert_raw_v<T>) {
                     ss << "INSERT";
                 } else {
                     ss << "REPLACE";
@@ -1688,12 +1688,12 @@ namespace sqlite_orm {
                 iterate_tuple(statement.args, [&context, &ss](auto& value) {
                     using value_type = polyfill::remove_cvref_t<decltype(value)>;
                     ss << ' ';
-                    if constexpr (is_columns<value_type>::value) {
+                    if constexpr (is_columns_v<value_type>) {
                         auto newContext = context;
                         newContext.omit_table_name = true;
                         newContext.use_parentheses = true;
                         ss << serialize(value, newContext);
-                    } else if constexpr (is_values<value_type>::value || is_select<value_type>::value) {
+                    } else if constexpr (is_values_v<value_type> || is_select_v<value_type>) {
                         auto newContext = context;
                         newContext.use_parentheses = false;
                         ss << serialize(value, newContext);
@@ -1960,7 +1960,7 @@ namespace sqlite_orm {
                 subCtx.use_parentheses = true;
 
                 std::stringstream ss;
-                if constexpr (!is_compound_operator<T>::value) {
+                if constexpr (!is_compound_operator_v<T>) {
                     if (!sel.highest_level && context.use_parentheses) {
                         ss << "(";
                     }
@@ -2000,7 +2000,7 @@ namespace sqlite_orm {
                     }
                 }
                 ss << streaming_conditions_tuple(sel.conditions, context);
-                if constexpr (!is_compound_operator<T>::value) {
+                if constexpr (!is_compound_operator_v<T>) {
                     if (!sel.highest_level && context.use_parentheses) {
                         ss << ")";
                     }
@@ -2054,7 +2054,7 @@ namespace sqlite_orm {
                 std::string whereString;
                 iterate_tuple(statement.elements, [&columnNames, &context, &whereString](auto& value) {
                     using value_type = polyfill::remove_cvref_t<decltype(value)>;
-                    if constexpr (!is_where<value_type>::value) {
+                    if constexpr (!is_where_v<value_type>) {
                         auto newContext = context;
                         newContext.use_parentheses = false;
                         auto whereString = serialize(value, newContext);
@@ -2281,7 +2281,7 @@ namespace sqlite_orm {
                 ss << " BEGIN ";
                 iterate_tuple(statement.elements, [&ss, &context](auto& element) {
                     using element_type = polyfill::remove_cvref_t<decltype(element)>;
-                    if constexpr (is_select<element_type>::value) {
+                    if constexpr (is_select_v<element_type>) {
                         auto newContext = context;
                         newContext.use_parentheses = false;
                         ss << serialize(element, newContext);
@@ -2360,9 +2360,9 @@ namespace sqlite_orm {
             SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& /*join*/,
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
-                if constexpr (polyfill::is_specialization_of<statement_type, cross_join_t>::value) {
+                if constexpr (polyfill::is_specialization_of_v<statement_type, cross_join_t>) {
                     ss << "CROSS JOIN";
-                } else if constexpr (polyfill::is_specialization_of<statement_type, natural_join_t>::value) {
+                } else if constexpr (polyfill::is_specialization_of_v<statement_type, natural_join_t>) {
                     ss << "NATURAL JOIN";
                 } else {
                     static_assert(polyfill::always_false_v<statement_type>);

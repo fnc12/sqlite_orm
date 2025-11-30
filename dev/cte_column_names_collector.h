@@ -2,20 +2,20 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-#include <string>
+#include <string>  //  std::to_string
 #include <vector>
 #include <functional>  //  std::reference_wrapper
 #include <system_error>
+#include <type_traits>  //  std::is_member_pointer, std::is_same, std::remove_cvref
+#include <utility>  //  std::move
 #endif
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"
-#include "member_traits/member_traits.h"
 #include "error_code.h"
 #include "alias.h"
 #include "select_constraints.h"
-#include "serializer_context.h"
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 namespace sqlite_orm {
@@ -164,7 +164,7 @@ namespace sqlite_orm {
             std::vector<std::string> columnNames = get_cte_column_names(sel.col, context);
 
             // 2. override column names from cte expression
-            constexpr size_t nExplicitColumns = std::tuple_size_v<ExplicitColRefs>;
+            constexpr size_t nExplicitColumns = std::tuple_size<ExplicitColRefs>::value;
             if constexpr (nExplicitColumns > 0) {
                 if (nExplicitColumns != columnNames.size()) {
                     throw std::system_error{orm_error_code::column_not_found};
@@ -186,11 +186,11 @@ namespace sqlite_orm {
                         }
                     } else if constexpr (polyfill::is_specialization_of_v<ColRef, column_t>) {
                         columnNames[idx] = colRef.name;
-                    } else if constexpr (std::is_same_v<ColRef, std::string>) {
+                    } else if constexpr (std::is_same<ColRef, std::string>::value) {
                         if (!colRef.empty()) {
                             columnNames[idx] = colRef;
                         }
-                    } else if constexpr (std::is_same_v<ColRef, polyfill::remove_cvref_t<decltype(std::ignore)>>) {
+                    } else if constexpr (std::is_same<ColRef, polyfill::remove_cvref_t<decltype(std::ignore)>>::value) {
                         if (columnNames[idx].empty()) {
                             columnNames[idx] = std::to_string(idx + 1);
                         }

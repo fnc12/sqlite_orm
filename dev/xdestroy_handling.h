@@ -19,12 +19,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 namespace sqlite_orm {
     namespace internal {
-#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
         /**
          *  Constrains a deleter to be state-less.
          */
         template<typename D>
-        concept stateless_deleter = std::is_empty_v<D> && std::is_default_constructible_v<D>;
+        concept stateless_deleter = std::is_empty<D>::value && std::is_default_constructible<D>::value;
 
         /**
          *  Constrains a deleter to be an integral function constant.
@@ -33,7 +33,7 @@ namespace sqlite_orm {
         concept integral_fp_c = requires {
             typename D::value_type;
             D::value;
-            requires std::is_function_v<std::remove_pointer_t<typename D::value_type>>;
+            requires std::is_function<std::remove_pointer_t<typename D::value_type>>::value;
         };
 
         /**
@@ -43,7 +43,7 @@ namespace sqlite_orm {
         concept yields_fp = requires(D d) {
             // yielding function pointer by using the plus trick
             { +d };
-            requires std::is_function_v<std::remove_pointer_t<decltype(+d)>>;
+            requires std::is_function<std::remove_pointer_t<decltype(+d)>>::value;
         };
 #endif
 
@@ -56,7 +56,6 @@ namespace sqlite_orm {
             using type = decltype(+std::declval<D>());
         };
 #else
-
         template<typename D>
         inline constexpr bool is_stateless_deleter_v =
             std::is_empty<D>::value && std::is_default_constructible<D>::value;

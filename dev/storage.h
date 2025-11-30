@@ -873,7 +873,7 @@ namespace sqlite_orm {
             std::string dump(E&& expression, bool parametrized = false) const {
                 static_assert(is_preparable_v<self_type, Ex>, "Expression must be a high-level statement");
 
-                if constexpr (is_select<Ex>::value) {
+                if constexpr (is_select_v<Ex>) {
                     auto e2 = std::forward<E>(expression);
                     e2.highest_level = true;
                     return this->dump_highest_level(e2, parametrized);
@@ -1518,7 +1518,7 @@ namespace sqlite_orm {
                         }));
                 };
 
-                if constexpr (is_replace_range<T>::value) {
+                if constexpr (is_replace_range_v<T>) {
 #ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
                     std::ranges::for_each(statement.expression.range.first,
                                           statement.expression.range.second,
@@ -1570,7 +1570,7 @@ namespace sqlite_orm {
                         }));
                 };
 
-                if constexpr (is_insert_range<T>::value) {
+                if constexpr (is_insert_range_v<T>) {
 #ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
                     std::ranges::for_each(statement.expression.range.first,
                                           statement.expression.range.second,

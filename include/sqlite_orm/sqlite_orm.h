@@ -8296,7 +8296,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                                             internal::field_type_or_type_t<Y>>>,
                               bool> = true>
     auto nullif(X x, Y y) {
-        if constexpr (std::is_void_v<R>) {
+        if constexpr (std::is_void<R>::value) {
             using F = internal::built_in_function_t<
                 std::optional<std::common_type_t<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>>,
                 internal::nullif_string,
@@ -9418,7 +9418,7 @@ namespace sqlite_orm {
             using expression_type = Select;
             using explicit_colrefs_tuple = ExplicitCols;
             using hints_tuple = Hints;
-            static constexpr size_t explicit_colref_count = std::tuple_size_v<ExplicitCols>;
+            static constexpr size_t explicit_colref_count = std::tuple_size<ExplicitCols>::value;
 
             SQLITE_ORM_NOUNIQUEADDRESS hints_tuple hints;
             explicit_colrefs_tuple explicitColumns;
@@ -10077,12 +10077,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 namespace sqlite_orm {
     namespace internal {
-#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
         /**
          *  Constrains a deleter to be state-less.
          */
         template<typename D>
-        concept stateless_deleter = std::is_empty_v<D> && std::is_default_constructible_v<D>;
+        concept stateless_deleter = std::is_empty<D>::value && std::is_default_constructible<D>::value;
 
         /**
          *  Constrains a deleter to be an integral function constant.
@@ -10091,7 +10091,7 @@ namespace sqlite_orm {
         concept integral_fp_c = requires {
             typename D::value_type;
             D::value;
-            requires std::is_function_v<std::remove_pointer_t<typename D::value_type>>;
+            requires std::is_function<std::remove_pointer_t<typename D::value_type>>::value;
         };
 
         /**
@@ -10101,7 +10101,7 @@ namespace sqlite_orm {
         concept yields_fp = requires(D d) {
             // yielding function pointer by using the plus trick
             { +d };
-            requires std::is_function_v<std::remove_pointer_t<decltype(+d)>>;
+            requires std::is_function<std::remove_pointer_t<decltype(+d)>>::value;
         };
 #endif
 
@@ -10114,7 +10114,6 @@ namespace sqlite_orm {
             using type = decltype(+std::declval<D>());
         };
 #else
-
         template<typename D>
         inline constexpr bool is_stateless_deleter_v =
             std::is_empty<D>::value && std::is_default_constructible<D>::value;
@@ -12364,7 +12363,7 @@ namespace sqlite_orm {
             // lookup ColAlias in the final column references
             using colalias_index =
                 find_tuple_type<typename cte_mapper_type::final_colrefs_tuple, alias_holder<ColAlias>>;
-            static_assert(colalias_index::value < std::tuple_size_v<typename cte_mapper_type::final_colrefs_tuple>,
+            static_assert(colalias_index::value < std::tuple_size<typename cte_mapper_type::final_colrefs_tuple>::value,
                           "No such column mapped into the CTE");
             using type = std::tuple_element_t<colalias_index::value, typename cte_mapper_type::fields_type>;
         };
@@ -13215,7 +13214,7 @@ namespace sqlite_orm {
 
         template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs>>
         decltype(auto) lookup_table_name(const DBOs& dbObjects) {
-            if constexpr (is_mapped<DBOs, Lookup>::value) {
+            if constexpr (is_mapped_v<DBOs, Lookup>) {
                 return (pick_table<Lookup>(dbObjects).name);
             } else {
                 return std::string{};
@@ -13256,7 +13255,7 @@ namespace sqlite_orm {
 
             // lookup ColAlias in the final column references
             using colalias_index = find_tuple_type<cte_colrefs_tuple, alias_holder<ColAlias>>;
-            static_assert(colalias_index::value < std::tuple_size_v<cte_colrefs_tuple>,
+            static_assert(colalias_index::value < std::tuple_size<cte_colrefs_tuple>::value,
                           "No such column mapped into the CTE");
 
             return &aliased_field<ColAlias, std::tuple_element_t<colalias_index::value, cte_fields_type>>::field;
@@ -13289,7 +13288,7 @@ namespace sqlite_orm {
             // note: even though the columns contain the [`aliased_field<>::*`] we perform the lookup using the column references.
             // lookup ColAlias in the final column references
             using colalias_index = find_tuple_type<cte_colrefs_tuple, alias_holder<ColAlias>>;
-            static_assert(colalias_index::value < std::tuple_size_v<cte_colrefs_tuple>,
+            static_assert(colalias_index::value < std::tuple_size<cte_colrefs_tuple>::value,
                           "No such column mapped into the CTE");
 
             // note: we could "materialize" the alias to an `aliased_field<>::*` and use the regular `cte_table<>::find_column_name()` mechanism;
@@ -20317,7 +20316,7 @@ namespace sqlite_orm {
                 table.for_each_column([qualified = !context.omit_table_name,
                                        &tableName = table.name,
                                        &collectedExpressions](const column_identifier& column) {
-                    if constexpr (is_alias<T>::value) {
+                    if constexpr (is_alias_v<T>) {
                         collectedExpressions.push_back(quote_identifier(alias_extractor<T>::extract()) + "." +
                                                        quote_identifier(column.name));
                     } else if (qualified) {
@@ -20329,7 +20328,7 @@ namespace sqlite_orm {
                 });
             } else {
                 collectedExpressions.reserve(collectedExpressions.size() + 1);
-                if constexpr (is_alias<T>::value) {
+                if constexpr (is_alias_v<T>) {
                     collectedExpressions.push_back(quote_identifier(alias_extractor<T>::extract()) + ".*");
                 } else if (!context.omit_table_name) {
                     const table_identifier& table = pick_table<mapped_type_proxy_t<T>>(context.db_objects);
@@ -20415,10 +20414,12 @@ namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-#include <string>
+#include <string>  //  std::to_string
 #include <vector>
 #include <functional>  //  std::reference_wrapper
 #include <system_error>
+#include <type_traits>  //  std::is_member_pointer, std::is_same, std::remove_cvref
+#include <utility>  //  std::move
 #endif
 #endif
 
@@ -20426,15 +20427,11 @@ namespace sqlite_orm {
 
 // #include "type_traits.h"
 
-// #include "member_traits/member_traits.h"
-
 // #include "error_code.h"
 
 // #include "alias.h"
 
 // #include "select_constraints.h"
-
-// #include "serializer_context.h"
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 namespace sqlite_orm {
@@ -20583,7 +20580,7 @@ namespace sqlite_orm {
             std::vector<std::string> columnNames = get_cte_column_names(sel.col, context);
 
             // 2. override column names from cte expression
-            constexpr size_t nExplicitColumns = std::tuple_size_v<ExplicitColRefs>;
+            constexpr size_t nExplicitColumns = std::tuple_size<ExplicitColRefs>::value;
             if constexpr (nExplicitColumns > 0) {
                 if (nExplicitColumns != columnNames.size()) {
                     throw std::system_error{orm_error_code::column_not_found};
@@ -20605,11 +20602,11 @@ namespace sqlite_orm {
                         }
                     } else if constexpr (polyfill::is_specialization_of_v<ColRef, column_t>) {
                         columnNames[idx] = colRef.name;
-                    } else if constexpr (std::is_same_v<ColRef, std::string>) {
+                    } else if constexpr (std::is_same<ColRef, std::string>::value) {
                         if (!colRef.empty()) {
                             columnNames[idx] = colRef;
                         }
-                    } else if constexpr (std::is_same_v<ColRef, polyfill::remove_cvref_t<decltype(std::ignore)>>) {
+                    } else if constexpr (std::is_same<ColRef, polyfill::remove_cvref_t<decltype(std::ignore)>>::value) {
                         if (columnNames[idx].empty()) {
                             columnNames[idx] = std::to_string(idx + 1);
                         }
@@ -22095,13 +22092,13 @@ namespace sqlite_orm {
                     ss << "NOT IN";
                 }
                 ss << " ";
-                if constexpr (is_compound_operator<C>::value) {
+                if constexpr (is_compound_operator_v<C>) {
                     ss << '(';
                 }
                 auto newContext = context;
                 newContext.use_parentheses = true;
                 ss << serialize(statement.argument, newContext);
-                if constexpr (is_compound_operator<C>::value) {
+                if constexpr (is_compound_operator_v<C>) {
                     ss << ')';
                 }
                 return ss.str();
@@ -22807,7 +22804,7 @@ namespace sqlite_orm {
             SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
-                if constexpr (is_insert_raw<T>::value) {
+                if constexpr (is_insert_raw_v<T>) {
                     ss << "INSERT";
                 } else {
                     ss << "REPLACE";
@@ -22815,12 +22812,12 @@ namespace sqlite_orm {
                 iterate_tuple(statement.args, [&context, &ss](auto& value) {
                     using value_type = polyfill::remove_cvref_t<decltype(value)>;
                     ss << ' ';
-                    if constexpr (is_columns<value_type>::value) {
+                    if constexpr (is_columns_v<value_type>) {
                         auto newContext = context;
                         newContext.omit_table_name = true;
                         newContext.use_parentheses = true;
                         ss << serialize(value, newContext);
-                    } else if constexpr (is_values<value_type>::value || is_select<value_type>::value) {
+                    } else if constexpr (is_values_v<value_type> || is_select_v<value_type>) {
                         auto newContext = context;
                         newContext.use_parentheses = false;
                         ss << serialize(value, newContext);
@@ -23087,7 +23084,7 @@ namespace sqlite_orm {
                 subCtx.use_parentheses = true;
 
                 std::stringstream ss;
-                if constexpr (!is_compound_operator<T>::value) {
+                if constexpr (!is_compound_operator_v<T>) {
                     if (!sel.highest_level && context.use_parentheses) {
                         ss << "(";
                     }
@@ -23127,7 +23124,7 @@ namespace sqlite_orm {
                     }
                 }
                 ss << streaming_conditions_tuple(sel.conditions, context);
-                if constexpr (!is_compound_operator<T>::value) {
+                if constexpr (!is_compound_operator_v<T>) {
                     if (!sel.highest_level && context.use_parentheses) {
                         ss << ")";
                     }
@@ -23181,7 +23178,7 @@ namespace sqlite_orm {
                 std::string whereString;
                 iterate_tuple(statement.elements, [&columnNames, &context, &whereString](auto& value) {
                     using value_type = polyfill::remove_cvref_t<decltype(value)>;
-                    if constexpr (!is_where<value_type>::value) {
+                    if constexpr (!is_where_v<value_type>) {
                         auto newContext = context;
                         newContext.use_parentheses = false;
                         auto whereString = serialize(value, newContext);
@@ -23408,7 +23405,7 @@ namespace sqlite_orm {
                 ss << " BEGIN ";
                 iterate_tuple(statement.elements, [&ss, &context](auto& element) {
                     using element_type = polyfill::remove_cvref_t<decltype(element)>;
-                    if constexpr (is_select<element_type>::value) {
+                    if constexpr (is_select_v<element_type>) {
                         auto newContext = context;
                         newContext.use_parentheses = false;
                         ss << serialize(element, newContext);
@@ -23487,9 +23484,9 @@ namespace sqlite_orm {
             SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& /*join*/,
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 std::stringstream ss;
-                if constexpr (polyfill::is_specialization_of<statement_type, cross_join_t>::value) {
+                if constexpr (polyfill::is_specialization_of_v<statement_type, cross_join_t>) {
                     ss << "CROSS JOIN";
-                } else if constexpr (polyfill::is_specialization_of<statement_type, natural_join_t>::value) {
+                } else if constexpr (polyfill::is_specialization_of_v<statement_type, natural_join_t>) {
                     ss << "NATURAL JOIN";
                 } else {
                     static_assert(polyfill::always_false_v<statement_type>);
@@ -23945,7 +23942,7 @@ namespace sqlite_orm {
         template<typename DBOs, typename... CTETables>
         auto db_objects_cat(const DBOs& dbObjects, CTETables&&... cteTables) {
             return db_objects_cat(dbObjects,
-                                  std::make_index_sequence<std::tuple_size_v<DBOs>>{},
+                                  std::make_index_sequence<std::tuple_size<DBOs>::value>{},
                                   std::forward<CTETables>(cteTables)...);
         }
 #endif
@@ -24075,11 +24072,11 @@ namespace sqlite_orm {
                 return explicitColRef;
             } else if constexpr (std::is_member_pointer<ExplicitColRef>::value) {
                 return explicitColRef;
-            } else if constexpr (std::is_base_of_v<column_identifier, ExplicitColRef>) {
+            } else if constexpr (std::is_base_of<column_identifier, ExplicitColRef>::value) {
                 return explicitColRef.member_pointer;
-            } else if constexpr (std::is_same_v<ExplicitColRef, std::string>) {
+            } else if constexpr (std::is_same<ExplicitColRef, std::string>::value) {
                 return subselectColRef;
-            } else if constexpr (std::is_same_v<ExplicitColRef, polyfill::remove_cvref_t<decltype(std::ignore)>>) {
+            } else if constexpr (std::is_same<ExplicitColRef, polyfill::remove_cvref_t<decltype(std::ignore)>>::value) {
                 return subselectColRef;
             } else {
                 static_assert(polyfill::always_false_v<ExplicitColRef>, "Invalid explicit column reference specified");
@@ -24091,7 +24088,7 @@ namespace sqlite_orm {
                                    const SubselectColRefs& subselectColRefs,
                                    [[maybe_unused]] const ExplicitColRefs& explicitColRefs,
                                    std::index_sequence<Idx...>) {
-            if constexpr (std::tuple_size_v<ExplicitColRefs> != 0) {
+            if constexpr (std::tuple_size<ExplicitColRefs>::value != 0) {
                 static_assert(
                     (!is_builtin_numeric_column_alias_v<
                          alias_holder_type_or_none_t<std::tuple_element_t<Idx, ExplicitColRefs>>> &&
@@ -24125,7 +24122,7 @@ namespace sqlite_orm {
 
             using subselect_type = decltype(subSelect);
             using column_results = column_result_of_t<DBOs, subselect_type>;
-            using index_sequence = std::make_index_sequence<std::tuple_size_v<tuplify_t<column_results>>>;
+            using index_sequence = std::make_index_sequence<std::tuple_size<tuplify_t<column_results>>::value>;
             static_assert(cte_type::explicit_colref_count == 0 ||
                               cte_type::explicit_colref_count == index_sequence::size(),
                           "Number of explicit columns of common table expression doesn't match the number of columns "
@@ -25061,7 +25058,7 @@ namespace sqlite_orm {
             std::string dump(E&& expression, bool parametrized = false) const {
                 static_assert(is_preparable_v<self_type, Ex>, "Expression must be a high-level statement");
 
-                if constexpr (is_select<Ex>::value) {
+                if constexpr (is_select_v<Ex>) {
                     auto e2 = std::forward<E>(expression);
                     e2.highest_level = true;
                     return this->dump_highest_level(e2, parametrized);
@@ -25706,7 +25703,7 @@ namespace sqlite_orm {
                         }));
                 };
 
-                if constexpr (is_replace_range<T>::value) {
+                if constexpr (is_replace_range_v<T>) {
 #ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
                     std::ranges::for_each(statement.expression.range.first,
                                           statement.expression.range.second,
@@ -25758,7 +25755,7 @@ namespace sqlite_orm {
                         }));
                 };
 
-                if constexpr (is_insert_range<T>::value) {
+                if constexpr (is_insert_range_v<T>) {
 #ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
                     std::ranges::for_each(statement.expression.range.first,
                                           statement.expression.range.second,
