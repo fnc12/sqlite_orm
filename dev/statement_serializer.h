@@ -1857,11 +1857,7 @@ namespace sqlite_orm {
             ss << "SELECT " << streaming_table_column_names(table, std::string{}) << " FROM "
                << streaming_identifier(table.name) << " WHERE ";
 
-            auto primaryKeyColumnNames = table.primary_key_column_names();
-            if (primaryKeyColumnNames.empty()) {
-                throw std::system_error{orm_error_code::table_has_no_primary_key_column};
-            }
-
+            const auto primaryKeyColumnNames = table.primary_key_column_names();
 #ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
             static constexpr std::array<orm_gsl::czstring, 2> sep = {" AND ", ""};
             for (bool first = true; const std::string& pkName: primaryKeyColumnNames) {

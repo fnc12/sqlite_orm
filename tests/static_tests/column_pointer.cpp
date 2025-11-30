@@ -75,6 +75,12 @@ concept refers_to_table_callable = orm_refers_to_table<T> && requires {
 };
 
 template<auto table, typename T = decltype(table), typename O = internal::auto_decay_table_ref_t<table>>
+concept table_reference_callable_no_pk = orm_table_reference<T> && requires {
+    { get_all<table>() } -> same_as<get_all_t<O, std::vector<O>>>;
+    { count<table>() } -> same_as<count_asterisk_t<O>>;
+};
+
+template<auto table, typename T = decltype(table), typename O = internal::auto_decay_table_ref_t<table>>
 concept table_reference_callable = orm_table_reference<T> && requires {
     { get<table>(42) } -> same_as<get_t<O, int>>;
     { get_pointer<table>(42) } -> same_as<get_pointer_t<O, int>>;
@@ -92,6 +98,13 @@ concept storage_refers_to_table_callable = orm_refers_to_table<T> && requires(S&
     { storage.template get_all<mapped>() } -> same_as<std::vector<O>>;
     { storage.template count<mapped>() } -> same_as<int>;
     { storage.template iterate<mapped>() } -> same_as<mapped_view<O, S>>;
+};
+
+template<class S, auto table, typename T = decltype(table), typename O = internal::type_t<T>>
+concept storage_table_reference_callable_no_pk = orm_table_reference<T> && requires(S& storage) {
+    { storage.template get_all<table>() } -> same_as<std::vector<O>>;
+    { storage.template count<table>() } -> same_as<int>;
+    { storage.template iterate<table>() } -> same_as<mapped_view<O, S>>;
 };
 
 template<class S, auto table, typename T = decltype(table), typename O = internal::type_t<T>>
@@ -177,7 +190,7 @@ TEST_CASE("column pointers") {
         STATIC_REQUIRE(table_reference_callable<derived_user>);
         STATIC_REQUIRE(refers_to_recordset_callable<sqlite_master_table>);
         STATIC_REQUIRE(refers_to_table_callable<sqlite_master_table>);
-        STATIC_REQUIRE(table_reference_callable<sqlite_master_table>);
+        STATIC_REQUIRE(table_reference_callable_no_pk<sqlite_master_table>);
         STATIC_REQUIRE(refers_to_recordset_callable<sqlite_schema>);
         STATIC_REQUIRE(refers_to_table_callable<sqlite_schema>);
 
@@ -189,7 +202,7 @@ TEST_CASE("column pointers") {
         STATIC_REQUIRE(storage_refers_to_table_callable<storage_type, derived_user>);
         STATIC_REQUIRE(storage_table_reference_callable<storage_type, derived_user>);
         STATIC_REQUIRE(storage_refers_to_table_callable<storage_type, sqlite_master_table>);
-        STATIC_REQUIRE(storage_table_reference_callable<storage_type, sqlite_master_table>);
+        STATIC_REQUIRE(storage_table_reference_callable_no_pk<storage_type, sqlite_master_table>);
         STATIC_REQUIRE(storage_refers_to_table_callable<storage_type, sqlite_schema>);
 #endif
     }

@@ -124,14 +124,17 @@ namespace sqlite_orm::internal {
          *  Call passed lambda with the defined table primary key.
          */
         template<class L>
-        void for_each_primary_key(L&& lambda) const {
+        void visit_table_primary_key(L&& lambda) const {
             using pk_index_sequence = filter_tuple_sequence_t<elements_type, is_primary_key>;
+            // note: already checked in `validate_base_table_definition()`
+            static_assert(pk_index_sequence::size() <= 1);
+            // note: we use the tuple iteration function for simplicity, even if we know there is at most one primary key
             iterate_tuple(this->elements, pk_index_sequence{}, lambda);
         }
 
         std::vector<std::string> table_key_columns_names() const {
             std::vector<std::string> res;
-            this->for_each_primary_key([this, &res](auto& primaryKey) {
+            this->visit_table_primary_key([this, &res](auto& primaryKey) {
                 res = this->table_key_columns_names(primaryKey);
             });
             return res;
@@ -156,7 +159,7 @@ namespace sqlite_orm::internal {
                           call_as_template_base<column_field>([&lambda](const auto& column) {
                               lambda(column.member_pointer);
                           }));
-            this->for_each_primary_key([&lambda](auto& primaryKey) {
+            this->visit_table_primary_key([&lambda](auto& primaryKey) {
                 iterate_tuple(primaryKey.columns, lambda);
             });
         }
@@ -179,7 +182,7 @@ namespace sqlite_orm::internal {
     bool table_primary_key_contains(const insertable_table_definition<Cs...>& definition,
                                     const column_field<G, S>& column) {
         bool res = false;
-        definition.for_each_primary_key([&column, &res](auto& primaryKey) {
+        definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
             using colrefs_tuple = decltype(primaryKey.columns);
             using same_type_index_sequence =
                 filter_tuple_sequence_t<colrefs_tuple,
@@ -199,7 +202,7 @@ namespace sqlite_orm::internal {
     bool is_single_table_primary_key(const insertable_table_definition<Cs...>& definition,
                                      const column_field<G, S>& column) {
         bool res = false;
-        definition.for_each_primary_key([&column, &res](auto& primaryKey) {
+        definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
             // note: use `decltype(primaryKey)` instead of `decltype(primaryKey.columns)` otherwise msvc 141 chokes on the `if constexpr` below
             using colrefs_tuple = columns_tuple_t<polyfill::remove_cvref_t<decltype(primaryKey)>>;
             if constexpr (std::tuple_size<colrefs_tuple>::value != 1) {

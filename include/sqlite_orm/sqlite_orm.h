@@ -3129,7 +3129,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         too_many_tables_specified,
         incorrect_set_fields_specified,
         column_not_found,
-        table_has_no_primary_key_column,
         cannot_start_a_transaction_within_a_transaction,
         no_active_transaction,
         incorrect_journal_mode_string,
@@ -3178,8 +3177,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                     return "Incorrect set fields specified";
                 case orm_error_code::column_not_found:
                     return "Column not found";
-                case orm_error_code::table_has_no_primary_key_column:
-                    return "Table has no primary key column";
                 case orm_error_code::cannot_start_a_transaction_within_a_transaction:
                     return "Cannot start a transaction within a transaction";
                 case orm_error_code::no_active_transaction:
@@ -12620,13 +12617,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/mpl.h"
 
-// #include "../tuple_helper/tuple_iteration.h"
-
 // #include "../tuple_helper/tuple_filter.h"
 
-// #include "../member_traits/member_traits.h"
-
-// #include "../field_of.h"
+// #include "../tuple_helper/tuple_transformer.h"
 
 // #include "../type_traits.h"
 
@@ -12769,14 +12762,17 @@ namespace sqlite_orm::internal {
          *  Call passed lambda with the defined table primary key.
          */
         template<class L>
-        void for_each_primary_key(L&& lambda) const {
+        void visit_table_primary_key(L&& lambda) const {
             using pk_index_sequence = filter_tuple_sequence_t<elements_type, is_primary_key>;
+            // note: already checked in `validate_base_table_definition()`
+            static_assert(pk_index_sequence::size() <= 1);
+            // note: we use the tuple iteration function for simplicity, even if we know there is at most one primary key
             iterate_tuple(this->elements, pk_index_sequence{}, lambda);
         }
 
         std::vector<std::string> table_key_columns_names() const {
             std::vector<std::string> res;
-            this->for_each_primary_key([this, &res](auto& primaryKey) {
+            this->visit_table_primary_key([this, &res](auto& primaryKey) {
                 res = this->table_key_columns_names(primaryKey);
             });
             return res;
@@ -12801,7 +12797,7 @@ namespace sqlite_orm::internal {
                           call_as_template_base<column_field>([&lambda](const auto& column) {
                               lambda(column.member_pointer);
                           }));
-            this->for_each_primary_key([&lambda](auto& primaryKey) {
+            this->visit_table_primary_key([&lambda](auto& primaryKey) {
                 iterate_tuple(primaryKey.columns, lambda);
             });
         }
@@ -12824,7 +12820,7 @@ namespace sqlite_orm::internal {
     bool table_primary_key_contains(const insertable_table_definition<Cs...>& definition,
                                     const column_field<G, S>& column) {
         bool res = false;
-        definition.for_each_primary_key([&column, &res](auto& primaryKey) {
+        definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
             using colrefs_tuple = decltype(primaryKey.columns);
             using same_type_index_sequence =
                 filter_tuple_sequence_t<colrefs_tuple,
@@ -12844,7 +12840,7 @@ namespace sqlite_orm::internal {
     bool is_single_table_primary_key(const insertable_table_definition<Cs...>& definition,
                                      const column_field<G, S>& column) {
         bool res = false;
-        definition.for_each_primary_key([&column, &res](auto& primaryKey) {
+        definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
             // note: use `decltype(primaryKey)` instead of `decltype(primaryKey.columns)` otherwise msvc 141 chokes on the `if constexpr` below
             using colrefs_tuple = columns_tuple_t<polyfill::remove_cvref_t<decltype(primaryKey)>>;
             if constexpr (std::tuple_size<colrefs_tuple>::value != 1) {
@@ -13140,6 +13136,25 @@ namespace sqlite_orm {
 
         template<class T>
         using is_base_table = polyfill::bool_constant<is_base_table_v<T>>;
+
+        template<class... Cs>
+        constexpr void validate_base_table_definition() {
+            static_assert(polyfill::conjunction_v<internal::is_base_table_element_or_constraint<Cs>...>,
+                          "Incorrect base table elements or constraints");
+
+            using elements_type = std::tuple<Cs...>;
+            using pk_index_sequence = filter_tuple_sequence_t<elements_type, is_primary_key>;
+            using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
+
+            static_assert(pk_index_sequence::size() + pkcol_index_sequence::size() <= 1,
+                          "A base table can only have 1 primary key definition");
+            if constexpr (pk_index_sequence::size() > 0) {
+                constexpr size_t nTablePrimaryKeyColumns =
+                    nested_tuple_size_for_t<columns_tuple_t, elements_type, pk_index_sequence>::value;
+
+                static_assert(nTablePrimaryKeyColumns > 0, "Tabel primary key definition must contain one column");
+            }
+        }
     }
 }
 
@@ -13151,10 +13166,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::base_table<T, std::false_type, Cs...> make_table(std::string name, Cs... definition) {
-        static_assert(polyfill::conjunction_v<internal::is_base_table_element_or_constraint<Cs>...>,
-                      "Incorrect table elements or constraints");
-
-        return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(definition)...)};
+        internal::validate_base_table_definition<Cs...>();
+        return {std::move(name), std::tuple{std::forward<Cs>(definition)...}};
     }
 
     /**
@@ -13164,10 +13177,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T, class... Cs>
     internal::base_table<T, std::false_type, Cs...> make_table(std::string name, Cs... definition) {
-        static_assert(polyfill::conjunction_v<internal::is_base_table_element_or_constraint<Cs>...>,
-                      "Incorrect table elements or constraints");
-
-        return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(definition)...)};
+        internal::validate_base_table_definition<Cs...>();
+        return {std::move(name), std::tuple{std::forward<Cs>(definition)...}};
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -22973,11 +22984,7 @@ namespace sqlite_orm {
             ss << "SELECT " << streaming_table_column_names(table, std::string{}) << " FROM "
                << streaming_identifier(table.name) << " WHERE ";
 
-            auto primaryKeyColumnNames = table.primary_key_column_names();
-            if (primaryKeyColumnNames.empty()) {
-                throw std::system_error{orm_error_code::table_has_no_primary_key_column};
-            }
-
+            const auto primaryKeyColumnNames = table.primary_key_column_names();
 #ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
             static constexpr std::array<orm_gsl::czstring, 2> sep = {" AND ", ""};
             for (bool first = true; const std::string& pkName: primaryKeyColumnNames) {
@@ -24396,21 +24403,31 @@ namespace sqlite_orm {
             }
 
             template<class O>
+            void assert_primary_key_type() const {
+                using table_type = storage_pick_table_t<O, db_objects_type>;
+                using elements_type = elements_type_t<table_type>;
+                using pk_index_sequence = filter_tuple_sequence_t<elements_type, is_primary_key>;
+                using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
+
+                static_assert(pk_index_sequence::size() + pkcol_index_sequence::size() == 1,
+                              "The table must have primary key");
+            }
+
+            template<class O>
             void assert_updatable_type() const {
                 using table_type = storage_pick_table_t<O, db_objects_type>;
                 using elements_type = elements_type_t<table_type>;
                 using column_index_sequence = col_index_sequence_of<elements_type>;
                 using pk_index_sequence = filter_tuple_sequence_t<elements_type, is_primary_key>;
                 using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
-                constexpr size_t dedicatedPrimaryKeyColumnsCount =
+                constexpr size_t nTablePrimaryKeyColumns =
                     nested_tuple_size_for_t<columns_tuple_t, elements_type, pk_index_sequence>::value;
 
-                constexpr size_t primaryKeyColumnsCount =
-                    dedicatedPrimaryKeyColumnsCount + pkcol_index_sequence::size();
-                constexpr ptrdiff_t nonPrimaryKeysColumnsCount = column_index_sequence::size() - primaryKeyColumnsCount;
-                static_assert(primaryKeyColumnsCount > 0, "A table without primary keys cannot be updated");
+                constexpr size_t nPrimaryKeyColumns = nTablePrimaryKeyColumns + pkcol_index_sequence::size();
+                constexpr ptrdiff_t nNonPrimaryKeysColumns = column_index_sequence::size() - nPrimaryKeyColumns;
+                static_assert(nPrimaryKeyColumns > 0, "A table without primary keys cannot be updated");
                 static_assert(
-                    nonPrimaryKeysColumnsCount > 0,
+                    nNonPrimaryKeysColumns > 0,
                     "A table with only primary keys cannot be updated. You need at least 1 non-primary key column");
             }
 
@@ -24714,6 +24731,7 @@ namespace sqlite_orm {
             template<class O, class... Ids>
             O get(Ids... ids) {
                 this->assert_mapped_type<O>();
+                this->assert_primary_key_type<O>();
                 auto statement = this->prepare(sqlite_orm::get<O>(std::forward<Ids>(ids)...));
                 return this->execute(statement);
             }
@@ -24732,6 +24750,7 @@ namespace sqlite_orm {
             template<class O, class... Ids>
             std::unique_ptr<O> get_pointer(Ids... ids) {
                 this->assert_mapped_type<O>();
+                this->assert_primary_key_type<O>();
                 auto statement = this->prepare(sqlite_orm::get_pointer<O>(std::forward<Ids>(ids)...));
                 return this->execute(statement);
             }
@@ -24769,6 +24788,7 @@ namespace sqlite_orm {
             template<class O, class... Ids>
             std::optional<O> get_optional(Ids... ids) {
                 this->assert_mapped_type<O>();
+                this->assert_primary_key_type<O>();
                 auto statement = this->prepare(sqlite_orm::get_optional<O>(std::forward<Ids>(ids)...));
                 return this->execute(statement);
             }

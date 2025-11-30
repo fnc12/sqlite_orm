@@ -215,21 +215,31 @@ namespace sqlite_orm {
             }
 
             template<class O>
+            void assert_primary_key_type() const {
+                using table_type = storage_pick_table_t<O, db_objects_type>;
+                using elements_type = elements_type_t<table_type>;
+                using pk_index_sequence = filter_tuple_sequence_t<elements_type, is_primary_key>;
+                using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
+
+                static_assert(pk_index_sequence::size() + pkcol_index_sequence::size() == 1,
+                              "The table must have primary key");
+            }
+
+            template<class O>
             void assert_updatable_type() const {
                 using table_type = storage_pick_table_t<O, db_objects_type>;
                 using elements_type = elements_type_t<table_type>;
                 using column_index_sequence = col_index_sequence_of<elements_type>;
                 using pk_index_sequence = filter_tuple_sequence_t<elements_type, is_primary_key>;
                 using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
-                constexpr size_t dedicatedPrimaryKeyColumnsCount =
+                constexpr size_t nTablePrimaryKeyColumns =
                     nested_tuple_size_for_t<columns_tuple_t, elements_type, pk_index_sequence>::value;
 
-                constexpr size_t primaryKeyColumnsCount =
-                    dedicatedPrimaryKeyColumnsCount + pkcol_index_sequence::size();
-                constexpr ptrdiff_t nonPrimaryKeysColumnsCount = column_index_sequence::size() - primaryKeyColumnsCount;
-                static_assert(primaryKeyColumnsCount > 0, "A table without primary keys cannot be updated");
+                constexpr size_t nPrimaryKeyColumns = nTablePrimaryKeyColumns + pkcol_index_sequence::size();
+                constexpr ptrdiff_t nNonPrimaryKeysColumns = column_index_sequence::size() - nPrimaryKeyColumns;
+                static_assert(nPrimaryKeyColumns > 0, "A table without primary keys cannot be updated");
                 static_assert(
-                    nonPrimaryKeysColumnsCount > 0,
+                    nNonPrimaryKeysColumns > 0,
                     "A table with only primary keys cannot be updated. You need at least 1 non-primary key column");
             }
 
@@ -533,6 +543,7 @@ namespace sqlite_orm {
             template<class O, class... Ids>
             O get(Ids... ids) {
                 this->assert_mapped_type<O>();
+                this->assert_primary_key_type<O>();
                 auto statement = this->prepare(sqlite_orm::get<O>(std::forward<Ids>(ids)...));
                 return this->execute(statement);
             }
@@ -551,6 +562,7 @@ namespace sqlite_orm {
             template<class O, class... Ids>
             std::unique_ptr<O> get_pointer(Ids... ids) {
                 this->assert_mapped_type<O>();
+                this->assert_primary_key_type<O>();
                 auto statement = this->prepare(sqlite_orm::get_pointer<O>(std::forward<Ids>(ids)...));
                 return this->execute(statement);
             }
@@ -588,6 +600,7 @@ namespace sqlite_orm {
             template<class O, class... Ids>
             std::optional<O> get_optional(Ids... ids) {
                 this->assert_mapped_type<O>();
+                this->assert_primary_key_type<O>();
                 auto statement = this->prepare(sqlite_orm::get_optional<O>(std::forward<Ids>(ids)...));
                 return this->execute(statement);
             }
