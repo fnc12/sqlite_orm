@@ -35,54 +35,51 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     };
 }
 
-namespace sqlite_orm {
-    namespace internal {
-
-        inline const serialize_result_type& journal_mode_to_string(journal_mode value) {
+namespace sqlite_orm::internal {
+    inline const serialize_result_type& journal_mode_to_string(journal_mode value) {
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-            static constexpr std::array<serialize_result_type, 6> idx2str = {
+        static constexpr std::array<serialize_result_type, 6> idx2str = {
 #else
-            static const std::array<serialize_result_type, 6> idx2str = {
+        static const std::array<serialize_result_type, 6> idx2str = {
 #endif
-                "DELETE",
-                "TRUNCATE",
-                "PERSIST",
-                "MEMORY",
-                "WAL",
-                "OFF",
-            };
-            return idx2str.at(static_cast<int>(value));
-        }
+            "DELETE",
+            "TRUNCATE",
+            "PERSIST",
+            "MEMORY",
+            "WAL",
+            "OFF",
+        };
+        return idx2str.at(static_cast<int>(value));
+    }
 
-        inline std::pair<bool, journal_mode> journal_mode_from_string(std::string string) {
-            static constexpr std::array<journal_mode, 6> journalModes = {{
-                journal_mode::DELETE,
-                journal_mode::TRUNCATE,
-                journal_mode::PERSIST,
-                journal_mode::MEMORY,
-                journal_mode::WAL,
-                journal_mode::OFF,
-            }};
+    inline std::pair<bool, journal_mode> journal_mode_from_string(std::string string) {
+        static constexpr std::array<journal_mode, 6> journalModes = {{
+            journal_mode::DELETE,
+            journal_mode::TRUNCATE,
+            journal_mode::PERSIST,
+            journal_mode::MEMORY,
+            journal_mode::WAL,
+            journal_mode::OFF,
+        }};
 #ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
-            std::ranges::transform(string, string.begin(), [](unsigned char c) SQLITE_ORM_STATIC_CALLOP noexcept {
-                return std::toupper(c);
-            });
-            if (auto found = std::ranges::find(journalModes, string, journal_mode_to_string);
-                found != journalModes.end()) SQLITE_ORM_CPP_LIKELY {
-                return {true, *found};
-            }
-#else
-            std::transform(string.begin(), string.end(), string.begin(), [](unsigned char c) noexcept {
-                return std::toupper(c);
-            });
-            for (auto journalMode: journalModes) {
-                if (journal_mode_to_string(journalMode) == string) {
-                    return {true, journalMode};
-                }
-            }
-#endif
-            return {false, journal_mode::OFF};
+        std::ranges::transform(string, string.begin(), [](unsigned char c) SQLITE_ORM_STATIC_CALLOP noexcept {
+            return std::toupper(c);
+        });
+        if (auto found = std::ranges::find(journalModes, string, journal_mode_to_string); found != journalModes.end())
+            SQLITE_ORM_CPP_LIKELY {
+            return {true, *found};
         }
+#else
+        std::transform(string.begin(), string.end(), string.begin(), [](unsigned char c) noexcept {
+            return std::toupper(c);
+        });
+        for (auto journalMode: journalModes) {
+            if (journal_mode_to_string(journalMode) == string) {
+                return {true, journalMode};
+            }
+        }
+#endif
+        return {false, journal_mode::OFF};
     }
 }
 

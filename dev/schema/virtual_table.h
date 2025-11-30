@@ -72,7 +72,7 @@ namespace sqlite_orm::internal {
 
     /** 
      *  Encapsulates the intermediary (and temporary) `using_module(...)` expression.
-     * 
+     *  
      *  Implementation note: When making the virtual table this virtual table definition is unpacked into the virtual table type itself.
      *  If desired or necessary one day, derive `virtual_table` from it, similar to `base_table` deriving from `base_table_definition`.
      */

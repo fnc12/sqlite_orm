@@ -26,26 +26,26 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     struct field_printer;
 }
 
+namespace sqlite_orm::internal {
+    /*
+     *  Implementation note: the technique of indirect expression testing is because
+     *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
+     *  It must also be a type that differs from those for `is_preparable_v`, `is_bindable_v`.
+     */
+    template<class Printer>
+    struct indirectly_test_printable;
+
+    template<class T, class SFINAE = void>
+    inline constexpr bool is_printable_v = false;
+    template<class T>
+    inline constexpr bool is_printable_v<T, polyfill::void_t<indirectly_test_printable<decltype(field_printer<T>{})>>> =
+        true;
+
+    template<class T>
+    struct is_printable : polyfill::bool_constant<is_printable_v<T>> {};
+}
+
 namespace sqlite_orm {
-    namespace internal {
-        /*
-         *  Implementation note: the technique of indirect expression testing is because
-         *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
-         *  It must also be a type that differs from those for `is_preparable_v`, `is_bindable_v`.
-         */
-        template<class Printer>
-        struct indirectly_test_printable;
-
-        template<class T, class SFINAE = void>
-        inline constexpr bool is_printable_v = false;
-        template<class T>
-        inline constexpr bool
-            is_printable_v<T, polyfill::void_t<indirectly_test_printable<decltype(field_printer<T>{})>>> = true;
-
-        template<class T>
-        struct is_printable : polyfill::bool_constant<is_printable_v<T>> {};
-    }
-
     template<class T>
     struct field_printer<T, internal::match_if<std::is_arithmetic, T>> {
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const T& t) SQLITE_ORM_OR_CONST_CALLOP {

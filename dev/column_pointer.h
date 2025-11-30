@@ -11,41 +11,39 @@
 #include "alias_traits.h"
 #include "tags.h"
 
-namespace sqlite_orm {
-    namespace internal {
-        /**
-         *  This class is used to store explicit mapped type T and its column descriptor (member pointer/getter/setter).
-         *  Is useful when mapped type is derived from other type and base class has members mapped to a storage.
-         */
-        template<class T, class F>
-        struct column_pointer {
-            using type = T;
-            using field_type = F;
+namespace sqlite_orm::internal {
+    /**
+     *  This class is used to store explicit mapped type T and its column descriptor (member pointer/getter/setter).
+     *  Is useful when mapped type is derived from other type and base class has members mapped to a storage.
+     */
+    template<class T, class F>
+    struct column_pointer {
+        using type = T;
+        using field_type = F;
 
-            field_type field;
-        };
+        field_type field;
+    };
 
-        template<class T>
-        inline constexpr bool is_column_pointer_v = polyfill::is_specialization_of<T, column_pointer>::value;
+    template<class T>
+    inline constexpr bool is_column_pointer_v = polyfill::is_specialization_of<T, column_pointer>::value;
 
-        template<class T>
-        struct is_column_pointer : polyfill::bool_constant<is_column_pointer_v<T>> {};
+    template<class T>
+    struct is_column_pointer : polyfill::bool_constant<is_column_pointer_v<T>> {};
 
-        template<class T>
-        inline constexpr bool is_operator_argument_v<T, std::enable_if_t<is_column_pointer<T>::value>> = true;
+    template<class T>
+    inline constexpr bool is_operator_argument_v<T, std::enable_if_t<is_column_pointer<T>::value>> = true;
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-        template<class A>
-        struct alias_holder;
+    template<class A>
+    struct alias_holder;
 #endif
-    }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Explicitly refer to a column, used in contexts
      *  where the automatic object mapping deduction needs to be overridden.
-     *
+     *  
      *  Example:
      *  struct BaseType : { int64 id; };
      *  struct MyType : BaseType { ... };
@@ -96,7 +94,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     /**
      *  Explicitly refer to a column alias mapped into a CTE or subquery.
-     *
+     *  
      *  Example:
      *  struct Object { ... };
      *  using cte_1 = decltype(1_ctealias);
@@ -125,7 +123,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
      *  Explicitly refer to a column mapped into a CTE or subquery.
-     *
+     *  
      *  Example:
      *  struct Object { ... };
      *  storage.with(cte<"z"_cte>()(select(&Object::id)), select(column<"z"_cte>(&Object::id)));
@@ -142,7 +140,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  
      *  @note (internal) Intentionally place in the sqlite_orm namespace for ADL (Argument Dependent Lookup)
      *  because recordset aliases are derived from `sqlite_orm::alias_tag`
-     *
+     *  
      *  Example:
      *  struct Object { ... };
      *  using cte_1 = decltype(1_ctealias);

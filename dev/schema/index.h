@@ -10,24 +10,20 @@
 #include "../indexed_column.h"
 #include "../table_type_of.h"
 
-namespace sqlite_orm {
+namespace sqlite_orm::internal {
+    struct index_base {
+        std::string name;
+        bool unique = false;
+    };
 
-    namespace internal {
+    template<class T, class... Els>
+    struct index_t : index_base {
+        using elements_type = std::tuple<Els...>;
+        using object_type = void;
+        using table_mapped_type = T;
 
-        struct index_base {
-            std::string name;
-            bool unique = false;
-        };
-
-        template<class T, class... Els>
-        struct index_t : index_base {
-            using elements_type = std::tuple<Els...>;
-            using object_type = void;
-            using table_mapped_type = T;
-
-            elements_type elements;
-        };
-    }
+        elements_type elements;
+    };
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

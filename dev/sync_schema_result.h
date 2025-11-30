@@ -35,10 +35,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         /**
          *  old table is dropped and new is recreated. Reasons :
-         *      1. delete excess columns in the table than storage if preseve = false
-         *      2. Lacking columns in the table cannot be added due to NULL and DEFAULT constraint
-         *      3. Reasons 1 and 2 both together
-         *      4. data_type mismatch between table and storage.
+         *  1. delete excess columns in the table than storage if preseve = false
+         *  2. Lacking columns in the table cannot be added due to NULL and DEFAULT constraint
+         *  3. Reasons 1 and 2 both together
+         *  4. data_type mismatch between table and storage.
          */
         dropped_and_recreated,
     };

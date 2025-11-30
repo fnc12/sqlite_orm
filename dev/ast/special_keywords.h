@@ -1,11 +1,9 @@
 #pragma once
 
-namespace sqlite_orm {
-    namespace internal {
-        struct current_time_t {};
-        struct current_date_t {};
-        struct current_timestamp_t {};
-    }
+namespace sqlite_orm::internal {
+    struct current_time_t {};
+    struct current_date_t {};
+    struct current_timestamp_t {};
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

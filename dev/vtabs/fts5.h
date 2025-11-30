@@ -49,7 +49,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     struct fts5 {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         /** 
-            Hidden columns of the `fts5` virtual table, which can be referred to using a 'column pointer' or using `hidden_fields_of<>` fields.
+         *  Hidden columns of the `fts5` virtual table, which can be referred to using a 'column pointer' or using `hidden_fields_of<>` fields.
          */
         struct hidden {
             /// Hidden column with the same name as the table itself. It is a blob only meaningful when matching any of the other FTS5 columns.
@@ -64,12 +64,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         };
 
         /** 
-            Map hidden columns to a specific object type to simplify programming.
+         *  Map hidden columns to a specific object type to simplify programming.
 
-            Example:
-            struct Post {
-                using hidden = fts5::hidden_fields_of<Post>;
-            };
+         *  Example:
+         *  struct Post {
+         *   using hidden = fts5::hidden_fields_of<Post>;
+         *  };
          */
         template<class O>
         struct hidden_fields_of {

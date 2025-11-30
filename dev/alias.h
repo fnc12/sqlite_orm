@@ -20,180 +20,176 @@
 #include "tags.h"
 #include "column_pointer.h"
 
-namespace sqlite_orm {
-
-    namespace internal {
+namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        template<class T>
-        inline constexpr bool is_operator_argument_v<T, std::enable_if_t<orm_column_alias<T>>> = true;
+    template<class T>
+    inline constexpr bool is_operator_argument_v<T, std::enable_if_t<orm_column_alias<T>>> = true;
 #endif
 
-        /**
-         *  This is a common built-in class used for character based table aliases.
-         *  For convenience there exist public type aliases `alias_a`, `alias_b`, ...
-         *  The easiest way to create a table alias is using `"z"_alias.for_<Object>()`.
-         */
-        template<class T, char A, char... X>
-        struct recordset_alias : alias_tag {
-            using type = T;
+    /**
+     *  This is a common built-in class used for character based table aliases.
+     *  For convenience there exist public type aliases `alias_a`, `alias_b`, ...
+     *  The easiest way to create a table alias is using `"z"_alias.for_<Object>()`.
+     */
+    template<class T, char A, char... X>
+    struct recordset_alias : alias_tag {
+        using type = T;
 
-            static std::string get() {
-                return {A, X...};
-            }
-        };
+        static std::string get() {
+            return {A, X...};
+        }
+    };
 
-        /**
-         *  Column expression with table alias attached like 'C.ID'. This is not a column alias
-         */
-        template<class T, class C>
-        struct alias_column_t {
-            using alias_type = T;
-            using column_type = C;
+    /**
+     *  Column expression with table alias attached like 'C.ID'. This is not a column alias
+     */
+    template<class T, class C>
+    struct alias_column_t {
+        using alias_type = T;
+        using column_type = C;
 
-            column_type column;
-        };
+        column_type column;
+    };
 
-        template<class T>
-        inline constexpr bool
-            is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, alias_column_t>::value>> =
-                true;
+    template<class T>
+    inline constexpr bool
+        is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, alias_column_t>::value>> = true;
 
-        struct table_identifier;
+    struct table_identifier;
 
-        /*
-         * Encapsulates extracting the alias identifier of a non-alias.
-         * 
-         * `extract()` always returns the empty string.
-         * `as_alias()` is used in contexts where a table might be aliased, and the empty string is returned.
-         * `as_qualifier()` is used in contexts where a table might be aliased, and the given table's name is returned.
-         */
-        template<class T, class SFINAE = void>
-        struct alias_extractor {
-            static std::string extract() {
-                return {};
-            }
-
-            static std::string as_alias() {
-                return {};
-            }
-
-            template<class X = table_identifier>
-            static const std::string& as_qualifier(const X& table) {
-                return table.name;
-            }
-        };
-
-        /*
-         * Encapsulates extracting the alias identifier of an alias.
-         * 
-         * `extract()` always returns the alias identifier or CTE moniker.
-         * `as_alias()` is used in contexts where a recordset is aliased, and the alias identifier is returned.
-         * `as_qualifier()` is used in contexts where a table is aliased, and the alias identifier is returned.
-         */
-        template<class A>
-        struct alias_extractor<A, match_if<is_alias, A>> {
-            static std::string extract() {
-                std::stringstream ss;
-                ss << A::get();
-                return ss.str();
-            }
-
-            // for column and regular table aliases -> alias identifier
-            template<class T = A, satisfies_not<std::is_same, polyfill::detected_t<type_t, T>, A> = true>
-            static std::string as_alias() {
-                return alias_extractor::extract();
-            }
-
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-            // for CTE monikers -> empty
-            template<class T = A, satisfies<std::is_same, polyfill::detected_t<type_t, T>, A> = true>
-            static std::string as_alias() {
-                return {};
-            }
-#endif
-
-            // for regular table aliases -> alias identifier
-            template<class T = A, satisfies<is_table_alias, T> = true>
-            static std::string as_qualifier(const table_identifier&) {
-                return alias_extractor::extract();
-            }
-        };
-
-        /**
-         * Used to store alias for expression
-         */
-        template<class T, class E>
-        struct as_t {
-            using alias_type = T;
-            using expression_type = E;
-
-            expression_type expression;
-        };
-
-        /**
-         *  Built-in column alias.
-         *  For convenience there exist type aliases `colalias_a`, `colalias_b`, ...
-         *  The easiest way to create a column alias is using `"xyz"_col`.
-         */
-        template<char A, char... X>
-        struct column_alias : alias_tag {
-            static std::string get() {
-                return {A, X...};
-            }
-        };
-
-        template<class T>
-        struct alias_holder {
-            using type = T;
-
-            alias_holder() = default;
-            // CTE feature needs it to implicitly convert a column alias to an alias_holder; see `cte()` factory function
-            alias_holder(const T&) noexcept {}
-        };
-
-        template<class T>
-        inline constexpr bool
-            is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, alias_holder>::value>> = true;
-
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        template<char A, char... X>
-        struct recordset_alias_builder {
-            template<class T>
-            [[nodiscard]] consteval recordset_alias<T, A, X...> for_() const {
-                return {};
-            }
-
-            template<orm_table_reference auto t>
-            [[nodiscard]] consteval auto for_() const {
-                using T = auto_decay_table_ref_t<t>;
-                return recordset_alias<T, A, X...>{};
-            }
-
-            template<orm_recordset_alias auto t>
-            [[nodiscard]] consteval auto for_() const {
-                using T = std::remove_const_t<decltype(t)>;
-                return recordset_alias<T, A, X...>{};
-            }
-        };
-#endif
-
-#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-        template<size_t n, char... C>
-        SQLITE_ORM_CONSTEVAL auto n_to_colalias() {
-            constexpr column_alias<'1' + n % 10, C...> colalias{};
-            if constexpr (n > 10) {
-                return n_to_colalias<n / 10, '1' + n % 10, C...>();
-            } else {
-                return colalias;
-            }
+    /*
+     *  Encapsulates extracting the alias identifier of a non-alias.
+     *  
+     *  `extract()` always returns the empty string.
+     *  `as_alias()` is used in contexts where a table might be aliased, and the empty string is returned.
+     *  `as_qualifier()` is used in contexts where a table might be aliased, and the given table's name is returned.
+     */
+    template<class T, class SFINAE = void>
+    struct alias_extractor {
+        static std::string extract() {
+            return {};
         }
 
-        template<class T>
-        inline constexpr bool is_builtin_numeric_column_alias_v = false;
-        template<char... C>
-        inline constexpr bool is_builtin_numeric_column_alias_v<column_alias<C...>> = ((C >= '0' && C <= '9') && ...);
+        static std::string as_alias() {
+            return {};
+        }
+
+        template<class X = table_identifier>
+        static const std::string& as_qualifier(const X& table) {
+            return table.name;
+        }
+    };
+
+    /*
+     *  Encapsulates extracting the alias identifier of an alias.
+     *  
+     *  `extract()` always returns the alias identifier or CTE moniker.
+     *  `as_alias()` is used in contexts where a recordset is aliased, and the alias identifier is returned.
+     *  `as_qualifier()` is used in contexts where a table is aliased, and the alias identifier is returned.
+     */
+    template<class A>
+    struct alias_extractor<A, match_if<is_alias, A>> {
+        static std::string extract() {
+            std::stringstream ss;
+            ss << A::get();
+            return ss.str();
+        }
+
+        // for column and regular table aliases -> alias identifier
+        template<class T = A, satisfies_not<std::is_same, polyfill::detected_t<type_t, T>, A> = true>
+        static std::string as_alias() {
+            return alias_extractor::extract();
+        }
+
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+        // for CTE monikers -> empty
+        template<class T = A, satisfies<std::is_same, polyfill::detected_t<type_t, T>, A> = true>
+        static std::string as_alias() {
+            return {};
+        }
 #endif
+
+        // for regular table aliases -> alias identifier
+        template<class T = A, satisfies<is_table_alias, T> = true>
+        static std::string as_qualifier(const table_identifier&) {
+            return alias_extractor::extract();
+        }
+    };
+
+    /**
+     *  Used to store alias for expression
+     */
+    template<class T, class E>
+    struct as_t {
+        using alias_type = T;
+        using expression_type = E;
+
+        expression_type expression;
+    };
+
+    /**
+     *  Built-in column alias.
+     *  For convenience there exist type aliases `colalias_a`, `colalias_b`, ...
+     *  The easiest way to create a column alias is using `"xyz"_col`.
+     */
+    template<char A, char... X>
+    struct column_alias : alias_tag {
+        static std::string get() {
+            return {A, X...};
+        }
+    };
+
+    template<class T>
+    struct alias_holder {
+        using type = T;
+
+        alias_holder() = default;
+        // CTE feature needs it to implicitly convert a column alias to an alias_holder; see `cte()` factory function
+        alias_holder(const T&) noexcept {}
+    };
+
+    template<class T>
+    inline constexpr bool
+        is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, alias_holder>::value>> = true;
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<char A, char... X>
+    struct recordset_alias_builder {
+        template<class T>
+        [[nodiscard]] consteval recordset_alias<T, A, X...> for_() const {
+            return {};
+        }
+
+        template<orm_table_reference auto t>
+        [[nodiscard]] consteval auto for_() const {
+            using T = auto_decay_table_ref_t<t>;
+            return recordset_alias<T, A, X...>{};
+        }
+
+        template<orm_recordset_alias auto t>
+        [[nodiscard]] consteval auto for_() const {
+            using T = std::remove_const_t<decltype(t)>;
+            return recordset_alias<T, A, X...>{};
+        }
+    };
+#endif
+
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
+    template<size_t n, char... C>
+    SQLITE_ORM_CONSTEVAL auto n_to_colalias() {
+        constexpr column_alias<'1' + n % 10, C...> colalias{};
+        if constexpr (n > 10) {
+            return n_to_colalias<n / 10, '1' + n % 10, C...>();
+        } else {
+            return colalias;
+        }
     }
+
+    template<class T>
+    inline constexpr bool is_builtin_numeric_column_alias_v = false;
+    template<char... C>
+    inline constexpr bool is_builtin_numeric_column_alias_v<column_alias<C...>> = ((C >= '0' && C <= '9') && ...);
+#endif
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -455,7 +451,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /** @short Create a table alias.
-     *
+     *  
      *  Examples:
      *  constexpr orm_table_alias auto z_alias = alias<'z'>.for_<User>();
      */
@@ -464,7 +460,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     inline namespace literals {
         /** @short Create a table alias.
-         *
+         *  
          *  Examples:
          *  constexpr orm_table_alias auto z_alias = "z"_alias.for_<User>();
          */

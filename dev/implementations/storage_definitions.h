@@ -18,141 +18,139 @@
 #include "../serializing_util.h"
 #include "../storage.h"
 
-namespace sqlite_orm {
-    namespace internal {
-        template<class... DBO>
-        template<class Table, satisfies<is_base_table, Table>>
-        sync_schema_result storage_t<DBO...>::sync_dbo([[maybe_unused]] const Table& table,
-                                                       [[maybe_unused]] sqlite3* db,
-                                                       [[maybe_unused]] bool preserve) {
-            if constexpr (std::is_same<object_type_t<Table>, sqlite_master>::value) {
-                return sync_schema_result::already_in_sync;
-            } else {
-                return this->sync_regular_base_table(table, db, preserve);
-            }
+namespace sqlite_orm::internal {
+    template<class... DBO>
+    template<class Table, satisfies<is_base_table, Table>>
+    sync_schema_result storage_t<DBO...>::sync_dbo([[maybe_unused]] const Table& table,
+                                                   [[maybe_unused]] sqlite3* db,
+                                                   [[maybe_unused]] bool preserve) {
+        if constexpr (std::is_same<object_type_t<Table>, sqlite_master>::value) {
+            return sync_schema_result::already_in_sync;
+        } else {
+            return this->sync_regular_base_table(table, db, preserve);
         }
+    }
 
-        template<class... DBO>
-        template<class Table, satisfies<is_base_table, Table>>
-        sync_schema_result storage_t<DBO...>::sync_regular_base_table(const Table& table, sqlite3* db, bool preserve) {
-            auto res = sync_schema_result::already_in_sync;
-            bool attempt_to_preserve = true;
+    template<class... DBO>
+    template<class Table, satisfies<is_base_table, Table>>
+    sync_schema_result storage_t<DBO...>::sync_regular_base_table(const Table& table, sqlite3* db, bool preserve) {
+        auto res = sync_schema_result::already_in_sync;
+        bool attempt_to_preserve = true;
 
-            auto schema_stat = this->schema_status(table, db, preserve, &attempt_to_preserve);
-            if (schema_stat != sync_schema_result::already_in_sync) {
-                if (schema_stat == sync_schema_result::new_table_created) {
-                    this->create_table(db, table.name, table);
-                    res = sync_schema_result::new_table_created;
-                } else {
-                    if (schema_stat == sync_schema_result::old_columns_removed ||
-                        schema_stat == sync_schema_result::new_columns_added ||
-                        schema_stat == sync_schema_result::new_columns_added_and_old_columns_removed) {
+        auto schema_stat = this->schema_status(table, db, preserve, &attempt_to_preserve);
+        if (schema_stat != sync_schema_result::already_in_sync) {
+            if (schema_stat == sync_schema_result::new_table_created) {
+                this->create_table(db, table.name, table);
+                res = sync_schema_result::new_table_created;
+            } else {
+                if (schema_stat == sync_schema_result::old_columns_removed ||
+                    schema_stat == sync_schema_result::new_columns_added ||
+                    schema_stat == sync_schema_result::new_columns_added_and_old_columns_removed) {
 
-                        //  get table info provided in `make_table` call..
-                        auto storageTableInfo = table.get_table_info();
+                    //  get table info provided in `make_table` call..
+                    auto storageTableInfo = table.get_table_info();
 
-                        //  now get current table info from db using `PRAGMA table_xinfo` query..
-                        auto dbTableInfo = this->pragma.table_xinfo(table.name);  // should include generated columns
+                    //  now get current table info from db using `PRAGMA table_xinfo` query..
+                    auto dbTableInfo = this->pragma.table_xinfo(table.name);  // should include generated columns
 
-                        //  this vector will contain pointers to columns that gotta be added..
-                        std::vector<const table_xinfo*> columnsToAdd;
+                    //  this vector will contain pointers to columns that gotta be added..
+                    std::vector<const table_xinfo*> columnsToAdd;
 
-                        this->calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
+                    this->calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
 
-                        if (schema_stat == sync_schema_result::old_columns_removed) {
+                    if (schema_stat == sync_schema_result::old_columns_removed) {
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
-                            for (auto& tableInfo: dbTableInfo) {
-                                this->drop_column(db, table.name, tableInfo.name);
-                            }
-                            res = sync_schema_result::old_columns_removed;
+                        for (auto& tableInfo: dbTableInfo) {
+                            this->drop_column(db, table.name, tableInfo.name);
+                        }
+                        res = sync_schema_result::old_columns_removed;
 #else
-                            //  extra table columns than storage columns
-                            this->backup_table(db, table, {});
-                            res = sync_schema_result::old_columns_removed;
+                        //  extra table columns than storage columns
+                        this->backup_table(db, table, {});
+                        res = sync_schema_result::old_columns_removed;
 #endif
+                    }
+
+                    if (schema_stat == sync_schema_result::new_columns_added) {
+                        for (const table_xinfo* colInfo: columnsToAdd) {
+                            table.for_each_column([this, colInfo, &tableName = table.name, db](auto& column) {
+                                if (column.name != colInfo->name) {
+                                    return;
+                                }
+                                this->add_column(db, tableName, column);
+                            });
                         }
+                        res = sync_schema_result::new_columns_added;
+                    }
 
-                        if (schema_stat == sync_schema_result::new_columns_added) {
-                            for (const table_xinfo* colInfo: columnsToAdd) {
-                                table.for_each_column([this, colInfo, &tableName = table.name, db](auto& column) {
-                                    if (column.name != colInfo->name) {
-                                        return;
-                                    }
-                                    this->add_column(db, tableName, column);
-                                });
-                            }
-                            res = sync_schema_result::new_columns_added;
-                        }
+                    if (schema_stat == sync_schema_result::new_columns_added_and_old_columns_removed) {
 
-                        if (schema_stat == sync_schema_result::new_columns_added_and_old_columns_removed) {
-
-                            auto storageTableInfo = table.get_table_info();
-                            this->add_generated_cols(columnsToAdd, storageTableInfo);
-
-                            // remove extra columns and generated columns
-                            this->backup_table(db, table, columnsToAdd);
-                            res = sync_schema_result::new_columns_added_and_old_columns_removed;
-                        }
-                    } else if (schema_stat == sync_schema_result::dropped_and_recreated) {
-                        //  now get current table info from db using `PRAGMA table_xinfo` query..
-                        auto dbTableInfo = this->pragma.table_xinfo(table.name);  // should include generated columns
                         auto storageTableInfo = table.get_table_info();
-
-                        //  this vector will contain pointers to columns that gotta be added..
-                        std::vector<const table_xinfo*> columnsToAdd;
-
-                        this->calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
-
                         this->add_generated_cols(columnsToAdd, storageTableInfo);
 
-                        if (preserve && attempt_to_preserve) {
-                            this->backup_table(db, table, columnsToAdd);
-                        } else {
-                            this->drop_create_with_loss(db, table);
-                        }
-                        res = schema_stat;
+                        // remove extra columns and generated columns
+                        this->backup_table(db, table, columnsToAdd);
+                        res = sync_schema_result::new_columns_added_and_old_columns_removed;
                     }
+                } else if (schema_stat == sync_schema_result::dropped_and_recreated) {
+                    //  now get current table info from db using `PRAGMA table_xinfo` query..
+                    auto dbTableInfo = this->pragma.table_xinfo(table.name);  // should include generated columns
+                    auto storageTableInfo = table.get_table_info();
+
+                    //  this vector will contain pointers to columns that gotta be added..
+                    std::vector<const table_xinfo*> columnsToAdd;
+
+                    this->calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
+
+                    this->add_generated_cols(columnsToAdd, storageTableInfo);
+
+                    if (preserve && attempt_to_preserve) {
+                        this->backup_table(db, table, columnsToAdd);
+                    } else {
+                        this->drop_create_with_loss(db, table);
+                    }
+                    res = schema_stat;
                 }
             }
-            return res;
         }
+        return res;
+    }
 
-        template<class... DBO>
-        template<class Table>
-        void storage_t<DBO...>::copy_table(
-            sqlite3* db,
-            const std::string& sourceTableName,
-            const std::string& destinationTableName,
-            const Table& table,
-            const std::vector<const table_xinfo*>& columnsToIgnore) const {  // must ignore generated columns
-            std::vector<std::reference_wrapper<const std::string>> columnNames;
-            columnNames.reserve(table.template count_of<is_column>());
-            table.for_each_column([&columnNames, &columnsToIgnore](const column_identifier& column) {
-                auto& columnName = column.name;
+    template<class... DBO>
+    template<class Table>
+    void storage_t<DBO...>::copy_table(
+        sqlite3* db,
+        const std::string& sourceTableName,
+        const std::string& destinationTableName,
+        const Table& table,
+        const std::vector<const table_xinfo*>& columnsToIgnore) const {  // must ignore generated columns
+        std::vector<std::reference_wrapper<const std::string>> columnNames;
+        columnNames.reserve(table.template count_of<is_column>());
+        table.for_each_column([&columnNames, &columnsToIgnore](const column_identifier& column) {
+            auto& columnName = column.name;
 #ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
-                auto columnToIgnoreIt = std::ranges::find(columnsToIgnore, columnName, &table_xinfo::name);
+            auto columnToIgnoreIt = std::ranges::find(columnsToIgnore, columnName, &table_xinfo::name);
 #else
-                auto columnToIgnoreIt = std::find_if(columnsToIgnore.begin(),
-                                                     columnsToIgnore.end(),
-                                                     [&columnName](const table_xinfo* tableInfo) {
-                                                         return columnName == tableInfo->name;
-                                                     });
+            auto columnToIgnoreIt = std::find_if(columnsToIgnore.begin(),
+                                                 columnsToIgnore.end(),
+                                                 [&columnName](const table_xinfo* tableInfo) {
+                                                     return columnName == tableInfo->name;
+                                                 });
 #endif
-                if (columnToIgnoreIt == columnsToIgnore.end()) {
-                    columnNames.push_back(std::cref(columnName));
-                }
-            });
-
-            std::string sql;
-            {
-                std::stringstream ss;
-                ss << "INSERT INTO " << streaming_identifier(destinationTableName) << " ("
-                   << streaming_identifiers(columnNames) << ") "
-                   << "SELECT " << streaming_identifiers(columnNames) << " FROM "
-                   << streaming_identifier(sourceTableName) << std::flush;
-                sql = ss.str();
+            if (columnToIgnoreIt == columnsToIgnore.end()) {
+                columnNames.push_back(std::cref(columnName));
             }
-            this->executor.perform_void_exec(db, sql.data());
+        });
+
+        std::string sql;
+        {
+            std::stringstream ss;
+            ss << "INSERT INTO " << streaming_identifier(destinationTableName) << " ("
+               << streaming_identifiers(columnNames) << ") "
+               << "SELECT " << streaming_identifiers(columnNames) << " FROM " << streaming_identifier(sourceTableName)
+               << std::flush;
+            sql = ss.str();
         }
+        this->executor.perform_void_exec(db, sql.data());
     }
 }

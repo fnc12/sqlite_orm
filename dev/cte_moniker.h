@@ -16,57 +16,51 @@
 #include "alias.h"
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
-namespace sqlite_orm {
-
-    namespace internal {
+namespace sqlite_orm::internal {
+    /** 
+     *  A special record set alias that is both, a storage lookup type (mapping type) and an alias.
+     */
+    template<char A, char... X>
+    struct cte_moniker
+        : recordset_alias<cte_moniker<A, X...> /* refer to self, since a moniker is both, an alias and a mapped type */,
+                          A,
+                          X...> {
         /** 
-         *  A special record set alias that is both, a storage lookup type (mapping type) and an alias.
+         *  Introduce the construction of a common table expression using this moniker.
+         *  
+         *  The list of explicit columns is optional;
+         *  if provided the number of columns must match the number of columns of the subselect.
+         *  The column names will be merged with the subselect:
+         *  1. column names of subselect
+         *  2. explicit columns
+         *  3. fill in empty column names with column index
+         *  
+         *  Example:
+         *  1_ctealias()(select(&Object::id));
+         *  1_ctealias(&Object::name)(select("object"));
+         *  
+         *  @return A `cte_builder` instance.
+         *  @note (internal): Defined in select_constraints.h in order to keep this member function in the same place as the named factory function `cte()`,
+         *  and to keep the actual creation of the builder in one place.
          */
-        template<char A, char... X>
-        struct cte_moniker
-            : recordset_alias<
-                  cte_moniker<A, X...> /* refer to self, since a moniker is both, an alias and a mapped type */,
-                  A,
-                  X...> {
-            /** 
-             *  Introduce the construction of a common table expression using this moniker.
-             *  
-             *  The list of explicit columns is optional;
-             *  if provided the number of columns must match the number of columns of the subselect.
-             *  The column names will be merged with the subselect:
-             *  1. column names of subselect
-             *  2. explicit columns
-             *  3. fill in empty column names with column index
-             *  
-             *  Example:
-             *  1_ctealias()(select(&Object::id));
-             *  1_ctealias(&Object::name)(select("object"));
-             *  
-             *  @return A `cte_builder` instance.
-             *  @note (internal): Defined in select_constraints.h in order to keep this member function in the same place as the named factory function `cte()`,
-             *  and to keep the actual creation of the builder in one place.
-             */
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-            template<class... ExplicitCols>
-                requires ((is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
-                           std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
-                           std::convertible_to<ExplicitCols, std::string>) &&
-                          ...)
-            SQLITE_ORM_STATIC_CALLOP constexpr auto
-            operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP;
+        template<class... ExplicitCols>
+            requires ((is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
+                       std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
+                       std::convertible_to<ExplicitCols, std::string>) &&
+                      ...)
+        SQLITE_ORM_STATIC_CALLOP constexpr auto operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP;
 #else
-            template<class... ExplicitCols,
-                     std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
-                                          is_column_alias<ExplicitCols>,
-                                          std::is_member_pointer<ExplicitCols>,
-                                          std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
-                                          std::is_convertible<ExplicitCols, std::string>>...>,
-                                      bool> = true>
-            SQLITE_ORM_STATIC_CALLOP constexpr auto
-            operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP;
+        template<class... ExplicitCols,
+                 std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
+                                      is_column_alias<ExplicitCols>,
+                                      std::is_member_pointer<ExplicitCols>,
+                                      std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
+                                      std::is_convertible<ExplicitCols, std::string>>...>,
+                                  bool> = true>
+        SQLITE_ORM_STATIC_CALLOP constexpr auto operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP;
 #endif
-        };
-    }
+    };
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

@@ -2,21 +2,20 @@
 
 #include "../functional/cxx_type_traits_polyfill.h"
 
-namespace sqlite_orm {
+namespace sqlite_orm::internal {
+    /**
+     *  Stores OFFSET only info
+     */
+    template<class T>
+    struct offset_t {
+        T offset;
+    };
 
-    namespace internal {
-        /**
-         *  Stores OFFSET only info
-         */
-        template<class T>
-        struct offset_t {
-            T offset;
-        };
+    template<class T>
+    using is_offset = polyfill::is_specialization_of<T, offset_t>;
+}
 
-        template<class T>
-        using is_offset = polyfill::is_specialization_of<T, offset_t>;
-    }
-
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  OFFSET clause.
      *  Example: offset(5)

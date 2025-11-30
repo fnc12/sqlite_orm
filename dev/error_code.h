@@ -13,9 +13,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /** @short Enables classifying sqlite error codes.
 
-        @note We don't bother listing all possible values;
-        this also allows for compatibility with
-        'Construction rules for enum class values (P0138R2)'
+     *  @note We don't bother listing all possible values;
+     *  this also allows for compatibility with
+     *  'Construction rules for enum class values (P0138R2)'
      */
     enum class sqlite_errc {};
 
