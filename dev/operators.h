@@ -6,7 +6,6 @@
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
-#include "functional/is_base_template_of.h"
 #include "tags.h"
 #include "serialize_result_type.h"
 
@@ -26,7 +25,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        inline constexpr bool is_binary_operator_v = is_base_template_of<binary_operator, T>::value;
+        inline constexpr bool is_binary_operator_v = polyfill::is_specialization_of<T, binary_operator>::value;
 
         template<class T>
         using is_binary_operator = polyfill::bool_constant<is_binary_operator_v<T>>;
