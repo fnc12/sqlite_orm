@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ctest --help:*)",
+      "WebFetch(domain:www.open-std.org)",
+      "Bash(python collapse_namespaces.py:*)",
+      "Bash(find:*)",
+      "Bash(cat:*)",
+      "Bash(done)",
+      "Bash(python fix_comment_alignment.py:*)",
+      "Bash(git checkout:*)",
+      "Bash(python:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
