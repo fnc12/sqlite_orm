@@ -960,8 +960,9 @@ namespace sqlite_orm {
              *    Inserts a record with all fields of a mapped object.
              *  
              *  @return The ID of the last inserted record for a table with rowid, otherwise a meaningless value.
-             *          Attention: While SQLite returns a 64-bit integer as rowid, this function returns an `int` that most likely has less precision.
              *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
+             *          Attention: While SQLite returns a 64-bit integer as rowid, this function returns an `int` that most likely has less precision.
+             *                     If you need the full 64-bit rowid, use `storage_t<>::execute()` instead.
              */
             template<class O>
             int insert(const O& o) {
@@ -1484,8 +1485,8 @@ namespace sqlite_orm {
             }
 
             /** 
-             *  @return The rowid of the last inserted row.
-             *  @note The returned rowid is only meaningful in single-thread contexts.
+             *  @return The ID of the last inserted record for a table with rowid, otherwise a meaningless value.
+             *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
              */
             template<class T, class... Cols>
             int64 execute(const prepared_statement_t<insert_explicit<T, Cols...>>& statement) {
@@ -1544,8 +1545,8 @@ namespace sqlite_orm {
             }
 
             /** 
-             *  @return The rowid of the last inserted row.
-             *  @note The returned rowid is only meaningful in single-thread contexts.
+             *  @return The ID of the last inserted record for a table with rowid, otherwise a meaningless value.
+             *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
              */
             template<class T,
                      std::enable_if_t<polyfill::disjunction<is_insert<T>, is_insert_range<T>>::value, bool> = true>
@@ -1557,13 +1558,13 @@ namespace sqlite_orm {
                 auto processObject = [&table = this->get_table<object_type>(),
                                       bindValue = field_value_binder{stmt}](const object_type& object) mutable {
                     using table_type = polyfill::remove_cvref_t<decltype(table)>;
-                    using is_without_rowid = typename table_type::is_without_rowid;
+                    using without_rowid = typename table_type::is_without_rowid;
 
-                    table.template for_each_column_excluding<
-                        mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
-                                         mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
+                    table.template for_each_column_excluding<mpl::disjunction<
+                        mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>,
+                        mpl::quote_fn<is_generated_always>>>(
                         call_as_template_base<column_field>([&table, &bindValue, &object](auto& column) {
-                            if (!is_without_rowid::value && is_single_table_primary_key(table, column)) {
+                            if (!without_rowid::value && is_single_table_primary_key(table, column)) {
                                 return;
                             }
                             bindValue(polyfill::invoke(column.member_pointer, object));

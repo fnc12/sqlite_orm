@@ -55,7 +55,7 @@ namespace sqlite_orm::internal {
         }
 
         /*
-         *  Returns the number of columns having the specified constraint trait.
+         *  Returns the number of columns not having the specified constraint trait.
          */
         template<template<class...> class Trait>
         static constexpr int count_of_columns_excluding() {
@@ -182,19 +182,22 @@ namespace sqlite_orm::internal {
     bool table_primary_key_contains(const insertable_table_definition<Cs...>& definition,
                                     const column_field<G, S>& column) {
         bool res = false;
-        definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
-            using colrefs_tuple = decltype(primaryKey.columns);
-            using same_type_index_sequence =
-                filter_tuple_sequence_t<colrefs_tuple,
-                                        check_if_is_type<member_field_type_t<G>>::template fn,
-                                        member_field_type_t>;
-            iterate_tuple(primaryKey.columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
-                if (compare_fields(memberPointer, column.member_pointer) ||
-                    compare_fields(memberPointer, column.setter)) {
-                    res = true;
-                }
+        // note: though `visit_table_primary_key()` does no work if a column primary key exists, we try to save the compiler some work with this check up front
+        if constexpr (/*bool hasNoColumnPK =*/!definition.template count_of_columns_with<is_primary_key>()) {
+            definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
+                using colrefs_tuple = decltype(primaryKey.columns);
+                using same_type_index_sequence =
+                    filter_tuple_sequence_t<colrefs_tuple,
+                                            check_if_is_type<member_field_type_t<G>>::template fn,
+                                            member_field_type_t>;
+                iterate_tuple(primaryKey.columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
+                    if (compare_fields(memberPointer, column.member_pointer) ||
+                        compare_fields(memberPointer, column.setter)) {
+                        res = true;
+                    }
+                });
             });
-        });
+        }
         return res;
     }
 
@@ -202,19 +205,22 @@ namespace sqlite_orm::internal {
     bool is_single_table_primary_key(const insertable_table_definition<Cs...>& definition,
                                      const column_field<G, S>& column) {
         bool res = false;
-        definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
-            // note: use `decltype(primaryKey)` instead of `decltype(primaryKey.columns)` otherwise msvc 141 chokes on the `if constexpr` below
-            using colrefs_tuple = columns_tuple_t<polyfill::remove_cvref_t<decltype(primaryKey)>>;
-            if constexpr (std::tuple_size<colrefs_tuple>::value != 1) {
-                return;
-            } else {
-                auto& memberPointer = std::get<0>(primaryKey.columns);
-                if (compare_fields(memberPointer, column.member_pointer) ||
-                    compare_fields(memberPointer, column.setter)) {
-                    res = true;
+        // note: though `visit_table_primary_key()` does no work if a column primary key exists, we try to save the compiler some work with this check up front
+        if constexpr (/*bool hasNoColumnPK =*/!definition.template count_of_columns_with<is_primary_key>()) {
+            definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
+                // note: use `decltype(primaryKey)` instead of `decltype(primaryKey.columns)` otherwise msvc 141 chokes on the `if constexpr` below
+                using colrefs_tuple = columns_tuple_t<polyfill::remove_cvref_t<decltype(primaryKey)>>;
+                if constexpr (std::tuple_size<colrefs_tuple>::value != 1) {
+                    return;
+                } else {
+                    auto& memberPointer = std::get<0>(primaryKey.columns);
+                    if (compare_fields(memberPointer, column.member_pointer) ||
+                        compare_fields(memberPointer, column.setter)) {
+                        res = true;
+                    }
                 }
-            }
-        });
+            });
+        }
         return res;
     }
 

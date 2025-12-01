@@ -1592,19 +1592,19 @@ namespace sqlite_orm {
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 using object_type = expression_object_type_t<statement_type>;
                 auto& table = pick_table<object_type>(context.db_objects);
-                using is_without_rowid = typename std::remove_reference_t<decltype(table)>::is_without_rowid;
+                using table_type = polyfill::remove_cvref_t<decltype(table)>;
+                using without_rowid = typename table_type::is_without_rowid;
 
                 std::vector<std::reference_wrapper<const std::string>> columnNames;
-                table.template for_each_column_excluding<
-                    mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
-                                     mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
-                    [&table, &columnNames](auto& column) {
-                        if (!is_without_rowid::value && is_single_table_primary_key(table, column)) {
-                            return;
-                        }
+                table.template for_each_column_excluding<mpl::disjunction<
+                    mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>,
+                    mpl::quote_fn<is_generated_always>>>([&table, &columnNames](auto& column) {
+                    if (!without_rowid::value && is_single_table_primary_key(table, column)) {
+                        return;
+                    }
 
-                        columnNames.push_back(std::cref(column.name));
-                    });
+                    columnNames.push_back(std::cref(column.name));
+                });
                 const size_t columnNamesCount = columnNames.size();
 
                 std::stringstream ss;
@@ -1618,10 +1618,11 @@ namespace sqlite_orm {
                 if (columnNamesCount) {
                     ss << " ("
                        << streaming_field_values_excluding(
-                              mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
-                                               mpl::disjunction_fn<is_primary_key, is_generated_always>>{},
+                              mpl::disjunction<mpl::conjunction<mpl::not_<mpl::always<without_rowid>>,
+                                                                mpl::quote_fn<is_primary_key>>,
+                                               mpl::quote_fn<is_generated_always>>{},
                               [&table](auto& column) {
-                                  return !is_without_rowid::value && is_single_table_primary_key(table, column);
+                                  return !without_rowid::value && is_single_table_primary_key(table, column);
                               },
                               context,
                               get_ref(statement.object))
@@ -1764,19 +1765,19 @@ namespace sqlite_orm {
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 using object_type = expression_object_type_t<statement_type>;
                 auto& table = pick_table<object_type>(context.db_objects);
-                using is_without_rowid = typename std::remove_reference_t<decltype(table)>::is_without_rowid;
+                using table_type = polyfill::remove_cvref_t<decltype(table)>;
+                using without_rowid = typename table_type::is_without_rowid;
 
                 std::vector<std::reference_wrapper<const std::string>> columnNames;
-                table.template for_each_column_excluding<
-                    mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
-                                     mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
-                    [&table, &columnNames](auto& column) {
-                        if (!is_without_rowid::value && is_single_table_primary_key(table, column)) {
-                            return;
-                        }
+                table.template for_each_column_excluding<mpl::disjunction<
+                    mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>,
+                    mpl::quote_fn<is_generated_always>>>([&table, &columnNames](auto& column) {
+                    if (!without_rowid::value && is_single_table_primary_key(table, column)) {
+                        return;
+                    }
 
-                        columnNames.push_back(std::cref(column.name));
-                    });
+                    columnNames.push_back(std::cref(column.name));
+                });
                 const size_t valuesCount = std::distance(statement.range.first, statement.range.second);
                 const size_t columnNamesCount = columnNames.size();
 

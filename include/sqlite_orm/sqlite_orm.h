@@ -12693,7 +12693,7 @@ namespace sqlite_orm::internal {
         }
 
         /*
-         *  Returns the number of columns having the specified constraint trait.
+         *  Returns the number of columns not having the specified constraint trait.
          */
         template<template<class...> class Trait>
         static constexpr int count_of_columns_excluding() {
@@ -12820,19 +12820,22 @@ namespace sqlite_orm::internal {
     bool table_primary_key_contains(const insertable_table_definition<Cs...>& definition,
                                     const column_field<G, S>& column) {
         bool res = false;
-        definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
-            using colrefs_tuple = decltype(primaryKey.columns);
-            using same_type_index_sequence =
-                filter_tuple_sequence_t<colrefs_tuple,
-                                        check_if_is_type<member_field_type_t<G>>::template fn,
-                                        member_field_type_t>;
-            iterate_tuple(primaryKey.columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
-                if (compare_fields(memberPointer, column.member_pointer) ||
-                    compare_fields(memberPointer, column.setter)) {
-                    res = true;
-                }
+        // note: though `visit_table_primary_key()` does no work if a column primary key exists, we try to save the compiler some work with this check up front
+        if constexpr (/*bool hasNoColumnPK =*/!definition.template count_of_columns_with<is_primary_key>()) {
+            definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
+                using colrefs_tuple = decltype(primaryKey.columns);
+                using same_type_index_sequence =
+                    filter_tuple_sequence_t<colrefs_tuple,
+                                            check_if_is_type<member_field_type_t<G>>::template fn,
+                                            member_field_type_t>;
+                iterate_tuple(primaryKey.columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
+                    if (compare_fields(memberPointer, column.member_pointer) ||
+                        compare_fields(memberPointer, column.setter)) {
+                        res = true;
+                    }
+                });
             });
-        });
+        }
         return res;
     }
 
@@ -12840,19 +12843,22 @@ namespace sqlite_orm::internal {
     bool is_single_table_primary_key(const insertable_table_definition<Cs...>& definition,
                                      const column_field<G, S>& column) {
         bool res = false;
-        definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
-            // note: use `decltype(primaryKey)` instead of `decltype(primaryKey.columns)` otherwise msvc 141 chokes on the `if constexpr` below
-            using colrefs_tuple = columns_tuple_t<polyfill::remove_cvref_t<decltype(primaryKey)>>;
-            if constexpr (std::tuple_size<colrefs_tuple>::value != 1) {
-                return;
-            } else {
-                auto& memberPointer = std::get<0>(primaryKey.columns);
-                if (compare_fields(memberPointer, column.member_pointer) ||
-                    compare_fields(memberPointer, column.setter)) {
-                    res = true;
+        // note: though `visit_table_primary_key()` does no work if a column primary key exists, we try to save the compiler some work with this check up front
+        if constexpr (/*bool hasNoColumnPK =*/!definition.template count_of_columns_with<is_primary_key>()) {
+            definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
+                // note: use `decltype(primaryKey)` instead of `decltype(primaryKey.columns)` otherwise msvc 141 chokes on the `if constexpr` below
+                using colrefs_tuple = columns_tuple_t<polyfill::remove_cvref_t<decltype(primaryKey)>>;
+                if constexpr (std::tuple_size<colrefs_tuple>::value != 1) {
+                    return;
+                } else {
+                    auto& memberPointer = std::get<0>(primaryKey.columns);
+                    if (compare_fields(memberPointer, column.member_pointer) ||
+                        compare_fields(memberPointer, column.setter)) {
+                        res = true;
+                    }
                 }
-            }
-        });
+            });
+        }
         return res;
     }
 
@@ -22719,19 +22725,19 @@ namespace sqlite_orm {
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 using object_type = expression_object_type_t<statement_type>;
                 auto& table = pick_table<object_type>(context.db_objects);
-                using is_without_rowid = typename std::remove_reference_t<decltype(table)>::is_without_rowid;
+                using table_type = polyfill::remove_cvref_t<decltype(table)>;
+                using without_rowid = typename table_type::is_without_rowid;
 
                 std::vector<std::reference_wrapper<const std::string>> columnNames;
-                table.template for_each_column_excluding<
-                    mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
-                                     mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
-                    [&table, &columnNames](auto& column) {
-                        if (!is_without_rowid::value && is_single_table_primary_key(table, column)) {
-                            return;
-                        }
+                table.template for_each_column_excluding<mpl::disjunction<
+                    mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>,
+                    mpl::quote_fn<is_generated_always>>>([&table, &columnNames](auto& column) {
+                    if (!without_rowid::value && is_single_table_primary_key(table, column)) {
+                        return;
+                    }
 
-                        columnNames.push_back(std::cref(column.name));
-                    });
+                    columnNames.push_back(std::cref(column.name));
+                });
                 const size_t columnNamesCount = columnNames.size();
 
                 std::stringstream ss;
@@ -22745,10 +22751,11 @@ namespace sqlite_orm {
                 if (columnNamesCount) {
                     ss << " ("
                        << streaming_field_values_excluding(
-                              mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
-                                               mpl::disjunction_fn<is_primary_key, is_generated_always>>{},
+                              mpl::disjunction<mpl::conjunction<mpl::not_<mpl::always<without_rowid>>,
+                                                                mpl::quote_fn<is_primary_key>>,
+                                               mpl::quote_fn<is_generated_always>>{},
                               [&table](auto& column) {
-                                  return !is_without_rowid::value && is_single_table_primary_key(table, column);
+                                  return !without_rowid::value && is_single_table_primary_key(table, column);
                               },
                               context,
                               get_ref(statement.object))
@@ -22891,19 +22898,19 @@ namespace sqlite_orm {
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 using object_type = expression_object_type_t<statement_type>;
                 auto& table = pick_table<object_type>(context.db_objects);
-                using is_without_rowid = typename std::remove_reference_t<decltype(table)>::is_without_rowid;
+                using table_type = polyfill::remove_cvref_t<decltype(table)>;
+                using without_rowid = typename table_type::is_without_rowid;
 
                 std::vector<std::reference_wrapper<const std::string>> columnNames;
-                table.template for_each_column_excluding<
-                    mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
-                                     mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
-                    [&table, &columnNames](auto& column) {
-                        if (!is_without_rowid::value && is_single_table_primary_key(table, column)) {
-                            return;
-                        }
+                table.template for_each_column_excluding<mpl::disjunction<
+                    mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>,
+                    mpl::quote_fn<is_generated_always>>>([&table, &columnNames](auto& column) {
+                    if (!without_rowid::value && is_single_table_primary_key(table, column)) {
+                        return;
+                    }
 
-                        columnNames.push_back(std::cref(column.name));
-                    });
+                    columnNames.push_back(std::cref(column.name));
+                });
                 const size_t valuesCount = std::distance(statement.range.first, statement.range.second);
                 const size_t columnNamesCount = columnNames.size();
 
@@ -25148,8 +25155,9 @@ namespace sqlite_orm {
              *    Inserts a record with all fields of a mapped object.
              *  
              *  @return The ID of the last inserted record for a table with rowid, otherwise a meaningless value.
-             *          Attention: While SQLite returns a 64-bit integer as rowid, this function returns an `int` that most likely has less precision.
              *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
+             *          Attention: While SQLite returns a 64-bit integer as rowid, this function returns an `int` that most likely has less precision.
+             *                     If you need the full 64-bit rowid, use `storage_t<>::execute()` instead.
              */
             template<class O>
             int insert(const O& o) {
@@ -25672,8 +25680,8 @@ namespace sqlite_orm {
             }
 
             /** 
-             *  @return The rowid of the last inserted row.
-             *  @note The returned rowid is only meaningful in single-thread contexts.
+             *  @return The ID of the last inserted record for a table with rowid, otherwise a meaningless value.
+             *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
              */
             template<class T, class... Cols>
             int64 execute(const prepared_statement_t<insert_explicit<T, Cols...>>& statement) {
@@ -25732,8 +25740,8 @@ namespace sqlite_orm {
             }
 
             /** 
-             *  @return The rowid of the last inserted row.
-             *  @note The returned rowid is only meaningful in single-thread contexts.
+             *  @return The ID of the last inserted record for a table with rowid, otherwise a meaningless value.
+             *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
              */
             template<class T,
                      std::enable_if_t<polyfill::disjunction<is_insert<T>, is_insert_range<T>>::value, bool> = true>
@@ -25745,13 +25753,13 @@ namespace sqlite_orm {
                 auto processObject = [&table = this->get_table<object_type>(),
                                       bindValue = field_value_binder{stmt}](const object_type& object) mutable {
                     using table_type = polyfill::remove_cvref_t<decltype(table)>;
-                    using is_without_rowid = typename table_type::is_without_rowid;
+                    using without_rowid = typename table_type::is_without_rowid;
 
-                    table.template for_each_column_excluding<
-                        mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
-                                         mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
+                    table.template for_each_column_excluding<mpl::disjunction<
+                        mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>,
+                        mpl::quote_fn<is_generated_always>>>(
                         call_as_template_base<column_field>([&table, &bindValue, &object](auto& column) {
-                            if (!is_without_rowid::value && is_single_table_primary_key(table, column)) {
+                            if (!without_rowid::value && is_single_table_primary_key(table, column)) {
                                 return;
                             }
                             bindValue(polyfill::invoke(column.member_pointer, object));
