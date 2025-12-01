@@ -9,7 +9,7 @@ using std::cout;
 using std::endl;
 
 struct Entry {
-    int id;
+    sqlite_orm::int64 id;
     std::string uniqueColumn;
     std::unique_ptr<std::string> nullableColumn;
 };

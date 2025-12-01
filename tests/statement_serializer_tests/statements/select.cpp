@@ -202,12 +202,12 @@ TEST_CASE("statement_serializer select_t") {
 #if SQLITE_VERSION_NUMBER >= 3006019
             SECTION("issue #945") {
                 struct Employee {
-                    int m_empno;
-                    int m_deptno;
+                    int64 m_empno;
+                    int64 m_deptno;
                 };
 
                 struct Department {
-                    int m_deptno;
+                    int64 m_deptno;
                     std::string m_deptname;
                 };
 

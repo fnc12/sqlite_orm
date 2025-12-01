@@ -133,7 +133,7 @@ TEST_CASE("Foreign key 2") {
 
 TEST_CASE("Foreign key with inheritance") {
     struct Person {
-        int id;
+        int64 id;
         std::string name;
         int age;
     };
@@ -157,9 +157,9 @@ TEST_CASE("Foreign key with inheritance") {
 
     // Define Classroom class referencing Teacher and Student
     struct Classroom {
-        int id;
-        int teacher_id;  // Foreign key referencing Teacher
-        int student_id;  // Foreign key referencing Student
+        int64 id;
+        int64 teacher_id;  // Foreign key referencing Teacher
+        int64 student_id;  // Foreign key referencing Student
         std::string room_name;
     };
 

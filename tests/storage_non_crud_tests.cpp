@@ -325,7 +325,7 @@ TEST_CASE("Select") {
     sqlite3_close(db);
 
     struct Word {
-        int id;
+        int64 id;
         std::string currentWord;
         std::string beforeWord;
         std::string afterWord;

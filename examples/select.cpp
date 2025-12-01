@@ -127,13 +127,13 @@ void all_employees() {
 
 void all_artists() {
     struct Artist {
-        int id;
+        int64 id;
         std::string name;
     };
 
     struct Album {
-        int id;
-        int artist_id;
+        int64 id;
+        int64 artist_id;
     };
 
     auto storage = make_storage("",
@@ -165,13 +165,13 @@ void all_artists() {
 
 void named_adhoc_structs() {
     struct Artist {
-        int id;
+        int64 id;
         std::string name;
     };
 
     struct Album {
-        int id;
-        int artist_id;
+        int64 id;
+        int64 artist_id;
         std::string name;
     };
 

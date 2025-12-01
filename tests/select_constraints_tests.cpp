@@ -262,14 +262,14 @@ TEST_CASE("Exists") {
 
 namespace {
     struct User2 {
-        int id = 0;
+        int64 id = 0;
         std::string firstName;
         std::string lastName;
         std::string country;
     };
 
     struct Track2 {
-        int id = 0;
+        int64 id = 0;
         std::string name;
         long milliseconds = 0;
     };

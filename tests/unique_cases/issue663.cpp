@@ -65,7 +65,7 @@ namespace {
 
 namespace {
     struct User1 {
-        int id = 0;
+        int64 id = 0;
         std::string name;
         int age = 0;
         std::string email;
@@ -84,7 +84,7 @@ TEST_CASE("Issue 663 - column pk") {
 
     auto storage = make_storage("",
                                 make_table("users",
-                                           make_column("id", &User1::id, primary_key()),
+                                           make_column("id", &User1::id, primary_key().autoincrement()),
                                            make_column("name", &User1::name),
                                            make_column("age", &User1::age),
                                            make_column("email", &User1::email, default_value("dummy@email.com"))));

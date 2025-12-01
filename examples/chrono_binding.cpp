@@ -138,7 +138,7 @@ using std::cout;
 using std::endl;
 
 struct Person {
-    int id;
+    int64 id;
     std::string name;
     std::chrono::sys_days birthdate;
 };

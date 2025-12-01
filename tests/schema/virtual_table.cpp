@@ -131,13 +131,13 @@ TEST_CASE("fts5 virtual table schema") {
 
 TEST_CASE("issue1410") {
     struct NormalTable {
-        int id;
+        int64 id;
         std::string text;
         int otherValue;
     };
 
     struct SearchTable {
-        int normal_table_id;
+        int64 normal_table_id;
         std::string text;
     };
 

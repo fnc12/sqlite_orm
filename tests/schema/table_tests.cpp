@@ -6,7 +6,7 @@ using namespace sqlite_orm;
 TEST_CASE("table::find_column_name") {
     SECTION("fields") {
         struct Contact {
-            int id = 0;
+            int64 id /*= 0*/;
             std::string firstName;
             std::string lastName;
             int countryCode = 0;
@@ -36,7 +36,7 @@ TEST_CASE("table::find_column_name") {
     SECTION("getters and setters") {
         struct Contact {
           private:
-            int _id = 0;
+            int64 _id = 0;
             std::string _firstName;
             std::string _lastName;
             int _countryCode = 0;
@@ -44,11 +44,11 @@ TEST_CASE("table::find_column_name") {
             int _visitsCount = 0;
 
           public:
-            int id() const {
+            int64 id() const {
                 return this->_id;
             }
 
-            void setId(int value) {
+            void setId(int64 value) {
                 this->_id = value;
             }
 

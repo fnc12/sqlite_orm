@@ -15,7 +15,7 @@ using std::cout;
 using std::endl;
 
 struct Employee {
-    int employeeId;
+    sqlite_orm::int64 employeeId;
     std::string lastName;
     std::string firstName;
     std::string title;
