@@ -210,9 +210,7 @@ namespace sqlite_orm::internal {
             definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
                 // note: use `decltype(primaryKey)` instead of `decltype(primaryKey.columns)` otherwise msvc 141 chokes on the `if constexpr` below
                 using colrefs_tuple = columns_tuple_t<polyfill::remove_cvref_t<decltype(primaryKey)>>;
-                if constexpr (std::tuple_size<colrefs_tuple>::value != 1) {
-                    return;
-                } else {
+                if constexpr (std::tuple_size<colrefs_tuple>::value == 1) {
                     auto& memberPointer = std::get<0>(primaryKey.columns);
                     if (compare_fields(memberPointer, column.member_pointer) ||
                         compare_fields(memberPointer, column.setter)) {

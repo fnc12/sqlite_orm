@@ -502,19 +502,26 @@ namespace sqlite_orm {
         template<class T>
         struct is_generated_always : polyfill::bool_constant<is_generated_always_v<T>> {};
 
-        /**
-         * PRIMARY KEY INSERTABLE traits.
+        /** 
+         *  COLUMN PRIMARY KEY INSERTABLE traits.
+         *  
+         *  A column primary key is considered implicitly insertable if:
+         *  - it is an INTEGER PRIMARY KEY (and thus an alias for the "rowid" key),
+         *  - or has a default value.
+         *  
+         *  Note that the restrictions on an alias for the "rowid" key are actually more narrow:
+         *  it must be of 64-bit signed integer type (not any other integral arithmetic type),
+         *  however due to sqlite_orm's current type mapping this is not enforced here.
          */
         template<typename Column>
-        struct is_primary_key_insertable
-            : polyfill::disjunction<
-                  mpl::invoke_t<mpl::disjunction<check_if_has_template<primary_key_with_autoincrement>,
-                                                 check_if_has_template<default_t>>,
-                                constraints_type_t<Column>>,
-                  std::is_base_of<integer_printer, type_printer<field_type_t<Column>>>> {
+        struct is_pkcol_implicitly_insertable
+            : mpl::invoke_t<
+                  mpl::disjunction<mpl::always<std::is_base_of<integer_printer, type_printer<field_type_t<Column>>>>,
+                                   check_if_has_template<default_t>>,
+                  constraints_type_t<Column>> {
 
-            static_assert(tuple_has<constraints_type_t<Column>, is_primary_key>::value,
-                          "an unexpected type was passed");
+            // internal programming error: column primary key required
+            static_assert(tuple_has<constraints_type_t<Column>, is_primary_key>::value);
         };
 
         template<class T>

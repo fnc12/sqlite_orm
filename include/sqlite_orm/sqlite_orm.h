@@ -3975,19 +3975,26 @@ namespace sqlite_orm {
         template<class T>
         struct is_generated_always : polyfill::bool_constant<is_generated_always_v<T>> {};
 
-        /**
-         * PRIMARY KEY INSERTABLE traits.
+        /** 
+         *  COLUMN PRIMARY KEY INSERTABLE traits.
+         *  
+         *  A column primary key is considered implicitly insertable if:
+         *  - it is an INTEGER PRIMARY KEY (and thus an alias for the "rowid" key),
+         *  - or has a default value.
+         *  
+         *  Note that the restrictions on an alias for the "rowid" key are actually more narrow:
+         *  it must be of 64-bit signed integer type (not any other integral arithmetic type),
+         *  however due to sqlite_orm's current type mapping this is not enforced here.
          */
         template<typename Column>
-        struct is_primary_key_insertable
-            : polyfill::disjunction<
-                  mpl::invoke_t<mpl::disjunction<check_if_has_template<primary_key_with_autoincrement>,
-                                                 check_if_has_template<default_t>>,
-                                constraints_type_t<Column>>,
-                  std::is_base_of<integer_printer, type_printer<field_type_t<Column>>>> {
+        struct is_pkcol_implicitly_insertable
+            : mpl::invoke_t<
+                  mpl::disjunction<mpl::always<std::is_base_of<integer_printer, type_printer<field_type_t<Column>>>>,
+                                   check_if_has_template<default_t>>,
+                  constraints_type_t<Column>> {
 
-            static_assert(tuple_has<constraints_type_t<Column>, is_primary_key>::value,
-                          "an unexpected type was passed");
+            // internal programming error: column primary key required
+            static_assert(tuple_has<constraints_type_t<Column>, is_primary_key>::value);
         };
 
         template<class T>
@@ -8924,9 +8931,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../tuple_helper/tuple_filter.h"
 
-// #include "../type_traits.h"
-
 // #include "../member_traits/member_traits.h"
+
+// #include "../type_traits.h"
 
 // #include "../type_is_nullable.h"
 
@@ -9122,13 +9129,32 @@ namespace sqlite_orm {
             field_type_t,
             filter_tuple_sequence_t<Elements, mpl::disjunction_fn<is_column, is_hidden_column>::template fn>>;
 
+        template<class G, class... Op>
+        constexpr void validate_column_definition() {
+            using constraints_type = std::tuple<Op...>;
+
+            static_assert(polyfill::conjunction_v<is_column_constraint<Op>...>, "Incorrect column constraints");
+
+            if constexpr (tuple_has<constraints_type, is_primary_key>::value) {
+                using field_type = member_field_type_t<G>;
+                using is_pkcol_correct = mpl::invoke_t<
+                    mpl::disjunction<mpl::always<std::is_base_of<integer_printer, type_printer<field_type>>>,
+                                     mpl::not_<check_if_has_template<primary_key_with_autoincrement>>>,
+                    constraints_type>;
+
+                static_assert(
+                    is_pkcol_correct::value,
+                    R"(AUTOINCREMENT is only allowed on an INTEGER PRIMARY KEY as an alias for the "rowid" key)");
+            }
+        }
+
 #if SQLITE_VERSION_NUMBER >= 3031000
         /**
          *  Factory function for a column definition from a member object pointer for hidden virtual table columns.
          */
         template<class M, class... Op, satisfies<std::is_member_object_pointer, M> = true>
         hidden_column<M, empty_setter, Op...> make_hidden_column(std::string name, M memberPointer, Op... constraints) {
-            static_assert(polyfill::conjunction_v<is_column_constraint<Op>...>, "Incorrect constraints pack");
+            static_assert(polyfill::conjunction_v<is_column_constraint<Op>...>, "Incorrect column constraints");
 
             // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
             // as this will lead to UB with Clang on MinGW!
@@ -9145,7 +9171,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class M, class... Op, internal::satisfies<std::is_member_object_pointer, M> = true>
     internal::column_t<M, internal::empty_setter, Op...>
     make_column(std::string name, M memberPointer, Op... constraints) {
-        static_assert(polyfill::conjunction_v<internal::is_column_constraint<Op>...>, "Incorrect constraints pack");
+        internal::validate_column_definition<M, Op...>();
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
         // as this will lead to UB with Clang on MinGW!
@@ -9163,7 +9189,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::column_t<G, S, Op...> make_column(std::string name, S setter, G getter, Op... constraints) {
         static_assert(std::is_same<internal::setter_field_type_t<S>, internal::getter_field_type_t<G>>::value,
                       "Getter and setter must get and set same data type");
-        static_assert(polyfill::conjunction_v<internal::is_column_constraint<Op>...>, "Incorrect constraints pack");
+        internal::validate_column_definition<G, Op...>();
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
         // as this will lead to UB with Clang on MinGW!
@@ -9181,7 +9207,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::column_t<G, S, Op...> make_column(std::string name, G getter, S setter, Op... constraints) {
         static_assert(std::is_same<internal::setter_field_type_t<S>, internal::getter_field_type_t<G>>::value,
                       "Getter and setter must get and set same data type");
-        static_assert(polyfill::conjunction_v<internal::is_column_constraint<Op>...>, "Incorrect constraints pack");
+        internal::validate_column_definition<G, Op...>();
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
         // as this will lead to UB with Clang on MinGW!
@@ -12848,9 +12874,7 @@ namespace sqlite_orm::internal {
             definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
                 // note: use `decltype(primaryKey)` instead of `decltype(primaryKey.columns)` otherwise msvc 141 chokes on the `if constexpr` below
                 using colrefs_tuple = columns_tuple_t<polyfill::remove_cvref_t<decltype(primaryKey)>>;
-                if constexpr (std::tuple_size<colrefs_tuple>::value != 1) {
-                    return;
-                } else {
+                if constexpr (std::tuple_size<colrefs_tuple>::value == 1) {
                     auto& memberPointer = std::get<0>(primaryKey.columns);
                     if (compare_fields(memberPointer, column.member_pointer) ||
                         compare_fields(memberPointer, column.setter)) {
@@ -24450,12 +24474,13 @@ namespace sqlite_orm {
                 using elements_type = elements_type_t<Table>;
                 using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
                 static_assert(
-                    count_filtered_tuple<elements_type, is_primary_key_insertable, pkcol_index_sequence>::value <= 1,
+                    count_filtered_tuple<elements_type, is_pkcol_implicitly_insertable, pkcol_index_sequence>::value <=
+                        1,
                     "Attempting to execute 'insert' request into an noninsertable table was detected. "
                     "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
                     "'insert', or you can use 'insert' with explicit column listing.");
                 static_assert(count_filtered_tuple<elements_type,
-                                                   check_if_not<is_primary_key_insertable>::template fn,
+                                                   check_if_not<is_pkcol_implicitly_insertable>::template fn,
                                                    pkcol_index_sequence>::value == 0,
                               "Attempting to execute 'insert' request into an noninsertable table was detected. "
                               "Insertable table cannot contain non-standard primary keys. Please use 'replace' instead "
