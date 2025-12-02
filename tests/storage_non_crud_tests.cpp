@@ -131,6 +131,10 @@ TEST_CASE("InsertRange") {
         int objectId = 0;
         int discriminatingId = 0;
     };
+    struct Object4 {
+        int objectId = 0;
+        int discriminatingId = 0;
+    };
     struct ObjectWithoutRowid {
         int id = 0;
         std::string name;
@@ -142,6 +146,14 @@ TEST_CASE("InsertRange") {
     };
     struct ObjectWithoutRowid2 {
         int id = 0;
+    };
+    struct ObjectWithoutRowid3 {
+        int objectId = 0;
+        int discriminatingId = 0;
+    };
+    struct ObjectWithoutRowid4 {
+        int objectId = 0;
+        int discriminatingId = 0;
     };
 
     auto storage = make_storage(
@@ -158,23 +170,43 @@ TEST_CASE("InsertRange") {
                    make_column("object_id", &Object3::objectId),
                    make_column("discriminating_id", &Object3::discriminatingId),
                    primary_key(&Object3::objectId, &Object3::discriminatingId)),
+        // with rowid, composite table pk involving a default value
+        make_table("objects4",
+                   make_column("object_id", &Object4::objectId),
+                   make_column("discriminating_id", &Object4::discriminatingId, default_value(1)),
+                   primary_key(&Object4::objectId, &Object4::discriminatingId)),
         // without rowid, column pk
         make_table("objects_without_rowid",
                    make_column("id", &ObjectWithoutRowid::id, primary_key()),
                    make_column("name", &ObjectWithoutRowid::name))
             .without_rowid(),
-        // without rowid, table pk
+        // without rowid, single table pk
         make_table("objects_without_rowid2",
                    make_column("id", &ObjectWithoutRowid2::id),
                    primary_key(&ObjectWithoutRowid2::id))
+            .without_rowid(),
+        // with rowid, composite table pk
+        make_table("objects_without_rowid3",
+                   make_column("object_id", &ObjectWithoutRowid3::objectId),
+                   make_column("discriminating_id", &ObjectWithoutRowid3::discriminatingId),
+                   primary_key(&ObjectWithoutRowid3::objectId, &ObjectWithoutRowid3::discriminatingId))
+            .without_rowid(),
+        // with rowid, composite table pk involving a default value
+        make_table("objects_without_rowid4",
+                   make_column("object_id", &ObjectWithoutRowid4::objectId),
+                   make_column("discriminating_id", &ObjectWithoutRowid4::discriminatingId, default_value(1)),
+                   primary_key(&ObjectWithoutRowid4::objectId, &ObjectWithoutRowid4::discriminatingId))
             .without_rowid());
 
     storage.sync_schema();
     storage.remove_all<Object>();
     storage.remove_all<Object2>();
     storage.remove_all<Object3>();
+    storage.remove_all<Object4>();
     storage.remove_all<ObjectWithoutRowid>();
     storage.remove_all<ObjectWithoutRowid2>();
+    storage.remove_all<ObjectWithoutRowid3>();
+    storage.remove_all<ObjectWithoutRowid4>();
 
     SECTION("straight") {
         std::vector<Object> objects = {100,
@@ -185,30 +217,45 @@ TEST_CASE("InsertRange") {
         storage.insert_range(objects.begin(), objects.end());
         REQUIRE(storage.count<Object>() == 100);
 
-        //  test empty container
+        // empty container
         std::vector<Object> emptyVector;
         REQUIRE_NOTHROW(storage.insert_range(emptyVector.begin(), emptyVector.end()));
 
-        //  test insert_range with rowid, single table pk
+        // with rowid, single table pk
         std::vector<Object2> objects2 = {{2}, {4}};
         storage.insert_range(objects2.begin(), objects2.end());
         REQUIRE_NOTHROW(storage.get<Object2>(1));
 
-        //  test insert_range with rowid, composite table pk
+        // with rowid, composite table pk
         std::vector<Object3> objects3 = {{2, 2}, {4, 4}};
         storage.insert_range(objects3.begin(), objects3.end());
         REQUIRE_NOTHROW(storage.get<Object3>(2, 2));
 
-        //  test insert_range without rowid, column pk
+        // with rowid, composite table pk involving a default value
+        std::vector<Object4> objects4 = {{2, 2}, {4, 4}};
+        storage.insert_range(objects4.begin(), objects4.end());
+        REQUIRE_NOTHROW(storage.get<Object4>(2, 1));
+
+        // without rowid, column pk
         std::vector<ObjectWithoutRowid> objectsWR1 = {{10, "Life"}, {20, "Death"}};
         storage.insert_range(objectsWR1.begin(), objectsWR1.end());
         REQUIRE(storage.get<ObjectWithoutRowid>(10).name == "Life");
         REQUIRE(storage.get<ObjectWithoutRowid>(20).name == "Death");
 
-        //  test insert_range without rowid, table pk
+        // without rowid, single table pk
         std::vector<ObjectWithoutRowid2> objectsWR2 = {{2}};
         storage.insert_range(objectsWR2.begin(), objectsWR2.end());
         REQUIRE_NOTHROW(storage.get<ObjectWithoutRowid2>(2));
+
+        // without rowid, composite table pk
+        std::vector<ObjectWithoutRowid3> objectsWR3 = {{2, 2}, {4, 4}};
+        storage.insert_range(objectsWR3.begin(), objectsWR3.end());
+        REQUIRE_NOTHROW(storage.get<ObjectWithoutRowid3>(2, 2));
+
+        // without rowid, composite table pk involving a default value
+        std::vector<ObjectWithoutRowid4> objectsWR4 = {{2, 2}, {4, 4}};
+        storage.insert_range(objectsWR4.begin(), objectsWR4.end());
+        REQUIRE_NOTHROW(storage.get<ObjectWithoutRowid4>(2, 1));
     }
     SECTION("pointers") {
         std::vector<std::unique_ptr<Object>> objects;

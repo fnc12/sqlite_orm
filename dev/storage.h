@@ -1561,13 +1561,17 @@ namespace sqlite_orm {
 
                     table.template for_each_column_excluding<mpl::disjunction<
                         mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>,
-                        mpl::quote_fn<is_generated_always>>>(
-                        call_as_template_base<column_field>([&table, &bindValue, &object](auto& column) {
-                            if (!without_rowid::value && is_single_table_primary_key(table, column)) {
-                                return;
-                            }
-                            bindValue(polyfill::invoke(column.member_pointer, object));
-                        }));
+                        mpl::quote_fn<is_generated_always>>>([&table, &bindValue, &object](auto& column) {
+                        if (!without_rowid::value &&
+                            (is_single_table_primary_key(table, column) ||
+                             (column.template is_template<default_t>() && table_primary_key_contains(table, column)))) {
+                            return;
+                        } else if (without_rowid::value && (column.template is_template<default_t>() &&
+                                                            table_primary_key_contains(table, column))) {
+                            return;
+                        }
+                        bindValue(polyfill::invoke(column.member_pointer, object));
+                    });
                 };
 
                 if constexpr (is_insert_range<T>::value) {

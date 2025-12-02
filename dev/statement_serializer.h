@@ -1599,7 +1599,12 @@ namespace sqlite_orm {
                 table.template for_each_column_excluding<mpl::disjunction<
                     mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>,
                     mpl::quote_fn<is_generated_always>>>([&table, &columnNames](auto& column) {
-                    if (!without_rowid::value && is_single_table_primary_key(table, column)) {
+                    if (!without_rowid::value &&
+                        (is_single_table_primary_key(table, column) ||
+                         (column.template is_template<default_t>() && table_primary_key_contains(table, column)))) {
+                        return;
+                    } else if (without_rowid::value && (column.template is_template<default_t>() &&
+                                                        table_primary_key_contains(table, column))) {
                         return;
                     }
 
@@ -1622,7 +1627,11 @@ namespace sqlite_orm {
                                                                 mpl::quote_fn<is_primary_key>>,
                                                mpl::quote_fn<is_generated_always>>{},
                               [&table](auto& column) {
-                                  return !without_rowid::value && is_single_table_primary_key(table, column);
+                                  return (!without_rowid::value && (is_single_table_primary_key(table, column) ||
+                                                                    (column.template is_template<default_t>() &&
+                                                                     table_primary_key_contains(table, column)))) ||
+                                         (without_rowid::value && (column.template is_template<default_t>() &&
+                                                                   table_primary_key_contains(table, column)));
                               },
                               context,
                               get_ref(statement.object))
@@ -1772,7 +1781,12 @@ namespace sqlite_orm {
                 table.template for_each_column_excluding<mpl::disjunction<
                     mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>,
                     mpl::quote_fn<is_generated_always>>>([&table, &columnNames](auto& column) {
-                    if (!without_rowid::value && is_single_table_primary_key(table, column)) {
+                    if (!without_rowid::value &&
+                        (is_single_table_primary_key(table, column) ||
+                         (column.template is_template<default_t>() && table_primary_key_contains(table, column)))) {
+                        return;
+                    } else if (without_rowid::value && (column.template is_template<default_t>() &&
+                                                        table_primary_key_contains(table, column))) {
                         return;
                     }
 

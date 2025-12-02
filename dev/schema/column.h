@@ -86,6 +86,14 @@ namespace sqlite_orm {
             }
 
             /**
+             *  Checks whether contraints contain specified class template.
+             */
+            template<template<class...> class Primary>
+            constexpr static bool is_template() {
+                return tuple_has_template<constraints_type, Primary>::value;
+            }
+
+            /**
              *  Simplified interface for `DEFAULT` constraint
              *  @return string representation of default value if it exists otherwise nullptr
              */

@@ -32,9 +32,21 @@ TEST_CASE("statement_serializer insert/replace") {
     };
     struct UserData2 {
         int userId = 0;
+        int discriminatingId = 0;
     };
     struct UserData3 {
         int userId = 0;
+    };
+    struct UserData4 {
+        int userId = 0;
+    };
+    struct UserData5 {
+        int userId = 0;
+        int discriminatingId = 0;
+    };
+    struct UserData6 {
+        int userId = 0;
+        int discriminatingId = 0;
     };
 
     // with rowid, no pk
@@ -43,6 +55,7 @@ TEST_CASE("statement_serializer insert/replace") {
         make_table("users_backup", make_column("id", &UserBackup::id), make_column("name", &UserBackup::name));
     // with rowid, column pk
     auto table3 = make_table("users2", make_column("id", &User2::id, primary_key()), make_column("name", &User2::name));
+    // with rowid, single table pk
     auto table4 =
         make_table("users3", make_column("id", &User3::id), make_column("name", &User3::name), primary_key(&User3::id));
     // with rowid, composite table pk
@@ -50,12 +63,28 @@ TEST_CASE("statement_serializer insert/replace") {
                              make_column("user_id", &UserData1::userId),
                              make_column("discriminating_id", &UserData1::discriminatingId),
                              primary_key(&UserData1::userId, &UserData1::discriminatingId));
+    // with rowid, composite table pk involving a default value
+    auto table6 = make_table("user_data2",
+                             make_column("user_id", &UserData2::userId),
+                             make_column("discriminating_id", &UserData2::discriminatingId, default_value(1)),
+                             primary_key(&UserData2::userId, &UserData2::discriminatingId));
     // without rowid, column pk
-    auto table6 = make_table("user_data2", make_column("user_id", &UserData2::userId, primary_key())).without_rowid();
-    // without rowid, table pk
-    auto table7 = make_table("user_data3", make_column("user_id", &UserData3::userId), primary_key(&UserData3::userId))
+    auto table7 = make_table("user_data3", make_column("user_id", &UserData3::userId, primary_key())).without_rowid();
+    // without rowid, single table pk
+    auto table8 = make_table("user_data4", make_column("user_id", &UserData4::userId), primary_key(&UserData4::userId))
                       .without_rowid();
-    const std::tuple dbObjects = {table1, table2, table3, table4, table5, table6, table7};
+    // without rowid, composite table pk
+    auto table9 = make_table("user_data5",
+                             make_column("user_id", &UserData5::userId),
+                             make_column("discriminating_id", &UserData5::discriminatingId),
+                             primary_key(&UserData5::userId, &UserData5::discriminatingId))
+                      .without_rowid();
+    // without rowid, composite table pk involving a default value
+    auto table10 = make_table("user_data6",
+                              make_column("user_id", &UserData6::userId),
+                              make_column("discriminating_id", &UserData6::discriminatingId, default_value(1)),
+                              primary_key(&UserData6::userId, &UserData6::discriminatingId));
+    const std::tuple dbObjects = {table1, table2, table3, table4, table5, table6, table7, table8, table9, table10};
     using db_objects_t = decltype(dbObjects);
     using context_t = internal::serializer_context<db_objects_t>;
     context_t context{dbObjects};
@@ -176,8 +205,11 @@ TEST_CASE("statement_serializer insert/replace") {
         User2 user2{5, "Gambit"};
         User3 user3{5, "Gambit"};
         UserData1 userData1{5, 5};
-        UserData2 userData2{5};
+        UserData2 userData2{5, 5};
         UserData3 userData3{5};
+        UserData4 userData4{5};
+        UserData5 userData5{5, 5};
+        UserData6 userData6{5, 5};
         SECTION("crud") {
             auto statement = insert(user);
             SECTION("question marks") {
@@ -208,16 +240,34 @@ TEST_CASE("statement_serializer insert/replace") {
             expected = R"(INSERT INTO "user_data1" ("user_id", "discriminating_id") VALUES (5, 5))";
             value = serialize(statement, context);
         }
-        SECTION("crud without rowid, column pk") {
+        SECTION("crud with rowid, composite table pk involving a default value") {
             context.replace_bindable_with_question = false;
             auto statement = insert(userData2);
             expected = R"(INSERT INTO "user_data2" ("user_id") VALUES (5))";
             value = serialize(statement, context);
         }
-        SECTION("crud without rowid, table pk") {
+        SECTION("crud without rowid, column pk") {
             context.replace_bindable_with_question = false;
             auto statement = insert(userData3);
             expected = R"(INSERT INTO "user_data3" ("user_id") VALUES (5))";
+            value = serialize(statement, context);
+        }
+        SECTION("crud without rowid, single table pk") {
+            context.replace_bindable_with_question = false;
+            auto statement = insert(userData4);
+            expected = R"(INSERT INTO "user_data4" ("user_id") VALUES (5))";
+            value = serialize(statement, context);
+        }
+        SECTION("crud without rowid, composite table pk") {
+            context.replace_bindable_with_question = false;
+            auto statement = insert(userData5);
+            expected = R"(INSERT INTO "user_data5" ("user_id", "discriminating_id") VALUES (5, 5))";
+            value = serialize(statement, context);
+        }
+        SECTION("crud without rowid, composite table pk involving a default value") {
+            context.replace_bindable_with_question = false;
+            auto statement = insert(userData6);
+            expected = R"(INSERT INTO "user_data6" ("user_id") VALUES (5))";
             value = serialize(statement, context);
         }
         SECTION("explicit") {
@@ -460,6 +510,9 @@ TEST_CASE("statement_serializer insert/replace") {
             std::vector<UserData1> userData1(1);
             std::vector<UserData2> userData2(1);
             std::vector<UserData3> userData3(1);
+            std::vector<UserData4> userData4(1);
+            std::vector<UserData5> userData5(1);
+            std::vector<UserData6> userData6(1);
             SECTION("objects") {
                 auto expression = insert_range<User>(users.begin(), users.end());
                 // deduced object type
@@ -517,15 +570,30 @@ TEST_CASE("statement_serializer insert/replace") {
                 value = serialize(expression, context);
                 expected = R"(INSERT INTO "user_data1" ("user_id", "discriminating_id") VALUES (?, ?))";
             }
-            SECTION("without rowid, column pk") {
+            SECTION("with rowid, composite table pk involving a default value") {
                 auto expression = insert_range<UserData2>(userData2.begin(), userData2.end());
-                value = serialize(expression, context);
                 expected = R"(INSERT INTO "user_data2" ("user_id") VALUES (?))";
+                value = serialize(expression, context);
             }
-            SECTION("without rowid, table pk") {
+            SECTION("without rowid, column pk") {
                 auto expression = insert_range<UserData3>(userData3.begin(), userData3.end());
                 value = serialize(expression, context);
                 expected = R"(INSERT INTO "user_data3" ("user_id") VALUES (?))";
+            }
+            SECTION("without rowid, single table pk") {
+                auto expression = insert_range<UserData4>(userData4.begin(), userData4.end());
+                value = serialize(expression, context);
+                expected = R"(INSERT INTO "user_data4" ("user_id") VALUES (?))";
+            }
+            SECTION("without rowid, composite table pk") {
+                auto expression = insert_range<UserData5>(userData5.begin(), userData5.end());
+                expected = R"(INSERT INTO "user_data5" ("user_id", "discriminating_id") VALUES (?, ?))";
+                value = serialize(expression, context);
+            }
+            SECTION("without rowid, composite table pk involving a default value") {
+                auto expression = insert_range<UserData6>(userData6.begin(), userData6.end());
+                expected = R"(INSERT INTO "user_data6" ("user_id") VALUES (?))";
+                value = serialize(expression, context);
             }
         }
     }

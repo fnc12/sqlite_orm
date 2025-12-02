@@ -489,12 +489,24 @@ TEST_CASE("insert") {
         int objectId = 0;
         int discriminatingId = 0;
     };
+    struct Object4 {
+        int objectId = 0;
+        int discriminatingId = 0;
+    };
     struct ObjectWithoutRowid {
         int id;
         std::string name;
     };
     struct ObjectWithoutRowid2 {
         int id = 0;
+    };
+    struct ObjectWithoutRowid3 {
+        int objectId = 0;
+        int discriminatingId = 0;
+    };
+    struct ObjectWithoutRowid4 {
+        int objectId = 0;
+        int discriminatingId = 0;
     };
 
     auto storage = make_storage(
@@ -511,23 +523,43 @@ TEST_CASE("insert") {
                    make_column("object_id", &Object3::objectId),
                    make_column("discriminating_id", &Object3::discriminatingId),
                    primary_key(&Object3::objectId, &Object3::discriminatingId)),
+        // with rowid, composite table pk involving a default value
+        make_table("objects4",
+                   make_column("object_id", &Object4::objectId),
+                   make_column("discriminating_id", &Object4::discriminatingId, default_value(1)),
+                   primary_key(&Object4::objectId, &Object4::discriminatingId)),
         // without rowid, column pk
         make_table("objects_without_rowid",
                    make_column("id", &ObjectWithoutRowid::id, primary_key()),
                    make_column("name", &ObjectWithoutRowid::name))
             .without_rowid(),
-        // without rowid, table pk
+        // without rowid, single table pk
         make_table("objects_without_rowid2",
                    make_column("id", &ObjectWithoutRowid2::id),
                    primary_key(&ObjectWithoutRowid2::id))
+            .without_rowid(),
+        // with rowid, composite table pk
+        make_table("objects_without_rowid3",
+                   make_column("object_id", &ObjectWithoutRowid3::objectId),
+                   make_column("discriminating_id", &ObjectWithoutRowid3::discriminatingId),
+                   primary_key(&ObjectWithoutRowid3::objectId, &ObjectWithoutRowid3::discriminatingId))
+            .without_rowid(),
+        // with rowid, composite table pk involving a default value
+        make_table("objects_without_rowid4",
+                   make_column("object_id", &ObjectWithoutRowid4::objectId),
+                   make_column("discriminating_id", &ObjectWithoutRowid4::discriminatingId, default_value(1)),
+                   primary_key(&ObjectWithoutRowid4::objectId, &ObjectWithoutRowid4::discriminatingId))
             .without_rowid());
 
     storage.sync_schema();
     storage.remove_all<Object>();
     storage.remove_all<Object2>();
     storage.remove_all<Object3>();
+    storage.remove_all<Object4>();
     storage.remove_all<ObjectWithoutRowid>();
     storage.remove_all<ObjectWithoutRowid2>();
+    storage.remove_all<ObjectWithoutRowid3>();
+    storage.remove_all<ObjectWithoutRowid4>();
 
     storage.transaction([&storage]() {
         for (auto i = 0; i < 100; ++i) {
@@ -587,15 +619,32 @@ TEST_CASE("insert") {
         REQUIRE(storage.insert(Object3{4, 4}) == 2);
         REQUIRE_NOTHROW(storage.get<Object3>(2, 2));
     }
+    SECTION("with rowid, composite table pk involving a default value") {
+        REQUIRE(storage.insert(Object4{2, 2}) == 1);
+        REQUIRE(storage.insert(Object4{4, 4}) == 2);
+        REQUIRE_NOTHROW(storage.get<Object4>(2, 1));
+        REQUIRE_NOTHROW(storage.get<Object4>(4, 1));
+    }
     SECTION("without rowid, column pk") {
         REQUIRE(storage.insert(ObjectWithoutRowid{10, "Life"}) == 0);
         REQUIRE(storage.get<ObjectWithoutRowid>(10).name == "Life");
         REQUIRE(storage.insert(ObjectWithoutRowid{20, "Death"}) == 0);
         REQUIRE(storage.get<ObjectWithoutRowid>(20).name == "Death");
     }
-    SECTION("without rowid, table pk") {
+    SECTION("without rowid, single table pk") {
         REQUIRE(storage.insert(ObjectWithoutRowid2{2}) == 0);
         REQUIRE_NOTHROW(storage.get<ObjectWithoutRowid2>(2));
+    }
+    SECTION("with rowid, composite table pk") {
+        REQUIRE(storage.insert(ObjectWithoutRowid3{2, 2}) == 0);
+        REQUIRE(storage.insert(ObjectWithoutRowid3{4, 4}) == 0);
+        REQUIRE_NOTHROW(storage.get<ObjectWithoutRowid3>(2, 2));
+    }
+    SECTION("with rowid, composite table pk involving a default value") {
+        REQUIRE(storage.insert(ObjectWithoutRowid4{2, 2}) == 0);
+        REQUIRE(storage.insert(ObjectWithoutRowid4{4, 4}) == 0);
+        REQUIRE_NOTHROW(storage.get<ObjectWithoutRowid4>(2, 1));
+        REQUIRE_NOTHROW(storage.get<ObjectWithoutRowid4>(4, 1));
     }
 }
 
