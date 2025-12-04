@@ -12870,11 +12870,12 @@ namespace sqlite_orm::internal {
     };
 
     template<class... Cs, class G, class S>
-    bool table_primary_key_contains(const insertable_table_definition<Cs...>& definition,
-                                    const column_field<G, S>& column) {
+    bool table_primary_key_contains([[maybe_unused]] const insertable_table_definition<Cs...>& definition,
+                                    [[maybe_unused]] const column_field<G, S>& column) {
         bool res = false;
         // note: though `visit_table_primary_key()` does no work if a column primary key exists, we try to save the compiler some work with this check up front
-        if constexpr (/*bool hasNoColumnPK =*/!definition.template count_of_columns_with<is_primary_key>()) {
+        if constexpr (/*bool hasNoColumnPK =*/!insertable_table_definition<Cs...>::template count_of_columns_with<
+                      is_primary_key>()) {
             definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
                 using colrefs_tuple = decltype(primaryKey.columns);
                 using same_type_index_sequence =
@@ -12893,11 +12894,12 @@ namespace sqlite_orm::internal {
     }
 
     template<class... Cs, class G, class S>
-    bool is_single_table_primary_key(const insertable_table_definition<Cs...>& definition,
-                                     const column_field<G, S>& column) {
+    bool is_single_table_primary_key([[maybe_unused]] const insertable_table_definition<Cs...>& definition,
+                                     [[maybe_unused]] const column_field<G, S>& column) {
         bool res = false;
         // note: though `visit_table_primary_key()` does no work if a column primary key exists, we try to save the compiler some work with this check up front
-        if constexpr (/*bool hasNoColumnPK =*/!definition.template count_of_columns_with<is_primary_key>()) {
+        if constexpr (/*bool hasNoColumnPK =*/!insertable_table_definition<Cs...>::template count_of_columns_with<
+                      is_primary_key>()) {
             definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
                 // note: use `decltype(primaryKey)` instead of `decltype(primaryKey.columns)` otherwise msvc 141 chokes on the `if constexpr` below
                 using colrefs_tuple = columns_tuple_t<polyfill::remove_cvref_t<decltype(primaryKey)>>;
