@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#if SQLITE_VERSION_NUMBER >= 3009000
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
 #include <tuple>  //  std::tuple_size, std::make_tuple, std::get
 #include <utility>  //  std::forward, std::move
 #include <vector>
@@ -16,7 +16,7 @@
 #include "../schema/column.h"
 #include "../constraints.h"
 
-#if SQLITE_VERSION_NUMBER >= 3009000
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
 namespace sqlite_orm::internal {
     template<class T>
     inline constexpr bool is_fts5_table_element_or_constraint_v =

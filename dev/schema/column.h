@@ -211,7 +211,6 @@ namespace sqlite_orm {
             }
         }
 
-#if SQLITE_VERSION_NUMBER >= 3031000
         /**
          *  Factory function for a column definition from a member object pointer for hidden virtual table columns.
          */
@@ -223,7 +222,6 @@ namespace sqlite_orm {
             // as this will lead to UB with Clang on MinGW!
             return {std::move(name), memberPointer, {}, std::tuple<Op...>{std::move(constraints)...}};
         }
-#endif
     }
 }
 

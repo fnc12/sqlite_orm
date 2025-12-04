@@ -493,6 +493,7 @@ TEST_CASE("insert") {
         int objectId = 0;
         int discriminatingId = 0;
     };
+#if SQLITE_VERSION_NUMBER >= 3008002
     struct ObjectWithoutRowid {
         int id;
         std::string name;
@@ -508,6 +509,7 @@ TEST_CASE("insert") {
         int objectId = 0;
         int discriminatingId = 0;
     };
+#endif
 
     auto storage = make_storage(
         "test_insert.sqlite",
@@ -527,7 +529,9 @@ TEST_CASE("insert") {
         make_table("objects4",
                    make_column("object_id", &Object4::objectId),
                    make_column("discriminating_id", &Object4::discriminatingId, default_value(1)),
-                   primary_key(&Object4::objectId, &Object4::discriminatingId)),
+                   primary_key(&Object4::objectId, &Object4::discriminatingId))
+#if SQLITE_VERSION_NUMBER >= 3008002
+            ,
         // without rowid, column pk
         make_table("objects_without_rowid",
                    make_column("id", &ObjectWithoutRowid::id, primary_key()),
@@ -549,17 +553,21 @@ TEST_CASE("insert") {
                    make_column("object_id", &ObjectWithoutRowid4::objectId),
                    make_column("discriminating_id", &ObjectWithoutRowid4::discriminatingId, default_value(1)),
                    primary_key(&ObjectWithoutRowid4::objectId, &ObjectWithoutRowid4::discriminatingId))
-            .without_rowid());
+            .without_rowid()
+#endif
+    );
 
     storage.sync_schema();
     storage.remove_all<Object>();
     storage.remove_all<Object2>();
     storage.remove_all<Object3>();
     storage.remove_all<Object4>();
+#if SQLITE_VERSION_NUMBER >= 3008002
     storage.remove_all<ObjectWithoutRowid>();
     storage.remove_all<ObjectWithoutRowid2>();
     storage.remove_all<ObjectWithoutRowid3>();
     storage.remove_all<ObjectWithoutRowid4>();
+#endif
 
     storage.transaction([&storage]() {
         for (auto i = 0; i < 100; ++i) {
@@ -625,6 +633,7 @@ TEST_CASE("insert") {
         REQUIRE_NOTHROW(storage.get<Object4>(2, 1));
         REQUIRE_NOTHROW(storage.get<Object4>(4, 1));
     }
+#if SQLITE_VERSION_NUMBER >= 3008002
     SECTION("without rowid, column pk") {
         REQUIRE(storage.insert(ObjectWithoutRowid{10, "Life"}) == 0);
         REQUIRE(storage.get<ObjectWithoutRowid>(10).name == "Life");
@@ -646,6 +655,7 @@ TEST_CASE("insert") {
         REQUIRE_NOTHROW(storage.get<ObjectWithoutRowid4>(2, 1));
         REQUIRE_NOTHROW(storage.get<ObjectWithoutRowid4>(4, 1));
     }
+#endif
 }
 
 TEST_CASE("Empty storage") {

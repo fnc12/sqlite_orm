@@ -4075,7 +4075,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {{}};
     }
 
-#if SQLITE_VERSION_NUMBER >= 3009000
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
     /**
      *  UNINDEXED column constraint builder function. Used in FTS virtual tables.
      * 
@@ -8750,6 +8750,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
     }
 
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
     struct fts5;
 
     /** 
@@ -8813,6 +8814,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     highlight(F Hidden::* /*theAnyField*/, X x, Y y, Z z) {
         return {std::move(x), std::move(y), std::move(z)};
     }
+#endif
 #endif
 }
 
@@ -9175,7 +9177,6 @@ namespace sqlite_orm {
             }
         }
 
-#if SQLITE_VERSION_NUMBER >= 3031000
         /**
          *  Factory function for a column definition from a member object pointer for hidden virtual table columns.
          */
@@ -9187,7 +9188,6 @@ namespace sqlite_orm {
             // as this will lead to UB with Clang on MinGW!
             return {std::move(name), memberPointer, {}, std::tuple<Op...>{std::move(constraints)...}};
         }
-#endif
     }
 }
 
@@ -22390,7 +22390,7 @@ namespace sqlite_orm {
             }
         };
 
-#if SQLITE_VERSION_NUMBER >= 3009000
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
         template<>
         struct statement_serializer<unindexed_t, void> {
             using statement_type = unindexed_t;
@@ -27171,7 +27171,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "fts5.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#if SQLITE_VERSION_NUMBER >= 3009000
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
 #include <tuple>  //  std::tuple_size, std::make_tuple, std::get
 #include <utility>  //  std::forward, std::move
 #include <vector>
@@ -27192,7 +27192,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../constraints.h"
 
-#if SQLITE_VERSION_NUMBER >= 3009000
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
 namespace sqlite_orm::internal {
     template<class T>
     inline constexpr bool is_fts5_table_element_or_constraint_v =

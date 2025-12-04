@@ -602,7 +602,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {{}};
     }
 
-#if SQLITE_VERSION_NUMBER >= 3009000
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
     /**
      *  UNINDEXED column constraint builder function. Used in FTS virtual tables.
      * 

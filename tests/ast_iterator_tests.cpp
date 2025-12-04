@@ -26,8 +26,10 @@ TEST_CASE("ast_iterator") {
         int id = 0;
         std::string name;
     };
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
     constexpr auto user_table = c<User>();
     using user_hidden = fts5::hidden_fields_of<User>;
+#endif
 
     std::vector<std::type_index> typeIndexes;
     decltype(typeIndexes) expected;
@@ -270,6 +272,7 @@ TEST_CASE("ast_iterator") {
         expected.push_back(typeid(const char*));
         iterate_ast(node, lambda);
     }
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
     SECTION("match any column") {
         constexpr auto node = match(user_table->*&fts5::hidden::any, "Plazma");
         expected.push_back(typeid(const char*));
@@ -280,6 +283,7 @@ TEST_CASE("ast_iterator") {
         expected.push_back(typeid(const char*));
         iterate_ast(node, lambda);
     }
+#endif
     SECTION("match specific column") {
         constexpr auto node = match(&User::name, "Claude");
         expected.push_back(typeid(const char*));
@@ -454,6 +458,7 @@ TEST_CASE("ast_iterator") {
     }
 #endif
 #endif
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
     SECTION("highlight using explicit template parameter") {
         auto expression = highlight<User>(0, std::string("<b>"), std::string("</b>"));
         expected.push_back(typeid(int));
@@ -489,6 +494,7 @@ TEST_CASE("ast_iterator") {
         iterate_ast(expression2, nodeLambda);
         iterate_ast(expression3, nodeLambda);
     }
+#endif
 #endif
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB
     SECTION("table-valued") {

@@ -13,9 +13,9 @@ namespace {
     };
 }
 
-#if SQLITE_VERSION_NUMBER >= 3009000
 using namespace sqlite_orm;
 
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
 TEST_CASE("fts5 virtual table schema") {
     using Catch::Matchers::UnorderedEquals;
     struct Post {

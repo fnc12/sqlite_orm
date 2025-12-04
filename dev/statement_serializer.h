@@ -1204,7 +1204,7 @@ namespace sqlite_orm {
             }
         };
 
-#if SQLITE_VERSION_NUMBER >= 3009000
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
         template<>
         struct statement_serializer<unindexed_t, void> {
             using statement_type = unindexed_t;
