@@ -510,7 +510,7 @@ namespace sqlite_orm {
          *  - or has a default value.
          *  
          *  Note that the restrictions on an alias for the "rowid" key are actually more narrow:
-         *  it must be of 64-bit signed integer type (not any other integral arithmetic type),
+         *  it must be of 64-bit signed integer type (or be able to represent this type),
          *  however due to sqlite_orm's current type mapping this is not enforced here.
          */
         template<typename Column>

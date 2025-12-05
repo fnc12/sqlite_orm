@@ -3983,7 +3983,7 @@ namespace sqlite_orm {
          *  - or has a default value.
          *  
          *  Note that the restrictions on an alias for the "rowid" key are actually more narrow:
-         *  it must be of 64-bit signed integer type (not any other integral arithmetic type),
+         *  it must be of 64-bit signed integer type (or be able to represent this type),
          *  however due to sqlite_orm's current type mapping this is not enforced here.
          */
         template<typename Column>
@@ -9140,20 +9140,31 @@ namespace sqlite_orm {
             field_type_t,
             filter_tuple_sequence_t<Elements, mpl::disjunction_fn<is_column, is_hidden_column>::template fn>>;
 
-        // [Deprecation notice] For arithmetic types other than 64-bit signed integer, AUTOINCREMENT is deprecated on PRIMARY KEY columns and will be removed in v1.11
+        // Custom type: programmer's responsibility to garantee data integrity in the value range of an 64-bit signed integer
         template<class F, class SFINAE = void>
         struct check_pkcol {
+            static constexpr void validate_column_primary_key_with_autoincrement() {}
+        };
+
+        // For integer types: further checks
+        template<class F>
+        struct check_pkcol<F, std::enable_if_t<std::is_integral<F>::value>> {
+            // For 64-bit signed integer type: valid
+            template<class X = F,
+                     std::enable_if_t<sizeof(X) == sizeof(sqlite_int64) &&
+                                          std::is_signed<X>::value == std::is_signed<sqlite_int64>::value,
+                                      bool> = true>
+            static constexpr void validate_column_primary_key_with_autoincrement() {}
+
+            // [Deprecation notice] For arithmetic types other than 64-bit signed integer, AUTOINCREMENT is deprecated on PRIMARY KEY columns
+            // and will be turned into a static_assert failure in v1.11
+            template<class X = F,
+                     std::enable_if_t<sizeof(X) != sizeof(sqlite_int64) ||
+                                          std::is_signed<X>::value != std::is_signed<sqlite_int64>::value,
+                                      bool> = true>
             [[deprecated(
                 R"(Use a 64-bit signed integer for AUTOINCREMENT on an INTEGER PRIMARY KEY as an alias for the "rowid" key)")]] static constexpr void
             validate_column_primary_key_with_autoincrement() {}
-        };
-
-        // For 64-bit signed integer type: valid
-        template<class F>
-        struct check_pkcol<F,
-                           std::enable_if_t<sizeof(F) == sizeof(sqlite_int64) &&
-                                            std::is_signed<F>::value == std::is_signed<sqlite_int64>::value>> {
-            static constexpr void validate_column_primary_key_with_autoincrement() {}
         };
 
         // For non-integer types: static_assert failure
