@@ -77,7 +77,7 @@ TEST_CASE("Foreign key 2") {
         test1() {};
 
         // Variables
-        int id;
+        int64 id;
         std::string val1;
         std::string val2;
     };
@@ -88,8 +88,8 @@ TEST_CASE("Foreign key 2") {
         test2() {};
 
         // Variables
-        int id;
-        int fk_id;
+        int64 id;
+        int64 fk_id;
         std::string val1;
         std::string val2;
     };

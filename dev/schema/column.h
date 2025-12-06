@@ -174,7 +174,7 @@ namespace sqlite_orm {
             field_type_t,
             filter_tuple_sequence_t<Elements, mpl::disjunction_fn<is_column, is_hidden_column>::template fn>>;
 
-        // Custom type: programmer's responsibility to garantee data integrity in the value range of an 64-bit signed integer
+        // Custom type: programmer's responsibility to garantee data integrity in the value range of a 64-bit signed integer
         template<class F, class SFINAE = void>
         struct check_pkcol {
             static constexpr void validate_column_primary_key_with_autoincrement() {}
@@ -190,7 +190,7 @@ namespace sqlite_orm {
                                       bool> = true>
             static constexpr void validate_column_primary_key_with_autoincrement() {}
 
-            // [Deprecation notice] For arithmetic types other than 64-bit signed integer, AUTOINCREMENT is deprecated on PRIMARY KEY columns
+            // [Deprecation notice] For integral types other than 64-bit signed integer, AUTOINCREMENT is deprecated on PRIMARY KEY columns
             // and will be turned into a static_assert failure in v1.11
             template<class X = F,
                      std::enable_if_t<sizeof(X) != sizeof(sqlite_int64) ||

@@ -254,18 +254,15 @@ namespace sqlite_orm {
             void assert_insertable_type() const {
                 using elements_type = elements_type_t<Table>;
                 using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
-                static_assert(
-                    count_filtered_tuple<elements_type, is_pkcol_implicitly_insertable, pkcol_index_sequence>::value <=
-                        1,
-                    "Attempting to execute 'insert' request into an noninsertable table was detected. "
-                    "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
-                    "'insert', or you can use 'insert' with explicit column listing.");
-                static_assert(count_filtered_tuple<elements_type,
-                                                   check_if_not<is_pkcol_implicitly_insertable>::template fn,
-                                                   pkcol_index_sequence>::value == 0,
-                              "Attempting to execute 'insert' request into an noninsertable table was detected. "
-                              "Insertable table cannot contain non-standard primary keys. Please use 'replace' instead "
-                              "of 'insert', or you can use 'insert' with explicit column listing.");
+                if constexpr (pkcol_index_sequence::size()) {
+                    using pkcol_type =
+                        std::tuple_element_t<index_sequence_value_at<0>(pkcol_index_sequence{}), elements_type>;
+                    static_assert(
+                        mpl::invoke_t<check_if<is_pkcol_implicitly_insertable>, pkcol_type>::value,
+                        "While SQLite allows primary keys of any type, sqlite_orm restricts an ordinary 'insert' into "
+                        "tables with single-column primary keys to those with columns that are aliases for the 'rowid'."
+                        "Instead, please use 'replace' or 'insert' with explicitly specified columns.");
+                }
             }
 
             template<class O>
@@ -1559,19 +1556,21 @@ namespace sqlite_orm {
                     using table_type = polyfill::remove_cvref_t<decltype(table)>;
                     using without_rowid = typename table_type::is_without_rowid;
 
-                    table.template for_each_column_excluding<mpl::disjunction<
-                        mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>,
-                        mpl::quote_fn<is_generated_always>>>([&table, &bindValue, &object](auto& column) {
-                        if (!without_rowid::value &&
-                            (is_single_table_primary_key(table, column) ||
-                             (column.template is_template<default_t>() && table_primary_key_contains(table, column)))) {
-                            return;
-                        } else if (without_rowid::value && (column.template is_template<default_t>() &&
-                                                            table_primary_key_contains(table, column))) {
-                            return;
-                        }
-                        bindValue(polyfill::invoke(column.member_pointer, object));
-                    });
+                    table.template for_each_column_excluding<  ///
+                        mpl::disjunction<
+                            mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>,
+                            mpl::quote_fn<is_generated_always>>>(  ///
+                        [&table, &bindValue, &object](auto& column) {
+                            if (!without_rowid::value && (is_single_table_primary_key(table, column) ||
+                                                          (column.template is_template<default_t>() &&
+                                                           table_primary_key_contains(table, column)))) {
+                                return;
+                            } else if (without_rowid::value && (column.template is_template<default_t>() &&
+                                                                table_primary_key_contains(table, column))) {
+                                return;
+                            }
+                            bindValue(polyfill::invoke(column.member_pointer, object));
+                        });
                 };
 
                 if constexpr (is_insert_range<T>::value) {

@@ -208,7 +208,7 @@ TEST_CASE("Different getters and setters") {
 TEST_CASE("Dump") {
 
     struct User {
-        int id = 0;
+        int64 id = 0;
         std::optional<int> carYear;  // will be empty if user takes the bus.
     };
 

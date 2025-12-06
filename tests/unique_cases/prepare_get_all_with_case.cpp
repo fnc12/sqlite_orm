@@ -5,7 +5,7 @@ using namespace sqlite_orm;
 
 TEST_CASE("Prepare with case") {
     struct UserProfile {
-        int id = 0;
+        int64 id = 0;
         std::string firstName;
     };
 

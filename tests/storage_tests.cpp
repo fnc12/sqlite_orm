@@ -476,13 +476,22 @@ TEST_CASE("non-unique DBOs") {
     db.sync_schema();
 }
 
+namespace {
+    struct CustomRowIdKeyType {
+        std::uint32_t low;
+        std::int32_t high;
+    };
+}
+template<>
+struct sqlite_orm::type_printer<CustomRowIdKeyType> : public integer_printer {};
+
 TEST_CASE("insert") {
     struct Object {
-        int id;
+        int64 id = 0;
         std::string name;
     };
     struct Object2 {
-        int id = 0;
+        int64 id = 0;
         std::string name;
     };
     struct Object3 {
@@ -493,9 +502,13 @@ TEST_CASE("insert") {
         int objectId = 0;
         int discriminatingId = 0;
     };
+    struct Object5 {
+        CustomRowIdKeyType id = {};
+        std::string name;
+    };
 #if SQLITE_VERSION_NUMBER >= 3008002
     struct ObjectWithoutRowid {
-        int id;
+        int id = 0;
         std::string name;
     };
     struct ObjectWithoutRowid2 {
@@ -529,7 +542,9 @@ TEST_CASE("insert") {
         make_table("objects4",
                    make_column("object_id", &Object4::objectId),
                    make_column("discriminating_id", &Object4::discriminatingId, default_value(1)),
-                   primary_key(&Object4::objectId, &Object4::discriminatingId))
+                   primary_key(&Object4::objectId, &Object4::discriminatingId)),
+        // with rowid, column pk of custom type
+        make_table("objects5", make_column("id", &Object5::id, primary_key()), make_column("name", &Object5::name))
 #if SQLITE_VERSION_NUMBER >= 3008002
             ,
         // without rowid, column pk
@@ -562,6 +577,7 @@ TEST_CASE("insert") {
     storage.remove_all<Object2>();
     storage.remove_all<Object3>();
     storage.remove_all<Object4>();
+    storage.remove_all<Object5>();
 #if SQLITE_VERSION_NUMBER >= 3008002
     storage.remove_all<ObjectWithoutRowid>();
     storage.remove_all<ObjectWithoutRowid2>();
@@ -633,6 +649,11 @@ TEST_CASE("insert") {
         REQUIRE_NOTHROW(storage.get<Object4>(2, 1));
         REQUIRE_NOTHROW(storage.get<Object4>(4, 1));
     }
+    SECTION("with rowid, column pk of custom type") {
+        REQUIRE(storage.insert(Object5{}) == 1);
+        REQUIRE(storage.insert(Object5{}) == 2);
+        REQUIRE(storage.count<Object5>(where(c(&Object5::id) == 1)) == 1);
+    }
 #if SQLITE_VERSION_NUMBER >= 3008002
     SECTION("without rowid, column pk") {
         REQUIRE(storage.insert(ObjectWithoutRowid{10, "Life"}) == 0);
@@ -644,12 +665,12 @@ TEST_CASE("insert") {
         REQUIRE(storage.insert(ObjectWithoutRowid2{2}) == 0);
         REQUIRE_NOTHROW(storage.get<ObjectWithoutRowid2>(2));
     }
-    SECTION("with rowid, composite table pk") {
+    SECTION("without rowid, composite table pk") {
         REQUIRE(storage.insert(ObjectWithoutRowid3{2, 2}) == 0);
         REQUIRE(storage.insert(ObjectWithoutRowid3{4, 4}) == 0);
         REQUIRE_NOTHROW(storage.get<ObjectWithoutRowid3>(2, 2));
     }
-    SECTION("with rowid, composite table pk involving a default value") {
+    SECTION("without rowid, composite table pk involving a default value") {
         REQUIRE(storage.insert(ObjectWithoutRowid4{2, 2}) == 0);
         REQUIRE(storage.insert(ObjectWithoutRowid4{4, 4}) == 0);
         REQUIRE_NOTHROW(storage.get<ObjectWithoutRowid4>(2, 1));
@@ -665,7 +686,7 @@ TEST_CASE("Empty storage") {
 
 TEST_CASE("Remove") {
     struct Object {
-        int id;
+        int64 id;
         std::string name;
     };
 
@@ -763,7 +784,7 @@ TEST_CASE("insert with generated column") {
 
 TEST_CASE("last insert rowid") {
     struct Object {
-        int id;
+        int64 id;
     };
 
     auto storage = make_storage("", make_table("objects", make_column("id", &Object::id, primary_key())));
@@ -771,12 +792,12 @@ TEST_CASE("last insert rowid") {
     storage.sync_schema();
 
     SECTION("ordinary insert") {
-        int id = storage.insert<Object>({0});
+        int64 id = storage.insert<Object>({0});
         REQUIRE(id == storage.last_insert_rowid());
         REQUIRE_NOTHROW(storage.get<Object>(id));
     }
     SECTION("explicit insert") {
-        int id = storage.insert<Object>({2}, columns(&Object::id));
+        int64 id = storage.insert<Object>({2}, columns(&Object::id));
         REQUIRE(id == 2);
         REQUIRE(id == storage.last_insert_rowid());
     }

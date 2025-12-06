@@ -1596,20 +1596,22 @@ namespace sqlite_orm {
                 using without_rowid = typename table_type::is_without_rowid;
 
                 std::vector<std::reference_wrapper<const std::string>> columnNames;
-                table.template for_each_column_excluding<mpl::disjunction<
-                    mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>,
-                    mpl::quote_fn<is_generated_always>>>([&table, &columnNames](auto& column) {
-                    if (!without_rowid::value &&
-                        (is_single_table_primary_key(table, column) ||
-                         (column.template is_template<default_t>() && table_primary_key_contains(table, column)))) {
-                        return;
-                    } else if (without_rowid::value && (column.template is_template<default_t>() &&
-                                                        table_primary_key_contains(table, column))) {
-                        return;
-                    }
+                table.template for_each_column_excluding<  ///
+                    mpl::disjunction<
+                        mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>,
+                        mpl::quote_fn<is_generated_always>>>(  ///
+                    [&table, &columnNames](auto& column) {
+                        if (!without_rowid::value &&
+                            (is_single_table_primary_key(table, column) ||
+                             (column.template is_template<default_t>() && table_primary_key_contains(table, column)))) {
+                            return;
+                        } else if (without_rowid::value && (column.template is_template<default_t>() &&
+                                                            table_primary_key_contains(table, column))) {
+                            return;
+                        }
 
-                    columnNames.push_back(std::cref(column.name));
-                });
+                        columnNames.push_back(std::cref(column.name));
+                    });
                 const size_t columnNamesCount = columnNames.size();
 
                 std::stringstream ss;
@@ -1778,20 +1780,22 @@ namespace sqlite_orm {
                 using without_rowid = typename table_type::is_without_rowid;
 
                 std::vector<std::reference_wrapper<const std::string>> columnNames;
-                table.template for_each_column_excluding<mpl::disjunction<
-                    mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>,
-                    mpl::quote_fn<is_generated_always>>>([&table, &columnNames](auto& column) {
-                    if (!without_rowid::value &&
-                        (is_single_table_primary_key(table, column) ||
-                         (column.template is_template<default_t>() && table_primary_key_contains(table, column)))) {
-                        return;
-                    } else if (without_rowid::value && (column.template is_template<default_t>() &&
-                                                        table_primary_key_contains(table, column))) {
-                        return;
-                    }
+                table.template for_each_column_excluding<  ///
+                    mpl::disjunction<
+                        mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>,
+                        mpl::quote_fn<is_generated_always>>>(  ///
+                    [&table, &columnNames](auto& column) {
+                        if (!without_rowid::value &&
+                            (is_single_table_primary_key(table, column) ||
+                             (column.template is_template<default_t>() && table_primary_key_contains(table, column)))) {
+                            return;
+                        } else if (without_rowid::value && (column.template is_template<default_t>() &&
+                                                            table_primary_key_contains(table, column))) {
+                            return;
+                        }
 
-                    columnNames.push_back(std::cref(column.name));
-                });
+                        columnNames.push_back(std::cref(column.name));
+                    });
                 const size_t valuesCount = std::distance(statement.range.first, statement.range.second);
                 const size_t columnNamesCount = columnNames.size();
 

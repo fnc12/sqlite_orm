@@ -502,6 +502,34 @@ namespace sqlite_orm {
         template<class T>
         struct is_generated_always : polyfill::bool_constant<is_generated_always_v<T>> {};
 
+        // Custom type: programmer's responsibility to garantee data integrity in the value range of a 64-bit signed integer
+        template<class F, class SFINAE = void>
+        inline constexpr bool is_rowid_alias_capable_v = std::is_base_of<integer_printer, type_printer<F>>::value;
+
+        // For integer types: further checks
+        template<class F>
+        inline constexpr bool is_rowid_alias_capable_v<
+            F,
+            std::enable_if_t<std::is_integral<F>::value &&
+                             (sizeof(F) == sizeof(sqlite_int64) &&
+                              std::is_signed<F>::value == std::is_signed<sqlite_int64>::value)>> = true;
+
+        // [Deprecation notice] For integral types other than 64-bit signed integer, AUTOINCREMENT is deprecated on PRIMARY KEY columns
+        // and will be turned into a static_assert failure in v1.11
+        template<class F>
+        [[deprecated(R"(Use a 64-bit signed integer for the "rowid" key alias)")]]
+        inline constexpr bool is_rowid_alias_capable_v<
+            F,
+            std::enable_if_t<std::is_integral<F>::value &&
+                             (sizeof(F) != sizeof(sqlite_int64) ||
+                              std::is_signed<F>::value != std::is_signed<sqlite_int64>::value)>> = true;
+
+        // For non-integer types: static_assert failure
+        template<class F>
+        inline constexpr bool
+            is_rowid_alias_capable_v<F, std::enable_if_t<!std::is_base_of<integer_printer, type_printer<F>>::value>> =
+                false;
+
         /** 
          *  COLUMN PRIMARY KEY INSERTABLE traits.
          *  
@@ -509,20 +537,17 @@ namespace sqlite_orm {
          *  - it is an INTEGER PRIMARY KEY (and thus an alias for the "rowid" key),
          *  - or has a default value.
          *  
-         *  Note that the restrictions on an alias for the "rowid" key are actually more narrow:
-         *  it must be of 64-bit signed integer type (or be able to represent this type),
-         *  however due to sqlite_orm's current type mapping this is not enforced here.
+         *  In terms of C++ types, this means that the field type must be capable of representing a 64-bit signed integer,
+         *  or the column is declared with a DEFAULT constraint.
+         *  
+         *  Implementation note: using a struct template in favor of a template alias so that the stack leading to a deprecation message is shorter.
          */
         template<typename Column>
         struct is_pkcol_implicitly_insertable
             : mpl::invoke_t<
-                  mpl::disjunction<mpl::always<std::is_base_of<integer_printer, type_printer<field_type_t<Column>>>>,
+                  mpl::disjunction<mpl::always<polyfill::bool_constant<is_rowid_alias_capable_v<field_type_t<Column>>>>,
                                    check_if_has_template<default_t>>,
-                  constraints_type_t<Column>> {
-
-            // internal programming error: column primary key required
-            static_assert(tuple_has<constraints_type_t<Column>, is_primary_key>::value);
-        };
+                  constraints_type_t<Column>> {};
 
         template<class T>
         using is_column_constraint = mpl::invoke_t<mpl::disjunction<check_if<std::is_base_of, primary_key_t<>>,

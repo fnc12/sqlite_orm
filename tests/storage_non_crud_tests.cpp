@@ -113,9 +113,18 @@ TEST_CASE("update set null") {
     }
 }
 
+namespace {
+    struct CustomRowIdKeyType {
+        std::uint32_t low;
+        std::int32_t high;
+    };
+}
+template<>
+struct sqlite_orm::type_printer<CustomRowIdKeyType> : public integer_printer {};
+
 TEST_CASE("InsertRange") {
     struct Object {
-        int id = 0;
+        int64 id = 0;
         std::string name;
 
 #ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
@@ -124,7 +133,7 @@ TEST_CASE("InsertRange") {
 #endif
     };
     struct Object2 {
-        int id = 0;
+        int64 id = 0;
         std::string name;
     };
     struct Object3 {
@@ -134,6 +143,10 @@ TEST_CASE("InsertRange") {
     struct Object4 {
         int objectId = 0;
         int discriminatingId = 0;
+    };
+    struct Object5 {
+        CustomRowIdKeyType id = {};
+        std::string name;
     };
 #if SQLITE_VERSION_NUMBER >= 3008002
     struct ObjectWithoutRowid {
@@ -176,7 +189,9 @@ TEST_CASE("InsertRange") {
         make_table("objects4",
                    make_column("object_id", &Object4::objectId),
                    make_column("discriminating_id", &Object4::discriminatingId, default_value(1)),
-                   primary_key(&Object4::objectId, &Object4::discriminatingId))
+                   primary_key(&Object4::objectId, &Object4::discriminatingId)),
+        // with rowid, column pk of custom type
+        make_table("objects5", make_column("id", &Object5::id, primary_key()), make_column("name", &Object5::name))
 #if SQLITE_VERSION_NUMBER >= 3008002
             ,
         // without rowid, column pk
@@ -209,6 +224,7 @@ TEST_CASE("InsertRange") {
     storage.remove_all<Object2>();
     storage.remove_all<Object3>();
     storage.remove_all<Object4>();
+    storage.remove_all<Object5>();
 #if SQLITE_VERSION_NUMBER >= 3008002
     storage.remove_all<ObjectWithoutRowid>();
     storage.remove_all<ObjectWithoutRowid2>();
@@ -243,6 +259,11 @@ TEST_CASE("InsertRange") {
         std::vector<Object4> objects4 = {{2, 2}, {4, 4}};
         storage.insert_range(objects4.begin(), objects4.end());
         REQUIRE_NOTHROW(storage.get<Object4>(2, 1));
+
+        // with rowid, single table pk
+        std::vector<Object5> objects5 = {{}, {}};
+        storage.insert_range(objects5.begin(), objects5.end());
+        REQUIRE(storage.count<Object5>(where(c(&Object5::id) == 1)) == 1);
 
 #if SQLITE_VERSION_NUMBER >= 3008002
         // without rowid, column pk

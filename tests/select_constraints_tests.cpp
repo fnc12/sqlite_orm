@@ -7,7 +7,7 @@ using namespace sqlite_orm;
 
 namespace {
     struct Employee {
-        int id = 0;
+        int64 id = 0;
         std::string name;
         int age = 0;
         std::string address;  //  optional
@@ -57,7 +57,7 @@ TEST_CASE("select constraints") {
         SECTION("asterisk") {
             auto allEmployeesTuples = storage.select(asterisk<Employee>());
 
-            std::vector<std::tuple<int, std::string, int, std::string, double>> expected;
+            std::vector<std::tuple<int64, std::string, int, std::string, double>> expected;
 
             expected.push_back(std::make_tuple(paul.id, "Paul", 32, "California", 20000.0));
             expected.push_back(std::make_tuple(allen.id, "Allen", 25, "Texas", 15000.0));
@@ -306,7 +306,7 @@ TEST_CASE("Case") {
             columns(case_<std::string>(&User2::country).when("USA", then("Dosmetic")).else_("Foreign").end()),
             multi_order_by(order_by(&User2::lastName), order_by(&User2::firstName)));
         auto verifyRows = [&storage](auto& rows) {
-            REQUIRE(rows.size() == storage.count<User2>());
+            REQUIRE(rows.size() == static_cast<unsigned int>(storage.count<User2>()));
             REQUIRE(std::get<0>(rows[0]) == "Foreign");
             REQUIRE(std::get<0>(rows[1]) == "Foreign");
             REQUIRE(std::get<0>(rows[2]) == "Dosmetic");

@@ -8,20 +8,20 @@ TEST_CASE("Issue 343") {
       public:
         A() = default;
 
-        A(int id_, std::string name_) : name(std::move(name_)), id(id_) {}
+        A(int64 id_, std::string name_) : name(std::move(name_)), id(id_) {}
 
-        int getId() const {
+        int64 getId() const {
             return this->id;
         }
 
-        void setId(int id_) {
+        void setId(int64 id_) {
             this->id = id_;
         }
 
         std::string name;
 
       private:
-        int id = 0;
+        int64 id = 0;
     };
 
     auto storage = make_storage(

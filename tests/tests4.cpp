@@ -10,7 +10,7 @@ using namespace sqlite_orm;
 TEST_CASE("Unique ptr in update") {
 
     struct User {
-        int id = 0;
+        int64 id = 0;
         std::unique_ptr<std::string> name;
     };
 
@@ -38,7 +38,7 @@ TEST_CASE("Unique ptr in update") {
 TEST_CASE("optional in update") {
 
     struct User {
-        int id = 0;
+        int64 id = 0;
         std::optional<int> carYear;  // will be empty if user takes the bus.
     };
 

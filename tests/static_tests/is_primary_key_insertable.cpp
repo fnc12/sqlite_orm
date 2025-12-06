@@ -28,7 +28,7 @@ TEST_CASE("is_pkcol_implicitly_insertable") {
         ///
         /// implicitly insertable
         ///
-        //  works but must manually ensure data precision integrity, soon to be deprecated
+        //  works but deprecated
         make_column("", &User::intId, primary_key()),
         //  works but deprecated
         make_column("", &User::intId, primary_key().autoincrement()),
@@ -36,7 +36,7 @@ TEST_CASE("is_pkcol_implicitly_insertable") {
         make_column("", &User::int64Id, primary_key().autoincrement()),
         make_column("", &User::longlongId, primary_key()),
         make_column("", &User::longlongId, primary_key().autoincrement()),
-        //  works but must manually ensure data precision integrity, soon to be deprecated
+        //  works but deprecated
         make_column("", &User::boolId, primary_key()),
         //  works but deprecated
         make_column("", &User::boolId, primary_key().autoincrement()),
