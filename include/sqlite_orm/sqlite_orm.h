@@ -20672,8 +20672,9 @@ namespace sqlite_orm {
         };
 
         template<typename Ctx, typename E, typename ExplicitColRefs, satisfies_is_specialization_of<E, select_t> = true>
-        std::vector<std::string>
-        collect_cte_column_names(const E& sel, const ExplicitColRefs& explicitColRefs, const Ctx& context) {
+        std::vector<std::string> collect_cte_column_names(const E& sel,
+                                                          [[maybe_unused]] const ExplicitColRefs& explicitColRefs,
+                                                          const Ctx& context) {
             // 1. determine column names from subselect
             std::vector<std::string> columnNames = get_cte_column_names(sel.col, context);
 
@@ -24389,7 +24390,7 @@ namespace sqlite_orm {
             true;
 
         template<class Opt, class OptionsTpl>
-        decltype(auto) storage_opt_or_default(OptionsTpl& options) {
+        decltype(auto) storage_opt_or_default([[maybe_unused]] OptionsTpl& options) {
             if constexpr (tuple_has_type<OptionsTpl, Opt>::value) {
                 return std::move(std::get<Opt>(options));
             } else {

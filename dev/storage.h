@@ -87,7 +87,7 @@ namespace sqlite_orm {
             true;
 
         template<class Opt, class OptionsTpl>
-        decltype(auto) storage_opt_or_default(OptionsTpl& options) {
+        decltype(auto) storage_opt_or_default([[maybe_unused]] OptionsTpl& options) {
             if constexpr (tuple_has_type<OptionsTpl, Opt>::value) {
                 return std::move(std::get<Opt>(options));
             } else {
