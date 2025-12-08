@@ -1577,11 +1577,12 @@ namespace sqlite_orm::internal {
             auto& table = pick_table<object_type>(context.db_objects);
             using table_type = polyfill::remove_cvref_t<decltype(table)>;
             using without_rowid = typename table_type::is_without_rowid;
+            using is_pkcolumn_q =
+                mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>;
+            using is_generated_always_q = mpl::quote_fn<is_generated_always>;
 
             std::vector<std::reference_wrapper<const std::string>> columnNames;
-            table.template for_each_column_excluding<  ///
-                mpl::disjunction<mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>,
-                                 mpl::quote_fn<is_generated_always>>>(  ///
+            table.template for_each_column_excluding<mpl::disjunction<is_pkcolumn_q, is_generated_always_q>>(
                 [&table, &columnNames](auto& column) {
                     if (!without_rowid::value &&
                         (is_single_table_primary_key(table, column) ||

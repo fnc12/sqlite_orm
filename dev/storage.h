@@ -218,7 +218,7 @@ namespace sqlite_orm::internal {
             using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
 
             static_assert(pk_index_sequence::size() + pkcol_index_sequence::size() == 1,
-                          "The table must have primary key");
+                          "The table must have a primary key");
         }
 
         template<class O>
@@ -258,7 +258,7 @@ namespace sqlite_orm::internal {
                     "While SQLite allows primary keys of any type, sqlite_orm restricts an ordinary 'insert' into "
                     "tables with single-column primary keys to those with an implicitly insertable column because "
                     "it is the 'rowid' alias or has a default value."
-                    "Instead, please use 'replace' or 'insert' with explicitly specified columns.");
+                    "Instead, please use `replace(object)` or `insert(object, columns(...))`.");
             }
         }
 
@@ -939,7 +939,7 @@ namespace sqlite_orm::internal {
          *  @return The ID of the last inserted record for a rowid table, otherwise a meaningless value.
          *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
          *          Attention: While SQLite returns a 64-bit integer as rowid, this function returns an `int` that most likely has less precision.
-         *                     If you need the full 64-bit rowid, use `storage_t<>::execute()` instead.
+             *                     If you need the full 64-bit rowid value, use `storage_t<>::execute()` instead, or call `storage_t<>::last_insert_rowid()` after inserting.
          */
         template<class O, class... Cols>
         int insert(const O& o, columns_t<Cols...> cols) {
@@ -964,7 +964,7 @@ namespace sqlite_orm::internal {
          *  @return The ID of the last inserted record for a rowid table, otherwise a meaningless value.
          *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
          *          Attention: While SQLite returns a 64-bit integer as rowid, this function returns an `int` that most likely has less precision.
-         *                     If you need the full 64-bit rowid, use `storage_t<>::execute()` instead.
+             *                     If you need the full 64-bit rowid value, use `storage_t<>::execute()` instead, or call `storage_t<>::last_insert_rowid()` after inserting.
          */
         template<class O>
         int insert(const O& o) {
@@ -1556,11 +1556,11 @@ namespace sqlite_orm::internal {
                                   bindValue = field_value_binder{stmt}](const object_type& object) mutable {
                 using table_type = polyfill::remove_cvref_t<decltype(table)>;
                 using without_rowid = typename table_type::is_without_rowid;
+                using is_pkcolumn_q =
+                    mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>;
+                using is_generated_always_q = mpl::quote_fn<is_generated_always>;
 
-                table.template for_each_column_excluding<  ///
-                    mpl::disjunction<
-                        mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>,
-                        mpl::quote_fn<is_generated_always>>>(  ///
+                table.template for_each_column_excluding<mpl::disjunction<is_pkcolumn_q, is_generated_always_q>>(
                     [&table, &bindValue, &object](auto& column) {
                         if (!without_rowid::value &&
                             (is_single_table_primary_key(table, column) ||
