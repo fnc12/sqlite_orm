@@ -13,12 +13,12 @@ using namespace sqlite_orm;
 TEST_CASE("statement_serializer foreign key") {
     SECTION("one to one") {
         struct User {
-            int id = 0;
+            int64 id = 0;
             std::string name;
         };
 
         struct Visit {
-            int id = 0;
+            int64 id = 0;
             decltype(User::id) userId;
             long time = 0;
         };

@@ -5,7 +5,7 @@ using namespace sqlite_orm;
 
 TEST_CASE("Multi order by") {
     struct Singer {
-        int id;
+        int64 id;
         std::string name;
         std::string gender;
     };
@@ -50,7 +50,7 @@ TEST_CASE("Multi order by") {
 
 TEST_CASE("Issue 105") {
     struct Data {
-        int str;
+        int64 str;
     };
 
     auto storage = make_storage("", make_table("data", make_column("str", &Data::str, primary_key())));
@@ -97,7 +97,7 @@ TEST_CASE("Issue 87") {
 TEST_CASE("Wide string") {
 
     struct Alphabet {
-        int id;
+        int64 id;
         std::wstring letters;
     };
 
@@ -250,7 +250,7 @@ TEST_CASE("Aggregate functions") {
 
 TEST_CASE("Open forever") {
     struct User {
-        int id;
+        int64 id;
         std::string name;
     };
 
@@ -349,7 +349,7 @@ TEST_CASE("Blob") {
  */
 TEST_CASE("Escape chars") {
     struct Employee {
-        int id;
+        int64 id;
         std::string name;
         int age;
         std::string address;

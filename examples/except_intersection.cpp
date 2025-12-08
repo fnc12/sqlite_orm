@@ -9,12 +9,12 @@ using std::cout;
 using std::endl;
 
 struct DeptMaster {
-    int deptId = 0;
+    sqlite_orm::int64 deptId = 0;
     std::string deptName;
 };
 
 struct EmpMaster {
-    int empId = 0;
+    sqlite_orm::int64 empId = 0;
     std::string firstName;
     std::string lastName;
     long salary;

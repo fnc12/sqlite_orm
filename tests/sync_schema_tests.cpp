@@ -17,7 +17,7 @@ TEST_CASE("Sync schema") {
 
     //  this is an old version of user..
     struct UserBefore {
-        int id = 0;
+        int64 id = 0;
         std::string name;
         std::unique_ptr<int> categoryId;
         std::unique_ptr<std::string> surname;
@@ -25,7 +25,7 @@ TEST_CASE("Sync schema") {
 
     //  this is a new version of user
     struct UserAfter {
-        int id = 0;
+        int64 id = 0;
         std::string name;
 
         bool operator==(const UserBefore& before) const {
@@ -138,7 +138,7 @@ TEST_CASE("issue521") {
     auto storagePath = "issue521.sqlite";
 
     struct MockDatabasePoco {
-        int id = 0;
+        int64 id = 0;
         std::string name;
         std::uint32_t alpha{0};
         float beta{0.0};

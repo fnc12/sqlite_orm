@@ -3918,18 +3918,56 @@ namespace sqlite_orm::internal {
     template<class T>
     struct is_generated_always : polyfill::bool_constant<is_generated_always_v<T>> {};
 
-    /**
-     *  PRIMARY KEY INSERTABLE traits.
+    // Custom type:
+    // It is the programmer's responsibility to ensure data integrity in the value range of the custom type
+    // and in purview of SQLite using a 64-bit signed integer.
+    template<class F, class SFINAE = void>
+    inline constexpr bool is_rowid_alias_capable_v = std::is_base_of<integer_printer, type_printer<F>>::value;
+
+    // For 64-bit signed integer type: capable
+    template<class F>
+    inline constexpr bool
+        is_rowid_alias_capable_v<F,
+                                 std::enable_if_t<std::is_integral<F>::value &&
+                                                  (sizeof(F) == sizeof(sqlite_int64) &&
+                                                   std::is_signed<F>::value == std::is_signed<sqlite_int64>::value)>> =
+            true;
+
+    // Design decision for integral types other than 64-bit signed integer:
+    // It is the programmer's responsibility to ensure data integrity in the value range of the integral type
+    // and in purview of SQLite using a 64-bit signed integer.
+    template<class F>
+    inline constexpr bool
+        is_rowid_alias_capable_v<F,
+                                 std::enable_if_t<std::is_integral<F>::value &&
+                                                  (sizeof(F) != sizeof(sqlite_int64) ||
+                                                   std::is_signed<F>::value != std::is_signed<sqlite_int64>::value)>> =
+            true;
+
+    // For non-integer types: unsuitable
+    template<class F>
+    inline constexpr bool
+        is_rowid_alias_capable_v<F, std::enable_if_t<!std::is_base_of<integer_printer, type_printer<F>>::value>> =
+            false;
+
+    /** 
+     *  COLUMN PRIMARY KEY INSERTABLE traits.
+     *  
+     *  A column primary key is considered implicitly insertable if:
+     *  - it is an INTEGER PRIMARY KEY (and thus an alias for the "rowid" key),
+     *  - or has a default value.
+     *  
+     *  In terms of C++ types, this means that the field type must be capable of representing a 64-bit signed integer,
+     *  or the column is declared with a DEFAULT constraint.
+     *  
+     *  Implementation note: using a struct template in favor of a template alias so that the stack leading to a deprecation message is shorter.
      */
     template<typename Column>
-    struct is_primary_key_insertable
-        : polyfill::disjunction<mpl::invoke_t<mpl::disjunction<check_if_has_template<primary_key_with_autoincrement>,
-                                                               check_if_has_template<default_t>>,
-                                              constraints_type_t<Column>>,
-                                std::is_base_of<integer_printer, type_printer<field_type_t<Column>>>> {
-
-        static_assert(tuple_has<constraints_type_t<Column>, is_primary_key>::value, "an unexpected type was passed");
-    };
+    struct is_pkcol_implicitly_insertable
+        : mpl::invoke_t<
+              mpl::disjunction<mpl::always<polyfill::bool_constant<is_rowid_alias_capable_v<field_type_t<Column>>>>,
+                               check_if_has_template<default_t>>,
+              constraints_type_t<Column>> {};
 
     template<class T>
     using is_column_constraint = mpl::invoke_t<mpl::disjunction<check_if<std::is_base_of, primary_key_t<>>,
@@ -4008,7 +4046,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {{}};
     }
 
-#if SQLITE_VERSION_NUMBER >= 3009000
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
     /**
      *  UNINDEXED column constraint builder function. Used in FTS virtual tables.
      *  
@@ -8632,6 +8670,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
     }
 
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
     struct fts5;
 
     /** 
@@ -8695,6 +8734,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     highlight(F Hidden::* /*theAnyField*/, X x, Y y, Z z) {
         return {std::move(x), std::move(y), std::move(z)};
     }
+#endif
 #endif
 }
 
@@ -8793,11 +8833,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "schema/column.h"
 
+#include <sqlite3.h>  //  sqlite_int64
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple
 #include <string>  //  std::string
 #include <memory>  //  std::unique_ptr
-#include <type_traits>  //  std::is_same, std::is_member_object_pointer
+#include <type_traits>  //  std::enable_if, std::is_same, std::is_member_object_pointer, std::is_signed
 #include <utility>  //  std::move
 #endif
 
@@ -8807,9 +8848,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../tuple_helper/tuple_filter.h"
 
-// #include "../type_traits.h"
-
 // #include "../member_traits/member_traits.h"
+
+// #include "../type_traits.h"
 
 // #include "../type_is_nullable.h"
 
@@ -8914,11 +8955,19 @@ namespace sqlite_orm::internal {
         constraints_type constraints;
 
         /**
-         *  Checks whether contraints contain specified type.
+         *  Checks whether constraints contain specified type.
          */
         template<template<class...> class Trait>
         constexpr static bool is() {
             return tuple_has<constraints_type, Trait>::value;
+        }
+
+        /**
+         *  Checks whether constraints contain specified class template.
+         */
+        template<template<class...> class Primary>
+        constexpr static bool is_template() {
+            return tuple_has_template<constraints_type, Primary>::value;
         }
 
         /**
@@ -9001,19 +9050,65 @@ namespace sqlite_orm::internal {
         field_type_t,
         filter_tuple_sequence_t<Elements, mpl::disjunction_fn<is_column, is_hidden_column>::template fn>>;
 
-#if SQLITE_VERSION_NUMBER >= 3031000
+    // Custom type:
+    // It is the programmer's responsibility to ensure data integrity in the value range of the custom type
+    // and in purview of SQLite using a 64-bit signed integer.
+    template<class F, class SFINAE = void>
+    struct check_pkcol {
+        static constexpr void validate_column_primary_key_with_autoincrement() {}
+    };
+
+    // For integer types: further checks
+    template<class F>
+    struct check_pkcol<F, std::enable_if_t<std::is_integral<F>::value>> {
+        // For 64-bit signed integer type: valid
+        template<class X = F,
+                 std::enable_if_t<sizeof(X) == sizeof(sqlite_int64) &&
+                                      std::is_signed<X>::value == std::is_signed<sqlite_int64>::value,
+                                  bool> = true>
+        static constexpr void validate_column_primary_key_with_autoincrement() {}
+
+        // Design decision for integral types other than 64-bit signed integer:
+        // It is the programmer's responsibility to ensure data integrity in the value range of the integral type
+        // and in purview of SQLite using a 64-bit signed integer.
+        template<class X = F,
+                 std::enable_if_t<sizeof(X) != sizeof(sqlite_int64) ||
+                                      std::is_signed<X>::value != std::is_signed<sqlite_int64>::value,
+                                  bool> = true>
+        static constexpr void validate_column_primary_key_with_autoincrement() {}
+    };
+
+    // For non-integer types: static_assert failure
+    template<class F>
+    struct check_pkcol<F, std::enable_if_t<!std::is_base_of<integer_printer, type_printer<F>>::value>> {
+        static constexpr void validate_column_primary_key_with_autoincrement() {
+            static_assert(polyfill::always_false_v<F>,
+                          R"(AUTOINCREMENT is only allowed on an INTEGER PRIMARY KEY as an alias for the "rowid" key)");
+        }
+    };
+
+    template<class G, class... Op>
+    constexpr void validate_column_definition() {
+        using constraints_type = std::tuple<Op...>;
+
+        static_assert(polyfill::conjunction_v<is_column_constraint<Op>...>, "Incorrect column constraints");
+
+        if constexpr (tuple_has_template<constraints_type, primary_key_with_autoincrement>::value) {
+            check_pkcol<member_field_type_t<G>>::validate_column_primary_key_with_autoincrement();
+        }
+    }
+
     /**
      *  Factory function for a column definition from a member object pointer for hidden virtual table columns.
      */
     template<class M, class... Op, satisfies<std::is_member_object_pointer, M> = true>
     hidden_column<M, empty_setter, Op...> make_hidden_column(std::string name, M memberPointer, Op... constraints) {
-        static_assert(polyfill::conjunction_v<is_column_constraint<Op>...>, "Incorrect constraints pack");
+        static_assert(polyfill::conjunction_v<is_column_constraint<Op>...>, "Incorrect column constraints");
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
         // as this will lead to UB with Clang on MinGW!
         return {std::move(name), memberPointer, {}, std::tuple<Op...>{std::move(constraints)...}};
     }
-#endif
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -9023,7 +9118,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class M, class... Op, internal::satisfies<std::is_member_object_pointer, M> = true>
     internal::column_t<M, internal::empty_setter, Op...>
     make_column(std::string name, M memberPointer, Op... constraints) {
-        static_assert(polyfill::conjunction_v<internal::is_column_constraint<Op>...>, "Incorrect constraints pack");
+        internal::validate_column_definition<M, Op...>();
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
         // as this will lead to UB with Clang on MinGW!
@@ -9041,7 +9136,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::column_t<G, S, Op...> make_column(std::string name, S setter, G getter, Op... constraints) {
         static_assert(std::is_same<internal::setter_field_type_t<S>, internal::getter_field_type_t<G>>::value,
                       "Getter and setter must get and set same data type");
-        static_assert(polyfill::conjunction_v<internal::is_column_constraint<Op>...>, "Incorrect constraints pack");
+        internal::validate_column_definition<G, Op...>();
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
         // as this will lead to UB with Clang on MinGW!
@@ -9059,7 +9154,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::column_t<G, S, Op...> make_column(std::string name, G getter, S setter, Op... constraints) {
         static_assert(std::is_same<internal::setter_field_type_t<S>, internal::getter_field_type_t<G>>::value,
                       "Getter and setter must get and set same data type");
-        static_assert(polyfill::conjunction_v<internal::is_column_constraint<Op>...>, "Incorrect constraints pack");
+        internal::validate_column_definition<G, Op...>();
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
         // as this will lead to UB with Clang on MinGW!
@@ -12505,7 +12600,7 @@ namespace sqlite_orm::internal {
         }
 
         /*
-         *  Returns the number of columns having the specified constraint trait.
+         *  Returns the number of columns not having the specified constraint trait.
          */
         template<template<class...> class Trait>
         static constexpr int count_of_columns_excluding() {
@@ -12629,42 +12724,48 @@ namespace sqlite_orm::internal {
     };
 
     template<class... Cs, class G, class S>
-    bool table_primary_key_contains(const insertable_table_definition<Cs...>& definition,
-                                    const column_field<G, S>& column) {
+    bool table_primary_key_contains([[maybe_unused]] const insertable_table_definition<Cs...>& definition,
+                                    [[maybe_unused]] const column_field<G, S>& column) {
         bool res = false;
-        definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
-            using colrefs_tuple = decltype(primaryKey.columns);
-            using same_type_index_sequence =
-                filter_tuple_sequence_t<colrefs_tuple,
-                                        check_if_is_type<member_field_type_t<G>>::template fn,
-                                        member_field_type_t>;
-            iterate_tuple(primaryKey.columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
-                if (compare_fields(memberPointer, column.member_pointer) ||
-                    compare_fields(memberPointer, column.setter)) {
-                    res = true;
-                }
+        // note: though `visit_table_primary_key()` does no work if a column primary key exists, we try to save the compiler some work with this check up front
+        if constexpr (/*bool hasNoColumnPK =*/!insertable_table_definition<Cs...>::template count_of_columns_with<
+                      is_primary_key>()) {
+            definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
+                using colrefs_tuple = decltype(primaryKey.columns);
+                using same_type_index_sequence =
+                    filter_tuple_sequence_t<colrefs_tuple,
+                                            check_if_is_type<member_field_type_t<G>>::template fn,
+                                            member_field_type_t>;
+                iterate_tuple(primaryKey.columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
+                    if (compare_fields(memberPointer, column.member_pointer) ||
+                        compare_fields(memberPointer, column.setter)) {
+                        res = true;
+                    }
+                });
             });
-        });
+        }
         return res;
     }
 
     template<class... Cs, class G, class S>
-    bool is_single_table_primary_key(const insertable_table_definition<Cs...>& definition,
-                                     const column_field<G, S>& column) {
+    bool is_single_table_primary_key([[maybe_unused]] const insertable_table_definition<Cs...>& definition,
+                                     [[maybe_unused]] const column_field<G, S>& column) {
         bool res = false;
-        definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
-            // note: use `decltype(primaryKey)` instead of `decltype(primaryKey.columns)` otherwise msvc 141 chokes on the `if constexpr` below
-            using colrefs_tuple = columns_tuple_t<polyfill::remove_cvref_t<decltype(primaryKey)>>;
-            if constexpr (std::tuple_size<colrefs_tuple>::value != 1) {
-                return;
-            } else {
-                auto& memberPointer = std::get<0>(primaryKey.columns);
-                if (compare_fields(memberPointer, column.member_pointer) ||
-                    compare_fields(memberPointer, column.setter)) {
-                    res = true;
+        // note: though `visit_table_primary_key()` does no work if a column primary key exists, we try to save the compiler some work with this check up front
+        if constexpr (/*bool hasNoColumnPK =*/!insertable_table_definition<Cs...>::template count_of_columns_with<
+                      is_primary_key>()) {
+            definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
+                // note: use `decltype(primaryKey)` instead of `decltype(primaryKey.columns)` otherwise msvc 141 chokes on the `if constexpr` below
+                using colrefs_tuple = columns_tuple_t<polyfill::remove_cvref_t<decltype(primaryKey)>>;
+                if constexpr (std::tuple_size<colrefs_tuple>::value == 1) {
+                    auto& memberPointer = std::get<0>(primaryKey.columns);
+                    if (compare_fields(memberPointer, column.member_pointer) ||
+                        compare_fields(memberPointer, column.setter)) {
+                        res = true;
+                    }
                 }
-            }
-        });
+            });
+        }
         return res;
     }
 
@@ -12953,7 +13054,7 @@ namespace sqlite_orm::internal {
             constexpr size_t nTablePrimaryKeyColumns =
                 nested_tuple_size_for_t<columns_tuple_t, elements_type, pk_index_sequence>::value;
 
-            static_assert(nTablePrimaryKeyColumns > 0, "Tabel primary key definition must contain one column");
+            static_assert(nTablePrimaryKeyColumns > 0, "Table primary key definition must contain one column");
         }
     }
 }
@@ -17543,7 +17644,7 @@ namespace sqlite_orm::internal {
         using object_type = polyfill::remove_cvref_t<decltype(object)>;
         auto& table = pick_table<object_type>(context.db_objects);
 
-        table.template for_each_column_excluding<check_if_excluded>(call_as_template_base<column_field>(
+        table.template for_each_column_excluding<check_if_excluded>(
             [&ss, &excluded, &context, &object, first = true](auto& column) mutable {
                 if (excluded(column)) {
                     return;
@@ -17552,7 +17653,7 @@ namespace sqlite_orm::internal {
                 static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)]
                    << serialize(polyfill::invoke(column.member_pointer, object), context);
-            }));
+            });
         return ss;
     }
 
@@ -20239,8 +20340,9 @@ namespace sqlite_orm::internal {
     };
 
     template<typename Ctx, typename E, typename ExplicitColRefs, satisfies_is_specialization_of<E, select_t> = true>
-    std::vector<std::string>
-    collect_cte_column_names(const E& sel, const ExplicitColRefs& explicitColRefs, const Ctx& context) {
+    std::vector<std::string> collect_cte_column_names(const E& sel,
+                                                      [[maybe_unused]] const ExplicitColRefs& explicitColRefs,
+                                                      const Ctx& context) {
         // 1. determine column names from subselect
         std::vector<std::string> columnNames = get_cte_column_names(sel.col, context);
 
@@ -21971,7 +22073,7 @@ namespace sqlite_orm::internal {
         }
     };
 
-#if SQLITE_VERSION_NUMBER >= 3009000
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
     template<>
     struct statement_serializer<unindexed_t, void> {
         using statement_type = unindexed_t;
@@ -22357,14 +22459,20 @@ namespace sqlite_orm::internal {
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             using object_type = expression_object_type_t<statement_type>;
             auto& table = pick_table<object_type>(context.db_objects);
-            using is_without_rowid = typename std::remove_reference_t<decltype(table)>::is_without_rowid;
+            using table_type = polyfill::remove_cvref_t<decltype(table)>;
+            using without_rowid = typename table_type::is_without_rowid;
 
             std::vector<std::reference_wrapper<const std::string>> columnNames;
-            table.template for_each_column_excluding<
-                mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
-                                 mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
+            table.template for_each_column_excluding<  ///
+                mpl::disjunction<mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>,
+                                 mpl::quote_fn<is_generated_always>>>(  ///
                 [&table, &columnNames](auto& column) {
-                    if (!is_without_rowid::value && is_single_table_primary_key(table, column)) {
+                    if (!without_rowid::value &&
+                        (is_single_table_primary_key(table, column) ||
+                         (column.template is_template<default_t>() && table_primary_key_contains(table, column)))) {
+                        return;
+                    } else if (without_rowid::value && (column.template is_template<default_t>() &&
+                                                        table_primary_key_contains(table, column))) {
                         return;
                     }
 
@@ -22383,10 +22491,15 @@ namespace sqlite_orm::internal {
             if (columnNamesCount) {
                 ss << " ("
                    << streaming_field_values_excluding(
-                          mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
-                                           mpl::disjunction_fn<is_primary_key, is_generated_always>>{},
+                          mpl::disjunction<
+                              mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>,
+                              mpl::quote_fn<is_generated_always>>{},
                           [&table](auto& column) {
-                              return !is_without_rowid::value && is_single_table_primary_key(table, column);
+                              return (!without_rowid::value && (is_single_table_primary_key(table, column) ||
+                                                                (column.template is_template<default_t>() &&
+                                                                 table_primary_key_contains(table, column)))) ||
+                                     (without_rowid::value && (column.template is_template<default_t>() &&
+                                                               table_primary_key_contains(table, column)));
                           },
                           context,
                           get_ref(statement.object))
@@ -22528,14 +22641,20 @@ namespace sqlite_orm::internal {
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             using object_type = expression_object_type_t<statement_type>;
             auto& table = pick_table<object_type>(context.db_objects);
-            using is_without_rowid = typename std::remove_reference_t<decltype(table)>::is_without_rowid;
+            using table_type = polyfill::remove_cvref_t<decltype(table)>;
+            using without_rowid = typename table_type::is_without_rowid;
 
             std::vector<std::reference_wrapper<const std::string>> columnNames;
-            table.template for_each_column_excluding<
-                mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
-                                 mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
+            table.template for_each_column_excluding<  ///
+                mpl::disjunction<mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>,
+                                 mpl::quote_fn<is_generated_always>>>(  ///
                 [&table, &columnNames](auto& column) {
-                    if (!is_without_rowid::value && is_single_table_primary_key(table, column)) {
+                    if (!without_rowid::value &&
+                        (is_single_table_primary_key(table, column) ||
+                         (column.template is_template<default_t>() && table_primary_key_contains(table, column)))) {
+                        return;
+                    } else if (without_rowid::value && (column.template is_template<default_t>() &&
+                                                        table_primary_key_contains(table, column))) {
                         return;
                     }
 
@@ -23890,7 +24009,7 @@ namespace sqlite_orm::internal {
         polyfill::void_t<indirectly_test_preparable<decltype(std::declval<S>().prepare(std::declval<E>()))>>> = true;
 
     template<class Opt, class OptionsTpl>
-    decltype(auto) storage_opt_or_default(OptionsTpl& options) {
+    decltype(auto) storage_opt_or_default([[maybe_unused]] OptionsTpl& options) {
         if constexpr (tuple_has_type<OptionsTpl, Opt>::value) {
             return std::move(std::get<Opt>(options));
         } else {
@@ -24056,17 +24175,16 @@ namespace sqlite_orm::internal {
         void assert_insertable_type() const {
             using elements_type = elements_type_t<Table>;
             using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
-            static_assert(count_filtered_tuple<elements_type, is_primary_key_insertable, pkcol_index_sequence>::value <=
-                              1,
-                          "Attempting to execute 'insert' request into an noninsertable table was detected. "
-                          "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
-                          "'insert', or you can use 'insert' with explicit column listing.");
-            static_assert(count_filtered_tuple<elements_type,
-                                               check_if_not<is_primary_key_insertable>::template fn,
-                                               pkcol_index_sequence>::value == 0,
-                          "Attempting to execute 'insert' request into an noninsertable table was detected. "
-                          "Insertable table cannot contain non-standard primary keys. Please use 'replace' instead "
-                          "of 'insert', or you can use 'insert' with explicit column listing.");
+            if constexpr (pkcol_index_sequence::size()) {
+                constexpr auto pkcol_idx = index_sequence_value_at<0>(pkcol_index_sequence{});
+                using pkcol_type = std::tuple_element_t<pkcol_idx, elements_type>;
+                static_assert(
+                    mpl::invoke_t<check_if<is_pkcol_implicitly_insertable>, pkcol_type>::value,
+                    "While SQLite allows primary keys of any type, sqlite_orm restricts an ordinary 'insert' into "
+                    "tables with single-column primary keys to those with an implicitly insertable column because "
+                    "it is the 'rowid' alias or has a default value."
+                    "Instead, please use 'replace' or 'insert' with explicitly specified columns.");
+            }
         }
 
         template<class O>
@@ -24740,6 +24858,14 @@ namespace sqlite_orm::internal {
             this->execute(statement);
         }
 
+        /**
+         *  Insert routine with explicitly specified columns.
+         *  
+         *  @return The ID of the last inserted record for a rowid table, otherwise a meaningless value.
+         *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
+         *          Attention: While SQLite returns a 64-bit integer as rowid, this function returns an `int` that most likely has less precision.
+         *                     If you need the full 64-bit rowid, use `storage_t<>::execute()` instead.
+         */
         template<class O, class... Cols>
         int insert(const O& o, columns_t<Cols...> cols) {
             static_assert(cols.count > 0, "Use insert or replace with 1 argument instead");
@@ -24751,17 +24877,19 @@ namespace sqlite_orm::internal {
         /**
          *  Ordinary insert routine.
          *  
-         *  - For objects mapped to a table with rowid and a single primary key:
-         *  Inserts a record with all fields of a mapped object that are not primary key columns.
-         *  The 'ID' of the specified object is irrelevant.
-         *  - For objects mapped to a table with rowid and a composite primary key or no primary key:
-         *  Inserts a record with all fields of a mapped object.
+         *  - For objects mapped to a rowid table with a single primary key:
+         *      Inserts a record with all fields of a mapped object except the primary key column.
+         *      The primary key column must be implicitly insertable.
+         *      The 'ID' of the specified object is irrelevant as it is implicitly inserted.
+         *  - For objects mapped to a rowid table with a composite primary key or no primary key:
+         *    Inserts a record with all fields of a mapped object except primary key columns having a default value.
          *  - For objects mapped to a table without rowid:
-         *  Inserts a record with all fields of a mapped object.
+         *    Inserts a record with all fields of a mapped object except primary key columns having a default value.
          *  
-         *  @return The ID of the last inserted record for a table with rowid, otherwise a meaningless value.
-         *  Attention: While SQLite returns a 64-bit integer as rowid, this function returns an `int` that most likely has less precision.
-         *  Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
+         *  @return The ID of the last inserted record for a rowid table, otherwise a meaningless value.
+         *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
+         *          Attention: While SQLite returns a 64-bit integer as rowid, this function returns an `int` that most likely has less precision.
+         *                     If you need the full 64-bit rowid, use `storage_t<>::execute()` instead.
          */
         template<class O>
         int insert(const O& o) {
@@ -25280,8 +25408,8 @@ namespace sqlite_orm::internal {
         }
 
         /** 
-         *  @return The rowid of the last inserted row.
-         *  @note The returned rowid is only meaningful in single-thread contexts.
+         *  @return The ID of the last inserted record for a table with rowid, otherwise a meaningless value.
+         *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
          */
         template<class T, class... Cols>
         int64 execute(const prepared_statement_t<insert_explicit<T, Cols...>>& statement) {
@@ -25340,8 +25468,8 @@ namespace sqlite_orm::internal {
         }
 
         /** 
-         *  @return The rowid of the last inserted row.
-         *  @note The returned rowid is only meaningful in single-thread contexts.
+         *  @return The ID of the last inserted record for a table with rowid, otherwise a meaningless value.
+         *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
          */
         template<class T, std::enable_if_t<polyfill::disjunction<is_insert<T>, is_insert_range<T>>::value, bool> = true>
         int64 execute(const prepared_statement_t<T>& statement) {
@@ -25352,17 +25480,23 @@ namespace sqlite_orm::internal {
             auto processObject = [&table = this->get_table<object_type>(),
                                   bindValue = field_value_binder{stmt}](const object_type& object) mutable {
                 using table_type = polyfill::remove_cvref_t<decltype(table)>;
-                using is_without_rowid = typename table_type::is_without_rowid;
+                using without_rowid = typename table_type::is_without_rowid;
 
-                table.template for_each_column_excluding<
-                    mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
-                                     mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
-                    call_as_template_base<column_field>([&table, &bindValue, &object](auto& column) {
-                        if (!is_without_rowid::value && is_single_table_primary_key(table, column)) {
+                table.template for_each_column_excluding<  ///
+                    mpl::disjunction<
+                        mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>,
+                        mpl::quote_fn<is_generated_always>>>(  ///
+                    [&table, &bindValue, &object](auto& column) {
+                        if (!without_rowid::value &&
+                            (is_single_table_primary_key(table, column) ||
+                             (column.template is_template<default_t>() && table_primary_key_contains(table, column)))) {
+                            return;
+                        } else if (without_rowid::value && (column.template is_template<default_t>() &&
+                                                            table_primary_key_contains(table, column))) {
                             return;
                         }
                         bindValue(polyfill::invoke(column.member_pointer, object));
-                    }));
+                    });
             };
 
             if constexpr (is_insert_range_v<T>) {
@@ -26680,7 +26814,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "fts5.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#if SQLITE_VERSION_NUMBER >= 3009000
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
 #include <tuple>  //  std::tuple_size, std::make_tuple, std::get
 #include <utility>  //  std::forward, std::move
 #include <vector>
@@ -26701,7 +26835,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../constraints.h"
 
-#if SQLITE_VERSION_NUMBER >= 3009000
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
 namespace sqlite_orm::internal {
     template<class T>
     inline constexpr bool is_fts5_table_element_or_constraint_v =
