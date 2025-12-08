@@ -627,32 +627,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 #endif
 
-    namespace internal {
-#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        template<char A, char... X>
-        template<class... ExplicitCols>
-            requires ((is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
-                       std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
-                       std::convertible_to<ExplicitCols, std::string>) &&
-                      ...)
-        constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP {
-            return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
-        }
-#else
-        template<char A, char... X>
-        template<class... ExplicitCols,
-                 std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
-                                      is_column_alias<ExplicitCols>,
-                                      std::is_member_pointer<ExplicitCols>,
-                                      std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
-                                      std::is_convertible<ExplicitCols, std::string>>...>,
-                                  bool>>
-        constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP {
-            return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
-        }
-#endif
-    }
-
     /** 
      *  With-clause for a tuple of ordinary CTEs.
      *  
@@ -821,6 +795,33 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<orm_refers_to_table auto als>
     constexpr auto object(bool definedOrder = false) {
         return object<internal::auto_decay_table_ref_t<als>>(definedOrder);
+    }
+#endif
+}
+
+// Implementation of cte_moniker's call operator which depends on `cte<>()`
+namespace sqlite_orm::internal {
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<char A, char... X>
+    template<class... ExplicitCols>
+        requires ((is_column_alias_v<ExplicitCols> || std::is_member_pointer_v<ExplicitCols> ||
+                   std::same_as<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>> ||
+                   std::convertible_to<ExplicitCols, std::string>) &&
+                  ...)
+    constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP {
+        return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
+    }
+#else
+    template<char A, char... X>
+    template<class... ExplicitCols,
+             std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
+                                  is_column_alias<ExplicitCols>,
+                                  std::is_member_pointer<ExplicitCols>,
+                                  std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
+                                  std::is_convertible<ExplicitCols, std::string>>...>,
+                              bool>>
+    constexpr auto cte_moniker<A, X...>::operator()(ExplicitCols... explicitColumns) SQLITE_ORM_OR_CONST_CALLOP {
+        return cte<cte_moniker<A, X...>>(std::forward<ExplicitCols>(explicitColumns)...);
     }
 #endif
 }
