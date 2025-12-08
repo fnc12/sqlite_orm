@@ -502,11 +502,11 @@ namespace sqlite_orm {
         template<class T>
         struct is_generated_always : polyfill::bool_constant<is_generated_always_v<T>> {};
 
-        // Custom type: programmer's responsibility to garantee data integrity in the value range of a 64-bit signed integer
+        // Custom type: programmer's responsibility to guarantee data integrity in the value range of a 64-bit signed integer
         template<class F, class SFINAE = void>
         inline constexpr bool is_rowid_alias_capable_v = std::is_base_of<integer_printer, type_printer<F>>::value;
 
-        // For integer types: further checks
+        // For 64-bit signed integer type: capable
         template<class F>
         inline constexpr bool is_rowid_alias_capable_v<
             F,
@@ -524,7 +524,7 @@ namespace sqlite_orm {
                              (sizeof(F) != sizeof(sqlite_int64) ||
                               std::is_signed<F>::value != std::is_signed<sqlite_int64>::value)>> = true;
 
-        // For non-integer types: static_assert failure
+        // For non-integer types: unsuitable
         template<class F>
         inline constexpr bool
             is_rowid_alias_capable_v<F, std::enable_if_t<!std::is_base_of<integer_printer, type_printer<F>>::value>> =

@@ -3975,11 +3975,11 @@ namespace sqlite_orm {
         template<class T>
         struct is_generated_always : polyfill::bool_constant<is_generated_always_v<T>> {};
 
-        // Custom type: programmer's responsibility to garantee data integrity in the value range of a 64-bit signed integer
+        // Custom type: programmer's responsibility to guarantee data integrity in the value range of a 64-bit signed integer
         template<class F, class SFINAE = void>
         inline constexpr bool is_rowid_alias_capable_v = std::is_base_of<integer_printer, type_printer<F>>::value;
 
-        // For integer types: further checks
+        // For 64-bit signed integer type: capable
         template<class F>
         inline constexpr bool is_rowid_alias_capable_v<
             F,
@@ -3997,7 +3997,7 @@ namespace sqlite_orm {
                              (sizeof(F) != sizeof(sqlite_int64) ||
                               std::is_signed<F>::value != std::is_signed<sqlite_int64>::value)>> = true;
 
-        // For non-integer types: static_assert failure
+        // For non-integer types: unsuitable
         template<class F>
         inline constexpr bool
             is_rowid_alias_capable_v<F, std::enable_if_t<!std::is_base_of<integer_printer, type_printer<F>>::value>> =
@@ -9069,7 +9069,7 @@ namespace sqlite_orm {
             constraints_type constraints;
 
             /**
-             *  Checks whether contraints contain specified type.
+             *  Checks whether constraints contain specified type.
              */
             template<template<class...> class Trait>
             constexpr static bool is() {
@@ -9077,7 +9077,7 @@ namespace sqlite_orm {
             }
 
             /**
-             *  Checks whether contraints contain specified class template.
+             *  Checks whether constraints contain specified class template.
              */
             template<template<class...> class Primary>
             constexpr static bool is_template() {
@@ -9165,7 +9165,7 @@ namespace sqlite_orm {
             field_type_t,
             filter_tuple_sequence_t<Elements, mpl::disjunction_fn<is_column, is_hidden_column>::template fn>>;
 
-        // Custom type: programmer's responsibility to garantee data integrity in the value range of a 64-bit signed integer
+        // Custom type: programmer's responsibility to guarantee data integrity in the value range of a 64-bit signed integer
         template<class F, class SFINAE = void>
         struct check_pkcol {
             static constexpr void validate_column_primary_key_with_autoincrement() {}
@@ -13247,7 +13247,7 @@ namespace sqlite_orm {
                 constexpr size_t nTablePrimaryKeyColumns =
                     nested_tuple_size_for_t<columns_tuple_t, elements_type, pk_index_sequence>::value;
 
-                static_assert(nTablePrimaryKeyColumns > 0, "Tabel primary key definition must contain one column");
+                static_assert(nTablePrimaryKeyColumns > 0, "Table primary key definition must contain one column");
             }
         }
     }

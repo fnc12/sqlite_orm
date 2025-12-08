@@ -131,7 +131,7 @@ namespace sqlite_orm {
                 constexpr size_t nTablePrimaryKeyColumns =
                     nested_tuple_size_for_t<columns_tuple_t, elements_type, pk_index_sequence>::value;
 
-                static_assert(nTablePrimaryKeyColumns > 0, "Tabel primary key definition must contain one column");
+                static_assert(nTablePrimaryKeyColumns > 0, "Table primary key definition must contain one column");
             }
         }
     }
