@@ -25245,12 +25245,20 @@ namespace sqlite_orm {
                 this->execute(statement);
             }
 
+            /**
+             *  Insert routine with explicitly specified columns.
+             *  
+             *  @return The ID of the last inserted record for a rowid table, otherwise a meaningless value.
+             *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
+             *          Attention: While SQLite returns a 64-bit integer as rowid, this function returns an `int` that most likely has less precision.
+             *                     If you need the full 64-bit rowid, use `storage_t<>::execute()` instead.
+             */
             template<class O, class... Cols>
-            int64 insert(const O& o, columns_t<Cols...> cols) {
+            int insert(const O& o, columns_t<Cols...> cols) {
                 static_assert(cols.count > 0, "Use insert or replace with 1 argument instead");
                 this->assert_mapped_type<O>();
                 auto statement = this->prepare(sqlite_orm::insert(std::ref(o), std::move(cols)));
-                return this->execute(statement);
+                return int(this->execute(statement));
             }
 
             /**
@@ -25265,15 +25273,17 @@ namespace sqlite_orm {
              *  - For objects mapped to a table without rowid:
              *    Inserts a record with all fields of a mapped object except primary key columns having a default value.
              *  
-             *  @return The ID of the last inserted record for a table with rowid, otherwise a meaningless value.
+             *  @return The ID of the last inserted record for a rowid table, otherwise a meaningless value.
              *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
+             *          Attention: While SQLite returns a 64-bit integer as rowid, this function returns an `int` that most likely has less precision.
+             *                     If you need the full 64-bit rowid, use `storage_t<>::execute()` instead.
              */
             template<class O>
-            int64 insert(const O& o) {
+            int insert(const O& o) {
                 this->assert_mapped_type<O>();
                 this->assert_insertable_type<O>();
                 auto statement = this->prepare(sqlite_orm::insert(std::ref(o)));
-                return this->execute(statement);
+                return int(this->execute(statement));
             }
 
             /**
