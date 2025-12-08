@@ -24557,8 +24557,8 @@ namespace sqlite_orm {
                 using elements_type = elements_type_t<Table>;
                 using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
                 if constexpr (pkcol_index_sequence::size()) {
-                    using pkcol_type =
-                        std::tuple_element_t<index_sequence_value_at<0>(pkcol_index_sequence{}), elements_type>;
+                    constexpr auto pkcol_idx = index_sequence_value_at<0>(pkcol_index_sequence{});
+                    using pkcol_type = std::tuple_element_t<pkcol_idx, elements_type>;
                     static_assert(
                         mpl::invoke_t<check_if<is_pkcol_implicitly_insertable>, pkcol_type>::value,
                         "While SQLite allows primary keys of any type, sqlite_orm restricts an ordinary 'insert' into "
