@@ -260,7 +260,8 @@ namespace sqlite_orm {
                     static_assert(
                         mpl::invoke_t<check_if<is_pkcol_implicitly_insertable>, pkcol_type>::value,
                         "While SQLite allows primary keys of any type, sqlite_orm restricts an ordinary 'insert' into "
-                        "tables with single-column primary keys to those with columns that are aliases for the 'rowid'."
+                        "tables with single-column primary keys to those with an implicitly insertable column because "
+                        "it is the 'rowid' alias or has a default value."
                         "Instead, please use 'replace' or 'insert' with explicitly specified columns.");
                 }
             }
@@ -949,13 +950,14 @@ namespace sqlite_orm {
             /**
              *  Ordinary insert routine.
              *  
-             *  - For objects mapped to a table with rowid and a single primary key:
-             *      Inserts a record with all fields of a mapped object that are not primary key columns.
-             *      The 'ID' of the specified object is irrelevant.
-             *  - For objects mapped to a table with rowid and a composite primary key or no primary key:
-             *    Inserts a record with all fields of a mapped object.
+             *  - For objects mapped to a rowid table with a single primary key:
+             *      Inserts a record with all fields of a mapped object except the primary key column.
+             *      The primary key column must be implicitly insertable.
+             *      The 'ID' of the specified object is irrelevant as it is implicitly inserted.
+             *  - For objects mapped to a rowid table with a composite primary key or no primary key:
+             *    Inserts a record with all fields of a mapped object except primary key columns having a default value.
              *  - For objects mapped to a table without rowid:
-             *    Inserts a record with all fields of a mapped object.
+             *    Inserts a record with all fields of a mapped object except primary key columns having a default value.
              *  
              *  @return The ID of the last inserted record for a table with rowid, otherwise a meaningless value.
              *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.

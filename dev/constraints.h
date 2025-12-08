@@ -502,7 +502,9 @@ namespace sqlite_orm {
         template<class T>
         struct is_generated_always : polyfill::bool_constant<is_generated_always_v<T>> {};
 
-        // Custom type: programmer's responsibility to guarantee data integrity in the value range of a 64-bit signed integer
+        // Custom type:
+        // It is the programmer's responsibility to ensure data integrity in the value range of the custom type
+        // and in purview of SQLite using a 64-bit signed integer.
         template<class F, class SFINAE = void>
         inline constexpr bool is_rowid_alias_capable_v = std::is_base_of<integer_printer, type_printer<F>>::value;
 
@@ -514,10 +516,10 @@ namespace sqlite_orm {
                              (sizeof(F) == sizeof(sqlite_int64) &&
                               std::is_signed<F>::value == std::is_signed<sqlite_int64>::value)>> = true;
 
-        // [Deprecation notice] For integral types other than 64-bit signed integer, AUTOINCREMENT is deprecated on PRIMARY KEY columns
-        // and will be turned into a static_assert failure in v1.11
+        // Design decision for integral types other than 64-bit signed integer:
+        // It is the programmer's responsibility to ensure data integrity in the value range of the integral type
+        // and in purview of SQLite using a 64-bit signed integer.
         template<class F>
-        [[deprecated(R"(Use a 64-bit signed integer for the "rowid" key alias)")]]
         inline constexpr bool is_rowid_alias_capable_v<
             F,
             std::enable_if_t<std::is_integral<F>::value &&
