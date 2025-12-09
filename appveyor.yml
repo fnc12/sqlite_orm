@@ -4,7 +4,8 @@ version: "{build}"
 skip_branch_with_pr: true
 skip_commits:
   files:
-  - .git*
+  - .git/*
+  - .claude/*
   - .travis.yml
   - _config.yml
   - LICENSE
