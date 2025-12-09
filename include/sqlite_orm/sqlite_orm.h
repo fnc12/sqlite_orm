@@ -1976,10 +1976,7 @@ namespace sqlite_orm {
 
         // T::alias_type or nonesuch
         template<class T>
-        using alias_holder_type_or_none = polyfill::detected<type_t, T>;
-
-        template<class T>
-        using alias_holder_type_or_none_t = typename alias_holder_type_or_none<T>::type;
+        using alias_holder_type_or_none_t = polyfill::detected_t<type_t, T>;
 #endif
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
@@ -10709,35 +10706,220 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 #endif
 
+// #include "ast/labeled_bindable.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+#include <type_traits>  //  std::remove_const
+#include <utility>
+#endif
+#endif
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../functional/cstring_literal.h"
+
+// #include "../statement_binding_traits.h"
+
+// #include "functional/cxx_type_traits_polyfill.h"
+
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Helper class used for binding fields to sqlite3 statements.
      */
-    template<class V, typename Enable = void>
+    template<class V, typename SFINAE = void>
     struct statement_binder;
 }
 
-namespace sqlite_orm {
+namespace sqlite_orm::internal {
+    /*
+     *  Implementation note: the technique of indirect expression testing is because
+     *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
+     *  It must also be a type that differs from those for `is_printable_v`, `is_preparable_v`.
+     */
+    template<class Binder>
+    struct indirectly_test_bindable;
+
+    template<class T, class SFINAE = void>
+    inline constexpr bool is_bindable_v = false;
+    template<class T>
+    inline constexpr bool
+        is_bindable_v<T, polyfill::void_t<indirectly_test_bindable<decltype(statement_binder<T>{})>>> = true;
+
+    template<class T>
+    struct is_bindable : polyfill::bool_constant<is_bindable_v<T>> {};
+}
+
+namespace sqlite_orm::internal {
+    template<class T>
+    using access_bindable_t = polyfill::detected_or_t<T, type_t, T>;
+}
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+namespace sqlite_orm::internal {
+    template<class Moniker, class T>
+    struct labeled_bindable {
+        using name_constant_type = Moniker;
+        using type = T;
+
+        type value;
+    };
+
+    template<class Moniker>
+    struct bindable_label : Moniker {
+        using name_constant_type = Moniker;
+    };
+
+    // note: not in use because AST iteration walks through to the value leaf
+    template<class Moniker, class T>
+    T& access_bindable(const labeled_bindable<Moniker, T>& t) = delete;
+
+    template<class T>
+    using name_constant_type_t = typename T::name_constant_type;
+
+    template<class T>
+    using name_constant_type_or_none_t = polyfill::detected_t<name_constant_type_t, T>;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    // Intentionally place operators for types classified as arithmetic or general operator arguments in the internal namespace
+    // to facilitate ADL (Argument Dependent Lookup)
     namespace internal {
-        /*
-         *  Implementation note: the technique of indirect expression testing is because
-         *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
-         *  It must also be a type that differs from those for `is_printable_v`, `is_preparable_v`.
+        /*  
+            Associates a bindable value with a moniker.
          */
-        template<class Binder>
-        struct indirectly_test_bindable;
+        template<class T, class Moniker>
+            requires is_bindable_v<T>
+        constexpr labeled_bindable<Moniker, T> operator>>=(T bindable, const bindable_label<Moniker>&) {
+            return {std::move(bindable)};
+        }
 
-        template<class T, class SFINAE = void>
-        inline constexpr bool is_bindable_v = false;
-        template<class T>
-        inline constexpr bool
-            is_bindable_v<T, polyfill::void_t<indirectly_test_bindable<decltype(statement_binder<T>{})>>> = true;
-
-        template<class T>
-        struct is_bindable : polyfill::bool_constant<is_bindable_v<T>> {};
+        /*  
+            Associates a referenced bindable value with a moniker.
+         */
+        template<class T, class Moniker>
+            requires is_bindable_v<T>
+        constexpr labeled_bindable<Moniker, T> operator>>=(std::reference_wrapper<T> bindable,
+                                                           const bindable_label<Moniker>&) {
+            return {bindable};
+        }
     }
 
+    inline namespace literals {
+        /*  
+         *  Make a label for a bindable from a string literal.
+         *  E.g. "myparam"_bindable
+         */
+        template<internal::cstring_literal name>
+        [[nodiscard]] consteval auto operator"" _bindable() {
+            using name_constant_type = std::integral_constant<decltype(name), name>;
+            return internal::bindable_label<name_constant_type>{};
+        }
+    }
+
+    /** @short Specifies that a type is an integral constant C-string usable as a label for a bindable.
+     */
+    template<class T>
+    concept orm_bindable_label = polyfill::is_specialization_of_v<std::remove_const_t<T>, internal::bindable_label>;
+}
+#endif
+
+// #include "ast/named_parameter.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+#include <type_traits>  //  std::remove_const
+#include <algorithm>
+#include <utility>
+#include <memory>
+#endif
+#endif
+
+// #include "../functional/cxx_type_traits_polyfill.h"
+
+// #include "../functional/cstring_literal.h"
+
+// #include "../statement_binding_traits.h"
+
+namespace sqlite_orm::internal {
+    template<class T>
+    using access_bindable_t = polyfill::detected_or_t<T, type_t, T>;
+
+    template<class T>
+    T& access_bindable(T& t) {
+        return t;
+    }
+}
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+namespace sqlite_orm::internal {
+    /*  
+     *  @note Named SQL parameters can be used multiple times in an SQL statement, which is the reason that we use shared_ptr here.
+     */
+    template<class Moniker, class T>
+    struct named_bindable {
+        using name_constant_type = Moniker;
+        using type = T;
+
+        std::shared_ptr<type> value;
+
+        template<class U = type>
+        void operator=(U&& other) {
+            *value = std::forward<U>(other);
+        }
+    };
+
+    template<class Moniker>
+    struct parameter_moniker : Moniker {
+        using name_constant_type = Moniker;
+
+        /*  
+         *  Create a named SQL parameter argument of type T.
+         */
+        template<class T, class... Args>
+        [[nodiscard]] constexpr named_bindable<Moniker, T> create(Args&&... args) const {
+            return {std::make_shared<T>(std::forward<Args>(args)...)};
+        }
+    };
+
+    template<class Moniker, class T>
+    T& access_bindable(const named_bindable<Moniker, T>& bindable) {
+        return *bindable.value;
+    }
+
+    template<class T>
+    using name_constant_type_t = typename T::name_constant_type;
+
+    template<class T>
+    using name_constant_type_or_none_t = polyfill::detected_t<name_constant_type_t, T>;
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    inline namespace literals {
+        /*  
+         *  Make a moniker for a named parameter from a string literal.
+         *  E.g. "myparam"_param
+         */
+        template<internal::cstring_literal moniker>
+        [[nodiscard]] consteval auto operator"" _param() {
+            static_assert(moniker.cstr[0] == ':' || moniker.cstr[0] == '@');
+            using name_constant_type = std::integral_constant<decltype(moniker), moniker>;
+            return internal::parameter_moniker<name_constant_type>{};
+        }
+    }
+
+    /** @short Specifies that a type is an integral constant C-string usable for a named parameter.
+     */
+    template<class T>
+    concept orm_parameter_moniker =
+        polyfill::is_specialization_of_v<std::remove_const_t<T>, internal::parameter_moniker>;
+}
+#endif
+
+// #include "statement_binding_traits.h"
+
+namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3020000
     /**
      *  Specialization for pointer bindings (part of the 'pointer-passing interface').
@@ -10978,6 +11160,18 @@ namespace sqlite_orm {
 
             explicit conditional_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            template<class Moniker, class T>
+            void operator()(const named_bindable<Moniker, T>& bindable) {
+                const int nth = sqlite3_bind_parameter_index(stmt, Moniker::value.cstr);
+                // nothing to do if this named parameter was already bound
+                if (nth < this->nthSqlParameter)
+                    return;
+
+                this->operator()(*bindable.value);
+            }
+#endif
+
             template<class T, satisfies<is_bindable, T> = true>
             void operator()(const T& t) {
                 const int rc = statement_binder<T>{}.bind(this->stmt, ++this->nthSqlParameter, t);
@@ -11052,8 +11246,18 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T>
+        using is_sql_parameter = mpl::invoke_t<mpl::disjunction<check_if<is_bindable>
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+                                                                ,
+                                                                check_if_is_template<labeled_bindable>,
+                                                                check_if_is_template<named_bindable>
+#endif
+                                                                >,
+                                               T>;
+
         template<class Tpl>
-        using bindable_filter_t = filter_tuple_t<Tpl, is_bindable>;
+        using bindable_filter_t = filter_tuple_t<Tpl, is_sql_parameter>;
     }
 }
 
@@ -12171,6 +12375,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 }
 
+// #include "ast/labeled_bindable.h"
+
+// #include "ast/named_parameter.h"
+
 // #include "ast/special_keywords.h"
 
 namespace sqlite_orm {
@@ -12329,6 +12537,23 @@ namespace sqlite_orm {
         struct column_result_t<DBOs, built_in_aggregate_function_t<unique_ptr_result_of<X>, S, X>, void> {
             using type = std::unique_ptr<column_result_of_t<DBOs, X>>;
         };
+
+        template<class DBOs, class P, class T, class D>
+        struct column_result_t<DBOs, pointer_binding<P, T, D>, void> {
+            using type = std::nullptr_t;
+        };
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        template<class DBOs, class T>
+        struct column_result_t<DBOs, T, match_specialization_of<T, labeled_bindable>> {
+            using type = typename T::type;
+        };
+
+        template<class DBOs, class T>
+        struct column_result_t<DBOs, T, match_specialization_of<T, named_bindable>> {
+            using type = typename T::type;
+        };
+#endif
 
         template<class DBOs, class T>
         struct column_result_t<DBOs, count_asterisk_t<T>, void> {
@@ -16447,6 +16672,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/limit.h"
 
+// #include "ast/labeled_bindable.h"
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -16963,6 +17190,18 @@ namespace sqlite_orm {
                 iterate_ast(i.t, lambda);
             }
         };
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        template<class T>
+        struct ast_iterator<T, match_specialization_of<T, labeled_bindable>> {
+            using node_type = T;
+
+            template<class L>
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& param, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
+                iterate_ast(param.value, lambda);
+            }
+        };
+#endif
 
         template<class F, class... CallArgs>
         struct ast_iterator<function_call<F, CallArgs...>, void> {
@@ -20343,6 +20582,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/limit.h"
 
+// #include "ast/labeled_bindable.h"
+
+// #include "ast/named_parameter.h"
+
 // #include "core_functions.h"
 
 // #include "constraints.h"
@@ -21522,6 +21765,46 @@ namespace sqlite_orm {
                 return serialize(literal.value, literalCtx);
             }
         };
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        /**
+         *  Serializer for labeled bindables.
+         */
+        template<class T>
+        struct statement_serializer<T, match_specialization_of<T, labeled_bindable>> {
+            using statement_type = T;
+
+            template<class Ctx>
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& labeled,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+                static_assert(is_bindable_v<type_t<statement_type>>, "Value must be bindable");
+
+                statement_serializer<type_t<statement_type>> serializer{};
+                return serializer(labeled.value, context);
+            }
+        };
+
+        /**
+         *  Serializer for named parameters.
+         */
+        template<class T>
+        struct statement_serializer<T, match_specialization_of<T, named_bindable>> {
+            using statement_type = T;
+
+            template<class Ctx>
+            SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& param,
+                                                            const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+                static_assert(is_bindable_v<type_t<statement_type>>, "Value must be bindable");
+
+                if (context.replace_bindable_with_question) {
+                    return std::string(statement_type::name_constant_type::value.cstr);
+                } else {
+                    statement_serializer<type_t<statement_type>> serializer{};
+                    return serializer(*param.value, context);
+                }
+            }
+        };
+#endif
 
         template<class F, class W>
         struct statement_serializer<filtered_aggregate_function<F, W>, void> {
@@ -26518,6 +26801,10 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
+// #include "ast/labeled_bindable.h"
+
+// #include "ast/named_parameter.h"
+
 // #include "type_traits.h"
 
 // #include "prepared_statement.h"
@@ -26933,19 +27220,22 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     template<int N, class T>
     const auto& get(const internal::prepared_statement_t<T>& statement) {
+        using namespace ::sqlite_orm::internal;
         using statement_type = polyfill::remove_cvref_t<decltype(statement)>;
-        using expression_type = internal::expression_type_t<statement_type>;
-        using node_tuple = internal::node_tuple_t<expression_type>;
-        using bind_tuple = internal::bindable_filter_t<node_tuple>;
-        using result_type = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
+        using expression_type = expression_type_t<statement_type>;
+        using node_tuple = node_tuple_t<expression_type>;
+        using bind_tuple = bindable_filter_t<node_tuple>;
+        using bound_type = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
+        using result_type = access_bindable_t<bound_type>;
+
         const result_type* result = nullptr;
-        internal::iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
-            using node_type = polyfill::remove_cvref_t<decltype(node)>;
-            if constexpr (internal::is_bindable<node_type>::value) {
+        iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
+            using leaf_type = polyfill::remove_cvref_t<decltype(node)>;
+            if constexpr (is_sql_parameter<leaf_type>::value) {
                 ++index;
-                if constexpr (std::is_same<result_type, node_type>::value) {
+                if constexpr (std::is_same<result_type, access_bindable_t<leaf_type>>::value) {
                     if (index == N) {
-                        result = &node;
+                        result = &access_bindable(node);
                     }
                 }
             }
@@ -26955,26 +27245,88 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     template<int N, class T>
     auto& get(internal::prepared_statement_t<T>& statement) {
+        using namespace ::sqlite_orm::internal;
         using statement_type = std::remove_reference_t<decltype(statement)>;
-        using expression_type = internal::expression_type_t<statement_type>;
-        using node_tuple = internal::node_tuple_t<expression_type>;
-        using bind_tuple = internal::bindable_filter_t<node_tuple>;
-        using result_type = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
-        result_type* result = nullptr;
+        using expression_type = expression_type_t<statement_type>;
+        using node_tuple = node_tuple_t<expression_type>;
+        using bind_tuple = bindable_filter_t<node_tuple>;
+        using bound_type = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
+        using result_type = access_bindable_t<bound_type>;
 
-        internal::iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
-            using node_type = polyfill::remove_cvref_t<decltype(node)>;
-            if constexpr (internal::is_bindable<node_type>::value) {
+        result_type* result = nullptr;
+        iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
+            using leaf_type = polyfill::remove_cvref_t<decltype(node)>;
+            if constexpr (is_sql_parameter<leaf_type>::value) {
                 ++index;
-                if constexpr (std::is_same<result_type, node_type>::value) {
+                if constexpr (std::is_same<result_type, access_bindable_t<leaf_type>>::value) {
                     if (index == N) {
-                        result = const_cast<result_type*>(&node);
+                        result = const_cast<result_type*>(&access_bindable(node));
                     }
                 }
             }
         });
         return internal::get_ref(*result);
     }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<auto name, class T>
+        requires (orm_parameter_moniker<decltype(name)> || orm_bindable_label<decltype(name)>)
+    const auto& access(const internal::prepared_statement_t<T>& statement) {
+        using namespace ::sqlite_orm::internal;
+        using statement_type = std::remove_cvref_t<decltype(statement)>;
+        using expression_type = expression_type_t<statement_type>;
+        using node_tuple = node_tuple_t<expression_type>;
+        using bind_tuple = bindable_filter_t<node_tuple>;
+        using index_type =
+            find_tuple_type<bind_tuple, name_constant_type_t<decltype(name)>, name_constant_type_or_none_t>;
+        constexpr size_t N = index_type::value;
+        static_assert(N < std::tuple_size_v<bind_tuple>, "No such named bindable found in prepared statement");
+        using bound_type = std::tuple_element_t<N, bind_tuple>;
+        using result_type = access_bindable_t<bound_type>;
+
+        const result_type* result = nullptr;
+        iterate_ast(statement.expression, [&result, index = -1]<class leaf_type>(const leaf_type& node) mutable {
+            if constexpr (is_sql_parameter<leaf_type>::value) {
+                ++index;
+                if constexpr (std::is_same_v<result_type, access_bindable_t<leaf_type>>) {
+                    if (index == N) {
+                        result = &access_bindable(node);
+                    }
+                }
+            }
+        });
+        return internal::get_ref(*result);
+    }
+
+    template<auto name, class T>
+        requires (orm_parameter_moniker<decltype(name)> || orm_bindable_label<decltype(name)>)
+    auto& access(internal::prepared_statement_t<T>& statement) {
+        using namespace ::sqlite_orm::internal;
+        using statement_type = std::remove_cvref_t<decltype(statement)>;
+        using expression_type = expression_type_t<statement_type>;
+        using node_tuple = node_tuple_t<expression_type>;
+        using bind_tuple = bindable_filter_t<node_tuple>;
+        using index_type =
+            find_tuple_type<bind_tuple, name_constant_type_t<decltype(name)>, name_constant_type_or_none_t>;
+        constexpr size_t N = index_type::value;
+        static_assert(N < std::tuple_size_v<bind_tuple>, "No such named bindable found in prepared statement");
+        using bound_type = std::tuple_element_t<N, bind_tuple>;
+        using result_type = access_bindable_t<bound_type>;
+
+        result_type* result = nullptr;
+        iterate_ast(statement.expression, [&result, index = -1]<class leaf_type>(const leaf_type& node) mutable {
+            if constexpr (is_sql_parameter<leaf_type>::value) {
+                ++index;
+                if constexpr (std::is_same_v<result_type, access_bindable_t<leaf_type>>) {
+                    if (index == N) {
+                        result = const_cast<result_type*>(&access_bindable(node));
+                    }
+                }
+            }
+        });
+        return internal::get_ref(*result);
+    }
+#endif
 }
 #pragma once
 

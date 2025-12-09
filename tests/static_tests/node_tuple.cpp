@@ -59,6 +59,24 @@ TEST_CASE("Node tuple") {
             static_assert(is_same<Tuple, Expected>::value, "bindable float");
             STATIC_REQUIRE(is_same<bindable_filter_t<Tuple>, tuple<float>>::value);
         }
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        SECTION("labeled") {
+            constexpr orm_bindable_label auto label = "l"_bindable;
+            using Node = decltype(42 >>= label);
+            using Tuple = node_tuple_t<Node>;
+            using Expected = tuple<Node>;
+            STATIC_REQUIRE(std::is_same_v<Tuple, Expected>);
+            STATIC_REQUIRE(std::is_same_v<bindable_filter_t<Tuple>, tuple<Node>>);
+        }
+        SECTION("named") {
+            auto bindable = "@p"_param.create<int>();
+            using Node = decltype(bindable);
+            using Tuple = node_tuple_t<Node>;
+            using Expected = tuple<Node>;
+            STATIC_REQUIRE(std::is_same_v<Tuple, Expected>);
+            STATIC_REQUIRE(std::is_same_v<bindable_filter_t<Tuple>, tuple<Node>>);
+        }
+#endif
     }
     SECTION("non-bindable literals") {
         using Tuple = node_tuple_t<literal_holder<int>>;

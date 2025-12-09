@@ -27,6 +27,7 @@
 #include "ast/match.h"
 #include "ast/cast.h"
 #include "ast/limit.h"
+#include "ast/labeled_bindable.h"
 
 namespace sqlite_orm {
 
@@ -544,6 +545,18 @@ namespace sqlite_orm {
                 iterate_ast(i.t, lambda);
             }
         };
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+        template<class T>
+        struct ast_iterator<T, match_specialization_of<T, labeled_bindable>> {
+            using node_type = T;
+
+            template<class L>
+            SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& param, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
+                iterate_ast(param.value, lambda);
+            }
+        };
+#endif
 
         template<class F, class... CallArgs>
         struct ast_iterator<function_call<F, CallArgs...>, void> {

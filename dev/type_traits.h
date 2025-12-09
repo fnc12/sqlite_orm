@@ -129,10 +129,7 @@ namespace sqlite_orm {
 
         // T::alias_type or nonesuch
         template<class T>
-        using alias_holder_type_or_none = polyfill::detected<type_t, T>;
-
-        template<class T>
-        using alias_holder_type_or_none_t = typename alias_holder_type_or_none<T>::type;
+        using alias_holder_type_or_none_t = polyfill::detected_t<type_t, T>;
 #endif
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED

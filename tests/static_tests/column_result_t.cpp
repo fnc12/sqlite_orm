@@ -80,6 +80,7 @@ TEST_CASE("column_result_of_t") {
     runTest<db_objects_t, std::unique_ptr<std::string>>(min(&User::name));
     runTest<db_objects_t, int>(count<User>());
     runTest<db_objects_t, int>(count());
+    // function call
     {
         struct RandomFunc {
             static const char* name();
@@ -89,6 +90,23 @@ TEST_CASE("column_result_of_t") {
         };
         runTest<db_objects_t, int>(func<RandomFunc>());
     }
+    // pointer binding
+    {
+        const int64 value = 0;
+        runTest<db_objects_t, std::nullptr_t>(bind_carray_pointer_statically(&value));
+    }
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    // 'bindable' label
+    {
+        constexpr orm_bindable_label auto label = "l"_bindable;
+        runTest<db_objects_t, int>(42 >>= label);
+    }
+    // named parameter
+    {
+        auto bindable = "@p"_param.create<int>();
+        runTest<db_objects_t, int>(bindable);
+    }
+#endif
     runTest<db_objects_t, int>(distinct(&User::id));
     runTest<db_objects_t, std::string>(distinct(&User::name));
     runTest<db_objects_t, int>(all(&User::id));

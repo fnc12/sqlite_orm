@@ -39,9 +39,56 @@ TEST_CASE("Prepared select") {
     storage.insert(UserAndVisit{3, 1, "Shine on"});
 
     SECTION("const access to bindable") {
-        auto statement = storage.prepare(select(10));
-        REQUIRE(get<0>(static_cast<const decltype(statement)&>(statement)) == 10);
+        const auto statement = storage.prepare(select(10));
+        REQUIRE(get<0>(statement) == 10);
     }
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    SECTION("const access to labeled bindable") {
+        constexpr orm_bindable_label auto l = "l"_bindable;
+        const auto statement = storage.prepare(select(10 >>= l));
+        REQUIRE(get<0>(statement) == 10);
+        REQUIRE(access<l>(statement) == 10);
+    }
+    SECTION("const access to named bindable") {
+        constexpr orm_parameter_moniker auto n1_param = "@n1"_param;
+        auto bindable = n1_param.create<int>(10);
+        const auto statement = storage.prepare(select(bindable));
+        REQUIRE(get<0>(statement) == 10);
+        REQUIRE(access<n1_param>(statement) == 10);
+    }
+    SECTION("mixed labeled and indexed bindables") {
+        constexpr orm_bindable_label auto l1 = "l1"_bindable;
+        constexpr orm_bindable_label auto l2 = "l2"_bindable;
+        int id = 4;
+        auto statement = storage.prepare(select(columns(10, 11 >>= l1, std::ref(id), std::ref(id) >>= l2)));
+        REQUIRE(get<0>(statement) == 10);
+        REQUIRE(get<1>(statement) == 11);
+        REQUIRE(get<2>(statement) == 4);
+        REQUIRE(get<3>(statement) == 4);
+        REQUIRE(access<l1>(statement) == 11);
+        REQUIRE(access<l2>(statement) == 4);
+        auto rows = storage.execute(statement);
+        REQUIRE(rows == decltype(rows){{10, 11, 4, 4}});
+    }
+    SECTION("mixed named and indexed bindables") {
+        constexpr orm_parameter_moniker auto n1_param = "@n1"_param;
+        auto bindable1 = n1_param.create<int>(11);
+        auto bindable2 = ":n2"_param.create<int>(5);
+        auto statement = storage.prepare(select(columns(10, bindable1, 4, bindable1, bindable2, 6)));
+        REQUIRE(get<0>(statement) == 10);
+        REQUIRE(get<1>(statement) == 11);
+        REQUIRE(get<2>(statement) == 4);
+        REQUIRE(get<3>(statement) == 11);
+        REQUIRE(get<4>(statement) == 5);
+        REQUIRE(get<5>(statement) == 6);
+        REQUIRE(access<n1_param>(statement) == 11);
+        auto rows = storage.execute(statement);
+        REQUIRE(rows == decltype(rows){{10, 11, 4, 11, 5, 6}});
+        bindable1 = 15;
+        rows = storage.execute(statement);
+        REQUIRE(rows == decltype(rows){{10, 15, 4, 15, 5, 6}});
+    }
+#endif
     SECTION("one simple argument") {
         SECTION("by val") {
             SECTION("int") {

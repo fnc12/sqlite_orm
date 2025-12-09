@@ -26,36 +26,11 @@
 #include "arithmetic_tag.h"
 #include "xdestroy_handling.h"
 #include "pointer_value.h"
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-
-    /**
-     *  Helper class used for binding fields to sqlite3 statements.
-     */
-    template<class V, typename Enable = void>
-    struct statement_binder;
-}
+#include "ast/labeled_bindable.h"
+#include "ast/named_parameter.h"
+#include "statement_binding_traits.h"
 
 namespace sqlite_orm {
-    namespace internal {
-        /*
-         *  Implementation note: the technique of indirect expression testing is because
-         *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
-         *  It must also be a type that differs from those for `is_printable_v`, `is_preparable_v`.
-         */
-        template<class Binder>
-        struct indirectly_test_bindable;
-
-        template<class T, class SFINAE = void>
-        inline constexpr bool is_bindable_v = false;
-        template<class T>
-        inline constexpr bool
-            is_bindable_v<T, polyfill::void_t<indirectly_test_bindable<decltype(statement_binder<T>{})>>> = true;
-
-        template<class T>
-        struct is_bindable : polyfill::bool_constant<is_bindable_v<T>> {};
-    }
-
 #if SQLITE_VERSION_NUMBER >= 3020000
     /**
      *  Specialization for pointer bindings (part of the 'pointer-passing interface').
@@ -296,6 +271,18 @@ namespace sqlite_orm {
 
             explicit conditional_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
 
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+            template<class Moniker, class T>
+            void operator()(const named_bindable<Moniker, T>& bindable) {
+                const int nth = sqlite3_bind_parameter_index(stmt, Moniker::value.cstr);
+                // nothing to do if this named parameter was already bound
+                if (nth < this->nthSqlParameter)
+                    return;
+
+                this->operator()(*bindable.value);
+            }
+#endif
+
             template<class T, satisfies<is_bindable, T> = true>
             void operator()(const T& t) {
                 const int rc = statement_binder<T>{}.bind(this->stmt, ++this->nthSqlParameter, t);
@@ -370,7 +357,17 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T>
+        using is_sql_parameter = mpl::invoke_t<mpl::disjunction<check_if<is_bindable>
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+                                                                ,
+                                                                check_if_is_template<labeled_bindable>,
+                                                                check_if_is_template<named_bindable>
+#endif
+                                                                >,
+                                               T>;
+
         template<class Tpl>
-        using bindable_filter_t = filter_tuple_t<Tpl, is_bindable>;
+        using bindable_filter_t = filter_tuple_t<Tpl, is_sql_parameter>;
     }
 }
