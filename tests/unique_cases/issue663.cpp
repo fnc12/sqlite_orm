@@ -43,7 +43,7 @@ namespace {
 
         template<typename TUser, typename S>
         void insertSection(S& storage) {
-            storage.template insert<TUser>({});
+            storage.template insert<TUser>({"_", "_"});
             const auto users = storage.template get_all<TUser>();
             REQUIRE(users.size() == 1);
             REQUIRE(defaultID == users.front().id);
@@ -52,7 +52,7 @@ namespace {
 
         template<typename TUser, typename S>
         void insertRangeSection(S& storage) {
-            std::vector<TUser> inputUsers = {{}};
+            std::vector<TUser> inputUsers = {{"_", "_"}};
             storage.insert_range(inputUsers.begin(), inputUsers.end());
             const auto users = storage.template get_all<TUser>();
             REQUIRE(users.size() == 1);
@@ -65,7 +65,7 @@ namespace {
 
 namespace {
     struct User1 {
-        int id = 0;
+        int64 id = 0;
         std::string name;
         int age = 0;
         std::string email;
@@ -121,8 +121,8 @@ TEST_CASE("Issue 663 - single table pk") {
 
 namespace {
     struct User2 {
-        std::string id = default_value_case::defaultID;
-        std::string name = default_value_case::defaultName;
+        std::string id;
+        std::string name;
     };
 }
 TEST_CASE("Issue 663 - composite table pk with default") {

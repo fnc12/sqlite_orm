@@ -526,7 +526,7 @@ void depth_or_breadth_first() {
 
 void select_from_subselect() {
     struct Employee {
-        int m_empno;
+        int64 m_empno;
         std::string m_ename;
         double m_salary;
         std::optional<double> m_commission;

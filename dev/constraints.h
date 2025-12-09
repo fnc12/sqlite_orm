@@ -496,18 +496,56 @@ namespace sqlite_orm::internal {
     template<class T>
     struct is_generated_always : polyfill::bool_constant<is_generated_always_v<T>> {};
 
-    /**
-     *  PRIMARY KEY INSERTABLE traits.
+    // Custom type:
+    // It is the programmer's responsibility to ensure data integrity in the value range of the custom type
+    // and in purview of SQLite using a 64-bit signed integer.
+    template<class F, class SFINAE = void>
+    inline constexpr bool is_rowid_alias_capable_v = std::is_base_of<integer_printer, type_printer<F>>::value;
+
+    // For 64-bit signed integer type: capable
+    template<class F>
+    inline constexpr bool
+        is_rowid_alias_capable_v<F,
+                                 std::enable_if_t<std::is_integral<F>::value &&
+                                                  (sizeof(F) == sizeof(sqlite_int64) &&
+                                                   std::is_signed<F>::value == std::is_signed<sqlite_int64>::value)>> =
+            true;
+
+    // Design decision for integral types other than 64-bit signed integer:
+    // It is the programmer's responsibility to ensure data integrity in the value range of the integral type
+    // and in purview of SQLite using a 64-bit signed integer.
+    template<class F>
+    inline constexpr bool
+        is_rowid_alias_capable_v<F,
+                                 std::enable_if_t<std::is_integral<F>::value &&
+                                                  (sizeof(F) != sizeof(sqlite_int64) ||
+                                                   std::is_signed<F>::value != std::is_signed<sqlite_int64>::value)>> =
+            true;
+
+    // For non-integer types: unsuitable
+    template<class F>
+    inline constexpr bool
+        is_rowid_alias_capable_v<F, std::enable_if_t<!std::is_base_of<integer_printer, type_printer<F>>::value>> =
+            false;
+
+    /** 
+     *  COLUMN PRIMARY KEY INSERTABLE traits.
+     *  
+     *  A column primary key is considered implicitly insertable if:
+     *  - it is an INTEGER PRIMARY KEY (and thus an alias for the "rowid" key),
+     *  - or has a default value.
+     *  
+     *  In terms of C++ types, this means that the field type must be capable of representing a 64-bit signed integer,
+     *  or the column is declared with a DEFAULT constraint.
+     *  
+     *  Implementation note: using a struct template in favor of a template alias so that the stack leading to a deprecation message is shorter.
      */
     template<typename Column>
-    struct is_primary_key_insertable
-        : polyfill::disjunction<mpl::invoke_t<mpl::disjunction<check_if_has_template<primary_key_with_autoincrement>,
-                                                               check_if_has_template<default_t>>,
-                                              constraints_type_t<Column>>,
-                                std::is_base_of<integer_printer, type_printer<field_type_t<Column>>>> {
-
-        static_assert(tuple_has<constraints_type_t<Column>, is_primary_key>::value, "an unexpected type was passed");
-    };
+    struct is_pkcol_implicitly_insertable
+        : mpl::invoke_t<
+              mpl::disjunction<mpl::always<polyfill::bool_constant<is_rowid_alias_capable_v<field_type_t<Column>>>>,
+                               check_if_has_template<default_t>>,
+              constraints_type_t<Column>> {};
 
     template<class T>
     using is_column_constraint = mpl::invoke_t<mpl::disjunction<check_if<std::is_base_of, primary_key_t<>>,
@@ -586,7 +624,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {{}};
     }
 
-#if SQLITE_VERSION_NUMBER >= 3009000
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
     /**
      *  UNINDEXED column constraint builder function. Used in FTS virtual tables.
      *  

@@ -15,7 +15,7 @@ using dedicated_pk_columns_count_t =
 
 TEST_CASE("table static count_of<is_column>()") {
     struct User {
-        int id = 0;
+        int64 id = 0;
         std::string name;
     };
     {  //  1 column no pk
@@ -27,10 +27,10 @@ TEST_CASE("table static count_of<is_column>()") {
         STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 1);
         STATIC_REQUIRE(col_index_sequence_with<elements_type, is_primary_key>::size() == 0);
         STATIC_REQUIRE(col_index_sequence_excluding<elements_type, is_primary_key>::size() == 1);
-        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int>::size() == 1);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int64>::size() == 1);
         STATIC_REQUIRE(dedicated_pk_columns_count_t<elements_type>::value == 0);
     }
-    {  //  1 column with 1 inline pk
+    {  //  1 column with column pk
         auto table = make_table("users", make_column("id", &User::id, primary_key()));
         using elements_type = decltype(table.elements);
         STATIC_REQUIRE(table.count_of<is_column>() == 1);
@@ -39,10 +39,10 @@ TEST_CASE("table static count_of<is_column>()") {
         STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 1);
         STATIC_REQUIRE(col_index_sequence_with<elements_type, is_primary_key>::size() == 1);
         STATIC_REQUIRE(col_index_sequence_excluding<elements_type, is_primary_key>::size() == 0);
-        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int>::size() == 1);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int64>::size() == 1);
         STATIC_REQUIRE(dedicated_pk_columns_count_t<elements_type>::value == 0);
     }
-    {  //  1 column with 1 inline pk autoincrement
+    {  //  1 column with column pk autoincrement
         auto table = make_table("users", make_column("id", &User::id, primary_key().autoincrement()));
         using elements_type = decltype(table.elements);
         STATIC_REQUIRE(table.count_of<is_column>() == 1);
@@ -51,10 +51,10 @@ TEST_CASE("table static count_of<is_column>()") {
         STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 1);
         STATIC_REQUIRE(col_index_sequence_with<elements_type, is_primary_key>::size() == 1);
         STATIC_REQUIRE(col_index_sequence_excluding<elements_type, is_primary_key>::size() == 0);
-        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int>::size() == 1);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int64>::size() == 1);
         STATIC_REQUIRE(dedicated_pk_columns_count_t<elements_type>::value == 0);
     }
-    {  //  1 column with 1 dedicated pk
+    {  //  1 column with a single table pk
         auto table = make_table("users", make_column("id", &User::id), primary_key(&User::id));
         using elements_type = decltype(table.elements);
         STATIC_REQUIRE(table.count_of<is_column>() == 1);
@@ -64,9 +64,9 @@ TEST_CASE("table static count_of<is_column>()") {
         STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 1);
         STATIC_REQUIRE(col_index_sequence_with<elements_type, is_primary_key>::size() == 0);
         STATIC_REQUIRE(col_index_sequence_excluding<elements_type, is_primary_key>::size() == 1);
-        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int>::size() == 1);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int64>::size() == 1);
     }
-    {  //  1 column with 1 dedicated pk autoincrement
+    {  //  1 column with a single table pk autoincrement
         auto table = make_table("users", make_column("id", &User::id), primary_key(&User::id).autoincrement());
         using elements_type = decltype(table.elements);
         STATIC_REQUIRE(table.count_of<is_column>() == 1);
@@ -75,7 +75,7 @@ TEST_CASE("table static count_of<is_column>()") {
         STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 1);
         STATIC_REQUIRE(col_index_sequence_with<elements_type, is_primary_key>::size() == 0);
         STATIC_REQUIRE(col_index_sequence_excluding<elements_type, is_primary_key>::size() == 1);
-        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int>::size() == 1);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int64>::size() == 1);
         STATIC_REQUIRE(dedicated_pk_columns_count_t<elements_type>::value == 1);
     }
     {  //  2 columns no pk
@@ -87,10 +87,10 @@ TEST_CASE("table static count_of<is_column>()") {
         STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 2);
         STATIC_REQUIRE(col_index_sequence_with<elements_type, is_primary_key>::size() == 0);
         STATIC_REQUIRE(col_index_sequence_excluding<elements_type, is_primary_key>::size() == 2);
-        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int>::size() == 1);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int64>::size() == 1);
         STATIC_REQUIRE(dedicated_pk_columns_count_t<elements_type>::value == 0);
     }
-    {  //  2 columns with 1 inline id pk
+    {  //  2 columns with a column pk (id)
         auto table = make_table("users", make_column("id", &User::id, primary_key()), make_column("id", &User::name));
         using elements_type = decltype(table.elements);
         STATIC_REQUIRE(table.count_of<is_column>() == 2);
@@ -99,10 +99,10 @@ TEST_CASE("table static count_of<is_column>()") {
         STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 2);
         STATIC_REQUIRE(col_index_sequence_with<elements_type, is_primary_key>::size() == 1);
         STATIC_REQUIRE(col_index_sequence_excluding<elements_type, is_primary_key>::size() == 1);
-        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int>::size() == 1);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int64>::size() == 1);
         STATIC_REQUIRE(dedicated_pk_columns_count_t<elements_type>::value == 0);
     }
-    {  //  2 columns with 1 inline name pk
+    {  //  2 columns with a column pk (name)
         auto table = make_table("users", make_column("id", &User::id), make_column("id", &User::name, primary_key()));
         using elements_type = decltype(table.elements);
         STATIC_REQUIRE(table.count_of<is_column>() == 2);
@@ -111,10 +111,10 @@ TEST_CASE("table static count_of<is_column>()") {
         STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 2);
         STATIC_REQUIRE(col_index_sequence_with<elements_type, is_primary_key>::size() == 1);
         STATIC_REQUIRE(col_index_sequence_excluding<elements_type, is_primary_key>::size() == 1);
-        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int>::size() == 1);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int64>::size() == 1);
         STATIC_REQUIRE(dedicated_pk_columns_count_t<elements_type>::value == 0);
     }
-    {  //  2 columns with 1 dedicated id pk
+    {  //  2 columns with a single table pk (id)
         auto table =
             make_table("users", make_column("id", &User::id), make_column("id", &User::name), primary_key(&User::id));
         using elements_type = decltype(table.elements);
@@ -124,10 +124,10 @@ TEST_CASE("table static count_of<is_column>()") {
         STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 2);
         STATIC_REQUIRE(col_index_sequence_with<elements_type, is_primary_key>::size() == 0);
         STATIC_REQUIRE(col_index_sequence_excluding<elements_type, is_primary_key>::size() == 2);
-        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int>::size() == 1);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int64>::size() == 1);
         STATIC_REQUIRE(dedicated_pk_columns_count_t<elements_type>::value == 1);
     }
-    {  //  2 columns with 1 dedicated name pk
+    {  //  2 columns with a single table pk (name)
         auto table =
             make_table("users", make_column("id", &User::id), make_column("id", &User::name), primary_key(&User::name));
         using elements_type = decltype(table.elements);
@@ -137,10 +137,10 @@ TEST_CASE("table static count_of<is_column>()") {
         STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 2);
         STATIC_REQUIRE(col_index_sequence_with<elements_type, is_primary_key>::size() == 0);
         STATIC_REQUIRE(col_index_sequence_excluding<elements_type, is_primary_key>::size() == 2);
-        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int>::size() == 1);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int64>::size() == 1);
         STATIC_REQUIRE(dedicated_pk_columns_count_t<elements_type>::value == 1);
     }
-    {  //  2 columns with 2 dedicated pks
+    {  //  2 columns with a composite pk
         auto table = make_table("users",
                                 make_column("id", &User::id),
                                 make_column("id", &User::name),
@@ -152,7 +152,7 @@ TEST_CASE("table static count_of<is_column>()") {
         STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 2);
         STATIC_REQUIRE(col_index_sequence_with<elements_type, is_primary_key>::size() == 0);
         STATIC_REQUIRE(col_index_sequence_excluding<elements_type, is_primary_key>::size() == 2);
-        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int>::size() == 1);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int64>::size() == 1);
         STATIC_REQUIRE(dedicated_pk_columns_count_t<elements_type>::value == 2);
     }
 }

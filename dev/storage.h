@@ -84,7 +84,7 @@ namespace sqlite_orm::internal {
         polyfill::void_t<indirectly_test_preparable<decltype(std::declval<S>().prepare(std::declval<E>()))>>> = true;
 
     template<class Opt, class OptionsTpl>
-    decltype(auto) storage_opt_or_default(OptionsTpl& options) {
+    decltype(auto) storage_opt_or_default([[maybe_unused]] OptionsTpl& options) {
         if constexpr (tuple_has_type<OptionsTpl, Opt>::value) {
             return std::move(std::get<Opt>(options));
         } else {
@@ -218,7 +218,7 @@ namespace sqlite_orm::internal {
             using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
 
             static_assert(pk_index_sequence::size() + pkcol_index_sequence::size() == 1,
-                          "The table must have primary key");
+                          "The table must have a primary key");
         }
 
         template<class O>
@@ -250,17 +250,16 @@ namespace sqlite_orm::internal {
         void assert_insertable_type() const {
             using elements_type = elements_type_t<Table>;
             using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
-            static_assert(count_filtered_tuple<elements_type, is_primary_key_insertable, pkcol_index_sequence>::value <=
-                              1,
-                          "Attempting to execute 'insert' request into an noninsertable table was detected. "
-                          "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
-                          "'insert', or you can use 'insert' with explicit column listing.");
-            static_assert(count_filtered_tuple<elements_type,
-                                               check_if_not<is_primary_key_insertable>::template fn,
-                                               pkcol_index_sequence>::value == 0,
-                          "Attempting to execute 'insert' request into an noninsertable table was detected. "
-                          "Insertable table cannot contain non-standard primary keys. Please use 'replace' instead "
-                          "of 'insert', or you can use 'insert' with explicit column listing.");
+            if constexpr (pkcol_index_sequence::size()) {
+                constexpr auto pkcol_idx = index_sequence_value_at<0>(pkcol_index_sequence{});
+                using pkcol_type = std::tuple_element_t<pkcol_idx, elements_type>;
+                static_assert(
+                    mpl::invoke_t<check_if<is_pkcol_implicitly_insertable>, pkcol_type>::value,
+                    "While SQLite allows primary keys of any type, sqlite_orm restricts an ordinary 'insert' into "
+                    "tables with single-column primary keys to those with an implicitly insertable column because "
+                    "it is the 'rowid' alias or has a default value."
+                    "Instead, please use `replace(object)` or `insert(object, columns(...))`.");
+            }
         }
 
         template<class O>
@@ -934,6 +933,14 @@ namespace sqlite_orm::internal {
             this->execute(statement);
         }
 
+        /**
+         *  Insert routine with explicitly specified columns.
+         *  
+         *  @return The ID of the last inserted record for a rowid table, otherwise a meaningless value.
+         *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
+         *          Attention: While SQLite returns a 64-bit integer as rowid, this function returns an `int` that most likely has less precision.
+             *                     If you need the full 64-bit rowid value, use `storage_t<>::execute()` instead, or call `storage_t<>::last_insert_rowid()` after inserting.
+         */
         template<class O, class... Cols>
         int insert(const O& o, columns_t<Cols...> cols) {
             static_assert(cols.count > 0, "Use insert or replace with 1 argument instead");
@@ -945,17 +952,19 @@ namespace sqlite_orm::internal {
         /**
          *  Ordinary insert routine.
          *  
-         *  - For objects mapped to a table with rowid and a single primary key:
-         *  Inserts a record with all fields of a mapped object that are not primary key columns.
-         *  The 'ID' of the specified object is irrelevant.
-         *  - For objects mapped to a table with rowid and a composite primary key or no primary key:
-         *  Inserts a record with all fields of a mapped object.
+         *  - For objects mapped to a rowid table with a single primary key:
+         *      Inserts a record with all fields of a mapped object except the primary key column.
+         *      The primary key column must be implicitly insertable.
+         *      The 'ID' of the specified object is irrelevant as it is implicitly inserted.
+         *  - For objects mapped to a rowid table with a composite primary key or no primary key:
+         *    Inserts a record with all fields of a mapped object except primary key columns having a default value.
          *  - For objects mapped to a table without rowid:
-         *  Inserts a record with all fields of a mapped object.
+         *    Inserts a record with all fields of a mapped object except primary key columns having a default value.
          *  
-         *  @return The ID of the last inserted record for a table with rowid, otherwise a meaningless value.
-         *  Attention: While SQLite returns a 64-bit integer as rowid, this function returns an `int` that most likely has less precision.
-         *  Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
+         *  @return The ID of the last inserted record for a rowid table, otherwise a meaningless value.
+         *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
+         *          Attention: While SQLite returns a 64-bit integer as rowid, this function returns an `int` that most likely has less precision.
+             *                     If you need the full 64-bit rowid value, use `storage_t<>::execute()` instead, or call `storage_t<>::last_insert_rowid()` after inserting.
          */
         template<class O>
         int insert(const O& o) {
@@ -1474,8 +1483,8 @@ namespace sqlite_orm::internal {
         }
 
         /** 
-         *  @return The rowid of the last inserted row.
-         *  @note The returned rowid is only meaningful in single-thread contexts.
+         *  @return The ID of the last inserted record for a table with rowid, otherwise a meaningless value.
+         *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
          */
         template<class T, class... Cols>
         int64 execute(const prepared_statement_t<insert_explicit<T, Cols...>>& statement) {
@@ -1534,8 +1543,8 @@ namespace sqlite_orm::internal {
         }
 
         /** 
-         *  @return The rowid of the last inserted row.
-         *  @note The returned rowid is only meaningful in single-thread contexts.
+         *  @return The ID of the last inserted record for a table with rowid, otherwise a meaningless value.
+         *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
          */
         template<class T, std::enable_if_t<polyfill::disjunction<is_insert<T>, is_insert_range<T>>::value, bool> = true>
         int64 execute(const prepared_statement_t<T>& statement) {
@@ -1546,17 +1555,23 @@ namespace sqlite_orm::internal {
             auto processObject = [&table = this->get_table<object_type>(),
                                   bindValue = field_value_binder{stmt}](const object_type& object) mutable {
                 using table_type = polyfill::remove_cvref_t<decltype(table)>;
-                using is_without_rowid = typename table_type::is_without_rowid;
+                using without_rowid = typename table_type::is_without_rowid;
+                using is_pkcolumn_q =
+                    mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>;
+                using is_generated_always_q = mpl::quote_fn<is_generated_always>;
 
-                table.template for_each_column_excluding<
-                    mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
-                                     mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
-                    call_as_template_base<column_field>([&table, &bindValue, &object](auto& column) {
-                        if (!is_without_rowid::value && is_single_table_primary_key(table, column)) {
+                table.template for_each_column_excluding<mpl::disjunction<is_pkcolumn_q, is_generated_always_q>>(
+                    [&table, &bindValue, &object](auto& column) {
+                        if (!without_rowid::value &&
+                            (is_single_table_primary_key(table, column) ||
+                             (column.template is_template<default_t>() && table_primary_key_contains(table, column)))) {
+                            return;
+                        } else if (without_rowid::value && (column.template is_template<default_t>() &&
+                                                            table_primary_key_contains(table, column))) {
                             return;
                         }
                         bindValue(polyfill::invoke(column.member_pointer, object));
-                    }));
+                    });
             };
 
             if constexpr (is_insert_range_v<T>) {

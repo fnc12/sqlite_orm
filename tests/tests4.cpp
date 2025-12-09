@@ -10,7 +10,7 @@ using namespace sqlite_orm;
 TEST_CASE("Unique ptr in update") {
 
     struct User {
-        int id = 0;
+        int64 id = 0;
         std::unique_ptr<std::string> name;
     };
 
@@ -38,7 +38,7 @@ TEST_CASE("Unique ptr in update") {
 TEST_CASE("optional in update") {
 
     struct User {
-        int id = 0;
+        int64 id = 0;
         std::optional<int> carYear;  // will be empty if user takes the bus.
     };
 
@@ -137,59 +137,59 @@ TEST_CASE("join") {
 #if SQLITE_VERSION_NUMBER >= 3006019
 TEST_CASE("two joins") {
     struct Statement {
-        int id_statement;
+        int64 id_statement;
         long date;
     };
 
     struct Concepto {
-        int id_concepto;
+        int64 id_concepto;
         std::string name;  // TFT-SINPE A: 15103-02**-****-8467
-        int fkey_account;  // { 15103-02**-****-8467, ...}
+        int64 fkey_account;  // { 15103-02**-****-8467, ...}
     };
 
     struct Account {
-        int id_account;
+        int64 id_account;
         std::string number;  // 15103-02**-****-8467
-        int fkey_bank;  // { BAC San Jose, "Barrio Dent", { Costa Rica} }
-        int fkey_account_owner;  // { Juan Dent Herrera, ... }
+        int64 fkey_bank;  // { BAC San Jose, "Barrio Dent", { Costa Rica} }
+        int64 fkey_account_owner;  // { Juan Dent Herrera, ... }
         std::string description;  // AMEX Cashback Premium
         bool is_tarjeta;  // true
     };
 
     struct Pais {
-        int id_pais;
+        int64 id_pais;
         std::string name;
     };
 
     struct Banco {
-        int id_bank;
+        int64 id_bank;
         std::string nombre;
         std::string ubicacion;
         int fkey_pais;
     };
 
     struct AccountOwner {
-        int id_owner;
+        int64 id_owner;
         std::string name;
     };
 
     struct Transaccion {
-        int id_transaccion;
+        int64 id_transaccion;
         double amount_colones;
         double amount_dolares;
-        int fkey_account_own;  // Account
-        int fkey_account_other = 0;  // Account optional
+        int64 fkey_account_own;  // Account
+        int64 fkey_account_other = 0;  // Account optional
 
         long line_date;
         std::string descripcion;
-        int fkey_category;
-        int fkey_concepto;
-        int fkey_statement;
+        int64 fkey_category;
+        int64 fkey_concepto;
+        int64 fkey_statement;
         int row;  // fkey_statement + row is unique
     };
 
     struct Categoria {
-        int id_categoria;
+        int64 id_categoria;
         std::string name;
         bool is_expense_or_income;
     };

@@ -8,18 +8,18 @@ using namespace sqlite_orm;
 
 TEST_CASE("issue1357") {
     struct Employee {
-        int m_empno;
+        int64 m_empno;
         std::string m_ename;
         std::string m_job;
         std::optional<int> m_mgr;
         std::string m_hiredate;
         double m_salary;
         std::optional<double> m_commission;
-        int m_depno;
+        int64 m_depno;
     };
 
     struct Department {
-        int m_deptno;
+        int64 m_deptno;
         std::string m_deptname;
         std::string m_loc;
     };

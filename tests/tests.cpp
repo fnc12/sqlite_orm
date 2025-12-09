@@ -110,7 +110,7 @@ TEST_CASE("Custom collate") {
 #endif
 
     struct Item {
-        int id;
+        int64 id;
         std::string name;
     };
 
@@ -226,7 +226,7 @@ TEST_CASE("Custom collate") {
 
 TEST_CASE("Vacuum") {
     struct Item {
-        int id;
+        int64 id;
         std::string name;
     };
 
