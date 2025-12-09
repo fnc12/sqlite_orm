@@ -16,6 +16,12 @@
 #include <version>
 #endif
 
+#if !defined(SQLITE_ORM_MS_MSVC) || (_MSC_VER >= 1920)
+#define SQLITE_ORM_SWITCH_MAYBE_UNUSED [[maybe_unused]]
+#else
+#define SQLITE_ORM_SWITCH_MAYBE_UNUSED
+#endif
+
 #if __cpp_lib_constexpr_functional >= 201907L
 #define SQLITE_ORM_CONSTEXPR_CPP20 constexpr
 #else

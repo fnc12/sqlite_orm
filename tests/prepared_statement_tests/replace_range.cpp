@@ -37,8 +37,8 @@ TEST_CASE("Prepared replace range") {
     storage.replace(User{2, "Shy'm"});
     storage.replace(User{3, "Maître Gims"});
 
-    storage.replace(UserAndVisit{2, 1, "Glad you came"});
-    storage.replace(UserAndVisit{3, 1, "Shine on"});
+    storage.insert(UserAndVisit{2, 1, "Glad you came"});
+    storage.insert(UserAndVisit{3, 1, "Shine on"});
 
     std::vector<User> users;
     std::vector<std::unique_ptr<User>> userPointers;
@@ -75,9 +75,17 @@ TEST_CASE("Prepared replace range") {
         SECTION("pointers") {
             userPointers.push_back(std::make_unique<User>(user));
             auto statement = storage.prepare(
-                replace_range<User>(userPointers.begin(), userPointers.end(), &std::unique_ptr<User>::operator*));
+                replace_range(userPointers.begin(), userPointers.end(), &std::unique_ptr<User>::operator*));
             REQUIRE(get<0>(statement) == userPointers.begin());
             REQUIRE(get<1>(statement) == userPointers.end());
+            storage.execute(statement);
+        }
+        SECTION("references") {
+            users.push_back(user);
+            std::vector<std::reference_wrapper<User>> usersRefs{users.begin(), users.end()};
+            auto statement = storage.prepare(replace_range<User>(usersRefs.begin(), usersRefs.end()));
+            REQUIRE(get<0>(statement) == usersRefs.begin());
+            REQUIRE(get<1>(statement) == usersRefs.end());
             storage.execute(statement);
         }
     }

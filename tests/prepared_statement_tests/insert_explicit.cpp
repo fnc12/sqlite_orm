@@ -41,8 +41,8 @@ TEST_CASE("Prepared insert explicit") {
     storage.replace(User{2, "Shy'm"});
     storage.replace(User{3, "Maître Gims"});
 
-    storage.replace(UserAndVisit{2, 1, "Glad you came"});
-    storage.replace(UserAndVisit{3, 1, "Shine on"});
+    storage.insert(UserAndVisit{2, 1, "Glad you came"});
+    storage.insert(UserAndVisit{3, 1, "Shine on"});
 
     SECTION("user two columns") {
         User user{5, "Eminem"};

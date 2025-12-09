@@ -1225,7 +1225,7 @@ namespace sqlite_orm {
             }
         };
 
-#if SQLITE_VERSION_NUMBER >= 3009000
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
         template<>
         struct statement_serializer<unindexed_t, void> {
             using statement_type = unindexed_t;
@@ -1493,7 +1493,7 @@ namespace sqlite_orm {
                 ss << "UPDATE " << streaming_identifier(table.name) << " SET ";
                 table.template for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
                     [&table, &ss, &context, &object = get_ref(statement.object), first = true](auto& column) mutable {
-                        if (exists_in_composite_primary_key(table, column)) {
+                        if (table_primary_key_contains(table, column)) {
                             return;
                         }
 
@@ -1504,7 +1504,7 @@ namespace sqlite_orm {
                 ss << " WHERE ";
                 table.for_each_column(
                     [&table, &context, &ss, &object = get_ref(statement.object), first = true](auto& column) mutable {
-                        if (!column.template is<is_primary_key>() && !exists_in_composite_primary_key(table, column)) {
+                        if (!column.template is<is_primary_key>() && !table_primary_key_contains(table, column)) {
                             return;
                         }
 
@@ -1613,14 +1613,21 @@ namespace sqlite_orm {
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 using object_type = expression_object_type_t<statement_type>;
                 auto& table = pick_table<object_type>(context.db_objects);
-                using is_without_rowid = typename std::remove_reference_t<decltype(table)>::is_without_rowid;
+                using table_type = polyfill::remove_cvref_t<decltype(table)>;
+                using without_rowid = typename table_type::is_without_rowid;
+                using is_pkcolumn_q =
+                    mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>;
+                using is_generated_always_q = mpl::quote_fn<is_generated_always>;
 
                 std::vector<std::reference_wrapper<const std::string>> columnNames;
-                table.template for_each_column_excluding<
-                    mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
-                                     mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
+                table.template for_each_column_excluding<mpl::disjunction<is_pkcolumn_q, is_generated_always_q>>(
                     [&table, &columnNames](auto& column) {
-                        if (exists_in_composite_primary_key(table, column)) {
+                        if (!without_rowid::value &&
+                            (is_single_table_primary_key(table, column) ||
+                             (column.template is_template<default_t>() && table_primary_key_contains(table, column)))) {
+                            return;
+                        } else if (without_rowid::value && (column.template is_template<default_t>() &&
+                                                            table_primary_key_contains(table, column))) {
                             return;
                         }
 
@@ -1639,10 +1646,15 @@ namespace sqlite_orm {
                 if (columnNamesCount) {
                     ss << " ("
                        << streaming_field_values_excluding(
-                              mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
-                                               mpl::disjunction_fn<is_primary_key, is_generated_always>>{},
+                              mpl::disjunction<mpl::conjunction<mpl::not_<mpl::always<without_rowid>>,
+                                                                mpl::quote_fn<is_primary_key>>,
+                                               mpl::quote_fn<is_generated_always>>{},
                               [&table](auto& column) {
-                                  return exists_in_composite_primary_key(table, column);
+                                  return (!without_rowid::value && (is_single_table_primary_key(table, column) ||
+                                                                    (column.template is_template<default_t>() &&
+                                                                     table_primary_key_contains(table, column)))) ||
+                                         (without_rowid::value && (column.template is_template<default_t>() &&
+                                                                   table_primary_key_contains(table, column)));
                               },
                               context,
                               get_ref(statement.object))
@@ -1785,14 +1797,21 @@ namespace sqlite_orm {
                                                             const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
                 using object_type = expression_object_type_t<statement_type>;
                 auto& table = pick_table<object_type>(context.db_objects);
-                using is_without_rowid = typename std::remove_reference_t<decltype(table)>::is_without_rowid;
+                using table_type = polyfill::remove_cvref_t<decltype(table)>;
+                using without_rowid = typename table_type::is_without_rowid;
 
                 std::vector<std::reference_wrapper<const std::string>> columnNames;
-                table.template for_each_column_excluding<
-                    mpl::conjunction<mpl::not_<mpl::always<is_without_rowid>>,
-                                     mpl::disjunction_fn<is_primary_key, is_generated_always>>>(
+                table.template for_each_column_excluding<  ///
+                    mpl::disjunction<
+                        mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>,
+                        mpl::quote_fn<is_generated_always>>>(  ///
                     [&table, &columnNames](auto& column) {
-                        if (exists_in_composite_primary_key(table, column)) {
+                        if (!without_rowid::value &&
+                            (is_single_table_primary_key(table, column) ||
+                             (column.template is_template<default_t>() && table_primary_key_contains(table, column)))) {
+                            return;
+                        } else if (without_rowid::value && (column.template is_template<default_t>() &&
+                                                            table_primary_key_contains(table, column))) {
                             return;
                         }
 
@@ -1878,11 +1897,7 @@ namespace sqlite_orm {
             ss << "SELECT " << streaming_table_column_names(table, std::string{}) << " FROM "
                << streaming_identifier(table.name) << " WHERE ";
 
-            auto primaryKeyColumnNames = table.primary_key_column_names();
-            if (primaryKeyColumnNames.empty()) {
-                throw std::system_error{orm_error_code::table_has_no_primary_key_column};
-            }
-
+            const auto primaryKeyColumnNames = table.primary_key_column_names();
 #ifdef SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED
             static constexpr std::array<orm_gsl::czstring, 2> sep = {" AND ", ""};
             for (bool first = true; const std::string& pkName: primaryKeyColumnNames) {

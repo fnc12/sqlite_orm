@@ -1,6 +1,7 @@
 #include <sqlite3.h>
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
+#include <cstdio>  //  std::remove
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 using namespace sqlite_orm;
@@ -12,7 +13,7 @@ enum class Gender {
 };
 
 struct SuperHero {
-    int id = 0;
+    int64 id = 0;
     std::string name;
     Gender gender = Gender::Invalid;
 };
@@ -113,10 +114,10 @@ struct CustomConcatFunction {
 // Also it is representative for all stock row extractor specializations in regard to testing
 // storage's machinery during select and function calls, and whether they return proper values or build objects with proper values.
 TEST_CASE("Custom row extractors") {
-    remove("cre.sqlite");
+    std::remove("cre.sqlite");
     struct fguard {
         ~fguard() {
-            remove("cre.sqlite");
+            std::remove("cre.sqlite");
         }
     } g;
     auto storage = make_storage("cre.sqlite",

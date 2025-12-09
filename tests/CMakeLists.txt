@@ -81,10 +81,8 @@ if(MSVC)
         # otherwise for some reason the linker will not pick up `wmain`, which is provided by the static Catch2 library
         target_link_options(unit_tests PRIVATE "/ENTRY:wmainCRTStartup")
     endif()
-endif()
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     target_compile_options(unit_tests PUBLIC
-        -Wno-c++23-extensions
         # disabled due to unit tests testing deprecated features
         -Wno-deprecated-declarations
         # perfectly valid to have missing field initializers in library's test code

@@ -310,16 +310,20 @@ TEST_CASE("instr") {
 
 namespace replace_func_local {
     struct Contact {
-        int id = 0;
+        int64 id = 0;
         std::string firstName;
         std::string lastName;
         std::string phone;
-    };
 
-    bool operator==(const Contact& lhs, const Contact& rhs) {
-        return lhs.id == rhs.id && lhs.firstName == rhs.firstName && lhs.lastName == rhs.lastName &&
-               lhs.phone == rhs.phone;
-    }
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+        friend bool operator==(const Contact&, const Contact&) = default;
+#else
+        friend bool operator==(const Contact& lhs, const Contact& rhs) {
+            return lhs.id == rhs.id && lhs.firstName == rhs.firstName && lhs.lastName == rhs.lastName &&
+                   lhs.phone == rhs.phone;
+        }
+#endif
+    };
 }
 
 TEST_CASE("replace func") {

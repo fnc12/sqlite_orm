@@ -45,16 +45,16 @@ TEST_CASE("logger") {
     auto didRunQuery = GENERATE(Callback(DidLogsCollector()), Callback());
 
     struct User {
-        int id = 0;
+        int64 id = 0;
         std::string name;
     };
     struct Visit {
-        int id = 0;
-        int userId = 0;
+        int64 id = 0;
+        int64 userId = 0;
         std::string date;
     };
     struct VisitLog {
-        int id = 0;
+        int64 id = 0;
         std::string message;
     };
 

@@ -6,7 +6,7 @@ using namespace sqlite_orm;
 TEST_CASE("table::find_column_name") {
     SECTION("fields") {
         struct Contact {
-            int id = 0;
+            int64 id /*= 0*/;
             std::string firstName;
             std::string lastName;
             int countryCode = 0;
@@ -37,7 +37,7 @@ TEST_CASE("table::find_column_name") {
     SECTION("getters and setters") {
         struct Contact {
           private:
-            int _id = 0;
+            int64 _id = 0;
             std::string _firstName;
             std::string _lastName;
             int _countryCode = 0;
@@ -45,11 +45,11 @@ TEST_CASE("table::find_column_name") {
             int _visitsCount = 0;
 
           public:
-            int id() const {
+            int64 id() const {
                 return this->_id;
             }
 
-            void setId(int value) {
+            void setId(int64 value) {
                 this->_id = value;
             }
 
@@ -135,7 +135,7 @@ TEST_CASE("Composite key column names") {
                                 make_column("name", &User::name),
                                 make_column("info", &User::info),
                                 primary_key(&User::id, &User::name));
-        auto compositeKeyColumnsNames = table.composite_key_columns_names();
+        auto compositeKeyColumnsNames = table.table_key_columns_names();
         std::vector<std::string> expected = {"id", "name"};
         REQUIRE(std::equal(compositeKeyColumnsNames.begin(), compositeKeyColumnsNames.end(), expected.begin()));
     }
@@ -145,7 +145,7 @@ TEST_CASE("Composite key column names") {
                                 make_column("name", &User::name),
                                 make_column("info", &User::info),
                                 primary_key(&User::name, &User::id));
-        auto compositeKeyColumnsNames = table.composite_key_columns_names();
+        auto compositeKeyColumnsNames = table.table_key_columns_names();
         std::vector<std::string> expected = {"name", "id"};
         REQUIRE(std::equal(compositeKeyColumnsNames.begin(), compositeKeyColumnsNames.end(), expected.begin()));
     }
@@ -155,7 +155,7 @@ TEST_CASE("Composite key column names") {
                                 make_column("name", &User::name),
                                 make_column("info", &User::info),
                                 primary_key(&User::name, &User::id, &User::info));
-        auto compositeKeyColumnsNames = table.composite_key_columns_names();
+        auto compositeKeyColumnsNames = table.table_key_columns_names();
         std::vector<std::string> expected = {"name", "id", "info"};
         REQUIRE(std::equal(compositeKeyColumnsNames.begin(), compositeKeyColumnsNames.end(), expected.begin()));
     }
@@ -164,7 +164,7 @@ TEST_CASE("Composite key column names") {
                                 make_column("id", &User::id),
                                 make_column("name", &User::name),
                                 make_column("info", &User::info));
-        auto compositeKeyColumnsNames = table.composite_key_columns_names();
+        auto compositeKeyColumnsNames = table.table_key_columns_names();
         REQUIRE(compositeKeyColumnsNames.empty());
     }
 }

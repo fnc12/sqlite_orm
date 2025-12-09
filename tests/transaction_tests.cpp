@@ -7,7 +7,7 @@ using namespace sqlite_orm;
 
 namespace {
     struct Object {
-        int id = 0;
+        int64 id = 0;
         std::string name;
 
 #ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED

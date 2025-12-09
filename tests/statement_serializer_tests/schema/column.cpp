@@ -98,11 +98,13 @@ TEST_CASE("statement_serializer column") {
             value = serialize(column, context);
             expected = R"("name")";
         }
+#if SQLITE_VERSION_NUMBER >= 3024000
         SECTION("auxiliary") {
             auto column = make_column("name", &User::name, auxiliary());
             value = serialize(column, context);
             expected = R"(+"name")";
         }
+#endif
     }
     REQUIRE(value == expected);
 }

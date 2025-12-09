@@ -41,7 +41,7 @@ environment:
       cmake_build_parallel: ""
 
     - job_name: clang, C++17
-      appveyor_build_worker_image: Ubuntu
+      appveyor_build_worker_image: Ubuntu1804
       CC: clang
       CXX: clang++
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
@@ -49,14 +49,14 @@ environment:
       cmake_build_parallel: ""
 
     - job_name: gcc, C++17
-      appveyor_build_worker_image: Ubuntu
+      appveyor_build_worker_image: Ubuntu1804
       CC: gcc
       CXX: g++
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
       cmake_build_parallel: ""
 
     - job_name: clang, C++20 (with examples)
-      appveyor_build_worker_image: Ubuntu
+      appveyor_build_worker_image: Ubuntu1804
       CC: clang
       CXX: clang++
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
@@ -65,7 +65,7 @@ environment:
       cmake_build_examples: "-DBUILD_EXAMPLES=ON"
 
     - job_name: gcc, C++20
-      appveyor_build_worker_image: Ubuntu
+      appveyor_build_worker_image: Ubuntu1804
       CC: gcc
       CXX: g++
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
@@ -131,7 +131,7 @@ for:
   # Linux
   matrix:
     only:
-      - appveyor_build_worker_image: Ubuntu
+      - appveyor_build_worker_image: Ubuntu1804
       - appveyor_build_worker_image: Ubuntu2204
   init:
     - |-

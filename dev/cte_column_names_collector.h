@@ -118,13 +118,13 @@ namespace sqlite_orm {
         // No CTE for object expressions.
         template<class Object>
         struct cte_column_names_collector<Object, match_specialization_of<Object, object_t>> {
-            static_assert(polyfill::always_false_v<Object>, "Selecting an object in a subselect is not allowed.");
+            static_assert(polyfill::always_false_v<Object>, "Selecting an object in a subselect is not allowed");
         };
 
         // No CTE for object expressions.
         template<class Object>
         struct cte_column_names_collector<Object, match_if<is_struct, Object>> {
-            static_assert(polyfill::always_false_v<Object>, "Repacking columns in a subselect is not allowed.");
+            static_assert(polyfill::always_false_v<Object>, "Repacking columns in a subselect is not allowed");
         };
 
         template<class Columns>
@@ -158,8 +158,9 @@ namespace sqlite_orm {
         };
 
         template<typename Ctx, typename E, typename ExplicitColRefs, satisfies_is_specialization_of<E, select_t> = true>
-        std::vector<std::string>
-        collect_cte_column_names(const E& sel, const ExplicitColRefs& explicitColRefs, const Ctx& context) {
+        std::vector<std::string> collect_cte_column_names(const E& sel,
+                                                          [[maybe_unused]] const ExplicitColRefs& explicitColRefs,
+                                                          const Ctx& context) {
             // 1. determine column names from subselect
             std::vector<std::string> columnNames = get_cte_column_names(sel.col, context);
 

@@ -10,10 +10,8 @@
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/mpl.h"
-#include "../tuple_helper/tuple_iteration.h"
 #include "../tuple_helper/tuple_filter.h"
-#include "../member_traits/member_traits.h"
-#include "../field_of.h"
+#include "../tuple_helper/tuple_transformer.h"
 #include "../type_traits.h"
 #include "../constraints.h"
 #include "../table_info.h"
@@ -117,6 +115,25 @@ namespace sqlite_orm {
 
         template<class T>
         using is_base_table = polyfill::bool_constant<is_base_table_v<T>>;
+
+        template<class... Cs>
+        constexpr void validate_base_table_definition() {
+            static_assert(polyfill::conjunction_v<internal::is_base_table_element_or_constraint<Cs>...>,
+                          "Incorrect base table elements or constraints");
+
+            using elements_type = std::tuple<Cs...>;
+            using pk_index_sequence = filter_tuple_sequence_t<elements_type, is_primary_key>;
+            using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
+
+            static_assert(pk_index_sequence::size() + pkcol_index_sequence::size() <= 1,
+                          "A base table can only have 1 primary key definition");
+            if constexpr (pk_index_sequence::size() > 0) {
+                constexpr size_t nTablePrimaryKeyColumns =
+                    nested_tuple_size_for_t<columns_tuple_t, elements_type, pk_index_sequence>::value;
+
+                static_assert(nTablePrimaryKeyColumns > 0, "Table primary key definition must contain one column");
+            }
+        }
     }
 }
 
@@ -128,10 +145,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::base_table<T, std::false_type, Cs...> make_table(std::string name, Cs... definition) {
-        static_assert(polyfill::conjunction_v<internal::is_base_table_element_or_constraint<Cs>...>,
-                      "Incorrect table elements or constraints");
-
-        return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(definition)...)};
+        internal::validate_base_table_definition<Cs...>();
+        return {std::move(name), std::tuple{std::forward<Cs>(definition)...}};
     }
 
     /**
@@ -141,10 +156,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T, class... Cs>
     internal::base_table<T, std::false_type, Cs...> make_table(std::string name, Cs... definition) {
-        static_assert(polyfill::conjunction_v<internal::is_base_table_element_or_constraint<Cs>...>,
-                      "Incorrect table elements or constraints");
-
-        return {std::move(name), std::make_tuple<Cs...>(std::forward<Cs>(definition)...)};
+        internal::validate_base_table_definition<Cs...>();
+        return {std::move(name), std::tuple{std::forward<Cs>(definition)...}};
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES

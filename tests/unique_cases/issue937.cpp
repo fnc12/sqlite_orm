@@ -8,25 +8,25 @@ using namespace sqlite_orm;
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 TEST_CASE("issue937") {
     struct Employee {
-        int m_empno;
+        int64 m_empno;
         std::string m_ename;
         std::string m_job;
         std::optional<int> m_mgr;
         std::string m_hiredate;
         double m_salary;
         std::optional<double> m_commission;
-        int m_depno;
+        int64 m_depno;
     };
 
     struct Department {
-        int m_deptno;
+        int64 m_deptno;
         std::string m_deptname;
         std::string m_loc;
     };
 
     struct EmpBonus {
-        int m_id;
-        int m_empno;
+        int64 m_id;
+        int64 m_empno;
         std::string m_received;  // date
         int m_type;
     };
@@ -66,7 +66,7 @@ TEST_CASE("issue937") {
 
     auto statement = storage.prepare(select(union_all(
         select(columns(as<NamesAlias>(&Department::m_deptname), as_optional(&Department::m_deptno))),
-        select(union_all(select(columns(quote("--------------------"), std::optional<int>())),
+        select(union_all(select(columns(quote("--------------------"), std::optional<int64>())),
                          select(columns(as<NamesAlias>(&Employee::m_ename), as_optional(&Employee::m_depno))))))));
 #if SQLITE_VERSION_NUMBER >= 3014000
     auto sql = statement.expanded_sql();

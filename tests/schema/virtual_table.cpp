@@ -13,9 +13,9 @@ namespace {
     };
 }
 
-#if SQLITE_VERSION_NUMBER >= 3009000
 using namespace sqlite_orm;
 
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
 TEST_CASE("fts5 virtual table schema") {
     using Catch::Matchers::UnorderedEquals;
     struct Post {
@@ -131,13 +131,13 @@ TEST_CASE("fts5 virtual table schema") {
 
 TEST_CASE("issue1410") {
     struct NormalTable {
-        int id;
+        int64 id;
         std::string text;
         int otherValue;
     };
 
     struct SearchTable {
-        int normal_table_id;
+        int64 normal_table_id;
         std::string text;
     };
 

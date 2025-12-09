@@ -10,7 +10,7 @@ using namespace sqlite_orm;
 
 namespace {
     struct Employee {
-        int id = 0;
+        int64 id = 0;
         std::string firstName;
         std::string lastName;
         float salary = 0;

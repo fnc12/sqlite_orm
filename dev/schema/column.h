@@ -1,18 +1,19 @@
 #pragma once
 
+#include <sqlite3.h>  //  sqlite_int64
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <tuple>  //  std::tuple
 #include <string>  //  std::string
 #include <memory>  //  std::unique_ptr
-#include <type_traits>  //  std::is_same, std::is_member_object_pointer
+#include <type_traits>  //  std::enable_if, std::is_same, std::is_member_object_pointer, std::is_signed
 #include <utility>  //  std::move
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../tuple_helper/tuple_traits.h"
 #include "../tuple_helper/tuple_filter.h"
-#include "../type_traits.h"
 #include "../member_traits/member_traits.h"
+#include "../type_traits.h"
 #include "../type_is_nullable.h"
 #include "../constraints.h"
 
@@ -77,11 +78,19 @@ namespace sqlite_orm {
             constraints_type constraints;
 
             /**
-             *  Checks whether contraints contain specified type.
+             *  Checks whether constraints contain specified type.
              */
             template<template<class...> class Trait>
             constexpr static bool is() {
                 return tuple_has<constraints_type, Trait>::value;
+            }
+
+            /**
+             *  Checks whether constraints contain specified class template.
+             */
+            template<template<class...> class Primary>
+            constexpr static bool is_template() {
+                return tuple_has_template<constraints_type, Primary>::value;
             }
 
             /**
@@ -165,19 +174,66 @@ namespace sqlite_orm {
             field_type_t,
             filter_tuple_sequence_t<Elements, mpl::disjunction_fn<is_column, is_hidden_column>::template fn>>;
 
-#if SQLITE_VERSION_NUMBER >= 3031000
+        // Custom type:
+        // It is the programmer's responsibility to ensure data integrity in the value range of the custom type
+        // and in purview of SQLite using a 64-bit signed integer.
+        template<class F, class SFINAE = void>
+        struct check_pkcol {
+            static constexpr void validate_column_primary_key_with_autoincrement() {}
+        };
+
+        // For integer types: further checks
+        template<class F>
+        struct check_pkcol<F, std::enable_if_t<std::is_integral<F>::value>> {
+            // For 64-bit signed integer type: valid
+            template<class X = F,
+                     std::enable_if_t<sizeof(X) == sizeof(sqlite_int64) &&
+                                          std::is_signed<X>::value == std::is_signed<sqlite_int64>::value,
+                                      bool> = true>
+            static constexpr void validate_column_primary_key_with_autoincrement() {}
+
+            // Design decision for integral types other than 64-bit signed integer:
+            // It is the programmer's responsibility to ensure data integrity in the value range of the integral type
+            // and in purview of SQLite using a 64-bit signed integer.
+            template<class X = F,
+                     std::enable_if_t<sizeof(X) != sizeof(sqlite_int64) ||
+                                          std::is_signed<X>::value != std::is_signed<sqlite_int64>::value,
+                                      bool> = true>
+            static constexpr void validate_column_primary_key_with_autoincrement() {}
+        };
+
+        // For non-integer types: static_assert failure
+        template<class F>
+        struct check_pkcol<F, std::enable_if_t<!std::is_base_of<integer_printer, type_printer<F>>::value>> {
+            static constexpr void validate_column_primary_key_with_autoincrement() {
+                static_assert(
+                    polyfill::always_false_v<F>,
+                    R"(AUTOINCREMENT is only allowed on an INTEGER PRIMARY KEY as an alias for the "rowid" key)");
+            }
+        };
+
+        template<class G, class... Op>
+        constexpr void validate_column_definition() {
+            using constraints_type = std::tuple<Op...>;
+
+            static_assert(polyfill::conjunction_v<is_column_constraint<Op>...>, "Incorrect column constraints");
+
+            if constexpr (tuple_has_template<constraints_type, primary_key_with_autoincrement>::value) {
+                check_pkcol<member_field_type_t<G>>::validate_column_primary_key_with_autoincrement();
+            }
+        }
+
         /**
          *  Factory function for a column definition from a member object pointer for hidden virtual table columns.
          */
         template<class M, class... Op, satisfies<std::is_member_object_pointer, M> = true>
         hidden_column<M, empty_setter, Op...> make_hidden_column(std::string name, M memberPointer, Op... constraints) {
-            static_assert(polyfill::conjunction_v<is_column_constraint<Op>...>, "Incorrect constraints pack");
+            static_assert(polyfill::conjunction_v<is_column_constraint<Op>...>, "Incorrect column constraints");
 
             // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
             // as this will lead to UB with Clang on MinGW!
             return {std::move(name), memberPointer, {}, std::tuple<Op...>{std::move(constraints)...}};
         }
-#endif
     }
 }
 
@@ -188,7 +244,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class M, class... Op, internal::satisfies<std::is_member_object_pointer, M> = true>
     internal::column_t<M, internal::empty_setter, Op...>
     make_column(std::string name, M memberPointer, Op... constraints) {
-        static_assert(polyfill::conjunction_v<internal::is_column_constraint<Op>...>, "Incorrect constraints pack");
+        internal::validate_column_definition<M, Op...>();
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
         // as this will lead to UB with Clang on MinGW!
@@ -206,7 +262,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::column_t<G, S, Op...> make_column(std::string name, S setter, G getter, Op... constraints) {
         static_assert(std::is_same<internal::setter_field_type_t<S>, internal::getter_field_type_t<G>>::value,
                       "Getter and setter must get and set same data type");
-        static_assert(polyfill::conjunction_v<internal::is_column_constraint<Op>...>, "Incorrect constraints pack");
+        internal::validate_column_definition<G, Op...>();
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
         // as this will lead to UB with Clang on MinGW!
@@ -224,7 +280,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::column_t<G, S, Op...> make_column(std::string name, G getter, S setter, Op... constraints) {
         static_assert(std::is_same<internal::setter_field_type_t<S>, internal::getter_field_type_t<G>>::value,
                       "Getter and setter must get and set same data type");
-        static_assert(polyfill::conjunction_v<internal::is_column_constraint<Op>...>, "Incorrect constraints pack");
+        internal::validate_column_definition<G, Op...>();
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
         // as this will lead to UB with Clang on MinGW!

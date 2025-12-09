@@ -26,7 +26,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         too_many_tables_specified,
         incorrect_set_fields_specified,
         column_not_found,
-        table_has_no_primary_key_column,
         cannot_start_a_transaction_within_a_transaction,
         no_active_transaction,
         incorrect_journal_mode_string,
@@ -75,8 +74,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                     return "Incorrect set fields specified";
                 case orm_error_code::column_not_found:
                     return "Column not found";
-                case orm_error_code::table_has_no_primary_key_column:
-                    return "Table has no primary key column";
                 case orm_error_code::cannot_start_a_transaction_within_a_transaction:
                     return "Cannot start a transaction within a transaction";
                 case orm_error_code::no_active_transaction:

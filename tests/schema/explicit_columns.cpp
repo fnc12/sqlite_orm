@@ -6,7 +6,7 @@ using namespace sqlite_orm;
 
 TEST_CASE("Explicit columns") {
     struct Object {
-        int id;
+        int64 id;
     };
 
     struct User : Object {

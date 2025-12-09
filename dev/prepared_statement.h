@@ -4,7 +4,7 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <memory>  //  std::unique_ptr
 #include <string>  //  std::string
-#include <type_traits>  //  std::integral_constant, std::declval
+#include <type_traits>  //  std::integral_constant, std::declval, std::is_convertible
 #include <utility>  //  std::move, std::forward, std::exchange, std::pair
 #include <tuple>  //  std::tuple
 #endif
@@ -582,6 +582,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class O, class It, class Projection = polyfill::identity>
     internal::replace_range_t<It, Projection, O> replace_range(It from, It to, Projection project = {}) {
+        // validate up front that projected type is convertible to mapped object type, avoiding hard to read error messages later;
+        // note: we use `is_convertible` instead of `is_invocable_r` because we do not create dangling references in `storage_t<>::execute()`
+        using projected_type = decltype(polyfill::invoke(std::declval<Projection>(), *std::declval<It>()));
+        static_assert(std::is_convertible<projected_type, const O&>::value,
+                      "Projected type must be convertible to mapped object type");
+
         return {{std::move(from), std::move(to)}, std::move(project)};
     }
 
@@ -616,6 +622,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class O, class It, class Projection = polyfill::identity>
     internal::insert_range_t<It, Projection, O> insert_range(It from, It to, Projection project = {}) {
+        // validate up front that projected type is convertible to mapped object type, avoiding hard to read error messages later;
+        // note: we use `is_convertible` instead of `is_invocable_r` because we do not create dangling references in `storage_t<>::execute()`
+        using projected_type = decltype(polyfill::invoke(std::declval<Projection>(), *std::declval<It>()));
+        static_assert(std::is_convertible<projected_type, const O&>::value,
+                      "Projected type must be convertible to mapped object type");
+
         return {{std::move(from), std::move(to)}, std::move(project)};
     }
 

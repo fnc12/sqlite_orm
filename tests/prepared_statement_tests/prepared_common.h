@@ -7,7 +7,7 @@
 
 namespace PreparedStatementTests {
     struct User {
-        int id = 0;
+        sqlite_orm::int64 id = 0;
         std::string name;
 
 #ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
@@ -24,7 +24,7 @@ namespace PreparedStatementTests {
     };
 
     struct Visit {
-        int id = 0;
+        sqlite_orm::int64 id = 0;
         decltype(User::id) userId = 0;
         long time = 0;
     };

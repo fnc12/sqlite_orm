@@ -7,7 +7,7 @@ using namespace sqlite_orm;
 //  appeared after #55
 TEST_CASE("Default value") {
     struct User {
-        int userId;
+        int64 userId;
         std::string name;
         int age;
         std::string email;
