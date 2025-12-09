@@ -3,6 +3,7 @@ examples/simple_neural_network.cpp
 
 cmake-build-debug/
 
+.claude/
 .idea/
 
 /compile
