@@ -1,11 +1,12 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::is_member_pointer
+#include <type_traits>  //  std::is_member_pointer, std::remove_cvref
 #include <string>  //  std::string
-#include <tuple>  // std::tuple
+#include <tuple>  // std::tuple, std::tuple_size
 #endif
 
+#include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/cxx_functional_polyfill.h"
 #include "../functional/mpl.h"
 #include "../tuple_helper/tuple_filter.h"
@@ -54,7 +55,7 @@ namespace sqlite_orm::internal {
         }
 
         /*
-         *  Returns the number of columns having the specified constraint trait.
+         *  Returns the number of columns not having the specified constraint trait.
          */
         template<template<class...> class Trait>
         static constexpr int count_of_columns_excluding() {
@@ -111,7 +112,7 @@ namespace sqlite_orm::internal {
     };
 
     /** 
-     *  Encapsulates table elements, i.e. columns and constraints for a type of table that can have primary keys - base tables and usually virtual tables -,
+     *  Encapsulates table elements, i.e. columns and constraints for a type of table that can have a primary key - base tables and usually virtual tables -,
      *  and provides additional methods to those of a generic table definition in order to deal with primary key columns.
      */
     template<class... Cs>
@@ -120,18 +121,21 @@ namespace sqlite_orm::internal {
         using elements_type = elements_type_t<definition_base_type>;
 
         /**
-         *  Call passed lambda with all defined primary keys.
+         *  Call passed lambda with the defined table primary key.
          */
         template<class L>
-        void for_each_primary_key(L&& lambda) const {
+        void visit_table_primary_key(L&& lambda) const {
             using pk_index_sequence = filter_tuple_sequence_t<elements_type, is_primary_key>;
+            // note: already checked in `validate_base_table_definition()`
+            static_assert(pk_index_sequence::size() <= 1);
+            // note: we use the tuple iteration function for simplicity, even if we know there is at most one primary key
             iterate_tuple(this->elements, pk_index_sequence{}, lambda);
         }
 
-        std::vector<std::string> composite_key_columns_names() const {
+        std::vector<std::string> table_key_columns_names() const {
             std::vector<std::string> res;
-            this->for_each_primary_key([this, &res](auto& primaryKey) {
-                res = this->composite_key_columns_names(primaryKey);
+            this->visit_table_primary_key([this, &res](auto& primaryKey) {
+                res = this->table_key_columns_names(primaryKey);
             });
             return res;
         }
@@ -144,7 +148,7 @@ namespace sqlite_orm::internal {
                                                                    pkcol_index_sequence{},
                                                                    &column_identifier::name);
             } else {
-                return this->composite_key_columns_names();
+                return this->table_key_columns_names();
             }
         }
 
@@ -155,13 +159,13 @@ namespace sqlite_orm::internal {
                           call_as_template_base<column_field>([&lambda](const auto& column) {
                               lambda(column.member_pointer);
                           }));
-            this->for_each_primary_key([&lambda](auto& primaryKey) {
+            this->visit_table_primary_key([&lambda](auto& primaryKey) {
                 iterate_tuple(primaryKey.columns, lambda);
             });
         }
 
         template<class... Args>
-        std::vector<std::string> composite_key_columns_names(const primary_key_t<Args...>& primaryKey) const {
+        std::vector<std::string> table_key_columns_names(const primary_key_t<Args...>& primaryKey) const {
             return create_from_tuple<std::vector<std::string>>(primaryKey.columns,
                                                                [this, empty = std::string{}](auto& memberPointer) {
                                                                    if (const std::string* columnName =
@@ -175,22 +179,48 @@ namespace sqlite_orm::internal {
     };
 
     template<class... Cs, class G, class S>
-    bool exists_in_composite_primary_key(const insertable_table_definition<Cs...>& definition,
-                                         const column_field<G, S>& column) {
+    bool table_primary_key_contains([[maybe_unused]] const insertable_table_definition<Cs...>& definition,
+                                    [[maybe_unused]] const column_field<G, S>& column) {
         bool res = false;
-        definition.for_each_primary_key([&column, &res](auto& primaryKey) {
-            using colrefs_tuple = decltype(primaryKey.columns);
-            using same_type_index_sequence =
-                filter_tuple_sequence_t<colrefs_tuple,
-                                        check_if_is_type<member_field_type_t<G>>::template fn,
-                                        member_field_type_t>;
-            iterate_tuple(primaryKey.columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
-                if (compare_fields(memberPointer, column.member_pointer) ||
-                    compare_fields(memberPointer, column.setter)) {
-                    res = true;
+        // note: though `visit_table_primary_key()` does no work if a column primary key exists, we try to save the compiler some work with this check up front
+        if constexpr (/*bool hasNoColumnPK =*/!insertable_table_definition<Cs...>::template count_of_columns_with<
+                      is_primary_key>()) {
+            definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
+                using colrefs_tuple = decltype(primaryKey.columns);
+                using same_type_index_sequence =
+                    filter_tuple_sequence_t<colrefs_tuple,
+                                            check_if_is_type<member_field_type_t<G>>::template fn,
+                                            member_field_type_t>;
+                iterate_tuple(primaryKey.columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
+                    if (compare_fields(memberPointer, column.member_pointer) ||
+                        compare_fields(memberPointer, column.setter)) {
+                        res = true;
+                    }
+                });
+            });
+        }
+        return res;
+    }
+
+    template<class... Cs, class G, class S>
+    bool is_single_table_primary_key([[maybe_unused]] const insertable_table_definition<Cs...>& definition,
+                                     [[maybe_unused]] const column_field<G, S>& column) {
+        bool res = false;
+        // note: though `visit_table_primary_key()` does no work if a column primary key exists, we try to save the compiler some work with this check up front
+        if constexpr (/*bool hasNoColumnPK =*/!insertable_table_definition<Cs...>::template count_of_columns_with<
+                      is_primary_key>()) {
+            definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
+                // note: use `decltype(primaryKey)` instead of `decltype(primaryKey.columns)` otherwise msvc 141 chokes on the `if constexpr` below
+                using colrefs_tuple = columns_tuple_t<polyfill::remove_cvref_t<decltype(primaryKey)>>;
+                if constexpr (std::tuple_size<colrefs_tuple>::value == 1) {
+                    auto& memberPointer = std::get<0>(primaryKey.columns);
+                    if (compare_fields(memberPointer, column.member_pointer) ||
+                        compare_fields(memberPointer, column.setter)) {
+                        res = true;
+                    }
                 }
             });
-        });
+        }
         return res;
     }
 

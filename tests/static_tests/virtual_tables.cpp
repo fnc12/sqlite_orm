@@ -83,7 +83,7 @@ TEST_CASE("generate_series layout tests") {
 }
 #endif
 
-#if SQLITE_VERSION_NUMBER >= 3009000
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
 TEST_CASE("fts5 layout tests") {
     using internal::fts5_module_tag;
     struct Post {

@@ -1,32 +1,53 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch_all.hpp>
-#include <type_traits>  //  std::decay
+#include <cstdint>
 
 using namespace sqlite_orm;
+using internal::count_tuple, internal::is_pkcol_implicitly_insertable;
 
-TEST_CASE("is_primary_key_insertable") {
+namespace {
+    struct CustomRowIdKeyType {
+        std::uint32_t low;
+        std::int32_t high;
+    };
+}
+template<>
+struct sqlite_orm::type_printer<CustomRowIdKeyType> : public integer_printer {};
+
+TEST_CASE("is_pkcol_implicitly_insertable") {
     struct User {
-        int id;
+        int intId;
+        int64 int64Id;
+        long long longlongId;  // note: distinct from `int64` depending on platform
+        bool boolId;
+        CustomRowIdKeyType customId;
         std::string username;
-        std::string password;
-        bool isActive;
     };
 
-    auto insertable = std::make_tuple(  ///
-        make_column("", &User::id, primary_key()),
+    std::tuple columns(
+        ///
+        /// implicitly insertable
+        ///
+        //  works but deprecated
+        make_column("", &User::intId, primary_key()),
+        //  works but deprecated
+        make_column("", &User::intId, primary_key().autoincrement()),
+        make_column("", &User::int64Id, primary_key()),
+        make_column("", &User::int64Id, primary_key().autoincrement()),
+        make_column("", &User::longlongId, primary_key()),
+        make_column("", &User::longlongId, primary_key().autoincrement()),
+        //  works but deprecated
+        make_column("", &User::boolId, primary_key()),
+        //  works but deprecated
+        make_column("", &User::boolId, primary_key().autoincrement()),
+        make_column("", &User::customId, primary_key()),
+        make_column("", &User::customId, primary_key().autoincrement()),
         make_column("", &User::username, primary_key(), default_value("Clint Eastwood")),
         make_column("", &User::username, primary_key(), default_value(std::vector<int>{})),
-        make_column("", &User::username, primary_key().autoincrement()));
+        ///
+        /// not implicitly insertable
+        ///
+        make_column("", &User::username, primary_key()));
 
-    auto noninsertable = std::make_tuple(  ///
-        make_column("", &User::username, primary_key()),
-        make_column("", &User::password, primary_key()));
-
-    iterate_tuple(insertable, [](auto& v) {
-        STATIC_REQUIRE(internal::is_primary_key_insertable<std::decay_t<decltype(v)>>::value);
-    });
-
-    iterate_tuple(noninsertable, [](auto& v) {
-        STATIC_REQUIRE_FALSE(internal::is_primary_key_insertable<std::decay_t<decltype(v)>>::value);
-    });
+    STATIC_REQUIRE(count_tuple<decltype(columns), is_pkcol_implicitly_insertable>::value == 12);
 }

@@ -44,17 +44,17 @@ namespace sqlite_orm {
                                  column.template is<is_primary_key>(),
                                  column.template is<is_generated_always>());
             });
-            auto compositeKeyColumnNames = this->composite_key_columns_names();
+            const auto tableKeyColumnNames = this->table_key_columns_names();
 #if defined(SQLITE_ORM_INITSTMT_RANGE_BASED_FOR_SUPPORTED) && defined(SQLITE_ORM_CPP20_RANGES_SUPPORTED)
-            for (int n = 1; const std::string& columnName: compositeKeyColumnNames) {
+            for (int n = 1; const std::string& columnName: tableKeyColumnNames) {
                 if (auto it = std::ranges::find(res, columnName, &table_xinfo::name); it != res.end()) {
                     it->pk = n;
                 }
                 ++n;
             }
 #else
-            for (size_t i = 0; i < compositeKeyColumnNames.size(); ++i) {
-                const std::string& columnName = compositeKeyColumnNames[i];
+            for (size_t i = 0; i < tableKeyColumnNames.size(); ++i) {
+                const std::string& columnName = tableKeyColumnNames[i];
                 auto it = std::find_if(res.begin(), res.end(), [&columnName](const table_xinfo& ti) {
                     return ti.name == columnName;
                 });

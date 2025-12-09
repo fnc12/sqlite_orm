@@ -38,8 +38,8 @@ TEST_CASE("Prepared insert range") {
     storage.replace(User{2, "Shy'm"});
     storage.replace(User{3, "Maître Gims"});
 
-    storage.replace(UserAndVisit{2, 1, "Glad you came"});
-    storage.replace(UserAndVisit{3, 1, "Shine on"});
+    storage.insert(UserAndVisit{2, 1, "Glad you came"});
+    storage.insert(UserAndVisit{3, 1, "Shine on"});
 
     std::vector<User> users;
     std::vector<User> expected{{1, "Team BS"}, {2, "Shy'm"}, {3, "Maître Gims"}};
@@ -78,6 +78,13 @@ TEST_CASE("Prepared insert range") {
                 insert_range(usersPointers.begin(), usersPointers.end(), &std::unique_ptr<User>::operator*));
             REQUIRE(get<0>(statement) == usersPointers.begin());
             REQUIRE(get<1>(statement) == usersPointers.end());
+            storage.execute(statement);
+        }
+        SECTION("container with references") {
+            std::vector<std::reference_wrapper<User>> usersRefs{users.begin(), users.end()};
+            auto statement = storage.prepare(insert_range<User>(usersRefs.begin(), usersRefs.end()));
+            REQUIRE(get<0>(statement) == usersRefs.begin());
+            REQUIRE(get<1>(statement) == usersRefs.end());
             storage.execute(statement);
         }
         expected.push_back(user);

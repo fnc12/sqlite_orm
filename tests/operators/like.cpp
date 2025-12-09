@@ -5,7 +5,7 @@ using namespace sqlite_orm;
 
 TEST_CASE("Like operator") {
     struct User {
-        int id = 0;
+        int64 id = 0;
         std::string name;
     };
     struct Pattern {

@@ -5,16 +5,16 @@ using namespace sqlite_orm;
 
 TEST_CASE("issue525") {
     struct User {
-        int id;
+        int64 id;
         std::string firstName;
         std::string lastName;
         int birthDate;
         std::unique_ptr<std::string> imageUrl;
-        int typeId;
+        int64 typeId;
     };
 
     struct UserType {
-        int id;
+        int64 id;
         std::string name;
     };
 

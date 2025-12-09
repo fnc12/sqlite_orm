@@ -36,7 +36,7 @@ TEST_CASE("foreign key static") {
         std::string includee_path;
     };
     struct VarDecl {
-        int id;
+        int64 id;
         std::string name;
         std::string type;
         bool is_global;
@@ -44,11 +44,11 @@ TEST_CASE("foreign key static") {
     };
     struct Base {
         // Note: `long` was chosen as a different type than `int` for the primary key columns to ensure that the following static asserts work as expected.
-        long id;
-        long id2;
+        long long id;
+        long long id2;
 
-        int parentId;
-        int parentId2;
+        int64 parentId;
+        int64 parentId2;
     };
     struct Derived : Base {};
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES

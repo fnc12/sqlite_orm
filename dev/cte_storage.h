@@ -269,7 +269,7 @@ namespace sqlite_orm {
                     (!is_builtin_numeric_column_alias_v<
                          alias_holder_type_or_none_t<std::tuple_element_t<Idx, ExplicitColRefs>>> &&
                      ...),
-                    "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
+                    "Numeric column aliases are reserved for referencing columns locally within a single CTE");
 
                 return std::tuple{
                     determine_cte_colref(dbObjects, get<Idx>(subselectColRefs), get<Idx>(explicitColRefs))...};

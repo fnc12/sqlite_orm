@@ -606,7 +606,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         using namespace ::sqlite_orm::internal;
         static_assert(is_cte_moniker_v<Moniker>, "Moniker must be a CTE moniker");
         static_assert((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
-                      "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
+                      "Numeric column aliases are reserved for referencing columns locally within a single CTE");
 
         using builder_type =
             cte_builder<Moniker, transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;
@@ -623,7 +623,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     constexpr auto cte(ExplicitCols... explicitColumns) {
         using namespace ::sqlite_orm::internal;
         static_assert((!is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
-                      "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
+                      "Numeric column aliases are reserved for referencing columns locally within a single CTE");
 
         using builder_type = cte_builder<std::remove_const_t<decltype(moniker)>,
                                          transform_tuple_t<std::tuple<ExplicitCols...>, decay_explicit_column_t>>;

@@ -2158,6 +2158,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         }
     }
 
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
     struct fts5;
 
     /** 
@@ -2221,5 +2222,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     highlight(F Hidden::* /*theAnyField*/, X x, Y y, Z z) {
         return {std::move(x), std::move(y), std::move(z)};
     }
+#endif
 #endif
 }

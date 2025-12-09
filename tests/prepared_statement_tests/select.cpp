@@ -35,8 +35,8 @@ TEST_CASE("Prepared select") {
     storage.replace(User{2, "Shy'm"});
     storage.replace(User{3, "Maître Gims"});
 
-    storage.replace(UserAndVisit{2, 1, "Glad you came"});
-    storage.replace(UserAndVisit{3, 1, "Shine on"});
+    storage.insert(UserAndVisit{2, 1, "Glad you came"});
+    storage.insert(UserAndVisit{3, 1, "Shine on"});
 
     SECTION("const access to bindable") {
         auto statement = storage.prepare(select(10));
@@ -165,7 +165,7 @@ TEST_CASE("Prepared select") {
             }
             SECTION("execute") {
                 auto rows = storage.execute(statement);
-                REQUIRE_THAT(rows, UnorderedEquals<int>({1, 2, 3}));
+                REQUIRE_THAT(rows, UnorderedEquals<int64>({1, 2, 3}));
             }
         }
     }
@@ -194,7 +194,7 @@ TEST_CASE("Prepared select") {
             }
             SECTION("execute") {
                 auto rows = storage.execute(statement);
-                REQUIRE_THAT(rows, UnorderedEquals<int>({1, 3}));
+                REQUIRE_THAT(rows, UnorderedEquals<int64>({1, 3}));
             }
         }
         SECTION("by ref") {
@@ -209,7 +209,7 @@ TEST_CASE("Prepared select") {
             }
             SECTION("execute") {
                 auto rows = storage.execute(statement);
-                REQUIRE_THAT(rows, UnorderedEquals<int>({1, 3}));
+                REQUIRE_THAT(rows, UnorderedEquals<int64>({1, 3}));
             }
         }
     }
@@ -226,7 +226,7 @@ TEST_CASE("Prepared select") {
             }
             SECTION("execute") {
                 auto rows = storage.execute(statement);
-                REQUIRE_THAT(rows, UnorderedEquals<int>({1}));
+                REQUIRE_THAT(rows, UnorderedEquals<int64>({1}));
             }
         }
         SECTION("by ref") {
@@ -245,7 +245,7 @@ TEST_CASE("Prepared select") {
             }
             SECTION("execute") {
                 auto rows = storage.execute(statement);
-                REQUIRE_THAT(rows, UnorderedEquals<int>({1}));
+                REQUIRE_THAT(rows, UnorderedEquals<int64>({1}));
             }
         }
     }
@@ -258,7 +258,7 @@ TEST_CASE("Prepared select") {
         }
         SECTION("execute") {
             auto rows = storage.execute(statement);
-            std::vector<std::tuple<int, std::string>> expected;
+            std::vector<std::tuple<int64, std::string>> expected;
             expected.push_back(std::make_tuple(1, "Team BS"));
             expected.push_back(std::make_tuple(2, "Shy'm"));
             expected.push_back(std::make_tuple(3, "Maître Gims"));
@@ -276,7 +276,7 @@ TEST_CASE("Prepared select") {
             }
             SECTION("execute") {
                 auto rows = storage.execute(statement);
-                std::vector<std::tuple<std::string, int>> expected;
+                std::vector<std::tuple<std::string, int64>> expected;
                 expected.push_back(std::make_tuple("Shy'm", 2));
                 REQUIRE_THAT(rows, UnorderedEquals(expected));
             }
@@ -298,7 +298,7 @@ TEST_CASE("Prepared select") {
             }
             SECTION("execute") {
                 auto rows = storage.execute(statement);
-                std::vector<std::tuple<std::string, int>> expected;
+                std::vector<std::tuple<std::string, int64>> expected;
                 expected.push_back(std::make_tuple("Shy'm", 2));
                 REQUIRE_THAT(rows, UnorderedEquals(expected));
             }
@@ -342,7 +342,7 @@ TEST_CASE("Prepared select") {
         }
         SECTION("execute") {
             auto rows = storage.execute(statement);
-            std::vector<std::tuple<User, int, std::string, User>> expected;
+            std::vector<std::tuple<User, int64, std::string, User>> expected;
             expected.push_back({User{1, "Team BS"}, 1, "Team BS", User{1, "Team BS"}});
             expected.push_back({User{2, "Shy'm"}, 2, "Shy'm", User{2, "Shy'm"}});
             expected.push_back({User{3, "Maître Gims"}, 3, "Maître Gims", User{3, "Maître Gims"}});

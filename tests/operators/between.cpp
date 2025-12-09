@@ -5,7 +5,7 @@ using namespace sqlite_orm;
 
 TEST_CASE("Between") {
     struct Object {
-        int id = 0;
+        int64 id = 0;
     };
 
     auto storage =

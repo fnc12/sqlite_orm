@@ -12,18 +12,18 @@ TEST_CASE("Unique") {
 #endif
 
     struct Contact {
-        int id = 0;
+        int64 id = 0;
         std::string firstName;
         std::string lastName;
         std::string email;
     };
     struct Shape {
-        int id = 0;
+        int64 id = 0;
         std::string backgroundColor;
         std::string foregroundColor;
     };
     struct List {
-        int id = 0;
+        int64 id = 0;
         std::unique_ptr<std::string> email;
     };
 
