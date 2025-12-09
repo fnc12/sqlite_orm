@@ -4,16 +4,13 @@
 #include <utility>  //  std::move
 #endif
 
-namespace sqlite_orm {
-    namespace internal {
+namespace sqlite_orm::internal {
+    template<class T>
+    struct excluded_t {
+        using expression_type = T;
 
-        template<class T>
-        struct excluded_t {
-            using expression_type = T;
-
-            expression_type expression;
-        };
-    }
+        expression_type expression;
+    };
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

@@ -8,29 +8,24 @@
 
 #include "functional/cxx_type_traits_polyfill.h"
 
-namespace sqlite_orm {
+namespace sqlite_orm::internal {
+    template<class... Args>
+    struct values_t {
+        using args_tuple = std::tuple<Args...>;
 
-    namespace internal {
+        args_tuple tuple;
+    };
 
-        template<class... Args>
-        struct values_t {
-            using args_tuple = std::tuple<Args...>;
+    template<class T>
+    inline constexpr bool is_values_v = polyfill::is_specialization_of<T, values_t>::value;
 
-            args_tuple tuple;
-        };
+    template<class T>
+    using is_values = polyfill::bool_constant<is_values_v<T>>;
 
-        template<class T>
-        inline constexpr bool is_values_v = polyfill::is_specialization_of<T, values_t>::value;
-
-        template<class T>
-        using is_values = polyfill::bool_constant<is_values_v<T>>;
-
-        template<class T>
-        struct dynamic_values_t {
-            std::vector<T> vector;
-        };
-
-    }
+    template<class T>
+    struct dynamic_values_t {
+        std::vector<T> vector;
+    };
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

@@ -4,50 +4,48 @@
 #include <utility>  //  std::index_sequence
 #endif
 
-namespace sqlite_orm {
-    namespace internal {
+namespace sqlite_orm::internal {
 #if defined(SQLITE_ORM_PACK_INDEXING_SUPPORTED)
-        /**
-         *  Get the index value of an `index_sequence` at a specific position.
-         */
-        template<size_t Pos, size_t... Idx>
-        SQLITE_ORM_CONSTEVAL auto index_sequence_value_at(std::index_sequence<Idx...>) {
-            return Idx...[Pos];
-        }
-#else
-        /**
-         *  Get the index value of an `index_sequence` at a specific position.
-         */
-        template<size_t Pos, size_t... Idx>
-        SQLITE_ORM_CONSTEVAL size_t index_sequence_value_at(std::index_sequence<Idx...>) {
-            static_assert(Pos < sizeof...(Idx));
-#ifdef SQLITE_ORM_TRIVIAL_DEFAULTINIT_SUPPORTED
-            size_t result;
-#else
-            size_t result = 0;
-#endif
-            size_t i = 0;
-            // note: `(void)` cast silences warning 'expression result unused'
-            (void)((result = Idx, i++ == Pos) || ...);
-            return result;
-        }
-#endif
-
-        template<class... Seq>
-        struct flatten_idxseq {
-            using type = std::index_sequence<>;
-        };
-
-        template<size_t... Ix>
-        struct flatten_idxseq<std::index_sequence<Ix...>> {
-            using type = std::index_sequence<Ix...>;
-        };
-
-        template<size_t... As, size_t... Bs, class... Seq>
-        struct flatten_idxseq<std::index_sequence<As...>, std::index_sequence<Bs...>, Seq...>
-            : flatten_idxseq<std::index_sequence<As..., Bs...>, Seq...> {};
-
-        template<class... Seq>
-        using flatten_idxseq_t = typename flatten_idxseq<Seq...>::type;
+    /**
+     *  Get the index value of an `index_sequence` at a specific position.
+     */
+    template<size_t Pos, size_t... Idx>
+    SQLITE_ORM_CONSTEVAL auto index_sequence_value_at(std::index_sequence<Idx...>) {
+        return Idx...[Pos];
     }
+#else
+    /**
+     *  Get the index value of an `index_sequence` at a specific position.
+     */
+    template<size_t Pos, size_t... Idx>
+    SQLITE_ORM_CONSTEVAL size_t index_sequence_value_at(std::index_sequence<Idx...>) {
+        static_assert(Pos < sizeof...(Idx));
+#ifdef SQLITE_ORM_TRIVIAL_DEFAULTINIT_SUPPORTED
+        size_t result;
+#else
+        size_t result = 0;
+#endif
+        size_t i = 0;
+        // note: `(void)` cast silences warning 'expression result unused'
+        (void)((result = Idx, i++ == Pos) || ...);
+        return result;
+    }
+#endif
+
+    template<class... Seq>
+    struct flatten_idxseq {
+        using type = std::index_sequence<>;
+    };
+
+    template<size_t... Ix>
+    struct flatten_idxseq<std::index_sequence<Ix...>> {
+        using type = std::index_sequence<Ix...>;
+    };
+
+    template<size_t... As, size_t... Bs, class... Seq>
+    struct flatten_idxseq<std::index_sequence<As...>, std::index_sequence<Bs...>, Seq...>
+        : flatten_idxseq<std::index_sequence<As..., Bs...>, Seq...> {};
+
+    template<class... Seq>
+    using flatten_idxseq_t = typename flatten_idxseq<Seq...>::type;
 }

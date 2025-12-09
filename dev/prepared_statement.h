@@ -22,357 +22,352 @@
 #include "ast/upsert_clause.h"
 #include "ast/set.h"
 
-namespace sqlite_orm {
-
-    namespace internal {
-
-        struct prepared_statement_base {
-            orm_gsl::owner<sqlite3_stmt*> stmt = nullptr;
-            connection_ref con;
-
-            ~prepared_statement_base() {
-                sqlite3_finalize(this->stmt);
-            }
-
-            std::string sql() const {
-                // note: sqlite3 internally checks for null before calling
-                // sqlite3_normalized_sql() or sqlite3_expanded_sql(), so check here, too, even if superfluous
-                if (orm_gsl::czstring sql = sqlite3_sql(this->stmt)) {
-                    return sql;
-                } else {
-                    return {};
-                }
-            }
-
-#if SQLITE_VERSION_NUMBER >= 3014000
-            std::string expanded_sql() const {
-                // note: must check return value due to SQLITE_OMIT_TRACE
-#ifndef SQLITE_ORM_CLANG_MSVC
-                using char_ptr = std::unique_ptr<char[], std::integral_constant<decltype(&sqlite3_free), sqlite3_free>>;
-#else
-                struct sqlite3_memory_deleter {
-                    SQLITE_ORM_STATIC_CALLOP void operator()(void* mem) SQLITE_ORM_OR_CONST_CALLOP noexcept {
-                        sqlite3_free(mem);
-                    }
-                };
-                using char_ptr = std::unique_ptr<char[], sqlite3_memory_deleter>;
-#endif
-
-                if (char_ptr sql{sqlite3_expanded_sql(this->stmt)}) {
-                    return sql.get();
-                } else {
-                    return {};
-                }
-            }
-#endif
-#if SQLITE_VERSION_NUMBER >= 3026000 and defined(SQLITE_ENABLE_NORMALIZE)
-            std::string normalized_sql() const {
-                if (orm_gsl::czstring sql = sqlite3_normalized_sql(this->stmt)) {
-                    return sql;
-                } else {
-                    return {};
-                }
-            }
-#endif
-
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-            std::string_view column_name(int index) const {
-                return sqlite3_column_name(stmt, index);
-            }
-#endif
-        };
-
-        template<class T>
-        struct prepared_statement_t : prepared_statement_base {
-            using expression_type = T;
-
-            expression_type expression;
-
-            prepared_statement_t(T expression_, sqlite3_stmt* stmt_, connection_ref con_) :
-                prepared_statement_base{stmt_, std::move(con_)}, expression(std::move(expression_)) {}
-
-            prepared_statement_t(prepared_statement_t&& prepared_stmt) :
-                prepared_statement_base{std::exchange(prepared_stmt.stmt, nullptr), std::move(prepared_stmt.con)},
-                expression(std::move(prepared_stmt.expression)) {}
-        };
-
-        template<class T>
-        inline constexpr bool is_prepared_statement_v = polyfill::is_specialization_of<T, prepared_statement_t>::value;
-
-        template<class T>
-        struct is_prepared_statement : polyfill::bool_constant<is_prepared_statement_v<T>> {};
-
-        /**
-         *  T - type of object to obtain from a database
-         */
-        template<class T, class R, class... Args>
-        struct get_all_t {
-            using type = T;
-            using return_type = R;
-
-            using conditions_type = std::tuple<Args...>;
-
-            conditions_type conditions;
-        };
-
-        template<class T, class R, class... Args>
-        struct get_all_pointer_t {
-            using type = T;
-            using return_type = R;
-
-            using conditions_type = std::tuple<Args...>;
-
-            conditions_type conditions;
-        };
-
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-        template<class T, class R, class... Args>
-        struct get_all_optional_t {
-            using type = T;
-            using return_type = R;
-
-            using conditions_type = std::tuple<Args...>;
-
-            conditions_type conditions;
-        };
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
-
-        template<class S, class... Wargs>
-        struct update_all_t {
-            using set_type = S;
-            using conditions_type = std::tuple<Wargs...>;
-
-            static_assert(is_set<S>::value, "update_all_t must have set or dynamic set as the first argument");
-
-            set_type set;
-            conditions_type conditions;
-        };
-
-        template<class T>
-        inline constexpr bool is_update_all_v = polyfill::is_specialization_of<T, update_all_t>::value;
-
-        template<class T>
-        using is_update_all = polyfill::bool_constant<is_update_all_v<T>>;
-
-        template<class T, class... Args>
-        struct remove_all_t {
-            using type = T;
-            using conditions_type = std::tuple<Args...>;
-
-            conditions_type conditions;
-        };
-
-        template<class T>
-        inline constexpr bool is_remove_all_v = polyfill::is_specialization_of<T, remove_all_t>::value;
-
-        template<class T>
-        using is_remove_all = polyfill::bool_constant<is_remove_all_v<T>>;
-
-        template<class T, class... Ids>
-        struct get_t {
-            using type = T;
-            using ids_type = std::tuple<Ids...>;
-
-            ids_type ids;
-        };
-
-        template<class T, class... Ids>
-        struct get_pointer_t {
-            using type = T;
-            using ids_type = std::tuple<Ids...>;
-
-            ids_type ids;
-        };
-
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-        template<class T, class... Ids>
-        struct get_optional_t {
-            using type = T;
-            using ids_type = std::tuple<Ids...>;
-
-            ids_type ids;
-        };
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
-
-        template<class T>
-        struct update_t {
-            using type = T;
-
-            type object;
-        };
-
-        template<class T, class... Ids>
-        struct remove_t {
-            using type = T;
-            using ids_type = std::tuple<Ids...>;
-
-            ids_type ids;
-        };
-
-        template<class T>
-        struct insert_t {
-            using type = T;
-
-            type object;
-        };
-
-        template<class T>
-        inline constexpr bool is_insert_v = polyfill::is_specialization_of<T, insert_t>::value;
-
-        template<class T>
-        struct is_insert : polyfill::bool_constant<is_insert_v<T>> {};
-
-        template<class T, class... Cols>
-        struct insert_explicit {
-            using type = T;
-            using columns_type = columns_t<Cols...>;
-
-            type obj;
-            columns_type columns;
-        };
-
-        template<class T>
-        struct replace_t {
-            using type = T;
-
-            type object;
-        };
-
-        template<class T>
-        inline constexpr bool is_replace_v = polyfill::is_specialization_of<T, replace_t>::value;
-
-        template<class T>
-        struct is_replace : polyfill::bool_constant<is_replace_v<T>> {};
-
-        template<class It, class Projection, class O>
-        struct insert_range_t {
-            using iterator_type = It;
-            using transformer_type = Projection;
-            using object_type = O;
-
-            std::pair<iterator_type, iterator_type> range;
-            transformer_type transformer;
-        };
-
-        template<class T>
-        inline constexpr bool is_insert_range_v = polyfill::is_specialization_of<T, insert_range_t>::value;
-
-        template<class T>
-        struct is_insert_range : polyfill::bool_constant<is_insert_range_v<T>> {};
-
-        template<class It, class Projection, class O>
-        struct replace_range_t {
-            using iterator_type = It;
-            using transformer_type = Projection;
-            using object_type = O;
-
-            std::pair<iterator_type, iterator_type> range;
-            transformer_type transformer;
-        };
-
-        template<class T>
-        inline constexpr bool is_replace_range_v = polyfill::is_specialization_of<T, replace_range_t>::value;
-
-        template<class T>
-        struct is_replace_range : polyfill::bool_constant<is_replace_range_v<T>> {};
-
-        template<class... Args>
-        struct insert_raw_t {
-            using args_tuple = std::tuple<Args...>;
-
-            args_tuple args;
-        };
-
-        template<class T>
-        inline constexpr bool is_insert_raw_v = polyfill::is_specialization_of<T, insert_raw_t>::value;
-
-        template<class T>
-        struct is_insert_raw : polyfill::bool_constant<is_insert_raw_v<T>> {};
-
-        template<class... Args>
-        struct replace_raw_t {
-            using args_tuple = std::tuple<Args...>;
-
-            args_tuple args;
-        };
-
-        template<class T>
-        inline constexpr bool is_replace_raw_v = polyfill::is_specialization_of<T, replace_raw_t>::value;
-
-        template<class T>
-        struct is_replace_raw : polyfill::bool_constant<is_replace_raw_v<T>> {};
-
-        struct default_values_t {};
-
-        template<class T>
-        using is_default_values = std::is_same<T, default_values_t>;
-
-        enum class conflict_action {
-            abort,
-            fail,
-            ignore,
-            replace,
-            rollback,
-        };
-
-        struct insert_constraint {
-            conflict_action action = conflict_action::abort;
-        };
-
-        template<class T>
-        using is_insert_constraint = std::is_same<T, insert_constraint>;
-
-        /**
-         *  Specialize if a type is a DML statement expression.
-         */
-        template<class T, class SFINAE = void>
-        inline constexpr bool is_raw_dml_expression_v = false;
-
-        template<class T>
-        using is_raw_dml_expression = polyfill::bool_constant<is_raw_dml_expression_v<T>>;
-
-        template<class DML>
-        inline constexpr bool is_raw_dml_expression_v<
-            DML,
-            std::enable_if_t<
-                polyfill::
-                    disjunction_v<is_insert_raw<DML>, is_replace_raw<DML>, is_update_all<DML>, is_remove_all<DML>>>> =
-            true;
-
-        template<class With>
-        inline constexpr bool is_raw_dml_expression_v<
-            With,
-            std::enable_if_t<polyfill::conjunction_v<is_with_clause<With>,
-                                                     polyfill::disjunction<is_insert_raw<expression_type_t<With>>,
-                                                                           is_replace_raw<expression_type_t<With>>,
-                                                                           is_update_all<expression_type_t<With>>,
-                                                                           is_remove_all<expression_type_t<With>>>>>> =
-            true;
-
-        /*  
-         *  Access the main select expression of a with clause or the passed in select expression.
-         */
-        template<class DML, satisfies<is_raw_dml_expression, DML> = true>
-        constexpr decltype(auto) access_main_dml(const DML& dml) {
-            if constexpr (is_with_clause_v<DML>) {
-                return (dml.expression);
+namespace sqlite_orm::internal {
+    struct prepared_statement_base {
+        orm_gsl::owner<sqlite3_stmt*> stmt = nullptr;
+        connection_ref con;
+
+        ~prepared_statement_base() {
+            sqlite3_finalize(this->stmt);
+        }
+
+        std::string sql() const {
+            // note: sqlite3 internally checks for null before calling
+            // sqlite3_normalized_sql() or sqlite3_expanded_sql(), so check here, too, even if superfluous
+            if (orm_gsl::czstring sql = sqlite3_sql(this->stmt)) {
+                return sql;
             } else {
-                return dml;
+                return {};
             }
         }
 
-        template<class DML>
-        using main_dml_t = polyfill::remove_cvref_t<decltype(access_main_dml(std::declval<DML>()))>;
+#if SQLITE_VERSION_NUMBER >= 3014000
+        std::string expanded_sql() const {
+            // note: must check return value due to SQLITE_OMIT_TRACE
+#ifndef SQLITE_ORM_CLANG_MSVC
+            using char_ptr = std::unique_ptr<char[], std::integral_constant<decltype(&sqlite3_free), sqlite3_free>>;
+#else
+            struct sqlite3_memory_deleter {
+                SQLITE_ORM_STATIC_CALLOP void operator()(void* mem) SQLITE_ORM_OR_CONST_CALLOP noexcept {
+                    sqlite3_free(mem);
+                }
+            };
+            using char_ptr = std::unique_ptr<char[], sqlite3_memory_deleter>;
+#endif
 
-        template<class T, class Tpl>
-        constexpr void validate_get_all_conditions() {
-            using from2_index_sequence = filter_tuple_sequence_t<Tpl, is_from2>;
-            if constexpr (from2_index_sequence::size() > 0) {
-                using from_type = std::tuple_element_t<index_sequence_value_at<0>(from2_index_sequence{}), Tpl>;
-                // check whether one of table expressions' type is the same as the requested table type
-                static_assert(mpl::invoke_t<mpl::contains<check_if_projected_is_type<type_t, T>>, from_type>::value,
-                              "Requested object type must be listed in explicit FROM clause");
+            if (char_ptr sql{sqlite3_expanded_sql(this->stmt)}) {
+                return sql.get();
+            } else {
+                return {};
             }
+        }
+#endif
+#if SQLITE_VERSION_NUMBER >= 3026000 and defined(SQLITE_ENABLE_NORMALIZE)
+        std::string normalized_sql() const {
+            if (orm_gsl::czstring sql = sqlite3_normalized_sql(this->stmt)) {
+                return sql;
+            } else {
+                return {};
+            }
+        }
+#endif
+
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+        std::string_view column_name(int index) const {
+            return sqlite3_column_name(stmt, index);
+        }
+#endif
+    };
+
+    template<class T>
+    struct prepared_statement_t : prepared_statement_base {
+        using expression_type = T;
+
+        expression_type expression;
+
+        prepared_statement_t(T expression_, sqlite3_stmt* stmt_, connection_ref con_) :
+            prepared_statement_base{stmt_, std::move(con_)}, expression(std::move(expression_)) {}
+
+        prepared_statement_t(prepared_statement_t&& prepared_stmt) :
+            prepared_statement_base{std::exchange(prepared_stmt.stmt, nullptr), std::move(prepared_stmt.con)},
+            expression(std::move(prepared_stmt.expression)) {}
+    };
+
+    template<class T>
+    inline constexpr bool is_prepared_statement_v = polyfill::is_specialization_of<T, prepared_statement_t>::value;
+
+    template<class T>
+    struct is_prepared_statement : polyfill::bool_constant<is_prepared_statement_v<T>> {};
+
+    /**
+     *  T - type of object to obtain from a database
+     */
+    template<class T, class R, class... Args>
+    struct get_all_t {
+        using type = T;
+        using return_type = R;
+
+        using conditions_type = std::tuple<Args...>;
+
+        conditions_type conditions;
+    };
+
+    template<class T, class R, class... Args>
+    struct get_all_pointer_t {
+        using type = T;
+        using return_type = R;
+
+        using conditions_type = std::tuple<Args...>;
+
+        conditions_type conditions;
+    };
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<class T, class R, class... Args>
+    struct get_all_optional_t {
+        using type = T;
+        using return_type = R;
+
+        using conditions_type = std::tuple<Args...>;
+
+        conditions_type conditions;
+    };
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+
+    template<class S, class... Wargs>
+    struct update_all_t {
+        using set_type = S;
+        using conditions_type = std::tuple<Wargs...>;
+
+        static_assert(is_set<S>::value, "update_all_t must have set or dynamic set as the first argument");
+
+        set_type set;
+        conditions_type conditions;
+    };
+
+    template<class T>
+    inline constexpr bool is_update_all_v = polyfill::is_specialization_of<T, update_all_t>::value;
+
+    template<class T>
+    using is_update_all = polyfill::bool_constant<is_update_all_v<T>>;
+
+    template<class T, class... Args>
+    struct remove_all_t {
+        using type = T;
+        using conditions_type = std::tuple<Args...>;
+
+        conditions_type conditions;
+    };
+
+    template<class T>
+    inline constexpr bool is_remove_all_v = polyfill::is_specialization_of<T, remove_all_t>::value;
+
+    template<class T>
+    using is_remove_all = polyfill::bool_constant<is_remove_all_v<T>>;
+
+    template<class T, class... Ids>
+    struct get_t {
+        using type = T;
+        using ids_type = std::tuple<Ids...>;
+
+        ids_type ids;
+    };
+
+    template<class T, class... Ids>
+    struct get_pointer_t {
+        using type = T;
+        using ids_type = std::tuple<Ids...>;
+
+        ids_type ids;
+    };
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<class T, class... Ids>
+    struct get_optional_t {
+        using type = T;
+        using ids_type = std::tuple<Ids...>;
+
+        ids_type ids;
+    };
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+
+    template<class T>
+    struct update_t {
+        using type = T;
+
+        type object;
+    };
+
+    template<class T, class... Ids>
+    struct remove_t {
+        using type = T;
+        using ids_type = std::tuple<Ids...>;
+
+        ids_type ids;
+    };
+
+    template<class T>
+    struct insert_t {
+        using type = T;
+
+        type object;
+    };
+
+    template<class T>
+    inline constexpr bool is_insert_v = polyfill::is_specialization_of<T, insert_t>::value;
+
+    template<class T>
+    struct is_insert : polyfill::bool_constant<is_insert_v<T>> {};
+
+    template<class T, class... Cols>
+    struct insert_explicit {
+        using type = T;
+        using columns_type = columns_t<Cols...>;
+
+        type obj;
+        columns_type columns;
+    };
+
+    template<class T>
+    struct replace_t {
+        using type = T;
+
+        type object;
+    };
+
+    template<class T>
+    inline constexpr bool is_replace_v = polyfill::is_specialization_of<T, replace_t>::value;
+
+    template<class T>
+    struct is_replace : polyfill::bool_constant<is_replace_v<T>> {};
+
+    template<class It, class Projection, class O>
+    struct insert_range_t {
+        using iterator_type = It;
+        using transformer_type = Projection;
+        using object_type = O;
+
+        std::pair<iterator_type, iterator_type> range;
+        transformer_type transformer;
+    };
+
+    template<class T>
+    inline constexpr bool is_insert_range_v = polyfill::is_specialization_of<T, insert_range_t>::value;
+
+    template<class T>
+    struct is_insert_range : polyfill::bool_constant<is_insert_range_v<T>> {};
+
+    template<class It, class Projection, class O>
+    struct replace_range_t {
+        using iterator_type = It;
+        using transformer_type = Projection;
+        using object_type = O;
+
+        std::pair<iterator_type, iterator_type> range;
+        transformer_type transformer;
+    };
+
+    template<class T>
+    inline constexpr bool is_replace_range_v = polyfill::is_specialization_of<T, replace_range_t>::value;
+
+    template<class T>
+    struct is_replace_range : polyfill::bool_constant<is_replace_range_v<T>> {};
+
+    template<class... Args>
+    struct insert_raw_t {
+        using args_tuple = std::tuple<Args...>;
+
+        args_tuple args;
+    };
+
+    template<class T>
+    inline constexpr bool is_insert_raw_v = polyfill::is_specialization_of<T, insert_raw_t>::value;
+
+    template<class T>
+    struct is_insert_raw : polyfill::bool_constant<is_insert_raw_v<T>> {};
+
+    template<class... Args>
+    struct replace_raw_t {
+        using args_tuple = std::tuple<Args...>;
+
+        args_tuple args;
+    };
+
+    template<class T>
+    inline constexpr bool is_replace_raw_v = polyfill::is_specialization_of<T, replace_raw_t>::value;
+
+    template<class T>
+    struct is_replace_raw : polyfill::bool_constant<is_replace_raw_v<T>> {};
+
+    struct default_values_t {};
+
+    template<class T>
+    using is_default_values = std::is_same<T, default_values_t>;
+
+    enum class conflict_action {
+        abort,
+        fail,
+        ignore,
+        replace,
+        rollback,
+    };
+
+    struct insert_constraint {
+        conflict_action action = conflict_action::abort;
+    };
+
+    template<class T>
+    using is_insert_constraint = std::is_same<T, insert_constraint>;
+
+    /**
+     *  Specialize if a type is a DML statement expression.
+     */
+    template<class T, class SFINAE = void>
+    inline constexpr bool is_raw_dml_expression_v = false;
+
+    template<class T>
+    using is_raw_dml_expression = polyfill::bool_constant<is_raw_dml_expression_v<T>>;
+
+    template<class DML>
+    inline constexpr bool is_raw_dml_expression_v<
+        DML,
+        std::enable_if_t<
+            polyfill::disjunction_v<is_insert_raw<DML>, is_replace_raw<DML>, is_update_all<DML>, is_remove_all<DML>>>> =
+        true;
+
+    template<class With>
+    inline constexpr bool is_raw_dml_expression_v<
+        With,
+        std::enable_if_t<polyfill::conjunction_v<is_with_clause<With>,
+                                                 polyfill::disjunction<is_insert_raw<expression_type_t<With>>,
+                                                                       is_replace_raw<expression_type_t<With>>,
+                                                                       is_update_all<expression_type_t<With>>,
+                                                                       is_remove_all<expression_type_t<With>>>>>> =
+        true;
+
+    /*  
+     *  Access the main select expression of a with clause or the passed in select expression.
+     */
+    template<class DML, satisfies<is_raw_dml_expression, DML> = true>
+    constexpr decltype(auto) access_main_dml(const DML& dml) {
+        if constexpr (is_with_clause_v<DML>) {
+            return (dml.expression);
+        } else {
+            return dml;
+        }
+    }
+
+    template<class DML>
+    using main_dml_t = polyfill::remove_cvref_t<decltype(access_main_dml(std::declval<DML>()))>;
+
+    template<class T, class Tpl>
+    constexpr void validate_get_all_conditions() {
+        using from2_index_sequence = filter_tuple_sequence_t<Tpl, is_from2>;
+        if constexpr (from2_index_sequence::size() > 0) {
+            using from_type = std::tuple_element_t<index_sequence_value_at<0>(from2_index_sequence{}), Tpl>;
+            // check whether one of table expressions' type is the same as the requested table type
+            static_assert(mpl::invoke_t<mpl::contains<check_if_projected_is_type<type_t, T>>, from_type>::value,
+                          "Requested object type must be listed in explicit FROM clause");
         }
     }
 }
@@ -400,7 +395,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
     /**
      *  Use this function to add `DEFAULT VALUES` modifier to raw `INSERT`.
-     *
+     *  
      *  @example
      *  ```
      *  storage.insert(into<Singer>(), default_values());
@@ -554,7 +549,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Create a replace range statement.
      *  The objects in the range are transformed using the specified projection, which defaults to identity projection.
-     *
+     *  
      *  @example
      *  ```
      *  std::vector<User> users;

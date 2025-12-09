@@ -11,49 +11,43 @@
 #include "storage_lookup.h"
 #include "schema/column.h"
 
-namespace sqlite_orm {
-    namespace internal {
+namespace sqlite_orm::internal::storage_traits {
+    /**
+     *  DBO - db object (table)
+     */
+    template<class DBO>
+    struct storage_mapped_columns_impl
+        : tuple_transformer<filter_tuple_t<elements_type_t<DBO>, is_column>, field_type_t> {};
 
-        namespace storage_traits {
+    template<>
+    struct storage_mapped_columns_impl<polyfill::nonesuch> {
+        using type = std::tuple<>;
+    };
 
-            /**
-             *  DBO - db object (table)
-             */
-            template<class DBO>
-            struct storage_mapped_columns_impl
-                : tuple_transformer<filter_tuple_t<elements_type_t<DBO>, is_column>, field_type_t> {};
+    /**
+     *  DBOs - db_objects_tuple type
+     *  Lookup - mapped or unmapped data type
+     */
+    template<class DBOs, class Lookup>
+    struct storage_mapped_columns : storage_mapped_columns_impl<storage_find_table_t<Lookup, DBOs>> {};
 
-            template<>
-            struct storage_mapped_columns_impl<polyfill::nonesuch> {
-                using type = std::tuple<>;
-            };
+    /**
+     *  DBO - db object (table)
+     */
+    template<class DBO>
+    struct storage_mapped_column_expressions_impl
+        : tuple_transformer<filter_tuple_t<elements_type_t<DBO>, is_column>, column_field_expression_t> {};
 
-            /**
-             *  DBOs - db_objects_tuple type
-             *  Lookup - mapped or unmapped data type
-             */
-            template<class DBOs, class Lookup>
-            struct storage_mapped_columns : storage_mapped_columns_impl<storage_find_table_t<Lookup, DBOs>> {};
+    template<>
+    struct storage_mapped_column_expressions_impl<polyfill::nonesuch> {
+        using type = std::tuple<>;
+    };
 
-            /**
-             *  DBO - db object (table)
-             */
-            template<class DBO>
-            struct storage_mapped_column_expressions_impl
-                : tuple_transformer<filter_tuple_t<elements_type_t<DBO>, is_column>, column_field_expression_t> {};
-
-            template<>
-            struct storage_mapped_column_expressions_impl<polyfill::nonesuch> {
-                using type = std::tuple<>;
-            };
-
-            /**
-             *  DBOs - db_objects_tuple type
-             *  Lookup - mapped or unmapped data type
-             */
-            template<class DBOs, class Lookup>
-            struct storage_mapped_column_expressions
-                : storage_mapped_column_expressions_impl<storage_find_table_t<Lookup, DBOs>> {};
-        }
-    }
+    /**
+     *  DBOs - db_objects_tuple type
+     *  Lookup - mapped or unmapped data type
+     */
+    template<class DBOs, class Lookup>
+    struct storage_mapped_column_expressions
+        : storage_mapped_column_expressions_impl<storage_find_table_t<Lookup, DBOs>> {};
 }

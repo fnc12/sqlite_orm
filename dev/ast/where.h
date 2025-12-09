@@ -8,35 +8,32 @@
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../serialize_result_type.h"
 
-namespace sqlite_orm {
-    namespace internal {
+namespace sqlite_orm::internal {
+    struct where_string {
+        serialize_result_type serialize() const {
+            return "WHERE";
+        }
+    };
 
-        struct where_string {
-            serialize_result_type serialize() const {
-                return "WHERE";
-            }
-        };
+    /**
+     *  WHERE argument holder.
+     *  C is expression type. Can be any expression like: is_equal_t, is_null_t, exists_t etc
+     *  Don't construct it manually. Call `where(...)` function instead.
+     */
+    template<class C>
+    struct where_t : where_string {
+        using expression_type = C;
 
-        /**
-         *  WHERE argument holder.
-         *  C is expression type. Can be any expression like: is_equal_t, is_null_t, exists_t etc
-         *  Don't construct it manually. Call `where(...)` function instead.
-         */
-        template<class C>
-        struct where_t : where_string {
-            using expression_type = C;
+        expression_type expression;
 
-            expression_type expression;
+        constexpr where_t(expression_type expression_) : expression(std::move(expression_)) {}
+    };
 
-            constexpr where_t(expression_type expression_) : expression(std::move(expression_)) {}
-        };
+    template<class T>
+    inline constexpr bool is_where_v = polyfill::is_specialization_of<T, where_t>::value;
 
-        template<class T>
-        inline constexpr bool is_where_v = polyfill::is_specialization_of<T, where_t>::value;
-
-        template<class T>
-        struct is_where : polyfill::bool_constant<is_where_v<T>> {};
-    }
+    template<class T>
+    struct is_where : polyfill::bool_constant<is_where_v<T>> {};
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

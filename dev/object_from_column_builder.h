@@ -13,66 +13,62 @@
 #include "schema/column.h"
 #include "storage_lookup.h"
 
-namespace sqlite_orm {
+namespace sqlite_orm::internal {
+    struct object_from_column_builder_base {
+        sqlite3_stmt* stmt = nullptr;
+        int columnIndex = -1;
+    };
 
-    namespace internal {
+    /**
+     *  Function object for building an object from a result row.
+     */
+    template<class O>
+    struct object_from_column_builder : object_from_column_builder_base {
+        using object_type = O;
 
-        struct object_from_column_builder_base {
-            sqlite3_stmt* stmt = nullptr;
-            int columnIndex = -1;
-        };
+        object_type& object;
 
-        /**
-         *  Function object for building an object from a result row.
-         */
-        template<class O>
-        struct object_from_column_builder : object_from_column_builder_base {
-            using object_type = O;
+        object_from_column_builder(object_type& object_, sqlite3_stmt* stmt_, int nextColumnIndex = 0) :
+            object_from_column_builder_base{stmt_, nextColumnIndex - 1}, object(object_) {}
 
-            object_type& object;
+        template<class G, class S>
+        void operator()(const column_field<G, S>& column) {
+            const auto rowExtractor = row_value_extractor<member_field_type_t<G>>();
+            auto value = rowExtractor.extract(this->stmt, ++this->columnIndex);
+            if constexpr (std::is_member_object_pointer<G>::value) {
+                object.*column.member_pointer = std::move(value);
+            } else {
+                (object.*column.setter)(std::move(value));
+            };
+        }
+    };
 
-            object_from_column_builder(object_type& object_, sqlite3_stmt* stmt_, int nextColumnIndex = 0) :
-                object_from_column_builder_base{stmt_, nextColumnIndex - 1}, object(object_) {}
+    /**
+     *  Specialization for a table reference.
+     *  
+     *  This plays together with `column_result_of_t`, which returns `object_t<O>` as `table_referenece<O>`
+     */
+    template<class O, class DBOs>
+    struct struct_extractor<table_reference<O>, DBOs> {
+        const DBOs& db_objects;
 
-            template<class G, class S>
-            void operator()(const column_field<G, S>& column) {
-                const auto rowExtractor = row_value_extractor<member_field_type_t<G>>();
-                auto value = rowExtractor.extract(this->stmt, ++this->columnIndex);
-                if constexpr (std::is_member_object_pointer<G>::value) {
-                    object.*column.member_pointer = std::move(value);
-                } else {
-                    (object.*column.setter)(std::move(value));
-                };
-            }
-        };
+        O extract(orm_gsl::czstring columnText) const = delete;
 
-        /**
-         *  Specialization for a table reference.
-         *  
-         *  This plays together with `column_result_of_t`, which returns `object_t<O>` as `table_referenece<O>`
-         */
-        template<class O, class DBOs>
-        struct struct_extractor<table_reference<O>, DBOs> {
-            const DBOs& db_objects;
+        // note: expects to be called only from the top level, and therefore discards the index
+        O extract(sqlite3_stmt* stmt, int&& /*nextColumnIndex*/ = 0) const {
+            int columnIndex = 0;
+            return this->extract(stmt, columnIndex);
+        }
 
-            O extract(orm_gsl::czstring columnText) const = delete;
+        O extract(sqlite3_stmt* stmt, int& columnIndex) const {
+            O obj;
+            object_from_column_builder<O> builder{obj, stmt, columnIndex};
+            auto& table = pick_table<O>(this->db_objects);
+            table.for_each_column(builder);
+            columnIndex = builder.columnIndex;
+            return obj;
+        }
 
-            // note: expects to be called only from the top level, and therefore discards the index
-            O extract(sqlite3_stmt* stmt, int&& /*nextColumnIndex*/ = 0) const {
-                int columnIndex = 0;
-                return this->extract(stmt, columnIndex);
-            }
-
-            O extract(sqlite3_stmt* stmt, int& columnIndex) const {
-                O obj;
-                object_from_column_builder<O> builder{obj, stmt, columnIndex};
-                auto& table = pick_table<O>(this->db_objects);
-                table.for_each_column(builder);
-                columnIndex = builder.columnIndex;
-                return obj;
-            }
-
-            O extract(sqlite3_value* value) const = delete;
-        };
-    }
+        O extract(sqlite3_value* value) const = delete;
+    };
 }

@@ -9,32 +9,28 @@
 #include "table_reference.h"
 #include "alias_traits.h"
 
-namespace sqlite_orm {
+namespace sqlite_orm::internal {
+    /** 
+     *  Defines the `type` typename to be:
+     *  - The unqualified unwrapped table reference type if T is a table reference.
+     *  - The unqualified aliased type if T is a recordset alias.
+     *  - The enclosing data struct for eponymous virtual tables with hidden columns.
+     *  - ... otherwise unqualified T.
+     */
+    template<class T, class SFINAE = void>
+    struct mapped_type_proxy : std::remove_const<T> {};
 
-    namespace internal {
+    template<class T>
+    struct mapped_type_proxy<T, polyfill::void_t<typename T::enclosing_type>> {
+        using type = enclosing_type_t<T>;
+    };
 
-        /** 
-         *  Defines the `type` typename to be:
-         *  - The unqualified unwrapped table reference type if T is a table reference.
-         *  - The unqualified aliased type if T is a recordset alias.
-         *  - The enclosing data struct for eponymous virtual tables with hidden columns.
-         *  - ... otherwise unqualified T.
-         */
-        template<class T, class SFINAE = void>
-        struct mapped_type_proxy : std::remove_const<T> {};
+    template<class R>
+    struct mapped_type_proxy<R, match_if<is_table_reference, R>> : R {};
 
-        template<class T>
-        struct mapped_type_proxy<T, polyfill::void_t<typename T::enclosing_type>> {
-            using type = enclosing_type_t<T>;
-        };
+    template<class A>
+    struct mapped_type_proxy<A, match_if<is_recordset_alias, A>> : std::remove_const<type_t<A>> {};
 
-        template<class R>
-        struct mapped_type_proxy<R, match_if<is_table_reference, R>> : R {};
-
-        template<class A>
-        struct mapped_type_proxy<A, match_if<is_recordset_alias, A>> : std::remove_const<type_t<A>> {};
-
-        template<class T>
-        using mapped_type_proxy_t = typename mapped_type_proxy<T>::type;
-    }
+    template<class T>
+    using mapped_type_proxy_t = typename mapped_type_proxy<T>::type;
 }

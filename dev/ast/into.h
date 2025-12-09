@@ -3,17 +3,14 @@
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../table_reference.h"
 
-namespace sqlite_orm {
-    namespace internal {
+namespace sqlite_orm::internal {
+    template<class T>
+    struct into_t {
+        using type = T;
+    };
 
-        template<class T>
-        struct into_t {
-            using type = T;
-        };
-
-        template<class T>
-        using is_into = polyfill::is_specialization_of<T, into_t>;
-    }
+    template<class T>
+    using is_into = polyfill::is_specialization_of<T, into_t>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

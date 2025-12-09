@@ -36,26 +36,28 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     struct statement_binder;
 }
 
+namespace sqlite_orm::internal {
+    /*
+     *  Implementation note: the technique of indirect expression testing is because
+     *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
+     *  It must also be a type that differs from those for `is_printable_v`, `is_preparable_v`.
+     */
+    template<class Binder>
+    struct indirectly_test_bindable;
+
+    template<class T, class SFINAE = void>
+    inline constexpr bool is_bindable_v = false;
+    template<class T>
+    inline constexpr bool
+        is_bindable_v<T, polyfill::void_t<indirectly_test_bindable<decltype(statement_binder<T>{})>>> = true;
+
+    template<class T>
+    struct is_bindable : polyfill::bool_constant<is_bindable_v<T>> {};
+}
+
+// `statement_binder` specializations;
+// note: no need to export the specializations, only the primary template above
 namespace sqlite_orm {
-    namespace internal {
-        /*
-         *  Implementation note: the technique of indirect expression testing is because
-         *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
-         *  It must also be a type that differs from those for `is_printable_v`, `is_preparable_v`.
-         */
-        template<class Binder>
-        struct indirectly_test_bindable;
-
-        template<class T, class SFINAE = void>
-        inline constexpr bool is_bindable_v = false;
-        template<class T>
-        inline constexpr bool
-            is_bindable_v<T, polyfill::void_t<indirectly_test_bindable<decltype(statement_binder<T>{})>>> = true;
-
-        template<class T>
-        struct is_bindable : polyfill::bool_constant<is_bindable_v<T>> {};
-    }
-
 #if SQLITE_VERSION_NUMBER >= 3020000
     /**
      *  Specialization for pointer bindings (part of the 'pointer-passing interface').
@@ -287,90 +289,87 @@ namespace sqlite_orm {
         }
     };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+}
 
-    namespace internal {
+namespace sqlite_orm::internal {
+    struct conditional_binder {
+        sqlite3_stmt* stmt = nullptr;
+        int nthSqlParameter = 0;
 
-        struct conditional_binder {
-            sqlite3_stmt* stmt = nullptr;
-            int nthSqlParameter = 0;
+        explicit conditional_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
 
-            explicit conditional_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
-
-            template<class T, satisfies<is_bindable, T> = true>
-            void operator()(const T& t) {
-                const int rc = statement_binder<T>{}.bind(this->stmt, ++this->nthSqlParameter, t);
-                if (SQLITE_OK != rc) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
-                    throw_translated_sqlite_error(rc);
-                }
+        template<class T, satisfies<is_bindable, T> = true>
+        void operator()(const T& t) {
+            const int rc = statement_binder<T>{}.bind(this->stmt, ++this->nthSqlParameter, t);
+            if (SQLITE_OK != rc) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
+                throw_translated_sqlite_error(rc);
             }
+        }
 
-            template<class T, satisfies_not<is_bindable, T> = true>
-            void operator()(const T&) const {}
-        };
+        template<class T, satisfies_not<is_bindable, T> = true>
+        void operator()(const T&) const {}
+    };
 
-        struct field_value_binder : conditional_binder {
-            using conditional_binder::conditional_binder;
-            using conditional_binder::operator();
+    struct field_value_binder : conditional_binder {
+        using conditional_binder::conditional_binder;
+        using conditional_binder::operator();
 
-            template<class T, satisfies_not<is_bindable, T> = true>
-            void operator()(const T&) const = delete;
+        template<class T, satisfies_not<is_bindable, T> = true>
+        void operator()(const T&) const = delete;
 
-            template<class T>
-            void operator()(const T* value) {
-                if (!value) {
-                    throw std::system_error{orm_error_code::value_is_null};
-                }
-                (*this)(*value);
+        template<class T>
+        void operator()(const T* value) {
+            if (!value) {
+                throw std::system_error{orm_error_code::value_is_null};
             }
-        };
+            (*this)(*value);
+        }
+    };
 
-        struct tuple_value_binder {
-            sqlite3_stmt* stmt = nullptr;
+    struct tuple_value_binder {
+        sqlite3_stmt* stmt = nullptr;
 
-            explicit tuple_value_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
+        explicit tuple_value_binder(sqlite3_stmt* stmt) : stmt{stmt} {}
 
 #ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
-            template<class Tpl, class Projection>
-            void operator()(const Tpl& tpl, Projection project) const {
-                int nthSqlParameter = 0;
-                auto& [... elements] = tpl;
-                (this->bind(polyfill::invoke(project, elements), ++nthSqlParameter), ...);
-            }
+        template<class Tpl, class Projection>
+        void operator()(const Tpl& tpl, Projection project) const {
+            int nthSqlParameter = 0;
+            auto& [... elements] = tpl;
+            (this->bind(polyfill::invoke(project, elements), ++nthSqlParameter), ...);
+        }
 #else
-            template<class Tpl, class Projection>
-            void operator()(const Tpl& tpl, Projection project) const {
-                (*this)(tpl,
-                        std::make_index_sequence<std::tuple_size<Tpl>::value>{},
-                        std::forward<Projection>(project));
-            }
+        template<class Tpl, class Projection>
+        void operator()(const Tpl& tpl, Projection project) const {
+            (*this)(tpl, std::make_index_sequence<std::tuple_size<Tpl>::value>{}, std::forward<Projection>(project));
+        }
 #endif
 
-          private:
+      private:
 #ifndef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
-            template<class Tpl, size_t... Idx, class Projection>
-            void operator()(const Tpl& tpl, std::index_sequence<Idx...>, Projection project) const {
-                (this->bind(polyfill::invoke(project, std::get<Idx>(tpl)), int(Idx + 1)), ...);
-            }
+        template<class Tpl, size_t... Idx, class Projection>
+        void operator()(const Tpl& tpl, std::index_sequence<Idx...>, Projection project) const {
+            (this->bind(polyfill::invoke(project, std::get<Idx>(tpl)), int(Idx + 1)), ...);
+        }
 #endif
 
-            template<class T>
-            void bind(const T& t, int nthSqlParameter) const {
-                const int rc = statement_binder<T>{}.bind(this->stmt, nthSqlParameter, t);
-                if (SQLITE_OK != rc) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
-                    throw_translated_sqlite_error(rc);
-                }
+        template<class T>
+        void bind(const T& t, int nthSqlParameter) const {
+            const int rc = statement_binder<T>{}.bind(this->stmt, nthSqlParameter, t);
+            if (SQLITE_OK != rc) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
+                throw_translated_sqlite_error(rc);
             }
+        }
 
-            template<class T>
-            void bind(const T* value, int nthSqlParameter) const {
-                if (!value) {
-                    throw std::system_error{orm_error_code::value_is_null};
-                }
-                this->bind(*value, nthSqlParameter);
+        template<class T>
+        void bind(const T* value, int nthSqlParameter) const {
+            if (!value) {
+                throw std::system_error{orm_error_code::value_is_null};
             }
-        };
+            this->bind(*value, nthSqlParameter);
+        }
+    };
 
-        template<class Tpl>
-        using bindable_filter_t = filter_tuple_t<Tpl, is_bindable>;
-    }
+    template<class Tpl>
+    using bindable_filter_t = filter_tuple_t<Tpl, is_bindable>;
 }

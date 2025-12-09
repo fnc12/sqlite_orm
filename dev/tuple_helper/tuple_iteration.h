@@ -6,63 +6,61 @@
 #include <utility>  //  std::forward, std::move
 #endif
 
-namespace sqlite_orm {
-    namespace internal {
-        template<bool reversed = false, class Tpl, size_t... Idx, class L>
-        constexpr void iterate_tuple(Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
-            if constexpr (reversed) {
-                // nifty fold expression trick: make use of guaranteed right-to-left evaluation order when folding over operator=
+namespace sqlite_orm::internal {
+    template<bool reversed = false, class Tpl, size_t... Idx, class L>
+    constexpr void iterate_tuple(Tpl& tpl, std::index_sequence<Idx...>, L&& lambda) {
+        if constexpr (reversed) {
+            // nifty fold expression trick: make use of guaranteed right-to-left evaluation order when folding over operator=
 #ifdef SQLITE_ORM_TRIVIAL_DEFAULTINIT_SUPPORTED
-                [[maybe_unused]] int sink;
+            [[maybe_unused]] int sink;
 #else
-                [[maybe_unused]] int sink = 0;
+            [[maybe_unused]] int sink = 0;
 #endif
-                // note: `(void)` cast silences warning 'expression result unused'
-                (void)((lambda(std::get<Idx>(tpl)), sink) = ... = 0);
-            } else {
-                (lambda(std::get<Idx>(tpl)), ...);
-            }
+            // note: `(void)` cast silences warning 'expression result unused'
+            (void)((lambda(std::get<Idx>(tpl)), sink) = ... = 0);
+        } else {
+            (lambda(std::get<Idx>(tpl)), ...);
         }
+    }
 
-        template<bool reversed = false, class Tpl, class L>
-        constexpr void iterate_tuple(Tpl&& tpl, L&& lambda) {
-            iterate_tuple<reversed>(tpl,
-                                    std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
-                                    std::forward<L>(lambda));
+    template<bool reversed = false, class Tpl, class L>
+    constexpr void iterate_tuple(Tpl&& tpl, L&& lambda) {
+        iterate_tuple<reversed>(tpl,
+                                std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tpl>>::value>{},
+                                std::forward<L>(lambda));
+    }
+
+    template<class Tpl, size_t... Idx, class L>
+    constexpr void iterate_tuple(std::index_sequence<Idx...>, L&& lambda) {
+        (lambda((std::tuple_element_t<Idx, Tpl>*)nullptr), ...);
+    }
+
+    template<class Tpl, class L>
+    constexpr void iterate_tuple(L&& lambda) {
+        iterate_tuple<Tpl>(std::make_index_sequence<std::tuple_size<Tpl>::value>{}, std::forward<L>(lambda));
+    }
+
+    template<template<class...> class Base, class L>
+    struct lambda_as_template_base : L {
+        template<class... T>
+        decltype(auto) operator()(const Base<T...>& object) {
+            return L::operator()(object);
         }
+    };
 
-        template<class Tpl, size_t... Idx, class L>
-        constexpr void iterate_tuple(std::index_sequence<Idx...>, L&& lambda) {
-            (lambda((std::tuple_element_t<Idx, Tpl>*)nullptr), ...);
-        }
-
-        template<class Tpl, class L>
-        constexpr void iterate_tuple(L&& lambda) {
-            iterate_tuple<Tpl>(std::make_index_sequence<std::tuple_size<Tpl>::value>{}, std::forward<L>(lambda));
-        }
-
-        template<template<class...> class Base, class L>
-        struct lambda_as_template_base : L {
-            template<class... T>
-            decltype(auto) operator()(const Base<T...>& object) {
-                return L::operator()(object);
-            }
-        };
-
-        /*
-         *  This method wraps the specified callable in another function object,
-         *  which in turn implicitly casts its single argument to the specified template base class,
-         *  then passes the converted argument to the lambda.
-         *  
-         *  Note: This method is useful for reducing combinatorial instantiation of template lambdas,
-         *  as long as this library supports compilers that do not implement
-         *  explicit template parameters in generic lambdas [SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED].
-         *  Unfortunately it doesn't work with user-defined conversion operators in order to extract
-         *  parts of a class. In other words, the destination type must be a direct template base class.
-         */
-        template<template<class...> class Base, class L>
-        lambda_as_template_base<Base, L> call_as_template_base(L lambda) {
-            return {std::move(lambda)};
-        }
+    /*
+     *  This method wraps the specified callable in another function object,
+     *  which in turn implicitly casts its single argument to the specified template base class,
+     *  then passes the converted argument to the lambda.
+     *  
+     *  Note: This method is useful for reducing combinatorial instantiation of template lambdas,
+     *  as long as this library supports compilers that do not implement
+     *  explicit template parameters in generic lambdas [SQLITE_ORM_EXPLICIT_GENERIC_LAMBDA_SUPPORTED].
+     *  Unfortunately it doesn't work with user-defined conversion operators in order to extract
+     *  parts of a class. In other words, the destination type must be a direct template base class.
+     */
+    template<template<class...> class Base, class L>
+    lambda_as_template_base<Base, L> call_as_template_base(L lambda) {
+        return {std::move(lambda)};
     }
 }

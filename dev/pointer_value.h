@@ -16,16 +16,14 @@
 #include "xdestroy_handling.h"
 
 #if SQLITE_VERSION_NUMBER >= 3020000
-namespace sqlite_orm {
-    namespace internal {
+namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        template<char... C>
-        struct pointer_type {
-            using value_type = const char[sizeof...(C) + 1];
-            static inline constexpr value_type value = {C..., '\0'};
-        };
+    template<char... C>
+    struct pointer_type {
+        using value_type = const char[sizeof...(C) + 1];
+        static inline constexpr value_type value = {C..., '\0'};
+    };
 #endif
-    }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -50,11 +48,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Wraps a pointer and tags it with a pointer type,
      *  used for accepting function parameters,
      *  facilitating the 'pointer-passing interface'.
-     * 
+     *  
      *  Template parameters:
-     *    - P: The value type, possibly const-qualified.
-     *    - T: An integral constant string denoting the pointer type, e.g. `"carray"_pointer_type`.
-     *
+     *  - P: The value type, possibly const-qualified.
+     *  - T: An integral constant string denoting the pointer type, e.g. `"carray"_pointer_type`.
+     *  
      */
     template<typename P, typename T>
     struct pointer_arg {
@@ -86,18 +84,18 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Pointer value with associated deleter function,
      *  used for returning or binding pointer values
      *  as part of facilitating the 'pointer-passing interface'.
-     * 
+     *  
      *  Template parameters:
-     *    - P: The value type, possibly const-qualified.
-     *    - T: An integral constant string denoting the pointer type, e.g. `carray_pointer_type`.
-     *    - D: The deleter for the pointer value;
-     *         can be one of:
-     *         - function pointer
-     *         - integral function pointer constant
-     *         - state-less (empty) deleter
-     *         - non-capturing lambda
-     *         - structure implicitly yielding a function pointer
-     *
+     *  - P: The value type, possibly const-qualified.
+     *  - T: An integral constant string denoting the pointer type, e.g. `carray_pointer_type`.
+     *  - D: The deleter for the pointer value;
+     *  can be one of:
+     *  - function pointer
+     *  - integral function pointer constant
+     *  - state-less (empty) deleter
+     *  - non-capturing lambda
+     *  - structure implicitly yielding a function pointer
+     *  
      *  @note Use one of the factory functions to create a pointer binding,
      *  e.g. bindable_carray_pointer or statically_bindable_carray_pointer().
      *  

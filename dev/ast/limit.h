@@ -9,25 +9,24 @@
 #include "../type_traits.h"
 #include "offset.h"
 
-namespace sqlite_orm {
+namespace sqlite_orm::internal {
+    /**
+     *  Stores LIMIT/OFFSET info
+     */
+    template<class T, bool has_offset, bool offset_is_implicit, class O>
+    struct limit_t {
+        T limit;
+        optional_container<O> offset;
+    };
 
-    namespace internal {
-        /**
-         *  Stores LIMIT/OFFSET info
-         */
-        template<class T, bool has_offset, bool offset_is_implicit, class O>
-        struct limit_t {
-            T limit;
-            optional_container<O> offset;
-        };
+    template<class T>
+    struct is_limit : std::false_type {};
 
-        template<class T>
-        struct is_limit : std::false_type {};
+    template<class T, bool has_offset, bool offset_is_implicit, class O>
+    struct is_limit<limit_t<T, has_offset, offset_is_implicit, O>> : std::true_type {};
+}
 
-        template<class T, bool has_offset, bool offset_is_implicit, class O>
-        struct is_limit<limit_t<T, has_offset, offset_is_implicit, O>> : std::true_type {};
-    }
-
+SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  LIMIT clause.
      *  Example: limit(10)

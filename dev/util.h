@@ -54,33 +54,48 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
-namespace sqlite_orm {
-    namespace internal {
-        // Wrapper to reduce boiler-plate code
-        inline sqlite3_stmt* reset_stmt(sqlite3_stmt* stmt) {
-            sqlite3_reset(stmt);
-            return stmt;
-        }
+namespace sqlite_orm::internal {
+    // Wrapper to reduce boiler-plate code
+    inline sqlite3_stmt* reset_stmt(sqlite3_stmt* stmt) {
+        sqlite3_reset(stmt);
+        return stmt;
+    }
 
-        inline sqlite3_stmt* prepare_stmt(sqlite3* db, serialize_arg_type query) {
-            sqlite3_stmt* stmt;
-            const int rc = sqlite3_prepare_v2(db, query.data(), int(query.size()), &stmt, nullptr);
-            if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
-                throw_translated_sqlite_error(rc);
-            }
-            return stmt;
+    inline sqlite3_stmt* prepare_stmt(sqlite3* db, serialize_arg_type query) {
+        sqlite3_stmt* stmt;
+        const int rc = sqlite3_prepare_v2(db, query.data(), int(query.size()), &stmt, nullptr);
+        if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
+            throw_translated_sqlite_error(rc);
         }
+        return stmt;
+    }
 
-        template<int expected = SQLITE_DONE>
-        void perform_single_step(sqlite3_stmt* stmt) {
-            const int rc = sqlite3_step(stmt);
-            if (rc != expected) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
-                throw_translated_sqlite_error(rc);
-            }
+    template<int expected = SQLITE_DONE>
+    void perform_single_step(sqlite3_stmt* stmt) {
+        const int rc = sqlite3_step(stmt);
+        if (rc != expected) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
+            throw_translated_sqlite_error(rc);
         }
+    }
 
-        template<class L>
-        void perform_step(sqlite3_stmt* stmt, L&& lambda) {
+    template<class L>
+    void perform_step(sqlite3_stmt* stmt, L&& lambda) {
+        switch (SQLITE_ORM_SWITCH_MAYBE_UNUSED int rc = sqlite3_step(stmt)) {
+            case SQLITE_ROW: {
+                lambda(stmt);
+            } break;
+            case SQLITE_DONE:
+                return;
+            default:
+                SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
+                    throw_translated_sqlite_error(stmt);
+                }
+        }
+    }
+
+    template<class L>
+    void perform_steps(sqlite3_stmt* stmt, L&& lambda) {
+        for (;;) {
             switch (SQLITE_ORM_SWITCH_MAYBE_UNUSED int rc = sqlite3_step(stmt)) {
                 case SQLITE_ROW: {
                     lambda(stmt);
@@ -93,118 +108,101 @@ namespace sqlite_orm {
                     }
             }
         }
+    }
 
-        template<class L>
-        void perform_steps(sqlite3_stmt* stmt, L&& lambda) {
-            for (;;) {
-                switch (SQLITE_ORM_SWITCH_MAYBE_UNUSED int rc = sqlite3_step(stmt)) {
-                    case SQLITE_ROW: {
-                        lambda(stmt);
-                    } break;
-                    case SQLITE_DONE:
-                        return;
-                    default:
-                        SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
-                            throw_translated_sqlite_error(stmt);
-                        }
-                }
+    struct sqlite_executor {
+        std::function<void(serialize_arg_type sql)> will_run_query;
+        std::function<void(serialize_arg_type sql)> did_run_query;
+
+        void perform_void_exec(sqlite3* db, orm_gsl::czstring sql) const {
+            if (this->will_run_query) {
+                this->will_run_query(sql);
+            }
+
+            const int rc = sqlite3_exec(db, sql, nullptr, nullptr, nullptr);
+            if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
+                throw_translated_sqlite_error(rc);
+            }
+
+            if (this->did_run_query) {
+                this->did_run_query(sql);
             }
         }
 
-        struct sqlite_executor {
-            std::function<void(serialize_arg_type sql)> will_run_query;
-            std::function<void(serialize_arg_type sql)> did_run_query;
-
-            void perform_void_exec(sqlite3* db, orm_gsl::czstring sql) const {
-                if (this->will_run_query) {
-                    this->will_run_query(sql);
-                }
-
-                const int rc = sqlite3_exec(db, sql, nullptr, nullptr, nullptr);
-                if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
-                    throw_translated_sqlite_error(rc);
-                }
-
-                if (this->did_run_query) {
-                    this->did_run_query(sql);
-                }
+        void perform_exec(sqlite3* db,
+                          orm_gsl::czstring sql,
+                          int (*callback)(void*, int, orm_gsl::zstring*, orm_gsl::zstring*),
+                          void* user_data) const {
+            if (this->will_run_query) {
+                this->will_run_query(sql);
             }
 
-            void perform_exec(sqlite3* db,
-                              orm_gsl::czstring sql,
-                              int (*callback)(void*, int, orm_gsl::zstring*, orm_gsl::zstring*),
-                              void* user_data) const {
-                if (this->will_run_query) {
-                    this->will_run_query(sql);
-                }
-
-                const int rc = sqlite3_exec(db, sql, callback, user_data, nullptr);
-                if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
-                    throw_translated_sqlite_error(rc);
-                }
-
-                if (this->did_run_query) {
-                    this->did_run_query(sql);
-                }
+            const int rc = sqlite3_exec(db, sql, callback, user_data, nullptr);
+            if (rc != SQLITE_OK) SQLITE_ORM_CPP_UNLIKELY /*possible but unexpected*/ {
+                throw_translated_sqlite_error(rc);
             }
 
-            void perform_exec(sqlite3* db,
-                              const std::string& query,
-                              int (*callback)(void*, int, orm_gsl::zstring*, orm_gsl::zstring*),
-                              void* user_data) const {
-                return perform_exec(db, query.c_str(), callback, user_data);
+            if (this->did_run_query) {
+                this->did_run_query(sql);
+            }
+        }
+
+        void perform_exec(sqlite3* db,
+                          const std::string& query,
+                          int (*callback)(void*, int, orm_gsl::zstring*, orm_gsl::zstring*),
+                          void* user_data) const {
+            return perform_exec(db, query.c_str(), callback, user_data);
+        }
+
+        template<int expected = SQLITE_DONE>
+        void perform_single_step(sqlite3_stmt* stmt) const {
+            orm_gsl::czstring sql = nullptr;
+            if (this->will_run_query || this->did_run_query) {
+                sql = sqlite3_sql(stmt);
+            }
+            if (this->will_run_query) {
+                this->will_run_query(sql);
             }
 
-            template<int expected = SQLITE_DONE>
-            void perform_single_step(sqlite3_stmt* stmt) const {
-                orm_gsl::czstring sql = nullptr;
-                if (this->will_run_query || this->did_run_query) {
-                    sql = sqlite3_sql(stmt);
-                }
-                if (this->will_run_query) {
-                    this->will_run_query(sql);
-                }
+            internal::perform_single_step<expected>(stmt);
 
-                internal::perform_single_step<expected>(stmt);
+            if (this->did_run_query) {
+                this->did_run_query(sql);
+            }
+        }
 
-                if (this->did_run_query) {
-                    this->did_run_query(sql);
-                }
+        template<class L>
+        void perform_step(sqlite3_stmt* stmt, L&& lambda) const {
+            orm_gsl::czstring sql = nullptr;
+            if (this->will_run_query || this->did_run_query) {
+                sql = sqlite3_sql(stmt);
+            }
+            if (this->will_run_query) {
+                this->will_run_query(sql);
             }
 
-            template<class L>
-            void perform_step(sqlite3_stmt* stmt, L&& lambda) const {
-                orm_gsl::czstring sql = nullptr;
-                if (this->will_run_query || this->did_run_query) {
-                    sql = sqlite3_sql(stmt);
-                }
-                if (this->will_run_query) {
-                    this->will_run_query(sql);
-                }
+            internal::perform_step(stmt, lambda);
 
-                internal::perform_step(stmt, lambda);
+            if (this->did_run_query) {
+                this->did_run_query(sql);
+            }
+        }
 
-                if (this->did_run_query) {
-                    this->did_run_query(sql);
-                }
+        template<class L>
+        void perform_steps(sqlite3_stmt* stmt, L&& lambda) const {
+            orm_gsl::czstring sql = nullptr;
+            if (this->will_run_query || this->did_run_query) {
+                sql = sqlite3_sql(stmt);
+            }
+            if (this->will_run_query) {
+                this->will_run_query(sql);
             }
 
-            template<class L>
-            void perform_steps(sqlite3_stmt* stmt, L&& lambda) const {
-                orm_gsl::czstring sql = nullptr;
-                if (this->will_run_query || this->did_run_query) {
-                    sql = sqlite3_sql(stmt);
-                }
-                if (this->will_run_query) {
-                    this->will_run_query(sql);
-                }
+            internal::perform_steps(stmt, lambda);
 
-                internal::perform_steps(stmt, lambda);
-
-                if (this->did_run_query) {
-                    this->did_run_query(sql);
-                }
+            if (this->did_run_query) {
+                this->did_run_query(sql);
             }
-        };
-    }
+        }
+    };
 }

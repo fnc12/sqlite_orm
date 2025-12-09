@@ -9,16 +9,14 @@
 
 #include "functional/gsl.h"
 
-namespace sqlite_orm {
-    namespace internal {
+namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-        using serialize_result_type = std::string_view;
-        using serialize_arg_type = std::string_view;
-        using string_constant_type = std::string_view;
+    using serialize_result_type = std::string_view;
+    using serialize_arg_type = std::string_view;
+    using string_constant_type = std::string_view;
 #else
-        using serialize_result_type = std::string;
-        using serialize_arg_type = const std::string&;
-        using string_constant_type = orm_gsl::czstring;
+    using serialize_result_type = std::string;
+    using serialize_arg_type = const std::string&;
+    using string_constant_type = orm_gsl::czstring;
 #endif
-    }
 }
