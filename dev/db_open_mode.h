@@ -9,18 +9,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     };
 }
 
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    namespace internal {
-        constexpr int db_open_mode_to_int_flags(db_open_mode open) {
+namespace sqlite_orm::internal {
+    constexpr int db_open_mode_to_int_flags(db_open_mode open) {
+        switch (open) {
+            case db_open_mode::readonly:
+                return SQLITE_OPEN_READONLY;
+            case db_open_mode::create_readwrite:
+                return SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE;
+        };
 
-            switch (open) {
-                case db_open_mode::readonly:
-                    return SQLITE_OPEN_READONLY;
-                case db_open_mode::create_readwrite:
-                    return SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE;
-            };
-
-            return -1;
-        }
+        return -1;
     }
 }

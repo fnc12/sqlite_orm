@@ -36,497 +36,492 @@
 #include "cxx_type_traits_polyfill.h"
 #include "mpl/conditional.h"
 
-namespace sqlite_orm {
-    namespace internal {
-        namespace mpl {
-            template<template<class...> class Fn>
-            struct indirectly_test_metafunction;
+namespace sqlite_orm::internal::mpl {
+    template<template<class...> class Fn>
+    struct indirectly_test_metafunction;
 
-            /*
-             *  Determines whether a class template has a nested metafunction `fn`.
-             * 
-             *  Implementation note: the technique of specialiazing on the inline variable must come first because
-             *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR].
-             */
-            template<class T, class SFINAE = void>
-            inline constexpr bool is_quoted_metafuntion_v = false;
-            template<class Q>
-            inline constexpr bool
-                is_quoted_metafuntion_v<Q, polyfill::void_t<indirectly_test_metafunction<Q::template fn>>> = true;
+    /*
+     *  Determines whether a class template has a nested metafunction `fn`.
+     *  
+     *  Implementation note: the technique of specialiazing on the inline variable must come first because
+     *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR].
+     */
+    template<class T, class SFINAE = void>
+    inline constexpr bool is_quoted_metafuntion_v = false;
+    template<class Q>
+    inline constexpr bool is_quoted_metafuntion_v<Q, polyfill::void_t<indirectly_test_metafunction<Q::template fn>>> =
+        true;
 
-            template<class T>
-            struct is_quoted_metafuntion : polyfill::bool_constant<is_quoted_metafuntion_v<T>> {};
+    template<class T>
+    struct is_quoted_metafuntion : polyfill::bool_constant<is_quoted_metafuntion_v<T>> {};
 
-            /*  
-             *  Type pack.
-             */
-            template<class...>
-            struct pack {};
+    /*  
+     *  Type pack.
+     */
+    template<class...>
+    struct pack {};
 
-            /*
-             *  The indirection through `defer_fn` works around the language inability
-             *  to expand `Args...` into a fixed parameter list of an alias template.
-             *  
-             *  Also, legacy compilers need an extra layer of indirection, otherwise type replacement may fail
-             *  if alias template `Fn` has a dependent expression in it.
-             */
-            template<template<class...> class Fn, class... Args>
-            struct defer_fn {
-                using type = Fn<Args...>;
-            };
+    /*
+     *  The indirection through `defer_fn` works around the language inability
+     *  to expand `Args...` into a fixed parameter list of an alias template.
+     *  
+     *  Also, legacy compilers need an extra layer of indirection, otherwise type replacement may fail
+     *  if alias template `Fn` has a dependent expression in it.
+     */
+    template<template<class...> class Fn, class... Args>
+    struct defer_fn {
+        using type = Fn<Args...>;
+    };
 
-            /*
-             *  The indirection through `defer` works around the language inability
-             *  to expand `Args...` into a fixed parameter list of an alias template.
-             */
+    /*
+     *  The indirection through `defer` works around the language inability
+     *  to expand `Args...` into a fixed parameter list of an alias template.
+     */
+    template<class Q, class... Args>
+    struct defer {
+        using type = typename Q::template fn<Args...>;
+    };
+
+    /*
+     *  Invoke metafunction.
+     */
+    template<template<class...> class Fn, class... Args>
+    using invoke_fn_t = typename defer_fn<Fn, Args...>::type;
+
+    /*
+     *  Invoke quoted metafunction by invoking its nested metafunction.
+     */
+    template<class Q, class... Args>
+    using invoke_t = typename defer<Q, Args...>::type;
+
+    /*
+     *  Turn metafunction into a quoted metafunction.
+     *  
+     *  Invocation of the nested metafunction `fn` is SFINAE-friendly (detection idiom).
+     *  This is necessary because `fn` is a proxy to the originally quoted metafunction,
+     *  and the instantiation of the metafunction might be an invalid expression.
+     */
+    template<template<class...> class Fn>
+    struct quote_fn {
+        template<class InvocableTest, template<class...> class, class...>
+        struct invoke_this_fn {
+            // error N: 'type': is not a member of any direct or indirect base class of 'quote_fn<Fn>::invoke_this_fn<void,Fn,T>'
+            // means that the metafunction cannot be called with the passed arguments.
+        };
+
+        template<template<class...> class F, class... Args>
+        struct invoke_this_fn<polyfill::void_t<F<Args...>>, F, Args...> {
+            using type = F<Args...>;
+        };
+
+        template<class... Args>
+        using fn = typename invoke_this_fn<void, Fn, Args...>::type;
+    };
+
+    /*
+     *  Indirection wrapper for higher-order metafunctions,
+     *  specialized on the argument indexes where metafunctions appear.
+     */
+    template<size_t...>
+    struct higherorder;
+
+    template<>
+    struct higherorder<0u> {
+        template<template<template<class...> class Fn, class... Args2> class HigherFn, class Q, class... Args>
+        struct defer_higher_fn {
+            using type = HigherFn<Q::template fn, Args...>;
+        };
+
+        /*
+         *  Turn higher-order metafunction into a quoted metafunction.
+         */
+        template<template<template<class...> class Fn, class... Args2> class HigherFn>
+        struct quote_fn {
             template<class Q, class... Args>
-            struct defer {
-                using type = typename Q::template fn<Args...>;
-            };
+            using fn = typename defer_higher_fn<HigherFn, Q, Args...>::type;
+        };
+    };
 
-            /*
-             *  Invoke metafunction.
-             */
-            template<template<class...> class Fn, class... Args>
-            using invoke_fn_t = typename defer_fn<Fn, Args...>::type;
+    /*
+     *  Quoted metafunction that extracts the nested metafunction of its quoted metafunction argument,
+     *  quotes the extracted metafunction and passes it on to the next quoted metafunction
+     *  (kind of the inverse of quoting).
+     */
+    template<class Q>
+    struct pass_extracted_fn_to {
+        template<class... Args>
+        struct invoke_this_fn {
+            using type = typename Q::template fn<Args...>;
+        };
 
-            /*
-             *  Invoke quoted metafunction by invoking its nested metafunction.
-             */
-            template<class Q, class... Args>
-            using invoke_t = typename defer<Q, Args...>::type;
+        // extract class template, quote, pass on
+        template<template<class...> class Fn, class... T>
+        struct invoke_this_fn<Fn<T...>> {
+            using type = typename Q::template fn<quote_fn<Fn>>;
+        };
 
-            /*
-             *  Turn metafunction into a quoted metafunction.
-             *  
-             *  Invocation of the nested metafunction `fn` is SFINAE-friendly (detection idiom).
-             *  This is necessary because `fn` is a proxy to the originally quoted metafunction,
-             *  and the instantiation of the metafunction might be an invalid expression.
-             */
-            template<template<class...> class Fn>
-            struct quote_fn {
-                template<class InvocableTest, template<class...> class, class...>
-                struct invoke_this_fn {
-                    // error N: 'type': is not a member of any direct or indirect base class of 'quote_fn<Fn>::invoke_this_fn<void,Fn,T>'
-                    // means that the metafunction cannot be called with the passed arguments.
-                };
+        template<class... Args>
+        using fn = typename invoke_this_fn<Args...>::type;
+    };
 
-                template<template<class...> class F, class... Args>
-                struct invoke_this_fn<polyfill::void_t<F<Args...>>, F, Args...> {
-                    using type = F<Args...>;
-                };
+    /*
+     *  Quoted metafunction that invokes the specified quoted metafunctions,
+     *  and passes their results on to the next quoted metafunction.
+     */
+    template<class Q, class... Qs>
+    struct pass_result_of {
+        // invoke `Fn`, pass on their result
+        template<class... Args>
+        using fn = typename Q::template fn<typename defer<Qs, Args...>::type...>;
+    };
 
-                template<class... Args>
-                using fn = typename invoke_this_fn<void, Fn, Args...>::type;
-            };
+    /*
+     *  Quoted metafunction that invokes the specified metafunctions,
+     *  and passes their results on to the next quoted metafunction.
+     */
+    template<class Q, template<class...> class... Fn>
+    using pass_result_of_fn = pass_result_of<Q, quote_fn<Fn>...>;
 
-            /*
-             *  Indirection wrapper for higher-order metafunctions,
-             *  specialized on the argument indexes where metafunctions appear.
-             */
-            template<size_t...>
-            struct higherorder;
+    /*
+     *  Bind arguments at the front of a quoted metafunction.
+     */
+    template<class Q, class... Bound>
+    struct bind_front {
+        template<class... Args>
+        using fn = typename Q::template fn<Bound..., Args...>;
+    };
 
-            template<>
-            struct higherorder<0u> {
-                template<template<template<class...> class Fn, class... Args2> class HigherFn, class Q, class... Args>
-                struct defer_higher_fn {
-                    using type = HigherFn<Q::template fn, Args...>;
-                };
+    /*
+     *  Bind arguments at the back of a quoted metafunction.
+     */
+    template<class Q, class... Bound>
+    struct bind_back {
+        template<class... Args>
+        using fn = typename Q::template fn<Args..., Bound...>;
+    };
 
-                /*
-                 *  Turn higher-order metafunction into a quoted metafunction.
-                 */
-                template<template<template<class...> class Fn, class... Args2> class HigherFn>
-                struct quote_fn {
-                    template<class Q, class... Args>
-                    using fn = typename defer_higher_fn<HigherFn, Q, Args...>::type;
-                };
-            };
+    /*
+     *  Quoted metafunction equivalent to `polyfill::always_false`.
+     *  It ignores arguments passed to the metafunction, and always returns the specified type.
+     */
+    template<class T>
+    struct always {
+        template<class... /*Args*/>
+        using fn = T;
+    };
 
-            /*
-             *  Quoted metafunction that extracts the nested metafunction of its quoted metafunction argument,
-             *  quotes the extracted metafunction and passes it on to the next quoted metafunction
-             *  (kind of the inverse of quoting).
-             */
-            template<class Q>
-            struct pass_extracted_fn_to {
-                template<class... Args>
-                struct invoke_this_fn {
-                    using type = typename Q::template fn<Args...>;
-                };
+    /*
+     *  Unary quoted metafunction equivalent to `std::type_identity_t`.
+     */
+    using identity = quote_fn<polyfill::type_identity_t>;
 
-                // extract class template, quote, pass on
-                template<template<class...> class Fn, class... T>
-                struct invoke_this_fn<Fn<T...>> {
-                    using type = typename Q::template fn<quote_fn<Fn>>;
-                };
+    /*
+     *  Quoted metafunction equivalent to `std::negation`.
+     */
+    template<class TraitQ>
+    using not_ = pass_result_of<quote_fn<polyfill::negation>, TraitQ>;
 
-                template<class... Args>
-                using fn = typename invoke_this_fn<Args...>::type;
-            };
+    /*
+     *  Quoted metafunction equivalent to `std::conjunction`.
+     */
+    template<class... TraitQ>
+    struct conjunction {
+        template<class... Args>
+        using fn = std::true_type;
+    };
 
-            /*
-             *  Quoted metafunction that invokes the specified quoted metafunctions,
-             *  and passes their results on to the next quoted metafunction.
-             */
-            template<class Q, class... Qs>
-            struct pass_result_of {
-                // invoke `Fn`, pass on their result
-                template<class... Args>
-                using fn = typename Q::template fn<typename defer<Qs, Args...>::type...>;
-            };
+    template<class FirstQ, class... TraitQ>
+    struct conjunction<FirstQ, TraitQ...> {
+        // match last or `std::false_type`
+        template<class ArgPack, class ResultTrait, class...>
+        struct invoke_this_fn {
+            static_assert(std::is_same<ResultTrait, std::true_type>::value ||
+                              std::is_same<ResultTrait, std::false_type>::value,
+                          "Resulting trait must be a std::bool_constant");
+            using type = ResultTrait;
+        };
 
-            /*
-             *  Quoted metafunction that invokes the specified metafunctions,
-             *  and passes their results on to the next quoted metafunction.
-             */
-            template<class Q, template<class...> class... Fn>
-            using pass_result_of_fn = pass_result_of<Q, quote_fn<Fn>...>;
+        // match `std::true_type` and one or more remaining
+        template<class... Args, class NextQ, class... RestQ>
+        struct invoke_this_fn<pack<Args...>, std::true_type, NextQ, RestQ...>
+            : invoke_this_fn<pack<Args...>,
+                             // access resulting trait::type
+                             typename defer<NextQ, Args...>::type::type,
+                             RestQ...> {};
 
-            /*
-             *  Bind arguments at the front of a quoted metafunction.
-             */
-            template<class Q, class... Bound>
-            struct bind_front {
-                template<class... Args>
-                using fn = typename Q::template fn<Bound..., Args...>;
-            };
+        template<class... Args>
+        using fn = typename invoke_this_fn<pack<Args...>,
+                                           // access resulting trait::type
+                                           typename defer<FirstQ, Args...>::type::type,
+                                           TraitQ...>::type;
+    };
 
-            /*
-             *  Bind arguments at the back of a quoted metafunction.
-             */
-            template<class Q, class... Bound>
-            struct bind_back {
-                template<class... Args>
-                using fn = typename Q::template fn<Args..., Bound...>;
-            };
+    /*
+     *  Quoted metafunction equivalent to `std::disjunction`.
+     */
+    template<class... TraitQ>
+    struct disjunction {
+        template<class... Args>
+        using fn = std::false_type;
+    };
 
-            /*
-             *  Quoted metafunction equivalent to `polyfill::always_false`.
-             *  It ignores arguments passed to the metafunction, and always returns the specified type.
-             */
-            template<class T>
-            struct always {
-                template<class... /*Args*/>
-                using fn = T;
-            };
+    template<class FirstQ, class... TraitQ>
+    struct disjunction<FirstQ, TraitQ...> {
+        // match last or `std::true_type`
+        template<class ArgPack, class ResultTrait, class...>
+        struct invoke_this_fn {
+            static_assert(std::is_same<ResultTrait, std::true_type>::value ||
+                              std::is_same<ResultTrait, std::false_type>::value,
+                          "Resulting trait must be a std::bool_constant");
+            using type = ResultTrait;
+        };
 
-            /*
-             *  Unary quoted metafunction equivalent to `std::type_identity_t`.
-             */
-            using identity = quote_fn<polyfill::type_identity_t>;
+        // match `std::false_type` and one or more remaining
+        template<class... Args, class NextQ, class... RestQ>
+        struct invoke_this_fn<pack<Args...>, std::false_type, NextQ, RestQ...>
+            : invoke_this_fn<pack<Args...>,
+                             // access resulting trait::type
+                             typename defer<NextQ, Args...>::type::type,
+                             RestQ...> {};
 
-            /*
-             *  Quoted metafunction equivalent to `std::negation`.
-             */
-            template<class TraitQ>
-            using not_ = pass_result_of<quote_fn<polyfill::negation>, TraitQ>;
+        template<class... Args>
+        using fn = typename invoke_this_fn<pack<Args...>,
+                                           // access resulting trait::type
+                                           typename defer<FirstQ, Args...>::type::type,
+                                           TraitQ...>::type;
+    };
 
-            /*
-             *  Quoted metafunction equivalent to `std::conjunction`.
-             */
-            template<class... TraitQ>
-            struct conjunction {
-                template<class... Args>
-                using fn = std::true_type;
-            };
+    /*
+     *  Metafunction equivalent to `std::conjunction`.
+     */
+    template<template<class...> class... TraitFn>
+    using conjunction_fn = pass_result_of_fn<quote_fn<polyfill::conjunction>, TraitFn...>;
 
-            template<class FirstQ, class... TraitQ>
-            struct conjunction<FirstQ, TraitQ...> {
-                // match last or `std::false_type`
-                template<class ArgPack, class ResultTrait, class...>
-                struct invoke_this_fn {
-                    static_assert(std::is_same<ResultTrait, std::true_type>::value ||
-                                      std::is_same<ResultTrait, std::false_type>::value,
-                                  "Resulting trait must be a std::bool_constant");
-                    using type = ResultTrait;
-                };
+    /*
+     *  Metafunction equivalent to `std::disjunction`.
+     */
+    template<template<class...> class... TraitFn>
+    using disjunction_fn = pass_result_of_fn<quote_fn<polyfill::disjunction>, TraitFn...>;
 
-                // match `std::true_type` and one or more remaining
-                template<class... Args, class NextQ, class... RestQ>
-                struct invoke_this_fn<pack<Args...>, std::true_type, NextQ, RestQ...>
-                    : invoke_this_fn<pack<Args...>,
-                                     // access resulting trait::type
-                                     typename defer<NextQ, Args...>::type::type,
-                                     RestQ...> {};
+    /*
+     *  Metafunction equivalent to `std::negation`.
+     */
+    template<template<class...> class Fn>
+    using not_fn = pass_result_of_fn<quote_fn<polyfill::negation>, Fn>;
 
-                template<class... Args>
-                using fn = typename invoke_this_fn<pack<Args...>,
-                                                   // access resulting trait::type
-                                                   typename defer<FirstQ, Args...>::type::type,
-                                                   TraitQ...>::type;
-            };
+    /*
+     *  Bind arguments at the front of a metafunction.
+     */
+    template<template<class...> class Fn, class... Bound>
+    using bind_front_fn = bind_front<quote_fn<Fn>, Bound...>;
 
-            /*
-             *  Quoted metafunction equivalent to `std::disjunction`.
-             */
-            template<class... TraitQ>
-            struct disjunction {
-                template<class... Args>
-                using fn = std::false_type;
-            };
+    /*
+     *  Bind arguments at the back of a metafunction.
+     */
+    template<template<class...> class Fn, class... Bound>
+    using bind_back_fn = bind_back<quote_fn<Fn>, Bound...>;
 
-            template<class FirstQ, class... TraitQ>
-            struct disjunction<FirstQ, TraitQ...> {
-                // match last or `std::true_type`
-                template<class ArgPack, class ResultTrait, class...>
-                struct invoke_this_fn {
-                    static_assert(std::is_same<ResultTrait, std::true_type>::value ||
-                                      std::is_same<ResultTrait, std::false_type>::value,
-                                  "Resulting trait must be a std::bool_constant");
-                    using type = ResultTrait;
-                };
+    /*
+     *  Bind a metafunction and arguments at the front of a higher-order metafunction.
+     */
+    template<template<template<class...> class Fn, class... Args2> class HigherFn,
+             template<class...> class BoundFn,
+             class... Bound>
+    using bind_front_higherorder_fn = bind_front<higherorder<0>::quote_fn<HigherFn>, quote_fn<BoundFn>, Bound...>;
 
-                // match `std::false_type` and one or more remaining
-                template<class... Args, class NextQ, class... RestQ>
-                struct invoke_this_fn<pack<Args...>, std::false_type, NextQ, RestQ...>
-                    : invoke_this_fn<pack<Args...>,
-                                     // access resulting trait::type
-                                     typename defer<NextQ, Args...>::type::type,
-                                     RestQ...> {};
-
-                template<class... Args>
-                using fn = typename invoke_this_fn<pack<Args...>,
-                                                   // access resulting trait::type
-                                                   typename defer<FirstQ, Args...>::type::type,
-                                                   TraitQ...>::type;
-            };
-
-            /*
-             *  Metafunction equivalent to `std::conjunction`.
-             */
-            template<template<class...> class... TraitFn>
-            using conjunction_fn = pass_result_of_fn<quote_fn<polyfill::conjunction>, TraitFn...>;
-
-            /*
-             *  Metafunction equivalent to `std::disjunction`.
-             */
-            template<template<class...> class... TraitFn>
-            using disjunction_fn = pass_result_of_fn<quote_fn<polyfill::disjunction>, TraitFn...>;
-
-            /*
-             *  Metafunction equivalent to `std::negation`.
-             */
-            template<template<class...> class Fn>
-            using not_fn = pass_result_of_fn<quote_fn<polyfill::negation>, Fn>;
-
-            /*
-             *  Bind arguments at the front of a metafunction.
-             */
-            template<template<class...> class Fn, class... Bound>
-            using bind_front_fn = bind_front<quote_fn<Fn>, Bound...>;
-
-            /*
-             *  Bind arguments at the back of a metafunction.
-             */
-            template<template<class...> class Fn, class... Bound>
-            using bind_back_fn = bind_back<quote_fn<Fn>, Bound...>;
-
-            /*
-             *  Bind a metafunction and arguments at the front of a higher-order metafunction.
-             */
-            template<template<template<class...> class Fn, class... Args2> class HigherFn,
-                     template<class...> class BoundFn,
-                     class... Bound>
-            using bind_front_higherorder_fn =
-                bind_front<higherorder<0>::quote_fn<HigherFn>, quote_fn<BoundFn>, Bound...>;
-
-            constexpr size_t find_first_true_helper(std::initializer_list<bool> values) {
-                size_t i = 0;
-                for (auto first = values.begin(); first != values.end() && !*first; ++first) {
-                    ++i;
-                }
-                return i;
-            }
-
-            constexpr size_t count_true_helper(std::initializer_list<bool> values) {
-                size_t n = 0;
-                for (auto first = values.begin(); first != values.end(); ++first) {
-                    n += *first;
-                }
-                return n;
-            }
-
-            /*
-             *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list,
-             *  and returns the index constant of the first element for which the predicate returns true.
-             */
-            template<class PredicateQ>
-            struct finds {
-                template<class Pack, class ProjectQ>
-                struct invoke_this_fn {
-                    static_assert(polyfill::always_false_v<Pack>,
-                                  "`finds` must be invoked with a type list as first argument");
-                };
-
-                template<template<class...> class Pack, class... T, class ProjectQ>
-                struct invoke_this_fn<Pack<T...>, ProjectQ> {
-                    // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
-                    static constexpr size_t value =
-                        find_first_true_helper({PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...});
-                    using type = polyfill::index_constant<value>;
-                };
-
-                template<class Pack, class ProjectQ = identity>
-                using fn = typename invoke_this_fn<Pack, ProjectQ>::type;
-            };
-
-            template<template<class...> class PredicateFn>
-            using finds_fn = finds<quote_fn<PredicateFn>>;
-
-            /*
-             *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list,
-             *  and returns the index constant of the first element for which the predicate returns true.
-             */
-            template<class PredicateQ>
-            struct counts {
-                template<class Pack, class ProjectQ>
-                struct invoke_this_fn {
-                    static_assert(polyfill::always_false_v<Pack>,
-                                  "`counts` must be invoked with a type list as first argument");
-                };
-
-                template<template<class...> class Pack, class... T, class ProjectQ>
-                struct invoke_this_fn<Pack<T...>, ProjectQ> {
-                    // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
-                    static constexpr size_t value =
-                        count_true_helper({PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...});
-                    using type = polyfill::index_constant<value>;
-                };
-
-                template<class Pack, class ProjectQ = identity>
-                using fn = typename invoke_this_fn<Pack, ProjectQ>::type;
-            };
-
-            template<template<class...> class PredicateFn>
-            using counts_fn = counts<quote_fn<PredicateFn>>;
-
-            /*
-             *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list,
-             *  and returns the index constant of the first element for which the predicate returns true.
-             */
-            template<class TraitQ>
-            struct contains {
-                template<class Pack, class ProjectQ>
-                struct invoke_this_fn {
-                    static_assert(polyfill::always_false_v<Pack>,
-                                  "`contains` must be invoked with a type list as first argument");
-                };
-
-                template<template<class...> class Pack, class... T, class ProjectQ>
-                struct invoke_this_fn<Pack<T...>, ProjectQ> {
-                    // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
-                    static constexpr size_t value = static_cast<bool>(
-                        count_true_helper({TraitQ::template fn<typename ProjectQ::template fn<T>>::value...}));
-                    using type = polyfill::bool_constant<value>;
-                };
-
-                template<class Pack, class ProjectQ = identity>
-                using fn = typename invoke_this_fn<Pack, ProjectQ>::type;
-            };
-
-            template<template<class...> class TraitFn>
-            using contains_fn = contains<quote_fn<TraitFn>>;
+    constexpr size_t find_first_true_helper(std::initializer_list<bool> values) {
+        size_t i = 0;
+        for (auto first = values.begin(); first != values.end() && !*first; ++first) {
+            ++i;
         }
+        return i;
     }
 
+    constexpr size_t count_true_helper(std::initializer_list<bool> values) {
+        size_t n = 0;
+        for (auto first = values.begin(); first != values.end(); ++first) {
+            n += *first;
+        }
+        return n;
+    }
+
+    /*
+     *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list,
+     *  and returns the index constant of the first element for which the predicate returns true.
+     */
+    template<class PredicateQ>
+    struct finds {
+        template<class Pack, class ProjectQ>
+        struct invoke_this_fn {
+            static_assert(polyfill::always_false_v<Pack>, "`finds` must be invoked with a type list as first argument");
+        };
+
+        template<template<class...> class Pack, class... T, class ProjectQ>
+        struct invoke_this_fn<Pack<T...>, ProjectQ> {
+            // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+            static constexpr size_t value =
+                find_first_true_helper({PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...});
+            using type = polyfill::index_constant<value>;
+        };
+
+        template<class Pack, class ProjectQ = identity>
+        using fn = typename invoke_this_fn<Pack, ProjectQ>::type;
+    };
+
+    template<template<class...> class PredicateFn>
+    using finds_fn = finds<quote_fn<PredicateFn>>;
+
+    /*
+     *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list,
+     *  and returns the index constant of the first element for which the predicate returns true.
+     */
+    template<class PredicateQ>
+    struct counts {
+        template<class Pack, class ProjectQ>
+        struct invoke_this_fn {
+            static_assert(polyfill::always_false_v<Pack>,
+                          "`counts` must be invoked with a type list as first argument");
+        };
+
+        template<template<class...> class Pack, class... T, class ProjectQ>
+        struct invoke_this_fn<Pack<T...>, ProjectQ> {
+            // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+            static constexpr size_t value =
+                count_true_helper({PredicateQ::template fn<typename ProjectQ::template fn<T>>::value...});
+            using type = polyfill::index_constant<value>;
+        };
+
+        template<class Pack, class ProjectQ = identity>
+        using fn = typename invoke_this_fn<Pack, ProjectQ>::type;
+    };
+
+    template<template<class...> class PredicateFn>
+    using counts_fn = counts<quote_fn<PredicateFn>>;
+
+    /*
+     *  Quoted metafunction that invokes the specified quoted predicate metafunction on each element of a type list,
+     *  and returns the index constant of the first element for which the predicate returns true.
+     */
+    template<class TraitQ>
+    struct contains {
+        template<class Pack, class ProjectQ>
+        struct invoke_this_fn {
+            static_assert(polyfill::always_false_v<Pack>,
+                          "`contains` must be invoked with a type list as first argument");
+        };
+
+        template<template<class...> class Pack, class... T, class ProjectQ>
+        struct invoke_this_fn<Pack<T...>, ProjectQ> {
+            // hoist result into `value` [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_NTTP_EXPR]
+            static constexpr size_t value = static_cast<bool>(
+                count_true_helper({TraitQ::template fn<typename ProjectQ::template fn<T>>::value...}));
+            using type = polyfill::bool_constant<value>;
+        };
+
+        template<class Pack, class ProjectQ = identity>
+        using fn = typename invoke_this_fn<Pack, ProjectQ>::type;
+    };
+
+    template<template<class...> class TraitFn>
+    using contains_fn = contains<quote_fn<TraitFn>>;
+}
+
+namespace sqlite_orm {
     namespace mpl = internal::mpl;
+}
 
-    // convenience quoted metafunctions
-    namespace internal {
-        /*
-         *  Quoted trait metafunction that checks if a type has the specified trait.
-         */
-        template<template<class...> class TraitFn, class... Bound>
-        using check_if =
-            mpl::conditional_t<sizeof...(Bound) == 0, mpl::quote_fn<TraitFn>, mpl::bind_front_fn<TraitFn, Bound...>>;
+// convenience quoted metafunctions
+namespace sqlite_orm::internal {
+    /*
+     *  Quoted trait metafunction that checks if a type has the specified trait.
+     */
+    template<template<class...> class TraitFn, class... Bound>
+    using check_if =
+        mpl::conditional_t<sizeof...(Bound) == 0, mpl::quote_fn<TraitFn>, mpl::bind_front_fn<TraitFn, Bound...>>;
 
-        /*
-         *  Quoted trait metafunction that checks if a type doesn't have the specified trait.
-         */
-        template<template<class...> class TraitFn>
-        using check_if_not = mpl::not_fn<TraitFn>;
+    /*
+     *  Quoted trait metafunction that checks if a type doesn't have the specified trait.
+     */
+    template<template<class...> class TraitFn>
+    using check_if_not = mpl::not_fn<TraitFn>;
 
-        /*
-         *  Quoted trait metafunction that checks if a type is the same as the specified type.
-         *  Commonly used named abbreviation for `check_if<std::is_same, Type>`.
-         */
-        template<class Type>
-        using check_if_is_type = check_if<std::is_same, Type>;
+    /*
+     *  Quoted trait metafunction that checks if a type is the same as the specified type.
+     *  Commonly used named abbreviation for `check_if<std::is_same, Type>`.
+     */
+    template<class Type>
+    using check_if_is_type = check_if<std::is_same, Type>;
 
-        /*
-         *  Quoted trait metafunction that checks if a type's template matches the specified template
-         *  (similar to `is_specialization_of`).
-         */
-        template<template<class...> class Template>
-        using check_if_is_template =
-            mpl::pass_extracted_fn_to<mpl::bind_front_fn<std::is_same, mpl::quote_fn<Template>>>;
+    /*
+     *  Quoted trait metafunction that checks if a type's template matches the specified template
+     *  (similar to `is_specialization_of`).
+     */
+    template<template<class...> class Template>
+    using check_if_is_template = mpl::pass_extracted_fn_to<mpl::bind_front_fn<std::is_same, mpl::quote_fn<Template>>>;
 
-        /*
-         *  Quoted trait metafunction that checks if a type names a nested type determined by `Op`.
-         */
-        template<template<typename...> class Op>
-        using check_if_names = mpl::bind_front_higherorder_fn<polyfill::is_detected, Op>;
+    /*
+     *  Quoted trait metafunction that checks if a type names a nested type determined by `Op`.
+     */
+    template<template<typename...> class Op>
+    using check_if_names = mpl::bind_front_higherorder_fn<polyfill::is_detected, Op>;
 
-        /*
-         *  Quoted trait metafunction that checks if a type does not name a nested type determined by `Op`.
-         */
-        template<template<typename...> class Op>
-        using check_if_lacks = mpl::not_<check_if_names<Op>>;
+    /*
+     *  Quoted trait metafunction that checks if a type does not name a nested type determined by `Op`.
+     */
+    template<template<typename...> class Op>
+    using check_if_lacks = mpl::not_<check_if_names<Op>>;
 
-        /*
-         *  Quoted metafunction that finds the index of the given type in a tuple.
-         */
-        template<class Type>
-        using finds_if_has_type = mpl::finds<check_if_is_type<Type>>;
+    /*
+     *  Quoted metafunction that finds the index of the given type in a tuple.
+     */
+    template<class Type>
+    using finds_if_has_type = mpl::finds<check_if_is_type<Type>>;
 
-        /*
-         *  Quoted metafunction that finds the index of the given class template in a tuple.
-         */
-        template<template<class...> class Template>
-        using finds_if_has_template = mpl::finds<check_if_is_template<Template>>;
+    /*
+     *  Quoted metafunction that finds the index of the given class template in a tuple.
+     */
+    template<template<class...> class Template>
+    using finds_if_has_template = mpl::finds<check_if_is_template<Template>>;
 
-        /*
-         *  Quoted trait metafunction that counts tuple elements having a given trait.
-         */
-        template<template<class...> class TraitFn>
-        using counts_if_has = mpl::counts_fn<TraitFn>;
+    /*
+     *  Quoted trait metafunction that counts tuple elements having a given trait.
+     */
+    template<template<class...> class TraitFn>
+    using counts_if_has = mpl::counts_fn<TraitFn>;
 
-        /*
-         *  Quoted trait metafunction that checks whether a tuple contains a type with given trait.
-         */
-        template<template<class...> class TraitFn>
-        using check_if_has = mpl::contains_fn<TraitFn>;
+    /*
+     *  Quoted trait metafunction that checks whether a tuple contains a type with given trait.
+     */
+    template<template<class...> class TraitFn>
+    using check_if_has = mpl::contains_fn<TraitFn>;
 
-        /*
-         *  Quoted trait metafunction that checks whether a tuple doesn't contain a type with given trait.
-         */
-        template<template<class...> class TraitFn>
-        using check_if_has_not = mpl::not_<mpl::contains_fn<TraitFn>>;
+    /*
+     *  Quoted trait metafunction that checks whether a tuple doesn't contain a type with given trait.
+     */
+    template<template<class...> class TraitFn>
+    using check_if_has_not = mpl::not_<mpl::contains_fn<TraitFn>>;
 
-        /*
-         *  Quoted metafunction that checks whether a tuple contains given type.
-         */
-        template<class T>
-        using check_if_has_type = mpl::contains<check_if_is_type<T>>;
+    /*
+     *  Quoted metafunction that checks whether a tuple contains given type.
+     */
+    template<class T>
+    using check_if_has_type = mpl::contains<check_if_is_type<T>>;
 
-        /*
-         *  Quoted metafunction that checks whether a tuple contains a given template.
-         *
-         *  Note: we are using 2 small tricks:
-         *  1. A template template parameter can be treated like a metafunction, so we can just "quote" a 'primary'
-         *     template into the MPL system (e.g. `std::vector`).
-         *  2. This quoted metafunction does the opposite of the trait metafunction `is_specialization`:
-         *     `is_specialization` tries to instantiate the primary template template parameter using the
-         *     template parameters of a template type, then compares both instantiated types.
-         *     Here instead, `pass_extracted_fn_to` extracts the template template parameter from a template type,
-         *     then compares the resulting template template parameters.
-         */
-        template<template<class...> class Template>
-        using check_if_has_template = mpl::contains<check_if_is_template<Template>>;
+    /*
+     *  Quoted metafunction that checks whether a tuple contains a given template.
+     *
+     *  Note: we are using 2 small tricks:
+     *  1. A template template parameter can be treated like a metafunction, so we can just "quote" a 'primary'
+     *     template into the MPL system (e.g. `std::vector`).
+     *  2. This quoted metafunction does the opposite of the trait metafunction `is_specialization`:
+     *     `is_specialization` tries to instantiate the primary template template parameter using the
+     *     template parameters of a template type, then compares both instantiated types.
+     *     Here instead, `pass_extracted_fn_to` extracts the template template parameter from a template type,
+     *     then compares the resulting template template parameters.
+     */
+    template<template<class...> class Template>
+    using check_if_has_template = mpl::contains<check_if_is_template<Template>>;
 
-        template<template<class...> class ProjOp, class T>
-        using check_if_projected_is_type = mpl::pass_result_of_fn<check_if_is_type<T>, ProjOp>;
-    }
+    template<template<class...> class ProjOp, class T>
+    using check_if_projected_is_type = mpl::pass_result_of_fn<check_if_is_type<T>, ProjOp>;
 }

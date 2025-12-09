@@ -16,9 +16,9 @@ namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
     /*
      *  AST iteration callable that matches function call node expressions.
-     *  * Throws a `orm_error_code::function_not_found` exception
+     *  - Throws a `orm_error_code::function_not_found` exception
      *    if an application-defined scalar or aggregate function was not registered.
-     *  * Throws a `sqlite_errc(SQLITE_ERROR_MISSING_COLLSEQ)` if a named collation function was not registered.
+     *  - Throws a `sqlite_errc(SQLITE_ERROR_MISSING_COLLSEQ)` if a named collation function was not registered.
      */
     struct udf_existence_checker {
         const std::list<udf_proxy>& _scalarFunctions;

@@ -4,43 +4,38 @@
 #include <string>  //  std::string
 #endif
 
-namespace sqlite_orm {
+namespace sqlite_orm::internal {
+    struct rowid_t {
+        operator std::string() const {
+            return "rowid";
+        }
+    };
 
-    namespace internal {
+    struct oid_t {
+        operator std::string() const {
+            return "oid";
+        }
+    };
 
-        struct rowid_t {
-            operator std::string() const {
-                return "rowid";
-            }
-        };
+    struct _rowid_t {
+        operator std::string() const {
+            return "_rowid_";
+        }
+    };
 
-        struct oid_t {
-            operator std::string() const {
-                return "oid";
-            }
-        };
+    template<class T>
+    struct table_rowid_t : public rowid_t {
+        using type = T;
+    };
 
-        struct _rowid_t {
-            operator std::string() const {
-                return "_rowid_";
-            }
-        };
-
-        template<class T>
-        struct table_rowid_t : public rowid_t {
-            using type = T;
-        };
-
-        template<class T>
-        struct table_oid_t : public oid_t {
-            using type = T;
-        };
-        template<class T>
-        struct table__rowid_t : public _rowid_t {
-            using type = T;
-        };
-
-    }
+    template<class T>
+    struct table_oid_t : public oid_t {
+        using type = T;
+    };
+    template<class T>
+    struct table__rowid_t : public _rowid_t {
+        using type = T;
+    };
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

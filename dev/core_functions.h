@@ -21,611 +21,608 @@
 #include "ast/into.h"
 #include "field_of.h"
 
-namespace sqlite_orm {
-    namespace internal {
+namespace sqlite_orm::internal {
+    template<class T>
+    struct unique_ptr_result_of {};
 
-        template<class T>
-        struct unique_ptr_result_of {};
+    /**
+     *  Base class for operator overloading
+     *  R - return type
+     *  S - class with operator std::string
+     *  Args - function arguments types
+     */
+    template<class R, class S, class... Args>
+    struct built_in_function_t : S, arithmetic_t {
+        using return_type = R;
+        using string_type = S;
+        using args_type = std::tuple<Args...>;
 
-        /**
-         *  Base class for operator overloading
-         *  R - return type
-         *  S - class with operator std::string
-         *  Args - function arguments types
-         */
-        template<class R, class S, class... Args>
-        struct built_in_function_t : S, arithmetic_t {
-            using return_type = R;
-            using string_type = S;
-            using args_type = std::tuple<Args...>;
+        static constexpr size_t args_size = std::tuple_size<args_type>::value;
 
-            static constexpr size_t args_size = std::tuple_size<args_type>::value;
+        args_type args;
 
-            args_type args;
+        built_in_function_t(args_type&& args_) : args(std::move(args_)) {}
+    };
 
-            built_in_function_t(args_type&& args_) : args(std::move(args_)) {}
-        };
+    template<class T>
+    inline constexpr bool is_built_in_function_v = is_base_template_of<built_in_function_t, T>::value;
 
-        template<class T>
-        inline constexpr bool is_built_in_function_v = is_base_template_of<built_in_function_t, T>::value;
+    template<class T>
+    struct is_built_in_function : polyfill::bool_constant<is_built_in_function_v<T>> {};
 
-        template<class T>
-        struct is_built_in_function : polyfill::bool_constant<is_built_in_function_v<T>> {};
+    template<class F, class W>
+    struct filtered_aggregate_function {
+        using function_type = F;
+        using where_expression = W;
 
-        template<class F, class W>
-        struct filtered_aggregate_function {
-            using function_type = F;
-            using where_expression = W;
+        function_type function;
+        where_expression where;
+    };
 
-            function_type function;
-            where_expression where;
-        };
+    template<class C>
+    struct where_t;
 
-        template<class C>
-        struct where_t;
+    template<class R, class S, class... Args>
+    struct built_in_aggregate_function_t : built_in_function_t<R, S, Args...> {
+        using super = built_in_function_t<R, S, Args...>;
 
-        template<class R, class S, class... Args>
-        struct built_in_aggregate_function_t : built_in_function_t<R, S, Args...> {
-            using super = built_in_function_t<R, S, Args...>;
+        using super::super;
 
-            using super::super;
+        template<class W>
+        filtered_aggregate_function<built_in_aggregate_function_t<R, S, Args...>, W> filter(where_t<W> wh) {
+            return {*this, std::move(wh.expression)};
+        }
+    };
 
-            template<class W>
-            filtered_aggregate_function<built_in_aggregate_function_t<R, S, Args...>, W> filter(where_t<W> wh) {
-                return {*this, std::move(wh.expression)};
-            }
-        };
+    struct typeof_string {
+        serialize_result_type serialize() const {
+            return "TYPEOF";
+        }
+    };
 
-        struct typeof_string {
-            serialize_result_type serialize() const {
-                return "TYPEOF";
-            }
-        };
+    struct unicode_string {
+        serialize_result_type serialize() const {
+            return "UNICODE";
+        }
+    };
 
-        struct unicode_string {
-            serialize_result_type serialize() const {
-                return "UNICODE";
-            }
-        };
+    struct length_string {
+        serialize_result_type serialize() const {
+            return "LENGTH";
+        }
+    };
 
-        struct length_string {
-            serialize_result_type serialize() const {
-                return "LENGTH";
-            }
-        };
+    struct abs_string {
+        serialize_result_type serialize() const {
+            return "ABS";
+        }
+    };
 
-        struct abs_string {
-            serialize_result_type serialize() const {
-                return "ABS";
-            }
-        };
+    struct lower_string {
+        serialize_result_type serialize() const {
+            return "LOWER";
+        }
+    };
 
-        struct lower_string {
-            serialize_result_type serialize() const {
-                return "LOWER";
-            }
-        };
+    struct upper_string {
+        serialize_result_type serialize() const {
+            return "UPPER";
+        }
+    };
 
-        struct upper_string {
-            serialize_result_type serialize() const {
-                return "UPPER";
-            }
-        };
+    struct last_insert_rowid_string {
+        serialize_result_type serialize() const {
+            return "LAST_INSERT_ROWID";
+        }
+    };
 
-        struct last_insert_rowid_string {
-            serialize_result_type serialize() const {
-                return "LAST_INSERT_ROWID";
-            }
-        };
+    struct total_changes_string {
+        serialize_result_type serialize() const {
+            return "TOTAL_CHANGES";
+        }
+    };
 
-        struct total_changes_string {
-            serialize_result_type serialize() const {
-                return "TOTAL_CHANGES";
-            }
-        };
+    struct changes_string {
+        serialize_result_type serialize() const {
+            return "CHANGES";
+        }
+    };
 
-        struct changes_string {
-            serialize_result_type serialize() const {
-                return "CHANGES";
-            }
-        };
+    struct trim_string {
+        serialize_result_type serialize() const {
+            return "TRIM";
+        }
+    };
 
-        struct trim_string {
-            serialize_result_type serialize() const {
-                return "TRIM";
-            }
-        };
+    struct ltrim_string {
+        serialize_result_type serialize() const {
+            return "LTRIM";
+        }
+    };
 
-        struct ltrim_string {
-            serialize_result_type serialize() const {
-                return "LTRIM";
-            }
-        };
+    struct rtrim_string {
+        serialize_result_type serialize() const {
+            return "RTRIM";
+        }
+    };
 
-        struct rtrim_string {
-            serialize_result_type serialize() const {
-                return "RTRIM";
-            }
-        };
+    struct hex_string {
+        serialize_result_type serialize() const {
+            return "HEX";
+        }
+    };
 
-        struct hex_string {
-            serialize_result_type serialize() const {
-                return "HEX";
-            }
-        };
+    struct quote_string {
+        serialize_result_type serialize() const {
+            return "QUOTE";
+        }
+    };
 
-        struct quote_string {
-            serialize_result_type serialize() const {
-                return "QUOTE";
-            }
-        };
+    struct randomblob_string {
+        serialize_result_type serialize() const {
+            return "RANDOMBLOB";
+        }
+    };
 
-        struct randomblob_string {
-            serialize_result_type serialize() const {
-                return "RANDOMBLOB";
-            }
-        };
+    struct instr_string {
+        serialize_result_type serialize() const {
+            return "INSTR";
+        }
+    };
 
-        struct instr_string {
-            serialize_result_type serialize() const {
-                return "INSTR";
-            }
-        };
+    struct replace_string {
+        serialize_result_type serialize() const {
+            return "REPLACE";
+        }
+    };
 
-        struct replace_string {
-            serialize_result_type serialize() const {
-                return "REPLACE";
-            }
-        };
-
-        struct round_string {
-            serialize_result_type serialize() const {
-                return "ROUND";
-            }
-        };
+    struct round_string {
+        serialize_result_type serialize() const {
+            return "ROUND";
+        }
+    };
 
 #if SQLITE_VERSION_NUMBER >= 3007016
-        struct char_string {
-            serialize_result_type serialize() const {
-                return "CHAR";
-            }
-        };
+    struct char_string {
+        serialize_result_type serialize() const {
+            return "CHAR";
+        }
+    };
 
-        struct random_string {
-            serialize_result_type serialize() const {
-                return "RANDOM";
-            }
-        };
+    struct random_string {
+        serialize_result_type serialize() const {
+            return "RANDOM";
+        }
+    };
 
 #endif
 
-        struct coalesce_string {
-            serialize_result_type serialize() const {
-                return "COALESCE";
-            }
-        };
+    struct coalesce_string {
+        serialize_result_type serialize() const {
+            return "COALESCE";
+        }
+    };
 
-        struct ifnull_string {
-            serialize_result_type serialize() const {
-                return "IFNULL";
-            }
-        };
+    struct ifnull_string {
+        serialize_result_type serialize() const {
+            return "IFNULL";
+        }
+    };
 
-        struct nullif_string {
-            serialize_result_type serialize() const {
-                return "NULLIF";
-            }
-        };
+    struct nullif_string {
+        serialize_result_type serialize() const {
+            return "NULLIF";
+        }
+    };
 
-        struct date_string {
-            serialize_result_type serialize() const {
-                return "DATE";
-            }
-        };
+    struct date_string {
+        serialize_result_type serialize() const {
+            return "DATE";
+        }
+    };
 
-        struct time_string {
-            serialize_result_type serialize() const {
-                return "TIME";
-            }
-        };
+    struct time_string {
+        serialize_result_type serialize() const {
+            return "TIME";
+        }
+    };
 
-        struct datetime_string {
-            serialize_result_type serialize() const {
-                return "DATETIME";
-            }
-        };
+    struct datetime_string {
+        serialize_result_type serialize() const {
+            return "DATETIME";
+        }
+    };
 
-        struct julianday_string {
-            serialize_result_type serialize() const {
-                return "JULIANDAY";
-            }
-        };
+    struct julianday_string {
+        serialize_result_type serialize() const {
+            return "JULIANDAY";
+        }
+    };
 
-        struct strftime_string {
-            serialize_result_type serialize() const {
-                return "STRFTIME";
-            }
-        };
+    struct strftime_string {
+        serialize_result_type serialize() const {
+            return "STRFTIME";
+        }
+    };
 
-        struct zeroblob_string {
-            serialize_result_type serialize() const {
-                return "ZEROBLOB";
-            }
-        };
+    struct zeroblob_string {
+        serialize_result_type serialize() const {
+            return "ZEROBLOB";
+        }
+    };
 
-        struct substr_string {
-            serialize_result_type serialize() const {
-                return "SUBSTR";
-            }
-        };
+    struct substr_string {
+        serialize_result_type serialize() const {
+            return "SUBSTR";
+        }
+    };
 #ifdef SQLITE_SOUNDEX
-        struct soundex_string {
-            serialize_result_type serialize() const {
-                return "SOUNDEX";
-            }
-        };
+    struct soundex_string {
+        serialize_result_type serialize() const {
+            return "SOUNDEX";
+        }
+    };
 #endif
-        struct total_string {
-            serialize_result_type serialize() const {
-                return "TOTAL";
-            }
-        };
+    struct total_string {
+        serialize_result_type serialize() const {
+            return "TOTAL";
+        }
+    };
 
-        struct sum_string {
-            serialize_result_type serialize() const {
-                return "SUM";
-            }
-        };
+    struct sum_string {
+        serialize_result_type serialize() const {
+            return "SUM";
+        }
+    };
 
-        struct count_string {
-            serialize_result_type serialize() const {
-                return "COUNT";
-            }
-        };
+    struct count_string {
+        serialize_result_type serialize() const {
+            return "COUNT";
+        }
+    };
 
-        /**
-         *  T is use to specify type explicitly for queries like
-         *  SELECT COUNT(*) FROM table_name;
-         *  T can be omitted with void.
-         */
-        template<class T>
-        struct count_asterisk_t : count_string {
-            using type = T;
+    /**
+     *  T is use to specify type explicitly for queries like
+     *  SELECT COUNT(*) FROM table_name;
+     *  T can be omitted with void.
+     */
+    template<class T>
+    struct count_asterisk_t : count_string {
+        using type = T;
 
-            template<class W>
-            filtered_aggregate_function<count_asterisk_t<T>, W> filter(where_t<W> wh) {
-                return {*this, std::move(wh.expression)};
-            }
-        };
+        template<class W>
+        filtered_aggregate_function<count_asterisk_t<T>, W> filter(where_t<W> wh) {
+            return {*this, std::move(wh.expression)};
+        }
+    };
 
-        /**
-         *  The same thing as count<T>() but without T arg.
-         *  Is used in cases like this:
-         *    SELECT cust_code, cust_name, cust_city, grade
-         *    FROM customer
-         *    WHERE grade=2 AND EXISTS
-         *        (SELECT COUNT(*)
-         *        FROM customer
-         *        WHERE grade=2
-         *        GROUP BY grade
-         *        HAVING COUNT(*)>2);
-         *  `c++`
-         *  auto rows =
-         *      storage.select(columns(&Customer::code, &Customer::name, &Customer::city, &Customer::grade),
-         *          where(is_equal(&Customer::grade, 2)
-         *              and exists(select(count<Customer>(),
-         *                  where(is_equal(&Customer::grade, 2)),
-         *          group_by(&Customer::grade),
-         *          having(greater_than(count(), 2))))));
-         */
-        struct count_asterisk_without_type : count_string {};
+    /**
+     *  The same thing as count<T>() but without T arg.
+     *  Is used in cases like this:
+     *    SELECT cust_code, cust_name, cust_city, grade
+     *    FROM customer
+     *    WHERE grade=2 AND EXISTS
+     *        (SELECT COUNT(*)
+     *        FROM customer
+     *        WHERE grade=2
+     *        GROUP BY grade
+     *        HAVING COUNT(*)>2);
+     *  `c++`
+     *  auto rows =
+     *      storage.select(columns(&Customer::code, &Customer::name, &Customer::city, &Customer::grade),
+     *          where(is_equal(&Customer::grade, 2)
+     *              and exists(select(count<Customer>(),
+     *                  where(is_equal(&Customer::grade, 2)),
+     *          group_by(&Customer::grade),
+     *          having(greater_than(count(), 2))))));
+     */
+    struct count_asterisk_without_type : count_string {};
 
-        struct avg_string {
-            serialize_result_type serialize() const {
-                return "AVG";
-            }
-        };
+    struct avg_string {
+        serialize_result_type serialize() const {
+            return "AVG";
+        }
+    };
 
-        struct max_string {
-            serialize_result_type serialize() const {
-                return "MAX";
-            }
-        };
+    struct max_string {
+        serialize_result_type serialize() const {
+            return "MAX";
+        }
+    };
 
-        struct min_string {
-            serialize_result_type serialize() const {
-                return "MIN";
-            }
-        };
+    struct min_string {
+        serialize_result_type serialize() const {
+            return "MIN";
+        }
+    };
 
-        struct group_concat_string {
-            serialize_result_type serialize() const {
-                return "GROUP_CONCAT";
-            }
-        };
+    struct group_concat_string {
+        serialize_result_type serialize() const {
+            return "GROUP_CONCAT";
+        }
+    };
 #ifdef SQLITE_ENABLE_MATH_FUNCTIONS
-        struct acos_string {
-            serialize_result_type serialize() const {
-                return "ACOS";
-            }
-        };
+    struct acos_string {
+        serialize_result_type serialize() const {
+            return "ACOS";
+        }
+    };
 
-        struct acosh_string {
-            serialize_result_type serialize() const {
-                return "ACOSH";
-            }
-        };
+    struct acosh_string {
+        serialize_result_type serialize() const {
+            return "ACOSH";
+        }
+    };
 
-        struct asin_string {
-            serialize_result_type serialize() const {
-                return "ASIN";
-            }
-        };
+    struct asin_string {
+        serialize_result_type serialize() const {
+            return "ASIN";
+        }
+    };
 
-        struct asinh_string {
-            serialize_result_type serialize() const {
-                return "ASINH";
-            }
-        };
+    struct asinh_string {
+        serialize_result_type serialize() const {
+            return "ASINH";
+        }
+    };
 
-        struct atan_string {
-            serialize_result_type serialize() const {
-                return "ATAN";
-            }
-        };
+    struct atan_string {
+        serialize_result_type serialize() const {
+            return "ATAN";
+        }
+    };
 
-        struct atan2_string {
-            serialize_result_type serialize() const {
-                return "ATAN2";
-            }
-        };
+    struct atan2_string {
+        serialize_result_type serialize() const {
+            return "ATAN2";
+        }
+    };
 
-        struct atanh_string {
-            serialize_result_type serialize() const {
-                return "ATANH";
-            }
-        };
+    struct atanh_string {
+        serialize_result_type serialize() const {
+            return "ATANH";
+        }
+    };
 
-        struct ceil_string {
-            serialize_result_type serialize() const {
-                return "CEIL";
-            }
-        };
+    struct ceil_string {
+        serialize_result_type serialize() const {
+            return "CEIL";
+        }
+    };
 
-        struct ceiling_string {
-            serialize_result_type serialize() const {
-                return "CEILING";
-            }
-        };
+    struct ceiling_string {
+        serialize_result_type serialize() const {
+            return "CEILING";
+        }
+    };
 
-        struct cos_string {
-            serialize_result_type serialize() const {
-                return "COS";
-            }
-        };
+    struct cos_string {
+        serialize_result_type serialize() const {
+            return "COS";
+        }
+    };
 
-        struct cosh_string {
-            serialize_result_type serialize() const {
-                return "COSH";
-            }
-        };
+    struct cosh_string {
+        serialize_result_type serialize() const {
+            return "COSH";
+        }
+    };
 
-        struct degrees_string {
-            serialize_result_type serialize() const {
-                return "DEGREES";
-            }
-        };
+    struct degrees_string {
+        serialize_result_type serialize() const {
+            return "DEGREES";
+        }
+    };
 
-        struct exp_string {
-            serialize_result_type serialize() const {
-                return "EXP";
-            }
-        };
+    struct exp_string {
+        serialize_result_type serialize() const {
+            return "EXP";
+        }
+    };
 
-        struct floor_string {
-            serialize_result_type serialize() const {
-                return "FLOOR";
-            }
-        };
+    struct floor_string {
+        serialize_result_type serialize() const {
+            return "FLOOR";
+        }
+    };
 
-        struct ln_string {
-            serialize_result_type serialize() const {
-                return "LN";
-            }
-        };
+    struct ln_string {
+        serialize_result_type serialize() const {
+            return "LN";
+        }
+    };
 
-        struct log_string {
-            serialize_result_type serialize() const {
-                return "LOG";
-            }
-        };
+    struct log_string {
+        serialize_result_type serialize() const {
+            return "LOG";
+        }
+    };
 
-        struct log10_string {
-            serialize_result_type serialize() const {
-                return "LOG10";
-            }
-        };
+    struct log10_string {
+        serialize_result_type serialize() const {
+            return "LOG10";
+        }
+    };
 
-        struct log2_string {
-            serialize_result_type serialize() const {
-                return "LOG2";
-            }
-        };
+    struct log2_string {
+        serialize_result_type serialize() const {
+            return "LOG2";
+        }
+    };
 
-        struct mod_string {
-            serialize_result_type serialize() const {
-                return "MOD";
-            }
-        };
+    struct mod_string {
+        serialize_result_type serialize() const {
+            return "MOD";
+        }
+    };
 
-        struct pi_string {
-            serialize_result_type serialize() const {
-                return "PI";
-            }
-        };
+    struct pi_string {
+        serialize_result_type serialize() const {
+            return "PI";
+        }
+    };
 
-        struct pow_string {
-            serialize_result_type serialize() const {
-                return "POW";
-            }
-        };
+    struct pow_string {
+        serialize_result_type serialize() const {
+            return "POW";
+        }
+    };
 
-        struct power_string {
-            serialize_result_type serialize() const {
-                return "POWER";
-            }
-        };
+    struct power_string {
+        serialize_result_type serialize() const {
+            return "POWER";
+        }
+    };
 
-        struct radians_string {
-            serialize_result_type serialize() const {
-                return "RADIANS";
-            }
-        };
+    struct radians_string {
+        serialize_result_type serialize() const {
+            return "RADIANS";
+        }
+    };
 
-        struct sin_string {
-            serialize_result_type serialize() const {
-                return "SIN";
-            }
-        };
+    struct sin_string {
+        serialize_result_type serialize() const {
+            return "SIN";
+        }
+    };
 
-        struct sinh_string {
-            serialize_result_type serialize() const {
-                return "SINH";
-            }
-        };
+    struct sinh_string {
+        serialize_result_type serialize() const {
+            return "SINH";
+        }
+    };
 
-        struct sqrt_string {
-            serialize_result_type serialize() const {
-                return "SQRT";
-            }
-        };
+    struct sqrt_string {
+        serialize_result_type serialize() const {
+            return "SQRT";
+        }
+    };
 
-        struct tan_string {
-            serialize_result_type serialize() const {
-                return "TAN";
-            }
-        };
+    struct tan_string {
+        serialize_result_type serialize() const {
+            return "TAN";
+        }
+    };
 
-        struct tanh_string {
-            serialize_result_type serialize() const {
-                return "TANH";
-            }
-        };
+    struct tanh_string {
+        serialize_result_type serialize() const {
+            return "TANH";
+        }
+    };
 
-        struct trunc_string {
-            serialize_result_type serialize() const {
-                return "TRUNC";
-            }
-        };
+    struct trunc_string {
+        serialize_result_type serialize() const {
+            return "TRUNC";
+        }
+    };
 
 #endif  //  SQLITE_ENABLE_MATH_FUNCTIONS
 #ifdef SQLITE_ENABLE_JSON1
-        struct json_string {
-            serialize_result_type serialize() const {
-                return "JSON";
-            }
-        };
+    struct json_string {
+        serialize_result_type serialize() const {
+            return "JSON";
+        }
+    };
 
-        struct json_array_string {
-            serialize_result_type serialize() const {
-                return "JSON_ARRAY";
-            }
-        };
+    struct json_array_string {
+        serialize_result_type serialize() const {
+            return "JSON_ARRAY";
+        }
+    };
 
-        struct json_array_length_string {
-            serialize_result_type serialize() const {
-                return "JSON_ARRAY_LENGTH";
-            }
-        };
+    struct json_array_length_string {
+        serialize_result_type serialize() const {
+            return "JSON_ARRAY_LENGTH";
+        }
+    };
 
-        struct json_extract_string {
-            serialize_result_type serialize() const {
-                return "JSON_EXTRACT";
-            }
-        };
+    struct json_extract_string {
+        serialize_result_type serialize() const {
+            return "JSON_EXTRACT";
+        }
+    };
 
-        struct json_insert_string {
-            serialize_result_type serialize() const {
-                return "JSON_INSERT";
-            }
-        };
+    struct json_insert_string {
+        serialize_result_type serialize() const {
+            return "JSON_INSERT";
+        }
+    };
 
-        struct json_replace_string {
-            serialize_result_type serialize() const {
-                return "JSON_REPLACE";
-            }
-        };
+    struct json_replace_string {
+        serialize_result_type serialize() const {
+            return "JSON_REPLACE";
+        }
+    };
 
-        struct json_set_string {
-            serialize_result_type serialize() const {
-                return "JSON_SET";
-            }
-        };
+    struct json_set_string {
+        serialize_result_type serialize() const {
+            return "JSON_SET";
+        }
+    };
 
-        struct json_object_string {
-            serialize_result_type serialize() const {
-                return "JSON_OBJECT";
-            }
-        };
+    struct json_object_string {
+        serialize_result_type serialize() const {
+            return "JSON_OBJECT";
+        }
+    };
 
-        struct json_patch_string {
-            serialize_result_type serialize() const {
-                return "JSON_PATCH";
-            }
-        };
+    struct json_patch_string {
+        serialize_result_type serialize() const {
+            return "JSON_PATCH";
+        }
+    };
 
-        struct json_remove_string {
-            serialize_result_type serialize() const {
-                return "JSON_REMOVE";
-            }
-        };
+    struct json_remove_string {
+        serialize_result_type serialize() const {
+            return "JSON_REMOVE";
+        }
+    };
 
-        struct json_type_string {
-            serialize_result_type serialize() const {
-                return "JSON_TYPE";
-            }
-        };
+    struct json_type_string {
+        serialize_result_type serialize() const {
+            return "JSON_TYPE";
+        }
+    };
 
-        struct json_valid_string {
-            serialize_result_type serialize() const {
-                return "JSON_VALID";
-            }
-        };
+    struct json_valid_string {
+        serialize_result_type serialize() const {
+            return "JSON_VALID";
+        }
+    };
 
-        struct json_quote_string {
-            serialize_result_type serialize() const {
-                return "JSON_QUOTE";
-            }
-        };
+    struct json_quote_string {
+        serialize_result_type serialize() const {
+            return "JSON_QUOTE";
+        }
+    };
 
-        struct json_group_array_string {
-            serialize_result_type serialize() const {
-                return "JSON_GROUP_ARRAY";
-            }
-        };
+    struct json_group_array_string {
+        serialize_result_type serialize() const {
+            return "JSON_GROUP_ARRAY";
+        }
+    };
 
-        struct json_group_object_string {
-            serialize_result_type serialize() const {
-                return "JSON_GROUP_OBJECT";
-            }
-        };
+    struct json_group_object_string {
+        serialize_result_type serialize() const {
+            return "JSON_GROUP_OBJECT";
+        }
+    };
 #endif  //  SQLITE_ENABLE_JSON1
 
-        template<class T>
-        using field_type_or_type_t = polyfill::detected_or_t<T, type_t, member_field_type<T>>;
+    template<class T>
+    using field_type_or_type_t = polyfill::detected_or_t<T, type_t, member_field_type<T>>;
 
-        template<class T, class X, class Y, class Z>
-        struct highlight_t {
-            using table_type = T;
-            using argument0_type = X;
-            using argument1_type = Y;
-            using argument2_type = Z;
+    template<class T, class X, class Y, class Z>
+    struct highlight_t {
+        using table_type = T;
+        using argument0_type = X;
+        using argument1_type = Y;
+        using argument2_type = Z;
 
-            argument0_type argument0{};
-            argument1_type argument1{};
-            argument2_type argument2{};
-        };
-    }
+        argument0_type argument0{};
+        argument1_type argument1{};
+        argument2_type argument2{};
+    };
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -1711,7 +1708,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                                             internal::field_type_or_type_t<Y>>>,
                               bool> = true>
     auto nullif(X x, Y y) {
-        if constexpr (std::is_void_v<R>) {
+        if constexpr (std::is_void<R>::value) {
             using F = internal::built_in_function_t<
                 std::optional<std::common_type_t<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>>,
                 internal::nullif_string,

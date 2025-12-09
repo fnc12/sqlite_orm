@@ -9,50 +9,48 @@
 
 #include "../functional/cxx_type_traits_polyfill.h"
 
-namespace sqlite_orm {
-    namespace internal {
+namespace sqlite_orm::internal {
 #if SQLITE_VERSION_NUMBER >= 3024000
-        template<class T, class A>
-        struct upsert_clause;
+    template<class T, class A>
+    struct upsert_clause;
 
-        template<class... Args>
-        struct conflict_target {
-            using args_tuple = std::tuple<Args...>;
+    template<class... Args>
+    struct conflict_target {
+        using args_tuple = std::tuple<Args...>;
 
-            args_tuple args;
+        args_tuple args;
 
-            upsert_clause<args_tuple, std::tuple<>> do_nothing() {
-                return {std::move(this->args), {}};
-            }
+        upsert_clause<args_tuple, std::tuple<>> do_nothing() {
+            return {std::move(this->args), {}};
+        }
 
-            template<class... ActionsArgs>
-            upsert_clause<args_tuple, std::tuple<ActionsArgs...>> do_update(ActionsArgs... actions) {
-                return {std::move(this->args), {std::forward<ActionsArgs>(actions)...}};
-            }
-        };
+        template<class... ActionsArgs>
+        upsert_clause<args_tuple, std::tuple<ActionsArgs...>> do_update(ActionsArgs... actions) {
+            return {std::move(this->args), {std::forward<ActionsArgs>(actions)...}};
+        }
+    };
 
-        template<class... TargetArgs, class... ActionsArgs>
-        struct upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>> {
-            using target_args_tuple = std::tuple<TargetArgs...>;
-            using actions_tuple = std::tuple<ActionsArgs...>;
+    template<class... TargetArgs, class... ActionsArgs>
+    struct upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>> {
+        using target_args_tuple = std::tuple<TargetArgs...>;
+        using actions_tuple = std::tuple<ActionsArgs...>;
 
-            target_args_tuple target_args;
+        target_args_tuple target_args;
 
-            actions_tuple actions;
-        };
+        actions_tuple actions;
+    };
 #endif
 
-        template<class T>
-        inline constexpr bool is_upsert_clause_v =
+    template<class T>
+    inline constexpr bool is_upsert_clause_v =
 #if SQLITE_VERSION_NUMBER >= 3024000
-            polyfill::is_specialization_of<T, upsert_clause>::value;
+        polyfill::is_specialization_of<T, upsert_clause>::value;
 #else
-            false;
+        false;
 #endif
 
-        template<class T>
-        using is_upsert_clause = polyfill::bool_constant<is_upsert_clause_v<T>>;
-    }
+    template<class T>
+    using is_upsert_clause = polyfill::bool_constant<is_upsert_clause_v<T>>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

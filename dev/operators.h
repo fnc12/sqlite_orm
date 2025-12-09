@@ -6,217 +6,212 @@
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
-#include "functional/is_base_template_of.h"
 #include "tags.h"
 #include "serialize_result_type.h"
 
-namespace sqlite_orm {
+namespace sqlite_orm::internal {
+    template<class L, class R, class... Ds>
+    struct binary_operator : Ds... {
+        using left_type = L;
+        using right_type = R;
 
-    namespace internal {
+        left_type lhs;
+        right_type rhs;
 
-        template<class L, class R, class... Ds>
-        struct binary_operator : Ds... {
-            using left_type = L;
-            using right_type = R;
+        constexpr binary_operator(left_type lhs_, right_type rhs_) : lhs(std::move(lhs_)), rhs(std::move(rhs_)) {}
+    };
 
-            left_type lhs;
-            right_type rhs;
+    template<class T>
+    inline constexpr bool is_binary_operator_v = polyfill::is_specialization_of<T, binary_operator>::value;
 
-            constexpr binary_operator(left_type lhs_, right_type rhs_) : lhs(std::move(lhs_)), rhs(std::move(rhs_)) {}
-        };
+    template<class T>
+    using is_binary_operator = polyfill::bool_constant<is_binary_operator_v<T>>;
 
-        template<class T>
-        inline constexpr bool is_binary_operator_v = is_base_template_of<binary_operator, T>::value;
+    struct conc_string {
+        serialize_result_type serialize() const {
+            return "||";
+        }
+    };
 
-        template<class T>
-        using is_binary_operator = polyfill::bool_constant<is_binary_operator_v<T>>;
+    /**
+     *  Result of concatenation || operator
+     */
+    template<class L, class R>
+    using conc_t = binary_operator<L, R, conc_string>;
 
-        struct conc_string {
-            serialize_result_type serialize() const {
-                return "||";
-            }
-        };
+    struct unary_minus_string {
+        serialize_result_type serialize() const {
+            return "-";
+        }
+    };
 
-        /**
-         *  Result of concatenation || operator
-         */
-        template<class L, class R>
-        using conc_t = binary_operator<L, R, conc_string>;
+    /**
+     *  Result of unary minus - operator
+     */
+    template<class T>
+    struct unary_minus_t : unary_minus_string, arithmetic_t, negatable_t {
+        using argument_type = T;
 
-        struct unary_minus_string {
-            serialize_result_type serialize() const {
-                return "-";
-            }
-        };
+        argument_type argument;
 
-        /**
-         *  Result of unary minus - operator
-         */
-        template<class T>
-        struct unary_minus_t : unary_minus_string, arithmetic_t, negatable_t {
-            using argument_type = T;
+        unary_minus_t(argument_type argument_) : argument(std::move(argument_)) {}
+    };
 
-            argument_type argument;
+    struct add_string {
+        serialize_result_type serialize() const {
+            return "+";
+        }
+    };
 
-            unary_minus_t(argument_type argument_) : argument(std::move(argument_)) {}
-        };
+    /**
+     *  Result of addition + operator
+     */
+    template<class L, class R>
+    using add_t = binary_operator<L, R, add_string, arithmetic_t, negatable_t>;
 
-        struct add_string {
-            serialize_result_type serialize() const {
-                return "+";
-            }
-        };
+    struct sub_string {
+        serialize_result_type serialize() const {
+            return "-";
+        }
+    };
 
-        /**
-         *  Result of addition + operator
-         */
-        template<class L, class R>
-        using add_t = binary_operator<L, R, add_string, arithmetic_t, negatable_t>;
+    /**
+     *  Result of substraction - operator
+     */
+    template<class L, class R>
+    using sub_t = binary_operator<L, R, sub_string, arithmetic_t, negatable_t>;
 
-        struct sub_string {
-            serialize_result_type serialize() const {
-                return "-";
-            }
-        };
+    struct mul_string {
+        serialize_result_type serialize() const {
+            return "*";
+        }
+    };
 
-        /**
-         *  Result of substraction - operator
-         */
-        template<class L, class R>
-        using sub_t = binary_operator<L, R, sub_string, arithmetic_t, negatable_t>;
+    /**
+     *  Result of multiply * operator
+     */
+    template<class L, class R>
+    using mul_t = binary_operator<L, R, mul_string, arithmetic_t, negatable_t>;
 
-        struct mul_string {
-            serialize_result_type serialize() const {
-                return "*";
-            }
-        };
+    struct div_string {
+        serialize_result_type serialize() const {
+            return "/";
+        }
+    };
 
-        /**
-         *  Result of multiply * operator
-         */
-        template<class L, class R>
-        using mul_t = binary_operator<L, R, mul_string, arithmetic_t, negatable_t>;
+    /**
+     *  Result of divide / operator
+     */
+    template<class L, class R>
+    using div_t = binary_operator<L, R, div_string, arithmetic_t, negatable_t>;
 
-        struct div_string {
-            serialize_result_type serialize() const {
-                return "/";
-            }
-        };
+    struct mod_operator_string {
+        serialize_result_type serialize() const {
+            return "%";
+        }
+    };
 
-        /**
-         *  Result of divide / operator
-         */
-        template<class L, class R>
-        using div_t = binary_operator<L, R, div_string, arithmetic_t, negatable_t>;
+    /**
+     *  Result of mod % operator
+     */
+    template<class L, class R>
+    using mod_t = binary_operator<L, R, mod_operator_string, arithmetic_t, negatable_t>;
 
-        struct mod_operator_string {
-            serialize_result_type serialize() const {
-                return "%";
-            }
-        };
+    struct bitwise_shift_left_string {
+        serialize_result_type serialize() const {
+            return "<<";
+        }
+    };
 
-        /**
-         *  Result of mod % operator
-         */
-        template<class L, class R>
-        using mod_t = binary_operator<L, R, mod_operator_string, arithmetic_t, negatable_t>;
+    /**
+     *  Result of bitwise shift left << operator
+     */
+    template<class L, class R>
+    using bitwise_shift_left_t = binary_operator<L, R, bitwise_shift_left_string, arithmetic_t, negatable_t>;
 
-        struct bitwise_shift_left_string {
-            serialize_result_type serialize() const {
-                return "<<";
-            }
-        };
+    struct bitwise_shift_right_string {
+        serialize_result_type serialize() const {
+            return ">>";
+        }
+    };
 
-        /**
-         * Result of bitwise shift left << operator
-         */
-        template<class L, class R>
-        using bitwise_shift_left_t = binary_operator<L, R, bitwise_shift_left_string, arithmetic_t, negatable_t>;
+    /**
+     *  Result of bitwise shift right >> operator
+     */
+    template<class L, class R>
+    using bitwise_shift_right_t = binary_operator<L, R, bitwise_shift_right_string, arithmetic_t, negatable_t>;
 
-        struct bitwise_shift_right_string {
-            serialize_result_type serialize() const {
-                return ">>";
-            }
-        };
+    struct bitwise_and_string {
+        serialize_result_type serialize() const {
+            return "&";
+        }
+    };
 
-        /**
-         * Result of bitwise shift right >> operator
-         */
-        template<class L, class R>
-        using bitwise_shift_right_t = binary_operator<L, R, bitwise_shift_right_string, arithmetic_t, negatable_t>;
+    /**
+     *  Result of bitwise and & operator
+     */
+    template<class L, class R>
+    using bitwise_and_t = binary_operator<L, R, bitwise_and_string, arithmetic_t, negatable_t>;
 
-        struct bitwise_and_string {
-            serialize_result_type serialize() const {
-                return "&";
-            }
-        };
+    struct bitwise_or_string {
+        serialize_result_type serialize() const {
+            return "|";
+        }
+    };
 
-        /**
-         * Result of bitwise and & operator
-         */
-        template<class L, class R>
-        using bitwise_and_t = binary_operator<L, R, bitwise_and_string, arithmetic_t, negatable_t>;
+    /**
+     *  Result of bitwise or | operator
+     */
+    template<class L, class R>
+    using bitwise_or_t = binary_operator<L, R, bitwise_or_string, arithmetic_t, negatable_t>;
 
-        struct bitwise_or_string {
-            serialize_result_type serialize() const {
-                return "|";
-            }
-        };
+    struct bitwise_not_string {
+        serialize_result_type serialize() const {
+            return "~";
+        }
+    };
 
-        /**
-         * Result of bitwise or | operator
-         */
-        template<class L, class R>
-        using bitwise_or_t = binary_operator<L, R, bitwise_or_string, arithmetic_t, negatable_t>;
+    /**
+     *  Result of bitwise not ~ operator
+     */
+    template<class T>
+    struct bitwise_not_t : bitwise_not_string, arithmetic_t, negatable_t {
+        using argument_type = T;
 
-        struct bitwise_not_string {
-            serialize_result_type serialize() const {
-                return "~";
-            }
-        };
+        argument_type argument;
 
-        /**
-         * Result of bitwise not ~ operator
-         */
-        template<class T>
-        struct bitwise_not_t : bitwise_not_string, arithmetic_t, negatable_t {
-            using argument_type = T;
+        bitwise_not_t(argument_type argument_) : argument(std::move(argument_)) {}
+    };
 
-            argument_type argument;
+    struct assign_string {
+        serialize_result_type serialize() const {
+            return "=";
+        }
+    };
 
-            bitwise_not_t(argument_type argument_) : argument(std::move(argument_)) {}
-        };
+    /**
+     *  Result of assign = operator
+     */
+    template<class L, class R>
+    using assign_t = binary_operator<L, R, assign_string>;
 
-        struct assign_string {
-            serialize_result_type serialize() const {
-                return "=";
-            }
-        };
+    /**
+     *  Assign operator traits. Common case
+     */
+    template<class T>
+    struct is_assign_t : public std::false_type {};
 
-        /**
-         *  Result of assign = operator
-         */
-        template<class L, class R>
-        using assign_t = binary_operator<L, R, assign_string>;
-
-        /**
-         *  Assign operator traits. Common case
-         */
-        template<class T>
-        struct is_assign_t : public std::false_type {};
-
-        /**
-         *  Assign operator traits. Specialized case
-         */
-        template<class L, class R>
-        struct is_assign_t<assign_t<L, R>> : public std::true_type {};
-    }
+    /**
+     *  Assign operator traits. Specialized case
+     */
+    template<class L, class R>
+    struct is_assign_t<assign_t<L, R>> : public std::true_type {};
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Public interface for || concatenation operator. Example: `select(conc(&User::name, "@gmail.com"));` => SELECT
-     * name || '@gmail.com' FROM users
+     *  name || '@gmail.com' FROM users
      */
     template<class L, class R>
     constexpr internal::conc_t<L, R> conc(L l, R r) {

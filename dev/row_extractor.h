@@ -39,9 +39,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  of this helper.
      *  
      *  @note (internal): Since row extractors are used in certain contexts with only one purpose at a time
-     *                    (e.g., converting a row result set but not function values or column text),
-     *                    there are factory functions that perform conceptual checking that should be used
-     *                    instead of directly creating row extractors.
+     *  (e.g., converting a row result set but not function values or column text),
+     *  there are factory functions that perform conceptual checking that should be used
+     *  instead of directly creating row extractors.
      *  
      *  
      */
@@ -83,46 +83,44 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 }
 
-namespace sqlite_orm {
-    namespace internal {
-        /*  
-         *  Make a row extractor to be used for casting SQL column text to a C++ typed value.
-         */
-        template<class R>
+namespace sqlite_orm::internal {
+    /*  
+     *  Make a row extractor to be used for casting SQL column text to a C++ typed value.
+     */
+    template<class R>
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-            requires (orm_column_text_extractable<R>)
+        requires (orm_column_text_extractable<R>)
 #endif
-        row_extractor<R> column_text_extractor() {
-            return {};
-        }
+    row_extractor<R> column_text_extractor() {
+        return {};
+    }
 
-        /*  
-         *  Make a row extractor to be used for converting a value from a SQL result row set to a C++ typed value.
-         */
-        template<class R>
+    /*  
+     *  Make a row extractor to be used for converting a value from a SQL result row set to a C++ typed value.
+     */
+    template<class R>
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-            requires (orm_row_value_extractable<R>)
+        requires (orm_row_value_extractable<R>)
 #endif
-        row_extractor<R> row_value_extractor() {
-            return {};
-        }
+    row_extractor<R> row_value_extractor() {
+        return {};
+    }
 
-        /*  
-         *  Make a row extractor to be used for unboxing a dynamically typed SQL value to a C++ typed value.
-         */
-        template<class R>
+    /*  
+     *  Make a row extractor to be used for unboxing a dynamically typed SQL value to a C++ typed value.
+     */
+    template<class R>
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-            requires (orm_boxed_value_extractable<R>)
+        requires (orm_boxed_value_extractable<R>)
 #endif
-        row_extractor<R> boxed_value_extractor() {
-            return {};
-        }
+    row_extractor<R> boxed_value_extractor() {
+        return {};
+    }
 
-        template<class T>
-        T extract_boxed_value(sqlite3_value* value) {
-            const auto rowExtractor = boxed_value_extractor<T>();
-            return rowExtractor.extract(value);
-        }
+    template<class T>
+    T extract_boxed_value(sqlite3_value* value) {
+        const auto rowExtractor = boxed_value_extractor<T>();
+        return rowExtractor.extract(value);
     }
 }
 
@@ -138,11 +136,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
+// `row_extractor` specializations;
+// note: no need to export the specializations, only the primary template above
 namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3020000
     /**
      *  Specialization for the 'pointer-passing interface'.
-     * 
+     *  
      *  @note The 'pointer-passing' interface doesn't support (and in fact prohibits)
      *  extracting pointers from columns.
      */
@@ -160,7 +160,7 @@ namespace sqlite_orm {
     };
 
     /**
-     * Undefine using pointer_binding<> for querying values
+     *  Undefine using pointer_binding<> for querying values
      */
     template<class P, class T, class D>
     struct row_extractor<pointer_binding<P, T, D>, void>;
@@ -465,96 +465,95 @@ namespace sqlite_orm {
 
         journal_mode extract(sqlite3_value* value) const = delete;
     };
+}
 
-    namespace internal {
+namespace sqlite_orm::internal {
 
-        /*
-         *  Helper to extract a structure from a rowset.
-         */
-        template<class R, class DBOs>
-        struct struct_extractor;
+    /*
+     *  Helper to extract a structure from a rowset.
+     */
+    template<class R, class DBOs>
+    struct struct_extractor;
 
-        /*  
-         *  Returns a value-based row extractor for an unmapped type,
-         *  returns a structure extractor for a table reference, tuple or named struct.
-         */
-        template<class R, class DBOs>
-        auto make_row_extractor([[maybe_unused]] const DBOs& dbObjects) {
-            if constexpr (polyfill::is_specialization_of_v<R, std::tuple> ||
-                          polyfill::is_specialization_of_v<R, structure> || is_table_reference_v<R>) {
-                return struct_extractor<R, DBOs>{dbObjects};
-            } else {
-                return row_value_extractor<R>();
-            }
+    /*  
+     *  Returns a value-based row extractor for an unmapped type,
+     *  returns a structure extractor for a table reference, tuple or named struct.
+     */
+    template<class R, class DBOs>
+    auto make_row_extractor([[maybe_unused]] const DBOs& dbObjects) {
+        if constexpr (polyfill::is_specialization_of_v<R, std::tuple> ||
+                      polyfill::is_specialization_of_v<R, structure> || is_table_reference_v<R>) {
+            return struct_extractor<R, DBOs>{dbObjects};
+        } else {
+            return row_value_extractor<R>();
+        }
+    }
+
+    /**
+     *  Specialization for a tuple of top-level column results.
+     */
+    template<class DBOs, class... Args>
+    struct struct_extractor<std::tuple<Args...>, DBOs> {
+        const DBOs& db_objects;
+
+        std::tuple<Args...> extract(orm_gsl::czstring columnText) const = delete;
+
+        // note: expects to be called only from the top level, and therefore discards the index
+        std::tuple<column_result_proxy_t<Args>...> extract(sqlite3_stmt* stmt, int&& /*nextColumnIndex*/ = 0) const {
+            int columnIndex = -1;
+            return {make_row_extractor<Args>(this->db_objects).extract(stmt, ++columnIndex)...};
         }
 
-        /**
-         *  Specialization for a tuple of top-level column results.
-         */
-        template<class DBOs, class... Args>
-        struct struct_extractor<std::tuple<Args...>, DBOs> {
-            const DBOs& db_objects;
+        // unused to date
+        std::tuple<column_result_proxy_t<Args>...> extract(sqlite3_stmt* stmt, int& columnIndex) const = delete;
 
-            std::tuple<Args...> extract(orm_gsl::czstring columnText) const = delete;
+        std::tuple<Args...> extract(sqlite3_value* value) const = delete;
+    };
 
-            // note: expects to be called only from the top level, and therefore discards the index
-            std::tuple<column_result_proxy_t<Args>...> extract(sqlite3_stmt* stmt,
-                                                               int&& /*nextColumnIndex*/ = 0) const {
-                int columnIndex = -1;
-                return {make_row_extractor<Args>(this->db_objects).extract(stmt, ++columnIndex)...};
-            }
+    /**
+     *  Specialization for an unmapped structure to be constructed ad-hoc from column results.
+     *  
+     *  This plays together with `column_result_of_t`, which returns `struct_t<O>` as `structure<O>`
+     */
+    template<class O, class... Args, class DBOs>
+    struct struct_extractor<structure<O, std::tuple<Args...>>, DBOs> {
+        const DBOs& db_objects;
 
-            // unused to date
-            std::tuple<column_result_proxy_t<Args>...> extract(sqlite3_stmt* stmt, int& columnIndex) const = delete;
+        O extract(orm_gsl::czstring columnText) const = delete;
 
-            std::tuple<Args...> extract(sqlite3_value* value) const = delete;
-        };
+        // note: expects to be called only from the top level, and therefore discards the index;
+        // note: brace-init-list initialization guarantees order of evaluation, but only for aggregates and variadic constructors it seems.
+        //       see unit test tests/prepared_statement_tests/select.cpp/TEST_CASE("Prepared select")/SECTION("non-aggregate struct")
+        template<class Ox = O, satisfies<is_eval_order_garanteed, Ox> = true>
+        O extract(sqlite3_stmt* stmt, int&& /*nextColumnIndex*/ = 0) const {
+            int columnIndex = -1;
+            return O{make_row_extractor<Args>(this->db_objects).extract(stmt, ++columnIndex)...};
+        }
 
-        /**
-         *  Specialization for an unmapped structure to be constructed ad-hoc from column results.
-         *  
-         *  This plays together with `column_result_of_t`, which returns `struct_t<O>` as `structure<O>`
-         */
-        template<class O, class... Args, class DBOs>
-        struct struct_extractor<structure<O, std::tuple<Args...>>, DBOs> {
-            const DBOs& db_objects;
-
-            O extract(orm_gsl::czstring columnText) const = delete;
-
-            // note: expects to be called only from the top level, and therefore discards the index;
+        template<class Ox = O, satisfies_not<is_eval_order_garanteed, Ox> = true>
+        O extract(sqlite3_stmt* stmt, int&& /*nextColumnIndex*/ = 0) const {
+            int columnIndex = -1;
             // note: brace-init-list initialization guarantees order of evaluation, but only for aggregates and variadic constructors it seems.
-            //       see unit test tests/prepared_statement_tests/select.cpp/TEST_CASE("Prepared select")/SECTION("non-aggregate struct")
-            template<class Ox = O, satisfies<is_eval_order_garanteed, Ox> = true>
-            O extract(sqlite3_stmt* stmt, int&& /*nextColumnIndex*/ = 0) const {
-                int columnIndex = -1;
-                return O{make_row_extractor<Args>(this->db_objects).extract(stmt, ++columnIndex)...};
-            }
+            std::tuple<Args...> t{make_row_extractor<Args>(this->db_objects).extract(stmt, ++columnIndex)...};
+            return create_from_tuple<O>(std::move(t), std::index_sequence_for<Args...>{});
+        }
 
-            template<class Ox = O, satisfies_not<is_eval_order_garanteed, Ox> = true>
-            O extract(sqlite3_stmt* stmt, int&& /*nextColumnIndex*/ = 0) const {
-                int columnIndex = -1;
-                // note: brace-init-list initialization guarantees order of evaluation, but only for aggregates and variadic constructors it seems.
-                std::tuple<Args...> t{make_row_extractor<Args>(this->db_objects).extract(stmt, ++columnIndex)...};
-                return create_from_tuple<O>(std::move(t), std::index_sequence_for<Args...>{});
-            }
+        // note: brace-init-list initialization guarantees order of evaluation, but only for aggregates and variadic constructors it seems.
+        //       see unit test tests/prepared_statement_tests/select.cpp/TEST_CASE("Prepared select")/SECTION("non-aggregate struct")
+        template<class Ox = O, satisfies<is_eval_order_garanteed, Ox> = true>
+        O extract(sqlite3_stmt* stmt, int& columnIndex) const {
+            --columnIndex;
+            return O{make_row_extractor<Args>(this->db_objects).extract(stmt, ++columnIndex)...};
+        }
 
+        template<class Ox = O, satisfies_not<is_eval_order_garanteed, Ox> = true>
+        O extract(sqlite3_stmt* stmt, int& columnIndex) const {
+            --columnIndex;
             // note: brace-init-list initialization guarantees order of evaluation, but only for aggregates and variadic constructors it seems.
-            //       see unit test tests/prepared_statement_tests/select.cpp/TEST_CASE("Prepared select")/SECTION("non-aggregate struct")
-            template<class Ox = O, satisfies<is_eval_order_garanteed, Ox> = true>
-            O extract(sqlite3_stmt* stmt, int& columnIndex) const {
-                --columnIndex;
-                return O{make_row_extractor<Args>(this->db_objects).extract(stmt, ++columnIndex)...};
-            }
+            std::tuple<Args...> t{make_row_extractor<Args>(this->db_objects).extract(stmt, ++columnIndex)...};
+            return create_from_tuple<O>(std::move(t), std::index_sequence_for<Args...>{});
+        }
 
-            template<class Ox = O, satisfies_not<is_eval_order_garanteed, Ox> = true>
-            O extract(sqlite3_stmt* stmt, int& columnIndex) const {
-                --columnIndex;
-                // note: brace-init-list initialization guarantees order of evaluation, but only for aggregates and variadic constructors it seems.
-                std::tuple<Args...> t{make_row_extractor<Args>(this->db_objects).extract(stmt, ++columnIndex)...};
-                return create_from_tuple<O>(std::move(t), std::index_sequence_for<Args...>{});
-            }
-
-            O extract(sqlite3_value* value) const = delete;
-        };
-    }
+        O extract(sqlite3_value* value) const = delete;
+    };
 }

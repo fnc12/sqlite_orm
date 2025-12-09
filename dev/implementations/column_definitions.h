@@ -12,20 +12,16 @@
 #include "../default_value_extractor.h"
 #include "../schema/column.h"
 
-namespace sqlite_orm {
-    namespace internal {
+namespace sqlite_orm::internal {
+    template<class... Op>
+    std::unique_ptr<std::string> column_constraints<Op...>::default_value() const {
+        static constexpr size_t default_op_index = find_tuple_template<constraints_type, default_t>::value;
 
-        template<class... Op>
-        std::unique_ptr<std::string> column_constraints<Op...>::default_value() const {
-            static constexpr size_t default_op_index = find_tuple_template<constraints_type, default_t>::value;
-
-            std::unique_ptr<std::string> value;
-            if constexpr (default_op_index != std::tuple_size<constraints_type>::value) {
-                value = std::make_unique<std::string>(
-                    serialize_default_value(std::get<default_op_index>(this->constraints)));
-            }
-            return value;
+        std::unique_ptr<std::string> value;
+        if constexpr (default_op_index != std::tuple_size<constraints_type>::value) {
+            value =
+                std::make_unique<std::string>(serialize_default_value(std::get<default_op_index>(this->constraints)));
         }
-
+        return value;
     }
 }

@@ -11,27 +11,25 @@
 
 #include "serialize_result_type.h"
 
-namespace sqlite_orm {
-    namespace internal {
-        template<typename T>
-        using storage_opt_tag_t = typename T::storage_opt_tag;
+namespace sqlite_orm::internal {
+    template<typename T>
+    using storage_opt_tag_t = typename T::storage_opt_tag;
 
-        struct on_open_spec {
-            using storage_opt_tag = int;
+    struct on_open_spec {
+        using storage_opt_tag = int;
 
-            std::function<void(sqlite3*)> onOpen;
-        };
-        struct will_run_query_spec {
-            using storage_opt_tag = int;
+        std::function<void(sqlite3*)> onOpen;
+    };
+    struct will_run_query_spec {
+        using storage_opt_tag = int;
 
-            std::function<void(serialize_arg_type)> willRunQuery;
-        };
-        struct did_run_query_spec {
-            using storage_opt_tag = int;
+        std::function<void(serialize_arg_type)> willRunQuery;
+    };
+    struct did_run_query_spec {
+        using storage_opt_tag = int;
 
-            std::function<void(serialize_arg_type)> didRunQuery;
-        };
-    }
+        std::function<void(serialize_arg_type)> didRunQuery;
+    };
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

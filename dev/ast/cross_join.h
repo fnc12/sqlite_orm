@@ -1,21 +1,17 @@
 #include "../functional/cxx_type_traits_polyfill.h"
 
-namespace sqlite_orm {
-    namespace internal {
-
-        /**
-         *  CROSS JOIN holder.
-         *  T is joined type which represents any mapped table.
-         */
-        template<class T>
-        struct cross_join_t {
-            using type = T;
-        };
-    }
+namespace sqlite_orm::internal {
+    /**
+     *  CROSS JOIN holder.
+     *  T is joined type which represents any mapped table.
+     */
+    template<class T>
+    struct cross_join_t {
+        using type = T;
+    };
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
-
     /**
      *  CROSS JOIN function. Usage:
      *  `cross_join<User>();`

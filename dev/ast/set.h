@@ -11,82 +11,78 @@
 #include "../tuple_helper/tuple_traits.h"
 #include "../table_name_collector.h"
 
-namespace sqlite_orm {
+namespace sqlite_orm::internal {
+    template<class T, class L>
+    void iterate_ast(const T& t, L&& lambda);
 
-    namespace internal {
+    template<class... Args>
+    struct set_t {
+        using assigns_type = std::tuple<Args...>;
 
-        template<class T, class L>
-        void iterate_ast(const T& t, L&& lambda);
+        assigns_type assigns;
+    };
 
-        template<class... Args>
-        struct set_t {
-            using assigns_type = std::tuple<Args...>;
+    template<class T>
+    struct is_set : std::false_type {};
 
-            assigns_type assigns;
-        };
+    template<class... Args>
+    struct is_set<set_t<Args...>> : std::true_type {};
 
-        template<class T>
-        struct is_set : std::false_type {};
+    struct dynamic_set_entry {
+        std::string serialized_value;
+    };
 
-        template<class... Args>
-        struct is_set<set_t<Args...>> : std::true_type {};
+    template<class C>
+    struct dynamic_set_t {
+        using context_t = C;
+        using entry_t = dynamic_set_entry;
+        using const_iterator = typename std::vector<entry_t>::const_iterator;
 
-        struct dynamic_set_entry {
-            std::string serialized_value;
-        };
+        dynamic_set_t(const context_t& context_) : context(context_), collector(this->context.db_objects) {}
 
-        template<class C>
-        struct dynamic_set_t {
-            using context_t = C;
-            using entry_t = dynamic_set_entry;
-            using const_iterator = typename std::vector<entry_t>::const_iterator;
+        dynamic_set_t(const dynamic_set_t& other) = default;
+        dynamic_set_t(dynamic_set_t&& other) = default;
+        dynamic_set_t& operator=(const dynamic_set_t& other) = default;
+        dynamic_set_t& operator=(dynamic_set_t&& other) = default;
 
-            dynamic_set_t(const context_t& context_) : context(context_), collector(this->context.db_objects) {}
+        template<class L, class R>
+        void push_back(assign_t<L, R> assign) {
+            auto newContext = this->context;
+            newContext.omit_table_name = true;
+            // note: we are only interested in the table name on the left-hand side of the assignment operator expression
+            iterate_ast(assign.lhs, this->collector);
+            std::stringstream ss;
+            ss << serialize(assign.lhs, newContext) << ' ' << assign.serialize() << ' '
+               << serialize(assign.rhs, context);
+            this->entries.push_back({ss.str()});
+        }
 
-            dynamic_set_t(const dynamic_set_t& other) = default;
-            dynamic_set_t(dynamic_set_t&& other) = default;
-            dynamic_set_t& operator=(const dynamic_set_t& other) = default;
-            dynamic_set_t& operator=(dynamic_set_t&& other) = default;
+        const_iterator begin() const {
+            return this->entries.begin();
+        }
 
-            template<class L, class R>
-            void push_back(assign_t<L, R> assign) {
-                auto newContext = this->context;
-                newContext.omit_table_name = true;
-                // note: we are only interested in the table name on the left-hand side of the assignment operator expression
-                iterate_ast(assign.lhs, this->collector);
-                std::stringstream ss;
-                ss << serialize(assign.lhs, newContext) << ' ' << assign.serialize() << ' '
-                   << serialize(assign.rhs, context);
-                this->entries.push_back({ss.str()});
-            }
+        const_iterator end() const {
+            return this->entries.end();
+        }
 
-            const_iterator begin() const {
-                return this->entries.begin();
-            }
+        void clear() {
+            this->entries.clear();
+            this->collector.table_names.clear();
+        }
 
-            const_iterator end() const {
-                return this->entries.end();
-            }
+        std::vector<entry_t> entries;
+        context_t context;
+        table_name_collector<typename context_t::db_objects_type> collector;
+    };
 
-            void clear() {
-                this->entries.clear();
-                this->collector.table_names.clear();
-            }
+    template<class C>
+    struct is_set<dynamic_set_t<C>> : std::true_type {};
 
-            std::vector<entry_t> entries;
-            context_t context;
-            table_name_collector<typename context_t::db_objects_type> collector;
-        };
+    template<class C>
+    struct is_dynamic_set : std::false_type {};
 
-        template<class C>
-        struct is_set<dynamic_set_t<C>> : std::true_type {};
-
-        template<class C>
-        struct is_dynamic_set : std::false_type {};
-
-        template<class C>
-        struct is_dynamic_set<dynamic_set_t<C>> : std::true_type {};
-    }
+    template<class C>
+    struct is_dynamic_set<dynamic_set_t<C>> : std::true_type {};
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
