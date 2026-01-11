@@ -38,18 +38,10 @@ namespace sqlite_orm::internal {
         collate_argument argument;
 
         collate_t(T expr_, collate_argument argument_) : expr(std::move(expr_)), argument(argument_) {}
-
-        operator std::string() const {
-            return collate_constraint_t{this->argument};
-        }
     };
 
     struct named_collate_base {
         std::string name;
-
-        operator std::string() const {
-            return "COLLATE " + this->name;
-        }
     };
 
     /**
@@ -57,9 +49,10 @@ namespace sqlite_orm::internal {
      */
     template<class T>
     struct named_collate : named_collate_base {
-        T expr;
+        T expression;
 
-        named_collate(T expr_, std::string name_) : named_collate_base{std::move(name_)}, expr(std::move(expr_)) {}
+        named_collate(T expression_, std::string name_) :
+            named_collate_base{std::move(name_)}, expression(std::move(expression_)) {}
     };
 
     struct negated_condition_string {
