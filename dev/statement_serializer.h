@@ -930,7 +930,7 @@ namespace sqlite_orm::internal {
             auto newContext = context;
             newContext.use_parentheses = false;
             auto res = serialize(statement.expr, newContext);
-            return res + " " + collate_constraint_t::string_from_collate_argument(statement.argument);
+            return res + " COLLATE " + collate_constraint_t::string_from_collate_argument(statement.argument);
         }
     };
 
