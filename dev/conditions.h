@@ -34,10 +34,11 @@ namespace sqlite_orm::internal {
      */
     template<class T>
     struct collate_t : condition_t {
-        T expr;
+        T expression;
         collate_argument argument;
 
-        collate_t(T expr_, collate_argument argument_) : expr(std::move(expr_)), argument(argument_) {}
+        collate_t(T expression_, collate_argument argument_) :
+            expression(std::move(expression_)), argument(argument_) {}
     };
 
     struct named_collate_base {
