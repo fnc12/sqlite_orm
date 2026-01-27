@@ -1,0 +1,217 @@
+name: CI
+
+on:
+  push:
+    branches: [dev, master]
+    paths-ignore:
+      - '.git*'
+      - '_config.yml'
+      - 'LICENSE'
+      - '**/*.md'
+      - '*.png'
+      - '*.sh'
+  pull_request:
+    paths-ignore:
+      - '.git*'
+      - '_config.yml'
+      - 'LICENSE'
+      - '**/*.md'
+      - '*.png'
+      - '*.sh'
+
+env:
+  VCPKG_COMMIT: 5b1214315250939257ef5d62ecdcbca18cf4fb1c  # 2024.07.12
+
+jobs:
+  # ===================
+  # Windows builds
+  # ===================
+  windows:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "VS 2022, x64, C++23"
+            os: windows-2022
+            platform: x64
+            cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_23=ON"
+            triplet: x64-windows
+
+          - name: "VS 2022, x64, C++20"
+            os: windows-2022
+            platform: x64
+            cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
+            triplet: x64-windows
+
+          - name: "VS 2022, x86, C++20"
+            os: windows-2022
+            platform: x86
+            cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
+            triplet: x86-windows
+
+          - name: "VS 2019, x64, C++17"
+            os: windows-2019
+            platform: x64
+            cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
+            triplet: x64-windows
+
+    name: Windows - ${{ matrix.name }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT }}
+
+      - name: Install dependencies
+        run: |
+          vcpkg install sqlite3[core,dbstat,math,json1,fts5,rtree,soundex] catch2 --triplet ${{ matrix.triplet }}
+
+      - name: Configure CMake
+        run: |
+          cmake -S . -B build ${{ matrix.cxx_standard }} -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Test
+        run: ctest --test-dir build --verbose --output-on-failure --build-config Release
+
+  # ===================
+  # Linux builds
+  # ===================
+  linux:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "clang-18, C++23"
+            os: ubuntu-24.04
+            cc: clang-18
+            cxx: clang++-18
+            cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_23=ON"
+            install_compiler: false
+
+          - name: "gcc-14, C++23"
+            os: ubuntu-24.04
+            cc: gcc-14
+            cxx: g++-14
+            cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_23=ON"
+            install_compiler: false
+
+          - name: "clang-14, C++20 (with examples)"
+            os: ubuntu-22.04
+            cc: clang-14
+            cxx: clang++-14
+            cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
+            build_examples: "-DBUILD_EXAMPLES=ON"
+            install_compiler: false
+
+          - name: "gcc-11, C++20"
+            os: ubuntu-22.04
+            cc: gcc-11
+            cxx: g++-11
+            cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
+            install_compiler: false
+
+          - name: "clang-12, C++17"
+            os: ubuntu-22.04
+            cc: clang-12
+            cxx: clang++-12
+            cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
+            install_compiler: true
+            compiler_package: clang-12
+
+          - name: "gcc-10, C++17"
+            os: ubuntu-22.04
+            cc: gcc-10
+            cxx: g++-10
+            cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
+            install_compiler: true
+            compiler_package: g++-10
+
+    name: Linux - ${{ matrix.name }}
+
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install compiler
+        if: matrix.install_compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ matrix.compiler_package }}
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT }}
+
+      - name: Install dependencies
+        run: |
+          vcpkg install sqlite3[core,dbstat,math,json1,fts5,rtree,soundex] catch2 --overlay-triplets=vcpkg/triplets
+
+      - name: Configure CMake
+        run: |
+          cmake -S . -B build ${{ matrix.cxx_standard }} ${{ matrix.build_examples }} --toolchain ${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --verbose --output-on-failure
+
+  # ===================
+  # macOS builds
+  # ===================
+  macos:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "Apple Clang, C++23"
+            os: macos-14
+            cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_23=ON"
+
+          - name: "Apple Clang, C++20"
+            os: macos-13
+            cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
+
+          - name: "Apple Clang, C++17"
+            os: macos-13
+            cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
+
+    name: macOS - ${{ matrix.name }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT }}
+
+      - name: Install dependencies
+        run: |
+          vcpkg install sqlite3[core,dbstat,math,json1,fts5,rtree,soundex] catch2 --overlay-triplets=vcpkg/triplets
+
+      - name: Configure CMake
+        run: |
+          cmake -S . -B build ${{ matrix.cxx_standard }} --toolchain ${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --verbose --output-on-failure
