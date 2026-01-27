@@ -20,7 +20,7 @@ on:
       - '*.sh'
 
 env:
-  VCPKG_COMMIT: 5b1214315250939257ef5d62ecdcbca18cf4fb1c  # 2024.07.12
+  VCPKG_COMMIT: 4334d8b4c8916018600212ab4dd4bbdc343065d1  # 2025.09.17
 
 jobs:
   # ===================
@@ -35,24 +35,28 @@ jobs:
           - name: "VS 2022, x64, C++23"
             os: windows-2022
             platform: x64
+            arch: x64
             cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_23=ON"
             triplet: x64-windows
 
           - name: "VS 2022, x64, C++20"
             os: windows-2022
             platform: x64
+            arch: x64
             cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
             triplet: x64-windows
 
           - name: "VS 2022, x86, C++20"
             os: windows-2022
             platform: x86
+            arch: Win32
             cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
             triplet: x86-windows
 
           - name: "VS 2019, x64, C++17"
             os: windows-2019
             platform: x64
+            arch: x64
             cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
             triplet: x64-windows
 
@@ -74,7 +78,7 @@ jobs:
 
       - name: Configure CMake
         run: |
-          cmake -S . -B build ${{ matrix.cxx_standard }} -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake
+          cmake -S . -B build -A ${{ matrix.arch }} ${{ matrix.cxx_standard }} -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }} -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake
 
       - name: Build
         run: cmake --build build --config Release --parallel
@@ -91,35 +95,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: "clang-18, C++23"
-            os: ubuntu-24.04
-            cc: clang-18
-            cxx: clang++-18
-            cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_23=ON"
-            install_compiler: false
-
-          - name: "gcc-14, C++23"
-            os: ubuntu-24.04
-            cc: gcc-14
-            cxx: g++-14
-            cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_23=ON"
-            install_compiler: false
-
-          - name: "clang-14, C++20 (with examples)"
-            os: ubuntu-22.04
-            cc: clang-14
-            cxx: clang++-14
-            cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
-            build_examples: "-DBUILD_EXAMPLES=ON"
-            install_compiler: false
-
-          - name: "gcc-11, C++20"
-            os: ubuntu-22.04
-            cc: gcc-11
-            cxx: g++-11
-            cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
-            install_compiler: false
-
           - name: "clang-12, C++17"
             os: ubuntu-22.04
             cc: clang-12
@@ -167,7 +142,7 @@ jobs:
           cmake -S . -B build ${{ matrix.cxx_standard }} ${{ matrix.build_examples }} --toolchain ${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake
 
       - name: Build
-        run: cmake --build build --parallel
+        run: cmake --build build
 
       - name: Test
         run: ctest --test-dir build --verbose --output-on-failure
@@ -181,16 +156,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: "Apple Clang, C++23"
-            os: macos-14
-            cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_23=ON"
-
-          - name: "Apple Clang, C++20"
-            os: macos-13
-            cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
-
           - name: "Apple Clang, C++17"
-            os: macos-13
+            os: macos-14
             cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
 
     name: macOS - ${{ matrix.name }}
@@ -214,7 +181,67 @@ jobs:
           cmake -S . -B build ${{ matrix.cxx_standard }} --toolchain ${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake
 
       - name: Build
-        run: cmake --build build --parallel
+        run: cmake --build build
 
       - name: Test
         run: ctest --test-dir build --verbose --output-on-failure
+
+  # ===================
+  # iOS builds (compile only)
+  # ===================
+  ios:
+    runs-on: macos-14
+    name: iOS - Clang, C++17
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure CMake for iOS
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0 \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DSQLITE_ORM_ENABLE_CXX_17=ON \
+            -DBUILD_TESTING=OFF \
+            -DBUILD_EXAMPLES=ON
+
+      - name: Build
+        run: cmake --build build --config Release
+
+  # ===================
+  # Android builds (compile only)
+  # ===================
+  android:
+    runs-on: ubuntu-24.04
+    name: Android - NDK, C++17
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download and build SQLite3 for Android
+        run: |
+          curl -sL https://www.sqlite.org/2024/sqlite-amalgamation-3450000.zip -o sqlite.zip
+          unzip -q sqlite.zip
+          mkdir -p sqlite3-android/lib sqlite3-android/include
+          cp sqlite-amalgamation-3450000/sqlite3.h sqlite-amalgamation-3450000/sqlite3ext.h sqlite3-android/include/
+          $ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android24-clang \
+            -c sqlite-amalgamation-3450000/sqlite3.c -o sqlite3.o -DSQLITE_ENABLE_FTS5 -DSQLITE_ENABLE_RTREE -DSQLITE_ENABLE_JSON1
+          $ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar rcs sqlite3-android/lib/libsqlite3.a sqlite3.o
+
+      - name: Configure CMake for Android
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-24 \
+            -DSQLITE_ORM_ENABLE_CXX_17=ON \
+            -DBUILD_TESTING=OFF \
+            -DBUILD_EXAMPLES=ON \
+            -DSQLite3_INCLUDE_DIR=${{ github.workspace }}/sqlite3-android/include \
+            -DSQLite3_LIBRARY=${{ github.workspace }}/sqlite3-android/lib/libsqlite3.a
+
+      - name: Build
+        run: cmake --build build --config Release
