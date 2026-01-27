@@ -66,6 +66,7 @@ jobs:
         uses: lukka/run-vcpkg@v11
         with:
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT }}
+          vcpkgDirectory: ${{ runner.temp }}/vcpkg
 
       - name: Install dependencies
         run: |
@@ -155,10 +156,11 @@ jobs:
         uses: lukka/run-vcpkg@v11
         with:
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT }}
+          vcpkgDirectory: ${{ runner.temp }}/vcpkg
 
       - name: Install dependencies
         run: |
-          vcpkg install sqlite3[core,dbstat,math,json1,fts5,rtree,soundex] catch2 --overlay-triplets=vcpkg/triplets
+          vcpkg install sqlite3[core,dbstat,math,json1,fts5,rtree,soundex] catch2 --overlay-triplets=${{ github.workspace }}/vcpkg/triplets
 
       - name: Configure CMake
         run: |
@@ -201,10 +203,11 @@ jobs:
         uses: lukka/run-vcpkg@v11
         with:
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT }}
+          vcpkgDirectory: ${{ runner.temp }}/vcpkg
 
       - name: Install dependencies
         run: |
-          vcpkg install sqlite3[core,dbstat,math,json1,fts5,rtree,soundex] catch2 --overlay-triplets=vcpkg/triplets
+          vcpkg install sqlite3[core,dbstat,math,json1,fts5,rtree,soundex] catch2 --overlay-triplets=${{ github.workspace }}/vcpkg/triplets
 
       - name: Configure CMake
         run: |
