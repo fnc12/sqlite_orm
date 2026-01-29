@@ -3818,10 +3818,6 @@ namespace sqlite_orm::internal {
     struct collate_constraint_t {
         collate_argument argument = collate_argument::binary;
 
-        operator std::string() const {
-            return "COLLATE " + this->string_from_collate_argument(this->argument);
-        }
-
         static std::string string_from_collate_argument(collate_argument argument) {
             switch (argument) {
                 case collate_argument::binary:
@@ -5256,22 +5252,15 @@ namespace sqlite_orm::internal {
      */
     template<class T>
     struct collate_t : condition_t {
-        T expr;
+        T expression;
         collate_argument argument;
 
-        collate_t(T expr_, collate_argument argument_) : expr(std::move(expr_)), argument(argument_) {}
-
-        operator std::string() const {
-            return collate_constraint_t{this->argument};
-        }
+        collate_t(T expression_, collate_argument argument_) :
+            expression(std::move(expression_)), argument(argument_) {}
     };
 
     struct named_collate_base {
         std::string name;
-
-        operator std::string() const {
-            return "COLLATE " + this->name;
-        }
     };
 
     /**
@@ -5279,9 +5268,10 @@ namespace sqlite_orm::internal {
      */
     template<class T>
     struct named_collate : named_collate_base {
-        T expr;
+        T expression;
 
-        named_collate(T expr_, std::string name_) : named_collate_base{std::move(name_)}, expr(std::move(expr_)) {}
+        named_collate(T expression_, std::string name_) :
+            named_collate_base{std::move(name_)}, expression(std::move(expression_)) {}
     };
 
     struct negated_condition_string {
@@ -16653,7 +16643,7 @@ namespace sqlite_orm::internal {
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& col, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-            iterate_ast(col.expr, lambda);
+            iterate_ast(col.expression, lambda);
         }
     };
 
@@ -16915,7 +16905,7 @@ namespace sqlite_orm::internal {
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-            iterate_ast(node.expr, lambda);
+            iterate_ast(node.expression, lambda);
         }
     };
 }
@@ -21785,12 +21775,11 @@ namespace sqlite_orm::internal {
         using statement_type = named_collate<T>;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             auto newContext = context;
             newContext.use_parentheses = false;
-            auto res = serialize(c.expr, newContext);
-            return res + " " + static_cast<std::string>(c);
+            return serialize(statement.expression, newContext) + " COLLATE " + statement.name;
         }
     };
 
@@ -21799,12 +21788,12 @@ namespace sqlite_orm::internal {
         using statement_type = collate_t<T>;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             auto newContext = context;
             newContext.use_parentheses = false;
-            auto res = serialize(c.expr, newContext);
-            return res + " " + static_cast<std::string>(c);
+            return serialize(statement.expression, newContext) + " COLLATE " +
+                   collate_constraint_t::string_from_collate_argument(statement.argument);
         }
     };
 
@@ -22139,7 +22128,7 @@ namespace sqlite_orm::internal {
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
-            return static_cast<std::string>(statement);
+            return "COLLATE " + statement.string_from_collate_argument(statement.argument);
         }
     };
 
