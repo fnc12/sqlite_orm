@@ -12390,11 +12390,18 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         /**
          *  old table is dropped and new is recreated. Reasons :
          *  1. delete excess columns in the table than storage if preseve = false
-         *  2. Lacking columns in the table cannot be added due to NULL and DEFAULT constraint
-         *  3. Reasons 1 and 2 both together
-         *  4. data_type mismatch between table and storage.
+         *  2. Reasons 1 and 4 both together
+         *  3. data_type mismatch between table and storage.
+         *  Data is preserved through a backup table when preserve = true.
          */
         dropped_and_recreated,
+
+        /**
+         *  old table is dropped and new is recreated with data loss.
+         *  Data cannot be preserved because a new NOT NULL column without
+         *  a default value is being added, making backup impossible.
+         */
+        dropped_and_recreated_with_data_loss,
     };
 
     inline std::ostream& operator<<(std::ostream& os, sync_schema_result value) {
@@ -12411,6 +12418,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                 return os << "old excess columns removed and new columns added";
             case sync_schema_result::dropped_and_recreated:
                 return os << "old table dropped and recreated";
+            case sync_schema_result::dropped_and_recreated_with_data_loss:
+                return os << "old table dropped and recreated with data loss";
         }
         return os;
     }
@@ -19784,11 +19793,11 @@ namespace sqlite_orm::internal {
                         (dbColumnInfo.hidden == 0) == (storageColumnInfo.hidden == 0);
                     if (!columnsAreEqual) {
                         notEqual = true;
-                        break;
+                    } else {
+                        dbTableInfo.erase(dbColumnInfoIt);
+                        storageTableInfo.erase(storageTableInfo.begin() + storageColumnInfoIndex);
+                        --storageColumnInfoIndex;
                     }
-                    dbTableInfo.erase(dbColumnInfoIt);
-                    storageTableInfo.erase(storageTableInfo.begin() + storageColumnInfoIndex);
-                    --storageColumnInfoIndex;
                 } else {
                     columnsToAdd.push_back(&storageColumnInfo);
                 }
@@ -25037,6 +25046,7 @@ namespace sqlite_orm::internal {
 
             auto dbTableInfo = this->pragma.table_xinfo(table.name);
             auto res = sync_schema_result::already_in_sync;
+            bool canPreserveData = true;
 
             //  first let's see if table with such name exists..
             auto gottaCreateTable = !this->table_exists(db, table.name);
@@ -25068,7 +25078,20 @@ namespace sqlite_orm::internal {
                     }
                 }
                 if (gottaCreateTable) {
-                    res = sync_schema_result::dropped_and_recreated;
+                    // check if any new columns prevent data preservation
+                    for (const table_xinfo* colInfo: columnsToAdd) {
+                        if (!table.find_column_generated_storage_type(colInfo->name)) {
+                            if (colInfo->notnull && colInfo->dflt_value.empty()) {
+                                canPreserveData = false;
+                                if (attempt_to_preserve) {
+                                    *attempt_to_preserve = false;
+                                };
+                                break;
+                            }
+                        }
+                    }
+                    res = canPreserveData ? sync_schema_result::dropped_and_recreated
+                                          : sync_schema_result::dropped_and_recreated_with_data_loss;
                 } else {
                     if (!columnsToAdd.empty()) {
                         // extra storage columns than table columns
@@ -25084,6 +25107,7 @@ namespace sqlite_orm::internal {
                             } else {
                                 if (colInfo->notnull && colInfo->dflt_value.empty()) {
                                     gottaCreateTable = true;
+                                    canPreserveData = false;
                                     // no matter if preserve is true or false, there is no way to preserve data, so we wont try!
                                     if (attempt_to_preserve) {
                                         *attempt_to_preserve = false;
@@ -25099,7 +25123,8 @@ namespace sqlite_orm::internal {
                                 res = sync_schema_result::new_columns_added;
                             }
                         } else {
-                            res = sync_schema_result::dropped_and_recreated;
+                            res = canPreserveData ? sync_schema_result::dropped_and_recreated
+                                                  : sync_schema_result::dropped_and_recreated_with_data_loss;
                         }
                     } else {
                         if (res != sync_schema_result::old_columns_removed) {
@@ -26034,6 +26059,9 @@ namespace sqlite_orm::internal {
                     } else {
                         this->drop_create_with_loss(db, table);
                     }
+                    res = schema_stat;
+                } else if (schema_stat == sync_schema_result::dropped_and_recreated_with_data_loss) {
+                    this->drop_create_with_loss(db, table);
                     res = schema_stat;
                 }
             }

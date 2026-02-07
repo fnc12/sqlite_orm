@@ -1123,11 +1123,11 @@ namespace sqlite_orm::internal {
                         (dbColumnInfo.hidden == 0) == (storageColumnInfo.hidden == 0);
                     if (!columnsAreEqual) {
                         notEqual = true;
-                        break;
+                    } else {
+                        dbTableInfo.erase(dbColumnInfoIt);
+                        storageTableInfo.erase(storageTableInfo.begin() + storageColumnInfoIndex);
+                        --storageColumnInfoIndex;
                     }
-                    dbTableInfo.erase(dbColumnInfoIt);
-                    storageTableInfo.erase(storageTableInfo.begin() + storageColumnInfoIndex);
-                    --storageColumnInfoIndex;
                 } else {
                     columnsToAdd.push_back(&storageColumnInfo);
                 }
