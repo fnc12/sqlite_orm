@@ -110,6 +110,9 @@ namespace sqlite_orm::internal {
                         this->drop_create_with_loss(db, table);
                     }
                     res = schema_stat;
+                } else if (schema_stat == sync_schema_result::dropped_and_recreated_with_data_loss) {
+                    this->drop_create_with_loss(db, table);
+                    res = schema_stat;
                 }
             }
         }

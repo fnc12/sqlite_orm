@@ -36,11 +36,18 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         /**
          *  old table is dropped and new is recreated. Reasons :
          *  1. delete excess columns in the table than storage if preseve = false
-         *  2. Lacking columns in the table cannot be added due to NULL and DEFAULT constraint
-         *  3. Reasons 1 and 2 both together
-         *  4. data_type mismatch between table and storage.
+         *  2. Reasons 1 and 4 both together
+         *  3. data_type mismatch between table and storage.
+         *  Data is preserved through a backup table when preserve = true.
          */
         dropped_and_recreated,
+
+        /**
+         *  old table is dropped and new is recreated with data loss.
+         *  Data cannot be preserved because a new NOT NULL column without
+         *  a default value is being added, making backup impossible.
+         */
+        dropped_and_recreated_with_data_loss,
     };
 
     inline std::ostream& operator<<(std::ostream& os, sync_schema_result value) {
@@ -57,6 +64,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                 return os << "old excess columns removed and new columns added";
             case sync_schema_result::dropped_and_recreated:
                 return os << "old table dropped and recreated";
+            case sync_schema_result::dropped_and_recreated_with_data_loss:
+                return os << "old table dropped and recreated with data loss";
         }
         return os;
     }
