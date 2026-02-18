@@ -322,33 +322,6 @@ namespace sqlite_orm::internal {
         }
     };
 
-    struct in_base {
-        bool negative = false;  //  used in not_in
-    };
-
-    /**
-     *  IN operator object.
-     */
-    template<class L, class A>
-    struct dynamic_in_t : condition_t, in_base, negatable_t {
-        using self = dynamic_in_t<L, A>;
-
-        L left;  //  left expression
-        A argument;  //  in arg
-
-        dynamic_in_t(L left_, A argument_, bool negative_) :
-            in_base{negative_}, left(std::move(left_)), argument(std::move(argument_)) {}
-    };
-
-    template<class L, class... Args>
-    struct in_t : condition_t, in_base, negatable_t {
-        L left;
-        std::tuple<Args...> argument;
-
-        in_t(L left_, decltype(argument) argument_, bool negative_) :
-            in_base{negative_}, left(std::move(left_)), argument(std::move(argument_)) {}
-    };
-
     struct is_null_string {
         operator std::string() const {
             return "IS NULL";
@@ -1010,36 +983,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T>
     internal::is_null_t<T> is_null(T t) {
         return {std::move(t)};
-    }
-
-    template<class L, class E>
-    internal::dynamic_in_t<L, std::vector<E>> in(L l, std::vector<E> values) {
-        return {std::move(l), std::move(values), false};
-    }
-
-    template<class L, class E>
-    internal::dynamic_in_t<L, std::vector<E>> in(L l, std::initializer_list<E> values) {
-        return {std::move(l), std::move(values), false};
-    }
-
-    template<class L, class A>
-    internal::dynamic_in_t<L, A> in(L l, A arg) {
-        return {std::move(l), std::move(arg), false};
-    }
-
-    template<class L, class E>
-    internal::dynamic_in_t<L, std::vector<E>> not_in(L l, std::vector<E> values) {
-        return {std::move(l), std::move(values), true};
-    }
-
-    template<class L, class E>
-    internal::dynamic_in_t<L, std::vector<E>> not_in(L l, std::initializer_list<E> values) {
-        return {std::move(l), std::move(values), true};
-    }
-
-    template<class L, class A>
-    internal::dynamic_in_t<L, A> not_in(L l, A arg) {
-        return {std::move(l), std::move(arg), true};
     }
 
     template<class L, class R>

@@ -5540,33 +5540,6 @@ namespace sqlite_orm::internal {
         }
     };
 
-    struct in_base {
-        bool negative = false;  //  used in not_in
-    };
-
-    /**
-     *  IN operator object.
-     */
-    template<class L, class A>
-    struct dynamic_in_t : condition_t, in_base, negatable_t {
-        using self = dynamic_in_t<L, A>;
-
-        L left;  //  left expression
-        A argument;  //  in arg
-
-        dynamic_in_t(L left_, A argument_, bool negative_) :
-            in_base{negative_}, left(std::move(left_)), argument(std::move(argument_)) {}
-    };
-
-    template<class L, class... Args>
-    struct in_t : condition_t, in_base, negatable_t {
-        L left;
-        std::tuple<Args...> argument;
-
-        in_t(L left_, decltype(argument) argument_, bool negative_) :
-            in_base{negative_}, left(std::move(left_)), argument(std::move(argument_)) {}
-    };
-
     struct is_null_string {
         operator std::string() const {
             return "IS NULL";
@@ -6228,36 +6201,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T>
     internal::is_null_t<T> is_null(T t) {
         return {std::move(t)};
-    }
-
-    template<class L, class E>
-    internal::dynamic_in_t<L, std::vector<E>> in(L l, std::vector<E> values) {
-        return {std::move(l), std::move(values), false};
-    }
-
-    template<class L, class E>
-    internal::dynamic_in_t<L, std::vector<E>> in(L l, std::initializer_list<E> values) {
-        return {std::move(l), std::move(values), false};
-    }
-
-    template<class L, class A>
-    internal::dynamic_in_t<L, A> in(L l, A arg) {
-        return {std::move(l), std::move(arg), false};
-    }
-
-    template<class L, class E>
-    internal::dynamic_in_t<L, std::vector<E>> not_in(L l, std::vector<E> values) {
-        return {std::move(l), std::move(values), true};
-    }
-
-    template<class L, class E>
-    internal::dynamic_in_t<L, std::vector<E>> not_in(L l, std::initializer_list<E> values) {
-        return {std::move(l), std::move(values), true};
-    }
-
-    template<class L, class A>
-    internal::dynamic_in_t<L, A> not_in(L l, A arg) {
-        return {std::move(l), std::move(arg), true};
     }
 
     template<class L, class R>
@@ -12032,6 +11975,118 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
+// #include "ast/in.h"
+// #include "tags.h"
+
+#include <vector>  //  std::vector
+#include <tuple>  //  std::tuple
+#include <utility>  //  std::move
+#include <initializer_list>  //  std::initializer_list
+
+namespace sqlite_orm::internal {
+
+    struct in_base {
+        bool negative = false;  //  used in not_in
+    };
+
+    /**
+     *  IN operator object.
+     */
+    template<class L, class A>
+    struct dynamic_in_t : condition_t, in_base, negatable_t {
+        using self = dynamic_in_t<L, A>;
+
+        L left;  //  left expression
+        A argument;  //  in arg
+
+        dynamic_in_t(L left_, A argument_, bool negative_) :
+            in_base{negative_}, left(std::move(left_)), argument(std::move(argument_)) {}
+    };
+
+    template<class L, class... Args>
+    struct in_t : condition_t, in_base, negatable_t {
+        L left;
+        std::tuple<Args...> argument;
+
+        in_t(L left_, decltype(argument) argument_, bool negative_) :
+            in_base{negative_}, left(std::move(left_)), argument(std::move(argument_)) {}
+    };
+
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  IN operator with vector of values.
+     *  Example: in(&User::id, std::vector<int>{1, 2, 3})
+     *  @param left Left expression (column or value to check).
+     *  @param values Vector of values to check against.
+     *  @return dynamic_in_t instance representing IN clause.
+     */
+    template<class L, class E>
+    internal::dynamic_in_t<L, std::vector<E>> in(L left, std::vector<E> values) {
+        return {std::move(left), std::move(values), false};
+    }
+
+    /**
+     *  IN operator with initializer list.
+     *  Example: in(&User::id, {1, 2, 3})
+     *  @param left Left expression (column or value to check).
+     *  @param values Initializer list of values to check against.
+     *  @return dynamic_in_t instance representing IN clause.
+     */
+    template<class L, class E>
+    internal::dynamic_in_t<L, std::vector<E>> in(L left, std::initializer_list<E> values) {
+        return {std::move(left), std::move(values), false};
+    }
+
+    /**
+     *  IN operator with a subquery or custom argument.
+     *  Example: in(&User::id, select(&Employee::managerId))
+     *  @param left Left expression (column or value to check).
+     *  @param argument Subquery or container to check against.
+     *  @return dynamic_in_t instance representing IN clause.
+     */
+    template<class L, class A>
+    internal::dynamic_in_t<L, A> in(L left, A argument) {
+        return {std::move(left), std::move(argument), false};
+    }
+
+    /**
+     *  NOT IN operator with vector of values.
+     *  Example: not_in(&User::id, std::vector<int>{1, 2, 3})
+     *  @param left Left expression (column or value to check).
+     *  @param values Vector of values to check against.
+     *  @return dynamic_in_t instance representing NOT IN clause.
+     */
+    template<class L, class E>
+    internal::dynamic_in_t<L, std::vector<E>> not_in(L left, std::vector<E> values) {
+        return {std::move(left), std::move(values), true};
+    }
+
+    /**
+     *  NOT IN operator with initializer list.
+     *  Example: not_in(&User::id, {1, 2, 3})
+     *  @param left Left expression (column or value to check).
+     *  @param values Initializer list of values to check against.
+     *  @return dynamic_in_t instance representing NOT IN clause.
+     */
+    template<class L, class E>
+    internal::dynamic_in_t<L, std::vector<E>> not_in(L left, std::initializer_list<E> values) {
+        return {std::move(left), std::move(values), true};
+    }
+
+    /**
+     *  NOT IN operator with a subquery or custom argument.
+     *  Example: not_in(&User::id, select(&Employee::managerId))
+     *  @param left Left expression (column or value to check).
+     *  @param argument Subquery or container to check against.
+     *  @return dynamic_in_t instance representing NOT IN clause.
+     */
+    template<class L, class A>
+    internal::dynamic_in_t<L, A> not_in(L left, A argument) {
+        return {std::move(left), std::move(argument), true};
+    }
+}
 namespace sqlite_orm::internal {
     /**
      *  Obtains the result type of expressions that form the columns of a select statement.
@@ -16180,6 +16235,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "ast/cast.h"
 
 // #include "ast/limit.h"
+
+// #include "ast/in.h"
 
 namespace sqlite_orm::internal {
     /**
@@ -26169,6 +26226,8 @@ namespace sqlite_orm::internal {
 // #include "ast/cast.h"
 
 // #include "ast/limit.h"
+
+// #include "ast/in.h"
 
 namespace sqlite_orm::internal {
     template<class T, class SFINAE = void>
