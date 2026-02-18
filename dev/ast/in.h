@@ -1,8 +1,13 @@
-#include "tags.h"
-#include <vector>  //  std::vector
+#pragma once
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <initializer_list>  //  std::initializer_list
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::move
-#include <initializer_list>  //  std::initializer_list
+#include <vector>  //  std::vector
+#endif
+
+#include "../tags.h"
 
 namespace sqlite_orm::internal {
 

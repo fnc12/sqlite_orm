@@ -28,6 +28,7 @@
 #include "ast/special_keywords.h"
 #include "ast/cast.h"
 #include "ast/in.h"
+
 namespace sqlite_orm::internal {
     /**
      *  Obtains the result type of expressions that form the columns of a select statement.

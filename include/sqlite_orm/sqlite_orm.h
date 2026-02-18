@@ -11976,12 +11976,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 // #include "ast/in.h"
-// #include "tags.h"
 
-#include <vector>  //  std::vector
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <initializer_list>  //  std::initializer_list
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::move
-#include <initializer_list>  //  std::initializer_list
+#include <vector>  //  std::vector
+#endif
+
+// #include "../tags.h"
 
 namespace sqlite_orm::internal {
 
@@ -12087,6 +12090,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(left), std::move(argument), true};
     }
 }
+
 namespace sqlite_orm::internal {
     /**
      *  Obtains the result type of expressions that form the columns of a select statement.
