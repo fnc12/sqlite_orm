@@ -27,6 +27,7 @@
 #include "function.h"
 #include "ast/special_keywords.h"
 #include "ast/cast.h"
+#include "ast/in.h"
 
 namespace sqlite_orm::internal {
     /**
