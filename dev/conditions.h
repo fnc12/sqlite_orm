@@ -489,29 +489,6 @@ namespace sqlite_orm::internal {
     template<class T>
     struct is_order_by : polyfill::bool_constant<is_order_by_v<T>> {};
 
-    struct between_string {
-        operator std::string() const {
-            return "BETWEEN";
-        }
-    };
-
-    /**
-     *  BETWEEN operator object.
-     */
-    template<class A, class T>
-    struct between_t : condition_t, between_string {
-        using expression_type = A;
-        using lower_type = T;
-        using upper_type = T;
-
-        expression_type expr;
-        lower_type b1;
-        upper_type b2;
-
-        between_t(expression_type expr_, lower_type b1_, upper_type b2_) :
-            expr(std::move(expr_)), b1(std::move(b1_)), b2(std::move(b2_)) {}
-    };
-
     struct like_string {
         operator std::string() const {
             return "LIKE";
@@ -1121,15 +1098,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::dynamic_order_by_t<internal::serializer_context<typename S::db_objects_type>>
     dynamic_order_by(const S& storage) {
         return {obtain_db_objects(storage)};
-    }
-
-    /**
-     *  X BETWEEN Y AND Z
-     *  Example: storage.select(between(&User::id, 10, 20))
-     */
-    template<class A, class T>
-    internal::between_t<A, T> between(A expr, T b1, T b2) {
-        return {std::move(expr), std::move(b1), std::move(b2)};
     }
 
     /**

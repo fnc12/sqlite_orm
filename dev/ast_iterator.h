@@ -28,6 +28,7 @@
 #include "ast/cast.h"
 #include "ast/limit.h"
 #include "ast/in.h"
+#include "ast/between.h"
 
 namespace sqlite_orm::internal {
     /**
@@ -488,9 +489,9 @@ namespace sqlite_orm::internal {
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& b, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-            iterate_ast(b.expr, lambda);
-            iterate_ast(b.b1, lambda);
-            iterate_ast(b.b2, lambda);
+            iterate_ast(b.expression, lambda);
+            iterate_ast(b.lower, lambda);
+            iterate_ast(b.upper, lambda);
         }
     };
 

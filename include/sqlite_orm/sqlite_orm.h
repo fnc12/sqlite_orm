@@ -5707,29 +5707,6 @@ namespace sqlite_orm::internal {
     template<class T>
     struct is_order_by : polyfill::bool_constant<is_order_by_v<T>> {};
 
-    struct between_string {
-        operator std::string() const {
-            return "BETWEEN";
-        }
-    };
-
-    /**
-     *  BETWEEN operator object.
-     */
-    template<class A, class T>
-    struct between_t : condition_t, between_string {
-        using expression_type = A;
-        using lower_type = T;
-        using upper_type = T;
-
-        expression_type expr;
-        lower_type b1;
-        upper_type b2;
-
-        between_t(expression_type expr_, lower_type b1_, upper_type b2_) :
-            expr(std::move(expr_)), b1(std::move(b1_)), b2(std::move(b2_)) {}
-    };
-
     struct like_string {
         operator std::string() const {
             return "LIKE";
@@ -6339,15 +6316,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     internal::dynamic_order_by_t<internal::serializer_context<typename S::db_objects_type>>
     dynamic_order_by(const S& storage) {
         return {obtain_db_objects(storage)};
-    }
-
-    /**
-     *  X BETWEEN Y AND Z
-     *  Example: storage.select(between(&User::id, 10, 20))
-     */
-    template<class A, class T>
-    internal::between_t<A, T> between(A expr, T b1, T b2) {
-        return {std::move(expr), std::move(b1), std::move(b2)};
     }
 
     /**
@@ -12090,6 +12058,42 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(left), std::move(argument), true};
     }
 }
+// #include "ast/between.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <utility>  //  std::move
+#endif
+// #include "tags.h"
+
+namespace sqlite_orm::internal {
+    /**
+     *  BETWEEN operator object.
+     */
+    template<class A, class T>
+    struct between_t : condition_t, negatable_t {
+        using expression_type = A;
+        using lower_type = T;
+        using upper_type = T;
+
+        expression_type expression;
+        lower_type lower;
+        upper_type upper;
+
+        between_t(expression_type expression_, lower_type lower_, upper_type upper_) :
+            expression(std::move(expression_)), lower(std::move(lower_)), upper(std::move(upper_)) {}
+    };
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  X BETWEEN Y AND Z
+     *  Example: storage.select(between(&User::id, 10, 20))
+     */
+    template<class A, class T>
+    internal::between_t<A, T> between(A expression, T lower, T upper) {
+        return {std::move(expression), std::move(lower), std::move(upper)};
+    }
+}
 
 namespace sqlite_orm::internal {
     /**
@@ -12140,6 +12144,11 @@ namespace sqlite_orm::internal {
 
     template<class DBOs, class L, class... Args>
     struct column_result_t<DBOs, in_t<L, Args...>, void> {
+        using type = bool;
+    };
+
+    template<class DBOs, class A, class T>
+    struct column_result_t<DBOs, between_t<A, T>, void> {
         using type = bool;
     };
 
@@ -16242,6 +16251,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "ast/in.h"
 
+// #include "ast/between.h"
+
 namespace sqlite_orm::internal {
     /**
      *  ast_iterator accepts any expression and a callable object
@@ -16701,9 +16712,9 @@ namespace sqlite_orm::internal {
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& b, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-            iterate_ast(b.expr, lambda);
-            iterate_ast(b.b1, lambda);
-            iterate_ast(b.b2, lambda);
+            iterate_ast(b.expression, lambda);
+            iterate_ast(b.lower, lambda);
+            iterate_ast(b.upper, lambda);
         }
     };
 
@@ -21990,14 +22001,14 @@ namespace sqlite_orm::internal {
         using statement_type = between_t<A, T>;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
-            auto expr = serialize(c.expr, context);
-            ss << expr << " " << static_cast<std::string>(c) << " ";
-            ss << serialize(c.b1, context);
+            auto expr = serialize(statement.expression, context);
+            ss << expr << " BETWEEN ";
+            ss << serialize(statement.lower, context);
             ss << " AND ";
-            ss << serialize(c.b2, context);
+            ss << serialize(statement.upper, context);
             return ss.str();
         }
     };
