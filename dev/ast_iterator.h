@@ -29,6 +29,8 @@
 #include "ast/limit.h"
 #include "ast/in.h"
 #include "ast/between.h"
+#include "ast/is_null.h"
+#include "ast/is_not_null.h"
 
 namespace sqlite_orm::internal {
     /**
@@ -530,8 +532,8 @@ namespace sqlite_orm::internal {
         using node_type = is_not_null_t<T>;
 
         template<class L>
-        SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& i, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-            iterate_ast(i.t, lambda);
+        SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
+            iterate_ast(node.argument, lambda);
         }
     };
 

@@ -33,6 +33,8 @@
 #include "ast/rank.h"
 #include "ast/special_keywords.h"
 #include "ast/limit.h"
+#include "ast/is_null.h"
+#include "ast/is_not_null.h"
 #include "core_functions.h"
 #include "constraints.h"
 #include "conditions.h"
@@ -803,10 +805,10 @@ namespace sqlite_orm::internal {
         using statement_type = is_not_null_t<T>;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
-            ss << serialize(c.t, context) << " " << static_cast<std::string>(c);
+            ss << serialize(statement.argument, context) << " IS NOT NULL";
             return ss.str();
         }
     };

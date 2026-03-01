@@ -27,6 +27,8 @@
 #include "ast/cast.h"
 #include "ast/limit.h"
 #include "ast/in.h"
+#include "ast/is_null.h"
+#include "ast/is_not_null.h"
 
 namespace sqlite_orm::internal {
     template<class T, class SFINAE = void>
