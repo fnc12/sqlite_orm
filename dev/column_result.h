@@ -28,6 +28,7 @@
 #include "ast/special_keywords.h"
 #include "ast/cast.h"
 #include "ast/in.h"
+#include "ast/between.h"
 
 namespace sqlite_orm::internal {
     /**
@@ -78,6 +79,11 @@ namespace sqlite_orm::internal {
 
     template<class DBOs, class L, class... Args>
     struct column_result_t<DBOs, in_t<L, Args...>, void> {
+        using type = bool;
+    };
+
+    template<class DBOs, class A, class T>
+    struct column_result_t<DBOs, between_t<A, T>, void> {
         using type = bool;
     };
 
