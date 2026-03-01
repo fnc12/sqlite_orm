@@ -29,6 +29,7 @@
 #include "ast/cast.h"
 #include "ast/in.h"
 #include "ast/between.h"
+#include "ast/is_null.h"
 
 namespace sqlite_orm::internal {
     /**
@@ -84,6 +85,16 @@ namespace sqlite_orm::internal {
 
     template<class DBOs, class A, class T>
     struct column_result_t<DBOs, between_t<A, T>, void> {
+        using type = bool;
+    };
+
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, is_null_t<T>, void> {
+        using type = bool;
+    };
+
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, is_not_null_t<T>, void> {
         using type = bool;
     };
 
