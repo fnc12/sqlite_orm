@@ -322,42 +322,6 @@ namespace sqlite_orm::internal {
         }
     };
 
-    struct is_null_string {
-        operator std::string() const {
-            return "IS NULL";
-        }
-    };
-
-    /**
-     *  IS NULL operator object.
-     */
-    template<class T>
-    struct is_null_t : is_null_string, negatable_t {
-        using self = is_null_t<T>;
-
-        T t;
-
-        is_null_t(T t_) : t(std::move(t_)) {}
-    };
-
-    struct is_not_null_string {
-        operator std::string() const {
-            return "IS NOT NULL";
-        }
-    };
-
-    /**
-     *  IS NOT NULL operator object.
-     */
-    template<class T>
-    struct is_not_null_t : is_not_null_string, negatable_t {
-        using self = is_not_null_t<T>;
-
-        T t;
-
-        is_not_null_t(T t_) : t(std::move(t_)) {}
-    };
-
     struct order_by_base {
         std::string _collate_argument;
         int _order = 0;  //  -1 = desc, 1 = asc, 0 = unspecified
@@ -950,16 +914,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         using namespace ::sqlite_orm::internal;
         return or_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>>{get_from_expression(std::forward<L>(l)),
                                                                               get_from_expression(std::forward<R>(r))};
-    }
-
-    template<class T>
-    internal::is_not_null_t<T> is_not_null(T t) {
-        return {std::move(t)};
-    }
-
-    template<class T>
-    internal::is_null_t<T> is_null(T t) {
-        return {std::move(t)};
     }
 
     template<class L, class R>
