@@ -29,6 +29,8 @@
 #include "ast/in.h"
 #include "ast/is_null.h"
 #include "ast/is_not_null.h"
+#include "ast/window.h"
+#include "window_functions.h"
 
 namespace sqlite_orm::internal {
     template<class T, class SFINAE = void>
@@ -271,4 +273,80 @@ namespace sqlite_orm::internal {
 
     template<class Table, class... Args>
     struct node_tuple<table_valued_expression<Table, Args...>, void> : node_tuple_for<Args...> {};
+
+    template<class E>
+    struct node_tuple<preceding_t<E>, void> : node_tuple<E> {};
+
+    template<class E>
+    struct node_tuple<following_t<E>, void> : node_tuple<E> {};
+
+    template<>
+    struct node_tuple<unbounded_preceding_t, void> {
+        using type = std::tuple<>;
+    };
+
+    template<>
+    struct node_tuple<unbounded_following_t, void> {
+        using type = std::tuple<>;
+    };
+
+    template<>
+    struct node_tuple<current_row_t, void> {
+        using type = std::tuple<>;
+    };
+
+    template<class Start, class End>
+    struct node_tuple<frame_spec_t<Start, End>, void> : node_tuple_for<Start, End> {};
+
+    template<class... Args>
+    struct node_tuple<partition_by_t<Args...>, void> : node_tuple_for<Args...> {};
+
+    template<>
+    struct node_tuple<window_ref_t, void> {
+        using type = std::tuple<>;
+    };
+
+    template<class F, class... Args>
+    struct node_tuple<over_t<F, Args...>, void> : node_tuple_for<F, Args...> {};
+
+    template<class... Args>
+    struct node_tuple<window_defn_t<Args...>, void> : node_tuple_for<Args...> {};
+
+    template<>
+    struct node_tuple<row_number_t, void> {
+        using type = std::tuple<>;
+    };
+
+    template<>
+    struct node_tuple<dense_rank_t, void> {
+        using type = std::tuple<>;
+    };
+
+    template<>
+    struct node_tuple<percent_rank_t, void> {
+        using type = std::tuple<>;
+    };
+
+    template<>
+    struct node_tuple<cume_dist_t, void> {
+        using type = std::tuple<>;
+    };
+
+    template<class... Args>
+    struct node_tuple<ntile_t<Args...>, void> : node_tuple_for<Args...> {};
+
+    template<class... Args>
+    struct node_tuple<lag_t<Args...>, void> : node_tuple_for<Args...> {};
+
+    template<class... Args>
+    struct node_tuple<lead_t<Args...>, void> : node_tuple_for<Args...> {};
+
+    template<class... Args>
+    struct node_tuple<first_value_t<Args...>, void> : node_tuple_for<Args...> {};
+
+    template<class... Args>
+    struct node_tuple<last_value_t<Args...>, void> : node_tuple_for<Args...> {};
+
+    template<class... Args>
+    struct node_tuple<nth_value_t<Args...>, void> : node_tuple_for<Args...> {};
 }

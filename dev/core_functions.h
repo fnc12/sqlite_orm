@@ -19,6 +19,7 @@
 #include "field_traits.h"
 #include "alias_traits.h"
 #include "ast/into.h"
+#include "ast/window.h"
 #include "field_of.h"
 
 namespace sqlite_orm::internal {
@@ -57,6 +58,11 @@ namespace sqlite_orm::internal {
 
         function_type function;
         where_expression where;
+
+        template<class... OverArgs>
+        over_t<filtered_aggregate_function, OverArgs...> over(OverArgs... overArgs) {
+            return {*this, {std::forward<OverArgs>(overArgs)...}};
+        }
     };
 
     template<class C>
@@ -71,6 +77,11 @@ namespace sqlite_orm::internal {
         template<class W>
         filtered_aggregate_function<built_in_aggregate_function_t<R, S, Args...>, W> filter(where_t<W> wh) {
             return {*this, std::move(wh.expression)};
+        }
+
+        template<class... OverArgs>
+        over_t<built_in_aggregate_function_t, OverArgs...> over(OverArgs... overArgs) {
+            return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
 
@@ -293,6 +304,11 @@ namespace sqlite_orm::internal {
         template<class W>
         filtered_aggregate_function<count_asterisk_t<T>, W> filter(where_t<W> wh) {
             return {*this, std::move(wh.expression)};
+        }
+
+        template<class... OverArgs>
+        over_t<count_asterisk_t, OverArgs...> over(OverArgs... overArgs) {
+            return {*this, {std::forward<OverArgs>(overArgs)...}};
         }
     };
 
