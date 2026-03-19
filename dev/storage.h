@@ -1115,8 +1115,19 @@ namespace sqlite_orm::internal {
         }
 
         template<class T, class... S>
-        sync_schema_result schema_status(const trigger_t<T, S...>&, sqlite3*, bool, bool*) {
-            return sync_schema_result::already_in_sync;
+        sync_schema_result schema_status(const trigger_t<T, S...>& trigger, sqlite3* db, bool, bool*) {
+            auto dbTriggerSql = this->retrieve_object_sql(db, "trigger", trigger.name);
+            if (dbTriggerSql.empty()) {
+                return sync_schema_result::new_table_created;
+            }
+
+            const serializer_context<db_objects_type> context{this->db_objects};
+            auto storageSql = serialize(trigger, context);
+
+            if (dbTriggerSql == storageSql) {
+                return sync_schema_result::already_in_sync;
+            }
+            return sync_schema_result::dropped_and_recreated;
         }
 
         template<class... Cols>
@@ -1250,11 +1261,16 @@ namespace sqlite_orm::internal {
         }
 
         template<class... Cols>
-        sync_schema_result sync_dbo(const trigger_t<Cols...>& trigger, sqlite3* db, bool) {
-            const auto res = sync_schema_result::already_in_sync;  // TODO Change accordingly
-            const serializer_context<db_objects_type> context{this->db_objects};
-            const auto sql = serialize(trigger, context);
-            this->executor.perform_void_exec(db, sql.c_str());
+        sync_schema_result sync_dbo(const trigger_t<Cols...>& trigger, sqlite3* db, bool preserve) {
+            auto res = this->schema_status(trigger, db, preserve, nullptr);
+            if (res != sync_schema_result::already_in_sync) {
+                if (res == sync_schema_result::dropped_and_recreated) {
+                    this->drop_trigger_internal(trigger.name, true, db);
+                }
+                const serializer_context<db_objects_type> context{this->db_objects};
+                const auto sql = serialize(trigger, context);
+                this->executor.perform_void_exec(db, sql.c_str());
+            }
             return res;
         }
 

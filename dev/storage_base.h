@@ -1064,18 +1064,36 @@ namespace sqlite_orm::internal {
         }
 
         void drop_trigger_internal(const std::string& triggerName, bool ifExists) {
-            std::string sql;
-            {
-                std::stringstream ss;
-                ss << "DROP TRIGGER";
-                if (ifExists) {
-                    ss << " IF EXISTS";
-                }
-                ss << ' ' << quote_identifier(triggerName) << std::flush;
-                sql = ss.str();
-            }
             auto connection = this->get_connection();
-            this->executor.perform_void_exec(connection.get(), sql.c_str());
+            this->drop_trigger_internal(triggerName, ifExists, connection.get());
+        }
+
+        void drop_trigger_internal(const std::string& triggerName, bool ifExists, sqlite3* db) {
+            std::stringstream ss;
+            ss << "DROP TRIGGER";
+            if (ifExists) {
+                ss << " IF EXISTS";
+            }
+            ss << ' ' << quote_identifier(triggerName) << std::flush;
+            this->executor.perform_void_exec(db, ss.str().c_str());
+        }
+
+        std::string retrieve_object_sql(sqlite3* db, const std::string& type, const std::string& name) const {
+            std::string result;
+            std::stringstream ss;
+            ss << "SELECT sql FROM sqlite_master WHERE type = " << quote_string_literal(type)
+               << " AND name = " << quote_string_literal(name);
+            this->executor.perform_exec(
+                db,
+                ss.str(),
+                [](void* userData, int /*argc*/, orm_gsl::zstring* argv, orm_gsl::zstring* /*columnName*/) -> int {
+                    if (argv[0]) {
+                        *static_cast<std::string*>(userData) = argv[0];
+                    }
+                    return 0;
+                },
+                &result);
+            return result;
         }
 
         static int collate_callback(void* argument, int leftLength, const void* lhs, int rightLength, const void* rhs) {
