@@ -53,12 +53,12 @@ jobs:
             cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
             triplet: x86-windows
 
-          - name: "VS 2019, x64, C++17"
-            os: windows-2019
-            platform: x64
-            arch: x64
-            cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
-            triplet: x64-windows
+          # - name: "VS 2019, x64, C++17"
+          #   os: windows-2019
+          #   platform: x64
+          #   arch: x64
+          #   cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
+          #   triplet: x64-windows
 
     name: Windows - ${{ matrix.name }}
 

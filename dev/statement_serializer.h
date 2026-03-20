@@ -2582,8 +2582,7 @@ namespace sqlite_orm::internal {
             std::stringstream ss;
             ss << "CREATE ";
 
-            ss << "TRIGGER IF NOT EXISTS " << streaming_identifier(statement.name) << " "
-               << serialize(statement.base, context);
+            ss << "TRIGGER " << streaming_identifier(statement.name) << " " << serialize(statement.base, context);
             ss << " BEGIN ";
             iterate_tuple(statement.elements, [&ss, &context](auto& element) {
                 using element_type = polyfill::remove_cvref_t<decltype(element)>;
