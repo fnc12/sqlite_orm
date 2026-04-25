@@ -1,0 +1,11 @@
+---
+description: Project structure rules for sqlite_orm library development
+alwaysApply: true
+---
+
+# Project Structure
+
+- Library source code lives exclusively in the `dev/` folder — only edit library code there.
+- Tests in `tests/` and examples in `examples/` are also editable.
+- The file `include/sqlite_orm/sqlite_orm.h` is an auto-generated amalgamation and MUST NOT be edited manually.
+- To regenerate it, run: `python3 third_party/amalgamate/amalgamate.py -c third_party/amalgamate/config.json -s .`

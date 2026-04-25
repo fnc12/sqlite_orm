@@ -376,7 +376,7 @@ TEST_CASE("sync_schema") {
         }
         REQUIRE(syncSchemaSimulateRes == syncSchemaRes);
         decltype(syncSchemaRes) expected{
-            {tableName, sync_schema_result::dropped_and_recreated},
+            {tableName, sync_schema_result::dropped_and_recreated_with_data_loss},
         };
         REQUIRE(syncSchemaRes == expected);
         auto users = storage.get_all<User>();
@@ -467,6 +467,79 @@ TEST_CASE("sync_schema") {
 #endif
         }
     }
+}
+
+// https://github.com/fnc12/sqlite_orm/issues/1462
+TEST_CASE("Distinguish dropped_and_recreated with and without backup") {
+    struct MyTableRecord {
+        int id = 0;
+        std::string name;
+    };
+
+    auto storagePath = "issue1462.sqlite";
+    std::remove(storagePath);
+
+    SECTION("sequential schema changes (exact issue scenario)") {
+        // Step 1: create initial table with a single column, insert data
+        {
+            auto storage = make_storage(storagePath, make_table("MyTable", make_column("id", &MyTableRecord::id)));
+            storage.sync_schema(true);
+            storage.insert(MyTableRecord{1, ""});
+            storage.insert(MyTableRecord{2, ""});
+        }
+        // Step 2: add primary key — data should be preserved
+        {
+            auto storage =
+                make_storage(storagePath, make_table("MyTable", make_column("id", &MyTableRecord::id, primary_key())));
+            auto simulateRes = storage.sync_schema_simulate(true);
+            auto syncRes = storage.sync_schema(true);
+            REQUIRE(simulateRes == syncRes);
+            REQUIRE(syncRes.at("MyTable") == sync_schema_result::dropped_and_recreated);
+
+            auto allRecords = storage.get_all<MyTableRecord>();
+            REQUIRE(allRecords.size() == 2);
+        }
+        // Step 3: add NOT NULL column without default — data should be lost
+        {
+            auto storage = make_storage(storagePath,
+                                        make_table("MyTable",
+                                                   make_column("id", &MyTableRecord::id, primary_key()),
+                                                   make_column("name", &MyTableRecord::name)));
+            auto simulateRes = storage.sync_schema_simulate(true);
+            auto syncRes = storage.sync_schema(true);
+            REQUIRE(simulateRes == syncRes);
+            REQUIRE(syncRes.at("MyTable") == sync_schema_result::dropped_and_recreated_with_data_loss);
+
+            auto allRecords = storage.get_all<MyTableRecord>();
+            REQUIRE(allRecords.empty());
+        }
+    }
+
+    SECTION("combined pk change and new NOT NULL column in one step") {
+        // create initial table with a single column, insert data
+        {
+            auto storage = make_storage(storagePath, make_table("MyTable", make_column("id", &MyTableRecord::id)));
+            storage.sync_schema(true);
+            storage.insert(MyTableRecord{1, ""});
+            storage.insert(MyTableRecord{2, ""});
+        }
+        // add primary key AND NOT NULL column without default at once — data should be lost
+        {
+            auto storage = make_storage(storagePath,
+                                        make_table("MyTable",
+                                                   make_column("id", &MyTableRecord::id, primary_key()),
+                                                   make_column("name", &MyTableRecord::name)));
+            auto simulateRes = storage.sync_schema_simulate(true);
+            auto syncRes = storage.sync_schema(true);
+            REQUIRE(simulateRes == syncRes);
+            REQUIRE(syncRes.at("MyTable") == sync_schema_result::dropped_and_recreated_with_data_loss);
+
+            auto allRecords = storage.get_all<MyTableRecord>();
+            REQUIRE(allRecords.empty());
+        }
+    }
+
+    std::remove(storagePath);
 }
 
 TEST_CASE("sync_schema_simulate") {

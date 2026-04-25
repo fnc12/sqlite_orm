@@ -407,10 +407,6 @@ namespace sqlite_orm::internal {
     struct collate_constraint_t {
         collate_argument argument = collate_argument::binary;
 
-        operator std::string() const {
-            return "COLLATE " + this->string_from_collate_argument(this->argument);
-        }
-
         static std::string string_from_collate_argument(collate_argument argument) {
             switch (argument) {
                 case collate_argument::binary:

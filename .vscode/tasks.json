@@ -2,6 +2,46 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "CMake Configure (C++17)",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-B",
+                "${workspaceFolder}/build",
+                "-S",
+                "${workspaceFolder}",
+                "-DSQLITE_ORM_ENABLE_CXX_17=ON",
+                "-DBUILD_TESTING=ON",
+                "-DCMAKE_BUILD_TYPE=Debug"
+            ],
+            "group": "build",
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "CMake Build (C++17)",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}/build",
+                "--parallel"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "dependsOn": "CMake Configure (C++17)",
+            "problemMatcher": "$gcc",
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
             "label": "Run unit_tests",
             "type": "shell",
             "command": "${workspaceFolder}/build/tests/unit_tests",

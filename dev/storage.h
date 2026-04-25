@@ -1140,8 +1140,19 @@ namespace sqlite_orm::internal {
         }
 
         template<class T, class... S>
-        sync_schema_result schema_status(const trigger_t<T, S...>&, sqlite3*, bool, bool*) {
-            return sync_schema_result::already_in_sync;
+        sync_schema_result schema_status(const trigger_t<T, S...>& trigger, sqlite3* db, bool, bool*) {
+            auto dbTriggerSql = this->retrieve_object_sql(db, "trigger", trigger.name);
+            if (dbTriggerSql.empty()) {
+                return sync_schema_result::new_table_created;
+            }
+
+            const serializer_context<db_objects_type> context{this->db_objects};
+            auto storageSql = serialize(trigger, context);
+
+            if (dbTriggerSql == storageSql) {
+                return sync_schema_result::already_in_sync;
+            }
+            return sync_schema_result::dropped_and_recreated;
         }
 
         template<class... Cols>
@@ -1164,6 +1175,7 @@ namespace sqlite_orm::internal {
 
             auto dbTableInfo = this->pragma.table_xinfo(table.name);
             auto res = sync_schema_result::already_in_sync;
+            bool canPreserveData = true;
 
             //  first let's see if table with such name exists..
             auto gottaCreateTable = !this->table_exists(db, table.name);
@@ -1195,7 +1207,20 @@ namespace sqlite_orm::internal {
                     }
                 }
                 if (gottaCreateTable) {
-                    res = sync_schema_result::dropped_and_recreated;
+                    // check if any new columns prevent data preservation
+                    for (const table_xinfo* colInfo: columnsToAdd) {
+                        if (!table.find_column_generated_storage_type(colInfo->name)) {
+                            if (colInfo->notnull && colInfo->dflt_value.empty()) {
+                                canPreserveData = false;
+                                if (attempt_to_preserve) {
+                                    *attempt_to_preserve = false;
+                                };
+                                break;
+                            }
+                        }
+                    }
+                    res = canPreserveData ? sync_schema_result::dropped_and_recreated
+                                          : sync_schema_result::dropped_and_recreated_with_data_loss;
                 } else {
                     if (!columnsToAdd.empty()) {
                         // extra storage columns than table columns
@@ -1211,6 +1236,7 @@ namespace sqlite_orm::internal {
                             } else {
                                 if (colInfo->notnull && colInfo->dflt_value.empty()) {
                                     gottaCreateTable = true;
+                                    canPreserveData = false;
                                     // no matter if preserve is true or false, there is no way to preserve data, so we wont try!
                                     if (attempt_to_preserve) {
                                         *attempt_to_preserve = false;
@@ -1226,7 +1252,8 @@ namespace sqlite_orm::internal {
                                 res = sync_schema_result::new_columns_added;
                             }
                         } else {
-                            res = sync_schema_result::dropped_and_recreated;
+                            res = canPreserveData ? sync_schema_result::dropped_and_recreated
+                                                  : sync_schema_result::dropped_and_recreated_with_data_loss;
                         }
                     } else {
                         if (res != sync_schema_result::old_columns_removed) {
@@ -1266,11 +1293,16 @@ namespace sqlite_orm::internal {
         }
 
         template<class... Cols>
-        sync_schema_result sync_dbo(const trigger_t<Cols...>& trigger, sqlite3* db, bool) {
-            const auto res = sync_schema_result::already_in_sync;  // TODO Change accordingly
-            const serializer_context<db_objects_type> context{this->db_objects};
-            const auto sql = serialize(trigger, context);
-            this->executor.perform_void_exec(db, sql.c_str());
+        sync_schema_result sync_dbo(const trigger_t<Cols...>& trigger, sqlite3* db, bool preserve) {
+            auto res = this->schema_status(trigger, db, preserve, nullptr);
+            if (res != sync_schema_result::already_in_sync) {
+                if (res == sync_schema_result::dropped_and_recreated) {
+                    this->drop_trigger_internal(trigger.name, true, db);
+                }
+                const serializer_context<db_objects_type> context{this->db_objects};
+                const auto sql = serialize(trigger, context);
+                this->executor.perform_void_exec(db, sql.c_str());
+            }
             return res;
         }
 

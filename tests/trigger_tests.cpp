@@ -132,6 +132,78 @@ TEST_CASE("trigger_names") {
     }
 }
 
+TEST_CASE("issue1429") {
+    struct Lead {
+        int id = 0;
+        std::string name;
+        std::string email;
+    };
+
+    auto storagePath = "issue1429.sqlite";
+    std::remove(storagePath);
+
+    // first: create storage with trigger checking "name" column
+    {
+        auto storage = make_storage(storagePath,
+                                    make_trigger("validate_email_before_insert_leads",
+                                                 before()
+                                                     .insert()
+                                                     .on<Lead>()
+                                                     .begin(select(case_<int>()
+                                                                       .when(not like(new_(&Lead::name), "%_@__%.__%"),
+                                                                             then(raise_abort("Invalid email address")))
+                                                                       .end()))
+                                                     .end()),
+                                    make_table("leads",
+                                               make_column("id", &Lead::id, primary_key()),
+                                               make_column("name", &Lead::name),
+                                               make_column("email", &Lead::email)));
+        auto syncResult = storage.sync_schema();
+        REQUIRE(syncResult.at("validate_email_before_insert_leads") == sync_schema_result::new_table_created);
+
+        // second sync should report already_in_sync
+        syncResult = storage.sync_schema();
+        REQUIRE(syncResult.at("validate_email_before_insert_leads") == sync_schema_result::already_in_sync);
+    }
+    // second: create storage with trigger checking "email" column instead
+    {
+        auto storage = make_storage(storagePath,
+                                    make_trigger("validate_email_before_insert_leads",
+                                                 before()
+                                                     .insert()
+                                                     .on<Lead>()
+                                                     .begin(select(case_<int>()
+                                                                       .when(not like(new_(&Lead::email), "%_@__%.__%"),
+                                                                             then(raise_abort("Invalid email address")))
+                                                                       .end()))
+                                                     .end()),
+                                    make_table("leads",
+                                               make_column("id", &Lead::id, primary_key()),
+                                               make_column("name", &Lead::name),
+                                               make_column("email", &Lead::email)));
+
+        // simulate should detect the change
+        auto simulateResult = storage.sync_schema_simulate();
+        REQUIRE(simulateResult.at("validate_email_before_insert_leads") == sync_schema_result::dropped_and_recreated);
+
+        // sync should update the trigger
+        auto syncResult = storage.sync_schema();
+        REQUIRE(syncResult.at("validate_email_before_insert_leads") == sync_schema_result::dropped_and_recreated);
+
+        // verify trigger was updated: inserting a row with invalid email should fail
+        REQUIRE_THROWS(storage.insert(Lead{0, "John", "not_an_email"}));
+
+        // valid email should succeed
+        REQUIRE_NOTHROW(storage.insert(Lead{0, "John", "john@example.com"}));
+
+        // after update, second sync should be already_in_sync
+        syncResult = storage.sync_schema();
+        REQUIRE(syncResult.at("validate_email_before_insert_leads") == sync_schema_result::already_in_sync);
+    }
+
+    std::remove(storagePath);
+}
+
 TEST_CASE("issue1280") {
     struct X {
         int test = 0;

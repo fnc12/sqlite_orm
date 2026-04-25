@@ -33,7 +33,10 @@
 #include "ast/rank.h"
 #include "ast/special_keywords.h"
 #include "ast/limit.h"
+#include "ast/is_null.h"
+#include "ast/is_not_null.h"
 #include "core_functions.h"
+#include "window_functions.h"
 #include "constraints.h"
 #include "conditions.h"
 #include "indexed_column.h"
@@ -317,6 +320,313 @@ namespace sqlite_orm::internal {
             std::stringstream ss;
             ss << serialize(statement.function, context);
             ss << " FILTER (WHERE " << serialize(statement.where, context) << ")";
+            return ss.str();
+        }
+    };
+
+    template<>
+    struct statement_serializer<row_number_t, void> {
+        using statement_type = row_number_t;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
+                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+            return "ROW_NUMBER()";
+        }
+    };
+
+    template<>
+    struct statement_serializer<dense_rank_t, void> {
+        using statement_type = dense_rank_t;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
+                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+            return "DENSE_RANK()";
+        }
+    };
+
+    template<>
+    struct statement_serializer<percent_rank_t, void> {
+        using statement_type = percent_rank_t;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
+                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+            return "PERCENT_RANK()";
+        }
+    };
+
+    template<>
+    struct statement_serializer<cume_dist_t, void> {
+        using statement_type = cume_dist_t;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
+                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+            return "CUME_DIST()";
+        }
+    };
+
+    template<class... Args>
+    struct statement_serializer<ntile_t<Args...>, void> {
+        using statement_type = ntile_t<Args...>;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            std::stringstream ss;
+            ss << "NTILE(" << streaming_expressions_tuple(statement.args, context) << ")";
+            return ss.str();
+        }
+    };
+
+    template<class... Args>
+    struct statement_serializer<lag_t<Args...>, void> {
+        using statement_type = lag_t<Args...>;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            std::stringstream ss;
+            ss << "LAG(" << streaming_expressions_tuple(statement.args, context) << ")";
+            return ss.str();
+        }
+    };
+
+    template<class... Args>
+    struct statement_serializer<lead_t<Args...>, void> {
+        using statement_type = lead_t<Args...>;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            std::stringstream ss;
+            ss << "LEAD(" << streaming_expressions_tuple(statement.args, context) << ")";
+            return ss.str();
+        }
+    };
+
+    template<class... Args>
+    struct statement_serializer<first_value_t<Args...>, void> {
+        using statement_type = first_value_t<Args...>;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            std::stringstream ss;
+            ss << "FIRST_VALUE(" << streaming_expressions_tuple(statement.args, context) << ")";
+            return ss.str();
+        }
+    };
+
+    template<class... Args>
+    struct statement_serializer<last_value_t<Args...>, void> {
+        using statement_type = last_value_t<Args...>;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            std::stringstream ss;
+            ss << "LAST_VALUE(" << streaming_expressions_tuple(statement.args, context) << ")";
+            return ss.str();
+        }
+    };
+
+    template<class... Args>
+    struct statement_serializer<nth_value_t<Args...>, void> {
+        using statement_type = nth_value_t<Args...>;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            std::stringstream ss;
+            ss << "NTH_VALUE(" << streaming_expressions_tuple(statement.args, context) << ")";
+            return ss.str();
+        }
+    };
+
+    template<>
+    struct statement_serializer<unbounded_preceding_t, void> {
+        using statement_type = unbounded_preceding_t;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
+                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+            return "UNBOUNDED PRECEDING";
+        }
+    };
+
+    template<class E>
+    struct statement_serializer<preceding_t<E>, void> {
+        using statement_type = preceding_t<E>;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            std::stringstream ss;
+            ss << serialize(statement.expression, context) << " PRECEDING";
+            return ss.str();
+        }
+    };
+
+    template<>
+    struct statement_serializer<current_row_t, void> {
+        using statement_type = current_row_t;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
+                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+            return "CURRENT ROW";
+        }
+    };
+
+    template<class E>
+    struct statement_serializer<following_t<E>, void> {
+        using statement_type = following_t<E>;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            std::stringstream ss;
+            ss << serialize(statement.expression, context) << " FOLLOWING";
+            return ss.str();
+        }
+    };
+
+    template<>
+    struct statement_serializer<unbounded_following_t, void> {
+        using statement_type = unbounded_following_t;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type&,
+                                                                  const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+            return "UNBOUNDED FOLLOWING";
+        }
+    };
+
+    template<class Start, class End>
+    struct statement_serializer<frame_spec_t<Start, End>, void> {
+        using statement_type = frame_spec_t<Start, End>;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            std::stringstream ss;
+            switch (statement.type) {
+                case frame_type_t::rows:
+                    ss << "ROWS";
+                    break;
+                case frame_type_t::range:
+                    ss << "RANGE";
+                    break;
+                case frame_type_t::groups:
+                    ss << "GROUPS";
+                    break;
+            }
+            ss << " BETWEEN " << serialize(statement.start, context) << " AND " << serialize(statement.end, context);
+            switch (statement.exclude) {
+                case frame_exclude_t::no_others:
+                    break;
+                case frame_exclude_t::current_row:
+                    ss << " EXCLUDE CURRENT ROW";
+                    break;
+                case frame_exclude_t::group:
+                    ss << " EXCLUDE GROUP";
+                    break;
+                case frame_exclude_t::ties:
+                    ss << " EXCLUDE TIES";
+                    break;
+            }
+            return ss.str();
+        }
+    };
+
+    template<class... Args>
+    struct statement_serializer<partition_by_t<Args...>, void> {
+        using statement_type = partition_by_t<Args...>;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            std::stringstream ss;
+            ss << "PARTITION BY " << streaming_expressions_tuple(statement.arguments, context);
+            return ss.str();
+        }
+    };
+
+    template<>
+    struct statement_serializer<window_ref_t, void> {
+        using statement_type = window_ref_t;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                        const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
+            return statement.name;
+        }
+    };
+
+    template<class Tuple, class Ctx>
+    void serialize_over_arguments(std::stringstream& ss, const Tuple& arguments, const Ctx& context) {
+        using args_tuple = std::decay_t<Tuple>;
+        constexpr bool is_named_ref = std::tuple_size<args_tuple>::value == 1 &&
+                                      std::is_same<std::tuple_element_t<0, args_tuple>, window_ref_t>::value;
+        if constexpr (is_named_ref) {
+            ss << " OVER " << std::get<0>(arguments).name;
+        } else {
+            ss << " OVER (";
+            std::string separator;
+            iterate_tuple(arguments, [&ss, &context, &separator](auto& arg) {
+                ss << separator << serialize(arg, context);
+                separator = " ";
+            });
+            ss << ")";
+        }
+    }
+
+    template<class F, class... Args>
+    struct statement_serializer<over_t<F, Args...>, void> {
+        using statement_type = over_t<F, Args...>;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            std::stringstream ss;
+            ss << serialize(statement.function, context);
+            serialize_over_arguments(ss, statement.arguments, context);
+            return ss.str();
+        }
+    };
+
+    template<class... Args>
+    struct statement_serializer<over_t<rank_t, Args...>, void> {
+        using statement_type = over_t<rank_t, Args...>;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            std::stringstream ss;
+            ss << "rank()";
+            serialize_over_arguments(ss, statement.arguments, context);
+            return ss.str();
+        }
+    };
+
+    template<class... Args>
+    struct statement_serializer<window_defn_t<Args...>, void> {
+        using statement_type = window_defn_t<Args...>;
+
+        template<class Ctx>
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
+                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
+            std::stringstream ss;
+            ss << "WINDOW " << statement.name << " AS (";
+            std::string separator;
+            iterate_tuple(statement.arguments, [&ss, &context, &separator](auto& arg) {
+                ss << separator << serialize(arg, context);
+                separator = " ";
+            });
+            ss << ")";
             return ss.str();
         }
     };
@@ -811,10 +1121,10 @@ namespace sqlite_orm::internal {
         using statement_type = is_null_t<T>;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
-            ss << serialize(c.t, context) << " " << static_cast<std::string>(c);
+            ss << serialize(statement.argument, context) << " IS NULL";
             return ss.str();
         }
     };
@@ -824,10 +1134,10 @@ namespace sqlite_orm::internal {
         using statement_type = is_not_null_t<T>;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
-            ss << serialize(c.t, context) << " " << static_cast<std::string>(c);
+            ss << serialize(statement.argument, context) << " IS NOT NULL";
             return ss.str();
         }
     };
@@ -932,12 +1242,11 @@ namespace sqlite_orm::internal {
         using statement_type = named_collate<T>;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             auto newContext = context;
             newContext.use_parentheses = false;
-            auto res = serialize(c.expr, newContext);
-            return res + " " + static_cast<std::string>(c);
+            return serialize(statement.expression, newContext) + " COLLATE " + statement.name;
         }
     };
 
@@ -946,12 +1255,12 @@ namespace sqlite_orm::internal {
         using statement_type = collate_t<T>;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             auto newContext = context;
             newContext.use_parentheses = false;
-            auto res = serialize(c.expr, newContext);
-            return res + " " + static_cast<std::string>(c);
+            return serialize(statement.expression, newContext) + " COLLATE " +
+                   collate_constraint_t::string_from_collate_argument(statement.argument);
         }
     };
 
@@ -1078,14 +1387,14 @@ namespace sqlite_orm::internal {
         using statement_type = between_t<A, T>;
 
         template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
+        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
-            auto expr = serialize(c.expr, context);
-            ss << expr << " " << static_cast<std::string>(c) << " ";
-            ss << serialize(c.b1, context);
+            auto expr = serialize(statement.expression, context);
+            ss << expr << " BETWEEN ";
+            ss << serialize(statement.lower, context);
             ss << " AND ";
-            ss << serialize(c.b2, context);
+            ss << serialize(statement.upper, context);
             return ss.str();
         }
     };
@@ -1286,7 +1595,7 @@ namespace sqlite_orm::internal {
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
-            return static_cast<std::string>(statement);
+            return "COLLATE " + statement.string_from_collate_argument(statement.argument);
         }
     };
 
@@ -2294,8 +2603,7 @@ namespace sqlite_orm::internal {
             std::stringstream ss;
             ss << "CREATE ";
 
-            ss << "TRIGGER IF NOT EXISTS " << streaming_identifier(statement.name) << " "
-               << serialize(statement.base, context);
+            ss << "TRIGGER " << streaming_identifier(statement.name) << " " << serialize(statement.base, context);
             ss << " BEGIN ";
             iterate_tuple(statement.elements, [&ss, &context](auto& element) {
                 using element_type = polyfill::remove_cvref_t<decltype(element)>;
