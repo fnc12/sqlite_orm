@@ -27,6 +27,7 @@
 #include "type_printer.h"
 #include "literal.h"
 #include "ast/cross_join.h"
+#include "ast/rank.h"
 
 namespace sqlite_orm::internal {
     /**
@@ -1013,6 +1014,14 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class O, internal::satisfies_not<std::is_base_of, integer_printer, type_printer<O>> = true>
     internal::order_by_t<O> order_by(O o) {
+        return {std::move(o)};
+    }
+
+    /** 
+     *  [Deprecation notice] This expression factory function is deprecated and will be removed in v1.11.
+     */
+    [[deprecated("Use the hidden FTS5 rank column instead")]]
+    inline internal::order_by_t<internal::rank_t> order_by(internal::rank_t o) {
         return {std::move(o)};
     }
 

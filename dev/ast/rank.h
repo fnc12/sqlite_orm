@@ -17,7 +17,7 @@ namespace sqlite_orm::internal {
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
-     *  RANK() window function / FTS5 rank keyword.
+     *  RANK() window function
      *  https://sqlite.org/windowfunctions.html#built-in_window_functions
      */
     inline internal::rank_t rank() {
