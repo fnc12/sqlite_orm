@@ -178,9 +178,9 @@ namespace sqlite_orm::internal {
     };
 
 #ifdef SQLITE_ORM_WITH_VIEW
-    template<class O, class... Cs>
-    struct statement_serializer<query_view<O, Cs...>, void> {
-        using statement_type = query_view<O, Cs...>;
+    template<class View>
+    struct statement_serializer<View, std::enable_if_t<is_view_v<View>>> {
+        using statement_type = View;
 
         template<class Ctx>
         std::string operator()(const statement_type& statement, const Ctx& context) {

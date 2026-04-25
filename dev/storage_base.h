@@ -1138,10 +1138,10 @@ namespace sqlite_orm::internal {
 
         void drop_trigger_internal(const std::string& triggerName, bool ifExists) {
             auto connection = this->get_connection();
-            this->drop_trigger_internal(triggerName, ifExists, connection.get());
+            this->drop_trigger_internal(connection.get(), triggerName, ifExists);
         }
 
-        void drop_trigger_internal(const std::string& triggerName, bool ifExists, sqlite3* db) {
+        void drop_trigger_internal(sqlite3* db, const std::string& triggerName, bool ifExists) {
             std::stringstream ss;
             ss << "DROP TRIGGER";
             if (ifExists) {
@@ -1160,9 +1160,7 @@ namespace sqlite_orm::internal {
                 db,
                 ss.str(),
                 [](void* userData, int /*argc*/, orm_gsl::zstring* argv, orm_gsl::zstring* /*columnName*/) -> int {
-                    if (argv[0]) {
-                        *static_cast<std::string*>(userData) = argv[0];
-                    }
+                    *static_cast<std::string*>(userData) = argv[0];
                     return 0;
                 },
                 &result);

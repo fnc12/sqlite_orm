@@ -11103,8 +11103,6 @@ namespace sqlite_orm::internal {
 
 // #include "type_traits.h"
 
-// #include "table_reference.h"
-
 // #include "alias_traits.h"
 
 namespace sqlite_orm::internal {
@@ -20929,10 +20927,10 @@ namespace sqlite_orm::internal {
 
         void drop_trigger_internal(const std::string& triggerName, bool ifExists) {
             auto connection = this->get_connection();
-            this->drop_trigger_internal(triggerName, ifExists, connection.get());
+            this->drop_trigger_internal(connection.get(), triggerName, ifExists);
         }
 
-        void drop_trigger_internal(const std::string& triggerName, bool ifExists, sqlite3* db) {
+        void drop_trigger_internal(sqlite3* db, const std::string& triggerName, bool ifExists) {
             std::stringstream ss;
             ss << "DROP TRIGGER";
             if (ifExists) {
@@ -20951,9 +20949,7 @@ namespace sqlite_orm::internal {
                 db,
                 ss.str(),
                 [](void* userData, int /*argc*/, orm_gsl::zstring* argv, orm_gsl::zstring* /*columnName*/) -> int {
-                    if (argv[0]) {
-                        *static_cast<std::string*>(userData) = argv[0];
-                    }
+                    *static_cast<std::string*>(userData) = argv[0];
                     return 0;
                 },
                 &result);
@@ -22253,9 +22249,9 @@ namespace sqlite_orm::internal {
     };
 
 #ifdef SQLITE_ORM_WITH_VIEW
-    template<class O, class... Cs>
-    struct statement_serializer<query_view<O, Cs...>, void> {
-        using statement_type = query_view<O, Cs...>;
+    template<class View>
+    struct statement_serializer<View, std::enable_if_t<is_view_v<View>>> {
+        using statement_type = View;
 
         template<class Ctx>
         std::string operator()(const statement_type& statement, const Ctx& context) {
@@ -26608,8 +26604,22 @@ namespace sqlite_orm::internal {
 
 #ifdef SQLITE_ORM_WITH_VIEW
         template<class View, satisfies<is_view, View> = true>
-        sync_schema_result schema_status(const View&, sqlite3*, bool, bool*) {
-            return sync_schema_result::already_in_sync;
+        sync_schema_result schema_status(const View& queryView, sqlite3* db, bool, bool*) {
+            auto dbViewSql = this->retrieve_object_sql(db, "view", queryView.name);
+            if (dbViewSql.empty()) {
+                return sync_schema_result::new_table_created;
+            }
+
+            const auto& exprDBOs = db_objects_for_expression(this->db_objects, queryView.select);
+
+            using context_t = serializer_context<polyfill::remove_cvref_t<decltype(exprDBOs)>>;
+            const context_t context{exprDBOs};
+            auto storageSql = serialize(queryView, context);
+
+            if (dbViewSql == storageSql) {
+                return sync_schema_result::already_in_sync;
+            }
+            return sync_schema_result::dropped_and_recreated;
         }
 #endif
 
@@ -26743,7 +26753,7 @@ namespace sqlite_orm::internal {
             auto res = this->schema_status(trigger, db, preserve, nullptr);
             if (res != sync_schema_result::already_in_sync) {
                 if (res == sync_schema_result::dropped_and_recreated) {
-                    this->drop_trigger_internal(trigger.name, true, db);
+                    this->drop_trigger_internal(db, trigger.name, true);
                 }
                 const serializer_context<db_objects_type> context{this->db_objects};
                 const auto sql = serialize(trigger, context);
@@ -26754,14 +26764,20 @@ namespace sqlite_orm::internal {
 
 #ifdef SQLITE_ORM_WITH_VIEW
         template<class View, satisfies<is_view, View> = true>
-        sync_schema_result sync_dbo(const View& view, sqlite3* db, bool) {
-            const auto& exprDBOs = db_objects_for_expression(this->db_objects, view.select);
-            using context_t = serializer_context<polyfill::remove_cvref_t<decltype(exprDBOs)>>;
+        sync_schema_result sync_dbo(const View& queryView, sqlite3* db, bool preserve) {
+            auto res = this->schema_status(queryView, db, preserve, nullptr);
+            if (res != sync_schema_result::already_in_sync) {
+                if (res == sync_schema_result::dropped_and_recreated) {
+                    this->drop_view_internal(db, queryView.name, true);
+                }
 
-            const auto res = sync_schema_result::already_in_sync;
-            const context_t context{exprDBOs};
-            const auto sql = serialize(view, context);
-            this->executor.perform_void_exec(db, sql.c_str());
+                const auto& exprDBOs = db_objects_for_expression(this->db_objects, queryView.select);
+
+                using context_t = serializer_context<polyfill::remove_cvref_t<decltype(exprDBOs)>>;
+                const context_t context{exprDBOs};
+                const auto sql = serialize(queryView, context);
+                this->executor.perform_void_exec(db, sql.c_str());
+            }
             return res;
         }
 #endif
@@ -26810,7 +26826,6 @@ namespace sqlite_orm::internal {
             const auto& exprDBOs = db_objects_for_expression(this->db_objects, expression);
 
             using context_t = serializer_context<polyfill::remove_cvref_t<decltype(exprDBOs)>>;
-
             context_t context{exprDBOs};
             context.replace_bindable_with_question = parametrized;
             // just like prepare_impl()
@@ -26830,7 +26845,6 @@ namespace sqlite_orm::internal {
             const auto& exprDBOs = db_objects_for_expression(this->db_objects, statement);
 
             using context_t = serializer_context<polyfill::remove_cvref_t<decltype(exprDBOs)>>;
-
             context_t context{exprDBOs};
             context.omit_table_name = false;
             context.replace_bindable_with_question = true;
