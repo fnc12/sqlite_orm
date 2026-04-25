@@ -90,6 +90,11 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
         # suppress warnings about unused variables in test code
         -Wno-unused-variable)
 endif()
+    
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION GREATER_EQUAL 16)
+    target_compile_options(unit_tests PUBLIC
+        -freflection)
+endif()
 
 target_precompile_headers(unit_tests PRIVATE
     <sqlite3.h>

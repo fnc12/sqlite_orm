@@ -357,7 +357,7 @@ using std::nullptr_t;
 // note: PFR depends on `SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED` for field name determination
 #if (defined(SQLITE_ORM_CONSTEVAL_SUPPORTED) && defined(SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED)) &&              \
     (defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED)) && (__cpp_lib_byte >= 201603L) &&                                   \
-    (__cpp_impl_reflection >= 202500L || BOOST_PFR_ENABLED == 1)
+    (defined(SQLITE_ORM_REFLECTION_SUPPORTED) || BOOST_PFR_ENABLED == 1)
 #define SQLITE_ORM_WITH_VIEW
 #endif
 
@@ -13115,7 +13115,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 
 #ifdef SQLITE_ORM_WITH_VIEW
-#if __cpp_impl_reflection < 202506L
+#ifndef SQLITE_ORM_REFLECTION_SUPPORTED
 #ifdef SQLITE_ORM_HAS_BOOST_PFR
 #include <boost/pfr.hpp>
 #endif
@@ -13253,10 +13253,9 @@ namespace sqlite_orm::internal {
                        Select,
                        decltype(make_column(std::string(std::get<I>(memberNames)), std::get<I>(memberPointers)))...>;
 
-        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return view_type{
-            std::move(name),
-            std::tuple{make_column(std::string(std::get<I>(memberNames)), std::get<I>(memberPointers))...},
-            std::move(select)});
+        return view_type{std::move(name),
+                         std::tuple{make_column(std::string(std::get<I>(memberNames)), std::get<I>(memberPointers))...},
+                         std::move(select)};
     }
 }
 
