@@ -24,8 +24,8 @@ namespace sqlite_orm::internal {
     };
 
     /**
-         *  Function object for building an object from a result row.
-         */
+     *  Function object for building an object from a result row.
+     */
     template<class O>
     struct object_from_column_builder : object_from_column_builder_base {
         using object_type = O;
@@ -62,10 +62,10 @@ namespace sqlite_orm::internal {
     };
 
     /**
-         *  Specialization for a table reference.
-         *  
-         *  This plays together with `column_result_of_t`, which returns `object_t<O>` as `table_reference<O>`
-         */
+     *  Specialization for a table reference.
+     *  
+     *  This plays together with `column_result_of_t`, which returns `object_t<O>` as `table_reference<O>`
+     */
     template<class O, class DBOs>
     struct struct_extractor<table_reference<O>, DBOs> {
         const DBOs& db_objects;

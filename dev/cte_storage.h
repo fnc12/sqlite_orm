@@ -89,8 +89,8 @@ namespace sqlite_orm::internal {
 
 #ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
     /**
-         *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
-         */
+     *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
+     */
     template<typename DBOs, typename... CTETables>
     auto db_objects_cat(const DBOs& dbObjects, CTETables&&... cteTables) {
         auto& [... elements] = dbObjects;
@@ -98,16 +98,16 @@ namespace sqlite_orm::internal {
     }
 #else
     /**
-         *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
-         */
+     *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
+     */
     template<typename DBOs, size_t... Idx, typename... CTETables>
     auto db_objects_cat(const DBOs& dbObjects, std::index_sequence<Idx...>, CTETables&&... cteTables) {
         return std::tuple{std::forward<CTETables>(cteTables)..., std::get<Idx>(dbObjects)...};
     }
 
     /**
-         *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
-         */
+     *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
+     */
     template<typename DBOs, typename... CTETables>
     auto db_objects_cat(const DBOs& dbObjects, CTETables&&... cteTables) {
         return db_objects_cat(dbObjects,
@@ -117,35 +117,35 @@ namespace sqlite_orm::internal {
 #endif
 
     /**
-         *  This function returns the expression contained in a subselect that is relevant for
-         *  creating the definition of a CTE table.
-         *  Because CTEs can recursively refer to themselves in a compound statement, parsing
-         *  the whole compound statement would lead to compiler errors if a column_pointer<>
-         *  can't be resolved. Therefore, at the time of building a CTE table, we are only
-         *  interested in the column results of the left-most select expression.
-         */
+     *  This function returns the expression contained in a subselect that is relevant for
+     *  creating the definition of a CTE table.
+     *  Because CTEs can recursively refer to themselves in a compound statement, parsing
+     *  the whole compound statement would lead to compiler errors if a column_pointer<>
+     *  can't be resolved. Therefore, at the time of building a CTE table, we are only
+     *  interested in the column results of the left-most select expression.
+     */
     template<class Select>
     decltype(auto) get_cte_driving_subselect(const Select& subSelect);
 
     /**
-         *  Return given select expression.
-         */
+     *  Return given select expression.
+     */
     template<class Select>
     decltype(auto) get_cte_driving_subselect(const Select& subSelect) {
         return subSelect;
     }
 
     /**
-         *  Return left-most select expression of compound statement.
-         */
+     *  Return left-most select expression of compound statement.
+     */
     template<class Compound, class... Args, std::enable_if_t<is_compound_operator_v<Compound>, bool> = true>
     decltype(auto) get_cte_driving_subselect(const select_t<Compound, Args...>& subSelect) {
         return std::get<0>(subSelect.col.compound);
     }
 
     /**
-         *  Return a tuple of member pointers of all columns
-         */
+     *  Return a tuple of member pointers of all columns
+     */
     template<class C, size_t... Idx>
     auto get_table_columns_fields(const C& coldef, std::index_sequence<Idx...>) {
         return std::make_tuple(get<Idx>(coldef).member_pointer...);
@@ -229,9 +229,9 @@ namespace sqlite_orm::internal {
     void extract_colref_expressions(const DBOs& /*dbObjects*/, const Compound& /*subSelect*/) = delete;
 
     /*
-         *  Depending on ExplicitColRef's type returns either the explicit column reference
-         *  or the expression's column reference otherwise.
-         */
+     *  Depending on ExplicitColRef's type returns either the explicit column reference
+     *  or the expression's column reference otherwise.
+     */
     template<typename DBOs, typename SubselectColRef, typename ExplicitColRef>
     auto determine_cte_colref(const DBOs& /*dbObjects*/,
                               const SubselectColRef& subselectColRef,
@@ -333,8 +333,8 @@ namespace sqlite_orm::internal {
     }
 
     /**
-         *  Return new DBOs for CTE expressions.
-         */
+     *  Return new DBOs for CTE expressions.
+     */
     template<class DBOs, class E, class... CTEs, satisfies<is_db_objects, DBOs> = true>
     decltype(auto) db_objects_for_expression(DBOs& dbObjects, const with_t<E, CTEs...>& e) {
         return make_recursive_cte_db_objects(dbObjects, e.cte, std::index_sequence_for<CTEs...>{});

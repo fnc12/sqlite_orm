@@ -46,18 +46,18 @@ namespace sqlite_orm::internal {
     }
 
     /**
-         *  Find column name by its type and member pointer.
-         */
+     *  Find column name by its type and member pointer.
+     */
     template<class Lookup, class F, class DBOs, satisfies<is_db_objects, DBOs> = true>
     const std::string* find_column_name(const DBOs& dbObjects, F Lookup::* field) {
         return pick_table<mapped_type_proxy_t<Lookup>>(dbObjects).find_column_name(field);
     }
 
     /**
-         *  Materialize column pointer:
-         *  1. by explicit object type and member pointer.
-         *  2. by moniker and member pointer.
-         */
+     *  Materialize column pointer:
+     *  1. by explicit object type and member pointer.
+     *  2. by moniker and member pointer.
+     */
     template<class O, class F, class DBOs, satisfies<is_db_objects, DBOs> = true>
     constexpr decltype(auto) materialize_column_pointer(const DBOs&, const column_pointer<O, F>& cp) {
         return cp.field;
@@ -65,11 +65,11 @@ namespace sqlite_orm::internal {
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     /**
-         *  Materialize column pointer:
-         *  3. by moniker and alias_holder<>.
-         *  
-         *  internal note: there's an overload for `find_column_name()` that avoids going through `cte_table<>::find_column_name()`
-         */
+     *  Materialize column pointer:
+     *  3. by moniker and alias_holder<>.
+     *  
+     *  internal note: there's an overload for `find_column_name()` that avoids going through `cte_table<>::find_column_name()`
+     */
     template<class Moniker, class ColAlias, class DBOs, satisfies<is_db_objects, DBOs> = true>
     constexpr decltype(auto) materialize_column_pointer(const DBOs&,
                                                         const column_pointer<Moniker, alias_holder<ColAlias>>&) {
@@ -87,10 +87,10 @@ namespace sqlite_orm::internal {
 #endif
 
     /**
-         *  Find column name by:
-         *  1. by explicit object type and member pointer.
-         *  2. by moniker and member pointer.
-         */
+     *  Find column name by:
+     *  1. by explicit object type and member pointer.
+     *  2. by moniker and member pointer.
+     */
     template<class O, class F, class DBOs, satisfies<is_db_objects, DBOs> = true>
     const std::string* find_column_name(const DBOs& dbObjects, const column_pointer<O, F>& cp) {
         auto field = materialize_column_pointer(dbObjects, cp);
@@ -99,9 +99,9 @@ namespace sqlite_orm::internal {
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     /**
-         *  Find column name by:
-         *  3. by moniker and alias_holder<>.
-         */
+     *  Find column name by:
+     *  3. by moniker and alias_holder<>.
+     */
     template<class Moniker, class ColAlias, class DBOs, satisfies<is_db_objects, DBOs> = true>
     constexpr decltype(auto) find_column_name(const DBOs& dboObjects,
                                               const column_pointer<Moniker, alias_holder<ColAlias>>&) {

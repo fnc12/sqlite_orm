@@ -14077,18 +14077,18 @@ namespace sqlite_orm::internal {
     }
 
     /**
-         *  Find column name by its type and member pointer.
-         */
+     *  Find column name by its type and member pointer.
+     */
     template<class Lookup, class F, class DBOs, satisfies<is_db_objects, DBOs> = true>
     const std::string* find_column_name(const DBOs& dbObjects, F Lookup::* field) {
         return pick_table<mapped_type_proxy_t<Lookup>>(dbObjects).find_column_name(field);
     }
 
     /**
-         *  Materialize column pointer:
-         *  1. by explicit object type and member pointer.
-         *  2. by moniker and member pointer.
-         */
+     *  Materialize column pointer:
+     *  1. by explicit object type and member pointer.
+     *  2. by moniker and member pointer.
+     */
     template<class O, class F, class DBOs, satisfies<is_db_objects, DBOs> = true>
     constexpr decltype(auto) materialize_column_pointer(const DBOs&, const column_pointer<O, F>& cp) {
         return cp.field;
@@ -14096,11 +14096,11 @@ namespace sqlite_orm::internal {
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     /**
-         *  Materialize column pointer:
-         *  3. by moniker and alias_holder<>.
-         *  
-         *  internal note: there's an overload for `find_column_name()` that avoids going through `cte_table<>::find_column_name()`
-         */
+     *  Materialize column pointer:
+     *  3. by moniker and alias_holder<>.
+     *  
+     *  internal note: there's an overload for `find_column_name()` that avoids going through `cte_table<>::find_column_name()`
+     */
     template<class Moniker, class ColAlias, class DBOs, satisfies<is_db_objects, DBOs> = true>
     constexpr decltype(auto) materialize_column_pointer(const DBOs&,
                                                         const column_pointer<Moniker, alias_holder<ColAlias>>&) {
@@ -14118,10 +14118,10 @@ namespace sqlite_orm::internal {
 #endif
 
     /**
-         *  Find column name by:
-         *  1. by explicit object type and member pointer.
-         *  2. by moniker and member pointer.
-         */
+     *  Find column name by:
+     *  1. by explicit object type and member pointer.
+     *  2. by moniker and member pointer.
+     */
     template<class O, class F, class DBOs, satisfies<is_db_objects, DBOs> = true>
     const std::string* find_column_name(const DBOs& dbObjects, const column_pointer<O, F>& cp) {
         auto field = materialize_column_pointer(dbObjects, cp);
@@ -14130,9 +14130,9 @@ namespace sqlite_orm::internal {
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     /**
-         *  Find column name by:
-         *  3. by moniker and alias_holder<>.
-         */
+     *  Find column name by:
+     *  3. by moniker and alias_holder<>.
+     */
     template<class Moniker, class ColAlias, class DBOs, satisfies<is_db_objects, DBOs> = true>
     constexpr decltype(auto) find_column_name(const DBOs& dboObjects,
                                               const column_pointer<Moniker, alias_holder<ColAlias>>&) {
@@ -14955,8 +14955,8 @@ namespace sqlite_orm::internal {
     };
 
     /**
-         *  Function object for building an object from a result row.
-         */
+     *  Function object for building an object from a result row.
+     */
     template<class O>
     struct object_from_column_builder : object_from_column_builder_base {
         using object_type = O;
@@ -14993,10 +14993,10 @@ namespace sqlite_orm::internal {
     };
 
     /**
-         *  Specialization for a table reference.
-         *  
-         *  This plays together with `column_result_of_t`, which returns `object_t<O>` as `table_reference<O>`
-         */
+     *  Specialization for a table reference.
+     *  
+     *  This plays together with `column_result_of_t`, which returns `object_t<O>` as `table_reference<O>`
+     */
     template<class O, class DBOs>
     struct struct_extractor<table_reference<O>, DBOs> {
         const DBOs& db_objects;
@@ -19842,13 +19842,13 @@ namespace sqlite_orm::internal {
 
       public:
         /** 
-             *  Attention: You must ensure that to set this function only from a single-threaded context.
-             */
+         *  Attention: You must ensure that to set this function only from a single-threaded context.
+         */
         std::function<void(sqlite3*)> on_open;
         pragma_t pragma;
         /** 
-             *  Attention: You must ensure that to set database limit only from a single-threaded context.
-             */
+         *  Attention: You must ensure that to set database limit only from a single-threaded context.
+         */
         limit_accessor limit;
 
         transaction_guard_t transaction_guard() {
@@ -19888,93 +19888,93 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  Drops index with given name. 
-             *  Calls `DROP INDEX indexName`.
-             *  More info: https://www.sqlite.org/lang_dropindex.html
-             */
+         *  Drops index with given name. 
+         *  Calls `DROP INDEX indexName`.
+         *  More info: https://www.sqlite.org/lang_dropindex.html
+         */
         void drop_index(const std::string& indexName) {
             this->drop_index_internal(indexName, false);
         }
 
         /**
-             *  Drops trigger with given name if trigger exists. 
-             *  Calls `DROP INDEX IF EXISTS indexName`.
-             *  More info: https://www.sqlite.org/lang_dropindex.html
-             */
+         *  Drops trigger with given name if trigger exists. 
+         *  Calls `DROP INDEX IF EXISTS indexName`.
+         *  More info: https://www.sqlite.org/lang_dropindex.html
+         */
         void drop_index_if_exists(const std::string& indexName) {
             this->drop_index_internal(indexName, true);
         }
 
         /**
-             *  Drops trigger with given name. 
-             *  Calls `DROP TRIGGER triggerName`.
-             *  More info: https://www.sqlite.org/lang_droptrigger.html
-             */
+         *  Drops trigger with given name. 
+         *  Calls `DROP TRIGGER triggerName`.
+         *  More info: https://www.sqlite.org/lang_droptrigger.html
+         */
         void drop_trigger(const std::string& triggerName) {
             this->drop_trigger_internal(triggerName, false);
         }
 
         /**
-             *  Drops trigger with given name if trigger exists. 
-             *  Calls `DROP TRIGGER IF EXISTS triggerName`.
-             *  More info: https://www.sqlite.org/lang_droptrigger.html
-             */
+         *  Drops trigger with given name if trigger exists. 
+         *  Calls `DROP TRIGGER IF EXISTS triggerName`.
+         *  More info: https://www.sqlite.org/lang_droptrigger.html
+         */
         void drop_trigger_if_exists(const std::string& triggerName) {
             this->drop_trigger_internal(triggerName, true);
         }
 
         /**
-             *  Drops table with given name. 
-             *  Calls `DROP TABLE tableName`.
-             *  More info: https://www.sqlite.org/lang_droptable.html
-             */
+         *  Drops table with given name. 
+         *  Calls `DROP TABLE tableName`.
+         *  More info: https://www.sqlite.org/lang_droptable.html
+         */
         void drop_table(const std::string& tableName) {
             auto connection = this->get_connection();
             this->drop_table_internal(connection.get(), tableName, false);
         }
 
         /**
-             *  Drops table with given name if table exists. 
-             *  Calls `DROP TABLE IF EXISTS tableName`.
-             *  More info: https://www.sqlite.org/lang_droptable.html
-             */
+         *  Drops table with given name if table exists. 
+         *  Calls `DROP TABLE IF EXISTS tableName`.
+         *  More info: https://www.sqlite.org/lang_droptable.html
+         */
         void drop_table_if_exists(const std::string& tableName) {
             auto connection = this->get_connection();
             this->drop_table_internal(connection.get(), tableName, true);
         }
 
         /**
-             *  Drops the view with the specified name.
-             *  Calls `DROP VIEW "viewName"`.
-             *  More info: https://www.sqlite.org/lang_droptable.html
-             */
+         *  Drops the view with the specified name.
+         *  Calls `DROP VIEW "viewName"`.
+         *  More info: https://www.sqlite.org/lang_droptable.html
+         */
         void drop_view(const std::string& tableName) {
             auto connection = this->get_connection();
             this->drop_view_internal(connection.get(), tableName, false);
         }
 
         /**
-             *  Drops the view with the specified name if it exists. 
-             *  Calls `DROP VIEW IF EXISTS "viewName"`.
-             *  More info: https://www.sqlite.org/lang_droptable.html
-             */
+         *  Drops the view with the specified name if it exists. 
+         *  Calls `DROP VIEW IF EXISTS "viewName"`.
+         *  More info: https://www.sqlite.org/lang_droptable.html
+         */
         void drop_view_if_exists(const std::string& tableName) {
             auto connection = this->get_connection();
             this->drop_view_internal(connection.get(), tableName, true);
         }
 
         /**
-             * Rename table named `from` to `to`.
-             */
+         *  Rename table named `from` to `to`.
+         */
         void rename_table(const std::string& from, const std::string& to) {
             auto connection = this->get_connection();
             this->rename_table(connection.get(), from, to);
         }
 
         /**
-             *  `VACUUM` query.
-             *  More info: https://www.sqlite.org/lang_vacuum.html
-             */
+         *  `VACUUM` query.
+         *  More info: https://www.sqlite.org/lang_vacuum.html
+         */
         void vacuum() {
             auto connection = this->get_connection();
             this->executor.perform_void_exec(connection.get(), "VACUUM");
@@ -19993,10 +19993,10 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  Checks whether table exists in db. Doesn't check storage itself - works only with actual database.
-             *  Note: table can be not mapped to a storage
-             *  @return true if table with a given name exists in db, false otherwise.
-             */
+         *  Checks whether table exists in db. Doesn't check storage itself - works only with actual database.
+         *  Note: table can be not mapped to a storage
+         *  @return true if table with a given name exists in db, false otherwise.
+         */
         bool table_exists(const std::string& tableName) {
             auto connection = this->get_connection();
             return this->table_exists(connection.get(), tableName);
@@ -20024,9 +20024,9 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  Directly checks the actual database whether the specified view exists, bypassing the library's 'storage' mapping.
-             *  @return true if view with the specified name exists in the database, false otherwise.
-             */
+         *  Directly checks the actual database whether the specified view exists, bypassing the library's 'storage' mapping.
+         *  @return true if view with the specified name exists in the database, false otherwise.
+         */
         bool view_exists(const std::string& tableName) {
             auto connection = this->get_connection();
             return this->view_exists(connection.get(), tableName);
@@ -20065,16 +20065,16 @@ namespace sqlite_orm::internal {
 
       public:
         /**
-             *  sqlite3_changes function.
-             */
+         *  sqlite3_changes function.
+         */
         int changes() {
             auto connection = this->get_connection();
             return sqlite3_changes(connection.get());
         }
 
         /**
-             *  sqlite3_total_changes function.
-             */
+         *  sqlite3_total_changes function.
+         */
         int total_changes() {
             auto connection = this->get_connection();
             return sqlite3_total_changes(connection.get());
@@ -20091,8 +20091,8 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  Returns libsqlite3 version, not sqlite_orm
-             */
+         *  Returns libsqlite3 version, not sqlite_orm
+         */
         std::string libversion() {
             return sqlite3_libversion();
         }
@@ -20122,11 +20122,11 @@ namespace sqlite_orm::internal {
 
 #if SQLITE_VERSION_NUMBER >= 3007010
         /**
-             * \fn db_release_memory
-             * \brief Releases freeable memory of database. It is function can/should be called periodically by
-             * application, if application has less memory usage constraint. \note sqlite3_db_release_memory added
-             * in 3.7.10 https://sqlite.org/changes.html
-             */
+         *  \fn db_release_memory
+         *  \brief Releases freeable memory of database. It is function can/should be called periodically by
+         *  application, if application has less memory usage constraint. \note sqlite3_db_release_memory added
+         *  in 3.7.10 https://sqlite.org/changes.html
+         */
         int db_release_memory() {
             auto connection = this->get_connection();
             return sqlite3_db_release_memory(connection.get());
@@ -20134,41 +20134,41 @@ namespace sqlite_orm::internal {
 #endif
 
         /**
-             *  Returns the names of existing permanent view in the database. Doesn't check storage itself - works only with
-             * actual database.
-             *  @return Returns list of tables in database.
-             */
+         *  Returns the names of existing permanent view in the database. Doesn't check storage itself - works only with
+         *  actual database.
+         *  @return Returns list of tables in database.
+         */
         std::vector<std::string> view_names() {
             return this->object_names("view");
         }
 
         /**
-             *  Returns existing permanent table names in database. Doesn't check storage itself - works only with
-             * actual database.
-             *  @return Returns list of tables in database.
-             */
+         *  Returns existing permanent table names in database. Doesn't check storage itself - works only with
+         *  actual database.
+         *  @return Returns list of tables in database.
+         */
         std::vector<std::string> table_names() {
             return this->object_names("table");
         }
 
         /**
-             *  Returns existing permanent trigger names in database. Doesn't check storage itself - works only with
-             * actual database.
-             *  @return Returns list of triggers in database.
-             */
+         *  Returns existing permanent trigger names in database. Doesn't check storage itself - works only with
+         *  actual database.
+         *  @return Returns list of triggers in database.
+         */
         std::vector<std::string> trigger_names() {
             return this->object_names("trigger");
         }
 
         /**
-             *  Call it once during storage lifetime to make it keeping its connection opened till dtor call.
-             *  By default if storage is not in-memory it calls `sqlite3_open` only when the connection is really
-             *  needed and closes when it is not needed. This function establishes a permanent connection.
-             *  In-memory storage always establishes a permanent connection, so calling this method is a no-op.
-             *  
-             *  Attention: You must ensure to call this method only in a single-threaded context.
-             *  An alternative way to establish a permanent connection is to specify control options to `make_storage()`.
-             */
+         *  Call it once during storage lifetime to make it keeping its connection opened till dtor call.
+         *  By default if storage is not in-memory it calls `sqlite3_open` only when the connection is really
+         *  needed and closes when it is not needed. This function establishes a permanent connection.
+         *  In-memory storage always establishes a permanent connection, so calling this method is a no-op.
+         *  
+         *  Attention: You must ensure to call this method only in a single-threaded context.
+         *  An alternative way to establish a permanent connection is to specify control options to `make_storage()`.
+         */
         void open_forever() {
             if (!this->isOpenedForever) {
                 this->isOpenedForever = true;
@@ -20178,30 +20178,30 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             * Create an application-defined scalar SQL function.
-             * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
-             * 
-             * Attention: You must ensure that to call this method only in a single-threaded context.
-             * 
-             * Note: `create_scalar_function()` merely creates a closure to generate an instance of the scalar function object,
-             * together with a copy of the passed initialization arguments.
-             * If `F` is a stateless function object, an instance of the function object is created once, otherwise
-             * an instance of the function object is repeatedly recreated for each result row,
-             * ensuring that the calculations always start with freshly initialized values.
-             * 
-             * T - function class. T must have a single call operator and static name function like this:
-             * ```
-             *  struct SqrtFunction {
-             *      double operator()(double arg) const {
-             *          return std::sqrt(arg);
-             *      }
-             *
-             *      static const char* name() {
-             *          return "SQRT";
-             *      }
-             *  };
-             * ```
-             */
+         *  Create an application-defined scalar SQL function.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         *  
+         *  Note: `create_scalar_function()` merely creates a closure to generate an instance of the scalar function object,
+         *  together with a copy of the passed initialization arguments.
+         *  If `F` is a stateless function object, an instance of the function object is created once, otherwise
+         *  an instance of the function object is repeatedly recreated for each result row,
+         *  ensuring that the calculations always start with freshly initialized values.
+         *  
+         *  T - function class. T must have a single call operator and static name function like this:
+         *  ```
+         *  struct SqrtFunction {
+         *    double operator()(double arg) const {
+         *      return std::sqrt(arg);
+         *    }
+         *   
+         *    static const char* name() {
+         *      return "SQRT";
+         *    }
+         *  };
+         *  ```
+         */
         template<class F, class... Args>
         void create_scalar_function(Args&&... constructorArgs) {
             static_assert(is_scalar_udf_v<F>, "F must be a scalar function");
@@ -20222,32 +20222,32 @@ namespace sqlite_orm::internal {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         /**
-             * Create an application-defined scalar function.
-             * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
-             * 
-             * Attention: You must ensure that to call this method only in a single-threaded context.
-             * 
-             * Note: `create_scalar_function()` merely creates a closure to generate an instance of the scalar function object,
-             * together with a copy of the passed initialization arguments.
-             * If `F` is a stateless function object, an instance of the function object is created once, otherwise
-             * an instance of the function object is repeatedly recreated for each result row,
-             * ensuring that the calculations always start with freshly initialized values.
-             */
+         *  Create an application-defined scalar function.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         *  
+         *  Note: `create_scalar_function()` merely creates a closure to generate an instance of the scalar function object,
+         *  together with a copy of the passed initialization arguments.
+         *  If `F` is a stateless function object, an instance of the function object is created once, otherwise
+         *  an instance of the function object is repeatedly recreated for each result row,
+         *  ensuring that the calculations always start with freshly initialized values.
+         */
         template<orm_scalar_function auto f, std::copy_constructible... Args>
         void create_scalar_function(Args&&... constructorArgs) {
             return this->create_scalar_function<auto_udf_type_t<f>>(std::forward<Args>(constructorArgs)...);
         }
 
         /**
-             * Create an application-defined scalar function.
-             * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
-             * 
-             * Attention: You must ensure that to call this method only in a single-threaded context.
-             *
-             * If `quotedF` contains a freestanding function, stateless lambda or stateless function object,
-             * `quoted_scalar_function::_callable()` uses the original function object, assuming it is free of side effects;
-             * otherwise, it repeatedly uses a copy of the contained function object, assuming possible side effects.
-             */
+         *  Create an application-defined scalar function.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         *  
+         *  If `quotedF` contains a freestanding function, stateless lambda or stateless function object,
+         *  `quoted_scalar_function::_callable()` uses the original function object, assuming it is free of side effects;
+         *  otherwise, it repeatedly uses a copy of the contained function object, assuming possible side effects.
+         */
         template<decltype(auto) quotedF>
             requires (orm_quoted_scalar_function<decltype(quotedF)>)
         void create_scalar_function() {
@@ -20281,37 +20281,37 @@ namespace sqlite_orm::internal {
 #endif
 
         /**
-             * Create an application-defined aggregate SQL function.
-             * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
-             * 
-             * Attention: You must ensure that to call this method only in a single-threaded context.
-             * 
-             * Note: `create_aggregate_function()` merely creates a closure to generate an instance of the aggregate function object,
-             * together with a copy of the passed initialization arguments.
-             * An instance of the function object is repeatedly recreated for each result row,
-             * ensuring that the calculations always start with freshly initialized values.
-             * 
-             * T - function class. T must have step member function, fin member function and static name function like this:
-             * ```
-             *   struct MeanFunction {
-             *       double total = 0;
-             *       int count = 0;
-             *
-             *       void step(double value) {
-             *           total += value;
-             *           ++count;
-             *       }
-             *
-             *       int fin() const {
-             *           return total / count;
-             *       }
-             *
-             *       static std::string name() {
-             *           return "MEAN";
-             *       }
-             *   };
-             * ```
-             */
+         *  Create an application-defined aggregate SQL function.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         *  
+         *  Note: `create_aggregate_function()` merely creates a closure to generate an instance of the aggregate function object,
+         *  together with a copy of the passed initialization arguments.
+         *  An instance of the function object is repeatedly recreated for each result row,
+         *  ensuring that the calculations always start with freshly initialized values.
+         *  
+         *  T - function class. T must have step member function, fin member function and static name function like this:
+         *  ```
+         *  struct MeanFunction {
+         *    double total = 0;
+         *    int count = 0;
+         *    
+         *    void step(double value) {
+         *      total += value;
+         *      ++count;
+         *    }
+         *    
+         *    int fin() const {
+         *      return total / count;
+         *    }
+         *    
+         *    static std::string name() {
+         *      return "MEAN";
+         *    }
+         *  };
+         *  ```
+         */
         template<class F, class... Args>
         void create_aggregate_function(Args&&... constructorArgs) {
             static_assert(is_aggregate_udf_v<F>, "F must be an aggregate function");
@@ -20332,16 +20332,16 @@ namespace sqlite_orm::internal {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         /**
-             * Create an application-defined aggregate function.
-             * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
-             * 
-             * Attention: You must ensure that to call this method only in a single-threaded context.
-             * 
-             * Note: `create_aggregate_function()` merely creates a closure to generate an instance of the aggregate function object,
-             * together with a copy of the passed initialization arguments.
-             * An instance of the function object is repeatedly recreated for each result row,
-             * ensuring that the calculations always start with freshly initialized values.
-             */
+         *  Create an application-defined aggregate function.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         *  
+         *  Note: `create_aggregate_function()` merely creates a closure to generate an instance of the aggregate function object,
+         *  together with a copy of the passed initialization arguments.
+         *  An instance of the function object is repeatedly recreated for each result row,
+         *  ensuring that the calculations always start with freshly initialized values.
+         */
         template<orm_aggregate_function auto f, std::copy_constructible... Args>
         void create_aggregate_function(Args&&... constructorArgs) {
             return this->create_aggregate_function<auto_udf_type_t<f>>(std::forward<Args>(constructorArgs)...);
@@ -20349,11 +20349,11 @@ namespace sqlite_orm::internal {
 #endif
 
         /**
-             *  Delete a scalar function you created before.
-             *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
-             * 
-             *  Attention: You must ensure that to call this method only in a single-threaded context.
-             */
+         *  Delete a scalar function you created before.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         */
         template<class F>
         void delete_scalar_function() {
             static_assert(is_scalar_udf_v<F>, "F must be a scalar function");
@@ -20363,22 +20363,22 @@ namespace sqlite_orm::internal {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         /**
-             *  Delete a scalar function you created before.
-             *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
-             * 
-             *  Attention: You must ensure that to call this method only in a single-threaded context.
-             */
+         *  Delete a scalar function you created before.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         */
         template<orm_scalar_function auto f>
         void delete_scalar_function() {
             this->delete_function_impl(f.name(), this->scalarFunctions);
         }
 
         /**
-             *  Delete a quoted scalar function you created before.
-             *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
-             * 
-             *  Attention: You must ensure that to call this method only in a single-threaded context.
-             */
+         *  Delete a quoted scalar function you created before.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         */
         template<decltype(auto) quotedF>
             requires (orm_quoted_scalar_function<decltype(quotedF)>)
         void delete_scalar_function() {
@@ -20387,11 +20387,11 @@ namespace sqlite_orm::internal {
 #endif
 
         /**
-             *  Delete aggregate function you created before.
-             *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
-             * 
-             *  Attention: You must ensure that to call this method only in a single-threaded context.
-             */
+         *  Delete aggregate function you created before.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         */
         template<class F>
         void delete_aggregate_function() {
             static_assert(is_aggregate_udf_v<F>, "F must be an aggregate function");
@@ -20401,11 +20401,11 @@ namespace sqlite_orm::internal {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         /**
-             *  Delete aggregate function you created before.
-             *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
-             * 
-             *  Attention: You must ensure that to call this method only in a single-threaded context.
-             */
+         *  Delete aggregate function you created before.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         */
         template<orm_aggregate_function auto f>
         void delete_aggregate_function() {
             this->delete_function_impl(f.name(), this->aggregateFunctions);
@@ -20413,8 +20413,8 @@ namespace sqlite_orm::internal {
 #endif
 
         /** 
-             *  Attention: You must ensure that to call this method only in a single-threaded context.
-             */
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         */
         template<class C>
         void create_collation() {
             collating_function func = [](int leftLength, const void* lhs, int rightLength, const void* rhs)
@@ -20428,8 +20428,8 @@ namespace sqlite_orm::internal {
         }
 
         /** 
-             *  Attention: You must ensure that to call this method only in a single-threaded context.
-             */
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         */
         void create_collation(const std::string& name, collating_function f) {
             const auto functionExists = bool(f);
             collating_function* function = nullptr;
@@ -20455,8 +20455,8 @@ namespace sqlite_orm::internal {
         }
 
         /** 
-             *  Attention: You must ensure that to call this method only in a single-threaded context.
-             */
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         */
         template<class C>
         void delete_collation() {
             std::stringstream ss;
@@ -20549,41 +20549,41 @@ namespace sqlite_orm::internal {
         }
 
         /** 
-             * Checks whether connection to database is opened right now.
-             * Returns always `true` for in memory databases.
-             * @attention While retrieving the reference count value is atomic it makes only sense in single-threaded contexts.
-             */
+         *  Checks whether connection to database is opened right now.
+         *  Returns always `true` for in memory databases.
+         *  @attention While retrieving the reference count value is atomic it makes only sense in single-threaded contexts.
+         */
         bool is_opened() const {
             connection_ptr maybeConnection = *this->connection;
             return maybeConnection || false;
         }
 
         /**
-             * Return the name of the VFS object used by the database connection.
-             */
+         *  Return the name of the VFS object used by the database connection.
+         */
         const std::string& vfs_name() const {
             return this->connection->dbArgs.vfs_name;
         }
 
         /**
-             * Return the current open_mode for this storage object. 
-             */
+         *  Return the current open_mode for this storage object. 
+         */
         db_open_mode open_mode() const {
             return this->connection->dbArgs.open_mode;
         }
 
         /**
-             * Return true if this database object is opened in a readonly state. 
-             */
+         *  Return true if this database object is opened in a readonly state. 
+         */
         bool db_readonly() {
             auto connection = this->get_connection();
             return static_cast<bool>(sqlite3_db_readonly(connection.get(), "main"));
         }
 
         /* 
-             * returning false when there is a transaction in place
-             * otherwise true; function is not const because it has to call get_connection()
-             */
+         *  returning false when there is a transaction in place
+         *  otherwise true; function is not const because it has to call get_connection()
+         */
         bool get_autocommit() {
             auto connection = this->get_connection();
             return sqlite3_get_autocommit(connection.get());
@@ -20944,7 +20944,7 @@ namespace sqlite_orm::internal {
             std::string result;
             std::stringstream ss;
             ss << "SELECT sql FROM sqlite_master WHERE type = " << quote_string_literal(type)
-               << " AND name = " << quote_string_literal(name);
+               << " AND name = " << quote_string_literal(name) << std::flush;
             this->executor.perform_exec(
                 db,
                 ss.str(),
@@ -22148,8 +22148,8 @@ namespace sqlite_orm::internal {
     }
 
     /**
-         *  Serializer for bindable types.
-         */
+     *  Serializer for bindable types.
+     */
     template<class T>
     struct statement_serializer<T, match_if<is_bindable, T>> {
         using statement_type = T;
@@ -22210,8 +22210,8 @@ namespace sqlite_orm::internal {
 #endif
 #endif
         /**
-             *  Specialization for binary data (std::vector<char>).
-             */
+         *  Specialization for binary data (std::vector<char>).
+         */
         static std::string do_serialize(const std::vector<char>& t) {
             return quote_blob_literal(field_printer<std::vector<char>>{}(t));
         }
@@ -22364,8 +22364,8 @@ namespace sqlite_orm::internal {
     };
 
     /**
-         *  Serializer for literal values.
-         */
+     *  Serializer for literal values.
+     */
     template<class T>
     struct statement_serializer<T, match_specialization_of<T, literal_holder>> {
         using statement_type = T;
@@ -24834,9 +24834,9 @@ namespace sqlite_orm::internal {
     };
 
     /**
-         *  HO - has offset
-         *  OI - offset is implicit
-         */
+     *  HO - has offset
+     *  OI - offset is implicit
+     */
     template<class T, bool HO, bool OI, class O>
     struct statement_serializer<limit_t<T, HO, OI, O>, void> {
         using statement_type = limit_t<T, HO, OI, O>;
@@ -25183,8 +25183,8 @@ namespace sqlite_orm::internal {
 
 #ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
     /**
-         *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
-         */
+     *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
+     */
     template<typename DBOs, typename... CTETables>
     auto db_objects_cat(const DBOs& dbObjects, CTETables&&... cteTables) {
         auto& [... elements] = dbObjects;
@@ -25192,16 +25192,16 @@ namespace sqlite_orm::internal {
     }
 #else
     /**
-         *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
-         */
+     *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
+     */
     template<typename DBOs, size_t... Idx, typename... CTETables>
     auto db_objects_cat(const DBOs& dbObjects, std::index_sequence<Idx...>, CTETables&&... cteTables) {
         return std::tuple{std::forward<CTETables>(cteTables)..., std::get<Idx>(dbObjects)...};
     }
 
     /**
-         *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
-         */
+     *  Concatenate newly created tables with given DBOs, forming a new set of DBOs.
+     */
     template<typename DBOs, typename... CTETables>
     auto db_objects_cat(const DBOs& dbObjects, CTETables&&... cteTables) {
         return db_objects_cat(dbObjects,
@@ -25211,35 +25211,35 @@ namespace sqlite_orm::internal {
 #endif
 
     /**
-         *  This function returns the expression contained in a subselect that is relevant for
-         *  creating the definition of a CTE table.
-         *  Because CTEs can recursively refer to themselves in a compound statement, parsing
-         *  the whole compound statement would lead to compiler errors if a column_pointer<>
-         *  can't be resolved. Therefore, at the time of building a CTE table, we are only
-         *  interested in the column results of the left-most select expression.
-         */
+     *  This function returns the expression contained in a subselect that is relevant for
+     *  creating the definition of a CTE table.
+     *  Because CTEs can recursively refer to themselves in a compound statement, parsing
+     *  the whole compound statement would lead to compiler errors if a column_pointer<>
+     *  can't be resolved. Therefore, at the time of building a CTE table, we are only
+     *  interested in the column results of the left-most select expression.
+     */
     template<class Select>
     decltype(auto) get_cte_driving_subselect(const Select& subSelect);
 
     /**
-         *  Return given select expression.
-         */
+     *  Return given select expression.
+     */
     template<class Select>
     decltype(auto) get_cte_driving_subselect(const Select& subSelect) {
         return subSelect;
     }
 
     /**
-         *  Return left-most select expression of compound statement.
-         */
+     *  Return left-most select expression of compound statement.
+     */
     template<class Compound, class... Args, std::enable_if_t<is_compound_operator_v<Compound>, bool> = true>
     decltype(auto) get_cte_driving_subselect(const select_t<Compound, Args...>& subSelect) {
         return std::get<0>(subSelect.col.compound);
     }
 
     /**
-         *  Return a tuple of member pointers of all columns
-         */
+     *  Return a tuple of member pointers of all columns
+     */
     template<class C, size_t... Idx>
     auto get_table_columns_fields(const C& coldef, std::index_sequence<Idx...>) {
         return std::make_tuple(get<Idx>(coldef).member_pointer...);
@@ -25323,9 +25323,9 @@ namespace sqlite_orm::internal {
     void extract_colref_expressions(const DBOs& /*dbObjects*/, const Compound& /*subSelect*/) = delete;
 
     /*
-         *  Depending on ExplicitColRef's type returns either the explicit column reference
-         *  or the expression's column reference otherwise.
-         */
+     *  Depending on ExplicitColRef's type returns either the explicit column reference
+     *  or the expression's column reference otherwise.
+     */
     template<typename DBOs, typename SubselectColRef, typename ExplicitColRef>
     auto determine_cte_colref(const DBOs& /*dbObjects*/,
                               const SubselectColRef& subselectColRef,
@@ -25427,8 +25427,8 @@ namespace sqlite_orm::internal {
     }
 
     /**
-         *  Return new DBOs for CTE expressions.
-         */
+     *  Return new DBOs for CTE expressions.
+     */
     template<class DBOs, class E, class... CTEs, satisfies<is_db_objects, DBOs> = true>
     decltype(auto) db_objects_for_expression(DBOs& dbObjects, const with_t<E, CTEs...>& e) {
         return make_recursive_cte_db_objects(dbObjects, e.cte, std::index_sequence_for<CTEs...>{});
@@ -25512,10 +25512,10 @@ namespace sqlite_orm::internal {
 
 namespace sqlite_orm::internal {
     /*
-         *  Implementation note: the technique of indirect expression testing is because
-         *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
-         *  It must also be a type that differs from those for `is_printable_v`, `is_bindable_v`.
-         */
+     *  Implementation note: the technique of indirect expression testing is because
+     *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_ALIAS_TEMPLATE_DEPENDENT_EXPR_SFINAE].
+     *  It must also be a type that differs from those for `is_printable_v`, `is_bindable_v`.
+     */
     template<class Binder>
     struct indirectly_test_preparable;
 
@@ -25537,18 +25537,18 @@ namespace sqlite_orm::internal {
     }
 
     /**
-         *  Storage class itself. Create an instance to use it as an interfacto to sqlite db by calling `make_storage`
-         *  function.
-         */
+     *  Storage class itself. Create an instance to use it as an interfacto to sqlite db by calling `make_storage`
+     *  function.
+     */
     template<class... DBO>
     struct storage_t : storage_base {
         using self_type = storage_t;
         using db_objects_type = db_objects_tuple<DBO...>;
 
         /**
-             *  @param filename database filename.
-             *  @param dbObjects db_objects_tuple
-             */
+         *  @param filename database filename.
+         *  @param dbObjects db_objects_tuple
+         */
         template<class OptionsTpl>
         storage_t(std::string filename, db_objects_type dbObjects, OptionsTpl options) :
             storage_base{std::move(filename),
@@ -25569,17 +25569,17 @@ namespace sqlite_orm::internal {
         db_objects_type db_objects;
 
         /**
-             *  Obtain a storage_t's const db_objects_tuple.
-             *
-             *  @note Historically, `serializer_context_builder` was declared friend, along with
-             *  a few other library stock objects, in order to limit access to the db_objects_tuple.
-             *  However, one could gain access to a storage_t's db_objects_tuple through
-             *  `serializer_context_builder`, hence leading the whole friend declaration mambo-jumbo
-             *  ad absurdum.
-             *  Providing a free function is way better and cleaner.
-             *
-             *  Hence, friend was replaced by `obtain_db_objects()` and `pick_const_impl()`.
-             */
+         *  Obtain a storage_t's const db_objects_tuple.
+         *  
+         *  @note Historically, `serializer_context_builder` was declared friend, along with
+         *  a few other library stock objects, in order to limit access to the db_objects_tuple.
+         *  However, one could gain access to a storage_t's db_objects_tuple through
+         *  `serializer_context_builder`, hence leading the whole friend declaration mambo-jumbo
+         *  ad absurdum.
+         *  Providing a free function is way better and cleaner.
+         *  
+         *  Hence, friend was replaced by `obtain_db_objects()` and `pick_const_impl()`.
+         */
         friend const db_objects_type& obtain_db_objects(const self_type& storage) noexcept {
             return storage.db_objects;
         }
@@ -25614,9 +25614,9 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  Copies sourceTableName to another table with name: destinationTableName
-             *  Performs INSERT INTO %destinationTableName% () SELECT %table.column_names% FROM %sourceTableName%
-             */
+         *  Copies sourceTableName to another table with name: destinationTableName
+         *  Performs INSERT INTO %destinationTableName% () SELECT %table.column_names% FROM %sourceTableName%
+         */
         template<class Table>
         void copy_table(sqlite3* db,
                         const std::string& sourceTableName,
@@ -25741,11 +25741,11 @@ namespace sqlite_orm::internal {
 
       public:
         /*  
-             *  Iterate over objects of a type mapped as a table, lazily fetched from a result set.
-             *  
-             *  The returned C++ view models a C++ input range and is also a 'borrowed range',
-             *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
-             */
+         *  Iterate over objects of a type mapped as a table, lazily fetched from a result set.
+         *  
+         *  The returned C++ view models a C++ input range and is also a 'borrowed range',
+         *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
+         */
         template<class T, class O = mapped_type_proxy_t<T>, class... Args>
         mapped_view<O, self_type, Args...> iterate(Args&&... args) {
             this->assert_mapped_type<O>();
@@ -25756,11 +25756,11 @@ namespace sqlite_orm::internal {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         /*  
-             *  Iterate over objects of a type mapped as a table, lazily fetched from a result set.
-             *  
-             *  The returned C++ view models a C++ input range and is also a 'borrowed range',
-             *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
-             */
+         *  Iterate over objects of a type mapped as a table, lazily fetched from a result set.
+         *  
+         *  The returned C++ view models a C++ input range and is also a 'borrowed range',
+         *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
+         */
         template<orm_refers_to_table auto mapped, class... Args>
         auto iterate(Args&&... args) {
             return this->iterate<decltype(mapped)>(std::forward<Args>(args)...);
@@ -25768,11 +25768,11 @@ namespace sqlite_orm::internal {
 #endif
 
         /*  
-             *  Iterate over a result set of a select statement or a select statement involving a common table expression.
-             *  
-             *  The returned C++ view models a C++ input range and is also a 'borrowed range',
-             *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
-             */
+         *  Iterate over a result set of a select statement or a select statement involving a common table expression.
+         *  
+         *  The returned C++ view models a C++ input range and is also a 'borrowed range',
+         *  meaning that iterators obtained from it are not tied to the lifetime of the view instance.
+         */
         template<class Select>
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
             requires (is_select_expression_v<Select>)
@@ -25791,8 +25791,8 @@ namespace sqlite_orm::internal {
 
 #ifdef SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
         /*  
-             *  Iterate over objects of a type mapped as a table, lazily fetched from a result set in a coroutine.
-             */
+         *  Iterate over objects of a type mapped as a table, lazily fetched from a result set in a coroutine.
+         */
         template<class T, class O = mapped_type_proxy_t<T>, class... Args>
         std::generator<O> yield(Args&&... args) {
             this->assert_mapped_type<O>();
@@ -25805,8 +25805,8 @@ namespace sqlite_orm::internal {
         }
 
         /*  
-             *  Iterate over objects of a type mapped as a table, lazily fetched from a result set in a coroutine.
-             */
+         *  Iterate over objects of a type mapped as a table, lazily fetched from a result set in a coroutine.
+         */
         template<orm_refers_to_table auto mapped, class O = mapped_type_proxy_t<decltype(mapped)>, class... Args>
         std::generator<O> yield(Args&&... args) {
             this->assert_mapped_type<O>();
@@ -25820,8 +25820,8 @@ namespace sqlite_orm::internal {
         }
 
         /*  
-             *  Iterate over a result set of a select statement or a select statement involving a common table expression in a coroutine.
-             */
+         *  Iterate over a result set of a select statement or a select statement involving a common table expression in a coroutine.
+         */
         template<class Select>
             requires (is_select_expression_v<Select>)
         auto yield(Select expression) -> std::generator<decltype(*this->iterate(std::move(expression)).begin())> {
@@ -25832,12 +25832,12 @@ namespace sqlite_orm::internal {
 #endif
 
         /**
-             * Delete from routine.
-             * O is an object's type. Must be specified explicitly.
-             * @param args optional conditions: `where`, `join` etc
-             * @example: storage.remove_all<User>(); - DELETE FROM users
-             * @example: storage.remove_all<User>(where(in(&User::id, {5, 6, 7}))); - DELETE FROM users WHERE id IN (5, 6, 7)
-             */
+         *  Delete from routine.
+         *  O is an object's type. Must be specified explicitly.
+         *  @param args optional conditions: `where`, `join` etc
+         *  @example: storage.remove_all<User>(); - DELETE FROM users
+         *  @example: storage.remove_all<User>(where(in(&User::id, {5, 6, 7}))); - DELETE FROM users WHERE id IN (5, 6, 7)
+         */
         template<class O, class... Args>
         void remove_all(Args&&... args) {
             this->assert_mapped_type<O>();
@@ -25853,10 +25853,10 @@ namespace sqlite_orm::internal {
 #endif
 
         /**
-             *  Delete routine.
-             *  O is an object's type. Must be specified explicitly.
-             *  @param ids ids of object to be removed.
-             */
+         *  Delete routine.
+         *  O is an object's type. Must be specified explicitly.
+         *  @param ids ids of object to be removed.
+         */
         template<class O, class... Ids>
         void remove(Ids... ids) {
             this->assert_mapped_type<O>();
@@ -25872,11 +25872,11 @@ namespace sqlite_orm::internal {
 #endif
 
         /**
-             *  Update routine. Sets all non primary key fields where primary key is equal.
-             *  O is an object type. May be not specified explicitly cause it can be deduced by
-             *      compiler from first parameter.
-             *  @param o object to be updated.
-             */
+         *  Update routine. Sets all non primary key fields where primary key is equal.
+         *  O is an object type. May be not specified explicitly cause it can be deduced by
+         *  compiler from first parameter.
+         *  @param o object to be updated.
+         */
         template<class O>
         void update(const O& o) {
             this->assert_mapped_type<O>();
@@ -25910,13 +25910,13 @@ namespace sqlite_orm::internal {
 
       public:
         /**
-             *  SELECT * routine.
-             *  T is an explicitly specified object mapped to a storage or a table alias.
-             *  R is an explicit return type. This type must have `push_back(O &&)` function. Defaults to `std::vector<O>`
-             *  @return All objects of type O stored in database at the moment in `R`.
-             *  @example: storage.get_all<User, std::list<User>>(); - SELECT * FROM users
-             *  @example: storage.get_all<User, std::list<User>>(where(like(&User::name, "N%")), order_by(&User::id)); - SELECT * FROM users WHERE name LIKE 'N%' ORDER BY id
-            */
+         *  SELECT * routine.
+         *  T is an explicitly specified object mapped to a storage or a table alias.
+         *  R is an explicit return type. This type must have `push_back(O &&)` function. Defaults to `std::vector<O>`
+         *  @return All objects of type O stored in database at the moment in `R`.
+         *  @example: storage.get_all<User, std::list<User>>(); - SELECT * FROM users
+         *  @example: storage.get_all<User, std::list<User>>(where(like(&User::name, "N%")), order_by(&User::id)); - SELECT * FROM users WHERE name LIKE 'N%' ORDER BY id
+         */
         template<class T, class R = std::vector<mapped_type_proxy_t<T>>, class... Args>
         R get_all(Args&&... args) {
             this->assert_mapped_type<mapped_type_proxy_t<T>>();
@@ -25926,12 +25926,12 @@ namespace sqlite_orm::internal {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         /**
-             *  SELECT * routine.
-             *  `mapped` is an explicitly specified table reference or table alias of an object to be extracted.
-             *  `R` is the container return type, which must have a `R::push_back(O&&)` method, and defaults to `std::vector<O>`
-             *  @return All objects stored in database.
-             *  @example: storage.get_all<sqlite_schema, std::list<sqlite_master>>(); - SELECT sqlite_schema.* FROM sqlite_master AS sqlite_schema
-            */
+         *  SELECT * routine.
+         *  `mapped` is an explicitly specified table reference or table alias of an object to be extracted.
+         *  `R` is the container return type, which must have a `R::push_back(O&&)` method, and defaults to `std::vector<O>`
+         *  @return All objects stored in database.
+         *  @example: storage.get_all<sqlite_schema, std::list<sqlite_master>>(); - SELECT sqlite_schema.* FROM sqlite_master AS sqlite_schema
+         */
         template<orm_refers_to_table auto mapped,
                  class R = std::vector<mapped_type_proxy_t<decltype(mapped)>>,
                  class... Args>
@@ -25943,13 +25943,13 @@ namespace sqlite_orm::internal {
 #endif
 
         /**
-             *  SELECT * routine.
-             *  O is an object type to be extracted. Must be specified explicitly.
-             *  R is a container type. std::vector<std::unique_ptr<O>> is default
-             *  @return All objects of type O as std::unique_ptr<O> stored in database at the moment.
-             *  @example: storage.get_all_pointer<User, std::list<std::unique_ptr<User>>>(); - SELECT * FROM users
-             *  @example: storage.get_all_pointer<User, std::list<std::unique_ptr<User>>>(where(length(&User::name) > 6)); - SELECT * FROM users WHERE LENGTH(name)  > 6
-            */
+         *  SELECT * routine.
+         *  O is an object type to be extracted. Must be specified explicitly.
+         *  R is a container type. std::vector<std::unique_ptr<O>> is default
+         *  @return All objects of type O as std::unique_ptr<O> stored in database at the moment.
+         *  @example: storage.get_all_pointer<User, std::list<std::unique_ptr<User>>>(); - SELECT * FROM users
+         *  @example: storage.get_all_pointer<User, std::list<std::unique_ptr<User>>>(where(length(&User::name) > 6)); - SELECT * FROM users WHERE LENGTH(name)  > 6
+         */
         template<class O, class R = std::vector<std::unique_ptr<O>>, class... Args>
         auto get_all_pointer(Args&&... args) {
             this->assert_mapped_type<O>();
@@ -25968,13 +25968,13 @@ namespace sqlite_orm::internal {
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         /**
-             *  SELECT * routine.
-             *  O is an object type to be extracted. Must be specified explicitly.
-             *  R is a container type. std::vector<std::optional<O>> is default
-             *  @return All objects of type O as std::optional<O> stored in database at the moment.
-             *  @example: storage.get_all_optional<User, std::list<std::optional<O>>>(); - SELECT * FROM users
-             *  @example: storage.get_all_optional<User, std::list<std::optional<O>>>(where(length(&User::name) > 6)); - SELECT * FROM users WHERE LENGTH(name)  > 6
-            */
+         *  SELECT * routine.
+         *  O is an object type to be extracted. Must be specified explicitly.
+         *  R is a container type. std::vector<std::optional<O>> is default
+         *  @return All objects of type O as std::optional<O> stored in database at the moment.
+         *  @example: storage.get_all_optional<User, std::list<std::optional<O>>>(); - SELECT * FROM users
+         *  @example: storage.get_all_optional<User, std::list<std::optional<O>>>(where(length(&User::name) > 6)); - SELECT * FROM users WHERE LENGTH(name)  > 6
+         */
         template<class O, class R = std::vector<std::optional<O>>, class... Args>
         auto get_all_optional(Args&&... conditions) {
             this->assert_mapped_type<O>();
@@ -25993,13 +25993,13 @@ namespace sqlite_orm::internal {
 #endif
 
         /**
-             *  Select * by id routine.
-             *  throws std::system_error{orm_error_code::not_found} if object not found with given
-             * id. throws std::system_error with orm_error_category in case of db error. O is an object type to be
-             * extracted. Must be specified explicitly.
-             *  @return Object of type O where id is equal parameter passed or throws
-             * `std::system_error{orm_error_code::not_found}` if there is no object with such id.
-             */
+         *  Select * by id routine.
+         *  throws std::system_error{orm_error_code::not_found} if object not found with given
+         *  id. throws std::system_error with orm_error_category in case of db error. O is an object type to be
+         *  extracted. Must be specified explicitly.
+         *  @return Object of type O where id is equal parameter passed or throws
+         *  `std::system_error{orm_error_code::not_found}` if there is no object with such id.
+         */
         template<class O, class... Ids>
         O get(Ids... ids) {
             this->assert_mapped_type<O>();
@@ -26016,9 +26016,9 @@ namespace sqlite_orm::internal {
 #endif
 
         /**
-             *  The same as `get` function but doesn't throw an exception if noting found but returns std::unique_ptr
-             * with null value. throws std::system_error in case of db error.
-             */
+         *  The same as `get` function but doesn't throw an exception if noting found but returns std::unique_ptr
+         *  with null value. throws std::system_error in case of db error.
+         */
         template<class O, class... Ids>
         std::unique_ptr<O> get_pointer(Ids... ids) {
             this->assert_mapped_type<O>();
@@ -26035,18 +26035,18 @@ namespace sqlite_orm::internal {
 #endif
 
         /**
-             * A previous version of get_pointer() that returns a shared_ptr
-             * instead of a unique_ptr. New code should prefer get_pointer()
-             * unless the data needs to be shared.
-             *
-             * @note
-             * Most scenarios don't need shared ownership of data, so we should prefer
-             * unique_ptr when possible. It's more efficient, doesn't require atomic
-             * ops for a reference count (which can cause major slowdowns on
-             * weakly-ordered platforms like ARM), and can be easily promoted to a
-             * shared_ptr, exactly like we're doing here.
-             * (Conversely, you _can't_ go from shared back to unique.)
-             */
+         *  A previous version of get_pointer() that returns a shared_ptr
+         *  instead of a unique_ptr. New code should prefer get_pointer()
+         *  unless the data needs to be shared.
+         *  
+         *  @note
+         *  Most scenarios don't need shared ownership of data, so we should prefer
+         *  unique_ptr when possible. It's more efficient, doesn't require atomic
+         *  ops for a reference count (which can cause major slowdowns on
+         *  weakly-ordered platforms like ARM), and can be easily promoted to a
+         *  shared_ptr, exactly like we're doing here.
+         *  (Conversely, you _can't_ go from shared back to unique.)
+         */
         template<class O, class... Ids>
         std::shared_ptr<O> get_no_throw(Ids... ids) {
             return std::shared_ptr<O>(this->get_pointer<O>(std::forward<Ids>(ids)...));
@@ -26054,9 +26054,9 @@ namespace sqlite_orm::internal {
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         /**
-             *  The same as `get` function but doesn't throw an exception if noting found but
-             * returns an empty std::optional. throws std::system_error in case of db error.
-             */
+         *  The same as `get` function but doesn't throw an exception if noting found but
+         *  returns an empty std::optional. throws std::system_error in case of db error.
+         */
         template<class O, class... Ids>
         std::optional<O> get_optional(Ids... ids) {
             this->assert_mapped_type<O>();
@@ -26074,9 +26074,9 @@ namespace sqlite_orm::internal {
 #endif
 
         /**
-             *  SELECT COUNT(*) https://www.sqlite.org/lang_aggfunc.html#count
-             *  @return Number of O object in table.
-             */
+         *  SELECT COUNT(*) https://www.sqlite.org/lang_aggfunc.html#count
+         *  @return Number of O object in table.
+         */
         template<class O, class... Args>
         int count(Args&&... args) {
             using R = mapped_type_proxy_t<O>;
@@ -26097,10 +26097,10 @@ namespace sqlite_orm::internal {
 #endif
 
         /**
-             *  SELECT COUNT(X) https://www.sqlite.org/lang_aggfunc.html#count
-             *  @param m member pointer to class mapped to the storage.
-             *  @return count of `m` values from database.
-             */
+         *  SELECT COUNT(X) https://www.sqlite.org/lang_aggfunc.html#count
+         *  @param m member pointer to class mapped to the storage.
+         *  @return count of `m` values from database.
+         */
         template<class F,
                  class... Args,
                  std::enable_if_t<polyfill::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value, bool> =
@@ -26116,10 +26116,10 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  AVG(X) query.   https://www.sqlite.org/lang_aggfunc.html#avg
-             *  @param m is a class member pointer (the same you passed into make_column).
-             *  @return average value from database.
-             */
+         *  AVG(X) query.   https://www.sqlite.org/lang_aggfunc.html#avg
+         *  @param m is a class member pointer (the same you passed into make_column).
+         *  @return average value from database.
+         */
         template<class F,
                  class... Args,
                  std::enable_if_t<polyfill::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value, bool> =
@@ -26142,10 +26142,10 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  GROUP_CONCAT(X) query.  https://www.sqlite.org/lang_aggfunc.html#groupconcat
-             *  @param m is a class member pointer (the same you passed into make_column).
-             *  @return group_concat query result.
-             */
+         *  GROUP_CONCAT(X) query.  https://www.sqlite.org/lang_aggfunc.html#groupconcat
+         *  @param m is a class member pointer (the same you passed into make_column).
+         *  @return group_concat query result.
+         */
         template<class F,
                  class... Args,
                  class Tuple = std::tuple<Args...>,
@@ -26157,10 +26157,10 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  GROUP_CONCAT(X, Y) query.   https://www.sqlite.org/lang_aggfunc.html#groupconcat
-             *  @param m is a class member pointer (the same you passed into make_column).
-             *  @return group_concat query result.
-             */
+         *  GROUP_CONCAT(X, Y) query.   https://www.sqlite.org/lang_aggfunc.html#groupconcat
+         *  @param m is a class member pointer (the same you passed into make_column).
+         *  @return group_concat query result.
+         */
         template<class F,
                  class... Args,
                  std::enable_if_t<polyfill::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value, bool> =
@@ -26186,10 +26186,10 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  MAX(x) query.
-             *  @param m is a class member pointer (the same you passed into make_column).
-             *  @return std::unique_ptr with max value or null if sqlite engine returned null.
-             */
+         *  MAX(x) query.
+         *  @param m is a class member pointer (the same you passed into make_column).
+         *  @return std::unique_ptr with max value or null if sqlite engine returned null.
+         */
         template<class F,
                  class... Args,
                  class R = column_result_of_t<db_objects_type, F>,
@@ -26206,10 +26206,10 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  MIN(x) query.
-             *  @param m is a class member pointer (the same you passed into make_column).
-             *  @return std::unique_ptr with min value or null if sqlite engine returned null.
-             */
+         *  MIN(x) query.
+         *  @param m is a class member pointer (the same you passed into make_column).
+         *  @return std::unique_ptr with min value or null if sqlite engine returned null.
+         */
         template<class F,
                  class... Args,
                  class R = column_result_of_t<db_objects_type, F>,
@@ -26226,10 +26226,10 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  SUM(x) query.
-             *  @param m is a class member pointer (the same you passed into make_column).
-             *  @return std::unique_ptr with sum value or null if sqlite engine returned null.
-             */
+         *  SUM(x) query.
+         *  @param m is a class member pointer (the same you passed into make_column).
+         *  @return std::unique_ptr with sum value or null if sqlite engine returned null.
+         */
         template<class F,
                  class... Args,
                  class R = column_result_of_t<db_objects_type, F>,
@@ -26251,11 +26251,11 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  TOTAL(x) query.
-             *  @param m is a class member pointer (the same you passed into make_column).
-             *  @return total value (the same as SUM but not nullable. More details here
-             * https://www.sqlite.org/lang_aggfunc.html)
-             */
+         *  TOTAL(x) query.
+         *  @param m is a class member pointer (the same you passed into make_column).
+         *  @return total value (the same as SUM but not nullable. More details here
+         *  https://www.sqlite.org/lang_aggfunc.html)
+         */
         template<class F,
                  class... Args,
                  std::enable_if_t<polyfill::disjunction<std::is_member_pointer<F>, is_column_pointer<F>>::value, bool> =
@@ -26271,10 +26271,10 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  Select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
-             *  For a single column use `auto rows = storage.select(&User::id, where(...));
-             *  For multicolumns use `auto rows = storage.select(columns(&User::id, &User::name), where(...));
-             */
+         *  Select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
+         *  For a single column use `auto rows = storage.select(&User::id, where(...));
+         *  For multicolumns use `auto rows = storage.select(columns(&User::id, &User::name), where(...));
+         */
         template<class T, class... Args>
         auto select(T m, Args... args) {
             static_assert(!is_compound_operator_v<T> || sizeof...(Args) == 0,
@@ -26285,8 +26285,8 @@ namespace sqlite_orm::internal {
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
         /**
-             *  Using a CTE, select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
-             */
+         *  Using a CTE, select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
+         */
         template<class CTE, class E>
         auto with(CTE cte, E expression) {
             auto statement = this->prepare(sqlite_orm::with(std::move(cte), std::move(expression)));
@@ -26294,8 +26294,8 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  Using a CTE, select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
-             */
+         *  Using a CTE, select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
+         */
         template<class... CTEs, class E>
         auto with(common_table_expressions<CTEs...> cte, E expression) {
             auto statement = this->prepare(sqlite_orm::with(std::move(cte), std::move(expression)));
@@ -26303,8 +26303,8 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  Using a CTE, select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
-             */
+         *  Using a CTE, select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
+         */
         template<class CTE, class E>
         auto with_recursive(CTE cte, E expression) {
             auto statement = this->prepare(sqlite_orm::with_recursive(std::move(cte), std::move(expression)));
@@ -26312,8 +26312,8 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  Using a CTE, select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
-             */
+         *  Using a CTE, select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
+         */
         template<class... CTEs, class E>
         auto with_recursive(common_table_expressions<CTEs...> cte, E expression) {
             auto statement = this->prepare(sqlite_orm::with_recursive(std::move(cte), std::move(expression)));
@@ -26343,9 +26343,9 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  Returns a string representation of object of a class mapped to the storage.
-             *  Type of string has json-like style.
-             */
+         *  Returns a string representation of object of a class mapped to the storage.
+         *  Type of string has json-like style.
+         */
         template<class O, satisfies<is_mapped, db_objects_type, O> = true>
         std::string dump(const O& object) const {
             auto& table = this->get_table<O>();
@@ -26363,11 +26363,11 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  This is REPLACE (INSERT OR REPLACE) function.
-             *  Also if you need to insert value with knows id you should
-             *  also you this function instead of insert cause inserts ignores
-             *  id and creates own one.
-             */
+         *  This is REPLACE (INSERT OR REPLACE) function.
+         *  Also if you need to insert value with knows id you should
+         *  also you this function instead of insert cause inserts ignores
+         *  id and creates own one.
+         */
         template<class O>
         void replace(const O& o) {
             this->assert_mapped_type<O>();
@@ -26401,13 +26401,13 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  Insert routine with explicitly specified columns.
-             *  
-             *  @return The ID of the last inserted record for a rowid table, otherwise a meaningless value.
-             *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
-             *          Attention: While SQLite returns a 64-bit integer as rowid, this function returns an `int` that most likely has less precision.
-             *                     If you need the full 64-bit rowid value, use `storage_t<>::execute()` instead, or call `storage_t<>::last_insert_rowid()` after inserting.
-             */
+         *  Insert routine with explicitly specified columns.
+         *  
+         *  @return The ID of the last inserted record for a rowid table, otherwise a meaningless value.
+         *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
+         *          Attention: While SQLite returns a 64-bit integer as rowid, this function returns an `int` that most likely has less precision.
+         *                     If you need the full 64-bit rowid value, use `storage_t<>::execute()` instead, or call `storage_t<>::last_insert_rowid()` after inserting.
+         */
         template<class O, class... Cols>
         int insert(const O& o, columns_t<Cols...> cols) {
             static_assert(cols.count > 0, "Use insert or replace with 1 argument instead");
@@ -26417,22 +26417,22 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  Ordinary insert routine.
-             *  
-             *  - For objects mapped to a rowid table with a single primary key:
-             *      Inserts a record with all fields of a mapped object except the primary key column.
-             *      The primary key column must be implicitly insertable.
-             *      The 'ID' of the specified object is irrelevant as it is implicitly inserted.
-             *  - For objects mapped to a rowid table with a composite primary key or no primary key:
-             *    Inserts a record with all fields of a mapped object except primary key columns having a default value.
-             *  - For objects mapped to a table without rowid:
-             *    Inserts a record with all fields of a mapped object except primary key columns having a default value.
-             *  
-             *  @return The ID of the last inserted record for a rowid table, otherwise a meaningless value.
-             *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
-             *          Attention: While SQLite returns a 64-bit integer as rowid, this function returns an `int` that most likely has less precision.
-             *                     If you need the full 64-bit rowid value, use `storage_t<>::execute()` instead, or call `storage_t<>::last_insert_rowid()` after inserting.
-             */
+         *  Ordinary insert routine.
+         *  
+         *  - For objects mapped to a rowid table with a single primary key:
+         *      Inserts a record with all fields of a mapped object except the primary key column.
+         *      The primary key column must be implicitly insertable.
+         *      The 'ID' of the specified object is irrelevant as it is implicitly inserted.
+         *  - For objects mapped to a rowid table with a composite primary key or no primary key:
+         *    Inserts a record with all fields of a mapped object except primary key columns having a default value.
+         *  - For objects mapped to a table without rowid:
+         *    Inserts a record with all fields of a mapped object except primary key columns having a default value.
+         *  
+         *  @return The ID of the last inserted record for a rowid table, otherwise a meaningless value.
+         *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
+         *          Attention: While SQLite returns a 64-bit integer as rowid, this function returns an `int` that most likely has less precision.
+         *                     If you need the full 64-bit rowid value, use `storage_t<>::execute()` instead, or call `storage_t<>::last_insert_rowid()` after inserting.
+         */
         template<class O>
         int insert(const O& o) {
             this->assert_mapped_type<O>();
@@ -26442,39 +26442,39 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  Raw insert routine. Use this if `insert` with object does not fit you. This insert is designed to be able
-             *  to call any type of `INSERT` query with no limitations.
-             *  @example
-             *  ```sql
-             *  INSERT INTO users (id, name) VALUES(5, 'Little Mix')
-             *  ```
-             *  will be
-             *  ```c++
-             *  storage.insert(into<User>, columns(&User::id, &User::name), values(std::make_tuple(5, "Little Mix")));
-             *  ```
-             *  One more example:
-             *  ```sql
-             *  INSERT INTO singers (name) VALUES ('Sofia Reyes')('Kungs')
-             *  ```
-             *  will be
-             *  ```c++
-             *  storage.insert(into<Singer>(), columns(&Singer::name), values(std::make_tuple("Sofia Reyes"), std::make_tuple("Kungs")));
-             *  ```
-             *  One can use `default_values` to add `DEFAULT VALUES` modifier:
-             *  ```sql
-             *  INSERT INTO users DEFAULT VALUES
-             *  ```
-             *  will be
-             *  ```c++
-             *  storage.insert(into<Singer>(), default_values());
-             *  ```
-             *  Also one can use `INSERT OR ABORT`/`INSERT OR FAIL`/`INSERT OR IGNORE`/`INSERT OR REPLACE`/`INSERT ROLLBACK`:
-             *  ```c++
-             *  storage.insert(or_ignore(), into<Singer>(), columns(&Singer::name), values(std::make_tuple("Sofia Reyes"), std::make_tuple("Kungs")));
-             *  storage.insert(or_rollback(), into<Singer>(), default_values());
-             *  storage.insert(or_abort(), into<User>, columns(&User::id, &User::name), values(std::make_tuple(5, "Little Mix")));
-             *  ```
-             */
+         *  Raw insert routine. Use this if `insert` with object does not fit you. This insert is designed to be able
+         *  to call any type of `INSERT` query with no limitations.
+         *  @example
+         *  ```sql
+         *  INSERT INTO users (id, name) VALUES(5, 'Little Mix')
+         *  ```
+         *  will be
+         *  ```c++
+         *  storage.insert(into<User>, columns(&User::id, &User::name), values(std::make_tuple(5, "Little Mix")));
+         *  ```
+         *  One more example:
+         *  ```sql
+         *  INSERT INTO singers (name) VALUES ('Sofia Reyes')('Kungs')
+         *  ```
+         *  will be
+         *  ```c++
+         *  storage.insert(into<Singer>(), columns(&Singer::name), values(std::make_tuple("Sofia Reyes"), std::make_tuple("Kungs")));
+         *  ```
+         *  One can use `default_values` to add `DEFAULT VALUES` modifier:
+         *  ```sql
+         *  INSERT INTO users DEFAULT VALUES
+         *  ```
+         *  will be
+         *  ```c++
+         *  storage.insert(into<Singer>(), default_values());
+         *  ```
+         *  Also one can use `INSERT OR ABORT`/`INSERT OR FAIL`/`INSERT OR IGNORE`/`INSERT OR REPLACE`/`INSERT ROLLBACK`:
+         *  ```c++
+         *  storage.insert(or_ignore(), into<Singer>(), columns(&Singer::name), values(std::make_tuple("Sofia Reyes"), std::make_tuple("Kungs")));
+         *  storage.insert(or_rollback(), into<Singer>(), default_values());
+         *  storage.insert(or_abort(), into<User>, columns(&User::id, &User::name), values(std::make_tuple(5, "Little Mix")));
+         *  ```
+         */
         template<class... Args>
         void insert(Args... args) {
             auto statement = this->prepare(sqlite_orm::insert(std::forward<Args>(args)...));
@@ -26482,33 +26482,33 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  Raw replace statement creation routine. Use this if `replace` with object does not fit you. This replace is designed to be able
-             *  to call any type of `REPLACE` query with no limitations. Actually this is the same query as raw insert except `OR...` option existance.
-             *  @example
-             *  ```sql
-             *  REPLACE INTO users (id, name) VALUES(5, 'Little Mix')
-             *  ```
-             *  will be
-             *  ```c++
-             *  storage.prepare(replace(into<User>, columns(&User::id, &User::name), values(std::make_tuple(5, "Little Mix"))));
-             *  ```
-             *  One more example:
-             *  ```sql
-             *  REPLACE INTO singers (name) VALUES ('Sofia Reyes')('Kungs')
-             *  ```
-             *  will be
-             *  ```c++
-             *  storage.prepare(replace(into<Singer>(), columns(&Singer::name), values(std::make_tuple("Sofia Reyes"), std::make_tuple("Kungs"))));
-             *  ```
-             *  One can use `default_values` to add `DEFAULT VALUES` modifier:
-             *  ```sql
-             *  REPLACE INTO users DEFAULT VALUES
-             *  ```
-             *  will be
-             *  ```c++
-             *  storage.prepare(replace(into<Singer>(), default_values()));
-             *  ```
-             */
+         *  Raw replace statement creation routine. Use this if `replace` with object does not fit you. This replace is designed to be able
+         *  to call any type of `REPLACE` query with no limitations. Actually this is the same query as raw insert except `OR...` option existance.
+         *  @example
+         *  ```sql
+         *  REPLACE INTO users (id, name) VALUES(5, 'Little Mix')
+         *  ```
+         *  will be
+         *  ```c++
+         *  storage.prepare(replace(into<User>, columns(&User::id, &User::name), values(std::make_tuple(5, "Little Mix"))));
+         *  ```
+         *  One more example:
+         *  ```sql
+         *  REPLACE INTO singers (name) VALUES ('Sofia Reyes')('Kungs')
+         *  ```
+         *  will be
+         *  ```c++
+         *  storage.prepare(replace(into<Singer>(), columns(&Singer::name), values(std::make_tuple("Sofia Reyes"), std::make_tuple("Kungs"))));
+         *  ```
+         *  One can use `default_values` to add `DEFAULT VALUES` modifier:
+         *  ```sql
+         *  REPLACE INTO users DEFAULT VALUES
+         *  ```
+         *  will be
+         *  ```c++
+         *  storage.prepare(replace(into<Singer>(), default_values()));
+         *  ```
+         */
         template<class... Args>
         void replace(Args... args) {
             auto statement = this->prepare(sqlite_orm::replace(std::forward<Args>(args)...));
@@ -26541,9 +26541,9 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             * Change table name inside storage's schema info. This function does not
-             * affect database
-             */
+         *  Change table name inside storage's schema info. This function does not
+         *  affect database
+         */
         template<class O>
         void rename_table(std::string name) {
             this->assert_mapped_type<O>();
@@ -26554,9 +26554,9 @@ namespace sqlite_orm::internal {
         using storage_base::rename_table;
 
         /**
-             * Get table's name stored in storage's schema info. This function does not call
-             * any SQLite queries
-             */
+         *  Get table's name stored in storage's schema info. This function does not call
+         *  any SQLite queries
+         */
         template<class O>
         const std::string& tablename() const {
             this->assert_mapped_type<O>();
@@ -26857,8 +26857,8 @@ namespace sqlite_orm::internal {
 
       public:
         /**
-             *  This is a cute function used to replace migration up/down functionality.
-             *  It performs check storage schema with actual db schema and:
+         *  This is a cute function used to replace migration up/down functionality.
+         *  It performs check storage schema with actual db schema and:
          *  - if there are excess tables exist in db they are ignored (not dropped)
          *  - every table from storage is compared with it's db analog and
          *      - if table doesn't exist it is being created
@@ -26866,21 +26866,21 @@ namespace sqlite_orm::internal {
          *          - if there are columns in db that do not exist in storage (excess) table will be dropped and recreated
          *          - if there are columns in storage that do not exist in db they will be added using `ALTER TABLE ... ADD COLUMN ...' command
          *          - if there is any column existing in both db and storage but differs by any of
-             * properties/constraints (pk, notnull, dflt_value) table will be dropped and recreated. Be aware that
-             * `sync_schema` doesn't guarantee that data will not be dropped. It guarantees only that it will make db
-             * schema the same as you specified in `make_storage` function call. A good point is that if you have no db
-             * file at all it will be created and all tables also will be created with exact tables and columns you
-             * specified in `make_storage`, `make_table` and `make_column` calls. The best practice is to call this
-             * function right after storage creation.
-             *  @param preserve affects function's behaviour in case it is needed to remove a column. If it is `false`
-             * so table will be dropped if there is column to remove if SQLite version is < 3.35.0 and remove column if SQLite version >= 3.35.0,
-             * if `true` -  table is being copied into another table, dropped and copied table is renamed with source table name.
-             * Warning: sync_schema doesn't check foreign keys cause it is unable to do so in sqlite3. If you know how to get foreign key info please
-             * submit an issue https://github.com/fnc12/sqlite_orm/issues
-             *  @return std::map with std::string key equal table name and `sync_schema_result` as value.
-             * `sync_schema_result` is a enum value that stores table state after syncing a schema. `sync_schema_result`
-             * can be printed out on std::ostream with `operator<<`.
-             */
+         *  properties/constraints (pk, notnull, dflt_value) table will be dropped and recreated. Be aware that
+         *  `sync_schema` doesn't guarantee that data will not be dropped. It guarantees only that it will make db
+         *  schema the same as you specified in `make_storage` function call. A good point is that if you have no db
+         *  file at all it will be created and all tables also will be created with exact tables and columns you
+         *  specified in `make_storage`, `make_table` and `make_column` calls. The best practice is to call this
+         *  function right after storage creation.
+         *  @param preserve affects function's behaviour in case it is needed to remove a column. If it is `false`
+         *  so table will be dropped if there is column to remove if SQLite version is < 3.35.0 and remove column if SQLite version >= 3.35.0,
+         *  if `true` -  table is being copied into another table, dropped and copied table is renamed with source table name.
+         *  Warning: sync_schema doesn't check foreign keys cause it is unable to do so in sqlite3. If you know how to get foreign key info please
+         *  submit an issue https://github.com/fnc12/sqlite_orm/issues
+         *  @return std::map with std::string key equal table name and `sync_schema_result` as value.
+         *  `sync_schema_result` is a enum value that stores table state after syncing a schema. `sync_schema_result`
+         *  can be printed out on std::ostream with `operator<<`.
+         */
         std::map<std::string, sync_schema_result> sync_schema(bool preserve = false) {
             auto conRef = this->get_connection();
             std::map<std::string, sync_schema_result> result;
@@ -26892,10 +26892,10 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  This function returns the same map that `sync_schema` returns but it
-             *  doesn't perform `sync_schema` actually - just simulates it in case you want to know
-             *  what will happen if you sync your schema.
-             */
+         *  This function returns the same map that `sync_schema` returns but it
+         *  doesn't perform `sync_schema` actually - just simulates it in case you want to know
+         *  what will happen if you sync your schema.
+         */
         std::map<std::string, sync_schema_result> sync_schema_simulate(bool preserve = false) {
             auto conRef = this->get_connection();
             std::map<std::string, sync_schema_result> result;
@@ -27022,9 +27022,9 @@ namespace sqlite_orm::internal {
         }
 
         /** 
-             *  @return The ID of the last inserted record for a table with rowid, otherwise a meaningless value.
-             *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
-             */
+         *  @return The ID of the last inserted record for a table with rowid, otherwise a meaningless value.
+         *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
+         */
         template<class T, class... Cols>
         int64 execute(const prepared_statement_t<insert_explicit<T, Cols...>>& statement) {
             using object_type = statement_object_type_t<decltype(statement)>;
@@ -27082,9 +27082,9 @@ namespace sqlite_orm::internal {
         }
 
         /** 
-             *  @return The ID of the last inserted record for a table with rowid, otherwise a meaningless value.
-             *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
-             */
+         *  @return The ID of the last inserted record for a table with rowid, otherwise a meaningless value.
+         *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
+         */
         template<class T, std::enable_if_t<polyfill::disjunction<is_insert<T>, is_insert_range<T>>::value, bool> = true>
         int64 execute(const prepared_statement_t<T>& statement) {
             using object_type = statement_object_type_t<decltype(statement)>;

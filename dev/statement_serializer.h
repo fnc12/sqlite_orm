@@ -77,8 +77,8 @@ namespace sqlite_orm::internal {
     }
 
     /**
-         *  Serializer for bindable types.
-         */
+     *  Serializer for bindable types.
+     */
     template<class T>
     struct statement_serializer<T, match_if<is_bindable, T>> {
         using statement_type = T;
@@ -139,8 +139,8 @@ namespace sqlite_orm::internal {
 #endif
 #endif
         /**
-             *  Specialization for binary data (std::vector<char>).
-             */
+         *  Specialization for binary data (std::vector<char>).
+         */
         static std::string do_serialize(const std::vector<char>& t) {
             return quote_blob_literal(field_printer<std::vector<char>>{}(t));
         }
@@ -293,8 +293,8 @@ namespace sqlite_orm::internal {
     };
 
     /**
-         *  Serializer for literal values.
-         */
+     *  Serializer for literal values.
+     */
     template<class T>
     struct statement_serializer<T, match_specialization_of<T, literal_holder>> {
         using statement_type = T;
@@ -2763,9 +2763,9 @@ namespace sqlite_orm::internal {
     };
 
     /**
-         *  HO - has offset
-         *  OI - offset is implicit
-         */
+     *  HO - has offset
+     *  OI - offset is implicit
+     */
     template<class T, bool HO, bool OI, class O>
     struct statement_serializer<limit_t<T, HO, OI, O>, void> {
         using statement_type = limit_t<T, HO, OI, O>;

@@ -53,13 +53,13 @@ namespace sqlite_orm::internal {
 
       public:
         /** 
-             *  Attention: You must ensure that to set this function only from a single-threaded context.
-             */
+         *  Attention: You must ensure that to set this function only from a single-threaded context.
+         */
         std::function<void(sqlite3*)> on_open;
         pragma_t pragma;
         /** 
-             *  Attention: You must ensure that to set database limit only from a single-threaded context.
-             */
+         *  Attention: You must ensure that to set database limit only from a single-threaded context.
+         */
         limit_accessor limit;
 
         transaction_guard_t transaction_guard() {
@@ -99,93 +99,93 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  Drops index with given name. 
-             *  Calls `DROP INDEX indexName`.
-             *  More info: https://www.sqlite.org/lang_dropindex.html
-             */
+         *  Drops index with given name. 
+         *  Calls `DROP INDEX indexName`.
+         *  More info: https://www.sqlite.org/lang_dropindex.html
+         */
         void drop_index(const std::string& indexName) {
             this->drop_index_internal(indexName, false);
         }
 
         /**
-             *  Drops trigger with given name if trigger exists. 
-             *  Calls `DROP INDEX IF EXISTS indexName`.
-             *  More info: https://www.sqlite.org/lang_dropindex.html
-             */
+         *  Drops trigger with given name if trigger exists. 
+         *  Calls `DROP INDEX IF EXISTS indexName`.
+         *  More info: https://www.sqlite.org/lang_dropindex.html
+         */
         void drop_index_if_exists(const std::string& indexName) {
             this->drop_index_internal(indexName, true);
         }
 
         /**
-             *  Drops trigger with given name. 
-             *  Calls `DROP TRIGGER triggerName`.
-             *  More info: https://www.sqlite.org/lang_droptrigger.html
-             */
+         *  Drops trigger with given name. 
+         *  Calls `DROP TRIGGER triggerName`.
+         *  More info: https://www.sqlite.org/lang_droptrigger.html
+         */
         void drop_trigger(const std::string& triggerName) {
             this->drop_trigger_internal(triggerName, false);
         }
 
         /**
-             *  Drops trigger with given name if trigger exists. 
-             *  Calls `DROP TRIGGER IF EXISTS triggerName`.
-             *  More info: https://www.sqlite.org/lang_droptrigger.html
-             */
+         *  Drops trigger with given name if trigger exists. 
+         *  Calls `DROP TRIGGER IF EXISTS triggerName`.
+         *  More info: https://www.sqlite.org/lang_droptrigger.html
+         */
         void drop_trigger_if_exists(const std::string& triggerName) {
             this->drop_trigger_internal(triggerName, true);
         }
 
         /**
-             *  Drops table with given name. 
-             *  Calls `DROP TABLE tableName`.
-             *  More info: https://www.sqlite.org/lang_droptable.html
-             */
+         *  Drops table with given name. 
+         *  Calls `DROP TABLE tableName`.
+         *  More info: https://www.sqlite.org/lang_droptable.html
+         */
         void drop_table(const std::string& tableName) {
             auto connection = this->get_connection();
             this->drop_table_internal(connection.get(), tableName, false);
         }
 
         /**
-             *  Drops table with given name if table exists. 
-             *  Calls `DROP TABLE IF EXISTS tableName`.
-             *  More info: https://www.sqlite.org/lang_droptable.html
-             */
+         *  Drops table with given name if table exists. 
+         *  Calls `DROP TABLE IF EXISTS tableName`.
+         *  More info: https://www.sqlite.org/lang_droptable.html
+         */
         void drop_table_if_exists(const std::string& tableName) {
             auto connection = this->get_connection();
             this->drop_table_internal(connection.get(), tableName, true);
         }
 
         /**
-             *  Drops the view with the specified name.
-             *  Calls `DROP VIEW "viewName"`.
-             *  More info: https://www.sqlite.org/lang_droptable.html
-             */
+         *  Drops the view with the specified name.
+         *  Calls `DROP VIEW "viewName"`.
+         *  More info: https://www.sqlite.org/lang_droptable.html
+         */
         void drop_view(const std::string& tableName) {
             auto connection = this->get_connection();
             this->drop_view_internal(connection.get(), tableName, false);
         }
 
         /**
-             *  Drops the view with the specified name if it exists. 
-             *  Calls `DROP VIEW IF EXISTS "viewName"`.
-             *  More info: https://www.sqlite.org/lang_droptable.html
-             */
+         *  Drops the view with the specified name if it exists. 
+         *  Calls `DROP VIEW IF EXISTS "viewName"`.
+         *  More info: https://www.sqlite.org/lang_droptable.html
+         */
         void drop_view_if_exists(const std::string& tableName) {
             auto connection = this->get_connection();
             this->drop_view_internal(connection.get(), tableName, true);
         }
 
         /**
-             * Rename table named `from` to `to`.
-             */
+         *  Rename table named `from` to `to`.
+         */
         void rename_table(const std::string& from, const std::string& to) {
             auto connection = this->get_connection();
             this->rename_table(connection.get(), from, to);
         }
 
         /**
-             *  `VACUUM` query.
-             *  More info: https://www.sqlite.org/lang_vacuum.html
-             */
+         *  `VACUUM` query.
+         *  More info: https://www.sqlite.org/lang_vacuum.html
+         */
         void vacuum() {
             auto connection = this->get_connection();
             this->executor.perform_void_exec(connection.get(), "VACUUM");
@@ -204,10 +204,10 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  Checks whether table exists in db. Doesn't check storage itself - works only with actual database.
-             *  Note: table can be not mapped to a storage
-             *  @return true if table with a given name exists in db, false otherwise.
-             */
+         *  Checks whether table exists in db. Doesn't check storage itself - works only with actual database.
+         *  Note: table can be not mapped to a storage
+         *  @return true if table with a given name exists in db, false otherwise.
+         */
         bool table_exists(const std::string& tableName) {
             auto connection = this->get_connection();
             return this->table_exists(connection.get(), tableName);
@@ -235,9 +235,9 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  Directly checks the actual database whether the specified view exists, bypassing the library's 'storage' mapping.
-             *  @return true if view with the specified name exists in the database, false otherwise.
-             */
+         *  Directly checks the actual database whether the specified view exists, bypassing the library's 'storage' mapping.
+         *  @return true if view with the specified name exists in the database, false otherwise.
+         */
         bool view_exists(const std::string& tableName) {
             auto connection = this->get_connection();
             return this->view_exists(connection.get(), tableName);
@@ -276,16 +276,16 @@ namespace sqlite_orm::internal {
 
       public:
         /**
-             *  sqlite3_changes function.
-             */
+         *  sqlite3_changes function.
+         */
         int changes() {
             auto connection = this->get_connection();
             return sqlite3_changes(connection.get());
         }
 
         /**
-             *  sqlite3_total_changes function.
-             */
+         *  sqlite3_total_changes function.
+         */
         int total_changes() {
             auto connection = this->get_connection();
             return sqlite3_total_changes(connection.get());
@@ -302,8 +302,8 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             *  Returns libsqlite3 version, not sqlite_orm
-             */
+         *  Returns libsqlite3 version, not sqlite_orm
+         */
         std::string libversion() {
             return sqlite3_libversion();
         }
@@ -333,11 +333,11 @@ namespace sqlite_orm::internal {
 
 #if SQLITE_VERSION_NUMBER >= 3007010
         /**
-             * \fn db_release_memory
-             * \brief Releases freeable memory of database. It is function can/should be called periodically by
-             * application, if application has less memory usage constraint. \note sqlite3_db_release_memory added
-             * in 3.7.10 https://sqlite.org/changes.html
-             */
+         *  \fn db_release_memory
+         *  \brief Releases freeable memory of database. It is function can/should be called periodically by
+         *  application, if application has less memory usage constraint. \note sqlite3_db_release_memory added
+         *  in 3.7.10 https://sqlite.org/changes.html
+         */
         int db_release_memory() {
             auto connection = this->get_connection();
             return sqlite3_db_release_memory(connection.get());
@@ -345,41 +345,41 @@ namespace sqlite_orm::internal {
 #endif
 
         /**
-             *  Returns the names of existing permanent view in the database. Doesn't check storage itself - works only with
-             * actual database.
-             *  @return Returns list of tables in database.
-             */
+         *  Returns the names of existing permanent view in the database. Doesn't check storage itself - works only with
+         *  actual database.
+         *  @return Returns list of tables in database.
+         */
         std::vector<std::string> view_names() {
             return this->object_names("view");
         }
 
         /**
-             *  Returns existing permanent table names in database. Doesn't check storage itself - works only with
-             * actual database.
-             *  @return Returns list of tables in database.
-             */
+         *  Returns existing permanent table names in database. Doesn't check storage itself - works only with
+         *  actual database.
+         *  @return Returns list of tables in database.
+         */
         std::vector<std::string> table_names() {
             return this->object_names("table");
         }
 
         /**
-             *  Returns existing permanent trigger names in database. Doesn't check storage itself - works only with
-             * actual database.
-             *  @return Returns list of triggers in database.
-             */
+         *  Returns existing permanent trigger names in database. Doesn't check storage itself - works only with
+         *  actual database.
+         *  @return Returns list of triggers in database.
+         */
         std::vector<std::string> trigger_names() {
             return this->object_names("trigger");
         }
 
         /**
-             *  Call it once during storage lifetime to make it keeping its connection opened till dtor call.
-             *  By default if storage is not in-memory it calls `sqlite3_open` only when the connection is really
-             *  needed and closes when it is not needed. This function establishes a permanent connection.
-             *  In-memory storage always establishes a permanent connection, so calling this method is a no-op.
-             *  
-             *  Attention: You must ensure to call this method only in a single-threaded context.
-             *  An alternative way to establish a permanent connection is to specify control options to `make_storage()`.
-             */
+         *  Call it once during storage lifetime to make it keeping its connection opened till dtor call.
+         *  By default if storage is not in-memory it calls `sqlite3_open` only when the connection is really
+         *  needed and closes when it is not needed. This function establishes a permanent connection.
+         *  In-memory storage always establishes a permanent connection, so calling this method is a no-op.
+         *  
+         *  Attention: You must ensure to call this method only in a single-threaded context.
+         *  An alternative way to establish a permanent connection is to specify control options to `make_storage()`.
+         */
         void open_forever() {
             if (!this->isOpenedForever) {
                 this->isOpenedForever = true;
@@ -389,30 +389,30 @@ namespace sqlite_orm::internal {
         }
 
         /**
-             * Create an application-defined scalar SQL function.
-             * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
-             * 
-             * Attention: You must ensure that to call this method only in a single-threaded context.
-             * 
-             * Note: `create_scalar_function()` merely creates a closure to generate an instance of the scalar function object,
-             * together with a copy of the passed initialization arguments.
-             * If `F` is a stateless function object, an instance of the function object is created once, otherwise
-             * an instance of the function object is repeatedly recreated for each result row,
-             * ensuring that the calculations always start with freshly initialized values.
-             * 
-             * T - function class. T must have a single call operator and static name function like this:
-             * ```
-             *  struct SqrtFunction {
-             *      double operator()(double arg) const {
-             *          return std::sqrt(arg);
-             *      }
-             *
-             *      static const char* name() {
-             *          return "SQRT";
-             *      }
-             *  };
-             * ```
-             */
+         *  Create an application-defined scalar SQL function.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         *  
+         *  Note: `create_scalar_function()` merely creates a closure to generate an instance of the scalar function object,
+         *  together with a copy of the passed initialization arguments.
+         *  If `F` is a stateless function object, an instance of the function object is created once, otherwise
+         *  an instance of the function object is repeatedly recreated for each result row,
+         *  ensuring that the calculations always start with freshly initialized values.
+         *  
+         *  T - function class. T must have a single call operator and static name function like this:
+         *  ```
+         *  struct SqrtFunction {
+         *    double operator()(double arg) const {
+         *      return std::sqrt(arg);
+         *    }
+         *   
+         *    static const char* name() {
+         *      return "SQRT";
+         *    }
+         *  };
+         *  ```
+         */
         template<class F, class... Args>
         void create_scalar_function(Args&&... constructorArgs) {
             static_assert(is_scalar_udf_v<F>, "F must be a scalar function");
@@ -433,32 +433,32 @@ namespace sqlite_orm::internal {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         /**
-             * Create an application-defined scalar function.
-             * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
-             * 
-             * Attention: You must ensure that to call this method only in a single-threaded context.
-             * 
-             * Note: `create_scalar_function()` merely creates a closure to generate an instance of the scalar function object,
-             * together with a copy of the passed initialization arguments.
-             * If `F` is a stateless function object, an instance of the function object is created once, otherwise
-             * an instance of the function object is repeatedly recreated for each result row,
-             * ensuring that the calculations always start with freshly initialized values.
-             */
+         *  Create an application-defined scalar function.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         *  
+         *  Note: `create_scalar_function()` merely creates a closure to generate an instance of the scalar function object,
+         *  together with a copy of the passed initialization arguments.
+         *  If `F` is a stateless function object, an instance of the function object is created once, otherwise
+         *  an instance of the function object is repeatedly recreated for each result row,
+         *  ensuring that the calculations always start with freshly initialized values.
+         */
         template<orm_scalar_function auto f, std::copy_constructible... Args>
         void create_scalar_function(Args&&... constructorArgs) {
             return this->create_scalar_function<auto_udf_type_t<f>>(std::forward<Args>(constructorArgs)...);
         }
 
         /**
-             * Create an application-defined scalar function.
-             * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
-             * 
-             * Attention: You must ensure that to call this method only in a single-threaded context.
-             *
-             * If `quotedF` contains a freestanding function, stateless lambda or stateless function object,
-             * `quoted_scalar_function::_callable()` uses the original function object, assuming it is free of side effects;
-             * otherwise, it repeatedly uses a copy of the contained function object, assuming possible side effects.
-             */
+         *  Create an application-defined scalar function.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         *  
+         *  If `quotedF` contains a freestanding function, stateless lambda or stateless function object,
+         *  `quoted_scalar_function::_callable()` uses the original function object, assuming it is free of side effects;
+         *  otherwise, it repeatedly uses a copy of the contained function object, assuming possible side effects.
+         */
         template<decltype(auto) quotedF>
             requires (orm_quoted_scalar_function<decltype(quotedF)>)
         void create_scalar_function() {
@@ -492,37 +492,37 @@ namespace sqlite_orm::internal {
 #endif
 
         /**
-             * Create an application-defined aggregate SQL function.
-             * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
-             * 
-             * Attention: You must ensure that to call this method only in a single-threaded context.
-             * 
-             * Note: `create_aggregate_function()` merely creates a closure to generate an instance of the aggregate function object,
-             * together with a copy of the passed initialization arguments.
-             * An instance of the function object is repeatedly recreated for each result row,
-             * ensuring that the calculations always start with freshly initialized values.
-             * 
-             * T - function class. T must have step member function, fin member function and static name function like this:
-             * ```
-             *   struct MeanFunction {
-             *       double total = 0;
-             *       int count = 0;
-             *
-             *       void step(double value) {
-             *           total += value;
-             *           ++count;
-             *       }
-             *
-             *       int fin() const {
-             *           return total / count;
-             *       }
-             *
-             *       static std::string name() {
-             *           return "MEAN";
-             *       }
-             *   };
-             * ```
-             */
+         *  Create an application-defined aggregate SQL function.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         *  
+         *  Note: `create_aggregate_function()` merely creates a closure to generate an instance of the aggregate function object,
+         *  together with a copy of the passed initialization arguments.
+         *  An instance of the function object is repeatedly recreated for each result row,
+         *  ensuring that the calculations always start with freshly initialized values.
+         *  
+         *  T - function class. T must have step member function, fin member function and static name function like this:
+         *  ```
+         *  struct MeanFunction {
+         *    double total = 0;
+         *    int count = 0;
+         *    
+         *    void step(double value) {
+         *      total += value;
+         *      ++count;
+         *    }
+         *    
+         *    int fin() const {
+         *      return total / count;
+         *    }
+         *    
+         *    static std::string name() {
+         *      return "MEAN";
+         *    }
+         *  };
+         *  ```
+         */
         template<class F, class... Args>
         void create_aggregate_function(Args&&... constructorArgs) {
             static_assert(is_aggregate_udf_v<F>, "F must be an aggregate function");
@@ -543,16 +543,16 @@ namespace sqlite_orm::internal {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         /**
-             * Create an application-defined aggregate function.
-             * Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
-             * 
-             * Attention: You must ensure that to call this method only in a single-threaded context.
-             * 
-             * Note: `create_aggregate_function()` merely creates a closure to generate an instance of the aggregate function object,
-             * together with a copy of the passed initialization arguments.
-             * An instance of the function object is repeatedly recreated for each result row,
-             * ensuring that the calculations always start with freshly initialized values.
-             */
+         *  Create an application-defined aggregate function.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is opened or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         *  
+         *  Note: `create_aggregate_function()` merely creates a closure to generate an instance of the aggregate function object,
+         *  together with a copy of the passed initialization arguments.
+         *  An instance of the function object is repeatedly recreated for each result row,
+         *  ensuring that the calculations always start with freshly initialized values.
+         */
         template<orm_aggregate_function auto f, std::copy_constructible... Args>
         void create_aggregate_function(Args&&... constructorArgs) {
             return this->create_aggregate_function<auto_udf_type_t<f>>(std::forward<Args>(constructorArgs)...);
@@ -560,11 +560,11 @@ namespace sqlite_orm::internal {
 #endif
 
         /**
-             *  Delete a scalar function you created before.
-             *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
-             * 
-             *  Attention: You must ensure that to call this method only in a single-threaded context.
-             */
+         *  Delete a scalar function you created before.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         */
         template<class F>
         void delete_scalar_function() {
             static_assert(is_scalar_udf_v<F>, "F must be a scalar function");
@@ -574,22 +574,22 @@ namespace sqlite_orm::internal {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         /**
-             *  Delete a scalar function you created before.
-             *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
-             * 
-             *  Attention: You must ensure that to call this method only in a single-threaded context.
-             */
+         *  Delete a scalar function you created before.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         */
         template<orm_scalar_function auto f>
         void delete_scalar_function() {
             this->delete_function_impl(f.name(), this->scalarFunctions);
         }
 
         /**
-             *  Delete a quoted scalar function you created before.
-             *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
-             * 
-             *  Attention: You must ensure that to call this method only in a single-threaded context.
-             */
+         *  Delete a quoted scalar function you created before.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         */
         template<decltype(auto) quotedF>
             requires (orm_quoted_scalar_function<decltype(quotedF)>)
         void delete_scalar_function() {
@@ -598,11 +598,11 @@ namespace sqlite_orm::internal {
 #endif
 
         /**
-             *  Delete aggregate function you created before.
-             *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
-             * 
-             *  Attention: You must ensure that to call this method only in a single-threaded context.
-             */
+         *  Delete aggregate function you created before.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         */
         template<class F>
         void delete_aggregate_function() {
             static_assert(is_aggregate_udf_v<F>, "F must be an aggregate function");
@@ -612,11 +612,11 @@ namespace sqlite_orm::internal {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         /**
-             *  Delete aggregate function you created before.
-             *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
-             * 
-             *  Attention: You must ensure that to call this method only in a single-threaded context.
-             */
+         *  Delete aggregate function you created before.
+         *  Can be called at any time (in a single-threaded context) no matter whether the database connection is open or not.
+         *  
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         */
         template<orm_aggregate_function auto f>
         void delete_aggregate_function() {
             this->delete_function_impl(f.name(), this->aggregateFunctions);
@@ -624,8 +624,8 @@ namespace sqlite_orm::internal {
 #endif
 
         /** 
-             *  Attention: You must ensure that to call this method only in a single-threaded context.
-             */
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         */
         template<class C>
         void create_collation() {
             collating_function func = [](int leftLength, const void* lhs, int rightLength, const void* rhs)
@@ -639,8 +639,8 @@ namespace sqlite_orm::internal {
         }
 
         /** 
-             *  Attention: You must ensure that to call this method only in a single-threaded context.
-             */
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         */
         void create_collation(const std::string& name, collating_function f) {
             const auto functionExists = bool(f);
             collating_function* function = nullptr;
@@ -666,8 +666,8 @@ namespace sqlite_orm::internal {
         }
 
         /** 
-             *  Attention: You must ensure that to call this method only in a single-threaded context.
-             */
+         *  Attention: You must ensure that to call this method only in a single-threaded context.
+         */
         template<class C>
         void delete_collation() {
             std::stringstream ss;
@@ -760,41 +760,41 @@ namespace sqlite_orm::internal {
         }
 
         /** 
-             * Checks whether connection to database is opened right now.
-             * Returns always `true` for in memory databases.
-             * @attention While retrieving the reference count value is atomic it makes only sense in single-threaded contexts.
-             */
+         *  Checks whether connection to database is opened right now.
+         *  Returns always `true` for in memory databases.
+         *  @attention While retrieving the reference count value is atomic it makes only sense in single-threaded contexts.
+         */
         bool is_opened() const {
             connection_ptr maybeConnection = *this->connection;
             return maybeConnection || false;
         }
 
         /**
-             * Return the name of the VFS object used by the database connection.
-             */
+         *  Return the name of the VFS object used by the database connection.
+         */
         const std::string& vfs_name() const {
             return this->connection->dbArgs.vfs_name;
         }
 
         /**
-             * Return the current open_mode for this storage object. 
-             */
+         *  Return the current open_mode for this storage object. 
+         */
         db_open_mode open_mode() const {
             return this->connection->dbArgs.open_mode;
         }
 
         /**
-             * Return true if this database object is opened in a readonly state. 
-             */
+         *  Return true if this database object is opened in a readonly state. 
+         */
         bool db_readonly() {
             auto connection = this->get_connection();
             return static_cast<bool>(sqlite3_db_readonly(connection.get(), "main"));
         }
 
         /* 
-             * returning false when there is a transaction in place
-             * otherwise true; function is not const because it has to call get_connection()
-             */
+         *  returning false when there is a transaction in place
+         *  otherwise true; function is not const because it has to call get_connection()
+         */
         bool get_autocommit() {
             auto connection = this->get_connection();
             return sqlite3_get_autocommit(connection.get());
@@ -1155,7 +1155,7 @@ namespace sqlite_orm::internal {
             std::string result;
             std::stringstream ss;
             ss << "SELECT sql FROM sqlite_master WHERE type = " << quote_string_literal(type)
-               << " AND name = " << quote_string_literal(name);
+               << " AND name = " << quote_string_literal(name) << std::flush;
             this->executor.perform_exec(
                 db,
                 ss.str(),
