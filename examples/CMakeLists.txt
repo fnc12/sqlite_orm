@@ -15,6 +15,11 @@ foreach(file ${files})
     # note: sqlite3 already linked in top-level CMakeLists
 
     target_link_libraries(${file_basename} PRIVATE sqlite_orm)
+    
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION GREATER_EQUAL 16)
+        target_compile_options(${file_basename} PUBLIC
+            -freflection)
+    endif()
 
     add_custom_target(run_${file_basename}
         COMMAND ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${file_basename}
@@ -23,11 +28,6 @@ foreach(file ${files})
         COMMENT "Running example: ${file_basename}"
         VERBATIM
     )
-    
-    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION GREATER_EQUAL 16)
-        target_compile_options(unit_tests PUBLIC
-            -freflection)
-    endif()
 
     list(APPEND run_example_targets run_${file_basename})
 endforeach()
