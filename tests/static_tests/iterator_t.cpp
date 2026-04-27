@@ -179,9 +179,13 @@ TEST_CASE("can view and iterate mapped") {
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     STATIC_REQUIRE(storage_iterate_mapped<storage_type, Object>);
+#if !defined(__clang__) || (__clang_major__ >= 15)
     STATIC_REQUIRE(storage_iterate_mapped_ref<storage_type, object_table, Object>);
+#endif
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+#if !defined(__clang__) || (__clang_major__ >= 15)
     STATIC_REQUIRE(storage_iterate_mapped_ref<storage_type, object_alias, Object>);
+#endif
 #endif
 #endif
 
