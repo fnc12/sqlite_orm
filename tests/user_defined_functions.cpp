@@ -569,6 +569,9 @@ TEST_CASE("generalized scalar udf") {
     storage.sync_schema();
 
     SECTION("freestanding function") {
+#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 12)
+        SKIP("GCC < 12 cannot use this function as NTTP in quoted scalar tests.");
+#else
         constexpr auto err_fatal_error_f = "ERR_FATAL_ERROR"_scalar.quote(ERR_FATAL_ERROR);
         storage.create_scalar_function<err_fatal_error_f>();
         {
@@ -577,6 +580,7 @@ TEST_CASE("generalized scalar udf") {
             REQUIRE(rows == expected);
         }
         storage.delete_scalar_function<err_fatal_error_f>();
+#endif
     }
     SECTION("stateless lambda") {
         constexpr auto is_fatal_error_f = "is_fatal_error"_scalar.quote([](unsigned long errcode) {
@@ -659,6 +663,9 @@ TEST_CASE("generalized scalar udf") {
     }
 #endif
     SECTION("specialized template function") {
+#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 12)
+        SKIP("GCC < 12 cannot use std::clamp specialization as NTTP.");
+#else
         constexpr auto clamp_int_f = "clamp_int"_scalar.quote(std::clamp<int>);
         storage.create_scalar_function<clamp_int_f>();
         {
@@ -667,8 +674,12 @@ TEST_CASE("generalized scalar udf") {
             REQUIRE(rows == expected);
         }
         storage.delete_scalar_function<clamp_int_f>();
+#endif
     }
     SECTION("overloaded template function") {
+#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 12)
+        SKIP("GCC < 12 cannot use std::clamp overload as NTTP.");
+#else
         constexpr auto clamp_int_f =
             "clamp_int"_scalar.quote<const int&(const int&, const int&, const int&)>(std::clamp);
         storage.create_scalar_function<clamp_int_f>();
@@ -678,6 +689,7 @@ TEST_CASE("generalized scalar udf") {
             REQUIRE(rows == expected);
         }
         storage.delete_scalar_function<clamp_int_f>();
+#endif
     }
     SECTION("non-copyable function object") {
         // note: unlike msvc, gcc+clang require a constant template parameter to be copyable (and probably rightly so);
@@ -703,6 +715,9 @@ TEST_CASE("generalized scalar udf") {
         storage.delete_scalar_function<offset0_f>();
     }
     SECTION("escaped function identifier") {
+#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 12)
+        SKIP("GCC < 12 cannot use std::clamp specialization as NTTP.");
+#else
         constexpr auto clamp_f = R"("clamp int")"_scalar.quote(std::clamp<int>);
         storage.create_scalar_function<clamp_f>();
         {
@@ -711,6 +726,7 @@ TEST_CASE("generalized scalar udf") {
             REQUIRE(rows == expected);
         }
         storage.delete_scalar_function<clamp_f>();
+#endif
     }
 }
 #endif
