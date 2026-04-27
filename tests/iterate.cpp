@@ -93,18 +93,22 @@ TEST_CASE("Iterate select statement") {
     db.replace(expected);
     std::vector<Test> expected_vec{expected};
 
+#if !defined(__clang__) || (__clang_major__ >= 15)
     SECTION("range-based for") {
         for (Test&& obj: db.iterate(select(object<Test>()))) {
             REQUIRE(obj == expected);
         }
     }
+#endif
 
 #ifdef SQLITE_ORM_STL_HAS_DEFAULT_SENTINEL
+#if !defined(__clang__) || (__clang_major__ >= 15)
     SECTION("borrowed iterator") {
         std::input_iterator auto begin = db.iterate(select(object<Test>())).begin();
         REQUIRE(*begin == expected);
         REQUIRE(++begin == std::default_sentinel);
     }
+#endif
 #endif
 
 #if __cpp_lib_containers_ranges >= 202202L

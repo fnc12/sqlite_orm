@@ -28,6 +28,7 @@ concept storage_aggregate_callable = requires(S& storage) {
 constexpr const int& clamp_int_ref(const int& v, const int& lo, const int& hi) {
     return std::clamp(v, lo, hi);
 }
+constexpr auto clamp_int_ref_ptr = &clamp_int_ref;
 #endif
 
 TEST_CASE("function static") {
@@ -348,9 +349,9 @@ TEST_CASE("function static") {
 #endif
         SECTION("freestanding function") {
 #if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 12)
-            constexpr auto quotedScalar = "f"_scalar.quote(&clamp_int_ref);
-            using quoted_type = decltype("f"_scalar.quote(&clamp_int_ref));
-            using expected_callable_type = decltype(&clamp_int_ref);
+            constexpr auto quotedScalar = "f"_scalar.quote(clamp_int_ref_ptr);
+            using quoted_type = decltype("f"_scalar.quote(clamp_int_ref_ptr));
+            using expected_callable_type = decltype(clamp_int_ref_ptr);
 #else
             constexpr auto quotedScalar = "f"_scalar.quote(std::clamp<int>);
             using quoted_type = decltype("f"_scalar.quote(std::clamp<int>));
@@ -383,10 +384,10 @@ TEST_CASE("function static") {
         SECTION("template function") {
 #if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 12)
             constexpr auto quotedScalar =
-                "f"_scalar.quote<const int&(const int&, const int&, const int&)>(&clamp_int_ref);
+                "f"_scalar.quote<const int&(const int&, const int&, const int&)>(clamp_int_ref_ptr);
             using quoted_type =
-                decltype("f"_scalar.quote<const int&(const int&, const int&, const int&)>(&clamp_int_ref));
-            using expected_callable_type = decltype(&clamp_int_ref);
+                decltype("f"_scalar.quote<const int&(const int&, const int&, const int&)>(clamp_int_ref_ptr));
+            using expected_callable_type = decltype(clamp_int_ref_ptr);
 #else
             constexpr auto quotedScalar = "f"_scalar.quote<const int&(const int&, const int&, const int&)>(std::clamp);
             using quoted_type = decltype("f"_scalar.quote<const int&(const int&, const int&, const int&)>(std::clamp));
