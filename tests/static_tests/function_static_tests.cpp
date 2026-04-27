@@ -349,14 +349,11 @@ TEST_CASE("function static") {
 #endif
         SECTION("freestanding function") {
 #if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 12)
-            constexpr auto quotedScalar = "f"_scalar.quote(clamp_int_ref_ptr);
-            using quoted_type = decltype("f"_scalar.quote(clamp_int_ref_ptr));
-            using expected_callable_type = decltype(clamp_int_ref_ptr);
+            SKIP("GCC < 12 cannot use this function pointer as NTTP in this test.");
 #else
             constexpr auto quotedScalar = "f"_scalar.quote(std::clamp<int>);
             using quoted_type = decltype("f"_scalar.quote(std::clamp<int>));
             using expected_callable_type = decltype(&std::clamp<int>);
-#endif
 
             STATIC_REQUIRE(quotedScalar._nme[0] == 'f' && quotedScalar._nme[1] == '\0');
             STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar),
@@ -380,19 +377,15 @@ TEST_CASE("function static") {
 
             using storage_type = decltype(make_storage(""));
             STATIC_REQUIRE(storage_scalar_callable<storage_type, quotedScalar>);
+#endif
         }
         SECTION("template function") {
 #if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 12)
-            constexpr auto quotedScalar =
-                "f"_scalar.quote<const int&(const int&, const int&, const int&)>(clamp_int_ref_ptr);
-            using quoted_type =
-                decltype("f"_scalar.quote<const int&(const int&, const int&, const int&)>(clamp_int_ref_ptr));
-            using expected_callable_type = decltype(clamp_int_ref_ptr);
+            SKIP("GCC < 12 cannot use this function pointer as NTTP in this test.");
 #else
             constexpr auto quotedScalar = "f"_scalar.quote<const int&(const int&, const int&, const int&)>(std::clamp);
             using quoted_type = decltype("f"_scalar.quote<const int&(const int&, const int&, const int&)>(std::clamp));
             using expected_callable_type = decltype(&std::clamp<int>);
-#endif
 
             STATIC_REQUIRE(quotedScalar._nme[0] == 'f' && quotedScalar._nme[1] == '\0');
             STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar),
@@ -416,6 +409,7 @@ TEST_CASE("function static") {
 
             using storage_type = decltype(make_storage(""));
             STATIC_REQUIRE(storage_scalar_callable<storage_type, quotedScalar>);
+#endif
         }
         SECTION("lambda") {
             constexpr auto lambda = [](unsigned long errcode) {

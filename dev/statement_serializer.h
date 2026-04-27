@@ -1797,7 +1797,7 @@ namespace sqlite_orm::internal {
                                                         const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
             ss << "SET ";
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#if defined(SQLITE_ORM_CPP20_RANGES_SUPPORTED) && (!defined(__clang__) || (__clang_major__ >= 15))
             ss << streaming_serialized(statement | std::views::transform(&dynamic_set_entry::serialized_value));
 #else
             int index = 0;
