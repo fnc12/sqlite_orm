@@ -24,6 +24,10 @@ concept storage_aggregate_callable = requires(S& storage) {
     { storage.template create_aggregate_function<f>() };
     { storage.template delete_aggregate_function<f>() };
 };
+
+constexpr const int& clamp_int_ref(const int& v, const int& lo, const int& hi) {
+    return std::clamp(v, lo, hi);
+}
 #endif
 
 TEST_CASE("function static") {
@@ -343,16 +347,23 @@ TEST_CASE("function static") {
         }
 #endif
         SECTION("freestanding function") {
+#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 12)
+            constexpr auto quotedScalar = "f"_scalar.quote(clamp_int_ref);
+            using quoted_type = decltype("f"_scalar.quote(clamp_int_ref));
+            using expected_callable_type = decltype(&clamp_int_ref);
+#else
             constexpr auto quotedScalar = "f"_scalar.quote(std::clamp<int>);
             using quoted_type = decltype("f"_scalar.quote(std::clamp<int>));
+            using expected_callable_type = decltype(&std::clamp<int>);
+#endif
 
             STATIC_REQUIRE(quotedScalar._nme[0] == 'f' && quotedScalar._nme[1] == '\0');
             STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar),
-                                          const quoted_scalar_function<decltype(&std::clamp<int>),
+                                          const quoted_scalar_function<expected_callable_type,
                                                                        const int&(const int&, const int&, const int&),
                                                                        2>>);
 
-            STATIC_REQUIRE(std::is_same_v<quoted_type::callable_type, decltype(&std::clamp<int>)>);
+            STATIC_REQUIRE(std::is_same_v<quoted_type::callable_type, expected_callable_type>);
             STATIC_REQUIRE(std::is_same_v<quoted_type::udf_type, const int&(const int&, const int&, const int&)>);
 
             STATIC_REQUIRE(std::is_same_v<callable_arguments<quoted_type::udf_type>::return_type, int>);
@@ -370,16 +381,26 @@ TEST_CASE("function static") {
             STATIC_REQUIRE(storage_scalar_callable<storage_type, quotedScalar>);
         }
         SECTION("template function") {
+#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 12)
+            constexpr auto quotedScalar =
+                "f"_scalar.quote<const int&(const int&, const int&, const int&)>(clamp_int_ref);
+            using quoted_type =
+                decltype("f"_scalar.quote<const int&(const int&, const int&, const int&)>(clamp_int_ref));
+            using expected_callable_type = decltype(&clamp_int_ref);
+#else
             constexpr auto quotedScalar = "f"_scalar.quote<const int&(const int&, const int&, const int&)>(std::clamp);
-            using quoted_type = decltype("f"_scalar.quote<const int&(const int&, const int&, const int&)>(std::clamp));
+            using quoted_type =
+                decltype("f"_scalar.quote<const int&(const int&, const int&, const int&)>(std::clamp));
+            using expected_callable_type = decltype(&std::clamp<int>);
+#endif
 
             STATIC_REQUIRE(quotedScalar._nme[0] == 'f' && quotedScalar._nme[1] == '\0');
             STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar),
-                                          const quoted_scalar_function<decltype(&std::clamp<int>),
+                                          const quoted_scalar_function<expected_callable_type,
                                                                        const int&(const int&, const int&, const int&),
                                                                        2>>);
 
-            STATIC_REQUIRE(std::is_same_v<quoted_type::callable_type, decltype(&std::clamp<int>)>);
+            STATIC_REQUIRE(std::is_same_v<quoted_type::callable_type, expected_callable_type>);
             STATIC_REQUIRE(std::is_same_v<quoted_type::udf_type, const int&(const int&, const int&, const int&)>);
 
             STATIC_REQUIRE(std::is_same_v<callable_arguments<quoted_type::udf_type>::return_type, int>);

@@ -76,6 +76,8 @@ TEST_CASE("Iterate select statement") {
     };
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     constexpr orm_table_reference auto test_table = c<Test>();
+#endif
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     constexpr orm_table_alias auto test_alias = "t"_alias.for_<Test>();
 #endif
 
@@ -128,14 +130,18 @@ TEST_CASE("Iterate select statement") {
         auto view = db.yield<Test>();
         REQUIRE(std::vector<Test>{std::from_range, view} == expected_vec);
     }
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     SECTION("object generator, table reference") {
         auto view = db.yield<test_table>();
         REQUIRE(std::vector<Test>{std::from_range, view} == expected_vec);
     }
+#endif
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     SECTION("object generator, alias") {
         auto view = db.yield<test_alias>();
         REQUIRE(std::vector<Test>{std::from_range, view} == expected_vec);
     }
+#endif
     SECTION("select generator") {
         auto view = db.yield(select(object<Test>()));
         REQUIRE(std::vector<Test>{std::from_range, view} == expected_vec);
