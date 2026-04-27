@@ -108,10 +108,12 @@ TEST_CASE("Iterate select statement") {
 #endif
 
 #if __cpp_lib_containers_ranges >= 202202L
+#if !defined(__clang__) || (__clang_major__ >= 15)
     SECTION("from range") {
         std::ranges::view auto view = db.iterate(select(object<Test>()));
         REQUIRE(std::vector<Test>{std::from_range, view} == expected_vec);
     }
+#endif
 #endif
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
