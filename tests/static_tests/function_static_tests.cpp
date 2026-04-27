@@ -389,8 +389,7 @@ TEST_CASE("function static") {
             using expected_callable_type = decltype(&clamp_int_ref);
 #else
             constexpr auto quotedScalar = "f"_scalar.quote<const int&(const int&, const int&, const int&)>(std::clamp);
-            using quoted_type =
-                decltype("f"_scalar.quote<const int&(const int&, const int&, const int&)>(std::clamp));
+            using quoted_type = decltype("f"_scalar.quote<const int&(const int&, const int&, const int&)>(std::clamp));
             using expected_callable_type = decltype(&std::clamp<int>);
 #endif
 
