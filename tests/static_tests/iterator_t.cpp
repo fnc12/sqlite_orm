@@ -179,11 +179,11 @@ TEST_CASE("can view and iterate mapped") {
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     STATIC_REQUIRE(storage_iterate_mapped<storage_type, Object>);
-#if !defined(__clang__) || (__clang_major__ >= 15)
+#ifdef SQLITE_ORM_CPP20_VIEWS_SUPPORTED
     STATIC_REQUIRE(storage_iterate_mapped_ref<storage_type, object_table, Object>);
 #endif
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-#if !defined(__clang__) || (__clang_major__ >= 15)
+#ifdef SQLITE_ORM_CPP20_VIEWS_SUPPORTED
     STATIC_REQUIRE(storage_iterate_mapped_ref<storage_type, object_alias, Object>);
 #endif
 #endif
@@ -196,7 +196,7 @@ TEST_CASE("can view and iterate mapped") {
 #endif
 }
 
-#if defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED) && (!defined(__clang__) || (__clang_major__ >= 15))
+#if defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED) && defined(SQLITE_ORM_CPP20_VIEWS_SUPPORTED)
 TEST_CASE("can view and iterate result set") {
     struct Object {};
     using empty_storage_type = decltype(make_storage(""));

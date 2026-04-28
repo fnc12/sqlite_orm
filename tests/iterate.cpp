@@ -93,7 +93,7 @@ TEST_CASE("Iterate select statement") {
     db.replace(expected);
     std::vector<Test> expected_vec{expected};
 
-#if !defined(__clang__) || (__clang_major__ >= 15)
+#ifdef SQLITE_ORM_CPP20_VIEWS_SUPPORTED
     SECTION("range-based for") {
         for (Test&& obj: db.iterate(select(object<Test>()))) {
             REQUIRE(obj == expected);
@@ -102,7 +102,7 @@ TEST_CASE("Iterate select statement") {
 #endif
 
 #ifdef SQLITE_ORM_STL_HAS_DEFAULT_SENTINEL
-#if !defined(__clang__) || (__clang_major__ >= 15)
+#ifdef SQLITE_ORM_CPP20_VIEWS_SUPPORTED
     SECTION("borrowed iterator") {
         std::input_iterator auto begin = db.iterate(select(object<Test>())).begin();
         REQUIRE(*begin == expected);
@@ -112,7 +112,7 @@ TEST_CASE("Iterate select statement") {
 #endif
 
 #if __cpp_lib_containers_ranges >= 202202L
-#if !defined(__clang__) || (__clang_major__ >= 15)
+#ifdef SQLITE_ORM_CPP20_VIEWS_SUPPORTED
     SECTION("from range") {
         std::ranges::view auto view = db.iterate(select(object<Test>()));
         REQUIRE(std::vector<Test>{std::from_range, view} == expected_vec);
