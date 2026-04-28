@@ -345,6 +345,9 @@ TEST_CASE("function static") {
         }
 #endif
         SECTION("freestanding function") {
+#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 12)
+            SKIP("GCC < 12 cannot use this function pointer as NTTP in this test.");
+#else
             constexpr auto quotedScalar = "f"_scalar.quote(clamp_int_ptr);
             using quoted_type = decltype("f"_scalar.quote(clamp_int_ptr));
             using expected_callable_type = std::remove_cv_t<decltype(clamp_int_ptr)>;
@@ -371,8 +374,12 @@ TEST_CASE("function static") {
 
             using storage_type = decltype(make_storage(""));
             STATIC_REQUIRE(storage_scalar_callable<storage_type, quotedScalar>);
+#endif
         }
         SECTION("template function") {
+#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 12)
+            SKIP("GCC < 12 cannot use this function pointer as NTTP in this test.");
+#else
             constexpr auto quotedScalar =
                 "f"_scalar.quote<const int&(const int&, const int&, const int&)>(clamp_int_ptr);
             using quoted_type =
@@ -401,6 +408,7 @@ TEST_CASE("function static") {
 
             using storage_type = decltype(make_storage(""));
             STATIC_REQUIRE(storage_scalar_callable<storage_type, quotedScalar>);
+#endif
         }
         SECTION("lambda") {
             constexpr auto lambda = [](unsigned long errcode) {
