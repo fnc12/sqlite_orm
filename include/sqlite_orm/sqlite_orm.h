@@ -221,8 +221,8 @@ using std::nullptr_t;
 #define SQLITE_ORM_BROKEN_NONTEMPLATE_CONCEPTS
 #endif
 
-#if defined(SQLITE_ORM_CPP20_VIEWS_SUPPORTED) && (defined(__clang__) && (__clang_major__ <= 15))
-#undef SQLITE_ORM_CPP20_VIEWS_SUPPORTED
+#if defined(__clang__) && (__clang_major__ <= 15)
+#define SQLITE_ORM_BROKEN_CPP20_VIEWS
 #endif
 
 // #include "platform_definitions.h"
@@ -317,7 +317,7 @@ using std::nullptr_t;
 #define SQLITE_ORM_CPP20_RANGES_SUPPORTED
 #endif
 
-#if __cpp_lib_ranges >= 202110L
+#if __cpp_lib_ranges >= 202110L && !defined(SQLITE_ORM_BROKEN_CPP20_VIEWS)
 #define SQLITE_ORM_CPP20_VIEWS_SUPPORTED
 #endif
 
