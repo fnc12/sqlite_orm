@@ -13782,7 +13782,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 #include <meta>  //  std::meta::access_context, std::meta::nonstatic_data_members_of, std::meta::identifier_of
-#include <tuple>  //  std::tuple, std::get
+#include <tuple>  //  std::tuple
 #include <utility>  //  std::index_sequence, std::make_index_sequence
 #endif
 #endif
@@ -13896,7 +13896,7 @@ namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_WITH_VIEW
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 namespace sqlite_orm::internal {
-    template<class O, class Select, std::size_t... I>
+    template<class O, class Select, size_t... I>
     auto make_view(std::string name, std::index_sequence<I...>, Select select) {
         constexpr auto memberNames = extract_member_names<O>();
         constexpr auto memberPointers = extract_member_pointers<O>();
@@ -13913,6 +13913,12 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Factory function for a view definition.
+     *  
+     *  The mapped object type is explicitly specified, columns and their names are deferred from the object type.
+     *  The object type must be an aggregate.
+     */
     template<class O, class Select>
         requires (internal::is_select_expression_v<Select>)
     auto make_view(std::string name, Select select) {
