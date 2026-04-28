@@ -7,14 +7,6 @@
 #include <cstdio>  //  std::remove
 #include <cstring>  //  std::strncmp
 
-#ifdef _DEBUG
-#pragma comment(lib, "Catch2d.Lib")
-//#pragma comment(lib, "manual-link/Catch2Maind.Lib")
-#else
-#pragma comment(lib, "Catch2.Lib")
-//#pragma comment(lib, "manual-link/Catch2Main.Lib")
-#endif
-
 using namespace sqlite_orm;
 
 TEST_CASE("Limits") {
