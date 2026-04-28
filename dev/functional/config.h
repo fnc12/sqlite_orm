@@ -4,7 +4,6 @@
 #include "platform_definitions.h"
 // pull in SQLite3 configuration early, such that version and feature macros are globally available in sqlite_orm
 #include "sqlite3_config.h"
-#include "pfr_config.h"
 
 #ifdef BUILD_SQLITE_ORM_MODULE
 #define SQLITE_ORM_EXPORT export
@@ -87,10 +86,7 @@
 
 #define SQLITE_ORM_WITH_CTE
 
-// note: PFR depends on `SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED` for field name determination
-#if (defined(SQLITE_ORM_CONSTEVAL_SUPPORTED) && defined(SQLITE_ORM_CLASSTYPE_TEMPLATE_ARGS_SUPPORTED)) &&              \
-    (defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED)) && (__cpp_lib_byte >= 201603L) &&                                   \
-    (defined(SQLITE_ORM_REFLECTION_SUPPORTED) || BOOST_PFR_ENABLED == 1)
+#if defined(SQLITE_ORM_REFLECTION_SUPPORTED)
 #define SQLITE_ORM_WITH_VIEW
 #endif
 

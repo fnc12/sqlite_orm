@@ -3,7 +3,7 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 #include <meta>  //  std::meta::access_context, std::meta::nonstatic_data_members_of, std::meta::identifier_of
-#include <tuple>  //  std::tuple, std::get
+#include <tuple>  //  std::tuple
 #include <utility>  //  std::index_sequence, std::make_index_sequence
 #endif
 #endif

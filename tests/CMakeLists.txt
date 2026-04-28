@@ -32,8 +32,6 @@ if(CMAKE_CXX_STANDARD GREATER_EQUAL 23 AND CMAKE_VERSION VERSION_GREATER_EQUAL 3
         message(STATUS "SQLITE_ORM_OMITS_CODECVT is enabled")
         target_compile_definitions(module_tests PRIVATE SQLITE_ORM_OMITS_CODECVT=1)
     endif()
-    # Explicitly disable boost-pfr for now until it supports C++ named modules with msvc
-    target_compile_definitions(module_tests PRIVATE BOOST_PFR_ENABLED=0)
 
     target_precompile_headers(module_tests PRIVATE
         <sqlite3.h>)

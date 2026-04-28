@@ -4,9 +4,6 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_member_object_pointer
 #include <utility>  //  std::move
-#if defined(SQLITE_ORM_WITH_VIEW) && (BOOST_PFR_ENABLED == 1)
-#include <cstddef>  //  std::byte
-#endif
 #endif
 
 #include "functional/gsl.h"
@@ -45,20 +42,6 @@ namespace sqlite_orm::internal {
                 (object.*column.setter)(std::move(value));
             };
         }
-
-#if defined(SQLITE_ORM_WITH_VIEW) && (BOOST_PFR_ENABLED == 1)
-        template<class C>
-            requires (is_column_pointer_v<C>)
-        void operator()(const column_field<C, empty_setter>& column) {
-            using field_type = field_type_t<column_field<C, empty_setter>>;
-            const auto rowExtractor = row_value_extractor<field_type>();
-            auto value = rowExtractor.extract(this->stmt, ++this->columnIndex);
-            // calculate absolute address of member from relative address
-            const std::byte* fieldAddress = (std::byte*)(uintptr_t(&object) + size_t(column.member_pointer.field));
-            field_type* field = (field_type*)fieldAddress;
-            *field = std::move(value);
-        }
-#endif
     };
 
     /**
