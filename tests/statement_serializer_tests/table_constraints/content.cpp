@@ -9,7 +9,7 @@ TEST_CASE("statement_serializer content") {
     std::string value;
     std::string expected;
     SECTION("empty") {
-        auto node = content("");
+        constexpr auto node = content("");
         value = serialize(node, context);
         expected = "content=''";
     }
@@ -27,7 +27,7 @@ TEST_CASE("statement_serializer table_content") {
     using context_t = internal::serializer_context<db_objects_t>;
     context_t context{dbObjects};
 
-    auto node = content<User>();
+    constexpr auto node = content<User>();
     auto value = internal::serialize(node, context);
     REQUIRE(value == R"(content="users")");
 }

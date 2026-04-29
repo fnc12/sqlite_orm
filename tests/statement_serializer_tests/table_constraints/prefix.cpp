@@ -10,17 +10,17 @@ TEST_CASE("statement_serializer prefix") {
     std::string value;
     std::string expected;
     SECTION("2") {
-        auto node = prefix(2);
+        constexpr auto node = prefix(2);
         value = serialize(node, context);
         expected = "prefix=2";
     }
     SECTION("3") {
-        auto node = prefix(3);
+        constexpr auto node = prefix(3);
         value = serialize(node, context);
         expected = "prefix=3";
     }
     SECTION("2 3") {
-        auto node = prefix("2 3");
+        constexpr auto node = prefix("2 3");
         value = serialize(node, context);
         expected = "prefix='2 3'";
     }

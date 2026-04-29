@@ -193,7 +193,6 @@ must be constant expressions of literal types.
 | `on_update_delete_t<F>`                        | ctor + the four mutator methods (`cascade()`, `set_null()`, `restrict_()`, `set_default()`, `no_action()`) `constexpr` |
 | `check_t`                                      | constexpr-ified anyway, for consistency with the broader push |
 | `generated_always_t`                           | constexpr-ified anyway, for consistency |
-| Hidden-column factory in `dev/schema/column.h` | `constexpr` |
 
 The user's broader codebase direction is to widen what's available at constant
 evaluation, so all of the above are constexpr-ified in this commit even when
@@ -225,7 +224,11 @@ This is the intended trade-off behind Option Y in the decisions section.
 
 - `dev/constraints.h` — `constexpr` on every factory function and constraint
   type ctor / fluent-API mutator listed in the table above.
-- `dev/schema/column.h` — `constexpr` on hidden-column factory.
+
+`make_hidden_column` in `dev/schema/column.h` was considered but is *not*
+constexpr-ified: its `std::string` parameter has no constexpr call site
+(hidden columns are constructed at runtime as part of normal table builds),
+so marking it `constexpr` would not unlock any actual compile-time use case.
 
 After this commit lands, the user manually compiles and verifies nothing
 broke before commit 2 starts.
