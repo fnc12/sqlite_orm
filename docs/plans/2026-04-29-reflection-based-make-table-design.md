@@ -29,16 +29,23 @@ unchanged.
    escape hatch (non-literal default, getter/setter column, hidden column),
    they fall back to the classical overload entirely. No mid-fidelity
    hybrid mode.
-3. **Table-level constraints — both placements.** Composite PK, FK with
-   `.references()`, and multi-column `unique` may be specified either as a
-   class-scope annotation (`[[=primary_key(&T::a, &T::b)]]` on the struct) or
-   as a variadic extra. Both forms are merged.
+3. **Table-level constraints — variadic-extras path only.** Composite PK,
+   FK with `.references()`, and multi-column `unique` are passed as variadic
+   extras to `make_table`. They cannot be expressed as class-scope
+   annotations on the struct because a class-head annotation is parsed
+   *before* the class-head-name enters scope, so any reference to `T` (and
+   therefore to `T::member`) inside the annotation expression fails name
+   lookup; forward-declaring the class doesn't unblock it because the
+   forward-declared `T` is incomplete and `&T::a` still fails member lookup.
+   Class-scope annotation extraction is still implemented and merged into the
+   table elements — it works for self-contained annotation payloads
+   (other-type member pointers, primitives, string-views) — but no
+   sqlite_orm table-level constraint factory currently fits that shape.
 4. **Optional table name.** Signature: `make_table<T>(std::string name = "",
    Cs... extras)`. When `name` is empty, the table name is derived at runtime
    from `std::meta::identifier_of(^^T)` (i.e. the struct's identifier).
 5. **Feature gating.** No new feature-test macros. The new overload is gated
-   by both `SQLITE_ORM_REFLECTION_SUPPORTED` and
-   `SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED`, which already exist in
+   by `SQLITE_ORM_REFLECTION_SUPPORTED`, which already exists in
    `dev/functional/cxx_core_features.h`.
 6. **`check()` excluded.** Carrying a select-statement payload, `check_t` is
    not made annotation-friendly. It rides through the variadic extras path
@@ -53,11 +60,9 @@ unchanged.
 ```cpp
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
-#ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
     template<class T, class... Cs>
         requires (!internal::is_column_v<Cs> && ...)
     auto make_table(std::string name = "", Cs... extras);
-#endif
 #endif
 }
 ```
@@ -77,85 +82,134 @@ gymnastics.
 
 ## Reflection mechanics
 
-### Three new generic helpers in `dev/functional/meta_util.h`
+### Generic helpers in `dev/functional/meta_util.h`
 
 Gated by `SQLITE_ORM_REFLECTION_SUPPORTED`. No sqlite_orm-specific symbols, no
 new headers. Their purpose is to keep all of the bleeding-edge reflection
 syntax (`^^T`, `[: refl :]`) localized — both for separation of concerns and
-because clang-format currently chokes on it.
+because clang-format currently chokes on it. A single member-source helper
+returns the array of `std::meta::info` reflections; per-member name / pointer /
+annotation queries are then composed inline against that array, consolidating
+what was originally three split helpers into one source of truth.
 
 ```cpp
+template<class T>
+consteval auto extract_members() {
+    constexpr auto ctx = std::meta::access_context::current();
+    constexpr size_t N = nonstatic_data_members_of(^^T, ctx).size();
+    return [&]<size_t... I>(std::index_sequence<I...>) consteval {
+        return std::array<std::meta::info, N>{
+            nonstatic_data_members_of(^^T, ctx)[I]...
+        };
+    }(std::make_index_sequence<N>{});
+}
+
 template<class T>
 consteval auto extract_type_identifier() {
     return std::meta::identifier_of(^^T);  // string_view
 }
 
-template<class T>
-consteval auto extract_type_annotations() {
-    constexpr auto annos = std::meta::annotations_of(^^T);
-    return [&annos]<size_t... J>(std::index_sequence<J...>) consteval {
-        return std::tuple{[: annos[J] :]...};
-    }(std::make_index_sequence<annos.size()>{});
+template<std::meta::info Member>
+consteval auto splice_member_pointer() {
+    return &[: Member :];
 }
 
-template<class T, size_t I>
-consteval auto extract_member_annotations() {
-    constexpr auto ctx = std::meta::access_context::current();
-    constexpr auto members = nonstatic_data_members_of(^^T, ctx);
-    constexpr auto annos = std::meta::annotations_of(members[I]);
-    return [&annos]<size_t... J>(std::index_sequence<J...>) consteval {
-        return std::tuple{[: annos[J] :]...};
-    }(std::make_index_sequence<annos.size()>{});
+template<std::meta::info Refl>
+consteval auto splice_annotations() {
+    return []<size_t... I>(std::index_sequence<I...>) consteval {
+        return std::tuple{
+            [: std::meta::constant_of(std::meta::annotations_of(Refl)[I]) :]...
+        };
+    }(std::make_index_sequence<std::meta::annotations_of(Refl).size()>{});
+}
+
+template<class T>
+consteval auto extract_type_annotations() {
+    return splice_annotations<^^T>();
 }
 ```
 
-### `internal::make_table` in `dev/schema/table.h`
+Two implementation details inside `splice_annotations` are load-bearing and
+non-obvious:
 
-Mirrors `internal::make_view` in `dev/schema/view.h`. Reuses existing
-`extract_member_names<T>` and `extract_member_pointers<T>`. Uses local
-generic-lambda iteration in the same style as the helpers in
-`meta_util.h` (rather than `internal::make_view`'s outer
-`std::index_sequence<I...>` template parameter).
+- **`std::meta::constant_of` wrap.** Per P3394 §[meta.reflection.annotation],
+  reflections returned by `annotations_of` are not directly spliceable;
+  `constant_of(annotation_info)` returns a splice-able constant reflection of
+  the underlying value.
+- **No `constexpr auto annos = annotations_of(refl)` binding.**
+  `annotations_of` returns a `std::vector<std::meta::info>`, and the heap
+  allocation is *transient* under C++20 constexpr rules — it cannot be bound
+  to a `constexpr` variable that outlives the immediate call. The size and
+  per-index lookups therefore re-call `annotations_of` inline so each
+  transient vector dies within its own constant expression.
+
+`splice_member_pointer` and `splice_annotations` take `std::meta::info` as a
+non-type template parameter rather than a runtime parameter because the
+splices `&[: Member :]` and `[: constant_of(...) :]` produce return types that
+depend on the parameter *value* — fixed-signature `auto` deduction can't
+handle that, so each splice instantiates its own specialization.
+
+### `internal::make_reflected_table` in `dev/schema/table.h`
+
+Mirrors `internal::make_view` in `dev/schema/view.h`. Both consume the same
+`extract_members` source and use the same nested generic-lambda iteration
+pattern.
 
 ```cpp
 template<class T, class... Cs>
-auto make_table(std::string name, Cs... extras) {
-    constexpr auto memberNames    = extract_member_names<T>();
-    constexpr auto memberPointers = extract_member_pointers<T>();
+auto make_reflected_table(std::string name, Cs... constraints) {
+    if (name.empty()) {
+        name = std::string(internal::extract_type_identifier<T>());
+    }
+    static constexpr auto members = extract_members<T>();
 
-    auto columns = [&]<size_t... I>(std::index_sequence<I...>) {
+    auto columns = []<size_t... I>(std::index_sequence<I...>) static {
         return std::tuple{
-            [&]<size_t Idx>() {
-                constexpr auto annos = extract_member_annotations<T, Idx>();
-                auto&& [...as] = annos;          // P1061 structured binding pack
-                return make_column(
-                    std::string(std::get<Idx>(memberNames)),
-                    std::get<Idx>(memberPointers),
-                    as...
+            []<std::meta::info Member>() static {
+                return std::apply(
+                    [](auto&&... annotations) static {
+                        return make_column(
+                            std::string(std::meta::identifier_of(Member)),
+                            splice_member_pointer<Member>(),
+                            std::move(annotations)...
+                        );
+                    },
+                    splice_annotations<Member>()
                 );
-            }.template operator()<I>()
-            ...
+            }.template operator()<members[I]>()...
         };
-    }(std::make_index_sequence<count_members<T>()>{});
+    }(std::make_index_sequence<members.size()>{});
 
-    auto classScopedConstraints = extract_type_annotations<T>();
+    auto annotationConstraints = extract_type_annotations<T>();
 
-    return [&]<class... Es>(std::tuple<Es...>&& elements) {
+    return [&name]<class... Es>(std::tuple<Es...>&& definition) {
         validate_base_table_definition<Es...>();
         return base_table<T, std::false_type, Es...>{
-            std::move(name), std::move(elements)
+            std::move(name), std::move(definition)
         };
     }(std::tuple_cat(std::move(columns),
-                     std::move(classScopedConstraints),
-                     std::tuple<Cs...>{std::move(extras)...}));
+                     std::move(annotationConstraints),
+                     std::tuple<Cs...>{std::move(constraints)...}));
 }
 ```
 
-The nested generic lambda gives each member its own structured-binding-pack
-scope: the outer pack expands across members, the structured binding pack
-expands across one member's annotations. Members with zero annotations
-collapse the inner pack to an empty `make_column(name, ptr)` call — identical
-to the current `make_view` behavior.
+Three implementation details inside the body are load-bearing:
+
+- **`static constexpr auto members`.** Function-local `constexpr`
+  alone is insufficient: GCC's reflection branch over-eagerly captures
+  enclosing-scope `constexpr` locals by reference inside nested lambdas (even
+  with no-capture `[]`), which then loses constexpr-ness inside the lambda
+  body and immediate-escalates the lambda to consteval — at which point the
+  runtime call to `make_column` is rejected. Promoting `members` to static
+  storage sidesteps the question entirely; static-storage variables don't
+  need capture in any scenario.
+- **`Member` as a `std::meta::info` NTTP** on the inner lambda. The outer
+  pack expansion supplies `members[I]` directly, so the inner lambda body
+  never has to declare a `constexpr auto member = ...` local — same
+  motivation as above, applied to the inner scope.
+- **`std::apply` instead of a structured-binding pack.** Replaces the P1061
+  `auto&& [...as] = annos;` from the original sketch and removes the
+  dependency on `SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED`.
 
 The tuple-spread generic lambda at the bottom turns
 `std::tuple<E1, E2, …>` back into a parameter pack `Es…` for the `base_table`
@@ -168,11 +222,9 @@ extras).
 ```cpp
 template<class T, class... Cs>
     requires (!internal::is_column_v<Cs> && ...)
-auto make_table(std::string name = "", Cs... extras) {
-    if (name.empty()) {
-        name = std::string(internal::extract_type_identifier<T>());
-    }
-    return internal::make_table<T>(std::move(name), std::move(extras)...);
+auto make_table(std::string name = {}, Cs... tableConstraints) {
+    return internal::make_reflected_table<T>(
+        std::move(name), std::forward<Cs>(tableConstraints)...);
 }
 ```
 
@@ -198,15 +250,20 @@ The user's broader codebase direction is to widen what's available at constant
 evaluation, so all of the above are constexpr-ified in this commit even when
 the new overload doesn't strictly require it.
 
-### Genuine snag — `foreign_key_t`'s back-reference
+### Note on `foreign_key_t`'s back-reference
 
 `on_update_delete_t<F>` holds `const F& fk`, a back-reference to its parent
 `foreign_key_t`. The existing copy-ctor (constraints.h:352-354) reseats
 `on_update`/`on_delete` to `*this` so runtime copies always have a valid
-back-reference. This same logic must hold across the constexpr→runtime
-materialization that P2996 performs when an annotation value is read out
-into a runtime tuple element. Test coverage is needed but no design-level
-rework.
+back-reference. The intended verification was to check that this same logic
+holds across the constexpr→runtime materialization that P2996 performs when
+an annotation value is read out into a runtime tuple element — but that
+materialization path only happens for FK *annotations*, and FK as a class- or
+member-scope annotation isn't expressible (forward-reference issue, decision
+3). FK as a variadic extra never goes through annotation materialization, so
+the back-reference reseat for the annotation path remains untested in
+practice. No design-level rework is required; this just records why the
+originally-planned test isn't present.
 
 ### `default_t<T>` consequence — explicit
 
@@ -235,35 +292,46 @@ broke before commit 2 starts.
 
 ### Commit 2 — Reflection-based `make_table` overload
 
-- `dev/functional/meta_util.h` — three new generic helpers
-  (`extract_type_identifier`, `extract_type_annotations`,
-  `extract_member_annotations`).
-- `dev/schema/table.h` — new `internal::make_table<T>` and new public
-  `make_table<T>(name = "", extras...)` overload. Gated by both
-  `SQLITE_ORM_REFLECTION_SUPPORTED` and
-  `SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED`. No edits to the existing
-  classical overloads.
+- `dev/functional/meta_util.h` — generic helpers (`extract_members`,
+  `extract_type_identifier`, `splice_member_pointer`, `splice_annotations`,
+  `extract_type_annotations`). The same `extract_members` source is also
+  consumed by the refactored `internal::make_view` so both schema-builders
+  share one reflection pipeline.
+- `dev/schema/table.h` — new `internal::make_reflected_table<T>` and new
+  public `make_table<T>(name = "", extras...)` overload. Gated by
+  `SQLITE_ORM_REFLECTION_SUPPORTED`. No edits to the existing classical
+  overloads.
+- `dev/schema/view.h` — `internal::make_view` refactored to consume
+  `extract_members` and `splice_member_pointer` instead of the old
+  `extract_member_names` / `extract_member_pointers` / `count_members`
+  helpers.
 
 ### Commit 3 — Tests
 
-New file `tests/reflection_make_table.cpp` (or piggyback onto wherever
-`make_view` is tested), gated by both macros. Test cases:
+New file `tests/schema/reflection_table_tests.cpp`, gated by
+`SQLITE_ORM_REFLECTION_SUPPORTED`. Test cases that landed:
 
-- Bare `make_table<User>()` reflects name + columns; `sync_schema` produces
-  the expected SQL.
-- Member-scope annotations: PK + autoincrement, `not_null`, each `collate_*`,
-  `default_value` with literal-type values, composite combinations on a
-  single member.
-- Class-scope annotations: composite `primary_key(&T::a, &T::b)`,
-  `foreign_key(...).references(...)`, multi-column `unique`.
-- Variadic-extras path: the same constraints passed as extras instead of as
-  annotations produce the same resulting schema.
-- Negative test: `make_table<T>("u", make_column(...))` still picks the
-  classical overload — verified via a trait probe on the return type.
-- Empty-name reflection: `make_table<User>("")` produces a table named
-  `User`.
-- The `foreign_key_t` back-reference reseat across the constexpr→runtime
-  materialization (the snag from the constexpr-ification section).
+- Column reflection: `make_table<T>("name")` reflects the type's non-static
+  data members as columns; column-name lookup via member pointer round-trips.
+- Empty-name reflection: `make_table<T>()` produces a table named after the
+  type's identifier; non-empty `name` overrides.
+- Member-scope annotations: `[[=primary_key().autoincrement()]]`,
+  `[[=not_null()]]`, `[[=default_value(literal)]]`, `[[=collate_nocase()]]`
+  apply to the annotated column; verified after `sync_schema` via
+  `pragma.table_xinfo`.
+- Variadic-extras path: composite `primary_key(&T::a, &T::b)` populates
+  `table_key_columns_names()`; `foreign_key(...).references(...)` survives
+  schema sync.
+- Overload dispatch: `make_table<T>("u", make_column(...))` falls through to
+  the classical overload (verified via `tuple_size_v` of `elements_type`).
+
+Tests originally planned but not landed:
+
+- Class-scope annotation cases (composite PK, FK, multi-column unique on the
+  struct itself) — not expressible (decision 3).
+- `foreign_key_t` back-reference reseat across constexpr→runtime
+  materialization — only exercised on the annotation path, which FK can't
+  ride (see "Note on `foreign_key_t`'s back-reference" above).
 
 ## Out of scope (deferred until somebody asks)
 

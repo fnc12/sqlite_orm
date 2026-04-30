@@ -13222,14 +13222,22 @@ namespace sqlite_orm::internal {
      *  Splices a reflection's annotations into a tuple of values. The reflection may be
      *  a type or a non-static data member.
      *  Encapsulated here so the splice operator does not leak into consumer headers.
+     *
+     *  Two P3394 details inform this implementation:
+     *  - Annotation reflections returned by `annotations_of` are not directly spliceable;
+     *    they must first be routed through `std::meta::constant_of`, which returns a
+     *    splice-able constant reflection.
+     *  - `std::meta::annotations_of` returns a `std::vector<std::meta::info>`, whose heap
+     *    allocation is transient under C++20 constexpr rules and cannot be bound to a
+     *    `constexpr` variable. The size and per-index lookups therefore re-call
+     *    `annotations_of` inline so each transient vector dies within its own constant
+     *    expression.
      */
     template<std::meta::info refl>
     consteval auto splice_annotations() {
-        constexpr auto annotations = std::meta::annotations_of(refl);
-
-        return [&annotations]<size_t... I>(std::index_sequence<I...>) consteval {
-            return std::tuple{[:annotations[I]:]...};
-        }(std::make_index_sequence<annotations.size()>{});
+        return []<size_t... I>(std::index_sequence<I...>) consteval {
+            return std::tuple{[:std::meta::constant_of(std::meta::annotations_of(refl)[I]):]...};
+        }(std::make_index_sequence<std::meta::annotations_of(refl).size()>{});
     }
 
     /**
