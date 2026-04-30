@@ -16,6 +16,12 @@ foreach(file ${files})
 
     target_link_libraries(${file_basename} PRIVATE sqlite_orm)
     
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+        target_compile_options(${file_basename} PUBLIC
+            # disabled due to examples potentially containing deprecated features
+            -Wno-deprecated-declarations)
+    endif()
+
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION GREATER_EQUAL 16)
         target_compile_options(${file_basename} PUBLIC
             -freflection)
