@@ -6,9 +6,13 @@
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_element, std::make_tuple, std::get
 #include <utility>  //  std::forward, std::move
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#include <meta>  // std::meta::info, std::meta::identifier_of
+#endif
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/meta_util.h"
 #include "../functional/mpl.h"
 #include "../tuple_helper/tuple_filter.h"
 #include "../tuple_helper/tuple_transformer.h"
@@ -131,6 +135,39 @@ namespace sqlite_orm::internal {
             static_assert(nTablePrimaryKeyColumns > 0, "Table primary key definition must contain one column");
         }
     }
+
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+    template<class O, class... Cs>
+    auto make_reflected_table(std::string name, Cs... constraints) {
+        if (name.empty()) {
+            name = std::string(extract_type_identifier<O>());
+        }
+        static /*gcc*/ constexpr auto members = extract_members<O>();
+
+        auto columns = []<size_t... I>(std::index_sequence<I...>) static {
+            return std::tuple {
+                []<std::meta::info member>() static {
+                    return std::apply(
+                        [](auto&&... annotations) static {
+                            return sqlite_orm::make_column(std::string(std::meta::identifier_of(member)),
+                                                           splice_member_pointer<member>(),
+                                                           std::move(annotations)...);
+                        },
+                        splice_annotations<member>());
+                }.template operator()<members[I]>()...
+            };
+        }(std::make_index_sequence<members.size()>{});
+
+        auto annotationConstraints = extract_type_annotations<O>();
+
+        return [&name]<class... Es>(std::tuple<Es...>&& definition) {
+            validate_base_table_definition<Es...>();
+            return base_table<O, std::false_type, Es...>{std::move(name), std::move(definition)};
+        }(std::tuple_cat(std::move(columns),
+                         std::move(annotationConstraints),
+                         std::tuple<Cs...>{std::move(constraints)...}));
+    }
+#endif
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -159,7 +196,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
      *  Factory function for a base table.
-     *  
+     *
      *  The mapped object type is explicitly specified.
      */
     template<orm_table_reference auto table, class... Cs>
@@ -168,3 +205,49 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 #endif
 }
+
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Factory function for a base table.
+     *
+     *  The mapped object type is explicitly specified, columns and column constraints are deferred from
+     *  the object type's non-static data members and their annotations. Class-scope annotations on
+     *  the object type contribute table-level constraints.
+     *
+     *  The table name is optional: when empty, it is derived from the object type's identifier via reflection.
+     *
+     *  Variadic `constraints` carry table-level constraints that either cannot be expressed as annotations
+     *  (e.g. `check()`) or that the user prefers to pass at the call site. Column types are rejected by
+     *  the `requires` clause — column-level constraints come from annotations only.
+     */
+    template<class T, class... Cs>
+        requires (!internal::is_column_v<Cs> && ...)
+    auto make_table(std::string name = {}, Cs... tableConstraints) {
+        return internal::make_reflected_table<T>(std::move(name), std::forward<Cs>(tableConstraints)...);
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Factory function for a base table.
+     *
+     *  The mapped object type is explicitly specified, columns and column constraints are deferred from
+     *  the object type's non-static data members and their annotations. Class-scope annotations on
+     *  the object type contribute table-level constraints.
+     *
+     *  The table name is optional: when empty, it is derived from the object type's identifier via reflection.
+     *
+     *  Variadic `constraints` carry table-level constraints that either cannot be expressed as annotations
+     *  (e.g. `check()`) or that the user prefers to pass at the call site. Column types are rejected by
+     *  the `requires` clause — column-level constraints come from annotations only.
+     */
+    template<orm_table_reference auto table, class... Cs>
+        requires (!internal::is_column_v<Cs> && ...)
+    auto make_table(std::string name = {}, Cs... tableConstraints) {
+        return internal::make_reflected_table<internal::auto_decay_table_ref_t<table>>(
+            std::move(name),
+            std::forward<Cs>(tableConstraints)...);
+    }
+#endif
+}
+#endif

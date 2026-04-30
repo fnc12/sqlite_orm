@@ -2,8 +2,10 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_WITH_VIEW
-#include <type_traits>  //  std::remove_cvref
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 #include <utility>  // std::forward, std::move, std::index_sequence, std::make_index_sequence
+#include <meta>  // std::meta::info, std::meta::identifier_of
+#endif
 #endif
 #endif
 
@@ -43,26 +45,32 @@ namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_WITH_VIEW
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 namespace sqlite_orm::internal {
-    template<class O, class Select, size_t... I>
-    auto make_view(std::string name, std::index_sequence<I...>, Select select) {
-        constexpr auto memberNames = extract_member_names<O>();
-        constexpr auto memberPointers = extract_member_pointers<O>();
+    template<class O, class Select>
+    auto make_reflected_view(std::string name, Select select) {
+        if (name.empty()) {
+            name = std::string(extract_type_identifier<O>());
+        }
+        static /*gcc*/ constexpr auto members = extract_members<O>();
 
-        using view_type =
-            query_view<O,
-                       Select,
-                       decltype(make_column(std::string(std::get<I>(memberNames)), std::get<I>(memberPointers)))...>;
+        auto columns = []<size_t... I>(std::index_sequence<I...>) static {
+            return std::tuple {
+                []<std::meta::info member>() static {
+                    return sqlite_orm::make_column(std::string(std::meta::identifier_of(member)),
+                                                   splice_member_pointer<member>());
+                }.template operator()<members[I]>()...
+            };
+        }(std::make_index_sequence<members.size()>{});
 
-        return view_type{std::move(name),
-                         std::tuple{make_column(std::string(std::get<I>(memberNames)), std::get<I>(memberPointers))...},
-                         std::move(select)};
+        return [&]<class... Cs>(std::tuple<Cs...>&& cols) {
+            return query_view<O, Select, Cs...>{std::move(name), std::move(cols), std::move(select)};
+        }(std::move(columns));
     }
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
     /**
      *  Factory function for a view definition.
-     *  
+     *
      *  The mapped object type is explicitly specified, columns and their names are deferred from the object type.
      *  The object type must be an aggregate.
      */
@@ -74,9 +82,18 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         if constexpr (is_select_v<Select>) {
             select.highest_level = true;
         }
-        return internal::make_view<O>(std::move(name),
-                                      std::make_index_sequence<count_members<O>()>{},
-                                      std::move(select));
+        return make_reflected_view<O>(std::move(name), std::move(select));
+    }
+
+    template<class O, class Select>
+        requires (internal::is_select_expression_v<Select>)
+    auto make_view(Select select) {
+        using namespace ::sqlite_orm::internal;
+
+        if constexpr (is_select_v<Select>) {
+            select.highest_level = true;
+        }
+        return make_reflected_view<O>({}, std::move(select));
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -89,6 +106,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<orm_table_reference auto table, class Select>
     auto make_view(std::string name, Select select) {
         return make_view<internal::auto_decay_table_ref_t<table>>(std::move(name), std::forward<Select>(select));
+    }
+
+    template<orm_table_reference auto table, class Select>
+    auto make_view(Select select) {
+        return make_view<internal::auto_decay_table_ref_t<table>>({}, std::forward<Select>(select));
     }
 #endif
 }
