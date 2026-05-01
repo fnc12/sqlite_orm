@@ -117,7 +117,7 @@ void nearby_restaurants() {
         std::string name;
         std::string cuisine;
     };
-    constexpr orm_table_reference auto restaurant = c<Restaurant>();
+    static /*gcc*/ constexpr orm_table_reference auto restaurant = c<Restaurant>();
 
     struct NearbyRestaurant {
         int64 id = 0;
