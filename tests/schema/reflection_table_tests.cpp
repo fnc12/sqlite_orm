@@ -3,36 +3,40 @@
 
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 #include <algorithm>  //  std::ranges::find
-#include <tuple>  //  std::tuple_size_v
 
 using namespace sqlite_orm;
 
 namespace {
-    struct ReflectedPlain {
-        int id;
+    struct[[= dbo_name("plain")]] ReflectedPlain {
+        int64 id;
         std::string name;
     };
 
-    struct ReflectedAnnotated {
-        [[= primary_key().autoincrement()]] int id;
+    struct ReflectedDefaultName {
+        int64 id;
+        std::string name;
+    };
+
+    struct[[= dbo_name("annotated")]] ReflectedAnnotated {
+        [[= primary_key().autoincrement()]] int64 id;
         [[= not_null()]] std::string name;
         [[= default_value(0)]] int score;
         [[= collate_nocase()]] std::string handle;
     };
 
-    struct ReflectedComposite {
+    struct[[= dbo_name("composite")]] ReflectedComposite {
         int a;
         int b;
         std::string note;
     };
 
-    struct ReflectedParent {
-        int id;
+    struct[[= dbo_name("parent")]] ReflectedParent {
+        int64 id;
         std::string label;
     };
 
-    struct ReflectedChild {
-        int id;
+    struct[[= dbo_name("child")]] ReflectedChild {
+        int64 id;
         int parentId;
     };
 
@@ -45,28 +49,27 @@ namespace {
     // above).
 }
 
-TEST_CASE("reflection-based make_table - column reflection") {
-    SECTION("explicit name is kept and members map to columns") {
-        auto table = make_table<ReflectedPlain>("plain");
-        STATIC_REQUIRE(table.template count_of<internal::is_column>() == 2);
-        REQUIRE(table.name == "plain");
-        REQUIRE(*table.find_column_name(&ReflectedPlain::id) == "id");
-        REQUIRE(*table.find_column_name(&ReflectedPlain::name) == "name");
-    }
-
-    SECTION("empty name is replaced by the type's identifier") {
+TEST_CASE("reflection-based make_table - name resolution") {
+    SECTION("[[=dbo_name(...)]] annotation supplies the table name") {
         auto table = make_table<ReflectedPlain>();
-        REQUIRE(table.name == "ReflectedPlain");
+        REQUIRE(table.name == "plain");
     }
 
-    SECTION("non-empty name overrides the reflected identifier") {
-        auto table = make_table<ReflectedPlain>("custom_name");
-        REQUIRE(table.name == "custom_name");
+    SECTION("fallback to type identifier") {
+        auto table = make_table<ReflectedDefaultName>();
+        REQUIRE(table.name == "ReflectedDefaultName");
     }
 }
 
+TEST_CASE("reflection-based make_table - column reflection") {
+    auto table = make_table<ReflectedPlain>();
+    STATIC_REQUIRE(table.template count_of<internal::is_column>() == 2);
+    REQUIRE(*table.find_column_name(&ReflectedPlain::id) == "id");
+    REQUIRE(*table.find_column_name(&ReflectedPlain::name) == "name");
+}
+
 TEST_CASE("reflection-based make_table - member annotations") {
-    auto table = make_table<ReflectedAnnotated>("annotated");
+    auto table = make_table<ReflectedAnnotated>();
     STATIC_REQUIRE(table.template count_of<internal::is_column>() == 4);
     REQUIRE(*table.find_column_name(&ReflectedAnnotated::id) == "id");
     REQUIRE(*table.find_column_name(&ReflectedAnnotated::name) == "name");
@@ -99,8 +102,7 @@ TEST_CASE("reflection-based make_table - member annotations") {
 
 TEST_CASE("reflection-based make_table - variadic extras") {
     SECTION("composite primary key supplied as an extra") {
-        auto table =
-            make_table<ReflectedComposite>("composite", primary_key(&ReflectedComposite::a, &ReflectedComposite::b));
+        auto table = make_table<ReflectedComposite>(primary_key(&ReflectedComposite::a, &ReflectedComposite::b));
         auto names = table.table_key_columns_names();
         REQUIRE(names.size() == 2);
         REQUIRE(names[0] == "a");
@@ -110,9 +112,8 @@ TEST_CASE("reflection-based make_table - variadic extras") {
     SECTION("foreign_key().references() supplied as an extra survives schema sync") {
         auto storage = make_storage(
             "",
-            make_table<ReflectedParent>("parent"),
-            make_table<ReflectedChild>("child",
-                                       foreign_key(&ReflectedChild::parentId).references(&ReflectedParent::id)));
+            make_table<ReflectedParent>(),
+            make_table<ReflectedChild>(foreign_key(&ReflectedChild::parentId).references(&ReflectedParent::id)));
         REQUIRE_NOTHROW(storage.sync_schema());
 
         auto child = storage.pragma.table_xinfo("child");
@@ -121,13 +122,18 @@ TEST_CASE("reflection-based make_table - variadic extras") {
 }
 
 TEST_CASE("reflection-based make_table - overload dispatch") {
-    SECTION("classical overload still wins when a column type is passed") {
-        auto reflected = make_table<ReflectedPlain>("u");
+    SECTION("classical overload chosen when a column type is passed") {
         auto classical = make_table<ReflectedPlain>("u", make_column("id", &ReflectedPlain::id));
-        using reflected_elements = typename decltype(reflected)::elements_type;
-        using classical_elements = typename decltype(classical)::elements_type;
-        STATIC_REQUIRE(std::tuple_size_v<reflected_elements> == 2);
-        STATIC_REQUIRE(std::tuple_size_v<classical_elements> == 1);
+        using elements = typename decltype(classical)::elements_type;
+        STATIC_REQUIRE(std::tuple_size_v<elements> == 1);
+        REQUIRE(classical.name == "u");
+    }
+
+    SECTION("reflection overload chosen when no columns are passed") {
+        auto reflected = make_table<ReflectedPlain>();
+        using elements = typename decltype(reflected)::elements_type;
+        STATIC_REQUIRE(std::tuple_size_v<elements> == 2);
+        REQUIRE(reflected.name == "plain");
     }
 }
 #endif

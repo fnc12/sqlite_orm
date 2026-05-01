@@ -266,21 +266,24 @@ TEST_CASE("drop table") {
 }
 
 #ifdef SQLITE_ORM_WITH_VIEW
-struct UserViewDropViewTests {
-    int id = 0;
-    std::string name;
-};
+namespace {
+    constexpr char usersViewName[] = "users_view";
+
+    struct[[= dbo_name(usersViewName)]] UserViewDropViewTests {
+        int id = 0;
+        std::string name;
+    };
+}
 TEST_CASE("drop view") {
     struct User {
         int id = 0;
         std::string name;
     };
-    const std::string usersViewName = "users_view";
 
     auto storage =
         make_storage({},
                      make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)),
-                     make_view<UserViewDropViewTests>(usersViewName, select(asterisk<User>())));
+                     make_view<UserViewDropViewTests>(select(asterisk<User>())));
     REQUIRE_FALSE(storage.view_exists(usersViewName));
 
     storage.sync_schema();

@@ -166,7 +166,8 @@ TEST_CASE("column pointers") {
             from(dbstat_table, dbstat_table("main")));
 #endif
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-        runTest<internal::base_table<DerivedUser, std::false_type>>(make_table<derived_user>("derived_user"));
+        runTest<internal::base_table<DerivedUser, std::false_type, decltype(make_column("id", &DerivedUser::id))>>(
+            make_table<derived_user>("derived_user", make_column("id", &DerivedUser::id)));
         runTest<internal::from_t<DerivedUser>>(from<derived_user>());
         runTest<internal::into_t<DerivedUser>>(into<derived_user>());
         runTest<internal::asterisk_t<DerivedUser>>(asterisk<derived_user>());

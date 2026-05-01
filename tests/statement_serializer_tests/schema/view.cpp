@@ -5,7 +5,7 @@
 using namespace sqlite_orm;
 using internal::serialize;
 
-struct UserViewSerializerTests {
+struct[[= dbo_name("user_view")]] UserViewSerializerTests {
     int id = 0;
     std::string name;
 };
@@ -17,7 +17,7 @@ TEST_CASE("statement_serializer query_view") {
     };
 
     auto table = make_table<User>("user", make_column("id", &User::id), make_column("name", &User::name));
-    auto view = make_view<UserViewSerializerTests>("user_view", select(asterisk<User>(true)));
+    auto view = make_view<UserViewSerializerTests>(select(asterisk<User>(true)));
     using db_objects_t = internal::db_objects_tuple<decltype(table), decltype(view)>;
     const db_objects_t dbObjects{table, view};
     using context_t = internal::serializer_context<db_objects_t>;

@@ -41,9 +41,13 @@ unchanged.
    table elements — it works for self-contained annotation payloads
    (other-type member pointers, primitives, string-views) — but no
    sqlite_orm table-level constraint factory currently fits that shape.
-4. **Optional table name.** Signature: `make_table<T>(std::string name = "",
-   Cs... extras)`. When `name` is empty, the table name is derived at runtime
-   from `std::meta::identifier_of(^^T)` (i.e. the struct's identifier).
+4. **Table/view name from annotation.** The reflection-based `make_table<T>`
+   and `make_view<T>` overloads do not take a name argument. The name comes
+   from the optional class-scope `[[=dbo_name("…")]]` annotation, which wraps
+   a compile-time C string literal in a `dbo_name_t`; when the annotation is
+   absent the name falls back to `std::meta::identifier_of(^^T)`. The
+   classical `make_table(name, columns...)` overload still accepts a runtime
+   string for callers that genuinely need dynamic naming.
 5. **Feature gating.** No new feature-test macros. The new overload is gated
    by `SQLITE_ORM_REFLECTION_SUPPORTED`, which already exists in
    `dev/functional/cxx_core_features.h`.
@@ -60,11 +64,31 @@ unchanged.
 ```cpp
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+    template<size_t N>
+    constexpr internal::dbo_name_t<N> dbo_name(const char (&dboName)[N]);
+
     template<class T, class... Cs>
         requires (!internal::is_column_v<Cs> && ...)
-    auto make_table(std::string name = "", Cs... extras);
+    auto make_table(Cs... extras);
+
+#ifdef SQLITE_ORM_WITH_VIEW
+    template<class O, class Select>
+        requires (internal::is_select_expression_v<Select>)
+    auto make_view(Select select);
+#endif
 #endif
 }
+```
+
+Usage:
+
+```cpp
+struct [[=dbo_name("users")]] User {
+    [[=primary_key().autoincrement()]] int id;
+    [[=not_null()]] std::string name;
+};
+
+auto storage = make_storage("db.sqlite", make_table<User>());  // name "users", PK on id, NOT NULL on name
 ```
 
 ### Overload resolution against the existing classical overloads
@@ -222,11 +246,56 @@ extras).
 ```cpp
 template<class T, class... Cs>
     requires (!internal::is_column_v<Cs> && ...)
-auto make_table(std::string name = {}, Cs... tableConstraints) {
-    return internal::make_reflected_table<T>(
-        std::move(name), std::forward<Cs>(tableConstraints)...);
+auto make_table(Cs... tableConstraints) {
+    return internal::make_reflected_table<T>(std::forward<Cs>(tableConstraints)...);
 }
 ```
+
+### `dbo_name` annotation
+
+`dev/schema/dbo_name.h` carries the lightweight infrastructure for the table /
+view name annotation:
+
+```cpp
+namespace sqlite_orm::internal {
+    template<size_t N>
+    struct dbo_name_t : cstring_literal<N> {
+        constexpr dbo_name_t(const char (&cstr)[N]) : cstring_literal<N>{cstr} {}
+    };
+
+    template<class T, class Tuple>
+    constexpr std::string_view resolve_dbo_name(const Tuple& annotations) {
+        if constexpr (tuple_contains_dbo_name_v<Tuple>) {
+            return std::get<dbo_name_t>(annotations).cstr;
+        } else {
+            return extract_type_identifier<T>();
+        }
+    }
+
+    // Returns a copy of `tuple` with all `dbo_name_t` elements removed,
+    // so they don't get merged into the table's element pool.
+    template<class Tuple>
+    constexpr auto filter_out_dbo_name(Tuple&& tuple);
+}
+
+namespace sqlite_orm {
+    template<size_t N>
+    constexpr internal::dbo_name_t<N> dbo_name(const char (&dboName)[N]) {
+        return {dboName};
+    }
+}
+```
+
+`make_reflected_table` and `make_reflected_view` both call
+`resolve_dbo_name<O>(extract_type_annotations<O>())` to settle the name; the
+table-builder additionally calls `filter_out_dbo_name` before merging the
+remaining class-scope annotations into the elements pool, so the metadata
+annotation doesn't trip `validate_base_table_definition`.
+
+The string is embedded in the type's bytes via `cstring_literal<N>` rather than
+carried by pointer + size: pointers to string literals are not accepted as
+annotation values by current reflection implementations (the underlying object
+has no linkage), so a self-contained fixed-size byte array is required.
 
 ## Constexpr-ification prerequisite
 

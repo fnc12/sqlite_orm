@@ -4,18 +4,42 @@
 #ifdef SQLITE_ORM_WITH_VIEW
 using namespace sqlite_orm;
 
-struct UserViewSchemaTests {
-    int id = 0;
-    std::string name;
-};
-
-TEST_CASE("view::find_column_name") {
-    struct User {
-        int id = 0;
+namespace {
+    struct[[= dbo_name("user_view")]] UserViewSchemaTests {
+        int64 id = 0;
         std::string name;
     };
 
-    auto view = make_view<UserViewSchemaTests>("user_view", select(asterisk<User>()));
+    struct UserViewSchemaTestsDefaultName {
+        int64 id = 0;
+        std::string name;
+    };
+}
+
+TEST_CASE("make_view - name resolution") {
+    struct User {
+        int64 id = 0;
+        std::string name;
+    };
+
+    SECTION("[[=dbo_name(...)]] annotation supplies the view name") {
+        auto view = make_view<UserViewSchemaTests>(select(asterisk<User>()));
+        REQUIRE(view.name == "user_view");
+    }
+
+    SECTION("fallback to type identifier") {
+        auto view = make_view<UserViewSchemaTestsDefaultName>(select(asterisk<User>()));
+        REQUIRE(view.name == "UserViewSchemaTestsDefaultName");
+    }
+}
+
+TEST_CASE("view::find_column_name") {
+    struct User {
+        int64 id = 0;
+        std::string name;
+    };
+
+    auto view = make_view<UserViewSchemaTests>(select(asterisk<User>()));
 
     SECTION("fields") {
         REQUIRE((view.find_column_name(&UserViewSchemaTests::id) &&

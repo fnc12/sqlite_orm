@@ -15,6 +15,7 @@
 #include "../select_constraints.h"
 #include "column.h"
 #include "table_base.h"
+#include "dbo_name.h"
 
 namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_WITH_VIEW
@@ -46,10 +47,8 @@ namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 namespace sqlite_orm::internal {
     template<class O, class Select>
-    auto make_reflected_view(std::string name, Select select) {
-        if (name.empty()) {
-            name = std::string(extract_type_identifier<O>());
-        }
+    auto make_reflected_view(Select select) {
+        std::string viewName{resolve_dbo_name<O>(extract_type_annotations<O>())};
         static /*gcc*/ constexpr auto members = extract_members<O>();
 
         auto columns = []<size_t... I>(std::index_sequence<I...>) static {
@@ -62,7 +61,7 @@ namespace sqlite_orm::internal {
         }(std::make_index_sequence<members.size()>{});
 
         return [&]<class... Cs>(std::tuple<Cs...>&& cols) {
-            return query_view<O, Select, Cs...>{std::move(name), std::move(cols), std::move(select)};
+            return query_view<O, Select, Cs...>{std::move(viewName), std::move(cols), std::move(select)};
         }(std::move(columns));
     }
 }
@@ -72,19 +71,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a view definition.
      *
      *  The mapped object type is explicitly specified, columns and their names are deferred from the object type.
-     *  The object type must be an aggregate.
+     *  The object type must be an aggregate. The optional `[[=dbo_name("…")]]` class-scope annotation overrides
+     *  the view name (otherwise the type's reflected identifier is used).
      */
-    template<class O, class Select>
-        requires (internal::is_select_expression_v<Select>)
-    auto make_view(std::string name, Select select) {
-        using namespace ::sqlite_orm::internal;
-
-        if constexpr (is_select_v<Select>) {
-            select.highest_level = true;
-        }
-        return make_reflected_view<O>(std::move(name), std::move(select));
-    }
-
     template<class O, class Select>
         requires (internal::is_select_expression_v<Select>)
     auto make_view(Select select) {
@@ -93,24 +82,20 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         if constexpr (is_select_v<Select>) {
             select.highest_level = true;
         }
-        return make_reflected_view<O>({}, std::move(select));
+        return make_reflected_view<O>(std::move(select));
     }
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
      *  Factory function for a view definition.
-     *  
+     *
      *  The mapped object type is explicitly specified, columns and their names are deferred from the object type.
-     *  The object type must be an aggregate.
+     *  The object type must be an aggregate. The optional `[[=dbo_name("…")]]` class-scope annotation overrides
+     *  the view name (otherwise the type's reflected identifier is used).
      */
     template<orm_table_reference auto table, class Select>
-    auto make_view(std::string name, Select select) {
-        return make_view<internal::auto_decay_table_ref_t<table>>(std::move(name), std::forward<Select>(select));
-    }
-
-    template<orm_table_reference auto table, class Select>
     auto make_view(Select select) {
-        return make_view<internal::auto_decay_table_ref_t<table>>({}, std::forward<Select>(select));
+        return make_view<internal::auto_decay_table_ref_t<table>>(std::forward<Select>(select));
     }
 #endif
 }

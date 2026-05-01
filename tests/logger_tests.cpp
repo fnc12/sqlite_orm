@@ -24,7 +24,7 @@ struct DidLogsCollector {
 std::vector<std::string> DidLogsCollector::logs;
 
 #ifdef SQLITE_ORM_WITH_VIEW
-struct UserViewLoggerTests {
+struct[[= dbo_name("users_view")]] UserViewLoggerTests {
     int id = 0;
     std::string name;
 };
@@ -96,7 +96,7 @@ TEST_CASE("logger") {
                                 make_column("id", &VisitLog::id, primary_key()),
                                 make_column("message", &VisitLog::message)),
 #ifdef SQLITE_ORM_WITH_VIEW
-                     make_view<UserViewLoggerTests>("users_view", select(asterisk<User>())),
+                     make_view<UserViewLoggerTests>(select(asterisk<User>())),
 #endif
                      will_run_query(willRunQuery),
                      did_run_query(didRunQuery));
