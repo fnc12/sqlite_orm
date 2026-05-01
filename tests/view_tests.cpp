@@ -5,7 +5,7 @@
 #ifdef SQLITE_ORM_WITH_VIEW
 using namespace sqlite_orm;
 
-struct UserViewTests {
+struct[[= dbo_name("user_view")]] UserViewTests {
     int id = 0;
     std::string name;
 
@@ -18,7 +18,7 @@ struct UserViewTests {
 #endif
 };
 
-struct UserView2Tests {
+struct[[= dbo_name("user_view")]] UserView2Tests {
     std::string name;
 
 #ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
@@ -42,7 +42,7 @@ TEST_CASE("sql view") {
         auto storage = make_storage(
             "",
             make_table<User>("user", make_column("id", &User::id, primary_key()), make_column("name", &User::name)),
-            make_view<UserViewTests>("user_view", select(asterisk<User>())));
+            make_view<UserViewTests>(select(asterisk<User>())));
 
         storage.sync_schema();
 
@@ -67,8 +67,7 @@ TEST_CASE("sql view") {
         auto storage = make_storage(
             "",
             make_table<User>("user", make_column("id", &User::id, primary_key()), make_column("name", &User::name)),
-            make_view<UserViewTests>("user_view",
-                                     with(users_cte().as(select(asterisk<User>())), select(asterisk<users_cte>()))));
+            make_view<UserViewTests>(with(users_cte().as(select(asterisk<User>())), select(asterisk<users_cte>()))));
 
         storage.sync_schema();
 
@@ -104,7 +103,7 @@ TEST_CASE("sync sql view") {
         auto storage = make_storage(
             storagePath,
             make_table<User>("user", make_column("id", &User::id, primary_key()), make_column("name", &User::name)),
-            make_view<UserView2Tests>("user_view", select(&User::name)));
+            make_view<UserView2Tests>(select(&User::name)));
         auto syncResult = storage.sync_schema();
         REQUIRE(syncResult.at("user_view") == sync_schema_result::new_table_created);
 
@@ -117,7 +116,7 @@ TEST_CASE("sync sql view") {
         auto storage = make_storage(
             storagePath,
             make_table<User>("user", make_column("id", &User::id, primary_key()), make_column("name", &User::name)),
-            make_view<UserViewTests>("user_view", select(asterisk<User>())));
+            make_view<UserViewTests>(select(asterisk<User>())));
 
         // simulate should detect the change
         auto simulateResult = storage.sync_schema_simulate();

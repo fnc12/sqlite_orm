@@ -45,21 +45,21 @@ struct Department {
 // The fields are automatically mapped through C++ reflection
 
 // View 1: High earners (employees earning more than 60000)
-struct HighEarner {
+struct[[= dbo_name("high_earners")]] HighEarner {
     int64 id;
     std::string name;
     double salary;
 };
 
 // View 2: Department summary with employee count and average salary
-struct DepartmentSummary {
+struct[[= dbo_name("department_summary")]] DepartmentSummary {
     std::string department_name;
     int employee_count;
     double avg_salary;
 };
 
 // View 3: Complete employee information with department details (join result)
-struct EmployeeDetail {
+struct[[= dbo_name("employee_details")]] EmployeeDetail {
     int64 id;
     std::string employee_name;
     double salary;
@@ -81,23 +81,22 @@ inline auto initStorage(const std::string& path) {
                    make_column("name", &Department::name),
                    make_column("location", &Department::location)),
 
-        // Define views - notice how we only specify the view name and SELECT statement
-        // The column mappings are automatically derived from the view object type!
+        // Define views - notice how we only specify the SELECT statement.
+        // The column mappings and view name are derived from the view object type
+        // (column names from non-static data members; view name from the optional
+        // `[[=dbo_name("…")]]` annotation, falling back to the type's identifier).
 
         // View 1: Filter high earners
         make_view<HighEarner>(
-            "high_earners",
             select(columns(&Employee::id, &Employee::name, &Employee::salary), where(c(&Employee::salary) > 60000.0))),
 
         // View 2: Aggregate data by department
-        make_view<DepartmentSummary>("department_summary",
-                                     select(columns(&Department::name, count(&Employee::id), avg(&Employee::salary)),
+        make_view<DepartmentSummary>(select(columns(&Department::name, count(&Employee::id), avg(&Employee::salary)),
                                             left_join<Employee>(on(c(&Employee::department_id) == &Department::id)),
                                             group_by(&Department::name))),
 
         // View 3: Join employees with departments
         make_view<EmployeeDetail>(
-            "employee_details",
             select(columns(&Employee::id, &Employee::name, &Employee::salary, &Department::name, &Department::location),
                    join<Department>(on(c(&Employee::department_id) == &Department::id)))));
 }
