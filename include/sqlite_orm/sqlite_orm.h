@@ -13989,7 +13989,7 @@ namespace sqlite_orm::internal {
             };
         }(std::make_index_sequence<members.size()>{});
 
-        return [&]<class... Cs>(std::tuple<Cs...>&& cols) {
+        return [&viewName, &select]<class... Cs>(std::tuple<Cs...>&& cols) {
             return query_view<O, Select, Cs...>{std::move(viewName), std::move(cols), std::move(select)};
         }(std::move(columns));
     }
