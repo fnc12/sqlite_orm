@@ -2,6 +2,7 @@
 #include <catch2/catch_all.hpp>
 
 #ifdef SQLITE_ORM_WITH_VIEW
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 using namespace sqlite_orm;
 using internal::col_index_sequence_of, internal::col_index_sequence_with_field_type;
 using internal::is_column;
@@ -37,4 +38,5 @@ TEST_CASE("view static count_of<is_column>()") {
     }
 #endif
 }
+#endif
 #endif

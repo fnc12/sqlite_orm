@@ -266,6 +266,7 @@ TEST_CASE("drop table") {
 }
 
 #ifdef SQLITE_ORM_WITH_VIEW
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 namespace {
     constexpr char usersViewName[] = "users_view";
 
@@ -295,6 +296,7 @@ TEST_CASE("drop view") {
     REQUIRE_THROWS(storage.drop_view(usersViewName));
     REQUIRE_NOTHROW(storage.drop_view_if_exists(usersViewName));
 }
+#endif
 #endif
 
 TEST_CASE("drop index") {

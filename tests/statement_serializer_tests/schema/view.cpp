@@ -2,6 +2,7 @@
 #include <catch2/catch_all.hpp>
 
 #ifdef SQLITE_ORM_WITH_VIEW
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 using namespace sqlite_orm;
 using internal::serialize;
 
@@ -40,4 +41,5 @@ TEST_CASE("statement_serializer query_view") {
         REQUIRE(value == R"(SELECT "user_view".* FROM "user_view")");
     }
 }
+#endif
 #endif

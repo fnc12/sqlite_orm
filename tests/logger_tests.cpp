@@ -3,32 +3,36 @@
 
 using namespace sqlite_orm;
 
-struct WillLogsCollector {
-    static std::vector<std::string> logs;
+namespace {
+    struct WillLogsCollector {
+        static std::vector<std::string> logs;
 
-    void operator()(const std::string_view log) {
-        this->logs.push_back(std::string(log));
-    }
-};
+        void operator()(const std::string_view log) {
+            this->logs.push_back(std::string(log));
+        }
+    };
 
-std::vector<std::string> WillLogsCollector::logs;
+    std::vector<std::string> WillLogsCollector::logs;
 
-struct DidLogsCollector {
-    static std::vector<std::string> logs;
+    struct DidLogsCollector {
+        static std::vector<std::string> logs;
 
-    void operator()(const std::string_view log) {
-        this->logs.push_back(std::string(log));
-    }
-};
+        void operator()(const std::string_view log) {
+            this->logs.push_back(std::string(log));
+        }
+    };
 
-std::vector<std::string> DidLogsCollector::logs;
+    std::vector<std::string> DidLogsCollector::logs;
 
 #ifdef SQLITE_ORM_WITH_VIEW
-struct[[= dbo_name("users_view")]] UserViewLoggerTests {
-    int id = 0;
-    std::string name;
-};
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+    struct[[= dbo_name("users_view")]] UserViewLoggerTests {
+        int id = 0;
+        std::string name;
+    };
 #endif
+#endif
+}
 TEST_CASE("logger") {
     using Logs = std::vector<std::string>;
     using Callback = std::function<void(std::string_view)>;
@@ -96,7 +100,9 @@ TEST_CASE("logger") {
                                 make_column("id", &VisitLog::id, primary_key()),
                                 make_column("message", &VisitLog::message)),
 #ifdef SQLITE_ORM_WITH_VIEW
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
                      make_view<UserViewLoggerTests>(select(asterisk<User>())),
+#endif
 #endif
                      will_run_query(willRunQuery),
                      did_run_query(didRunQuery));
@@ -176,6 +182,7 @@ TEST_CASE("logger") {
             pushExpected(expected);
         }
 #ifdef SQLITE_ORM_WITH_VIEW
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
         SECTION("drop_view") {
             storage.drop_view("users_view");
             pushExpected(R"(DROP VIEW "users_view")");
@@ -188,6 +195,7 @@ TEST_CASE("logger") {
             storage.drop_view_if_exists(value);
             pushExpected(expected);
         }
+#endif
 #endif
         SECTION("vacuum") {
             storage.vacuum();
@@ -242,7 +250,7 @@ TEST_CASE("logger") {
         SECTION("db_release_memory") {
             std::ignore = storage.db_release_memory();
         }
-        SECTION("trigger_names") {
+        SECTION("table_names") {
             std::ignore = storage.table_names();
             pushExpected("SELECT name FROM sqlite_master WHERE type='table'");
         }
@@ -250,7 +258,7 @@ TEST_CASE("logger") {
             std::ignore = storage.view_names();
             pushExpected("SELECT name FROM sqlite_master WHERE type='view'");
         }
-        SECTION("table_names") {
+        SECTION("trigger_names") {
             std::ignore = storage.trigger_names();
             pushExpected("SELECT name FROM sqlite_master WHERE type='trigger'");
         }

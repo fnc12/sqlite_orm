@@ -3,6 +3,7 @@
 #include <cstdio>  //  std::remove
 
 #ifdef SQLITE_ORM_WITH_VIEW
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 using namespace sqlite_orm;
 
 struct[[= dbo_name("user_view")]] UserViewTests {
@@ -136,4 +137,5 @@ TEST_CASE("sync sql view") {
 
     std::remove(storagePath);
 }
+#endif
 #endif
