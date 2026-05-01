@@ -250,7 +250,7 @@ TEST_CASE("logger") {
         SECTION("db_release_memory") {
             std::ignore = storage.db_release_memory();
         }
-        SECTION("trigger_names") {
+        SECTION("table_names") {
             std::ignore = storage.table_names();
             pushExpected("SELECT name FROM sqlite_master WHERE type='table'");
         }
@@ -258,7 +258,7 @@ TEST_CASE("logger") {
             std::ignore = storage.view_names();
             pushExpected("SELECT name FROM sqlite_master WHERE type='view'");
         }
-        SECTION("table_names") {
+        SECTION("trigger_names") {
             std::ignore = storage.trigger_names();
             pushExpected("SELECT name FROM sqlite_master WHERE type='trigger'");
         }

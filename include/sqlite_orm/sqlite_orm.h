@@ -20164,7 +20164,7 @@ namespace sqlite_orm::internal {
          *    double operator()(double arg) const {
          *      return std::sqrt(arg);
          *    }
-         *   
+         *    
          *    static const char* name() {
          *      return "SQRT";
          *    }
