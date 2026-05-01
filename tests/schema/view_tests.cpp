@@ -2,6 +2,7 @@
 #include <catch2/catch_all.hpp>
 
 #ifdef SQLITE_ORM_WITH_VIEW
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 using namespace sqlite_orm;
 
 namespace {
@@ -48,4 +49,5 @@ TEST_CASE("view::find_column_name") {
                  *view.find_column_name(&UserViewSchemaTests::name) == "name"));
     }
 }
+#endif
 #endif
