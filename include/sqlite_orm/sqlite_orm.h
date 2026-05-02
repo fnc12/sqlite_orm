@@ -13902,8 +13902,8 @@ namespace sqlite_orm::internal {
      *  has no linkage), so a self-contained fixed-size byte array is required.
      */
     template<size_t N>
-    struct dbo_name_t : cstring_literal<N> {
-        constexpr dbo_name_t(const char (&cstr)[N]) : cstring_literal<N>{cstr} {}
+    struct dbo_name_literal : cstring_literal<N> {
+        constexpr dbo_name_literal(const char (&cstr)[N]) : cstring_literal<N>{cstr} {}
 
         constexpr auto name() const noexcept {
             return this->cstr;
@@ -13914,13 +13914,13 @@ namespace sqlite_orm::internal {
     constexpr bool is_dbo_name_v = false;
 
     template<size_t N>
-    constexpr bool is_dbo_name_v<dbo_name_t<N>> = true;
+    constexpr bool is_dbo_name_v<dbo_name_literal<N>> = true;
 
     template<class T>
     using is_dbo_name = std::bool_constant<is_dbo_name_v<T>>;
 
     /**
-     *  Returns the database object name carried by the `dbo_name_t<…>` element of `annotations`,
+     *  Returns the database object name carried by the `dbo_name_literal<…>` element of `annotations`,
      *  or the type's reflected identifier when no such element is present.
      */
     template<class T, class Tuple>
@@ -13935,7 +13935,7 @@ namespace sqlite_orm::internal {
     }
 
     /**
-     *  Returns a copy of `tuple` with all `dbo_name_t<…>` elements removed.
+     *  Returns a copy of `tuple` with all `dbo_name_literal<…>` elements removed.
      */
     template<class Tuple>
     constexpr auto filter_out_dbo_name(Tuple&& tuple) {
@@ -13952,7 +13952,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  the name falls back to `T`'s reflected identifier.
      */
     template<size_t N>
-    constexpr internal::dbo_name_t<N> dbo_name(const char (&dboName)[N]) {
+    constexpr internal::dbo_name_literal<N> dbo_name(const char (&dboName)[N]) {
         return {dboName};
     }
 }
