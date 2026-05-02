@@ -6,32 +6,34 @@
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 using namespace sqlite_orm;
 
-struct[[= dbo_name("user_view")]] UserViewTests {
-    int id = 0;
-    std::string name;
+namespace {
+    struct[[= dbo_name("user_view")]] UserViewTests {
+        int id = 0;
+        std::string name;
 
 #ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
-    bool operator==(const UserViewTests&) const = default;
+        bool operator==(const UserViewTests&) const = default;
 #else
-    bool operator==(const UserViewTests& right) const {
-        return id == right.id && name == right.name;
-    }
+        bool operator==(const UserViewTests& right) const {
+            return id == right.id && name == right.name;
+        }
 #endif
-};
+    };
 
-struct[[= dbo_name("user_view")]] UserView2Tests {
-    std::string name;
+    struct[[= dbo_name("user_view")]] UserView2Tests {
+        std::string name;
 
 #ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
-    bool operator==(const UserView2Tests&) const = default;
+        bool operator==(const UserView2Tests&) const = default;
 #else
-    bool operator==(const UserView2Tests& right) const {
-        return name == right.name;
-    }
+        bool operator==(const UserView2Tests& right) const {
+            return name == right.name;
+        }
 #endif
-};
+    };
+}
 
-TEST_CASE("sql view") {
+TEST_CASE("view") {
     using Catch::Matchers::UnorderedEquals;
 
     struct User {
@@ -90,7 +92,7 @@ TEST_CASE("sql view") {
     }
 }
 
-TEST_CASE("sync sql view") {
+TEST_CASE("view sync") {
     struct User {
         int id = 0;
         std::string name;

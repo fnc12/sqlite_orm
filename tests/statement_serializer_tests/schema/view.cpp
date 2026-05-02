@@ -6,12 +6,14 @@
 using namespace sqlite_orm;
 using internal::serialize;
 
-struct[[= dbo_name("user_view")]] UserViewSerializerTests {
-    int id = 0;
-    std::string name;
-};
+namespace {
+    struct[[= dbo_name("user_view")]] UserViewSerializerTests {
+        int id = 0;
+        std::string name;
+    };
+}
 
-TEST_CASE("statement_serializer query_view") {
+TEST_CASE("view statement_serializer") {
     struct User {
         int id = 0;
         std::string name;

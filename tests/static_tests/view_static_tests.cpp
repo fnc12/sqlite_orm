@@ -7,13 +7,15 @@ using namespace sqlite_orm;
 using internal::col_index_sequence_of, internal::col_index_sequence_with_field_type;
 using internal::is_column;
 
-struct[[= dbo_name("user_view")]] UserViewStaticTests {
-    int id = 0;
-    std::string name;
-};
+namespace {
+    struct[[= dbo_name("user_view")]] UserViewStaticTests {
+        int id = 0;
+        std::string name;
+    };
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-constexpr orm_table_reference auto user_view = c<UserViewStaticTests>();
+    constexpr orm_table_reference auto user_view = c<UserViewStaticTests>();
 #endif
+}
 
 TEST_CASE("view static count_of<is_column>()") {
     struct User {
@@ -23,6 +25,15 @@ TEST_CASE("view static count_of<is_column>()") {
 
     SECTION("traditional") {
         auto view = make_view<UserViewStaticTests>(select(asterisk<User>()));
+        using elements_type = decltype(view.elements);
+        STATIC_REQUIRE(view.count_of<is_column>() == 2);
+        STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 2);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int>::size() == 1);
+    }
+    SECTION("derived") {
+        struct DerivedUserView : UserViewStaticTests {};
+
+        auto view = make_view<DerivedUserView>(select(asterisk<User>()));
         using elements_type = decltype(view.elements);
         STATIC_REQUIRE(view.count_of<is_column>() == 2);
         STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 2);

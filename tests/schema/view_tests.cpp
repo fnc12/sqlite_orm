@@ -17,7 +17,7 @@ namespace {
     };
 }
 
-TEST_CASE("make_view - name resolution") {
+TEST_CASE("view make_view name resolution") {
     struct User {
         int64 id = 0;
         std::string name;
@@ -40,13 +40,26 @@ TEST_CASE("view::find_column_name") {
         std::string name;
     };
 
-    auto view = make_view<UserViewSchemaTests>(select(asterisk<User>()));
+    SECTION("direct") {
+        auto view = make_view<UserViewSchemaTests>(select(asterisk<User>()));
 
-    SECTION("fields") {
-        REQUIRE((view.find_column_name(&UserViewSchemaTests::id) &&
-                 *view.find_column_name(&UserViewSchemaTests::id) == "id"));
-        REQUIRE((view.find_column_name(&UserViewSchemaTests::name) &&
-                 *view.find_column_name(&UserViewSchemaTests::name) == "name"));
+        SECTION("fields") {
+            REQUIRE((view.find_column_name(&UserViewSchemaTests::id) &&
+                     *view.find_column_name(&UserViewSchemaTests::id) == "id"));
+            REQUIRE((view.find_column_name(&UserViewSchemaTests::name) &&
+                     *view.find_column_name(&UserViewSchemaTests::name) == "name"));
+        }
+    }
+    SECTION("derived") {
+        struct DerivedUserView : UserViewSchemaTests {};
+        auto view = make_view<DerivedUserView>(select(asterisk<User>()));
+
+        SECTION("fields") {
+            REQUIRE((view.find_column_name(&UserViewSchemaTests::id) &&
+                     *view.find_column_name(&UserViewSchemaTests::id) == "id"));
+            REQUIRE((view.find_column_name(&UserViewSchemaTests::name) &&
+                     *view.find_column_name(&UserViewSchemaTests::name) == "name"));
+        }
     }
 }
 #endif
