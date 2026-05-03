@@ -221,6 +221,10 @@ using std::nullptr_t;
 #define SQLITE_ORM_BROKEN_NONTEMPLATE_CONCEPTS
 #endif
 
+#if defined(__clang__) && (__clang_major__ <= 15)
+#define SQLITE_ORM_BROKEN_CPP20_VIEWS
+#endif
+
 // #include "platform_definitions.h"
 
 #if defined(_WIN32)
@@ -311,6 +315,10 @@ using std::nullptr_t;
 
 #if __cpp_lib_ranges >= 201911L
 #define SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#endif
+
+#if __cpp_lib_ranges >= 202110L && !defined(SQLITE_ORM_BROKEN_CPP20_VIEWS)
+#define SQLITE_ORM_CPP20_VIEWS_SUPPORTED
 #endif
 
 #if __cpp_lib_generator >= 202207L
@@ -23853,7 +23861,7 @@ namespace sqlite_orm::internal {
                                                         const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
             ss << "SET ";
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_VIEWS_SUPPORTED
             ss << streaming_serialized(statement | std::views::transform(&dynamic_set_entry::serialized_value));
 #else
             int index = 0;

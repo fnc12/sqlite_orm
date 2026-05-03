@@ -91,6 +91,7 @@ jobs:
   # ===================
   linux:
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.experimental || false }}
     strategy:
       fail-fast: false
       matrix:
@@ -110,6 +111,24 @@ jobs:
             cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
             install_compiler: true
             compiler_package: g++-10
+
+          - name: "clang-14, C++23 (early)"
+            os: ubuntu-22.04
+            cc: clang-14
+            cxx: clang++-14
+            cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_23=ON"
+            install_compiler: true
+            compiler_package: clang-14
+            experimental: true
+
+          - name: "gcc-11, C++23 (early)"
+            os: ubuntu-22.04
+            cc: gcc-11
+            cxx: g++-11
+            cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_23=ON"
+            install_compiler: true
+            compiler_package: g++-11
+            experimental: true
 
           - name: "gcc-16, C++26"
             os: ubuntu-24.04

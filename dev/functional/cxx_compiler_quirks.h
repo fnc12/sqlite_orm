@@ -72,3 +72,7 @@
 #if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && (defined(__clang__) && (__clang_major__ == 10))
 #define SQLITE_ORM_BROKEN_NONTEMPLATE_CONCEPTS
 #endif
+
+#if defined(__clang__) && (__clang_major__ <= 15)
+#define SQLITE_ORM_BROKEN_CPP20_VIEWS
+#endif
