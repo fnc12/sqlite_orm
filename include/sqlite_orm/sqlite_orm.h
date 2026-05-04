@@ -221,6 +221,10 @@ using std::nullptr_t;
 #define SQLITE_ORM_BROKEN_NONTEMPLATE_CONCEPTS
 #endif
 
+#if defined(__clang__) && (__clang_major__ <= 15)
+#define SQLITE_ORM_BROKEN_CPP20_VIEWS
+#endif
+
 // #include "platform_definitions.h"
 
 #if defined(_WIN32)
@@ -311,6 +315,10 @@ using std::nullptr_t;
 
 #if __cpp_lib_ranges >= 201911L
 #define SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#endif
+
+#if __cpp_lib_ranges >= 202110L && !defined(SQLITE_ORM_BROKEN_CPP20_VIEWS)
+#define SQLITE_ORM_CPP20_VIEWS_SUPPORTED
 #endif
 
 #if __cpp_lib_generator >= 202207L
@@ -13195,7 +13203,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 #include <array>  //  std::array
-#include <meta>  //  std::meta::access_context, std::meta::nonstatic_data_members_of, std::meta::identifier_of, std::meta::annotations_of
+#include <meta>  //  std::define_static_array, std::meta::access_context, std::meta::nonstatic_data_members_of, std::meta::identifier_of, std::meta::annotations_of
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::index_sequence, std::make_index_sequence
 #endif
@@ -13204,17 +13212,29 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 namespace sqlite_orm::internal {
     /**
-     *  Reflects the non-static data members of `T` and returns them as a fixed-size array
-     *  of `std::meta::info` reflections.
+     *  Reflects the non-static data members of `T` and its base classes
+     *  and returns them as a fixed-size span of `std::meta::info` reflections.
      */
     template<class T>
     consteval auto extract_members() {
         constexpr auto ctx = std::meta::access_context::current();
-        constexpr size_t N = nonstatic_data_members_of(^^T, ctx).size();
 
-        return [&ctx]<size_t... I>(std::index_sequence<I...>) consteval {
-            return std::array<std::meta::info, N>{nonstatic_data_members_of(^^T, ctx)[I]...};
-        }(std::make_index_sequence<N>{});
+        constexpr auto collect = []<class U>(this const auto& self) -> std::vector<std::meta::info> {
+            std::vector<std::meta::info> result;
+
+            // Recurse into direct base classes first (preserves layout order)
+            template for (constexpr std::meta::info base: std::define_static_array(bases_of(^^U, ctx))) {
+                using base_type = typename[:type_of(base):];
+                result.append_range(self.template operator()<base_type>());
+            }
+
+            // Then this class's own non-static data members
+            result.append_range(nonstatic_data_members_of(^^U, ctx));
+
+            return result;
+        };
+
+        return std::define_static_array(collect.template operator()<T>());
     }
 
     /**
@@ -13722,8 +13742,8 @@ namespace sqlite_orm::internal {
      *  has no linkage), so a self-contained fixed-size byte array is required.
      */
     template<size_t N>
-    struct dbo_name_t : cstring_literal<N> {
-        constexpr dbo_name_t(const char (&cstr)[N]) : cstring_literal<N>{cstr} {}
+    struct dbo_name_literal : cstring_literal<N> {
+        constexpr dbo_name_literal(const char (&cstr)[N]) : cstring_literal<N>{cstr} {}
 
         constexpr auto name() const noexcept {
             return this->cstr;
@@ -13734,13 +13754,13 @@ namespace sqlite_orm::internal {
     constexpr bool is_dbo_name_v = false;
 
     template<size_t N>
-    constexpr bool is_dbo_name_v<dbo_name_t<N>> = true;
+    constexpr bool is_dbo_name_v<dbo_name_literal<N>> = true;
 
     template<class T>
     using is_dbo_name = std::bool_constant<is_dbo_name_v<T>>;
 
     /**
-     *  Returns the database object name carried by the `dbo_name_t<…>` element of `annotations`,
+     *  Returns the database object name carried by the `dbo_name_literal<…>` element of `annotations`,
      *  or the type's reflected identifier when no such element is present.
      */
     template<class T, class Tuple>
@@ -13755,7 +13775,7 @@ namespace sqlite_orm::internal {
     }
 
     /**
-     *  Returns a copy of `tuple` with all `dbo_name_t<…>` elements removed.
+     *  Returns a copy of `tuple` with all `dbo_name_literal<…>` elements removed.
      */
     template<class Tuple>
     constexpr auto filter_out_dbo_name(Tuple&& tuple) {
@@ -13772,7 +13792,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  the name falls back to `T`'s reflected identifier.
      */
     template<size_t N>
-    constexpr internal::dbo_name_t<N> dbo_name(const char (&dboName)[N]) {
+    constexpr internal::dbo_name_literal<N> dbo_name(const char (&dboName)[N]) {
         return {dboName};
     }
 }
@@ -19998,9 +20018,9 @@ namespace sqlite_orm::internal {
          *  Calls `DROP VIEW "viewName"`.
          *  More info: https://www.sqlite.org/lang_droptable.html
          */
-        void drop_view(const std::string& tableName) {
+        void drop_view(const std::string& viewName) {
             auto connection = this->get_connection();
-            this->drop_view_internal(connection.get(), tableName, false);
+            this->drop_view_internal(connection.get(), viewName, false);
         }
 
         /**
@@ -20008,9 +20028,9 @@ namespace sqlite_orm::internal {
          *  Calls `DROP VIEW IF EXISTS "viewName"`.
          *  More info: https://www.sqlite.org/lang_droptable.html
          */
-        void drop_view_if_exists(const std::string& tableName) {
+        void drop_view_if_exists(const std::string& viewName) {
             auto connection = this->get_connection();
-            this->drop_view_internal(connection.get(), tableName, true);
+            this->drop_view_internal(connection.get(), viewName, true);
         }
 
         /**
@@ -20049,58 +20069,24 @@ namespace sqlite_orm::internal {
          */
         bool table_exists(const std::string& tableName) {
             auto connection = this->get_connection();
-            return this->table_exists(connection.get(), tableName);
+            return this->object_exists(connection.get(), "table", tableName);
         }
 
         bool table_exists(sqlite3* db, const std::string& tableName) const {
-            bool result = false;
-            std::string sql;
-            {
-                std::stringstream ss;
-                ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal("table")
-                   << " AND name = " << quote_string_literal(tableName) << std::flush;
-                sql = ss.str();
-            }
-            this->executor.perform_exec(
-                db,
-                sql,
-                [](void* userData, int /*argc*/, orm_gsl::zstring* argv, orm_gsl::zstring* /*azColName*/) -> int {
-                    auto& res = *(bool*)userData;
-                    res = !!atoi(argv[0]);
-                    return 0;
-                },
-                &result);
-            return result;
+            return this->object_exists(db, "table", tableName);
         }
 
         /**
          *  Directly checks the actual database whether the specified view exists, bypassing the library's 'storage' mapping.
          *  @return true if view with the specified name exists in the database, false otherwise.
          */
-        bool view_exists(const std::string& tableName) {
+        bool view_exists(const std::string& viewName) {
             auto connection = this->get_connection();
-            return this->view_exists(connection.get(), tableName);
+            return this->object_exists(connection.get(), "view", viewName);
         }
 
-        bool view_exists(sqlite3* db, const std::string& tableName) const {
-            bool result = false;
-            std::string sql;
-            {
-                std::stringstream ss;
-                ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal("view")
-                   << " AND name = " << quote_string_literal(tableName) << std::flush;
-                sql = ss.str();
-            }
-            this->executor.perform_exec(
-                db,
-                sql,
-                [](void* userData, int /*argc*/, orm_gsl::zstring* argv, orm_gsl::zstring* /*azColName*/) -> int {
-                    auto& res = *(bool*)userData;
-                    res = !!atoi(argv[0]);
-                    return 0;
-                },
-                &result);
-            return result;
+        bool view_exists(sqlite3* db, const std::string& viewName) const {
+            return this->object_exists(db, "view", viewName);
         }
 
         void add_generated_cols(std::vector<const table_xinfo*>& columnsToAdd,
@@ -20988,6 +20974,23 @@ namespace sqlite_orm::internal {
             }
             ss << ' ' << quote_identifier(triggerName) << std::flush;
             this->executor.perform_void_exec(db, ss.str().c_str());
+        }
+
+        bool object_exists(sqlite3* db, const std::string& type, const std::string& name) const {
+            bool result = false;
+            std::stringstream ss;
+            ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal(type)
+               << " AND name = " << quote_string_literal(name) << std::flush;
+            this->executor.perform_exec(
+                db,
+                ss.str(),
+                [](void* userData, int /*argc*/, orm_gsl::zstring* argv, orm_gsl::zstring* /*azColName*/) -> int {
+                    auto& res = *(bool*)userData;
+                    res = !!atoi(argv[0]);
+                    return 0;
+                },
+                &result);
+            return result;
         }
 
         std::string retrieve_object_sql(sqlite3* db, const std::string& type, const std::string& name) const {
@@ -23939,7 +23942,7 @@ namespace sqlite_orm::internal {
                                                         const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
             ss << "SET ";
-#ifdef SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#ifdef SQLITE_ORM_CPP20_VIEWS_SUPPORTED
             ss << streaming_serialized(statement | std::views::transform(&dynamic_set_entry::serialized_value));
 #else
             int index = 0;
