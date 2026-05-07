@@ -548,9 +548,10 @@ namespace sqlite_orm::internal {
     template<class Tuple, class Ctx>
     void serialize_over_arguments(std::stringstream& ss, const Tuple& arguments, const Ctx& context) {
         using args_tuple = std::decay_t<Tuple>;
-        constexpr bool is_named_ref = std::tuple_size<args_tuple>::value == 1 &&
-                                      std::is_same<std::tuple_element_t<0, args_tuple>, window_ref_t>::value;
-        if constexpr (is_named_ref) {
+        if constexpr (std::tuple_size_v<args_tuple> == 0) {
+            ss << " OVER ()";
+        } else if constexpr (std::tuple_size_v<args_tuple> == 1 &&
+                             std::is_same_v<std::tuple_element_t<0, args_tuple>, window_ref_t>) {
             ss << " OVER " << std::get<0>(arguments).name;
         } else {
             ss << " OVER (";
