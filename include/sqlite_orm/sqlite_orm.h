@@ -22196,10 +22196,10 @@ namespace sqlite_orm::internal {
 
     template<class Tuple, class Ctx>
     void serialize_over_arguments(std::stringstream& ss, const Tuple& arguments, const Ctx& context) {
-        if constexpr (std::tuple_size_v<Tuple> == 0) {
+        if constexpr (std::tuple_size<Tuple>::value == 0) {
             ss << " OVER ()";
-        } else if constexpr (std::tuple_size_v<Tuple> == 1 &&
-                             std::is_same_v<std::tuple_element_t<0, Tuple>, window_ref_t>) {
+        } else if constexpr (std::tuple_size<Tuple>::value == 1 &&
+                             std::is_same<typename std::tuple_element<0, Tuple>::type, window_ref_t>::value) {
             ss << " OVER " << std::get<0>(arguments).name;
         } else {
             ss << " OVER (" << streaming_actions_tuple(arguments, context) << ")";
