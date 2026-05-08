@@ -534,32 +534,15 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<>
-    struct statement_serializer<window_ref_t, void> {
-        using statement_type = window_ref_t;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx&) SQLITE_ORM_OR_CONST_CALLOP {
-            return statement.name;
-        }
-    };
-
     template<class Tuple, class Ctx>
     void serialize_over_arguments(std::stringstream& ss, const Tuple& arguments, const Ctx& context) {
-        using args_tuple = std::decay_t<Tuple>;
-        constexpr bool is_named_ref = std::tuple_size<args_tuple>::value == 1 &&
-                                      std::is_same<std::tuple_element_t<0, args_tuple>, window_ref_t>::value;
-        if constexpr (is_named_ref) {
+        if constexpr (std::tuple_size<Tuple>::value == 0) {
+            ss << " OVER ()";
+        } else if constexpr (std::tuple_size<Tuple>::value == 1 &&
+                             std::is_same<typename std::tuple_element<0, Tuple>::type, window_ref_t>::value) {
             ss << " OVER " << std::get<0>(arguments).name;
         } else {
-            ss << " OVER (";
-            std::string separator;
-            iterate_tuple(arguments, [&ss, &context, &separator](auto& arg) {
-                ss << separator << serialize(arg, context);
-                separator = " ";
-            });
-            ss << ")";
+            ss << " OVER (" << streaming_actions_tuple(arguments, context) << ")";
         }
     }
 
@@ -599,13 +582,8 @@ namespace sqlite_orm::internal {
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
-            ss << "WINDOW " << statement.name << " AS (";
-            std::string separator;
-            iterate_tuple(statement.arguments, [&ss, &context, &separator](auto& arg) {
-                ss << separator << serialize(arg, context);
-                separator = " ";
-            });
-            ss << ")";
+            ss << "WINDOW " << statement.name << " AS (" << streaming_actions_tuple(statement.arguments, context)
+               << ")";
             return ss.str();
         }
     };
