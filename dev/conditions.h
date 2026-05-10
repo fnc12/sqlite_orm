@@ -1021,8 +1021,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  [Deprecation notice] This expression factory function is deprecated and will be removed in v1.11.
      */
     [[deprecated("Use the hidden FTS5 rank column instead")]]
-    inline internal::order_by_t<internal::rank_t> order_by(internal::rank_t o) {
-        return {std::move(o)};
+    inline internal::order_by_t<internal::rank_t> order_by(internal::rank_t expression) {
+        return {std::move(expression)};
     }
 
     /**

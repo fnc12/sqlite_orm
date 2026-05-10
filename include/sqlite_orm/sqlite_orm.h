@@ -6519,8 +6519,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  [Deprecation notice] This expression factory function is deprecated and will be removed in v1.11.
      */
     [[deprecated("Use the hidden FTS5 rank column instead")]]
-    inline internal::order_by_t<internal::rank_t> order_by(internal::rank_t o) {
-        return {std::move(o)};
+    inline internal::order_by_t<internal::rank_t> order_by(internal::rank_t expression) {
+        return {std::move(expression)};
     }
 
     /**
@@ -20089,27 +20089,27 @@ namespace sqlite_orm::internal {
 #endif
 
         /**
-         *  Returns the names of existing permanent view in the database. Doesn't check storage itself - works only with
+         *  Returns the names of existing permanent views in the database. Doesn't check storage itself - works only with
          *  actual database.
-         *  @return Returns list of tables in database.
+         *  @return Returns a list of views in the database.
          */
         std::vector<std::string> view_names() {
             return this->object_names("view");
         }
 
         /**
-         *  Returns existing permanent table names in database. Doesn't check storage itself - works only with
+         *  Returns the names of existing permanent tables in the database. Doesn't check storage itself - works only with
          *  actual database.
-         *  @return Returns list of tables in database.
+         *  @return Returns a list of tables in the database.
          */
         std::vector<std::string> table_names() {
             return this->object_names("table");
         }
 
         /**
-         *  Returns existing permanent trigger names in database. Doesn't check storage itself - works only with
+         *  Returns the names of existing permanent triggers in the database. Doesn't check storage itself - works only with
          *  actual database.
-         *  @return Returns list of triggers in database.
+         *  @return Returns a list of triggers in the database.
          */
         std::vector<std::string> trigger_names() {
             return this->object_names("trigger");

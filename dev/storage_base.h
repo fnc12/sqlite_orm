@@ -311,27 +311,27 @@ namespace sqlite_orm::internal {
 #endif
 
         /**
-         *  Returns the names of existing permanent view in the database. Doesn't check storage itself - works only with
+         *  Returns the names of existing permanent views in the database. Doesn't check storage itself - works only with
          *  actual database.
-         *  @return Returns list of tables in database.
+         *  @return Returns a list of views in the database.
          */
         std::vector<std::string> view_names() {
             return this->object_names("view");
         }
 
         /**
-         *  Returns existing permanent table names in database. Doesn't check storage itself - works only with
+         *  Returns the names of existing permanent tables in the database. Doesn't check storage itself - works only with
          *  actual database.
-         *  @return Returns list of tables in database.
+         *  @return Returns a list of tables in the database.
          */
         std::vector<std::string> table_names() {
             return this->object_names("table");
         }
 
         /**
-         *  Returns existing permanent trigger names in database. Doesn't check storage itself - works only with
+         *  Returns the names of existing permanent triggers in the database. Doesn't check storage itself - works only with
          *  actual database.
-         *  @return Returns list of triggers in database.
+         *  @return Returns a list of triggers in the database.
          */
         std::vector<std::string> trigger_names() {
             return this->object_names("trigger");
