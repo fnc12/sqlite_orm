@@ -1,7 +1,4 @@
 include(CMakeFindDependencyMacro)
 find_dependency(SQLite3)
-if(NOT TARGET SQLite3::SQLite3) # CMake < 4.3
-    add_library(SQLite3::SQLite3 ALIAS SQLite::SQLite3)
-endif()
 
 include(${CMAKE_CURRENT_LIST_DIR}/SqliteOrmTargets.cmake)
