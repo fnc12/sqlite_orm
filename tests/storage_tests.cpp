@@ -271,7 +271,7 @@ namespace {
     constexpr char usersViewName[] = "users_view";
 
     struct[[= dbo_name(usersViewName)]] UserViewDropViewTests {
-        int id = 0;
+        int64 id = 0;
         std::string name;
     };
 }

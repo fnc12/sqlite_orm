@@ -8,9 +8,12 @@ using internal::col_index_sequence_of, internal::col_index_sequence_with_field_t
 using internal::is_column;
 
 namespace {
-    struct[[= dbo_name("user_view")]] UserViewStaticTests {
-        int id = 0;
+    struct[[= "user_view"_dbo_name]] UserViewStaticTests {
+        int64 id = 0;
         std::string name;
+
+      private:
+        std::string _privateDummy;
     };
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     constexpr orm_table_reference auto user_view = c<UserViewStaticTests>();
@@ -19,7 +22,7 @@ namespace {
 
 TEST_CASE("view static count_of<is_column>()") {
     struct User {
-        int id = 0;
+        int64 id = 0;
         std::string name;
     };
 
@@ -28,7 +31,7 @@ TEST_CASE("view static count_of<is_column>()") {
         using elements_type = decltype(view.elements);
         STATIC_REQUIRE(view.count_of<is_column>() == 2);
         STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 2);
-        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int>::size() == 1);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int64>::size() == 1);
     }
     SECTION("derived") {
         struct DerivedUserView : UserViewStaticTests {};
@@ -37,7 +40,7 @@ TEST_CASE("view static count_of<is_column>()") {
         using elements_type = decltype(view.elements);
         STATIC_REQUIRE(view.count_of<is_column>() == 2);
         STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 2);
-        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int>::size() == 1);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int64>::size() == 1);
     }
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     SECTION("table reference") {
@@ -45,7 +48,7 @@ TEST_CASE("view static count_of<is_column>()") {
         using elements_type = decltype(view.elements);
         STATIC_REQUIRE(view.count_of<is_column>() == 2);
         STATIC_REQUIRE(col_index_sequence_of<elements_type>::size() == 2);
-        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int>::size() == 1);
+        STATIC_REQUIRE(col_index_sequence_with_field_type<elements_type, int64>::size() == 1);
     }
 #endif
 }

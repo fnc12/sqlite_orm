@@ -7,7 +7,7 @@ using namespace sqlite_orm;
 using internal::serialize;
 
 namespace {
-    struct[[= dbo_name("user_view")]] UserViewSerializerTests {
+    struct[[= "user_view"_dbo_name]] UserViewSerializerTests {
         int id = 0;
         std::string name;
     };

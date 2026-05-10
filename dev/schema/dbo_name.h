@@ -70,14 +70,27 @@ namespace sqlite_orm::internal {
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
+    inline namespace literals {
+        /**
+         *  Database object name annotation factory.
+         *  Use as a class-scope annotation:
+         *  `struct [[="users"_dbo_name]] User { ... };`
+         *  `struct [[= sqlite_orm::operator""_dbo_name<"users">()]] User { ... };`
+         *  `make_view<T>()` consumes this annotation.
+         */
+        template<internal::dbo_name_literal dboName>
+        [[nodiscard]] consteval auto operator""_dbo_name() {
+            return dboName;
+        }
+    }
+
     /**
      *  Database object name annotation factory.
      *  Use as a class-scope annotation: `struct [[=dbo_name("users")]] User { ... };`.
-     *  Both `make_table<T>()` and `make_view<T>()` consume this annotation; when absent
-     *  the name falls back to `T`'s reflected identifier.
+     *  `make_view<T>()` consumes this annotation.
      */
     template<size_t N>
-    constexpr internal::dbo_name_literal<N> dbo_name(const char (&dboName)[N]) {
+    consteval internal::dbo_name_literal<N> dbo_name(const char (&dboName)[N]) {
         return {dboName};
     }
 }
