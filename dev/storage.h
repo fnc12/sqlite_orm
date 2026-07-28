@@ -198,7 +198,7 @@ namespace sqlite_orm::internal {
         template<class Table>
         void drop_create_with_loss(sqlite3* db, const Table& table) {
             // eliminated all transaction handling
-            this->drop_table_internal(db, table.name, false);
+            this->drop_dbo_internal(db, "TABLE", table.name, false);
             this->create_table(db, table.name, table);
         }
 
@@ -208,13 +208,13 @@ namespace sqlite_orm::internal {
             //  here we copy source table to another with a name with '_backup' suffix, but in case table with such
             //  a name already exists we append suffix 1, then 2, etc until we find a free name..
             auto backupTableName = table.name + "_backup";
-            if (this->table_exists_internal(db, backupTableName)) {
+            if (this->object_exists(db, "table", backupTableName)) {
                 int suffix = 1;
                 do {
                     std::stringstream ss;
                     ss << suffix << std::flush;
                     auto anotherBackupTableName = backupTableName + ss.str();
-                    if (!this->table_exists_internal(db, anotherBackupTableName)) {
+                    if (!this->object_exists(db, "table", anotherBackupTableName)) {
                         backupTableName = std::move(anotherBackupTableName);
                         break;
                     }
@@ -225,7 +225,7 @@ namespace sqlite_orm::internal {
 
             this->copy_table(db, table.name, backupTableName, table, columnsToIgnore);
 
-            this->drop_table_internal(db, table.name, false);
+            this->drop_dbo_internal(db, "TABLE", table.name, false);
 
             this->rename_table_internal(db, backupTableName, table.name);
         }
@@ -1196,7 +1196,7 @@ namespace sqlite_orm::internal {
             bool canPreserveData = true;
 
             //  first let's see if table with such name exists..
-            auto gottaCreateTable = !this->table_exists_internal(db, table.name);
+            auto gottaCreateTable = !this->object_exists(db, "table", table.name);
             if (!gottaCreateTable) {
 
                 //  get table info provided in `make_table` call..
@@ -1315,7 +1315,7 @@ namespace sqlite_orm::internal {
             auto res = this->schema_status(trigger, db, preserve, nullptr);
             if (res != sync_schema_result::already_in_sync) {
                 if (res == sync_schema_result::dropped_and_recreated) {
-                    this->drop_trigger_internal(db, trigger.name, true);
+                    this->drop_dbo_internal(db, "TRIGGER", trigger.name, true);
                 }
                 const serializer_context<db_objects_type> context{this->db_objects};
                 const auto sql = serialize(trigger, context);
@@ -1330,7 +1330,7 @@ namespace sqlite_orm::internal {
             auto res = this->schema_status(queryView, db, preserve, nullptr);
             if (res != sync_schema_result::already_in_sync) {
                 if (res == sync_schema_result::dropped_and_recreated) {
-                    this->drop_view_internal(db, queryView.name, true);
+                    this->drop_dbo_internal(db, "VIEW", queryView.name, true);
                 }
 
                 const auto& exprDBOs = db_objects_for_expression(this->db_objects, queryView.select);

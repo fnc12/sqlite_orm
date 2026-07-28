@@ -19928,7 +19928,7 @@ namespace sqlite_orm::internal {
          */
         void drop_index(const std::string& indexName) {
             auto connection = this->get_connection();
-            this->drop_index_internal(connection.get(), indexName, false);
+            this->drop_dbo_internal(connection.get(), "INDEX", indexName, false);
         }
 
         /**
@@ -19938,7 +19938,7 @@ namespace sqlite_orm::internal {
          */
         void drop_index_if_exists(const std::string& indexName) {
             auto connection = this->get_connection();
-            this->drop_index_internal(connection.get(), indexName, true);
+            this->drop_dbo_internal(connection.get(), "INDEX", indexName, true);
         }
 
         /**
@@ -19948,7 +19948,7 @@ namespace sqlite_orm::internal {
          */
         void drop_trigger(const std::string& triggerName) {
             auto connection = this->get_connection();
-            this->drop_trigger_internal(connection.get(), triggerName, false);
+            this->drop_dbo_internal(connection.get(), "TRIGGER", triggerName, false);
         }
 
         /**
@@ -19958,7 +19958,7 @@ namespace sqlite_orm::internal {
          */
         void drop_trigger_if_exists(const std::string& triggerName) {
             auto connection = this->get_connection();
-            this->drop_trigger_internal(connection.get(), triggerName, true);
+            this->drop_dbo_internal(connection.get(), "TRIGGER", triggerName, true);
         }
 
         /**
@@ -19968,7 +19968,7 @@ namespace sqlite_orm::internal {
          */
         void drop_table(const std::string& tableName) {
             auto connection = this->get_connection();
-            this->drop_table_internal(connection.get(), tableName, false);
+            this->drop_dbo_internal(connection.get(), "TABLE", tableName, false);
         }
 
         /**
@@ -19978,7 +19978,7 @@ namespace sqlite_orm::internal {
          */
         void drop_table_if_exists(const std::string& tableName) {
             auto connection = this->get_connection();
-            this->drop_table_internal(connection.get(), tableName, true);
+            this->drop_dbo_internal(connection.get(), "TABLE", tableName, true);
         }
 
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
@@ -19989,7 +19989,7 @@ namespace sqlite_orm::internal {
          */
         void drop_view(std::string_view viewName) {
             auto connection = this->get_connection();
-            this->drop_view_internal(connection.get(), viewName, false);
+            this->drop_dbo_internal(connection.get(), "VIEW", viewName, false);
         }
 
         /**
@@ -19999,7 +19999,7 @@ namespace sqlite_orm::internal {
          */
         void drop_view_if_exists(std::string_view viewName) {
             auto connection = this->get_connection();
-            this->drop_view_internal(connection.get(), viewName, true);
+            this->drop_dbo_internal(connection.get(), "VIEW", viewName, true);
         }
 #endif
 
@@ -20027,7 +20027,7 @@ namespace sqlite_orm::internal {
          */
         bool table_exists(const std::string& tableName) {
             auto connection = this->get_connection();
-            return this->table_exists_internal(connection.get(), tableName);
+            return this->object_exists(connection.get(), "table", tableName);
         }
 
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
@@ -20037,7 +20037,7 @@ namespace sqlite_orm::internal {
          */
         bool view_exists(std::string_view viewName) {
             auto connection = this->get_connection();
-            return this->view_exists_internal(connection.get(), viewName);
+            return this->object_exists(connection.get(), "view", viewName);
         }
 #endif
 
@@ -20052,16 +20052,6 @@ namespace sqlite_orm::internal {
             }
             this->executor.perform_void_exec(db, sql.c_str());
         }
-
-        bool table_exists_internal(sqlite3* db, const std::string& tableName) const {
-            return this->object_exists(db, "table", tableName);
-        }
-
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-        bool view_exists_internal(sqlite3* db, const std::string_view& viewName) const {
-            return this->object_exists(db, "view", viewName);
-        }
-#endif
 
         void add_generated_cols(std::vector<const table_xinfo*>& columnsToAdd,
                                 const std::vector<table_xinfo>& storageTableInfo) {
@@ -20892,51 +20882,21 @@ namespace sqlite_orm::internal {
             return result;
         }
 
-        void drop_table_internal(sqlite3* db, serialize_arg_type tableName, bool ifExists) {
+        void drop_dbo_internal(sqlite3* db, orm_gsl::czstring dboKeyword, serialize_arg_type dboName, bool ifExists) {
             std::stringstream ss;
-            ss << "DROP TABLE";
+            ss << "DROP " << dboKeyword;
             if (ifExists) {
                 ss << " IF EXISTS";
             }
-            ss << ' ' << streaming_identifier(tableName) << std::flush;
+            ss << ' ' << streaming_identifier(dboName) << std::flush;
             this->executor.perform_void_exec(db, ss.str().c_str());
         }
 
-        void drop_view_internal(sqlite3* db, serialize_arg_type viewName, bool ifExists) {
-            std::stringstream ss;
-            ss << "DROP VIEW";
-            if (ifExists) {
-                ss << " IF EXISTS";
-            }
-            ss << ' ' << streaming_identifier(viewName) << std::flush;
-            this->executor.perform_void_exec(db, ss.str().c_str());
-        }
-
-        void drop_index_internal(sqlite3* db, serialize_arg_type indexName, bool ifExists) {
-            std::stringstream ss;
-            ss << "DROP INDEX";
-            if (ifExists) {
-                ss << " IF EXISTS";
-            }
-            ss << ' ' << streaming_identifier(indexName) << std::flush;
-            this->executor.perform_void_exec(db, ss.str().c_str());
-        }
-
-        void drop_trigger_internal(sqlite3* db, serialize_arg_type triggerName, bool ifExists) {
-            std::stringstream ss;
-            ss << "DROP TRIGGER";
-            if (ifExists) {
-                ss << " IF EXISTS";
-            }
-            ss << ' ' << streaming_identifier(triggerName) << std::flush;
-            this->executor.perform_void_exec(db, ss.str().c_str());
-        }
-
-        bool object_exists(sqlite3* db, serialize_arg_type type, serialize_arg_type name) const {
+        bool object_exists(sqlite3* db, serialize_arg_type type, serialize_arg_type dboName) const {
             bool result = false;
             std::stringstream ss;
             ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal(std::string{type})
-               << " AND name = " << quote_string_literal(std::string{name}) << std::flush;
+               << " AND name = " << quote_string_literal(std::string{dboName}) << std::flush;
             this->executor.perform_exec(
                 db,
                 ss.str(),
@@ -20949,11 +20909,11 @@ namespace sqlite_orm::internal {
             return result;
         }
 
-        std::string retrieve_object_sql(sqlite3* db, serialize_arg_type type, const std::string& name) const {
+        std::string retrieve_object_sql(sqlite3* db, serialize_arg_type type, serialize_arg_type dboName) const {
             std::string result;
             std::stringstream ss;
             ss << "SELECT sql FROM sqlite_master WHERE type = " << quote_string_literal(std::string{type})
-               << " AND name = " << quote_string_literal(name) << std::flush;
+               << " AND name = " << quote_string_literal(std::string{dboName}) << std::flush;
             this->executor.perform_exec(
                 db,
                 ss.str(),
@@ -25627,7 +25587,7 @@ namespace sqlite_orm::internal {
         template<class Table>
         void drop_create_with_loss(sqlite3* db, const Table& table) {
             // eliminated all transaction handling
-            this->drop_table_internal(db, table.name, false);
+            this->drop_dbo_internal(db, "TABLE", table.name, false);
             this->create_table(db, table.name, table);
         }
 
@@ -25637,13 +25597,13 @@ namespace sqlite_orm::internal {
             //  here we copy source table to another with a name with '_backup' suffix, but in case table with such
             //  a name already exists we append suffix 1, then 2, etc until we find a free name..
             auto backupTableName = table.name + "_backup";
-            if (this->table_exists_internal(db, backupTableName)) {
+            if (this->object_exists(db, "table", backupTableName)) {
                 int suffix = 1;
                 do {
                     std::stringstream ss;
                     ss << suffix << std::flush;
                     auto anotherBackupTableName = backupTableName + ss.str();
-                    if (!this->table_exists_internal(db, anotherBackupTableName)) {
+                    if (!this->object_exists(db, "table", anotherBackupTableName)) {
                         backupTableName = std::move(anotherBackupTableName);
                         break;
                     }
@@ -25654,7 +25614,7 @@ namespace sqlite_orm::internal {
 
             this->copy_table(db, table.name, backupTableName, table, columnsToIgnore);
 
-            this->drop_table_internal(db, table.name, false);
+            this->drop_dbo_internal(db, "TABLE", table.name, false);
 
             this->rename_table_internal(db, backupTableName, table.name);
         }
@@ -26625,7 +26585,7 @@ namespace sqlite_orm::internal {
             bool canPreserveData = true;
 
             //  first let's see if table with such name exists..
-            auto gottaCreateTable = !this->table_exists_internal(db, table.name);
+            auto gottaCreateTable = !this->object_exists(db, "table", table.name);
             if (!gottaCreateTable) {
 
                 //  get table info provided in `make_table` call..
@@ -26744,7 +26704,7 @@ namespace sqlite_orm::internal {
             auto res = this->schema_status(trigger, db, preserve, nullptr);
             if (res != sync_schema_result::already_in_sync) {
                 if (res == sync_schema_result::dropped_and_recreated) {
-                    this->drop_trigger_internal(db, trigger.name, true);
+                    this->drop_dbo_internal(db, "TRIGGER", trigger.name, true);
                 }
                 const serializer_context<db_objects_type> context{this->db_objects};
                 const auto sql = serialize(trigger, context);
@@ -26759,7 +26719,7 @@ namespace sqlite_orm::internal {
             auto res = this->schema_status(queryView, db, preserve, nullptr);
             if (res != sync_schema_result::already_in_sync) {
                 if (res == sync_schema_result::dropped_and_recreated) {
-                    this->drop_view_internal(db, queryView.name, true);
+                    this->drop_dbo_internal(db, "VIEW", queryView.name, true);
                 }
 
                 const auto& exprDBOs = db_objects_for_expression(this->db_objects, queryView.select);
