@@ -25846,6 +25846,7 @@ namespace sqlite_orm::internal {
          */
         template<class O, class... Ids>
         void remove(Ids... ids) {
+            static_assert((internal::is_bindable_v<Ids> && ...), "Only primary key values are accepted as Ids");
             this->assert_mapped_type<O>();
             auto statement = this->prepare(sqlite_orm::remove<O>(std::forward<Ids>(ids)...));
             this->execute(statement);
@@ -25989,6 +25990,7 @@ namespace sqlite_orm::internal {
          */
         template<class O, class... Ids>
         O get(Ids... ids) {
+            static_assert((internal::is_bindable_v<Ids> && ...), "Only primary key values are accepted as Ids");
             this->assert_mapped_type<O>();
             this->assert_primary_key_type<O>();
             auto statement = this->prepare(sqlite_orm::get<O>(std::forward<Ids>(ids)...));
@@ -26008,6 +26010,7 @@ namespace sqlite_orm::internal {
          */
         template<class O, class... Ids>
         std::unique_ptr<O> get_pointer(Ids... ids) {
+            static_assert((internal::is_bindable_v<Ids> && ...), "Only primary key values are accepted as Ids");
             this->assert_mapped_type<O>();
             this->assert_primary_key_type<O>();
             auto statement = this->prepare(sqlite_orm::get_pointer<O>(std::forward<Ids>(ids)...));
@@ -26046,6 +26049,7 @@ namespace sqlite_orm::internal {
          */
         template<class O, class... Ids>
         std::optional<O> get_optional(Ids... ids) {
+            static_assert((internal::is_bindable_v<Ids> && ...), "Only primary key values are accepted as Ids");
             this->assert_mapped_type<O>();
             this->assert_primary_key_type<O>();
             auto statement = this->prepare(sqlite_orm::get_optional<O>(std::forward<Ids>(ids)...));

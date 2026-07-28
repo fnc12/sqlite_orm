@@ -56,7 +56,10 @@ add_library(sqlite_orm INTERFACE)
 add_library(sqlite_orm::sqlite_orm ALIAS sqlite_orm)
 
 find_package(SQLite3 REQUIRED)
-target_link_libraries(sqlite_orm INTERFACE SQLite::SQLite3)
+if(NOT TARGET SQLite3::SQLite3)
+    add_library(SQLite3::SQLite3 ALIAS SQLite::SQLite3)
+endif()
+target_link_libraries(sqlite_orm INTERFACE SQLite3::SQLite3)
 
 target_sources(sqlite_orm INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include/sqlite_orm/sqlite_orm.h>)
 
