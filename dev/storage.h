@@ -208,13 +208,13 @@ namespace sqlite_orm::internal {
             //  here we copy source table to another with a name with '_backup' suffix, but in case table with such
             //  a name already exists we append suffix 1, then 2, etc until we find a free name..
             auto backupTableName = table.name + "_backup";
-            if (this->table_exists(db, backupTableName)) {
+            if (this->table_exists_internal(db, backupTableName)) {
                 int suffix = 1;
                 do {
                     std::stringstream ss;
                     ss << suffix << std::flush;
                     auto anotherBackupTableName = backupTableName + ss.str();
-                    if (!this->table_exists(db, anotherBackupTableName)) {
+                    if (!this->table_exists_internal(db, anotherBackupTableName)) {
                         backupTableName = std::move(anotherBackupTableName);
                         break;
                     }
@@ -227,7 +227,7 @@ namespace sqlite_orm::internal {
 
             this->drop_table_internal(db, table.name, false);
 
-            this->rename_table(db, backupTableName, table.name);
+            this->rename_table_internal(db, backupTableName, table.name);
         }
 
         template<class O>
@@ -1170,7 +1170,7 @@ namespace sqlite_orm::internal {
 
             const auto& exprDBOs = db_objects_for_expression(this->db_objects, queryView.select);
 
-            using context_t = serializer_context<polyfill::remove_cvref_t<decltype(exprDBOs)>>;
+            using context_t = serializer_context<std::remove_cvref_t<decltype(exprDBOs)>>;
             const context_t context{exprDBOs};
             auto storageSql = serialize(queryView, context);
 
@@ -1192,7 +1192,7 @@ namespace sqlite_orm::internal {
             bool canPreserveData = true;
 
             //  first let's see if table with such name exists..
-            auto gottaCreateTable = !this->table_exists(db, table.name);
+            auto gottaCreateTable = !this->table_exists_internal(db, table.name);
             if (!gottaCreateTable) {
 
                 //  get table info provided in `make_table` call..
@@ -1463,9 +1463,6 @@ namespace sqlite_orm::internal {
             });
             return result;
         }
-
-        using storage_base::table_exists;
-        using storage_base::view_exists;
 
         template<class DML, std::enable_if_t<is_raw_dml_expression_v<DML>, bool> = true>
         prepared_statement_t<DML> prepare(DML statement) {

@@ -20,6 +20,10 @@ namespace {
 #endif
 }
 
+TEST_CASE("view static") {
+    STATIC_REQUIRE(std::is_same_v<decltype(dbo_name("user_view")), decltype("user_view"_dbo_name)>);
+}
+
 TEST_CASE("view static count_of<is_column>()") {
     struct User {
         int64 id = 0;

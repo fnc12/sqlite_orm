@@ -9,6 +9,7 @@
 #endif
 #endif
 
+#include "../functional/gsl.h"
 #include "../functional/cstring_literal.h"
 #include "../functional/meta_util.h"
 #include "../functional/mpl.h"
@@ -30,7 +31,11 @@ namespace sqlite_orm::internal {
     struct dbo_name_literal : cstring_literal<N> {
         constexpr dbo_name_literal(const char (&cstr)[N]) : cstring_literal<N>{cstr} {}
 
-        constexpr auto name() const noexcept {
+        constexpr orm_gsl::czstring name() const noexcept {
+            return this->cstr;
+        }
+
+        constexpr operator std::string_view() const noexcept {
             return this->cstr;
         }
     };
@@ -85,7 +90,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 
     /**
-     *  Database object name annotation factory.
+     *  Database object name annotation factory as a fallback to the literal operator.
      *  Use as a class-scope annotation: `struct [[=dbo_name("users")]] User { ... };`.
      *  `make_view<T>()` consumes this annotation.
      */

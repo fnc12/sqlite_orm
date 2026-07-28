@@ -11,11 +11,6 @@ namespace {
         std::string name;
     };
 
-    struct[[= dbo_name("user_view")]] UserViewSchemaTests2 {
-        int64 id = 0;
-        std::string name;
-    };
-
     struct UserViewSchemaTestsDefaultName {
         int64 id = 0;
         std::string name;
@@ -32,12 +27,6 @@ TEST_CASE("view make_view name resolution") {
         auto view = make_view<UserViewSchemaTests>(select(asterisk<User>()));
         REQUIRE(view.name == "user_view");
     }
-
-    SECTION("annotation supplies the view name 2") {
-        auto view = make_view<UserViewSchemaTests2>(select(asterisk<User>()));
-        REQUIRE(view.name == "user_view");
-    }
-
     SECTION("fallback to type identifier") {
         auto view = make_view<UserViewSchemaTestsDefaultName>(select(asterisk<User>()));
         REQUIRE(view.name == "UserViewSchemaTestsDefaultName");

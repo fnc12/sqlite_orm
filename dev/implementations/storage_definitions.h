@@ -154,6 +154,6 @@ namespace sqlite_orm::internal {
                << std::flush;
             sql = ss.str();
         }
-        this->executor.perform_void_exec(db, sql.data());
+        this->executor.perform_void_exec(db, sql.c_str());
     }
 }
