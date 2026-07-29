@@ -52,10 +52,12 @@ namespace sqlite_orm::internal {
         static /*gcc*/ constexpr auto members = extract_members<O>();
 
         auto columns = []<size_t... I>(std::index_sequence<I...>) static {
-            return std::tuple{[]<std::meta::info member>() static {
-                return sqlite_orm::make_column(std::string(std::meta::identifier_of(member)),
-                                               splice_member_pointer<member>());
-            }.template operator()<members[I]>()...};
+            return std::tuple {
+                []<std::meta::info member>() static {
+                    return sqlite_orm::make_column(std::string(std::meta::identifier_of(member)),
+                                                   splice_member_pointer<member>());
+                }.template operator()<members[I]>()...
+            };
         }(std::make_index_sequence<members.size()>{});
 
         return [&viewName, &select]<class... Cs>(std::tuple<Cs...>&& cols) {
