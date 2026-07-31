@@ -7,7 +7,7 @@
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::move, std::forward
 #include <sstream>  //  std::stringstream
-#include <iomanip>  //  std::flush
+#include <ostream>  //  std::flush
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
@@ -23,7 +23,6 @@
 #include "alias_traits.h"
 #include "expression.h"
 #include "column_pointer.h"
-#include "tags.h"
 #include "type_printer.h"
 #include "literal.h"
 #include "ast/cross_join.h"

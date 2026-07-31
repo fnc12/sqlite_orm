@@ -370,7 +370,7 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::remove_reference, std::remove_cvref, std::decay
 #include <functional>  //   std::identity
 #include <sstream>  //  std::stringstream
-#include <iomanip>  //  std::flush
+#include <ostream>  //  std::flush
 #include <map>  //  std::map
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_size, std::tuple, std::make_tuple, std::tie
@@ -1861,26 +1861,6 @@ namespace sqlite_orm::internal {
     }
 }
 
-// #include "tuple_helper/tuple_fy.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <tuple>
-#endif
-
-namespace sqlite_orm::internal {
-    template<typename T>
-    struct tuplify {
-        using type = std::tuple<T>;
-    };
-    template<typename... Ts>
-    struct tuplify<std::tuple<Ts...>> {
-        using type = std::tuple<Ts...>;
-    };
-
-    template<typename T>
-    using tuplify_t = typename tuplify<T>::type;
-}
-
 // #include "type_traits.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -3289,6 +3269,98 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
+// #include "constraints.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
+#include <system_error>  //  std::system_error
+#include <ostream>  //  std::ostream
+#include <string>  //  std::string
+#include <tuple>  //  std::tuple
+#endif
+
+// #include "functional/cxx_type_traits_polyfill.h"
+
+// #include "functional/mpl.h"
+
+// #include "tuple_helper/same_or_void.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::common_type
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#include <concepts>  //  std::same_as
+#endif
+#endif
+
+namespace sqlite_orm::internal {
+    /**
+     *  Accepts any number of arguments and evaluates a nested `type` typename as `T` if all arguments are the same, otherwise `void`.
+     */
+    template<class... Args>
+    struct same_or_void {
+        using type = void;
+    };
+
+    template<class... Args>
+    using same_or_void_t = typename same_or_void<Args...>::type;
+
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+    template<class A, std::same_as<A>... Rest>
+    struct same_or_void<A, Rest...> {
+        using type = A;
+    };
+#else
+    template<class A>
+    struct same_or_void<A> {
+        using type = A;
+    };
+
+    template<class A>
+    struct same_or_void<A, A> {
+        using type = A;
+    };
+
+    template<class A, class... Args>
+    struct same_or_void<A, A, Args...> : same_or_void<A, Args...> {};
+#endif
+
+    template<class Pack>
+    struct common_type_of;
+
+    template<template<class...> class Pack, class... Types>
+    struct common_type_of<Pack<Types...>> : std::common_type<Types...> {};
+
+    /**
+     *  Accepts a pack of types and defines a nested `type` typename to a common type if possible, otherwise nonexistent.
+     *  
+     *  @note: SFINAE friendly like `std::common_type`.
+     */
+    template<class Pack>
+    using common_type_of_t = typename common_type_of<Pack>::type;
+}
+
+// #include "tuple_helper/tuple_traits.h"
+
+// #include "tuple_helper/tuple_filter.h"
+
+// #include "type_traits.h"
+
+// #include "collate_argument.h"
+
+namespace sqlite_orm::internal {
+    enum class collate_argument {
+        binary,
+        nocase,
+        rtrim,
+    };
+}
+
+// #include "error_code.h"
+
+// #include "field_of.h"
+
+// #include "table_type_of.h"
+
 // #include "type_printer.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -3409,100 +3481,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<>
     struct type_printer<std::vector<char>, void> : blob_printer {};
 }
-
-// #include "constraints.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
-#include <system_error>  //  std::system_error
-#include <ostream>  //  std::ostream
-#include <string>  //  std::string
-#include <tuple>  //  std::tuple
-#endif
-
-// #include "functional/cxx_type_traits_polyfill.h"
-
-// #include "functional/mpl.h"
-
-// #include "tuple_helper/same_or_void.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::common_type
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-#include <concepts>  //  std::same_as
-#endif
-#endif
-
-namespace sqlite_orm::internal {
-    /**
-     *  Accepts any number of arguments and evaluates a nested `type` typename as `T` if all arguments are the same, otherwise `void`.
-     */
-    template<class... Args>
-    struct same_or_void {
-        using type = void;
-    };
-
-    template<class... Args>
-    using same_or_void_t = typename same_or_void<Args...>::type;
-
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-    template<class A, std::same_as<A>... Rest>
-    struct same_or_void<A, Rest...> {
-        using type = A;
-    };
-#else
-    template<class A>
-    struct same_or_void<A> {
-        using type = A;
-    };
-
-    template<class A>
-    struct same_or_void<A, A> {
-        using type = A;
-    };
-
-    template<class A, class... Args>
-    struct same_or_void<A, A, Args...> : same_or_void<A, Args...> {};
-#endif
-
-    template<class Pack>
-    struct common_type_of;
-
-    template<template<class...> class Pack, class... Types>
-    struct common_type_of<Pack<Types...>> : std::common_type<Types...> {};
-
-    /**
-     *  Accepts a pack of types and defines a nested `type` typename to a common type if possible, otherwise nonexistent.
-     *  
-     *  @note: SFINAE friendly like `std::common_type`.
-     */
-    template<class Pack>
-    using common_type_of_t = typename common_type_of<Pack>::type;
-}
-
-// #include "tuple_helper/tuple_traits.h"
-
-// #include "tuple_helper/tuple_filter.h"
-
-// #include "type_traits.h"
-
-// #include "collate_argument.h"
-
-namespace sqlite_orm::internal {
-    enum class collate_argument {
-        binary,
-        nocase,
-        rtrim,
-    };
-}
-
-// #include "error_code.h"
-
-// #include "field_of.h"
-
-// #include "table_type_of.h"
-
-// #include "type_printer.h"
 
 namespace sqlite_orm::internal {
     enum class conflict_clause_t {
@@ -4419,75 +4397,6 @@ namespace sqlite_orm {
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 }
 
-// #include "rowid.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <string>  //  std::string
-#endif
-
-namespace sqlite_orm::internal {
-    struct rowid_t {
-        operator std::string() const {
-            return "rowid";
-        }
-    };
-
-    struct oid_t {
-        operator std::string() const {
-            return "oid";
-        }
-    };
-
-    struct _rowid_t {
-        operator std::string() const {
-            return "_rowid_";
-        }
-    };
-
-    template<class T>
-    struct table_rowid_t : public rowid_t {
-        using type = T;
-    };
-
-    template<class T>
-    struct table_oid_t : public oid_t {
-        using type = T;
-    };
-    template<class T>
-    struct table__rowid_t : public _rowid_t {
-        using type = T;
-    };
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    inline internal::rowid_t rowid() {
-        return {};
-    }
-
-    inline internal::oid_t oid() {
-        return {};
-    }
-
-    inline internal::_rowid_t _rowid_() {
-        return {};
-    }
-
-    template<class T>
-    internal::table_rowid_t<T> rowid() {
-        return {};
-    }
-
-    template<class T>
-    internal::table_oid_t<T> oid() {
-        return {};
-    }
-
-    template<class T>
-    internal::table__rowid_t<T> _rowid_() {
-        return {};
-    }
-}
-
 // #include "operators.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -5138,7 +5047,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::move, std::forward
 #include <sstream>  //  std::stringstream
-#include <iomanip>  //  std::flush
+#include <ostream>  //  std::flush
 #endif
 
 // #include "functional/cxx_type_traits_polyfill.h"
@@ -5287,8 +5196,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 
 // #include "column_pointer.h"
-
-// #include "tags.h"
 
 // #include "type_printer.h"
 
@@ -11119,6 +11026,24 @@ namespace sqlite_orm::internal {
 
 // #include "tuple_helper/tuple_fy.h"
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <tuple>
+#endif
+
+namespace sqlite_orm::internal {
+    template<typename T>
+    struct tuplify {
+        using type = std::tuple<T>;
+    };
+    template<typename... Ts>
+    struct tuplify<std::tuple<Ts...>> {
+        using type = std::tuple<Ts...>;
+    };
+
+    template<typename T>
+    using tuplify_t = typename tuplify<T>::type;
+}
+
 // #include "tuple_helper/tuple_filter.h"
 
 // #include "tuple_helper/tuple_transformer.h"
@@ -11174,6 +11099,73 @@ namespace sqlite_orm::internal {
 // #include "operators.h"
 
 // #include "rowid.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <string>  //  std::string
+#endif
+
+namespace sqlite_orm::internal {
+    struct rowid_t {
+        operator std::string() const {
+            return "rowid";
+        }
+    };
+
+    struct oid_t {
+        operator std::string() const {
+            return "oid";
+        }
+    };
+
+    struct _rowid_t {
+        operator std::string() const {
+            return "_rowid_";
+        }
+    };
+
+    template<class T>
+    struct table_rowid_t : public rowid_t {
+        using type = T;
+    };
+
+    template<class T>
+    struct table_oid_t : public oid_t {
+        using type = T;
+    };
+    template<class T>
+    struct table__rowid_t : public _rowid_t {
+        using type = T;
+    };
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    inline internal::rowid_t rowid() {
+        return {};
+    }
+
+    inline internal::oid_t oid() {
+        return {};
+    }
+
+    inline internal::_rowid_t _rowid_() {
+        return {};
+    }
+
+    template<class T>
+    internal::table_rowid_t<T> rowid() {
+        return {};
+    }
+
+    template<class T>
+    internal::table_oid_t<T> oid() {
+        return {};
+    }
+
+    template<class T>
+    internal::table__rowid_t<T> _rowid_() {
+        return {};
+    }
+}
 
 // #include "column_result_proxy.h"
 
@@ -14206,6 +14198,45 @@ namespace sqlite_orm::internal {
 #endif
 }
 
+// #include "mapped_view.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <sqlite3.h>
+#include <utility>  //  std::forward, std::move
+#endif
+
+// #include "row_extractor.h"
+
+#include <sqlite3.h>
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::enable_if
+#include <cstdlib>  //  ::atof, ::atoi, ::atoll
+#include <cstring>  //  ::strlen
+#include <system_error>  //  std::system_error
+#include <string>  //  std::string, std::wstring
+#ifndef SQLITE_ORM_OMITS_CODECVT
+#include <locale>  // std::wstring_convert
+#include <codecvt>  //  std::codecvt_utf8_utf16
+#endif
+#include <vector>  //  std::vector
+#include <tuple>  //  std::tuple
+#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#include <concepts>
+#endif
+#endif
+
+// #include "functional/cxx_functional_polyfill.h"
+
+// #include "functional/gsl.h"
+
+// #include "tuple_helper/tuple_transformer.h"
+
+// #include "column_result_proxy.h"
+
+// #include "arithmetic_tag.h"
+
+// #include "pointer_value.h"
+
 // #include "journal_mode.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -14294,47 +14325,6 @@ namespace sqlite_orm::internal {
 #if defined(_WINNT_)
 #pragma pop_macro("DELETE")
 #endif
-
-// #include "mapped_view.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <sqlite3.h>
-#include <utility>  //  std::forward, std::move
-#endif
-
-// #include "row_extractor.h"
-
-#include <sqlite3.h>
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::enable_if
-#include <cstdlib>  //  ::atof, ::atoi, ::atoll
-#include <cstring>  //  ::strlen
-#include <system_error>  //  std::system_error
-#include <string>  //  std::string, std::wstring
-#ifndef SQLITE_ORM_OMITS_CODECVT
-#include <locale>  // std::wstring_convert
-#include <codecvt>  //  std::codecvt_utf8_utf16
-#endif
-#include <vector>  //  std::vector
-#include <tuple>  //  std::tuple
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-#include <concepts>
-#endif
-#endif
-
-// #include "functional/cxx_functional_polyfill.h"
-
-// #include "functional/gsl.h"
-
-// #include "tuple_helper/tuple_transformer.h"
-
-// #include "column_result_proxy.h"
-
-// #include "arithmetic_tag.h"
-
-// #include "pointer_value.h"
-
-// #include "journal_mode.h"
 
 // #include "locking_mode.h"
 
@@ -16020,6 +16010,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "type_traits.h"
 
 // #include "mapped_type_proxy.h"
+
+// #include "rowid.h"
 
 // #include "select_constraints.h"
 
@@ -18321,7 +18313,7 @@ inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::r
 #include <functional>  //  std::function, std::bind, std::bind_front
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
-#include <iomanip>  //  std::flush
+#include <ostream>  //  std::flush
 #include <utility>  //  std::move
 #include <system_error>  //  std::system_error
 #include <vector>  //  std::vector
@@ -18379,7 +18371,7 @@ namespace sqlite_orm {
 #include <memory>  // std::shared_ptr
 #include <vector>  //  std::vector
 #include <sstream>
-#include <iomanip>  //  std::flush
+#include <ostream>  //  std::flush
 #endif
 
 // #include "functional/gsl.h"
@@ -27457,7 +27449,7 @@ namespace sqlite_orm::internal {
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_same
 #include <sstream>  //  std::stringstream
-#include <iomanip>  //  std::flush
+#include <ostream>  //  std::flush
 #include <functional>  //  std::reference_wrapper, std::cref
 #include <algorithm>  //  std::find_if, std::ranges::find
 #endif

@@ -7,7 +7,7 @@
 #include <memory>  // std::shared_ptr
 #include <vector>  //  std::vector
 #include <sstream>
-#include <iomanip>  //  std::flush
+#include <ostream>  //  std::flush
 #endif
 
 #include "functional/gsl.h"

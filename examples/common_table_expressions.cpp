@@ -13,7 +13,7 @@
 #endif
 #include <tuple>
 #include <iostream>
-#include <iomanip>
+#include <iomanip>  // std::hex, std::setw, std::setfill
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
 #include <ctime>
 #endif

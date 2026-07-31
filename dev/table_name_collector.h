@@ -9,6 +9,7 @@
 #include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"
 #include "mapped_type_proxy.h"
+#include "rowid.h"
 #include "select_constraints.h"
 #include "alias.h"
 #include "core_functions.h"

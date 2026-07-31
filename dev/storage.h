@@ -8,7 +8,7 @@
 #include <type_traits>  //  std::remove_reference, std::remove_cvref, std::decay
 #include <functional>  //   std::identity
 #include <sstream>  //  std::stringstream
-#include <iomanip>  //  std::flush
+#include <ostream>  //  std::flush
 #include <map>  //  std::map
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_size, std::tuple, std::make_tuple, std::tie
@@ -28,14 +28,11 @@
 #include "tuple_helper/tuple_filter.h"
 #include "tuple_helper/tuple_transformer.h"
 #include "tuple_helper/tuple_iteration.h"
-#include "tuple_helper/tuple_fy.h"
 #include "type_traits.h"
 #include "alias.h"
 #include "error_code.h"
-#include "type_printer.h"
 #include "constraints.h"
 #include "field_printer.h"
-#include "rowid.h"
 #include "operators.h"
 #include "select_constraints.h"
 #include "core_functions.h"
@@ -46,7 +43,6 @@
 #include "sync_schema_result.h"
 #include "table_info.h"
 #include "storage_impl.h"
-#include "journal_mode.h"
 #include "mapped_view.h"
 #include "result_set_view.h"
 #include "ast_iterator.h"
