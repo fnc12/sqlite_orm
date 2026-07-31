@@ -32,6 +32,7 @@
 #include "util.h"
 #include "xdestroy_handling.h"
 #include "udf_proxy.h"
+#include "serialize_result_type.h"
 #include "serializing_util.h"
 #include "table_info.h"
 #include "storage_options.h"
@@ -220,7 +221,7 @@ namespace sqlite_orm::internal {
 #endif
 
       protected:
-        void rename_table_internal(sqlite3* db, const std::string& oldName, const std::string& newName) const {
+        void rename_table_internal(sqlite3* db, serialize_arg_type oldName, serialize_arg_type newName) const {
             std::string sql;
             {
                 std::stringstream ss;
@@ -1042,19 +1043,19 @@ namespace sqlite_orm::internal {
             }
         }
 
-        std::string current_time(sqlite3* db) {
+        std::string current_time(sqlite3* db) const {
             std::string result;
             this->executor.perform_exec(db, "SELECT CURRENT_TIME", extract_single_value<std::string>, &result);
             return result;
         }
 
-        std::string current_date(sqlite3* db) {
+        std::string current_date(sqlite3* db) const {
             std::string result;
             this->executor.perform_exec(db, "SELECT CURRENT_DATE", extract_single_value<std::string>, &result);
             return result;
         }
 
-        std::string current_timestamp(sqlite3* db) {
+        std::string current_timestamp(sqlite3* db) const {
             std::string result;
             this->executor.perform_exec(db, "SELECT CURRENT_TIMESTAMP", extract_single_value<std::string>, &result);
             return result;
