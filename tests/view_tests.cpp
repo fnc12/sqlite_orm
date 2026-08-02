@@ -7,7 +7,7 @@
 using namespace sqlite_orm;
 
 namespace {
-    struct[[= "user_view"_dbo_name]] UserViewTests {
+    struct[[= "user_view"_orm_name]] UserViewTests {
         int64 id = 0;
         std::string name;
 
@@ -20,7 +20,7 @@ namespace {
 #endif
     };
 
-    struct[[= "user_view"_dbo_name]] UserView2Tests {
+    struct[[= "user_view"_orm_name]] UserView2Tests {
         std::string name;
 
 #ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED

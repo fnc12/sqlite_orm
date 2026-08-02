@@ -8,7 +8,7 @@ using internal::col_index_sequence_of, internal::col_index_sequence_with_field_t
 using internal::is_column;
 
 namespace {
-    struct[[= "user_view"_dbo_name]] UserViewStaticTests {
+    struct[[= "user_view"_orm_name]] UserViewStaticTests {
         int64 id = 0;
         std::string name;
 
@@ -21,7 +21,7 @@ namespace {
 }
 
 TEST_CASE("view static") {
-    STATIC_REQUIRE(std::is_same_v<decltype(dbo_name("user_view")), decltype("user_view"_dbo_name)>);
+    STATIC_REQUIRE(std::is_same_v<decltype(orm_name("user_view")), decltype("user_view"_orm_name)>);
 }
 
 TEST_CASE("view static count_of<is_column>()") {
