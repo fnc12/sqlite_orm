@@ -1649,19 +1649,18 @@ namespace sqlite_orm::internal {
             auto processObject = [&table = this->get_table<object_type>(),
                                   bindValue = field_value_binder{stmt}](const object_type& object) mutable {
                 using table_type = polyfill::remove_cvref_t<decltype(table)>;
-                using without_rowid = typename table_type::is_without_rowid;
-                using is_pkcolumn_q =
-                    mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>;
+                using is_pkcolumn_q = mpl::conjunction<mpl::not_<mpl::always<typename table_type::is_without_rowid>>,
+                                                       mpl::quote_fn<is_primary_key>>;
                 using is_generated_always_q = mpl::quote_fn<is_generated_always>;
 
                 table.template for_each_column_excluding<mpl::disjunction<is_pkcolumn_q, is_generated_always_q>>(
                     [&table, &bindValue, &object](auto& column) {
-                        if (!without_rowid::value &&
+                        if (!table_type::is_without_rowid::value &&
                             (is_single_table_primary_key(table, column) ||
                              (column.template is_template<default_t>() && table_primary_key_contains(table, column)))) {
                             return;
-                        } else if (without_rowid::value && (column.template is_template<default_t>() &&
-                                                            table_primary_key_contains(table, column))) {
+                        } else if (table_type::is_without_rowid::value && (column.template is_template<default_t>() &&
+                                                                           table_primary_key_contains(table, column))) {
                             return;
                         }
                         bindValue(polyfill::invoke(column.member_pointer, object));
