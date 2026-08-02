@@ -7,7 +7,7 @@
 #include <functional>  //  std::function, std::bind, std::bind_front
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
-#include <iomanip>  //  std::flush
+#include <ostream>  //  std::flush
 #include <utility>  //  std::move
 #include <system_error>  //  std::system_error
 #include <vector>  //  std::vector
@@ -17,6 +17,7 @@
 #include <algorithm>  //  std::find_if, std::ranges::find
 #endif
 
+#include "functional/cxx_string_view.h"
 #include "functional/cxx_tuple_polyfill.h"  //  std::apply
 #include "tuple_helper/tuple_iteration.h"
 #include "pragma.h"
@@ -31,6 +32,7 @@
 #include "util.h"
 #include "xdestroy_handling.h"
 #include "udf_proxy.h"
+#include "serialize_result_type.h"
 #include "serializing_util.h"
 #include "table_info.h"
 #include "storage_options.h"
@@ -104,7 +106,8 @@ namespace sqlite_orm::internal {
          *  More info: https://www.sqlite.org/lang_dropindex.html
          */
         void drop_index(const std::string& indexName) {
-            this->drop_index_internal(indexName, false);
+            auto connection = this->get_connection();
+            this->drop_dbo_internal(connection.get(), "INDEX", indexName, false);
         }
 
         /**
@@ -113,7 +116,8 @@ namespace sqlite_orm::internal {
          *  More info: https://www.sqlite.org/lang_dropindex.html
          */
         void drop_index_if_exists(const std::string& indexName) {
-            this->drop_index_internal(indexName, true);
+            auto connection = this->get_connection();
+            this->drop_dbo_internal(connection.get(), "INDEX", indexName, true);
         }
 
         /**
@@ -122,7 +126,8 @@ namespace sqlite_orm::internal {
          *  More info: https://www.sqlite.org/lang_droptrigger.html
          */
         void drop_trigger(const std::string& triggerName) {
-            this->drop_trigger_internal(triggerName, false);
+            auto connection = this->get_connection();
+            this->drop_dbo_internal(connection.get(), "TRIGGER", triggerName, false);
         }
 
         /**
@@ -131,7 +136,58 @@ namespace sqlite_orm::internal {
          *  More info: https://www.sqlite.org/lang_droptrigger.html
          */
         void drop_trigger_if_exists(const std::string& triggerName) {
-            this->drop_trigger_internal(triggerName, true);
+            auto connection = this->get_connection();
+            this->drop_dbo_internal(connection.get(), "TRIGGER", triggerName, true);
+        }
+
+        /**
+         *  Drops table with given name. 
+         *  Calls `DROP TABLE tableName`.
+         *  More info: https://www.sqlite.org/lang_droptable.html
+         */
+        void drop_table(const std::string& tableName) {
+            auto connection = this->get_connection();
+            this->drop_dbo_internal(connection.get(), "TABLE", tableName, false);
+        }
+
+        /**
+         *  Drops table with given name if table exists. 
+         *  Calls `DROP TABLE IF EXISTS tableName`.
+         *  More info: https://www.sqlite.org/lang_droptable.html
+         */
+        void drop_table_if_exists(const std::string& tableName) {
+            auto connection = this->get_connection();
+            this->drop_dbo_internal(connection.get(), "TABLE", tableName, true);
+        }
+
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+        /**
+         *  Drops the view with the specified name.
+         *  Calls `DROP VIEW "viewName"`.
+         *  More info: https://www.sqlite.org/lang_droptable.html
+         */
+        void drop_view(std::string_view viewName) {
+            auto connection = this->get_connection();
+            this->drop_dbo_internal(connection.get(), "VIEW", viewName, false);
+        }
+
+        /**
+         *  Drops the view with the specified name if it exists. 
+         *  Calls `DROP VIEW IF EXISTS "viewName"`.
+         *  More info: https://www.sqlite.org/lang_droptable.html
+         */
+        void drop_view_if_exists(std::string_view viewName) {
+            auto connection = this->get_connection();
+            this->drop_dbo_internal(connection.get(), "VIEW", viewName, true);
+        }
+#endif
+
+        /**
+         *  Rename table named `from` to `to`.
+         */
+        void rename_table(const std::string& from, const std::string& to) {
+            auto connection = this->get_connection();
+            this->rename_table_internal(connection.get(), from, to);
         }
 
         /**
@@ -144,35 +200,28 @@ namespace sqlite_orm::internal {
         }
 
         /**
-         *  Drops table with given name. 
-         *  Calls `DROP TABLE tableName`.
-         *  More info: https://www.sqlite.org/lang_droptable.html
+         *  Checks whether table exists in db. Doesn't check storage itself - works only with actual database.
+         *  Note: table can be not mapped to a storage
+         *  @return true if table with a given name exists in db, false otherwise.
          */
-        void drop_table(const std::string& tableName) {
+        bool table_exists(const std::string& tableName) {
             auto connection = this->get_connection();
-            this->drop_table_internal(connection.get(), tableName, false);
+            return this->object_exists(connection.get(), "table", tableName);
         }
 
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
         /**
-         *  Drops table with given name if table exists. 
-         *  Calls `DROP TABLE IF EXISTS tableName`.
-         *  More info: https://www.sqlite.org/lang_droptable.html
+         *  Directly checks the actual database whether the specified view exists, bypassing the library's 'storage' mapping.
+         *  @return true if view with the specified name exists in the database, false otherwise.
          */
-        void drop_table_if_exists(const std::string& tableName) {
+        bool view_exists(std::string_view viewName) {
             auto connection = this->get_connection();
-            this->drop_table_internal(connection.get(), tableName, true);
+            return this->object_exists(connection.get(), "view", viewName);
         }
-
-        /**
-         *  Rename table named `from` to `to`.
-         */
-        void rename_table(const std::string& from, const std::string& to) {
-            auto connection = this->get_connection();
-            this->rename_table(connection.get(), from, to);
-        }
+#endif
 
       protected:
-        void rename_table(sqlite3* db, const std::string& oldName, const std::string& newName) const {
+        void rename_table_internal(sqlite3* db, serialize_arg_type oldName, serialize_arg_type newName) const {
             std::string sql;
             {
                 std::stringstream ss;
@@ -181,37 +230,6 @@ namespace sqlite_orm::internal {
                 sql = ss.str();
             }
             this->executor.perform_void_exec(db, sql.c_str());
-        }
-
-        /**
-         *  Checks whether table exists in db. Doesn't check storage itself - works only with actual database.
-         *  Note: table can be not mapped to a storage
-         *  @return true if table with a given name exists in db, false otherwise.
-         */
-        bool table_exists(const std::string& tableName) {
-            auto connection = this->get_connection();
-            return this->table_exists(connection.get(), tableName);
-        }
-
-        bool table_exists(sqlite3* db, const std::string& tableName) const {
-            bool result = false;
-            std::string sql;
-            {
-                std::stringstream ss;
-                ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal("table")
-                   << " AND name = " << quote_string_literal(tableName) << std::flush;
-                sql = ss.str();
-            }
-            this->executor.perform_exec(
-                db,
-                sql,
-                [](void* userData, int /*argc*/, orm_gsl::zstring* argv, orm_gsl::zstring* /*azColName*/) -> int {
-                    auto& res = *(bool*)userData;
-                    res = !!atoi(argv[0]);
-                    return 0;
-                },
-                &result);
-            return result;
         }
 
         void add_generated_cols(std::vector<const table_xinfo*>& columnsToAdd,
@@ -295,18 +313,27 @@ namespace sqlite_orm::internal {
 #endif
 
         /**
-         *  Returns existing permanent table names in database. Doesn't check storage itself - works only with
+         *  Returns the names of existing permanent views in the database. Doesn't check storage itself - works only with
          *  actual database.
-         *  @return Returns list of tables in database.
+         *  @return Returns a list of views in the database.
+         */
+        std::vector<std::string> view_names() {
+            return this->object_names("view");
+        }
+
+        /**
+         *  Returns the names of existing permanent tables in the database. Doesn't check storage itself - works only with
+         *  actual database.
+         *  @return Returns a list of tables in the database.
          */
         std::vector<std::string> table_names() {
             return this->object_names("table");
         }
 
         /**
-         *  Returns existing permanent trigger names in database. Doesn't check storage itself - works only with
+         *  Returns the names of existing permanent triggers in the database. Doesn't check storage itself - works only with
          *  actual database.
-         *  @return Returns list of triggers in database.
+         *  @return Returns a list of triggers in the database.
          */
         std::vector<std::string> trigger_names() {
             return this->object_names("trigger");
@@ -347,7 +374,7 @@ namespace sqlite_orm::internal {
          *    double operator()(double arg) const {
          *      return std::sqrt(arg);
          *    }
-         *  
+         *    
          *    static const char* name() {
          *      return "SQRT";
          *    }
@@ -806,7 +833,7 @@ namespace sqlite_orm::internal {
             auto connection = this->get_connection();
             data_t objectNames;
             std::stringstream ss;
-            ss << "SELECT name FROM sqlite_master WHERE type=" << quote_string_literal(std::string(type));
+            ss << "SELECT name FROM sqlite_master WHERE type=" << quote_string_literal(std::string(type)) << std::flush;
             this->executor.perform_exec(
                 connection.get(),
                 ss.str(),
@@ -1016,80 +1043,61 @@ namespace sqlite_orm::internal {
             }
         }
 
-        std::string current_time(sqlite3* db) {
+        std::string current_time(sqlite3* db) const {
             std::string result;
             this->executor.perform_exec(db, "SELECT CURRENT_TIME", extract_single_value<std::string>, &result);
             return result;
         }
 
-        std::string current_date(sqlite3* db) {
+        std::string current_date(sqlite3* db) const {
             std::string result;
             this->executor.perform_exec(db, "SELECT CURRENT_DATE", extract_single_value<std::string>, &result);
             return result;
         }
 
-        std::string current_timestamp(sqlite3* db) {
+        std::string current_timestamp(sqlite3* db) const {
             std::string result;
             this->executor.perform_exec(db, "SELECT CURRENT_TIMESTAMP", extract_single_value<std::string>, &result);
             return result;
         }
 
-        void drop_table_internal(sqlite3* db, const std::string& tableName, bool ifExists) {
-            std::string sql;
-            {
-                std::stringstream ss;
-                ss << "DROP TABLE";
-                if (ifExists) {
-                    ss << " IF EXISTS";
-                }
-                ss << ' ' << streaming_identifier(tableName) << std::flush;
-                sql = ss.str();
-            }
-            this->executor.perform_void_exec(db, sql.c_str());
-        }
-
-        void drop_index_internal(const std::string& indexName, bool ifExists) {
-            std::string sql;
-            {
-                std::stringstream ss;
-                ss << "DROP INDEX";
-                if (ifExists) {
-                    ss << " IF EXISTS";
-                }
-                ss << ' ' << quote_identifier(indexName) << std::flush;
-                sql = ss.str();
-            }
-            auto connection = this->get_connection();
-            this->executor.perform_void_exec(connection.get(), sql.c_str());
-        }
-
-        void drop_trigger_internal(const std::string& triggerName, bool ifExists) {
-            auto connection = this->get_connection();
-            this->drop_trigger_internal(triggerName, ifExists, connection.get());
-        }
-
-        void drop_trigger_internal(const std::string& triggerName, bool ifExists, sqlite3* db) {
+        void drop_dbo_internal(sqlite3* db, orm_gsl::czstring dboKeyword, serialize_arg_type dboName, bool ifExists) {
             std::stringstream ss;
-            ss << "DROP TRIGGER";
+            ss << "DROP " << dboKeyword;
             if (ifExists) {
                 ss << " IF EXISTS";
             }
-            ss << ' ' << quote_identifier(triggerName) << std::flush;
+            ss << ' ' << streaming_identifier(dboName) << std::flush;
             this->executor.perform_void_exec(db, ss.str().c_str());
         }
 
-        std::string retrieve_object_sql(sqlite3* db, const std::string& type, const std::string& name) const {
+        bool object_exists(sqlite3* db, serialize_arg_type type, serialize_arg_type dboName) const {
+            bool result = false;
+            std::stringstream ss;
+            ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal(std::string{type})
+               << " AND name = " << quote_string_literal(std::string{dboName}) << std::flush;
+            this->executor.perform_exec(
+                db,
+                ss.str(),
+                [](void* userData, int /*argc*/, orm_gsl::zstring* argv, orm_gsl::zstring* /*azColName*/) -> int {
+                    auto& res = *(bool*)userData;
+                    res = !!atoi(argv[0]);
+                    return 0;
+                },
+                &result);
+            return result;
+        }
+
+        std::string retrieve_object_sql(sqlite3* db, serialize_arg_type type, serialize_arg_type dboName) const {
             std::string result;
             std::stringstream ss;
-            ss << "SELECT sql FROM sqlite_master WHERE type = " << quote_string_literal(type)
-               << " AND name = " << quote_string_literal(name);
+            ss << "SELECT sql FROM sqlite_master WHERE type = " << quote_string_literal(std::string{type})
+               << " AND name = " << quote_string_literal(std::string{dboName}) << std::flush;
             this->executor.perform_exec(
                 db,
                 ss.str(),
                 [](void* userData, int /*argc*/, orm_gsl::zstring* argv, orm_gsl::zstring* /*columnName*/) -> int {
-                    if (argv[0]) {
-                        *static_cast<std::string*>(userData) = argv[0];
-                    }
+                    *static_cast<std::string*>(userData) = argv[0];
                     return 0;
                 },
                 &result);

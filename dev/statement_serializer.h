@@ -63,6 +63,7 @@
 #include "schema/column.h"
 #include "schema/index.h"
 #include "schema/table.h"
+#include "schema/view.h"
 #include "schema/virtual_table.h"
 
 namespace sqlite_orm::internal {
@@ -175,6 +176,26 @@ namespace sqlite_orm::internal {
             return ss.str();
         }
     };
+
+#ifdef SQLITE_ORM_WITH_VIEW
+    template<class View>
+    struct statement_serializer<View, std::enable_if_t<is_view_v<View>>> {
+        using statement_type = View;
+
+        template<class Ctx>
+        std::string operator()(const statement_type& statement, const Ctx& context) {
+            auto subContext = context;
+            subContext.omit_column_type = true;
+            std::stringstream ss;
+            ss << "CREATE VIEW " << streaming_identifier(statement.name) << " ("
+               << streaming_expressions_tuple(statement.elements, subContext)
+               << ")"
+                  " AS "
+               << serialize(statement.select, context);
+            return ss.str();
+        }
+    };
+#endif
 
     // Eponymous virtual tables serialize only table values. Their definition is built-in, fixed and implicit
     template<class ModTraits, class Elements, class Ctx, std::enable_if_t<ModTraits::is_eponymous::value, bool> = true>

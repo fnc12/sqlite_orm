@@ -85,11 +85,11 @@ namespace sqlite_orm::internal::polyfill {
 #endif
 
 #if 0  // __cpp_lib_detect >= 0L  //  library fundamentals TS v2, [meta.detect]
-            using std::nonesuch;
-            using std::detector;
-            using std::is_detected, std::is_detected_v;
-            using std::detected, std::detected_t;
-            using std::detected_or, std::detected_or_t;
+    using std::nonesuch;
+    using std::detector;
+    using std::is_detected, std::is_detected_v;
+    using std::detected, std::detected_t;
+    using std::detected_or, std::detected_or_t;
 #else
     struct nonesuch {
         ~nonesuch() = delete;

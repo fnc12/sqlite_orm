@@ -50,6 +50,22 @@ TEST_CASE("table name collector") {
             expected.emplace(tableName, "");
             iterate_ast(expression, collector);
         }
+        SECTION("asterisk") {
+            auto expression = asterisk<User>();
+            expected.emplace(tableName, "");
+            iterate_ast(expression, collector);
+        }
+        SECTION("object") {
+            auto expression = object<User>();
+            expected.emplace(tableName, "");
+            iterate_ast(expression, collector);
+        }
+        SECTION("aliased asterisk") {
+            using als = alias_z<User>;
+            auto expression = asterisk<als>();
+            expected.emplace(tableName, "z");
+            iterate_ast(expression, collector);
+        }
         REQUIRE(collector.table_names == expected);
     }
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB

@@ -225,7 +225,7 @@ namespace sqlite_orm::internal {
     }
 
     /**
-     *  Mixin for a base table, providing methods used to access a mapped object's members.
+     *  Mixin for a base table, providing methods used to access a mapped object's member variables for insertion.
      *  
      *  Implementation note: it is provided as a mixin to reduce the number of involved template parameters,
      *  which is possible in C++23 mode for 'getters'.

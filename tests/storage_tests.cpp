@@ -265,6 +265,40 @@ TEST_CASE("drop table") {
     REQUIRE_NOTHROW(storage.drop_table_if_exists(visitsTableName));
 }
 
+#ifdef SQLITE_ORM_WITH_VIEW
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+namespace {
+    constexpr auto usersViewName = "users_view"_orm_name;
+
+    struct[[= usersViewName]] UserViewDropViewTests {
+        int64 id = 0;
+        std::string name;
+    };
+}
+TEST_CASE("drop view") {
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+
+    auto storage =
+        make_storage({},
+                     make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)),
+                     make_view<UserViewDropViewTests>(select(asterisk<User>())));
+    REQUIRE_FALSE(storage.view_exists(usersViewName));
+
+    storage.sync_schema();
+    REQUIRE(storage.view_exists(usersViewName));
+
+    storage.drop_view(usersViewName);
+    REQUIRE_FALSE(storage.view_exists(usersViewName));
+
+    REQUIRE_THROWS(storage.drop_view(usersViewName));
+    REQUIRE_NOTHROW(storage.drop_view_if_exists(usersViewName));
+}
+#endif
+#endif
+
 TEST_CASE("drop index") {
     struct User {
         int id = 0;

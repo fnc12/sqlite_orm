@@ -6,7 +6,6 @@
 * rest of core functions(https://sqlite.org/lang_corefunc.html)
 * `ATTACH`
 * blob incremental I/O https://sqlite.org/c3ref/blob_open.html
-* CREATE VIEW and other view operations https://sqlite.org/lang_createview.html
 * query static check for correct order (e.g. `GROUP BY` after `WHERE`)
 * `SAVEPOINT` https://www.sqlite.org/lang_savepoint.html
 * add `static_assert` in crud `get*` functions in case user passes `where_t` instead of id to make compilation error more clear (example https://github.com/fnc12/sqlite_orm/issues/485)

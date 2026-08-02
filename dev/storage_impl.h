@@ -13,12 +13,18 @@
 #include "cte_types.h"
 #include "schema/column.h"
 #include "schema/table.h"
+#include "schema/view.h"
 #include "storage_lookup.h"
 
 // interface functions
 namespace sqlite_orm::internal {
     template<class DBOs>
     using tables_index_sequence = filter_tuple_sequence_t<DBOs, is_base_table>;
+
+#ifdef SQLITE_ORM_WITH_VIEW
+    template<class DBOs>
+    using views_index_sequence = filter_tuple_sequence_t<DBOs, is_view>;
+#endif
 
     template<class DBOs, satisfies<is_db_objects, DBOs> = true>
     constexpr int foreign_keys_count() {

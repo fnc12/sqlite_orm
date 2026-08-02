@@ -84,7 +84,7 @@ namespace sqlite_orm::internal {
     auto make_cte_column(std::string name, const ColRef& finalColRef) {
         using column_type = column_t<ColRef, empty_setter>;
 
-        return column_type{std::move(name), finalColRef, empty_setter{}};
+        return column_type{std::move(name), finalColRef, empty_setter{}, std::tuple<>{}};
     }
 
 #ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED

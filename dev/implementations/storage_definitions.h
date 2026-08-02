@@ -6,7 +6,7 @@
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_same
 #include <sstream>  //  std::stringstream
-#include <iomanip>  //  std::flush
+#include <ostream>  //  std::flush
 #include <functional>  //  std::reference_wrapper, std::cref
 #include <algorithm>  //  std::find_if, std::ranges::find
 #endif
@@ -154,6 +154,6 @@ namespace sqlite_orm::internal {
                << std::flush;
             sql = ss.str();
         }
-        this->executor.perform_void_exec(db, sql.data());
+        this->executor.perform_void_exec(db, sql.c_str());
     }
 }

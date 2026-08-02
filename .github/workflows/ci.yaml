@@ -130,6 +130,15 @@ jobs:
             compiler_package: g++-11
             experimental: true
 
+          - name: "gcc-16, C++26"
+            os: ubuntu-24.04
+            cc: gcc-16
+            cxx: g++-16
+            cxx_standard: "-DSQLITE_ORM_ENABLE_CXX_26=ON"
+            install_compiler: true
+            compiler_package: g++-16
+            compiler_ppa: ppa:ubuntu-toolchain-r/test
+
     name: Linux - ${{ matrix.name }}
 
     env:
@@ -143,6 +152,9 @@ jobs:
       - name: Install compiler
         if: matrix.install_compiler
         run: |
+          if [ -n "${{ matrix.compiler_ppa }}" ]; then
+            sudo add-apt-repository -y ${{ matrix.compiler_ppa }}
+          fi
           sudo apt-get update
           sudo apt-get install -y ${{ matrix.compiler_package }}
 

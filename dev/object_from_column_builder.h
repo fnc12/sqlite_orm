@@ -8,6 +8,7 @@
 
 #include "functional/gsl.h"
 #include "member_traits/member_traits.h"
+#include "type_traits.h"
 #include "table_reference.h"
 #include "row_extractor.h"
 #include "schema/column.h"
@@ -46,7 +47,7 @@ namespace sqlite_orm::internal {
     /**
      *  Specialization for a table reference.
      *  
-     *  This plays together with `column_result_of_t`, which returns `object_t<O>` as `table_referenece<O>`
+     *  This plays together with `column_result_of_t`, which returns `object_t<O>` as `table_reference<O>`
      */
     template<class O, class DBOs>
     struct struct_extractor<table_reference<O>, DBOs> {
