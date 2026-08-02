@@ -254,12 +254,12 @@ namespace sqlite_orm::internal {
 
         const foreign_key_type& fk;
 
-        constexpr on_update_delete_t(decltype(fk) fk_, decltype(update) update_, foreign_key_action action_) :
-            on_update_delete_base{update_}, fk(fk_), _action(action_) {}
-
         foreign_key_action _action = foreign_key_action::none;
 
-        constexpr foreign_key_type no_action() const {
+        on_update_delete_t(foreign_key_type& fk_, decltype(update) update_, foreign_key_action action_) :
+            on_update_delete_base{update_}, fk(fk_), _action(action_) {}
+
+        foreign_key_type no_action() const {
             auto res = this->fk;
             if (update) {
                 res.on_update._action = foreign_key_action::no_action;
@@ -269,7 +269,7 @@ namespace sqlite_orm::internal {
             return res;
         }
 
-        constexpr foreign_key_type restrict_() const {
+        foreign_key_type restrict_() const {
             auto res = this->fk;
             if (update) {
                 res.on_update._action = foreign_key_action::restrict_;
@@ -279,7 +279,7 @@ namespace sqlite_orm::internal {
             return res;
         }
 
-        constexpr foreign_key_type set_null() const {
+        foreign_key_type set_null() const {
             auto res = this->fk;
             if (update) {
                 res.on_update._action = foreign_key_action::set_null;
@@ -289,7 +289,7 @@ namespace sqlite_orm::internal {
             return res;
         }
 
-        constexpr foreign_key_type set_default() const {
+        foreign_key_type set_default() const {
             auto res = this->fk;
             if (update) {
                 res.on_update._action = foreign_key_action::set_default;
@@ -299,7 +299,7 @@ namespace sqlite_orm::internal {
             return res;
         }
 
-        constexpr foreign_key_type cascade() const {
+        foreign_key_type cascade() const {
             auto res = this->fk;
             if (update) {
                 res.on_update._action = foreign_key_action::cascade;
@@ -309,7 +309,7 @@ namespace sqlite_orm::internal {
             return res;
         }
 
-        constexpr explicit operator bool() const {
+        explicit operator bool() const {
             return _action != foreign_key_action::none;
         }
     };
@@ -345,11 +345,11 @@ namespace sqlite_orm::internal {
         static_assert(!std::is_same<source_type, void>::value, "All columns must have the same mapped type");
         static_assert(!std::is_same<target_type, void>::value, "All references must have the same mapped type");
 
-        constexpr foreign_key_t(columns_type columns_, references_type references_) :
+        foreign_key_t(columns_type columns_, references_type references_) :
             columns(std::move(columns_)), references(std::move(references_)),
             on_update(*this, true, foreign_key_action::none), on_delete(*this, false, foreign_key_action::none) {}
 
-        constexpr foreign_key_t(const foreign_key_t& other) :
+        foreign_key_t(const foreign_key_t& other) :
             columns(other.columns), references(other.references), on_update(*this, true, other.on_update._action),
             on_delete(*this, false, other.on_delete._action) {}
 
@@ -379,7 +379,7 @@ namespace sqlite_orm::internal {
          *  Specify one or more target fields, which can either be pointers to class members or column pointers.
          */
         template<class... Rs>
-        constexpr foreign_key_t<tuple_type, std::tuple<Rs...>> references(Rs... refs) {
+        foreign_key_t<tuple_type, std::tuple<Rs...>> references(Rs... refs) {
             return {std::move(_columns), {std::forward<Rs>(refs)...}};
         }
 
@@ -388,7 +388,7 @@ namespace sqlite_orm::internal {
          *  specifying the derived class as an explicit template argument.
          */
         template<class O, class... Base, class... F>
-        constexpr foreign_key_t<tuple_type, std::tuple<F O::*...>> references(F Base::*... refs) {
+        foreign_key_t<tuple_type, std::tuple<F O::*...>> references(F Base::*... refs) {
             static_assert(polyfill::conjunction<is_field_of<F Base::*, O>...>::value,
                           "Referenced fields must be from explicitly specified derived class");
             return {std::move(_columns), {refs...}};
@@ -400,7 +400,7 @@ namespace sqlite_orm::internal {
          *  specifying the derived class as an explicit template argument.
          */
         template<orm_table_reference auto table, class... Base, class... F>
-        constexpr auto references(F Base::*... refs) {
+        auto references(F Base::*... refs) {
             return this->references<auto_decay_table_ref_t<table>>(refs...);
         }
 #endif

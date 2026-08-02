@@ -55,27 +55,27 @@ TEST_CASE("foreign key static") {
     constexpr orm_table_reference auto derived = c<Derived>();
 #endif
 
-    auto cppInclusionIncluderPathFk = foreign_key(&CppInclusion::includer_path).references(&File::path);
+    const auto cppInclusionIncluderPathFk = foreign_key(&CppInclusion::includer_path).references(&File::path);
     STATIC_REQUIRE(std::is_same<decltype(cppInclusionIncluderPathFk)::target_type, File>::value);
     STATIC_REQUIRE(std::is_same<decltype(cppInclusionIncluderPathFk)::source_type, CppInclusion>::value);
 
-    auto cppInclusionIncludeePathFk = foreign_key(&CppInclusion::includee_path).references(&File::path);
+    const auto cppInclusionIncludeePathFk = foreign_key(&CppInclusion::includee_path).references(&File::path);
     STATIC_REQUIRE(std::is_same<decltype(cppInclusionIncludeePathFk)::target_type, File>::value);
     STATIC_REQUIRE(std::is_same<decltype(cppInclusionIncludeePathFk)::source_type, CppInclusion>::value);
 
-    auto functionDeclFilePathFk = foreign_key(&FunctionDecl::file_path).references(&File::path);
+    const auto functionDeclFilePathFk = foreign_key(&FunctionDecl::file_path).references(&File::path);
     STATIC_REQUIRE(std::is_same<decltype(functionDeclFilePathFk)::target_type, File>::value);
     STATIC_REQUIRE(std::is_same<decltype(functionDeclFilePathFk)::source_type, FunctionDecl>::value);
 
-    auto varDeclFilePathFk = foreign_key(&VarDecl::file_path).references(&File::path);
+    const auto varDeclFilePathFk = foreign_key(&VarDecl::file_path).references(&File::path);
     STATIC_REQUIRE(std::is_same<decltype(varDeclFilePathFk)::target_type, File>::value);
     STATIC_REQUIRE(std::is_same<decltype(varDeclFilePathFk)::source_type, VarDecl>::value);
 
-    auto functionDefFilePathFk = foreign_key(&FunctionDef::file_path).references(&File::path);
+    const auto functionDefFilePathFk = foreign_key(&FunctionDef::file_path).references(&File::path);
     STATIC_REQUIRE(std::is_same<decltype(functionDefFilePathFk)::target_type, File>::value);
     STATIC_REQUIRE(std::is_same<decltype(functionDefFilePathFk)::source_type, FunctionDef>::value);
 
-    auto functionCallParentFunctionName =
+    const auto functionCallParentFunctionName =
         foreign_key(&FunctionCall::parent_function_name).references(&FunctionDef::function_name);
     STATIC_REQUIRE(std::is_same<decltype(functionCallParentFunctionName)::target_type, FunctionDef>::value);
     STATIC_REQUIRE(std::is_same<decltype(functionCallParentFunctionName)::source_type, FunctionCall>::value);
