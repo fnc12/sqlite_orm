@@ -3816,13 +3816,16 @@ namespace sqlite_orm::internal {
             on_delete(*this, false, other.on_delete._action) {}
 
         foreign_key_t& operator=(const foreign_key_t&) = delete;
-    };
 
-    template<class A, class B>
-    bool operator==(const foreign_key_t<A, B>& lhs, const foreign_key_t<A, B>& rhs) {
-        return lhs.columns == rhs.columns && lhs.references == rhs.references && lhs.on_update == rhs.on_update &&
-               lhs.on_delete == rhs.on_delete;
-    }
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+        friend bool operator==(const foreign_key_t& lhs, const foreign_key_t& rhs) = default;
+#else
+        friend bool operator==(const foreign_key_t& lhs, const foreign_key_t& rhs) {
+            return lhs.columns == rhs.columns && lhs.references == rhs.references && lhs.on_update == rhs.on_update &&
+                   lhs.on_delete == rhs.on_delete;
+        }
+#endif
+    };
 
     /**
      *  Cs can be a class member pointer or column pointer
