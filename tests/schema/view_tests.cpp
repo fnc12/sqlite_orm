@@ -6,7 +6,7 @@
 using namespace sqlite_orm;
 
 namespace {
-    struct[[= "user_view"_dbo_name]] UserViewSchemaTests {
+    struct[[= "user_view"_orm_name]] UserViewSchemaTests {
         int64 id = 0;
         std::string name;
     };

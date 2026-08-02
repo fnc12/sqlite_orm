@@ -45,21 +45,21 @@ struct Department {
 // The fields are automatically mapped through C++ reflection
 
 // View 1: High earners (employees earning more than 60000)
-struct[[= "high_earners"_dbo_name]] HighEarner {
+struct[[= "high_earners"_orm_name]] HighEarner {
     int64 id;
     std::string name;
     double salary;
 };
 
 // View 2: Department summary with employee count and average salary
-struct[[= "department_summary"_dbo_name]] DepartmentSummary {
+struct[[= "department_summary"_orm_name]] DepartmentSummary {
     std::string department_name;
     int employee_count;
     double avg_salary;
 };
 
 // View 3: Complete employee information with department details (join result)
-struct[[= "employee_details"_dbo_name]] EmployeeDetail {
+struct[[= "employee_details"_orm_name]] EmployeeDetail {
     int64 id;
     std::string employee_name;
     double salary;
@@ -84,7 +84,7 @@ inline auto initStorage(const std::string& path) {
         // Define views - notice how we only specify the SELECT statement.
         // The column mappings and view name are derived from the view object type
         // (column names from non-static data members; view name from the optional
-        // `[[="…"_dbo_name]]` annotation, falling back to the type's identifier).
+        // `[[="…"_orm_name]]` annotation, falling back to the type's identifier).
 
         // View 1: Filter high earners
         make_view<HighEarner>(

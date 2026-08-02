@@ -268,7 +268,7 @@ TEST_CASE("drop table") {
 #ifdef SQLITE_ORM_WITH_VIEW
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 namespace {
-    constexpr auto usersViewName = "users_view"_dbo_name;
+    constexpr auto usersViewName = "users_view"_orm_name;
 
     struct[[= usersViewName]] UserViewDropViewTests {
         int64 id = 0;

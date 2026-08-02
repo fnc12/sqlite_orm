@@ -41,13 +41,13 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    constexpr bool is_dbo_name_v = false;
+    constexpr bool is_dbo_name_literal_v = false;
 
     template<size_t N>
-    constexpr bool is_dbo_name_v<dbo_name_literal<N>> = true;
+    constexpr bool is_dbo_name_literal_v<dbo_name_literal<N>> = true;
 
     template<class T>
-    using is_dbo_name = std::bool_constant<is_dbo_name_v<T>>;
+    using is_dbo_name_literal = std::bool_constant<is_dbo_name_literal_v<T>>;
 
     /**
      *  Returns the database object name carried by the `dbo_name_literal<…>` element of `annotations`,
@@ -55,7 +55,7 @@ namespace sqlite_orm::internal {
      */
     template<class T, class Tuple>
     constexpr std::string_view resolve_dbo_name(const Tuple& annotations) {
-        using name_index = find_tuple_element<Tuple, is_dbo_name>;
+        using name_index = find_tuple_element<Tuple, is_dbo_name_literal>;
 
         if constexpr (name_index::value < std::tuple_size_v<Tuple>) {
             return std::get<name_index::value>(annotations).name();
@@ -69,7 +69,8 @@ namespace sqlite_orm::internal {
      */
     template<class Tuple>
     constexpr auto filter_out_dbo_name(Tuple&& tuple) {
-        using constraints_index_sequence = filter_tuple_sequence_t<Tuple, check_if_not<is_dbo_name>::template fn>;
+        using constraints_index_sequence =
+            filter_tuple_sequence_t<Tuple, check_if_not<is_dbo_name_literal>::template fn>;
         return create_from_tuple<std::tuple>(std::forward<Tuple>(tuple), constraints_index_sequence{});
     }
 }
@@ -79,23 +80,23 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         /**
          *  Database object name annotation factory.
          *  Use as a class-scope annotation:
-         *  `struct [[="users"_dbo_name]] User { ... };`
-         *  `struct [[= sqlite_orm::operator""_dbo_name<"users">()]] User { ... };`
+         *  `struct [[="users"_orm_name]] User { ... };`
+         *  `struct [[= sqlite_orm::operator""_orm_name<"users">()]] User { ... };`
          *  `make_view<T>()` consumes this annotation.
          */
         template<internal::dbo_name_literal dboName>
-        [[nodiscard]] consteval auto operator""_dbo_name() {
+        [[nodiscard]] consteval auto operator""_orm_name() {
             return dboName;
         }
     }
 
     /**
      *  Database object name annotation factory as a fallback to the literal operator.
-     *  Use as a class-scope annotation: `struct [[=dbo_name("users")]] User { ... };`.
+     *  Use as a class-scope annotation: `struct [[=orm_name("users")]] User { ... };`.
      *  `make_view<T>()` consumes this annotation.
      */
     template<size_t N>
-    consteval internal::dbo_name_literal<N> dbo_name(const char (&dboName)[N]) {
+    consteval internal::dbo_name_literal<N> orm_name(const char (&dboName)[N]) {
         return {dboName};
     }
 }

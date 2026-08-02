@@ -26,7 +26,7 @@ namespace {
 
 #ifdef SQLITE_ORM_WITH_VIEW
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
-    struct[[= "users_view"_dbo_name]] UserViewLoggerTests {
+    struct[[= "users_view"_orm_name]] UserViewLoggerTests {
         int id = 0;
         std::string name;
     };
