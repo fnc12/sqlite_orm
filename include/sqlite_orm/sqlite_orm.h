@@ -2415,7 +2415,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_table_valued_expression_v = polyfill::is_specialization_of_v<T, table_valued_expression>;
+    constexpr bool is_table_valued_expression_v = polyfill::is_specialization_of_v<T, table_valued_expression>;
 
     template<class T>
     using is_table_valued_expression = polyfill::bool_constant<is_table_valued_expression_v<T>>;
@@ -2425,25 +2425,14 @@ namespace sqlite_orm::internal {
      */
     template<class O>
     struct table_reference : polyfill::type_identity<O> {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
         /** 
          *  Make a table-valued function call.
          */
         template<class... Args>
         constexpr SQLITE_ORM_STATIC_CALLOP table_valued_expression<O, Args...>
         operator()(Args... arguments) SQLITE_ORM_OR_CONST_CALLOP {
-            return {{ {std::move(arguments)}... }};
+            return {{{std::move(arguments)}...}};
         }
-#else
-        /** 
-         *  Make a table-valued function call.
-         */
-        template<class... Args>
-        constexpr SQLITE_ORM_STATIC_CALLOP table_valued_expression<O, Args...>
-        operator()(Args... arguments) SQLITE_ORM_OR_CONST_CALLOP {
-            return {{ {std::move(arguments)}... }};
-        }
-#endif
     };
 }
 
@@ -11070,6 +11059,7 @@ namespace sqlite_orm::internal {
     /** 
      *  Defines the `type` typename to be:
      *  - The unqualified unwrapped table reference type if T is a table reference.
+     *  - The unqualified unwrapped table-valued expression type if T is a table-valued expression.
      *  - The unqualified aliased type if T is a recordset alias.
      *  - The enclosing data struct for eponymous virtual tables with hidden columns.
      *  - ... otherwise unqualified T.
@@ -11084,6 +11074,9 @@ namespace sqlite_orm::internal {
 
     template<class R>
     struct mapped_type_proxy<R, match_if<is_table_reference, R>> : R {};
+
+    template<class E>
+    struct mapped_type_proxy<E, match_if<is_table_valued_expression, E>> : E {};
 
     template<class A>
     struct mapped_type_proxy<A, match_if<is_recordset_alias, A>> : std::remove_const<type_t<A>> {};
@@ -24448,12 +24441,11 @@ namespace sqlite_orm::internal {
             ss << "FROM ";
             iterate_tuple(from.table_expressions, [&context, &ss, first = true](const auto& tableExpression) mutable {
                 using expression_type = polyfill::remove_cvref_t<decltype(tableExpression)>;
-                using table_type = type_t<expression_type>;
 
                 static constexpr std::array<orm_gsl::czstring, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)]
-                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<table_type>>(context.db_objects),
-                                           alias_extractor<table_type>::as_alias());
+                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<expression_type>>(context.db_objects),
+                                           alias_extractor<expression_type>::as_alias());
 
                 if constexpr (is_table_valued_expression_v<expression_type>) {
                     ss << '(' << streaming_expressions_tuple(tableExpression.table_values, context) << ')';

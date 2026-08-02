@@ -181,5 +181,6 @@ TEST_CASE("mapped type proxy") {
 #endif
 #if SQLITE_VERSION_NUMBER >= 3008012
     STATIC_REQUIRE(std::is_same<mapped_type_proxy_t<generate_series::hidden>, generate_series>::value);
+    STATIC_REQUIRE(std::is_same<mapped_type_proxy_t<decltype(generate_series())>, generate_series>::value);
 #endif
 }
