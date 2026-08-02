@@ -268,10 +268,10 @@ TEST_CASE("drop table") {
 #ifdef SQLITE_ORM_WITH_VIEW
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
 namespace {
-    constexpr char usersViewName[] = "users_view";
+    constexpr auto usersViewName = "users_view"_orm_name;
 
-    struct[[= dbo_name(usersViewName)]] UserViewDropViewTests {
-        int id = 0;
+    struct[[= usersViewName]] UserViewDropViewTests {
+        int64 id = 0;
         std::string name;
     };
 }

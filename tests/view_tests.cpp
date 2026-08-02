@@ -7,8 +7,8 @@
 using namespace sqlite_orm;
 
 namespace {
-    struct[[= dbo_name("user_view")]] UserViewTests {
-        int id = 0;
+    struct[[= "user_view"_orm_name]] UserViewTests {
+        int64 id = 0;
         std::string name;
 
 #ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
@@ -20,7 +20,7 @@ namespace {
 #endif
     };
 
-    struct[[= dbo_name("user_view")]] UserView2Tests {
+    struct[[= "user_view"_orm_name]] UserView2Tests {
         std::string name;
 
 #ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
@@ -37,7 +37,7 @@ TEST_CASE("view") {
     using Catch::Matchers::UnorderedEquals;
 
     struct User {
-        int id = 0;
+        int64 id = 0;
         std::string name;
     };
 
@@ -94,7 +94,7 @@ TEST_CASE("view") {
 
 TEST_CASE("view sync") {
     struct User {
-        int id = 0;
+        int64 id = 0;
         std::string name;
     };
 

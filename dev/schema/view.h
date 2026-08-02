@@ -33,10 +33,10 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_view_v = polyfill::is_specialization_of_v<T, query_view>;
+    constexpr bool is_view_v = polyfill::is_specialization_of_v<T, query_view>;
 #else
     template<class T>
-    inline constexpr bool is_view_v = false;
+    constexpr bool is_view_v = false;
 #endif
 
     template<class T>
@@ -71,7 +71,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a view definition.
      *
      *  The mapped object type is explicitly specified, columns and their names are deferred from the object type.
-     *  The object type must be an aggregate. The optional `[[=dbo_name("…")]]` class-scope annotation overrides
+     *  The object type must be an aggregate. The optional `[[="…"_orm_name]]` class-scope annotation overrides
      *  the view name (otherwise the type's reflected identifier is used).
      */
     template<class O, class Select>
@@ -90,7 +90,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Factory function for a view definition.
      *
      *  The mapped object type is explicitly specified, columns and their names are deferred from the object type.
-     *  The object type must be an aggregate. The optional `[[=dbo_name("…")]]` class-scope annotation overrides
+     *  The object type must be an aggregate. The optional `[[="…"_orm_name]]` class-scope annotation overrides
      *  the view name (otherwise the type's reflected identifier is used).
      */
     template<orm_table_reference auto table, class Select>

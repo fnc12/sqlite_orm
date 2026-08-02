@@ -212,7 +212,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *
      *  The mapped object type is explicitly specified, columns and column constraints are deferred from
      *  the object type's non-static data members and their annotations. Class-scope annotations on
-     *  the object type contribute table-level constraints; the optional `[[=dbo_name("…")]]` annotation
+     *  the object type contribute table-level constraints; the optional `[[=orm_name("…")]]` annotation
      *  overrides the table name (otherwise the type's reflected identifier is used).
      *
      *  Variadic `constraints` carry table-level constraints that either cannot be expressed as annotations
@@ -231,7 +231,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *
      *  The mapped object type is explicitly specified, columns and column constraints are deferred from
      *  the object type's non-static data members and their annotations. Class-scope annotations on
-     *  the object type contribute table-level constraints; the optional `[[=dbo_name("…")]]` annotation
+     *  the object type contribute table-level constraints; the optional `[[=orm_name("…")]]` annotation
      *  overrides the table name (otherwise the type's reflected identifier is used).
      *
      *  Variadic `constraints` carry table-level constraints that either cannot be expressed as annotations

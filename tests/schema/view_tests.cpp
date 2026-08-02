@@ -6,7 +6,7 @@
 using namespace sqlite_orm;
 
 namespace {
-    struct[[= dbo_name("user_view")]] UserViewSchemaTests {
+    struct[[= "user_view"_orm_name]] UserViewSchemaTests {
         int64 id = 0;
         std::string name;
     };
@@ -23,11 +23,10 @@ TEST_CASE("view make_view name resolution") {
         std::string name;
     };
 
-    SECTION("[[=dbo_name(...)]] annotation supplies the view name") {
+    SECTION("annotation supplies the view name") {
         auto view = make_view<UserViewSchemaTests>(select(asterisk<User>()));
         REQUIRE(view.name == "user_view");
     }
-
     SECTION("fallback to type identifier") {
         auto view = make_view<UserViewSchemaTestsDefaultName>(select(asterisk<User>()));
         REQUIRE(view.name == "UserViewSchemaTestsDefaultName");

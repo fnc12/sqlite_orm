@@ -7,7 +7,7 @@
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::move, std::forward
 #include <sstream>  //  std::stringstream
-#include <iomanip>  //  std::flush
+#include <ostream>  //  std::flush
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
@@ -23,7 +23,6 @@
 #include "alias_traits.h"
 #include "expression.h"
 #include "column_pointer.h"
-#include "tags.h"
 #include "type_printer.h"
 #include "literal.h"
 #include "ast/cross_join.h"
@@ -1021,8 +1020,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  [Deprecation notice] This expression factory function is deprecated and will be removed in v1.11.
      */
     [[deprecated("Use the hidden FTS5 rank column instead")]]
-    inline internal::order_by_t<internal::rank_t> order_by(internal::rank_t o) {
-        return {std::move(o)};
+    inline internal::order_by_t<internal::rank_t> order_by(internal::rank_t expression) {
+        return {std::move(expression)};
     }
 
     /**

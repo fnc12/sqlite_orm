@@ -8,7 +8,7 @@
 #include <type_traits>  //  std::remove_reference, std::remove_cvref, std::decay
 #include <functional>  //   std::identity
 #include <sstream>  //  std::stringstream
-#include <iomanip>  //  std::flush
+#include <ostream>  //  std::flush
 #include <map>  //  std::map
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_size, std::tuple, std::make_tuple, std::tie
@@ -28,14 +28,11 @@
 #include "tuple_helper/tuple_filter.h"
 #include "tuple_helper/tuple_transformer.h"
 #include "tuple_helper/tuple_iteration.h"
-#include "tuple_helper/tuple_fy.h"
 #include "type_traits.h"
 #include "alias.h"
 #include "error_code.h"
-#include "type_printer.h"
 #include "constraints.h"
 #include "field_printer.h"
-#include "rowid.h"
 #include "operators.h"
 #include "select_constraints.h"
 #include "core_functions.h"
@@ -46,7 +43,6 @@
 #include "sync_schema_result.h"
 #include "table_info.h"
 #include "storage_impl.h"
-#include "journal_mode.h"
 #include "mapped_view.h"
 #include "result_set_view.h"
 #include "ast_iterator.h"
@@ -198,7 +194,7 @@ namespace sqlite_orm::internal {
         template<class Table>
         void drop_create_with_loss(sqlite3* db, const Table& table) {
             // eliminated all transaction handling
-            this->drop_table_internal(db, table.name, false);
+            this->drop_dbo_internal(db, "TABLE", table.name, false);
             this->create_table(db, table.name, table);
         }
 
@@ -208,13 +204,13 @@ namespace sqlite_orm::internal {
             //  here we copy source table to another with a name with '_backup' suffix, but in case table with such
             //  a name already exists we append suffix 1, then 2, etc until we find a free name..
             auto backupTableName = table.name + "_backup";
-            if (this->table_exists(db, backupTableName)) {
+            if (this->object_exists(db, "table", backupTableName)) {
                 int suffix = 1;
                 do {
                     std::stringstream ss;
                     ss << suffix << std::flush;
                     auto anotherBackupTableName = backupTableName + ss.str();
-                    if (!this->table_exists(db, anotherBackupTableName)) {
+                    if (!this->object_exists(db, "table", anotherBackupTableName)) {
                         backupTableName = std::move(anotherBackupTableName);
                         break;
                     }
@@ -225,9 +221,9 @@ namespace sqlite_orm::internal {
 
             this->copy_table(db, table.name, backupTableName, table, columnsToIgnore);
 
-            this->drop_table_internal(db, table.name, false);
+            this->drop_dbo_internal(db, "TABLE", table.name, false);
 
-            this->rename_table(db, backupTableName, table.name);
+            this->rename_table_internal(db, backupTableName, table.name);
         }
 
         template<class O>
@@ -417,6 +413,7 @@ namespace sqlite_orm::internal {
          */
         template<class O, class... Ids>
         void remove(Ids... ids) {
+            static_assert((internal::is_bindable_v<Ids> && ...), "Only primary key values are accepted as Ids");
             this->assert_mapped_type<O>();
             auto statement = this->prepare(sqlite_orm::remove<O>(std::forward<Ids>(ids)...));
             this->execute(statement);
@@ -560,6 +557,7 @@ namespace sqlite_orm::internal {
          */
         template<class O, class... Ids>
         O get(Ids... ids) {
+            static_assert((internal::is_bindable_v<Ids> && ...), "Only primary key values are accepted as Ids");
             this->assert_mapped_type<O>();
             this->assert_primary_key_type<O>();
             auto statement = this->prepare(sqlite_orm::get<O>(std::forward<Ids>(ids)...));
@@ -579,6 +577,7 @@ namespace sqlite_orm::internal {
          */
         template<class O, class... Ids>
         std::unique_ptr<O> get_pointer(Ids... ids) {
+            static_assert((internal::is_bindable_v<Ids> && ...), "Only primary key values are accepted as Ids");
             this->assert_mapped_type<O>();
             this->assert_primary_key_type<O>();
             auto statement = this->prepare(sqlite_orm::get_pointer<O>(std::forward<Ids>(ids)...));
@@ -617,6 +616,7 @@ namespace sqlite_orm::internal {
          */
         template<class O, class... Ids>
         std::optional<O> get_optional(Ids... ids) {
+            static_assert((internal::is_bindable_v<Ids> && ...), "Only primary key values are accepted as Ids");
             this->assert_mapped_type<O>();
             this->assert_primary_key_type<O>();
             auto statement = this->prepare(sqlite_orm::get_optional<O>(std::forward<Ids>(ids)...));
@@ -1170,7 +1170,7 @@ namespace sqlite_orm::internal {
 
             const auto& exprDBOs = db_objects_for_expression(this->db_objects, queryView.select);
 
-            using context_t = serializer_context<polyfill::remove_cvref_t<decltype(exprDBOs)>>;
+            using context_t = serializer_context<std::remove_cvref_t<decltype(exprDBOs)>>;
             const context_t context{exprDBOs};
             auto storageSql = serialize(queryView, context);
 
@@ -1192,7 +1192,7 @@ namespace sqlite_orm::internal {
             bool canPreserveData = true;
 
             //  first let's see if table with such name exists..
-            auto gottaCreateTable = !this->table_exists(db, table.name);
+            auto gottaCreateTable = !this->object_exists(db, "table", table.name);
             if (!gottaCreateTable) {
 
                 //  get table info provided in `make_table` call..
@@ -1311,7 +1311,7 @@ namespace sqlite_orm::internal {
             auto res = this->schema_status(trigger, db, preserve, nullptr);
             if (res != sync_schema_result::already_in_sync) {
                 if (res == sync_schema_result::dropped_and_recreated) {
-                    this->drop_trigger_internal(db, trigger.name, true);
+                    this->drop_dbo_internal(db, "TRIGGER", trigger.name, true);
                 }
                 const serializer_context<db_objects_type> context{this->db_objects};
                 const auto sql = serialize(trigger, context);
@@ -1326,7 +1326,7 @@ namespace sqlite_orm::internal {
             auto res = this->schema_status(queryView, db, preserve, nullptr);
             if (res != sync_schema_result::already_in_sync) {
                 if (res == sync_schema_result::dropped_and_recreated) {
-                    this->drop_view_internal(db, queryView.name, true);
+                    this->drop_dbo_internal(db, "VIEW", queryView.name, true);
                 }
 
                 const auto& exprDBOs = db_objects_for_expression(this->db_objects, queryView.select);
@@ -1463,9 +1463,6 @@ namespace sqlite_orm::internal {
             });
             return result;
         }
-
-        using storage_base::table_exists;
-        using storage_base::view_exists;
 
         template<class DML, std::enable_if_t<is_raw_dml_expression_v<DML>, bool> = true>
         prepared_statement_t<DML> prepare(DML statement) {

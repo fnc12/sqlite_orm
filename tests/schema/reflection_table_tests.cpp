@@ -7,7 +7,7 @@
 using namespace sqlite_orm;
 
 namespace {
-    struct[[= dbo_name("plain")]] ReflectedPlain {
+    struct[[= "plain"_orm_name)]] ReflectedPlain {
         int64 id;
         std::string name;
     };
@@ -17,25 +17,25 @@ namespace {
         std::string name;
     };
 
-    struct[[= dbo_name("annotated")]] ReflectedAnnotated {
+    struct[[= "annotated"_orm_name)]] ReflectedAnnotated {
         [[= primary_key().autoincrement()]] int64 id;
         [[= not_null()]] std::string name;
         [[= default_value(0)]] int score;
         [[= collate_nocase()]] std::string handle;
     };
 
-    struct[[= dbo_name("composite")]] ReflectedComposite {
+    struct[[= "composite"_orm_name)]] ReflectedComposite {
         int a;
         int b;
         std::string note;
     };
 
-    struct[[= dbo_name("parent")]] ReflectedParent {
+    struct[[= "parent"_orm_name)]] ReflectedParent {
         int64 id;
         std::string label;
     };
 
-    struct[[= dbo_name("child")]] ReflectedChild {
+    struct[[= "child"_orm_name)]] ReflectedChild {
         int64 id;
         int parentId;
     };
@@ -50,7 +50,7 @@ namespace {
 }
 
 TEST_CASE("reflection-based make_table - name resolution") {
-    SECTION("[[=dbo_name(...)]] annotation supplies the table name") {
+    SECTION("[[=orm_name(...)]] annotation supplies the table name") {
         auto table = make_table<ReflectedPlain>();
         REQUIRE(table.name == "plain");
     }

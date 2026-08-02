@@ -200,3 +200,50 @@ TEST_CASE("window functions") {
         REQUIRE(std::get<2>(rows[5]) == 2);
     }
 }
+
+TEST_CASE("window functions - issue #475 count over with where order by limit") {
+    struct UserProfile {
+        int id = 0;
+        std::string firstName;
+        std::string lastName;
+    };
+
+    auto storage = make_storage("",
+                                make_table("user_profile",
+                                           make_column("id", &UserProfile::id, primary_key().autoincrement()),
+                                           make_column("first_name", &UserProfile::firstName),
+                                           make_column("last_name", &UserProfile::lastName)));
+    storage.sync_schema();
+
+    storage.insert(UserProfile{0, "Alice", "Smith"});
+    storage.insert(UserProfile{0, "Bob", "Jones"});
+    storage.insert(UserProfile{0, "Charlie", "Brown"});
+    storage.insert(UserProfile{0, "Diana", "Davis"});
+    storage.insert(UserProfile{0, "Eve", "Wilson"});
+
+    int refId = 0;
+    int resultPerPage = 3;
+
+    // SQL: SELECT id, first_name, last_name, COUNT(id) OVER ()
+    //      FROM user_profile WHERE id > ? ORDER BY id LIMIT ?
+    auto rows = storage.select(
+        columns(&UserProfile::id, &UserProfile::firstName, &UserProfile::lastName, count(&UserProfile::id).over()),
+        where(c(&UserProfile::id) > refId),
+        order_by(&UserProfile::id),
+        limit(resultPerPage));
+
+    REQUIRE(rows.size() == 3);
+    // Every row should have total_count=5 (total rows in table)
+    REQUIRE(std::get<0>(rows[0]) == 1);
+    REQUIRE(std::get<1>(rows[0]) == "Alice");
+    REQUIRE(std::get<2>(rows[0]) == "Smith");
+    REQUIRE(std::get<3>(rows[0]) == 5);
+
+    REQUIRE(std::get<0>(rows[1]) == 2);
+    REQUIRE(std::get<1>(rows[1]) == "Bob");
+    REQUIRE(std::get<3>(rows[1]) == 5);
+
+    REQUIRE(std::get<0>(rows[2]) == 3);
+    REQUIRE(std::get<1>(rows[2]) == "Charlie");
+    REQUIRE(std::get<3>(rows[2]) == 5);
+}
