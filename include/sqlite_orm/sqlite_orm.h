@@ -3796,8 +3796,8 @@ namespace sqlite_orm::internal {
          */
         using source_type = same_or_void_t<table_type_of_t<Cs>...>;
 
-        columns_type columns;
-        references_type references;
+        columns_type _columns;
+        references_type _references;
 
         on_update_delete_t<foreign_key_t> on_update;
         on_update_delete_t<foreign_key_t> on_delete;
@@ -3807,12 +3807,12 @@ namespace sqlite_orm::internal {
         static_assert(!std::is_same<source_type, void>::value, "All columns must have the same mapped type");
         static_assert(!std::is_same<target_type, void>::value, "All references must have the same mapped type");
 
-        foreign_key_t(columns_type columns_, references_type references_) :
-            columns(std::move(columns_)), references(std::move(references_)),
+        foreign_key_t(columns_type columns, references_type references) :
+            _columns(std::move(columns)), _references(std::move(references)),
             on_update(*this, true, foreign_key_action::none), on_delete(*this, false, foreign_key_action::none) {}
 
         foreign_key_t(const foreign_key_t& other) :
-            columns(other.columns), references(other.references), on_update(*this, true, other.on_update._action),
+            _columns(other._columns), _references(other._references), on_update(*this, true, other.on_update._action),
             on_delete(*this, false, other.on_delete._action) {}
 
         foreign_key_t& operator=(const foreign_key_t&) = delete;
@@ -3821,8 +3821,8 @@ namespace sqlite_orm::internal {
         friend bool operator==(const foreign_key_t& lhs, const foreign_key_t& rhs) = default;
 #else
         friend bool operator==(const foreign_key_t& lhs, const foreign_key_t& rhs) {
-            return lhs.columns == rhs.columns && lhs.references == rhs.references && lhs.on_update == rhs.on_update &&
-                   lhs.on_delete == rhs.on_delete;
+            return lhs._columns == rhs._columns && lhs._references == rhs._references &&
+                   lhs.on_update == rhs.on_update && lhs.on_delete == rhs.on_delete;
         }
 #endif
     };
@@ -23646,7 +23646,7 @@ namespace sqlite_orm::internal {
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& fk,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
-            ss << "FOREIGN KEY(" << streaming_mapped_columns_expressions(fk.columns, context) << ") REFERENCES ";
+            ss << "FOREIGN KEY(" << streaming_mapped_columns_expressions(fk._columns, context) << ") REFERENCES ";
             {
                 using references_type_t = typename statement_type::references_type;
                 using first_reference_t = std::tuple_element_t<0, references_type_t>;
@@ -23654,7 +23654,7 @@ namespace sqlite_orm::internal {
                 auto refTableName = lookup_table_name<first_reference_mapped_type>(context.db_objects);
                 ss << streaming_identifier(refTableName);
             }
-            ss << "(" << streaming_mapped_columns_expressions(fk.references, context) << ")";
+            ss << "(" << streaming_mapped_columns_expressions(fk._references, context) << ")";
             if (fk.on_update) {
                 ss << ' ' << static_cast<std::string>(fk.on_update) << " " << fk.on_update._action;
             }

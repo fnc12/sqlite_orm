@@ -334,8 +334,8 @@ namespace sqlite_orm::internal {
          */
         using source_type = same_or_void_t<table_type_of_t<Cs>...>;
 
-        columns_type columns;
-        references_type references;
+        columns_type _columns;
+        references_type _references;
 
         on_update_delete_t<foreign_key_t> on_update;
         on_update_delete_t<foreign_key_t> on_delete;
@@ -345,12 +345,12 @@ namespace sqlite_orm::internal {
         static_assert(!std::is_same<source_type, void>::value, "All columns must have the same mapped type");
         static_assert(!std::is_same<target_type, void>::value, "All references must have the same mapped type");
 
-        foreign_key_t(columns_type columns_, references_type references_) :
-            columns(std::move(columns_)), references(std::move(references_)),
+        foreign_key_t(columns_type columns, references_type references) :
+            _columns(std::move(columns)), _references(std::move(references)),
             on_update(*this, true, foreign_key_action::none), on_delete(*this, false, foreign_key_action::none) {}
 
         foreign_key_t(const foreign_key_t& other) :
-            columns(other.columns), references(other.references), on_update(*this, true, other.on_update._action),
+            _columns(other._columns), _references(other._references), on_update(*this, true, other.on_update._action),
             on_delete(*this, false, other.on_delete._action) {}
 
         foreign_key_t& operator=(const foreign_key_t&) = delete;
@@ -359,8 +359,8 @@ namespace sqlite_orm::internal {
         friend bool operator==(const foreign_key_t& lhs, const foreign_key_t& rhs) = default;
 #else
         friend bool operator==(const foreign_key_t& lhs, const foreign_key_t& rhs) {
-            return lhs.columns == rhs.columns && lhs.references == rhs.references && lhs.on_update == rhs.on_update &&
-                   lhs.on_delete == rhs.on_delete;
+            return lhs._columns == rhs._columns && lhs._references == rhs._references &&
+                   lhs.on_update == rhs.on_update && lhs.on_delete == rhs.on_delete;
         }
 #endif
     };

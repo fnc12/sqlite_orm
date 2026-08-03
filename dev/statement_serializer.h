@@ -1597,7 +1597,7 @@ namespace sqlite_orm::internal {
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& fk,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
-            ss << "FOREIGN KEY(" << streaming_mapped_columns_expressions(fk.columns, context) << ") REFERENCES ";
+            ss << "FOREIGN KEY(" << streaming_mapped_columns_expressions(fk._columns, context) << ") REFERENCES ";
             {
                 using references_type_t = typename statement_type::references_type;
                 using first_reference_t = std::tuple_element_t<0, references_type_t>;
@@ -1605,7 +1605,7 @@ namespace sqlite_orm::internal {
                 auto refTableName = lookup_table_name<first_reference_mapped_type>(context.db_objects);
                 ss << streaming_identifier(refTableName);
             }
-            ss << "(" << streaming_mapped_columns_expressions(fk.references, context) << ")";
+            ss << "(" << streaming_mapped_columns_expressions(fk._references, context) << ")";
             if (fk.on_update) {
                 ss << ' ' << static_cast<std::string>(fk.on_update) << " " << fk.on_update._action;
             }
