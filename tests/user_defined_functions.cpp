@@ -569,7 +569,7 @@ TEST_CASE("generalized scalar udf") {
     storage.sync_schema();
 
     SECTION("freestanding function") {
-#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 12)
+#if (defined(SQLITE_ORM_GNU_GCC) && (__GNUC__ < 12)) || (defined(SQLITE_ORM_MS_MSVC) && _MSC_VER < 1930)
         SKIP("GCC < 12 cannot use this function as NTTP in quoted scalar tests.");
 #else
         constexpr auto err_fatal_error_f = "ERR_FATAL_ERROR"_scalar.quote(ERR_FATAL_ERROR);
@@ -583,6 +583,9 @@ TEST_CASE("generalized scalar udf") {
 #endif
     }
     SECTION("stateless lambda") {
+#if (defined(SQLITE_ORM_MS_MSVC) && _MSC_VER < 1930)
+        SKIP("MSVC < 1930 cannot use this function as NTTP in quoted scalar tests.");
+#else
         constexpr auto is_fatal_error_f = "is_fatal_error"_scalar.quote([](unsigned long errcode) {
             return errcode != 0;
         });
@@ -593,6 +596,7 @@ TEST_CASE("generalized scalar udf") {
             REQUIRE(rows == expected);
         }
         storage.delete_scalar_function<is_fatal_error_f>();
+#endif
     }
 #ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
     SECTION("stateless static lambda") {
@@ -609,6 +613,9 @@ TEST_CASE("generalized scalar udf") {
     }
 #endif
     SECTION("function object instance") {
+#if (defined(SQLITE_ORM_MS_MSVC) && _MSC_VER < 1930)
+        SKIP("MSVC < 1930 cannot use this function as NTTP in quoted scalar tests.");
+#else
         constexpr auto equal_to_int_f = "equal_to"_scalar.quote(std::equal_to<int>{});
         storage.create_scalar_function<equal_to_int_f>();
         {
@@ -617,8 +624,12 @@ TEST_CASE("generalized scalar udf") {
             REQUIRE(rows == expected);
         }
         storage.delete_scalar_function<equal_to_int_f>();
+#endif
     }
     SECTION("explicit function object type") {
+#if (defined(SQLITE_ORM_MS_MSVC) && _MSC_VER < 1930)
+        SKIP("MSVC < 1930 cannot use this function as NTTP in quoted scalar tests.");
+#else
         constexpr auto equal_to_int_f = "equal_to"_scalar.quote<std::equal_to<int>>();
         storage.create_scalar_function<equal_to_int_f>();
         {
@@ -627,8 +638,12 @@ TEST_CASE("generalized scalar udf") {
             REQUIRE(rows == expected);
         }
         storage.delete_scalar_function<equal_to_int_f>();
+#endif
     }
     SECTION("'transparent' function object instance") {
+#if (defined(SQLITE_ORM_MS_MSVC) && _MSC_VER < 1930)
+        SKIP("MSVC < 1930 cannot use this function as NTTP in quoted scalar tests.");
+#else
         constexpr auto equal_to_int_f =
             "equal_to"_scalar.quote<bool(const int&, const int&) const>(std::equal_to<void>{});
         storage.create_scalar_function<equal_to_int_f>();
@@ -638,8 +653,12 @@ TEST_CASE("generalized scalar udf") {
             REQUIRE(rows == expected);
         }
         storage.delete_scalar_function<equal_to_int_f>();
+#endif
     }
     SECTION("explicit 'transparent' function object type") {
+#if (defined(SQLITE_ORM_MS_MSVC) && _MSC_VER < 1930)
+        SKIP("MSVC < 1930 cannot use this function as NTTP in quoted scalar tests.");
+#else
         constexpr auto equal_to_int_f =
             "equal_to"_scalar.quote<bool(const int&, const int&) const, std::equal_to<void>>();
         storage.create_scalar_function<equal_to_int_f>();
@@ -649,6 +668,7 @@ TEST_CASE("generalized scalar udf") {
             REQUIRE(rows == expected);
         }
         storage.delete_scalar_function<equal_to_int_f>();
+#endif
     }
 #ifdef SQLITE_ORM_STATIC_CALL_OPERATOR_SUPPORTED
     SECTION("function object instance with static call operator") {
@@ -663,7 +683,7 @@ TEST_CASE("generalized scalar udf") {
     }
 #endif
     SECTION("specialized template function") {
-#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 12)
+#if (defined(SQLITE_ORM_GNU_GCC) && (__GNUC__ < 12)) || (defined(SQLITE_ORM_MS_MSVC) && _MSC_VER < 1930)
         SKIP("GCC < 12 cannot use std::clamp specialization as NTTP.");
 #else
         constexpr auto clamp_int_f = "clamp_int"_scalar.quote(std::clamp<int>);
@@ -677,7 +697,7 @@ TEST_CASE("generalized scalar udf") {
 #endif
     }
     SECTION("overloaded template function") {
-#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 12)
+#if (defined(SQLITE_ORM_GNU_GCC) && (__GNUC__ < 12)) || (defined(SQLITE_ORM_MS_MSVC) && _MSC_VER < 1930)
         SKIP("GCC < 12 cannot use std::clamp overload as NTTP.");
 #else
         constexpr auto clamp_int_f =
@@ -705,6 +725,9 @@ TEST_CASE("generalized scalar udf") {
         storage.delete_scalar_function<(idfunc_f)>();
     }
     SECTION("stateful function object") {
+#if (defined(SQLITE_ORM_MS_MSVC) && _MSC_VER < 1930)
+        SKIP("MSVC < 1930 cannot use this function as NTTP in quoted scalar tests.");
+#else
         constexpr auto offset0_f = "offset0"_scalar.quote(offset0);
         storage.create_scalar_function<offset0_f>();
         {
@@ -713,9 +736,10 @@ TEST_CASE("generalized scalar udf") {
             REQUIRE(rows == expected);
         }
         storage.delete_scalar_function<offset0_f>();
+#endif
     }
     SECTION("escaped function identifier") {
-#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 12)
+#if (defined(SQLITE_ORM_GNU_GCC) && (__GNUC__ < 12)) || (defined(SQLITE_ORM_MS_MSVC) && _MSC_VER < 1930)
         SKIP("GCC < 12 cannot use std::clamp specialization as NTTP.");
 #else
         constexpr auto clamp_f = R"("clamp int")"_scalar.quote(std::clamp<int>);
