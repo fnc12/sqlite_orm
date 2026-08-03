@@ -580,14 +580,14 @@ TEST_CASE("sync_schema with generated columns") {
         std::vector<User> allUsers;
         decltype(allUsers) expectedUsers;
         SECTION("virtual") {
-            generatedAlwaysConstraint = generatedAlwaysConstraint.virtual_();
+            generatedAlwaysConstraint = std::move(generatedAlwaysConstraint).virtual_();
             expectedUsers.push_back({5, 9});
         }
         SECTION("not specified") {
             expectedUsers.push_back({5, 9});
         }
         SECTION("stored") {
-            generatedAlwaysConstraint = generatedAlwaysConstraint.stored();
+            generatedAlwaysConstraint = std::move(generatedAlwaysConstraint).stored();
             // with preserve == false nothing is preserved since this kind of generated column requires dropping the table
             // thus we don't expect any users to be preserved!
         }
@@ -607,11 +607,11 @@ TEST_CASE("sync_schema with generated columns") {
             expectedUsers.push_back({5, 9});
         }
         SECTION("virtual") {
-            generatedAlwaysConstraint = generatedAlwaysConstraint.virtual_();
+            generatedAlwaysConstraint = std::move(generatedAlwaysConstraint).virtual_();
             expectedUsers.push_back({5, 9});
         }
         SECTION("stored") {
-            generatedAlwaysConstraint = generatedAlwaysConstraint.stored();
+            generatedAlwaysConstraint = std::move(generatedAlwaysConstraint).stored();
             expectedUsers.push_back({5, 9});
         }
         auto storage2 = make_storage(storagePath,

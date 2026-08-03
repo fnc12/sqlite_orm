@@ -1638,12 +1638,12 @@ namespace sqlite_orm::internal {
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
-            if (statement.full) {
+            if (statement._full) {
                 ss << "GENERATED ALWAYS ";
             }
             ss << "AS (";
-            ss << serialize(statement.expression, context) << ")";
-            switch (statement.storage) {
+            ss << serialize(statement._expression, context) << ")";
+            switch (statement._storage) {
                 case basic_generated_always::storage_type::not_specified:
                     //..
                     break;

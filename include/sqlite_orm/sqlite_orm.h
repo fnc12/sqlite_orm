@@ -3903,8 +3903,8 @@ namespace sqlite_orm::internal {
         };
 
 #if SQLITE_VERSION_NUMBER >= 3031000
-        bool full = true;
-        storage_type storage = storage_type::not_specified;
+        bool _full = true;
+        storage_type _storage = storage_type::not_specified;
 #endif
     };
 
@@ -3913,17 +3913,14 @@ namespace sqlite_orm::internal {
     struct generated_always_t : basic_generated_always {
         using expression_type = T;
 
-        expression_type expression;
+        expression_type _expression;
 
-        constexpr generated_always_t(expression_type expression_, bool full, storage_type storage) :
-            basic_generated_always{full, storage}, expression(std::move(expression_)) {}
-
-        constexpr generated_always_t<T> virtual_() {
-            return {std::move(this->expression), this->full, storage_type::virtual_};
+        constexpr generated_always_t<T> virtual_() && {
+            return {_full, storage_type::virtual_, std::move(_expression)};
         }
 
-        constexpr generated_always_t<T> stored() {
-            return {std::move(this->expression), this->full, storage_type::stored};
+        constexpr generated_always_t<T> stored() && {
+            return {_full, storage_type::stored, std::move(_expression)};
         }
     };
 #endif
@@ -4029,12 +4026,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3031000
     template<class T>
     constexpr internal::generated_always_t<T> generated_always_as(T expression) {
-        return {std::move(expression), true, internal::basic_generated_always::storage_type::not_specified};
+        return {true, internal::basic_generated_always::storage_type::not_specified, std::move(expression)};
     }
 
     template<class T>
     constexpr internal::generated_always_t<T> as(T expression) {
-        return {std::move(expression), false, internal::basic_generated_always::storage_type::not_specified};
+        return {false, internal::basic_generated_always::storage_type::not_specified, std::move(expression)};
     }
 #endif
 
@@ -13683,7 +13680,7 @@ namespace sqlite_orm::internal {
                     using generated_op_index_sequence =
                         filter_tuple_sequence_t<std::remove_const_t<decltype(column.constraints)>, is_generated_always>;
                     constexpr size_t opIndex = index_sequence_value_at<0>(generated_op_index_sequence{});
-                    result = &std::get<opIndex>(column.constraints).storage;
+                    result = &std::get<opIndex>(column.constraints)._storage;
                 });
 #endif
             return result;
@@ -23690,12 +23687,12 @@ namespace sqlite_orm::internal {
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
-            if (statement.full) {
+            if (statement._full) {
                 ss << "GENERATED ALWAYS ";
             }
             ss << "AS (";
-            ss << serialize(statement.expression, context) << ")";
-            switch (statement.storage) {
+            ss << serialize(statement._expression, context) << ")";
+            switch (statement._storage) {
                 case basic_generated_always::storage_type::not_specified:
                     //..
                     break;
