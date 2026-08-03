@@ -4040,7 +4040,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #if SQLITE_VERSION_NUMBER >= 3006019
     /**
-     *  FOREIGN KEY constraint builder function taking one or more fields, which can either be pointers to class members or column pointers.
+     *  FOREIGN KEY constraint factory function taking one or more fields, which can either be pointers to class members or column pointers.
      *  Available since SQLite 3.6.19
      */
     template<class... Cs>
@@ -4049,7 +4049,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 
     /**
-     *  FOREIGN KEY constraint builder function taking one or more fields that are member pointers of base classes,
+     *  FOREIGN KEY constraint factory function taking one or more fields that are member pointers of base classes,
      *  specifying the derived class as an explicit template argument.
      *  Available since SQLite 3.6.19
      */
@@ -4062,7 +4062,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
-     *  FOREIGN KEY constraint builder function taking one or more fields that are member pointers of base classes,
+     *  FOREIGN KEY constraint factory function taking one or more fields that are member pointers of base classes,
      *  specifying the derived class as an explicit template argument.
      *  Available since SQLite 3.6.19
      */
@@ -4074,7 +4074,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 
     /**
-     *  UNIQUE table constraint builder function.
+     *  UNIQUE table constraint factory function.
      */
     template<class... Args>
     constexpr internal::unique_t<Args...> unique(Args... args) {
@@ -4082,24 +4082,24 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 
     /**
-     *  UNIQUE column constraint builder function.
+     *  UNIQUE column constraint factory function.
      */
-    inline constexpr internal::unique_t<> unique() {
+    constexpr internal::unique_t<> unique() {
         return {{}};
     }
 
 #if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
     /**
-     *  UNINDEXED column constraint builder function. Used in FTS virtual tables.
+     *  UNINDEXED column constraint factory function. Used in FTS virtual tables.
      *  
      *  https://www.sqlite.org/fts5.html#the_unindexed_column_option
      */
-    inline constexpr internal::unindexed_t unindexed() {
+    constexpr internal::unindexed_t unindexed() {
         return {};
     }
 
     /**
-     *  prefix=N table constraint builder function. Used in FTS virtual tables.
+     *  prefix=N table constraint factory function. Used in FTS virtual tables.
      *  
      *  https://www.sqlite.org/fts5.html#prefix_indexes
      */
@@ -4109,7 +4109,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 
     /**
-     *  tokenize='...'' table constraint builder function. Used in FTS virtual tables.
+     *  tokenize='...'' table constraint factory function. Used in FTS virtual tables.
      *  
      *  https://www.sqlite.org/fts5.html#tokenizers
      */
@@ -4119,7 +4119,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 
     /**
-     *  content='' table constraint builder function. Used in FTS virtual tables.
+     *  content='' table constraint factory function. Used in FTS virtual tables.
      *  
      *  https://www.sqlite.org/fts5.html#contentless_tables
      */
@@ -4129,7 +4129,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 
     /**
-     *  content='table' table constraint builder function. Used in FTS virtual tables.
+     *  content='table' table constraint factory function. Used in FTS virtual tables.
      *  
      *  https://www.sqlite.org/fts5.html#external_content_tables
      */
@@ -4149,7 +4149,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
-     *  content='table' table constraint builder function. Used in FTS virtual tables.
+     *  content='table' table constraint factory function. Used in FTS virtual tables.
      *  
      *  https://www.sqlite.org/fts5.html#external_content_tables
      */
@@ -4161,7 +4161,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 
     /**
-     *  PRIMARY KEY constraint builder function taking one or more fields, which can either be pointers to class members or column pointers.
+     *  PRIMARY KEY constraint factory function taking one or more fields, which can either be pointers to class members or column pointers.
      */
     template<class... Cs>
     constexpr internal::primary_key_t<Cs...> primary_key(Cs... cs) {
@@ -4169,7 +4169,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 
     /**
-     *  PRIMARY KEY constraint builder function taking one or more fields that are member pointers of base classes,
+     *  PRIMARY KEY constraint factory function taking one or more fields that are member pointers of base classes,
      *  specifying the derived class as an explicit template argument.
      */
     template<class O, class... Base, class... F>
@@ -4181,7 +4181,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
-     *  PRIMARY KEY constraint builder function taking one or more fields that are member pointers of base classes,
+     *  PRIMARY KEY constraint factory function taking one or more fields that are member pointers of base classes,
      *  specifying the derived class as an explicit template argument.
      */
     template<orm_table_reference auto table, class... Base, class... F>
@@ -4191,9 +4191,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 
     /**
-     *  PRIMARY KEY column constraint builder function (used at a single column).
+     *  PRIMARY KEY column constraint factory function (used at a single column).
      */
-    inline constexpr internal::primary_key_t<> primary_key() {
+    constexpr internal::primary_key_t<> primary_key() {
         return {{}};
     }
 
@@ -4202,15 +4202,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(t)};
     }
 
-    inline constexpr internal::collate_constraint_t collate_nocase() {
+    constexpr internal::collate_constraint_t collate_nocase() {
         return {internal::collate_argument::nocase};
     }
 
-    inline constexpr internal::collate_constraint_t collate_binary() {
+    constexpr internal::collate_constraint_t collate_binary() {
         return {internal::collate_argument::binary};
     }
 
-    inline constexpr internal::collate_constraint_t collate_rtrim() {
+    constexpr internal::collate_constraint_t collate_rtrim() {
         return {internal::collate_argument::rtrim};
     }
 
@@ -4219,11 +4219,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         return {std::move(t)};
     }
 
-    inline constexpr internal::null_t null() {
+    constexpr internal::null_t null() {
         return {};
     }
 
-    inline constexpr internal::not_null_t not_null() {
+    constexpr internal::not_null_t not_null() {
         return {};
     }
 }
