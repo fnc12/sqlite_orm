@@ -41,7 +41,8 @@
 #define SQLITE_ORM_CPP_UNLIKELY
 #endif
 
-#ifdef SQLITE_ORM_CONSTEVAL_SUPPORTED
+// note: Visual Studio 2019 v16.11 supports `consteval` but not for functions returning void.
+#if defined(SQLITE_ORM_CONSTEVAL_SUPPORTED) && (!defined(SQLITE_ORM_MS_MSVC) || (_MSC_VER >= 1930))
 #define SQLITE_ORM_CONSTEVAL consteval
 #else
 #define SQLITE_ORM_CONSTEVAL constexpr

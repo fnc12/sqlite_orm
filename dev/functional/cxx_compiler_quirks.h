@@ -27,6 +27,10 @@
 #define SQLITE_ORM_CLANG_MSVC
 #endif
 
+#if defined(__GNUC__) && !defined(__clang__)
+#define SQLITE_ORM_GNU_GCC
+#endif
+
 #ifdef SQLITE_ORM_MS_MSVC
 #define SQLITE_ORM_DO_PRAGMA(...) __pragma(__VA_ARGS__)
 #endif
