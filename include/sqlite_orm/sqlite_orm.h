@@ -3271,6 +3271,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <ostream>  //  std::ostream
 #include <string>  //  std::string
 #include <tuple>  //  std::tuple
+#include <functional>  //  std::ref
 #endif
 
 // #include "functional/cxx_type_traits_polyfill.h"
@@ -3806,11 +3807,13 @@ namespace sqlite_orm::internal {
 
         foreign_key_t(columns_type columns, references_type references) :
             _columns(std::move(columns)), _references(std::move(references)),
-            on_update(*this, true, foreign_key_action::none), on_delete(*this, false, foreign_key_action::none) {}
+            on_update(std::ref(*this), true, foreign_key_action::none),
+            on_delete(std::ref(*this), false, foreign_key_action::none) {}
 
         foreign_key_t(const foreign_key_t& other) :
-            _columns(other._columns), _references(other._references), on_update(*this, true, other.on_update._action),
-            on_delete(*this, false, other.on_delete._action) {}
+            _columns(other._columns), _references(other._references),
+            on_update(std::ref(*this), true, other.on_update._action),
+            on_delete(std::ref(*this), false, other.on_delete._action) {}
 
         foreign_key_t& operator=(const foreign_key_t&) = delete;
 
