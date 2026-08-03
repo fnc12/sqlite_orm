@@ -39,7 +39,7 @@ namespace sqlite_orm::internal {
             order_by asc_option = order_by::unspecified;
             conflict_clause_t conflict_clause = conflict_clause_t::rollback;
             bool conflict_clause_is_on = false;
-        } options;
+        } _options;
     };
 
     template<class T>
@@ -61,19 +61,19 @@ namespace sqlite_orm::internal {
         using order_by = primary_key_base::order_by;
         using columns_tuple = std::tuple<Cs...>;
 
-        columns_tuple columns;
+        columns_tuple _columns;
 
-        constexpr primary_key_t(columns_tuple columns) : columns(std::move(columns)) {}
+        constexpr primary_key_t(columns_tuple columns) : _columns(std::move(columns)) {}
 
         constexpr primary_key_t asc() const {
             auto res = *this;
-            res.options.asc_option = order_by::ascending;
+            res._options.asc_option = order_by::ascending;
             return res;
         }
 
         constexpr primary_key_t desc() const {
             auto res = *this;
-            res.options.asc_option = order_by::descending;
+            res._options.asc_option = order_by::descending;
             return res;
         }
 
@@ -83,36 +83,36 @@ namespace sqlite_orm::internal {
 
         constexpr primary_key_t on_conflict_rollback() const {
             auto res = *this;
-            res.options.conflict_clause_is_on = true;
-            res.options.conflict_clause = conflict_clause_t::rollback;
+            res._options.conflict_clause_is_on = true;
+            res._options.conflict_clause = conflict_clause_t::rollback;
             return res;
         }
 
         constexpr primary_key_t on_conflict_abort() const {
             auto res = *this;
-            res.options.conflict_clause_is_on = true;
-            res.options.conflict_clause = conflict_clause_t::abort;
+            res._options.conflict_clause_is_on = true;
+            res._options.conflict_clause = conflict_clause_t::abort;
             return res;
         }
 
         constexpr primary_key_t on_conflict_fail() const {
             auto res = *this;
-            res.options.conflict_clause_is_on = true;
-            res.options.conflict_clause = conflict_clause_t::fail;
+            res._options.conflict_clause_is_on = true;
+            res._options.conflict_clause = conflict_clause_t::fail;
             return res;
         }
 
         constexpr primary_key_t on_conflict_ignore() const {
             auto res = *this;
-            res.options.conflict_clause_is_on = true;
-            res.options.conflict_clause = conflict_clause_t::ignore;
+            res._options.conflict_clause_is_on = true;
+            res._options.conflict_clause = conflict_clause_t::ignore;
             return res;
         }
 
         constexpr primary_key_t on_conflict_replace() const {
             auto res = *this;
-            res.options.conflict_clause_is_on = true;
-            res.options.conflict_clause = conflict_clause_t::replace;
+            res._options.conflict_clause_is_on = true;
+            res._options.conflict_clause = conflict_clause_t::replace;
             return res;
         }
     };

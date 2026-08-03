@@ -1457,7 +1457,7 @@ namespace sqlite_orm::internal {
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
             ss << "PRIMARY KEY";
-            switch (statement.options.asc_option) {
+            switch (statement._options.asc_option) {
                 case statement_type::order_by::ascending:
                     ss << " ASC";
                     break;
@@ -1467,13 +1467,13 @@ namespace sqlite_orm::internal {
                 default:
                     break;
             }
-            if (statement.options.conflict_clause_is_on) {
-                ss << " ON CONFLICT " << serialize(statement.options.conflict_clause, context);
+            if (statement._options.conflict_clause_is_on) {
+                ss << " ON CONFLICT " << serialize(statement._options.conflict_clause, context);
             }
             using columns_tuple = typename statement_type::columns_tuple;
             constexpr size_t columnsCount = std::tuple_size<columns_tuple>::value;
             if constexpr (columnsCount > 0) {
-                ss << "(" << streaming_mapped_columns_expressions(statement.columns, context) << ")";
+                ss << "(" << streaming_mapped_columns_expressions(statement._columns, context) << ")";
             }
             return ss.str();
         }

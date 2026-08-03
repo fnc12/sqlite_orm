@@ -3501,7 +3501,7 @@ namespace sqlite_orm::internal {
             order_by asc_option = order_by::unspecified;
             conflict_clause_t conflict_clause = conflict_clause_t::rollback;
             bool conflict_clause_is_on = false;
-        } options;
+        } _options;
     };
 
     template<class T>
@@ -3523,19 +3523,19 @@ namespace sqlite_orm::internal {
         using order_by = primary_key_base::order_by;
         using columns_tuple = std::tuple<Cs...>;
 
-        columns_tuple columns;
+        columns_tuple _columns;
 
-        constexpr primary_key_t(columns_tuple columns) : columns(std::move(columns)) {}
+        constexpr primary_key_t(columns_tuple columns) : _columns(std::move(columns)) {}
 
         constexpr primary_key_t asc() const {
             auto res = *this;
-            res.options.asc_option = order_by::ascending;
+            res._options.asc_option = order_by::ascending;
             return res;
         }
 
         constexpr primary_key_t desc() const {
             auto res = *this;
-            res.options.asc_option = order_by::descending;
+            res._options.asc_option = order_by::descending;
             return res;
         }
 
@@ -3545,36 +3545,36 @@ namespace sqlite_orm::internal {
 
         constexpr primary_key_t on_conflict_rollback() const {
             auto res = *this;
-            res.options.conflict_clause_is_on = true;
-            res.options.conflict_clause = conflict_clause_t::rollback;
+            res._options.conflict_clause_is_on = true;
+            res._options.conflict_clause = conflict_clause_t::rollback;
             return res;
         }
 
         constexpr primary_key_t on_conflict_abort() const {
             auto res = *this;
-            res.options.conflict_clause_is_on = true;
-            res.options.conflict_clause = conflict_clause_t::abort;
+            res._options.conflict_clause_is_on = true;
+            res._options.conflict_clause = conflict_clause_t::abort;
             return res;
         }
 
         constexpr primary_key_t on_conflict_fail() const {
             auto res = *this;
-            res.options.conflict_clause_is_on = true;
-            res.options.conflict_clause = conflict_clause_t::fail;
+            res._options.conflict_clause_is_on = true;
+            res._options.conflict_clause = conflict_clause_t::fail;
             return res;
         }
 
         constexpr primary_key_t on_conflict_ignore() const {
             auto res = *this;
-            res.options.conflict_clause_is_on = true;
-            res.options.conflict_clause = conflict_clause_t::ignore;
+            res._options.conflict_clause_is_on = true;
+            res._options.conflict_clause = conflict_clause_t::ignore;
             return res;
         }
 
         constexpr primary_key_t on_conflict_replace() const {
             auto res = *this;
-            res.options.conflict_clause_is_on = true;
-            res.options.conflict_clause = conflict_clause_t::replace;
+            res._options.conflict_clause_is_on = true;
+            res._options.conflict_clause = conflict_clause_t::replace;
             return res;
         }
     };
@@ -13410,13 +13410,13 @@ namespace sqlite_orm::internal {
                               lambda(column.member_pointer);
                           }));
             this->visit_table_primary_key([&lambda](auto& primaryKey) {
-                iterate_tuple(primaryKey.columns, lambda);
+                iterate_tuple(primaryKey._columns, lambda);
             });
         }
 
         template<class... Args>
         std::vector<std::string> table_key_columns_names(const primary_key_t<Args...>& primaryKey) const {
-            return create_from_tuple<std::vector<std::string>>(primaryKey.columns,
+            return create_from_tuple<std::vector<std::string>>(primaryKey._columns,
                                                                [this, empty = std::string{}](auto& memberPointer) {
                                                                    if (const std::string* columnName =
                                                                            this->find_column_name(memberPointer)) {
@@ -13436,12 +13436,12 @@ namespace sqlite_orm::internal {
         if constexpr (/*bool hasNoColumnPK =*/!insertable_table_definition<Cs...>::template count_of_columns_with<
                       is_primary_key>()) {
             definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
-                using colrefs_tuple = decltype(primaryKey.columns);
+                using colrefs_tuple = decltype(primaryKey._columns);
                 using same_type_index_sequence =
                     filter_tuple_sequence_t<colrefs_tuple,
                                             check_if_is_type<member_field_type_t<G>>::template fn,
                                             member_field_type_t>;
-                iterate_tuple(primaryKey.columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
+                iterate_tuple(primaryKey._columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
                     if (compare_fields(memberPointer, column.member_pointer) ||
                         compare_fields(memberPointer, column.setter)) {
                         res = true;
@@ -13463,7 +13463,7 @@ namespace sqlite_orm::internal {
                 // note: use `decltype(primaryKey)` instead of `decltype(primaryKey.columns)` otherwise msvc 141 chokes on the `if constexpr` below
                 using colrefs_tuple = columns_tuple_t<polyfill::remove_cvref_t<decltype(primaryKey)>>;
                 if constexpr (std::tuple_size<colrefs_tuple>::value == 1) {
-                    auto& memberPointer = std::get<0>(primaryKey.columns);
+                    auto& memberPointer = std::get<0>(primaryKey._columns);
                     if (compare_fields(memberPointer, column.member_pointer) ||
                         compare_fields(memberPointer, column.setter)) {
                         res = true;
@@ -23509,7 +23509,7 @@ namespace sqlite_orm::internal {
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
             ss << "PRIMARY KEY";
-            switch (statement.options.asc_option) {
+            switch (statement._options.asc_option) {
                 case statement_type::order_by::ascending:
                     ss << " ASC";
                     break;
@@ -23519,13 +23519,13 @@ namespace sqlite_orm::internal {
                 default:
                     break;
             }
-            if (statement.options.conflict_clause_is_on) {
-                ss << " ON CONFLICT " << serialize(statement.options.conflict_clause, context);
+            if (statement._options.conflict_clause_is_on) {
+                ss << " ON CONFLICT " << serialize(statement._options.conflict_clause, context);
             }
             using columns_tuple = typename statement_type::columns_tuple;
             constexpr size_t columnsCount = std::tuple_size<columns_tuple>::value;
             if constexpr (columnsCount > 0) {
-                ss << "(" << streaming_mapped_columns_expressions(statement.columns, context) << ")";
+                ss << "(" << streaming_mapped_columns_expressions(statement._columns, context) << ")";
             }
             return ss.str();
         }
