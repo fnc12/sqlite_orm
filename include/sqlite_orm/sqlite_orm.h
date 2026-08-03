@@ -3508,7 +3508,7 @@ namespace sqlite_orm::internal {
     struct primary_key_with_autoincrement : T {
         using primary_key_type = T;
 
-        constexpr const primary_key_type& as_base() const {
+        const primary_key_type& as_base() const {
             return *this;
         }
     };
