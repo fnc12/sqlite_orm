@@ -3718,6 +3718,9 @@ namespace sqlite_orm::internal {
 
         foreign_key_action _action = foreign_key_action::none;
 
+        on_update_delete_t(const on_update_delete_t&) = delete;
+        on_update_delete_t& operator=(const on_update_delete_t&) = delete;
+
         on_update_delete_t(foreign_key_type& fk_, decltype(update) update_, foreign_key_action action_) :
             on_update_delete_base{update_}, fk(fk_), _action(action_) {}
 
