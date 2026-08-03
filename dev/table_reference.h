@@ -23,7 +23,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_table_valued_expression_v = polyfill::is_specialization_of_v<T, table_valued_expression>;
+    constexpr bool is_table_valued_expression_v = polyfill::is_specialization_of_v<T, table_valued_expression>;
 
     template<class T>
     using is_table_valued_expression = polyfill::bool_constant<is_table_valued_expression_v<T>>;
@@ -33,16 +33,6 @@ namespace sqlite_orm::internal {
      */
     template<class O>
     struct table_reference : polyfill::type_identity<O> {
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
-        /** 
-         *  Make a table-valued function call.
-         */
-        template<class... Args>
-        constexpr SQLITE_ORM_STATIC_CALLOP table_valued_expression<O, Args...>
-        operator()(Args... arguments) SQLITE_ORM_OR_CONST_CALLOP {
-            return {{ {std::move(arguments)}... }};
-        }
-#else
         /** 
          *  Make a table-valued function call.
          */
@@ -51,7 +41,6 @@ namespace sqlite_orm::internal {
         operator()(Args... arguments) SQLITE_ORM_OR_CONST_CALLOP {
             return {{{std::move(arguments)}...}};
         }
-#endif
     };
 }
 

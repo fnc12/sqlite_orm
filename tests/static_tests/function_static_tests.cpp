@@ -345,7 +345,7 @@ TEST_CASE("function static") {
         }
 #endif
         SECTION("freestanding function") {
-#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 12)
+#if (defined(SQLITE_ORM_GNU_GCC) && (__GNUC__ < 12)) || (defined(SQLITE_ORM_MS_MSVC) && _MSC_VER < 1930)
             SKIP("GCC < 12 cannot use this function pointer as NTTP in this test.");
 #else
             constexpr auto quotedScalar = "f"_scalar.quote(clamp_int_ptr);
@@ -377,7 +377,7 @@ TEST_CASE("function static") {
 #endif
         }
         SECTION("template function") {
-#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ < 12)
+#if (defined(SQLITE_ORM_GNU_GCC) && (__GNUC__ < 12)) || (defined(SQLITE_ORM_MS_MSVC) && _MSC_VER < 1930)
             SKIP("GCC < 12 cannot use this function pointer as NTTP in this test.");
 #else
             constexpr auto quotedScalar =
