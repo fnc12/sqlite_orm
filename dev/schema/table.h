@@ -13,7 +13,7 @@
 #include "../tuple_helper/tuple_filter.h"
 #include "../tuple_helper/tuple_transformer.h"
 #include "../type_traits.h"
-#include "../constraints.h"
+#include "../table_constraints.h"
 #include "../table_info.h"
 #include "table_base.h"
 #include "column.h"

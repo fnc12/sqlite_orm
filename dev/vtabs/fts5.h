@@ -11,10 +11,10 @@
 #include "../functional/cxx_optional.h"
 #include "../functional/gsl.h"
 #include "../functional/mpl.h"
-#include "../field_of.h"
+#include "../member_traits/member_traits.h"
 #include "../schema/virtual_table.h"
 #include "../schema/column.h"
-#include "../constraints.h"
+#include "../fts5_constraints.h"
 
 #if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
 namespace sqlite_orm::internal {
