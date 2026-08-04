@@ -4136,7 +4136,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     /** 
      *  Auxiliary virtual table column
      */
-    constexpr inline internal::auxiliary_t auxiliary() {
+    constexpr internal::auxiliary_t auxiliary() {
         return {};
     }
 #endif
