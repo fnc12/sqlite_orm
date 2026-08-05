@@ -14,7 +14,7 @@
 #include "functional/is_base_template_of.h"
 #include "type_traits.h"
 #include "collate_argument.h"
-#include "constraints.h"
+#include "schema/constraints/collate.h"
 #include "optional_container.h"
 #include "serializer_context.h"
 #include "serialize_result_type.h"
@@ -473,13 +473,12 @@ namespace sqlite_orm::internal {
         pattern_t pattern;
         optional_container<escape_t> arg3;  //  not escape cause escape exists as a function here
 
-        like_t(arg_t arg_, pattern_t pattern_, optional_container<escape_t> escape_) :
+        constexpr like_t(arg_t arg_, pattern_t pattern_, optional_container<escape_t> escape_) :
             arg(std::move(arg_)), pattern(std::move(pattern_)), arg3(std::move(escape_)) {}
 
         template<class C>
-        like_t<A, T, C> escape(C c) const {
-            optional_container<C> newArg3{std::move(c)};
-            return {std::move(this->arg), std::move(this->pattern), std::move(newArg3)};
+        constexpr like_t<A, T, C> escape(C c) const {
+            return {std::move(this->arg), std::move(this->pattern), {std::move(c)}};
         }
     };
 
@@ -498,7 +497,7 @@ namespace sqlite_orm::internal {
         arg_t arg;
         pattern_t pattern;
 
-        glob_t(arg_t arg_, pattern_t pattern_) : arg(std::move(arg_)), pattern(std::move(pattern_)) {}
+        constexpr glob_t(arg_t arg_, pattern_t pattern_) : arg(std::move(arg_)), pattern(std::move(pattern_)) {}
     };
 
     /**
@@ -1067,17 +1066,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Example: storage.select(like(&User::name, "T%"))
      */
     template<class A, class T>
-    internal::like_t<A, T, void> like(A a, T t) {
+    constexpr internal::like_t<A, T, void> like(A a, T t) {
         return {std::move(a), std::move(t), {}};
-    }
-
-    /**
-     *  X GLOB Y
-     *  Example: storage.select(glob(&User::name, "*S"))
-     */
-    template<class A, class T>
-    internal::glob_t<A, T> glob(A a, T t) {
-        return {std::move(a), std::move(t)};
     }
 
     /**
@@ -1085,7 +1075,16 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  Example: storage.select(like(&User::name, "T%", "%"))
      */
     template<class A, class T, class E>
-    internal::like_t<A, T, E> like(A a, T t, E e) {
+    constexpr internal::like_t<A, T, E> like(A a, T t, E e) {
         return {std::move(a), std::move(t), {std::move(e)}};
+    }
+
+    /**
+     *  X GLOB Y
+     *  Example: storage.select(glob(&User::name, "*S"))
+     */
+    template<class A, class T>
+    constexpr internal::glob_t<A, T> glob(A a, T t) {
+        return {std::move(a), std::move(t)};
     }
 }

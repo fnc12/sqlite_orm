@@ -10,10 +10,8 @@
 #include <algorithm>  //  std::find_if, std::ranges::find
 #endif
 
-#include "../tuple_helper/tuple_filter.h"
 #include "../type_traits.h"
 #include "../type_printer.h"
-#include "../schema/column.h"
 #include "../schema/table.h"
 
 namespace sqlite_orm::internal {

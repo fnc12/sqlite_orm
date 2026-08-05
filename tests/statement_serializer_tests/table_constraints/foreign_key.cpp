@@ -28,7 +28,7 @@ TEST_CASE("statement_serializer foreign key") {
                                      make_column("name", &User::name));
 
         SECTION("simple") {
-            auto fk = foreign_key(&Visit::userId).references(&User::id);
+            const auto fk = foreign_key(&Visit::userId).references(&User::id);
 
             using ForeignKey = decltype(fk);
             STATIC_REQUIRE(std::is_same<ForeignKey::target_type, User>::value);
@@ -52,7 +52,7 @@ TEST_CASE("statement_serializer foreign key") {
         }
         SECTION("on update") {
             SECTION("no_action") {
-                auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.no_action();
+                const auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.no_action();
 
                 using ForeignKey = decltype(fk);
                 STATIC_REQUIRE(std::is_same<ForeignKey::target_type, User>::value);
@@ -75,7 +75,7 @@ TEST_CASE("statement_serializer foreign key") {
                 REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON UPDATE NO ACTION)");
             }
             SECTION("restrict_") {
-                auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.restrict_();
+                const auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.restrict_();
 
                 using ForeignKey = decltype(fk);
                 STATIC_REQUIRE(std::is_same<ForeignKey::target_type, User>::value);
@@ -98,7 +98,7 @@ TEST_CASE("statement_serializer foreign key") {
                 REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON UPDATE RESTRICT)");
             }
             SECTION("set_null") {
-                auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.set_null();
+                const auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.set_null();
 
                 using ForeignKey = decltype(fk);
                 STATIC_REQUIRE(std::is_same<ForeignKey::target_type, User>::value);
@@ -121,7 +121,7 @@ TEST_CASE("statement_serializer foreign key") {
                 REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON UPDATE SET NULL)");
             }
             SECTION("set_default") {
-                auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.set_default();
+                const auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.set_default();
 
                 using ForeignKey = decltype(fk);
                 STATIC_REQUIRE(std::is_same<ForeignKey::target_type, User>::value);
@@ -144,7 +144,7 @@ TEST_CASE("statement_serializer foreign key") {
                 REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON UPDATE SET DEFAULT)");
             }
             SECTION("cascade") {
-                auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.cascade();
+                const auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.cascade();
 
                 using ForeignKey = decltype(fk);
                 STATIC_REQUIRE(std::is_same<ForeignKey::target_type, User>::value);
@@ -192,7 +192,7 @@ TEST_CASE("statement_serializer foreign key") {
                 REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON DELETE NO ACTION)");
             }
             SECTION("restrict_") {
-                auto fk = foreign_key(&Visit::userId).references(&User::id).on_delete.restrict_();
+                const auto fk = foreign_key(&Visit::userId).references(&User::id).on_delete.restrict_();
 
                 using ForeignKey = decltype(fk);
                 STATIC_REQUIRE(std::is_same<ForeignKey::target_type, User>::value);
@@ -215,7 +215,7 @@ TEST_CASE("statement_serializer foreign key") {
                 REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON DELETE RESTRICT)");
             }
             SECTION("set_null") {
-                auto fk = foreign_key(&Visit::userId).references(&User::id).on_delete.set_null();
+                const auto fk = foreign_key(&Visit::userId).references(&User::id).on_delete.set_null();
 
                 using ForeignKey = decltype(fk);
                 STATIC_REQUIRE(std::is_same<ForeignKey::target_type, User>::value);
@@ -238,7 +238,7 @@ TEST_CASE("statement_serializer foreign key") {
                 REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON DELETE SET NULL)");
             }
             SECTION("set_default") {
-                auto fk = foreign_key(&Visit::userId).references(&User::id).on_delete.set_default();
+                const auto fk = foreign_key(&Visit::userId).references(&User::id).on_delete.set_default();
 
                 using ForeignKey = decltype(fk);
                 STATIC_REQUIRE(std::is_same<ForeignKey::target_type, User>::value);
@@ -261,7 +261,7 @@ TEST_CASE("statement_serializer foreign key") {
                 REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON DELETE SET DEFAULT)");
             }
             SECTION("cascade") {
-                auto fk = foreign_key(&Visit::userId).references(&User::id).on_delete.cascade();
+                const auto fk = foreign_key(&Visit::userId).references(&User::id).on_delete.cascade();
 
                 using ForeignKey = decltype(fk);
                 STATIC_REQUIRE(std::is_same<ForeignKey::target_type, User>::value);
@@ -303,7 +303,7 @@ TEST_CASE("statement_serializer foreign key") {
             Token(decltype(id) id_, decltype(token) token_, decltype(usedId) usedId_) :
                 Object{id_}, token(std::move(token_)), usedId(usedId_) {}
         };
-        auto fk = foreign_key(&Token::usedId).references(column<User>(&User::id));
+        const auto fk = foreign_key(&Token::usedId).references(column<User>(&User::id));
 
         using ForeignKey = decltype(fk);
         STATIC_REQUIRE(std::is_same<ForeignKey::target_type, User>::value);
@@ -342,7 +342,8 @@ TEST_CASE("statement_serializer foreign key") {
             std::time_t time = 0;
         };
 
-        auto fk = foreign_key(&UserVisit::userId, &UserVisit::userFirstName).references(&User::id, &User::firstName);
+        const auto fk =
+            foreign_key(&UserVisit::userId, &UserVisit::userFirstName).references(&User::id, &User::firstName);
 
         using ForeignKey = decltype(fk);
         STATIC_REQUIRE(std::is_same<ForeignKey::target_type, User>::value);

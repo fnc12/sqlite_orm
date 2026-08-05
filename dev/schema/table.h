@@ -17,7 +17,7 @@
 #include "../tuple_helper/tuple_filter.h"
 #include "../tuple_helper/tuple_transformer.h"
 #include "../type_traits.h"
-#include "../constraints.h"
+#include "../table_constraints.h"
 #include "../table_info.h"
 #include "table_base.h"
 #include "column.h"
@@ -57,7 +57,7 @@ namespace sqlite_orm::internal {
                     using generated_op_index_sequence =
                         filter_tuple_sequence_t<std::remove_const_t<decltype(column.constraints)>, is_generated_always>;
                     constexpr size_t opIndex = index_sequence_value_at<0>(generated_op_index_sequence{});
-                    result = &std::get<opIndex>(column.constraints).storage;
+                    result = &std::get<opIndex>(column.constraints)._storage;
                 });
 #endif
             return result;

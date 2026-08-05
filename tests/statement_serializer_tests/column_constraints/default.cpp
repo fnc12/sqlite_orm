@@ -9,17 +9,17 @@ TEST_CASE("statement_serializer default") {
     std::string value;
     decltype(value) expected;
     SECTION("int literal") {
-        auto def = default_value(1);
+        constexpr auto def = default_value(1);
         value = serialize(def, context);
         expected = "DEFAULT (1)";
     }
     SECTION("string literal") {
-        auto def = default_value("hi");
+        constexpr auto def = default_value("hi");
         value = serialize(def, context);
         expected = "DEFAULT ('hi')";
     }
     SECTION("func") {
-        auto def = default_value(datetime("now"));
+        constexpr auto def = default_value(datetime("now"));
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "DEFAULT (DATETIME('now'))";

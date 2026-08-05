@@ -18,6 +18,39 @@
 #include "column.h"
 
 namespace sqlite_orm::internal {
+    template<class Elements>
+    using col_index_sequence_of = filter_tuple_sequence_t<Elements, is_column>;
+
+    template<class Elements, class F>
+    using col_index_sequence_with_field_type = filter_tuple_sequence_t<Elements,
+                                                                       check_if_is_type<F>::template fn,
+                                                                       field_type_t,
+                                                                       filter_tuple_sequence_t<Elements, is_column>>;
+
+    template<class Elements, template<class...> class TraitFn>
+    using col_index_sequence_with = filter_tuple_sequence_t<Elements,
+                                                            check_if_has<TraitFn>::template fn,
+                                                            constraints_type_t,
+                                                            filter_tuple_sequence_t<Elements, is_column>>;
+
+    template<class Elements, template<class...> class TraitFn>
+    using col_index_sequence_excluding = filter_tuple_sequence_t<Elements,
+                                                                 check_if_has_not<TraitFn>::template fn,
+                                                                 constraints_type_t,
+                                                                 filter_tuple_sequence_t<Elements, is_column>>;
+
+    template<class Elements>
+    using hidden_col_index_sequence_of = filter_tuple_sequence_t<Elements, is_hidden_column>;
+
+    template<class Elements, class F>
+    using all_col_index_sequence_with_field_type = filter_tuple_sequence_t<
+        Elements,
+        check_if_is_type<F>::template fn,
+        field_type_t,
+        filter_tuple_sequence_t<Elements, mpl::disjunction_fn<is_column, is_hidden_column>::template fn>>;
+}
+
+namespace sqlite_orm::internal {
 
     struct table_identifier {
 
@@ -160,13 +193,13 @@ namespace sqlite_orm::internal {
                               lambda(column.member_pointer);
                           }));
             this->visit_table_primary_key([&lambda](auto& primaryKey) {
-                iterate_tuple(primaryKey.columns, lambda);
+                iterate_tuple(primaryKey._columns, lambda);
             });
         }
 
         template<class... Args>
         std::vector<std::string> table_key_columns_names(const primary_key_t<Args...>& primaryKey) const {
-            return create_from_tuple<std::vector<std::string>>(primaryKey.columns,
+            return create_from_tuple<std::vector<std::string>>(primaryKey._columns,
                                                                [this, empty = std::string{}](auto& memberPointer) {
                                                                    if (const std::string* columnName =
                                                                            this->find_column_name(memberPointer)) {
@@ -186,12 +219,12 @@ namespace sqlite_orm::internal {
         if constexpr (/*bool hasNoColumnPK =*/!insertable_table_definition<Cs...>::template count_of_columns_with<
                       is_primary_key>()) {
             definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
-                using colrefs_tuple = decltype(primaryKey.columns);
+                using colrefs_tuple = decltype(primaryKey._columns);
                 using same_type_index_sequence =
                     filter_tuple_sequence_t<colrefs_tuple,
                                             check_if_is_type<member_field_type_t<G>>::template fn,
                                             member_field_type_t>;
-                iterate_tuple(primaryKey.columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
+                iterate_tuple(primaryKey._columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
                     if (compare_fields(memberPointer, column.member_pointer) ||
                         compare_fields(memberPointer, column.setter)) {
                         res = true;
@@ -213,7 +246,7 @@ namespace sqlite_orm::internal {
                 // note: use `decltype(primaryKey)` instead of `decltype(primaryKey.columns)` otherwise msvc 141 chokes on the `if constexpr` below
                 using colrefs_tuple = columns_tuple_t<polyfill::remove_cvref_t<decltype(primaryKey)>>;
                 if constexpr (std::tuple_size<colrefs_tuple>::value == 1) {
-                    auto& memberPointer = std::get<0>(primaryKey.columns);
+                    auto& memberPointer = std::get<0>(primaryKey._columns);
                     if (compare_fields(memberPointer, column.member_pointer) ||
                         compare_fields(memberPointer, column.setter)) {
                         res = true;
