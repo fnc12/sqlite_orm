@@ -83,7 +83,35 @@ namespace sqlite_orm::internal {
         static_assert(polyfill::is_specialization_of_v<F, foreign_key_t>);
         using foreign_key_type = F;
 
-        foreign_key_type _make_fk(foreign_key_action newAction) const {
+        foreign_key_type no_action() const {
+            return this->copy_fk(foreign_key_action::no_action);
+        }
+
+        foreign_key_type restrict_() const {
+            return this->copy_fk(foreign_key_action::restrict_);
+        }
+
+        foreign_key_type set_null() const {
+            return this->copy_fk(foreign_key_action::set_null);
+        }
+
+        foreign_key_type set_default() const {
+            return this->copy_fk(foreign_key_action::set_default);
+        }
+
+        foreign_key_type cascade() const {
+            return this->copy_fk(foreign_key_action::cascade);
+        }
+
+        operator std::string() const {
+            if constexpr (forUpdate)
+                return "ON UPDATE";
+            else
+                return "ON DELETE";
+        }
+
+      private:
+        foreign_key_type copy_fk(foreign_key_action newAction) const {
             const foreign_key_type* thisFk;
             if constexpr (forUpdate) {
                 thisFk = addressof_enclosing(this, &F::on_update);
@@ -98,33 +126,6 @@ namespace sqlite_orm::internal {
                 fk2.on_delete._action = newAction;
             }
             return fk2;
-        }
-
-        foreign_key_type no_action() const {
-            return _make_fk(foreign_key_action::no_action);
-        }
-
-        foreign_key_type restrict_() const {
-            return _make_fk(foreign_key_action::restrict_);
-        }
-
-        foreign_key_type set_null() const {
-            return _make_fk(foreign_key_action::set_null);
-        }
-
-        foreign_key_type set_default() const {
-            return _make_fk(foreign_key_action::set_default);
-        }
-
-        foreign_key_type cascade() const {
-            return _make_fk(foreign_key_action::cascade);
-        }
-
-        operator std::string() const {
-            if constexpr (forUpdate)
-                return "ON UPDATE";
-            else
-                return "ON DELETE";
         }
     };
 
