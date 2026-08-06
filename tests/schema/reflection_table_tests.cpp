@@ -7,7 +7,7 @@
 using namespace sqlite_orm;
 
 namespace {
-    struct[[= "plain"_orm_name)]] ReflectedPlain {
+    struct[[= "plain"_orm_name]] ReflectedPlain {
         int64 id;
         std::string name;
     };
@@ -17,25 +17,25 @@ namespace {
         std::string name;
     };
 
-    struct[[= "annotated"_orm_name)]] ReflectedAnnotated {
+    struct[[= "annotated"_orm_name]] ReflectedAnnotated {
         [[= primary_key().autoincrement()]] int64 id;
         [[= not_null()]] std::string name;
         [[= default_value(0)]] int score;
         [[= collate_nocase()]] std::string handle;
     };
 
-    struct[[= "composite"_orm_name)]] ReflectedComposite {
+    struct[[= "composite"_orm_name]] ReflectedComposite {
         int a;
         int b;
         std::string note;
     };
 
-    struct[[= "parent"_orm_name)]] ReflectedParent {
+    struct[[= "parent"_orm_name]] ReflectedParent {
         int64 id;
         std::string label;
     };
 
-    struct[[= "child"_orm_name)]] ReflectedChild {
+    struct[[= "child"_orm_name]] ReflectedChild {
         int64 id;
         int parentId;
     };

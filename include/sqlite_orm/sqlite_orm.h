@@ -14070,7 +14070,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  overrides the table name (otherwise the type's reflected identifier is used).
      *
      *  Variadic `constraints` carry table-level constraints that either cannot be expressed as annotations
-     *  (e.g. `check()`) or that the user prefers to pass at the call site. Column types are rejected by
+     *  (e.g. `check()`) or that the user prefers to pass at the call site. Columns are rejected by
      *  the `requires` clause — column-level constraints come from annotations only.
      */
     template<class T, class... Cs>
@@ -14089,7 +14089,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  overrides the table name (otherwise the type's reflected identifier is used).
      *
      *  Variadic `constraints` carry table-level constraints that either cannot be expressed as annotations
-     *  (e.g. `check()`) or that the user prefers to pass at the call site. Column types are rejected by
+     *  (e.g. `check()`) or that the user prefers to pass at the call site. Columns are rejected by
      *  the `requires` clause — column-level constraints come from annotations only.
      */
     template<orm_table_reference auto table, class... Cs>

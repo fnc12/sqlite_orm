@@ -1,19 +1,18 @@
 /**
- *  This example demonstrates how to use SQL views with sqlite_orm.
+ *  This example demonstrates how to use tables and SQL views with sqlite_orm and C++ reflection.
  *
  *  Views in SQL are virtual tables based on the result-set of a SELECT statement.
- *  With sqlite_orm, views are defined using make_view() which leverages C++ reflection
- *  to automatically map columns from the SELECT statement to struct fields.
  *
- *  Unlike tables created with make_table(), views created with make_view() don't require
- *  explicit column definitions - the columns are automatically derived from the view's
- *  object type through reflection.
+ *  The reflection-based `make_table()` and `make_view()` factory functions don't require
+ *  explicit column definitions - the columns are automatically derived from the type's
+ *  non-static data members through reflection.
+ *  Many table column constraints can be specified through C++ annotations on the data members,
+ *  table-level constraints will continue to be passed to the `make_table()` function.
  */
 
 #include <sqlite_orm/sqlite_orm.h>
 #include <iostream>
 #include <string>
-#include <memory>
 #include <cstdio>  // std::remove
 
 #ifdef SQLITE_ORM_WITH_VIEW
@@ -24,28 +23,29 @@
 using namespace sqlite_orm;
 using std::cout;
 using std::endl;
-using std::make_unique;
 using std::string;
 
+void handle_contract_violation(std::contracts::contract_violation const& violation) noexcept {}
+
 // Base tables
-struct Employee {
-    int64 id;
-    std::string name;
-    int64 department_id;
-    double salary;
+struct[[= "employee"_orm_name]] Employee {
+    [[= primary_key()]] int64 id;
+    [[= collate_nocase()]] std::string name;
+    [[= not_null()]] int64 department_id;
+    [[= default_value(0.)]] double salary;
 };
 
-struct Department {
-    int64 id;
-    std::string name;
-    std::string location;
+struct[[= "department"_orm_name]] Department {
+    [[= primary_key()]] int64 id;
+    [[= collate_nocase()]] std::string name;
+    [[= collate_nocase()]] std::string location;
 };
 
 // View objects - note how we only define the struct fields, no column mappings needed!
 // The fields are automatically mapped through C++ reflection
 
 // View 1: High earners (employees earning more than 60000)
-struct[[= "high_earners"_orm_name]] HighEarner {
+struct[[= "high_earner"_orm_name]] HighEarner {
     int64 id;
     std::string name;
     double salary;
@@ -71,15 +71,8 @@ inline auto initStorage(const std::string& path) {
     return make_storage(
         path,
         // Define base tables
-        make_table("employees",
-                   make_column("id", &Employee::id, primary_key()),
-                   make_column("name", &Employee::name),
-                   make_column("department_id", &Employee::department_id),
-                   make_column("salary", &Employee::salary)),
-        make_table("departments",
-                   make_column("id", &Department::id, primary_key()),
-                   make_column("name", &Department::name),
-                   make_column("location", &Department::location)),
+        make_table<Department>(),
+        make_table<Employee>(foreign_key(&Employee::department_id).references(&Department::id)),
 
         // Define views - notice how we only specify the SELECT statement.
         // The column mappings and view name are derived from the view object type

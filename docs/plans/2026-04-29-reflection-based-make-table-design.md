@@ -1,7 +1,24 @@
 # Reflection-based `make_table` design
 
 Date: 2026-04-29
+Last updated: 2026-08-06
 Branch base: `dbo-reflection`
+
+## Revision log
+
+- **2026-08-06** — Updated to match what landed:
+  - `dbo_name` renamed to `orm_name`; added the `_orm_name` string-literal
+    operator template as the preferred spelling (decision 4, "`orm_name`
+    annotation" section).
+  - `default_value` with a traditional C string literal works, so the
+    string-default trade-off is milder than originally recorded
+    ("`default_t<T>` consequence").
+  - `foreign_key_t`'s `on_update` / `on_delete` back-reference was reworked in
+    commit `9485732b` — the stored reference is gone, replaced by an address
+    computation from `this`. Consequences for the constexpr-ification table
+    and for the FK note are folded in.
+  - `examples/view.cpp` now doubles as the worked example for the new
+    `make_table` overload.
 
 ## Goal
 
@@ -43,11 +60,25 @@ unchanged.
    sqlite_orm table-level constraint factory currently fits that shape.
 4. **Table/view name from annotation.** The reflection-based `make_table<T>`
    and `make_view<T>` overloads do not take a name argument. The name comes
-   from the optional class-scope `[[=dbo_name("…")]]` annotation, which wraps
-   a compile-time C string literal in a `dbo_name_t`; when the annotation is
-   absent the name falls back to `std::meta::identifier_of(^^T)`. The
+   from the optional class-scope name annotation, which wraps a compile-time
+   C string literal in an `internal::dbo_name_literal<N>`; when the annotation
+   is absent the name falls back to `std::meta::identifier_of(^^T)`. The
    classical `make_table(name, columns...)` overload still accepts a runtime
    string for callers that genuinely need dynamic naming.
+
+   The annotation has two spellings, both producing the same
+   `dbo_name_literal<N>` value:
+
+   - `[[= "users"_orm_name]]` — the string-literal operator template, the
+     preferred spelling.
+   - `[[= orm_name("users")]]` — the factory function, kept as a fallback for
+     contexts where the literal operator is awkward.
+
+   The public name is `orm_name`, not `dbo_name`: `dbo_name` survives only as
+   the internal type/helper prefix (`dbo_name_literal`, `resolve_dbo_name`,
+   `filter_out_dbo_name`), where "dbo" usefully denotes *database object* —
+   table or view — but the public spelling matches the library's `orm`
+   vocabulary.
 5. **Feature gating.** No new feature-test macros. The new overload is gated
    by `SQLITE_ORM_REFLECTION_SUPPORTED`, which already exists in
    `dev/functional/cxx_core_features.h`.
@@ -64,12 +95,23 @@ unchanged.
 ```cpp
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+    inline namespace literals {
+        template<internal::dbo_name_literal dboName>
+        [[nodiscard]] consteval auto operator""_orm_name();
+    }
+
     template<size_t N>
-    constexpr internal::dbo_name_t<N> dbo_name(const char (&dboName)[N]);
+    consteval internal::dbo_name_literal<N> orm_name(const char (&dboName)[N]);
 
     template<class T, class... Cs>
         requires (!internal::is_column_v<Cs> && ...)
-    auto make_table(Cs... extras);
+    auto make_table(Cs... tableConstraints);
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    template<orm_table_reference auto table, class... Cs>
+        requires (!internal::is_column_v<Cs> && ...)
+    auto make_table(Cs... tableConstraints);
+#endif
 
 #ifdef SQLITE_ORM_WITH_VIEW
     template<class O, class Select>
@@ -80,12 +122,16 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 }
 ```
 
+The `orm_table_reference auto` overload mirrors the classical
+`make_table<table>(name, …)` alias overload; it forwards to
+`make_reflected_table<auto_decay_table_ref_t<table>>`.
+
 Usage:
 
 ```cpp
-struct [[=dbo_name("users")]] User {
-    [[=primary_key().autoincrement()]] int id;
-    [[=not_null()]] std::string name;
+struct [[= "users"_orm_name]] User {
+    [[= primary_key().autoincrement()]] int id;
+    [[= not_null()]] std::string name;
 };
 
 auto storage = make_storage("db.sqlite", make_table<User>());  // name "users", PK on id, NOT NULL on name
@@ -93,16 +139,32 @@ auto storage = make_storage("db.sqlite", make_table<User>());  // name "users", 
 
 ### Overload resolution against the existing classical overloads
 
+Because the reflection overload takes no name parameter, the two families are
+separated by arity and by the `requires` clause rather than by partial
+ordering of the name argument.
+
 | Call | Picked | Reason |
 |---|---|---|
 | `make_table<User>()` | new | classical second requires a `name` arg |
-| `make_table<User>("u")` | new | both viable; new is more-constrained (`requires`) |
-| `make_table<User>("u", primary_key(&User::a, &User::b))` | new | both viable; new more-constrained |
+| `make_table<User>(primary_key(&User::a, &User::b))` | new | classical second's first parameter is `std::string`; a `primary_key_t` doesn't convert |
 | `make_table<User>("u", make_column("id", &User::id))` | classical second | new's `requires` rejects column types |
 | `make_table("u", make_column("id", &User::id))` | classical first | first deduces `T` from a column; new and second need explicit `T` |
 
-Concept partial-ordering does the dispatch — no SFINAE, no metaprogramming
-gymnastics.
+Ordinary overload resolution plus one `requires` clause does the dispatch — no
+SFINAE, no metaprogramming gymnastics.
+
+**Sharp edge — `make_table<User>("u")`.** Passing only a name to the explicit-`T`
+form selects the *reflection* overload, not the classical one: `Cs` deduces to
+`const char*` (an exact match after array-to-pointer decay), which beats the
+classical overload's user-defined conversion to `std::string`. The string
+literal is then treated as a table-level constraint and
+`validate_base_table_definition` fires its "Incorrect base table elements or
+constraints" `static_assert`. This is a compile-time diagnostic, not silent
+misbehaviour, but the message doesn't point at the real mistake. Callers who
+want a runtime name must pass at least one column, i.e. use the classical
+overload proper. (Derived from the overload set as written; not covered by a
+test — worth adding a `static_assert`-friendly diagnostic or a deleted overload
+if it bites in practice.)
 
 ## Reflection mechanics
 
@@ -180,36 +242,34 @@ Mirrors `internal::make_view` in `dev/schema/view.h`. Both consume the same
 pattern.
 
 ```cpp
-template<class T, class... Cs>
-auto make_reflected_table(std::string name, Cs... constraints) {
-    if (name.empty()) {
-        name = std::string(internal::extract_type_identifier<T>());
-    }
-    static constexpr auto members = extract_members<T>();
+template<class O, class... Cs>
+auto make_reflected_table(Cs... constraints) {
+    auto classAnnotations = extract_type_annotations<O>();
+    std::string tableName{resolve_dbo_name<O>(classAnnotations)};
+    auto annotationConstraints = filter_out_dbo_name(std::move(classAnnotations));
+    static /*gcc*/ constexpr auto members = extract_members<O>();
 
     auto columns = []<size_t... I>(std::index_sequence<I...>) static {
         return std::tuple{
-            []<std::meta::info Member>() static {
+            []<std::meta::info member>() static {
                 return std::apply(
-                    [](auto&&... annotations) static {
-                        return make_column(
-                            std::string(std::meta::identifier_of(Member)),
-                            splice_member_pointer<Member>(),
-                            std::move(annotations)...
+                    [](auto&&... columnConstraints) static {
+                        return sqlite_orm::make_column(
+                            std::string(std::meta::identifier_of(member)),
+                            splice_member_pointer<member>(),
+                            std::move(columnConstraints)...
                         );
                     },
-                    splice_annotations<Member>()
+                    splice_annotations<member>()
                 );
             }.template operator()<members[I]>()...
         };
     }(std::make_index_sequence<members.size()>{});
 
-    auto annotationConstraints = extract_type_annotations<T>();
-
-    return [&name]<class... Es>(std::tuple<Es...>&& definition) {
+    return [&tableName]<class... Es>(std::tuple<Es...>&& definition) {
         validate_base_table_definition<Es...>();
-        return base_table<T, std::false_type, Es...>{
-            std::move(name), std::move(definition)
+        return base_table<O, std::false_type, Es...>{
+            std::move(tableName), std::move(definition)
         };
     }(std::tuple_cat(std::move(columns),
                      std::move(annotationConstraints),
@@ -251,7 +311,7 @@ auto make_table(Cs... tableConstraints) {
 }
 ```
 
-### `dbo_name` annotation
+### `orm_name` annotation
 
 `dev/schema/dbo_name.h` carries the lightweight infrastructure for the table /
 view name annotation:
@@ -259,28 +319,45 @@ view name annotation:
 ```cpp
 namespace sqlite_orm::internal {
     template<size_t N>
-    struct dbo_name_t : cstring_literal<N> {
-        constexpr dbo_name_t(const char (&cstr)[N]) : cstring_literal<N>{cstr} {}
+    struct dbo_name_literal : cstring_literal<N> {
+        constexpr dbo_name_literal(const char (&cstr)[N]) : cstring_literal<N>{cstr} {}
+
+        constexpr orm_gsl::czstring name() const noexcept { return this->cstr; }
+        constexpr operator std::string_view() const noexcept { return this->cstr; }
     };
+
+    template<class T>
+    constexpr bool is_dbo_name_literal_v = false;
+    template<size_t N>
+    constexpr bool is_dbo_name_literal_v<dbo_name_literal<N>> = true;
 
     template<class T, class Tuple>
     constexpr std::string_view resolve_dbo_name(const Tuple& annotations) {
-        if constexpr (tuple_contains_dbo_name_v<Tuple>) {
-            return std::get<dbo_name_t>(annotations).cstr;
+        using name_index = find_tuple_element<Tuple, is_dbo_name_literal>;
+
+        if constexpr (name_index::value < std::tuple_size_v<Tuple>) {
+            return std::get<name_index::value>(annotations).name();
         } else {
             return extract_type_identifier<T>();
         }
     }
 
-    // Returns a copy of `tuple` with all `dbo_name_t` elements removed,
+    // Returns a copy of `tuple` with all `dbo_name_literal<…>` elements removed,
     // so they don't get merged into the table's element pool.
     template<class Tuple>
     constexpr auto filter_out_dbo_name(Tuple&& tuple);
 }
 
-namespace sqlite_orm {
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    inline namespace literals {
+        template<internal::dbo_name_literal dboName>
+        [[nodiscard]] consteval auto operator""_orm_name() {
+            return dboName;
+        }
+    }
+
     template<size_t N>
-    constexpr internal::dbo_name_t<N> dbo_name(const char (&dboName)[N]) {
+    consteval internal::dbo_name_literal<N> orm_name(const char (&dboName)[N]) {
         return {dboName};
     }
 }
@@ -292,10 +369,25 @@ table-builder additionally calls `filter_out_dbo_name` before merging the
 remaining class-scope annotations into the elements pool, so the metadata
 annotation doesn't trip `validate_base_table_definition`.
 
+Lookup is by trait (`find_tuple_element<Tuple, is_dbo_name_literal>`) rather
+than by exact type, because `dbo_name_literal<N>` is parameterised on the
+string length — `std::get<dbo_name_literal>` would need the `N` the caller
+never spells out.
+
 The string is embedded in the type's bytes via `cstring_literal<N>` rather than
-carried by pointer + size: pointers to string literals are not accepted as
-annotation values by current reflection implementations (the underlying object
-has no linkage), so a self-contained fixed-size byte array is required.
+carried by pointer + size. This is a hard requirement for the `_orm_name`
+spelling: `operator""_orm_name` takes the literal as a *non-type template
+parameter*, and template arguments of pointer type must designate an entity
+with linkage — a string literal has none. The byte-array form makes the type
+structural and the whole thing works as an NTTP.
+
+Both spellings collapse to the same annotation value, so `resolve_dbo_name`
+needs no knowledge of which one was used:
+
+```cpp
+struct [[= "users"_orm_name]] User { … };       // preferred
+struct [[= orm_name("users")]] User { … };      // equivalent fallback
+```
 
 ## Constexpr-ification prerequisite
 
@@ -309,9 +401,9 @@ must be constant expressions of literal types.
 | `null_t`, `not_null_t`                         | factories `constexpr` |
 | `collate_constraint_t`                         | factory + ctor `constexpr` |
 | `default_t<T>`                                 | factory `constexpr`; *T must itself be a literal type* |
-| `foreign_key_intermediate_t<Cs...>`            | factory + `.references()` member `constexpr` |
-| `foreign_key_t<...>`                           | both ctors `constexpr` |
-| `on_update_delete_t<F>`                        | ctor + the four mutator methods (`cascade()`, `set_null()`, `restrict_()`, `set_default()`, `no_action()`) `constexpr` |
+| `foreign_key_intermediate_t<Cs...>`            | `foreign_key(…)` factory `constexpr`; `.references()` **not** — see below |
+| `foreign_key_t<...>`                           | aggregate; no ctor to constexpr-ify after the rework |
+| `on_fk_update_delete<F, forUpdate>`            | mutators **not** `constexpr` — see below |
 | `check_t`                                      | constexpr-ified anyway, for consistency with the broader push |
 | `generated_always_t`                           | constexpr-ified anyway, for consistency |
 
@@ -321,28 +413,134 @@ the new overload doesn't strictly require it.
 
 ### Note on `foreign_key_t`'s back-reference
 
-`on_update_delete_t<F>` holds `const F& fk`, a back-reference to its parent
-`foreign_key_t`. The existing copy-ctor (constraints.h:352-354) reseats
-`on_update`/`on_delete` to `*this` so runtime copies always have a valid
-back-reference. The intended verification was to check that this same logic
-holds across the constexpr→runtime materialization that P2996 performs when
-an annotation value is read out into a runtime tuple element — but that
-materialization path only happens for FK *annotations*, and FK as a class- or
-member-scope annotation isn't expressible (forward-reference issue, decision
-3). FK as a variadic extra never goes through annotation materialization, so
-the back-reference reseat for the annotation path remains untested in
-practice. No design-level rework is required; this just records why the
-originally-planned test isn't present.
+**Superseded by commit `9485732b`** (merge of `fk-improvements`). The mechanism
+changed; the conclusion for this design did not.
+
+*Originally:* `on_update_delete_t<F>` stored `const F& fk`, a back-reference to
+its enclosing `foreign_key_t`, with copy construction/assignment deleted and a
+hand-written `foreign_key_t` copy-ctor reseating `on_update` / `on_delete` to
+`*this`. The plan was to verify that the reseat also holds across the
+constexpr→runtime materialization P2996 performs when an annotation value is
+read out into a runtime tuple element.
+
+*Now* (`dev/schema/constraints/foreign_key.h`): the stored reference is gone.
+`on_fk_update_delete<F, forUpdate>` derives from `on_fk_action` (which carries
+just the `foreign_key_action` enum) and recovers its enclosing FK from its own
+address:
+
+```cpp
+foreign_key_type copy_fk(foreign_key_action newAction) const {
+    const foreign_key_type* thisFk = addressof_enclosing(this, forUpdate ? &F::on_update : &F::on_delete);
+    foreign_key_type fk2 = *thisFk;   // copy, then mutate the copy's action
+    …
+}
+```
+
+`addressof_enclosing` (`dev/functional/addressof.h`) subtracts a computed
+member offset from `this` via `reinterpret_cast`, and `offsetof_member`
+`static_assert`s `std::is_standard_layout_v<O>`. The `forUpdate` bool is a
+template parameter rather than a data member, so the pick between
+`&F::on_update` and `&F::on_delete` is `if constexpr`.
+
+What this buys, and what it costs:
+
+- **Buys:** `foreign_key_t` is a plain aggregate again — smaller (no reference
+  member), freely copyable and assignable, with no reseating copy-ctor to keep
+  in sync. The back-reference can never dangle, because it is never stored.
+- **Costs:** the address arithmetic uses `reinterpret_cast`, which is not
+  permitted during constant evaluation. So `cascade()`, `set_null()`,
+  `restrict_()`, `set_default()` and `no_action()` cannot be `constexpr`, and
+  neither can `foreign_key_intermediate_t::references()` (which builds the
+  `foreign_key_t` those mutators are called on). The `foreign_key(…)` factory
+  itself is still `constexpr`, but that only gets you as far as the
+  intermediate.
+
+**Consequence for this design: none, but for a second reason now.** A fully
+formed FK still cannot be an annotation value — previously because it isn't
+*expressible* as a class-scope annotation (the forward-reference issue,
+decision 3), and now additionally because it isn't *constructible* at compile
+time. Both roads lead to the same place: FK reaches a reflected table only
+through the variadic-extras path, which is ordinary runtime construction and
+never goes through annotation materialization. The originally-planned
+materialization test therefore still isn't present, and the runtime path is
+covered by the "foreign_key().references() supplied as an extra survives schema
+sync" test case and by `examples/view.cpp`.
+
+If FK-as-annotation is ever wanted, the constexpr blocker is the one to attack
+first: it would need a constant-evaluation-friendly way to reach the enclosing
+FK (e.g. reinstating an explicit back-reference only on a constexpr path, or
+having the mutators return a fresh `foreign_key_t` built from the members they
+can see rather than from a copy of the enclosing object).
 
 ### `default_t<T>` consequence — explicit
 
-`[[=default_value(std::string("foo"))]]` will not compile (string isn't a
-literal type for cross-translation-unit annotation persistence even in C++26).
+`[[= default_value(std::string("foo"))]]` will not compile: `std::string`
+allocates, so it isn't a literal type usable as an annotation value even in
+C++26.
 For string defaults, either:
-- use `default_value("foo"sv)` for a `std::string_view`-typed column, or
-- fall back to the classical overload entirely.
 
-This is the intended trade-off behind Option Y in the decisions section.
+- `[[= default_value("foo")]]` — a traditional C string literal works.
+  `T` deduces to `const char*`, `default_t<const char*>` is a literal type, and
+  the pointer is a valid annotation value (a string literal has static storage
+  duration; the linkage restriction that bites NTTPs does not apply to
+  annotation values). This is the simplest spelling and the one to reach for.
+- `[[= default_value("foo"sv)]]` — a `std::string_view`, for when the column's
+  own type is `std::string_view` or when the extra type information is wanted.
+- Fall back to the classical overload entirely — only genuinely needed when the
+  default value is not a constant expression at all (computed at runtime,
+  dependent on configuration, etc.).
+
+## Worked example — `examples/view.cpp`
+
+The existing SQL-view example was extended to exercise the new `make_table`
+overload alongside `make_view`, so a single example shows the whole
+reflection-based schema pipeline rather than just the view half. Base tables
+that were previously spelled out column by column:
+
+```cpp
+struct Employee {
+    int64 id;
+    std::string name;
+    int64 department_id;
+    double salary;
+};
+
+make_table("employees",
+           make_column("id", &Employee::id, primary_key()),
+           make_column("name", &Employee::name),
+           make_column("department_id", &Employee::department_id),
+           make_column("salary", &Employee::salary)),
+```
+
+now read:
+
+```cpp
+struct [[= "employee"_orm_name]] Employee {
+    [[= primary_key()]] int64 id;
+    [[= collate_nocase()]] std::string name;
+    [[= not_null()]] int64 department_id;
+    [[= default_value(0.)]] double salary;
+};
+
+make_table<Employee>(foreign_key(&Employee::department_id).references(&Department::id)),
+```
+
+The example covers, in one place, most of what this design adds:
+
+- the `_orm_name` class-scope annotation on both tables and view objects
+  (previously only view objects carried it);
+- member-scope column constraints — `primary_key()`, `not_null()`,
+  `collate_nocase()`, `default_value(0.)`;
+- the variadic-extras path, via the FK on `Employee::department_id` — which is
+  also the one constraint here that *cannot* be an annotation (decision 3 plus
+  the constexpr blocker above), making the split between the two paths visible
+  at a glance;
+- declaration order mattering for FKs: `make_table<Department>()` must precede
+  `make_table<Employee>(…)` in the `make_storage` argument list.
+
+Note that the example is gated on `SQLITE_ORM_WITH_VIEW`, not on
+`SQLITE_ORM_REFLECTION_SUPPORTED`; the view half already required reflection,
+so the table half adds no new toolchain requirement.
 
 ## File-by-file plan
 
@@ -366,8 +564,12 @@ broke before commit 2 starts.
   `extract_type_annotations`). The same `extract_members` source is also
   consumed by the refactored `internal::make_view` so both schema-builders
   share one reflection pipeline.
-- `dev/schema/table.h` — new `internal::make_reflected_table<T>` and new
-  public `make_table<T>(name = "", extras...)` overload. Gated by
+- `dev/schema/dbo_name.h` — `dbo_name_literal<N>`, `resolve_dbo_name`,
+  `filter_out_dbo_name`, and the public `orm_name(…)` / `operator""_orm_name`
+  factories.
+- `dev/schema/table.h` — new `internal::make_reflected_table<O>` and new
+  public `make_table<T>(extras...)` overload, plus the
+  `orm_table_reference auto` variant. Gated by
   `SQLITE_ORM_REFLECTION_SUPPORTED`. No edits to the existing classical
   overloads.
 - `dev/schema/view.h` — `internal::make_view` refactored to consume
@@ -380,12 +582,12 @@ broke before commit 2 starts.
 New file `tests/schema/reflection_table_tests.cpp`, gated by
 `SQLITE_ORM_REFLECTION_SUPPORTED`. Test cases that landed:
 
-- Column reflection: `make_table<T>("name")` reflects the type's non-static
-  data members as columns; column-name lookup via member pointer round-trips.
-- Empty-name reflection: `make_table<T>()` produces a table named after the
-  type's identifier; non-empty `name` overrides.
-- Member-scope annotations: `[[=primary_key().autoincrement()]]`,
-  `[[=not_null()]]`, `[[=default_value(literal)]]`, `[[=collate_nocase()]]`
+- Column reflection: `make_table<T>()` reflects the type's non-static data
+  members as columns; column-name lookup via member pointer round-trips.
+- Name resolution: the `_orm_name` annotation supplies the table name; a type
+  without the annotation falls back to its reflected identifier.
+- Member-scope annotations: `[[= primary_key().autoincrement()]]`,
+  `[[= not_null()]]`, `[[= default_value(literal)]]`, `[[= collate_nocase()]]`
   apply to the annotated column; verified after `sync_schema` via
   `pragma.table_xinfo`.
 - Variadic-extras path: composite `primary_key(&T::a, &T::b)` populates
@@ -401,6 +603,16 @@ Tests originally planned but not landed:
 - `foreign_key_t` back-reference reseat across constexpr→runtime
   materialization — only exercised on the annotation path, which FK can't
   ride (see "Note on `foreign_key_t`'s back-reference" above).
+
+### Commit 4 — Example
+
+- `examples/view.cpp` — base tables converted to the reflection-based
+  `make_table` overload; see "Worked example" above.
+
+## Follow-ups
+
+- Consider a better diagnostic for `make_table<T>("name")` — see "Sharp edge"
+  under overload resolution.
 
 ## Out of scope (deferred until somebody asks)
 
