@@ -42,7 +42,7 @@ TEST_CASE("statement_serializer generated") {
     std::string value;
     decltype(value) expected;
     SECTION("full") {
-        auto constraint = generated_always_as(&Type::a * sqlite_orm::abs(&Type::b));
+        constexpr auto constraint = generated_always_as(&Type::a * sqlite_orm::abs(&Type::b));
         value = serialize(constraint, context);
         expected = R"(GENERATED ALWAYS AS ("a" * ABS("b")))";
     }
@@ -52,27 +52,27 @@ TEST_CASE("statement_serializer generated") {
         expected = R"(GENERATED ALWAYS AS ("a" * ABS("b")) VIRTUAL)";
     }
     SECTION("full stored") {
-        auto constraint = generated_always_as(&Type::a * sqlite_orm::abs(&Type::b)).stored();
+        constexpr auto constraint = generated_always_as(&Type::a * sqlite_orm::abs(&Type::b)).stored();
         value = serialize(constraint, context);
         expected = R"(GENERATED ALWAYS AS ("a" * ABS("b")) STORED)";
     }
     SECTION("not full") {
-        auto constraint = as(&Type::a * sqlite_orm::abs(&Type::b));
+        constexpr auto constraint = as(&Type::a * sqlite_orm::abs(&Type::b));
         value = serialize(constraint, context);
         expected = R"(AS ("a" * ABS("b")))";
     }
     SECTION("not full virtual") {
-        auto constraint = as(&Type::a * sqlite_orm::abs(&Type::b)).virtual_();
+        constexpr auto constraint = as(&Type::a * sqlite_orm::abs(&Type::b)).virtual_();
         value = serialize(constraint, context);
         expected = R"(AS ("a" * ABS("b")) VIRTUAL)";
     }
     SECTION("not full stored") {
-        auto constraint = as(&Type::a * sqlite_orm::abs(&Type::b)).stored();
+        constexpr auto constraint = as(&Type::a * sqlite_orm::abs(&Type::b)).stored();
         value = serialize(constraint, context);
         expected = R"(AS ("a" * ABS("b")) STORED)";
     }
     SECTION("length") {
-        auto constraint = generated_always_as(length(&Type::a));
+        constexpr auto constraint = generated_always_as(length(&Type::a));
         value = serialize(constraint, context);
         expected = R"(GENERATED ALWAYS AS (LENGTH("a")))";
     }

@@ -9,17 +9,17 @@ TEST_CASE("statement_serializer collate") {
     std::string value;
     std::string expected;
     SECTION("COLLATE NOCASE") {
-        auto col = collate_nocase();
+        constexpr auto col = collate_nocase();
         value = serialize(col, context);
         expected = "COLLATE NOCASE";
     }
     SECTION("COLLATE BINARY") {
-        auto col = collate_binary();
+        constexpr auto col = collate_binary();
         value = serialize(col, context);
         expected = "COLLATE BINARY";
     }
     SECTION("COLLATE RTRIM") {
-        auto col = collate_rtrim();
+        constexpr auto col = collate_rtrim();
         value = serialize(col, context);
         expected = "COLLATE RTRIM";
     }

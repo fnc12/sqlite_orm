@@ -44,7 +44,7 @@ TEST_CASE("statement_serializer check") {
             std::string pubName;
             int price = 0;
         };
-        auto ch = check(less_than(0, &Book::price));
+        constexpr auto ch = check(less_than(0, &Book::price));
         auto table = make_table("BOOK",
                                 make_column("Book_id", &Book::id, primary_key()),
                                 make_column("Book_name", &Book::name),
