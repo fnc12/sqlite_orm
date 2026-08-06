@@ -14,7 +14,7 @@
 #include "functional/is_base_template_of.h"
 #include "type_traits.h"
 #include "collate_argument.h"
-#include "constraints.h"
+#include "schema/constraints/collate.h"
 #include "optional_container.h"
 #include "serializer_context.h"
 #include "serialize_result_type.h"

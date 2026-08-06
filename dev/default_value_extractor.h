@@ -4,7 +4,7 @@
 #include <string>  //  std::string
 #endif
 
-#include "constraints.h"
+#include "schema/constraints/default.h"
 #include "serializer_context.h"
 #include "storage_lookup.h"
 
