@@ -13646,129 +13646,6 @@ namespace sqlite_orm::internal {
 
 // #include "column.h"
 
-// #include "index.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <tuple>  //  std::tuple, std::make_tuple, std::declval, std::tuple_element_t
-#include <string>  //  std::string
-#include <utility>  //  std::forward
-#endif
-
-// #include "../tuple_helper/tuple_traits.h"
-
-// #include "../indexed_column.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <string>  //  std::string
-#include <utility>  //  std::move
-#endif
-
-// #include "ast/where.h"
-
-namespace sqlite_orm::internal {
-    template<class C>
-    struct indexed_column_t {
-        using column_type = C;
-
-        column_type _column_or_expression;
-        std::string _collation_name;
-        int _order = 0;  //  -1 = desc, 1 = asc, 0 = unspecified
-
-        indexed_column_t<column_type> collate(std::string name) && {
-            auto res = std::move(*this);
-            res._collation_name = std::move(name);
-            return res;
-        }
-
-        indexed_column_t<column_type> asc() && {
-            auto res = std::move(*this);
-            res._order = 1;
-            return res;
-        }
-
-        indexed_column_t<column_type> desc() && {
-            auto res = std::move(*this);
-            res._order = -1;
-            return res;
-        }
-    };
-
-    template<class C>
-    indexed_column_t<C> make_indexed_column(C col) {
-        return {std::move(col)};
-    }
-
-    template<class C>
-    where_t<C> make_indexed_column(where_t<C> wher) {
-        return std::move(wher);
-    }
-
-    template<class C>
-    indexed_column_t<C> make_indexed_column(indexed_column_t<C> col) {
-        return std::move(col);
-    }
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    /**
-     *  Use this function to specify indexed column inside `make_index` function call.
-     *  Example: make_index("index_name", indexed_column(&User::id).asc())
-     */
-    template<class C>
-    internal::indexed_column_t<C> indexed_column(C column_or_expression) {
-        return {std::move(column_or_expression)};
-    }
-}
-
-// #include "../table_type_of.h"
-
-namespace sqlite_orm::internal {
-    struct index_base {
-        std::string name;
-        bool unique = false;
-    };
-
-    template<class T, class... Els>
-    struct index_t : index_base {
-        using elements_type = std::tuple<Els...>;
-        using object_type = void;
-        using table_mapped_type = T;
-
-        elements_type elements;
-    };
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    template<class T, class... Cols>
-    internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
-                                                                                                      Cols... cols) {
-        using cols_tuple = std::tuple<Cols...>;
-        static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
-                      "amount of where arguments can be 0 or 1");
-        return {std::move(name), false, std::make_tuple(internal::make_indexed_column(std::move(cols))...)};
-    }
-
-    template<class... Cols>
-    internal::index_t<internal::table_type_of_t<typename std::tuple_element_t<0, std::tuple<Cols...>>>,
-                      decltype(internal::make_indexed_column(std::declval<Cols>()))...>
-    make_index(std::string name, Cols... cols) {
-        using cols_tuple = std::tuple<Cols...>;
-        static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
-                      "amount of where arguments can be 0 or 1");
-        return {std::move(name), false, std::make_tuple(internal::make_indexed_column(std::move(cols))...)};
-    }
-
-    template<class... Cols>
-    internal::index_t<internal::table_type_of_t<typename std::tuple_element_t<0, std::tuple<Cols...>>>,
-                      decltype(internal::make_indexed_column(std::declval<Cols>()))...>
-    make_unique_index(std::string name, Cols... cols) {
-        using cols_tuple = std::tuple<Cols...>;
-        static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
-                      "amount of where arguments can be 0 or 1");
-        return {std::move(name), true, std::make_tuple(internal::make_indexed_column(std::move(cols))...)};
-    }
-}
-
 // #include "dbo_name.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -13883,7 +13760,6 @@ namespace sqlite_orm::internal {
     using is_base_table_element_or_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_column>,
                                                                                check_if<is_primary_key>,
                                                                                check_if<is_foreign_key>,
-                                                                               check_if_is_template<index_t>,
                                                                                check_if_is_template<unique_t>,
                                                                                check_if_is_template<check_t>>,
                                                               T>;
@@ -21424,6 +21300,68 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "indexed_column.h"
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <string>  //  std::string
+#include <utility>  //  std::move
+#endif
+
+// #include "ast/where.h"
+
+namespace sqlite_orm::internal {
+    template<class C>
+    struct indexed_column_t {
+        using column_type = C;
+
+        column_type _column_or_expression;
+        std::string _collation_name;
+        int _order = 0;  //  -1 = desc, 1 = asc, 0 = unspecified
+
+        indexed_column_t<column_type> collate(std::string name) && {
+            auto res = std::move(*this);
+            res._collation_name = std::move(name);
+            return res;
+        }
+
+        indexed_column_t<column_type> asc() && {
+            auto res = std::move(*this);
+            res._order = 1;
+            return res;
+        }
+
+        indexed_column_t<column_type> desc() && {
+            auto res = std::move(*this);
+            res._order = -1;
+            return res;
+        }
+    };
+
+    template<class C>
+    indexed_column_t<C> make_indexed_column(C col) {
+        return {std::move(col)};
+    }
+
+    template<class C>
+    where_t<C> make_indexed_column(where_t<C> wher) {
+        return std::move(wher);
+    }
+
+    template<class C>
+    indexed_column_t<C> make_indexed_column(indexed_column_t<C> col) {
+        return std::move(col);
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Use this function to specify indexed column inside `make_index` function call.
+     *  Example: make_index("index_name", indexed_column(&User::id).asc())
+     */
+    template<class C>
+    internal::indexed_column_t<C> indexed_column(C column_or_expression) {
+        return {std::move(column_or_expression)};
+    }
+}
+
 // #include "function.h"
 
 // #include "prepared_statement.h"
@@ -22183,6 +22121,65 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "schema/column.h"
 
 // #include "schema/index.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <tuple>  //  std::tuple, std::make_tuple, std::declval, std::tuple_element_t
+#include <string>  //  std::string
+#include <utility>  //  std::forward
+#endif
+
+// #include "../tuple_helper/tuple_traits.h"
+
+// #include "../indexed_column.h"
+
+// #include "../table_type_of.h"
+
+namespace sqlite_orm::internal {
+    struct index_base {
+        std::string name;
+        bool unique = false;
+    };
+
+    template<class T, class... Els>
+    struct index_t : index_base {
+        using elements_type = std::tuple<Els...>;
+        using object_type = void;
+        using table_mapped_type = T;
+
+        elements_type elements;
+    };
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    template<class T, class... Cols>
+    internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
+                                                                                                      Cols... cols) {
+        using cols_tuple = std::tuple<Cols...>;
+        static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
+                      "amount of where arguments can be 0 or 1");
+        return {std::move(name), false, std::make_tuple(internal::make_indexed_column(std::move(cols))...)};
+    }
+
+    template<class... Cols>
+    internal::index_t<internal::table_type_of_t<typename std::tuple_element_t<0, std::tuple<Cols...>>>,
+                      decltype(internal::make_indexed_column(std::declval<Cols>()))...>
+    make_index(std::string name, Cols... cols) {
+        using cols_tuple = std::tuple<Cols...>;
+        static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
+                      "amount of where arguments can be 0 or 1");
+        return {std::move(name), false, std::make_tuple(internal::make_indexed_column(std::move(cols))...)};
+    }
+
+    template<class... Cols>
+    internal::index_t<internal::table_type_of_t<typename std::tuple_element_t<0, std::tuple<Cols...>>>,
+                      decltype(internal::make_indexed_column(std::declval<Cols>()))...>
+    make_unique_index(std::string name, Cols... cols) {
+        using cols_tuple = std::tuple<Cols...>;
+        static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
+                      "amount of where arguments can be 0 or 1");
+        return {std::move(name), true, std::make_tuple(internal::make_indexed_column(std::move(cols))...)};
+    }
+}
 
 // #include "schema/table.h"
 
