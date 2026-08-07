@@ -25,8 +25,6 @@ using std::cout;
 using std::endl;
 using std::string;
 
-void handle_contract_violation(std::contracts::contract_violation const& violation) noexcept {}
-
 // Base tables
 struct[[= "employee"_orm_name]] Employee {
     [[= primary_key()]] int64 id;
