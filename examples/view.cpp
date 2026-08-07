@@ -32,12 +32,14 @@ struct[[= "employee"_orm_name]] Employee {
     [[= not_null()]] int64 department_id;
     [[= default_value(0.)]] double salary;
 };
+inline constexpr orm_table_reference auto employee = c<Employee>();
 
 struct[[= "department"_orm_name]] Department {
     [[= primary_key()]] int64 id;
     [[= collate_nocase()]] std::string name;
     [[= collate_nocase()]] std::string location;
 };
+inline constexpr orm_table_reference auto department = c<Department>();
 
 // View objects - note how we only define the struct fields, no column mappings needed!
 // The fields are automatically mapped through C++ reflection
@@ -48,6 +50,7 @@ struct[[= "high_earner"_orm_name]] HighEarner {
     std::string name;
     double salary;
 };
+inline constexpr orm_table_reference auto high_earner = c<HighEarner>();
 
 // View 2: Department summary with employee count and average salary
 struct[[= "department_summary"_orm_name]] DepartmentSummary {
@@ -55,22 +58,24 @@ struct[[= "department_summary"_orm_name]] DepartmentSummary {
     int employee_count;
     double avg_salary;
 };
+inline constexpr orm_table_reference auto department_summary = c<DepartmentSummary>();
 
 // View 3: Complete employee information with department details (join result)
-struct[[= "employee_details"_orm_name]] EmployeeDetail {
+struct[[= "employee_detail"_orm_name]] EmployeeDetail {
     int64 id;
     std::string employee_name;
     double salary;
     std::string department_name;
     std::string location;
 };
+inline constexpr orm_table_reference auto employee_detail = c<EmployeeDetail>();
 
 inline auto initStorage(const std::string& path) {
     return make_storage(
         path,
         // Define base tables
-        make_table<Department>(),
-        make_table<Employee>(foreign_key(&Employee::department_id).references(&Department::id)),
+        make_table<department>(),
+        make_table<employee>(foreign_key(&Employee::department_id).references(&Department::id)),
 
         // Define views - notice how we only specify the SELECT statement.
         // The column mappings and view name are derived from the view object type
@@ -78,18 +83,19 @@ inline auto initStorage(const std::string& path) {
         // `[[="…"_orm_name]]` annotation, falling back to the type's identifier).
 
         // View 1: Filter high earners
-        make_view<HighEarner>(
-            select(columns(&Employee::id, &Employee::name, &Employee::salary), where(c(&Employee::salary) > 60000.0))),
+        make_view<high_earner>(select(columns(&Employee::id, &Employee::name, &Employee::salary),
+                                      where(employee->*&Employee::salary > 60000.0))),
 
         // View 2: Aggregate data by department
-        make_view<DepartmentSummary>(select(columns(&Department::name, count(&Employee::id), avg(&Employee::salary)),
-                                            left_join<Employee>(on(c(&Employee::department_id) == &Department::id)),
-                                            group_by(&Department::name))),
+        make_view<department_summary>(
+            select(columns(&Department::name, count(&Employee::id), avg(&Employee::salary)),
+                   left_join<employee>(on(employee->*&Employee::department_id == &Department::id)),
+                   group_by(&Department::name))),
 
         // View 3: Join employees with departments
-        make_view<EmployeeDetail>(
+        make_view<employee_detail>(
             select(columns(&Employee::id, &Employee::name, &Employee::salary, &Department::name, &Department::location),
-                   join<Department>(on(c(&Employee::department_id) == &Department::id)))));
+                   join<department>(on(employee->*&Employee::department_id == &Department::id)))));
 }
 #endif
 
@@ -128,10 +134,10 @@ int main() {
 
         // Query View 1: High Earners
         cout << "=== View 1: High Earners (salary > $60,000) ===" << endl;
-        auto highEarners = storage.select(object<HighEarner>());
+        auto highEarners = storage.select(object<high_earner>());
         cout << "ID\tName\t\t\tSalary" << endl;
         cout << "---\t----\t\t\t------" << endl;
-        for (const auto& earner: highEarners) {
+        for (const HighEarner& earner: highEarners) {
             cout << earner.id << '\t' << earner.name << (earner.name.length() < 16 ? "\t" : "") << '\t' << "$"
                  << earner.salary << endl;
         }
@@ -139,10 +145,10 @@ int main() {
 
         // Query View 2: Department Summary
         cout << "=== View 2: Department Summary ===" << endl;
-        auto summaries = storage.select(object<DepartmentSummary>());
+        auto summaries = storage.select(object<department_summary>());
         cout << "Department\tEmployees\tAvg Salary" << endl;
         cout << "----------\t---------\t----------" << endl;
-        for (const auto& summary: summaries) {
+        for (const DepartmentSummary& summary: summaries) {
             cout << summary.department_name << '\t';
             if (summary.department_name.length() < 8)
                 cout << '\t';
@@ -158,10 +164,10 @@ int main() {
 
         // Query View 3: Employee Details
         cout << "=== View 3: Employee Details (with Department Info) ===" << endl;
-        auto details = storage.select(object<EmployeeDetail>());
+        auto details = storage.select(object<employee_detail>());
         cout << "ID\tEmployee\t\tSalary\t\tDepartment\tLocation" << endl;
         cout << "--\t--------\t\t------\t\t----------\t--------" << endl;
-        for (const auto& detail: details) {
+        for (const EmployeeDetail& detail: details) {
             cout << detail.id << '\t' << detail.employee_name << (detail.employee_name.length() < 16 ? "\t" : "")
                  << '\t' << "$" << detail.salary << '\t' << detail.department_name << '\t';
             if (detail.department_name.length() < 8)
@@ -173,11 +179,12 @@ int main() {
         // Demonstrate that you can also query views with conditions
         cout << "=== View Query with Additional Filter ===" << endl;
         cout << "High earners from Engineering department:" << endl;
-        auto engineeringHighEarners = storage.select(
-            object<EmployeeDetail>(),
-            where(c(&EmployeeDetail::department_name) == "Engineering" and c(&EmployeeDetail::salary) > 60000.0));
+        auto engineeringHighEarners =
+            storage.select(object<employee_detail>(),
+                           where(employee_detail->*&EmployeeDetail::department_name == "Engineering" and
+                                 employee_detail->*&EmployeeDetail::salary > 60000.0));
 
-        for (const auto& emp: engineeringHighEarners) {
+        for (const EmployeeDetail& emp: engineeringHighEarners) {
             cout << "  - " << emp.employee_name << ": $" << emp.salary << endl;
         }
         cout << endl;
