@@ -1358,23 +1358,23 @@ TEST_CASE("ifnull") {
 TEST_CASE("printf") {
     auto storage = make_storage({});
     auto rows = storage.select(sqlite_orm::printf("%d/%s", 1, "one"));
-    REQUIRE(rows.size() == 1);
-    REQUIRE(rows.front() == "1/one");
+    decltype(rows) expected{"1/one"};
+    REQUIRE(rows == expected);
 }
 #endif
 
 #if SQLITE_VERSION_NUMBER >= 3032000
 TEST_CASE("iif") {
     auto storage = make_storage({});
-    {
+    SECTION("common type") {
         auto rows = storage.select(iif<std::string>(c(2) > 1, "greater", "less"));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows.front() == "greater");
+        decltype(rows) expected{"greater"};
+        REQUIRE(rows == expected);
     }
-    {
+    SECTION("explicit type") {
         auto rows = storage.select(iif<int>(c(1) > 2, 10, 20));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows.front() == 20);
+        decltype(rows) expected{20};
+        REQUIRE(rows == expected);
     }
 }
 #endif
@@ -1382,21 +1382,21 @@ TEST_CASE("iif") {
 #if SQLITE_VERSION_NUMBER >= 3035000
 TEST_CASE("sign") {
     auto storage = make_storage({});
-    {
+    SECTION("negative integer") {
         auto rows = storage.select(sign(-42));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows.front() == -1);
+        decltype(rows) expected{-1};
+        REQUIRE(rows == expected);
     }
-    {
+    SECTION("positive real") {
         auto rows = storage.select(sign(3.5));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows.front() == 1);
+        decltype(rows) expected{1};
+        REQUIRE(rows == expected);
     }
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-    {
+    SECTION("null for a non-numeric argument") {
         auto rows = storage.select(sign<std::optional<int>>("ototo"));
-        REQUIRE(rows.size() == 1);
-        REQUIRE_FALSE(rows.front().has_value());
+        decltype(rows) expected{std::nullopt};
+        REQUIRE(rows == expected);
     }
 #endif
 }
@@ -1406,15 +1406,15 @@ TEST_CASE("sign") {
 TEST_CASE("format") {
     auto storage = make_storage({});
     auto rows = storage.select(format("%d/%s", 2, "two"));
-    REQUIRE(rows.size() == 1);
-    REQUIRE(rows.front() == "2/two");
+    decltype(rows) expected{"2/two"};
+    REQUIRE(rows == expected);
 }
 
 TEST_CASE("unixepoch") {
     auto storage = make_storage({});
     auto rows = storage.select(unixepoch("1970-01-02"));
-    REQUIRE(rows.size() == 1);
-    REQUIRE(rows.front() == 86400);
+    decltype(rows) expected{86400};
+    REQUIRE(rows == expected);
 }
 #endif
 
@@ -1422,8 +1422,8 @@ TEST_CASE("unixepoch") {
 TEST_CASE("unhex") {
     auto storage = make_storage({});
     auto rows = storage.select(unhex("3637"));
-    REQUIRE(rows.size() == 1);
-    REQUIRE(rows.front() == std::vector<char>{'6', '7'});
+    decltype(rows) expected{std::vector<char>{'6', '7'}};
+    REQUIRE(rows == expected);
 }
 #endif
 
@@ -1431,30 +1431,30 @@ TEST_CASE("unhex") {
 TEST_CASE("octet_length") {
     auto storage = make_storage({});
     auto rows = storage.select(octet_length("ä"));
-    REQUIRE(rows.size() == 1);
-    REQUIRE(rows.front() == 2);
+    decltype(rows) expected{2};
+    REQUIRE(rows == expected);
 }
 
 TEST_CASE("timediff") {
     auto storage = make_storage({});
     auto rows = storage.select(timediff("2026-08-08", "2026-08-07"));
-    REQUIRE(rows.size() == 1);
-    REQUIRE(rows.front() == "+0000-00-01 00:00:00.000");
+    decltype(rows) expected{"+0000-00-01 00:00:00.000"};
+    REQUIRE(rows == expected);
 }
 #endif
 
 #if SQLITE_VERSION_NUMBER >= 3044000
 TEST_CASE("concat") {
     auto storage = make_storage({});
-    {
+    SECTION("concat") {
         auto rows = storage.select(concat("one", 2, "three"));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows.front() == "one2three");
+        decltype(rows) expected{"one2three"};
+        REQUIRE(rows == expected);
     }
-    {
+    SECTION("concat_ws") {
         auto rows = storage.select(concat_ws("-", "one", "two"));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows.front() == "one-two");
+        decltype(rows) expected{"one-two"};
+        REQUIRE(rows == expected);
     }
 }
 
@@ -1470,8 +1470,8 @@ TEST_CASE("string_agg") {
     storage.replace(User{1, "Alex"});
     storage.replace(User{2, "Michael"});
     auto rows = storage.select(string_agg(&User::name, ", "), order_by(&User::id));
-    REQUIRE(rows.size() == 1);
-    REQUIRE(rows.front() == "Alex, Michael");
+    decltype(rows) expected{"Alex, Michael"};
+    REQUIRE(rows == expected);
 }
 #endif
 
@@ -1479,8 +1479,8 @@ TEST_CASE("string_agg") {
 TEST_CASE("if_") {
     auto storage = make_storage({});
     auto rows = storage.select(if_<std::string>(c(2) > 1, "greater", "less"));
-    REQUIRE(rows.size() == 1);
-    REQUIRE(rows.front() == "greater");
+    decltype(rows) expected{"greater"};
+    REQUIRE(rows == expected);
 }
 #endif
 
@@ -1488,8 +1488,8 @@ TEST_CASE("if_") {
 TEST_CASE("unistr") {
     auto storage = make_storage({});
     auto rows = storage.select(unistr("a\\u0062c"));
-    REQUIRE(rows.size() == 1);
-    REQUIRE(rows.front() == "abc");
+    decltype(rows) expected{"abc"};
+    REQUIRE(rows == expected);
 }
 #endif
 
@@ -1506,29 +1506,27 @@ TEST_CASE("median and percentile") {
     storage.replace(Score{1, 1.0});
     storage.replace(Score{2, 2.0});
     storage.replace(Score{3, 3.0});
-    {
-        auto rows = storage.select(median(&Score::value));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows.front());
-        REQUIRE(*rows.front() == 2.0);
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    SECTION("median") {
+        auto rows = storage.select(median<std::optional<double>>(&Score::value));
+        decltype(rows) expected{2.0};
+        REQUIRE(rows == expected);
     }
-    {
-        auto rows = storage.select(percentile(&Score::value, 50));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows.front());
-        REQUIRE(*rows.front() == 2.0);
+    SECTION("percentile") {
+        auto rows = storage.select(percentile<std::optional<double>>(&Score::value, 50));
+        decltype(rows) expected{2.0};
+        REQUIRE(rows == expected);
     }
-    {
-        auto rows = storage.select(percentile_cont(&Score::value, 0.5));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows.front());
-        REQUIRE(*rows.front() == 2.0);
+    SECTION("percentile_cont") {
+        auto rows = storage.select(percentile_cont<std::optional<double>>(&Score::value, 0.5));
+        decltype(rows) expected{2.0};
+        REQUIRE(rows == expected);
     }
-    {
-        auto rows = storage.select(percentile_disc(&Score::value, 0.5));
-        REQUIRE(rows.size() == 1);
-        REQUIRE(rows.front());
-        REQUIRE(*rows.front() == 2.0);
+    SECTION("percentile_disc") {
+        auto rows = storage.select(percentile_disc<std::optional<double>>(&Score::value, 0.5));
+        decltype(rows) expected{2.0};
+        REQUIRE(rows == expected);
     }
+#endif
 }
 #endif

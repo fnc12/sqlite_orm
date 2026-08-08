@@ -2240,36 +2240,47 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ENABLE_PERCENTILE
     /**
      *  MEDIAN(X) aggregate function https://www.sqlite.org/lang_aggfunc.html#percentile
+     *
+     *  The return type defaults to `std::unique_ptr<double>` (the result is NULL for an empty group);
+     *  any other bindable type such as `std::optional<double>` can be specified as a template argument.
      */
-    template<class X>
-    constexpr internal::built_in_aggregate_function_t<std::unique_ptr<double>, internal::median_string, X> median(X x) {
+    template<class R = std::unique_ptr<double>, class X>
+    constexpr internal::built_in_aggregate_function_t<R, internal::median_string, X> median(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     /**
      *  PERCENTILE(Y,P) aggregate function https://www.sqlite.org/lang_aggfunc.html#percentile
+     *
+     *  The return type defaults to `std::unique_ptr<double>` (the result is NULL for an empty group);
+     *  any other bindable type such as `std::optional<double>` can be specified as a template argument.
      */
-    template<class X, class Y>
-    constexpr internal::built_in_aggregate_function_t<std::unique_ptr<double>, internal::percentile_string, X, Y>
-    percentile(X x, Y y) {
+    template<class R = std::unique_ptr<double>, class X, class Y>
+    constexpr internal::built_in_aggregate_function_t<R, internal::percentile_string, X, Y> percentile(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     /**
      *  PERCENTILE_CONT(Y,P) aggregate function https://www.sqlite.org/lang_aggfunc.html#percentile
+     *
+     *  The return type defaults to `std::unique_ptr<double>` (the result is NULL for an empty group);
+     *  any other bindable type such as `std::optional<double>` can be specified as a template argument.
      */
-    template<class X, class Y>
-    constexpr internal::built_in_aggregate_function_t<std::unique_ptr<double>, internal::percentile_cont_string, X, Y>
-    percentile_cont(X x, Y y) {
+    template<class R = std::unique_ptr<double>, class X, class Y>
+    constexpr internal::built_in_aggregate_function_t<R, internal::percentile_cont_string, X, Y> percentile_cont(X x,
+                                                                                                                 Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     /**
      *  PERCENTILE_DISC(Y,P) aggregate function https://www.sqlite.org/lang_aggfunc.html#percentile
+     *
+     *  The return type defaults to `std::unique_ptr<double>` (the result is NULL for an empty group);
+     *  any other bindable type such as `std::optional<double>` can be specified as a template argument.
      */
-    template<class X, class Y>
-    constexpr internal::built_in_aggregate_function_t<std::unique_ptr<double>, internal::percentile_disc_string, X, Y>
-    percentile_disc(X x, Y y) {
+    template<class R = std::unique_ptr<double>, class X, class Y>
+    constexpr internal::built_in_aggregate_function_t<R, internal::percentile_disc_string, X, Y> percentile_disc(X x,
+                                                                                                                 Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 #endif
