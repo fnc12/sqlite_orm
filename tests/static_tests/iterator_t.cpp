@@ -128,8 +128,6 @@ namespace {
     struct Object {};
 #if defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED) && defined(SQLITE_ORM_WITH_CPP20_ALIASES)
     constexpr orm_table_alias auto object_alias = "o"_alias.for_<Object>();
-#endif
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     constexpr orm_table_reference auto object_table = c<Object>();
 #endif
 }
