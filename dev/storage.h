@@ -1244,8 +1244,9 @@ namespace sqlite_orm::internal {
                                 table.find_column_generated_storage_type(colInfo->name);
                             if (generatedStorageType) {
                                 if (*generatedStorageType == basic_generated_always::storage_type::stored) {
+                                    //  a STORED generated column cannot be added with `ALTER TABLE ... ADD COLUMN`,
+                                    //  but the scan must continue: another new column may still make data preservation impossible
                                     gottaCreateTable = true;
-                                    break;
                                 }
                                 //  fallback cause VIRTUAL can be added
                             } else {
@@ -1257,6 +1258,13 @@ namespace sqlite_orm::internal {
                                         *attempt_to_preserve = false;
                                     };
                                     break;
+                                }
+                                //  `ALTER TABLE ... ADD COLUMN` cannot add a column with a PRIMARY KEY or
+                                //  UNIQUE constraint or with a non-constant default value;
+                                //  such a column requires the table to be recreated
+                                if (colInfo->pk != 0 || !is_default_value_addable(colInfo->dflt_value) ||
+                                    is_column_unique(this->db_objects, table, colInfo->name)) {
+                                    gottaCreateTable = true;
                                 }
                             }
                         }
@@ -1422,10 +1430,16 @@ namespace sqlite_orm::internal {
          *  - every table from storage is compared with it's db analog and
          *      - if table doesn't exist it is being created
          *      - if table exists its colums are being compared with table_info from db and
-         *          - if there are columns in db that do not exist in storage (excess) table will be dropped and recreated
-         *          - if there are columns in storage that do not exist in db they will be added using `ALTER TABLE ... ADD COLUMN ...' command
-         *          - if there is any column existing in both db and storage but differs by any of
-         *  properties/constraints (pk, notnull, dflt_value) table will be dropped and recreated. Be aware that
+         *          - if there are columns in db that do not exist in storage (excess) they are removed
+         *  using `ALTER TABLE ... DROP COLUMN` on SQLite >= 3.35.0, otherwise through a backup table if
+         *  `preserve` is true or by recreating the table with data loss if `preserve` is false
+         *          - if there are columns in storage that do not exist in db they will be added using `ALTER TABLE ... ADD COLUMN ...' command;
+         *  in case a column cannot be added that way (a STORED generated column, a column with a `PRIMARY KEY` or `UNIQUE` constraint
+         *  or with a non-constant default value) the table is recreated through a backup table
+         *          - if there is any column existing in both db and storage but differs by any of the compared
+         *  properties (primary key membership and order, notnull, the presence of a default value, the generated flag)
+         *  table will be dropped and recreated. Note that the column type, the default value itself, a generated
+         *  column expression and `UNIQUE`/`CHECK`/`COLLATE` constraints are NOT compared, so changing them is not detected. Be aware that
          *  `sync_schema` doesn't guarantee that data will not be dropped. It guarantees only that it will make db
          *  schema the same as you specified in `make_storage` function call. A good point is that if you have no db
          *  file at all it will be created and all tables also will be created with exact tables and columns you

@@ -179,6 +179,67 @@ jobs:
         run: ctest --test-dir build --verbose --output-on-failure
 
   # ===================
+  # Linux builds against specific SQLite versions
+  # (the jobs above act as a fallback and test against the latest SQLite from vcpkg)
+  # ===================
+  linux-sqlite-versions:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - sqlite_version: "3.31.1"  # the oldest version with generated columns support
+            sqlite_url: "https://www.sqlite.org/2020/sqlite-amalgamation-3310100.zip"
+            sqlite_dir: sqlite-amalgamation-3310100
+            sqlite_defines: "-DSQLITE_ENABLE_FTS5 -DSQLITE_ENABLE_RTREE -DSQLITE_ENABLE_JSON1 -DSQLITE_ENABLE_DBSTAT_VTAB -DSQLITE_SOUNDEX"
+
+          - sqlite_version: "3.34.1"  # the newest version without `ALTER TABLE ... DROP COLUMN`
+            sqlite_url: "https://www.sqlite.org/2021/sqlite-amalgamation-3340100.zip"
+            sqlite_dir: sqlite-amalgamation-3340100
+            sqlite_defines: "-DSQLITE_ENABLE_FTS5 -DSQLITE_ENABLE_RTREE -DSQLITE_ENABLE_JSON1 -DSQLITE_ENABLE_DBSTAT_VTAB -DSQLITE_SOUNDEX"
+
+          - sqlite_version: "3.35.5"  # the first version line with `ALTER TABLE ... DROP COLUMN` and built-in math functions
+            sqlite_url: "https://www.sqlite.org/2021/sqlite-amalgamation-3350500.zip"
+            sqlite_dir: sqlite-amalgamation-3350500
+            sqlite_defines: "-DSQLITE_ENABLE_FTS5 -DSQLITE_ENABLE_RTREE -DSQLITE_ENABLE_JSON1 -DSQLITE_ENABLE_DBSTAT_VTAB -DSQLITE_ENABLE_MATH_FUNCTIONS -DSQLITE_SOUNDEX"
+
+          - sqlite_version: "3.50.4"  # a recent pinned version
+            sqlite_url: "https://www.sqlite.org/2025/sqlite-amalgamation-3500400.zip"
+            sqlite_dir: sqlite-amalgamation-3500400
+            sqlite_defines: "-DSQLITE_ENABLE_FTS5 -DSQLITE_ENABLE_RTREE -DSQLITE_ENABLE_JSON1 -DSQLITE_ENABLE_DBSTAT_VTAB -DSQLITE_ENABLE_MATH_FUNCTIONS -DSQLITE_SOUNDEX"
+
+    name: Linux - SQLite ${{ matrix.sqlite_version }}, C++17
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download and build SQLite ${{ matrix.sqlite_version }}
+        run: |
+          curl -sL ${{ matrix.sqlite_url }} -o sqlite.zip
+          unzip -q sqlite.zip
+          mkdir -p sqlite3-local/lib sqlite3-local/include
+          cp ${{ matrix.sqlite_dir }}/sqlite3.h ${{ matrix.sqlite_dir }}/sqlite3ext.h sqlite3-local/include/
+          gcc -O2 ${{ matrix.sqlite_defines }} -c ${{ matrix.sqlite_dir }}/sqlite3.c -o sqlite3.o
+          ar rcs sqlite3-local/lib/libsqlite3.a sqlite3.o
+
+      - name: Configure CMake
+        run: |
+          cmake -S . -B build \
+            -DSQLITE_ORM_ENABLE_CXX_17=ON \
+            -DSQLite3_INCLUDE_DIR=${{ github.workspace }}/sqlite3-local/include \
+            -DSQLite3_LIBRARY=${{ github.workspace }}/sqlite3-local/lib/libsqlite3.a \
+            -DSQLITE_ORM_SERIES_C_TAG=version-${{ matrix.sqlite_version }} \
+            -DCMAKE_CXX_FLAGS="${{ matrix.sqlite_defines }}" \
+            -DCMAKE_CXX_STANDARD_LIBRARIES="-lm -lpthread -ldl"
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        run: ctest --test-dir build --verbose --output-on-failure
+
+  # ===================
   # macOS builds
   # ===================
   macos:

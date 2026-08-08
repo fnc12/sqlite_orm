@@ -9,6 +9,7 @@
 #include <ostream>  //  std::flush
 #include <functional>  //  std::reference_wrapper, std::cref
 #include <algorithm>  //  std::find_if, std::ranges::find
+#include <system_error>  //  std::system_error
 #endif
 
 #include "../type_traits.h"
@@ -60,13 +61,30 @@ namespace sqlite_orm::internal {
 
                     if (schema_stat == sync_schema_result::old_columns_removed) {
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
-                        for (auto& tableInfo: dbTableInfo) {
-                            this->drop_column(db, table.name, tableInfo.name);
+                        try {
+                            for (auto& tableInfo: dbTableInfo) {
+                                this->drop_column(db, table.name, tableInfo.name);
+                            }
+                        } catch (const std::system_error& e) {
+                            if (e.code() != std::error_code{sqlite_errc(SQLITE_ERROR)}) {
+                                throw;
+                            }
+                            //  `ALTER TABLE ... DROP COLUMN` fails with SQLITE_ERROR if the column is part of
+                            //  the primary key, has a UNIQUE constraint, is indexed or is referenced in a
+                            //  generated column, index, trigger or view expression;
+                            //  fall back to recreating the table through a backup table,
+                            //  which preserves the remaining data
+                            auto storageTableInfo = table.get_table_info();
+                            this->add_generated_cols(columnsToAdd, storageTableInfo);
+                            this->backup_table(db, table, columnsToAdd);
                         }
                         res = sync_schema_result::old_columns_removed;
 #else
-                        //  extra table columns than storage columns
-                        this->backup_table(db, table, {});
+                        //  extra table columns than storage columns;
+                        //  note: generated columns must not be copied into the backup table
+                        auto storageTableInfo = table.get_table_info();
+                        this->add_generated_cols(columnsToAdd, storageTableInfo);
+                        this->backup_table(db, table, columnsToAdd);
                         res = sync_schema_result::old_columns_removed;
 #endif
                     }

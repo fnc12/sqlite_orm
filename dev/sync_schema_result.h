@@ -34,11 +34,19 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         new_columns_added_and_old_columns_removed,
 
         /**
-         *  old table is dropped and new is recreated. Reasons :
-         *  1. delete excess columns in the table than storage if preseve = false
-         *  2. Reasons 1 and 4 both together
-         *  3. data_type mismatch between table and storage.
+         *  old table is dropped and new is recreated. Reasons:
+         *  1. an existing column differs from the storage definition by one of the compared
+         *     properties: primary key membership and order, `NOT NULL`, the presence of a
+         *     default value, the generated flag
+         *  2. delete excess columns in the table than storage if preserve = false and
+         *     SQLite is older than 3.35.0 (no `DROP COLUMN` support)
+         *  3. a new column cannot be added with `ALTER TABLE ... ADD COLUMN`: it is a STORED
+         *     generated column, has a `PRIMARY KEY` or `UNIQUE` constraint or a non-constant
+         *     default value
          *  Data is preserved through a backup table when preserve = true.
+         *  Note that changes of the column type, of the default value itself, of a generated
+         *  column expression and of `UNIQUE`/`CHECK`/`COLLATE`/`FOREIGN KEY` constraints are
+         *  not detected.
          */
         dropped_and_recreated,
 

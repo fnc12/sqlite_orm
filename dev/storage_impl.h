@@ -123,4 +123,37 @@ namespace sqlite_orm::internal {
         return &std::get<ColIdx>(table.elements).name;
     }
 #endif
+
+    /**
+     *  Checks whether the column with the specified name has a column-level `UNIQUE` constraint
+     *  or is contained in a table-level `UNIQUE` constraint of the given table.
+     */
+    template<class Table, class DBOs, satisfies<is_db_objects, DBOs> = true>
+    bool is_column_unique(const DBOs& dbObjects, const Table& table, const std::string& name) {
+        using elements_type = elements_type_t<Table>;
+
+        bool result = false;
+        iterate_tuple(table.elements,
+                      col_index_sequence_with<elements_type, is_unique>{},
+                      [&result, &name](auto& column) {
+                          if (column.name == name) {
+                              result = true;
+                          }
+                      });
+        if (!result) {
+            iterate_tuple(
+                table.elements,
+                filter_tuple_sequence_t<elements_type, is_unique>{},
+                [&dbObjects, &result, &name](auto& uniqueConstraint) {
+                    iterate_tuple(uniqueConstraint.columns, [&dbObjects, &result, &name](auto& columnExpression) {
+                        if (const std::string* columnName = find_column_name(dbObjects, columnExpression)) {
+                            if (*columnName == name) {
+                                result = true;
+                            }
+                        }
+                    });
+                });
+        }
+        return result;
+    }
 }
