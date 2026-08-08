@@ -357,6 +357,134 @@ namespace sqlite_orm::internal {
             return "GROUP_CONCAT";
         }
     };
+
+#if SQLITE_VERSION_NUMBER >= 3008003
+    struct printf_string {
+        serialize_result_type serialize() const {
+            return "PRINTF";
+        }
+    };
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3032000
+    struct iif_string {
+        serialize_result_type serialize() const {
+            return "IIF";
+        }
+    };
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3035000
+    struct sign_string {
+        serialize_result_type serialize() const {
+            return "SIGN";
+        }
+    };
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3038000
+    struct format_string {
+        serialize_result_type serialize() const {
+            return "FORMAT";
+        }
+    };
+
+    struct unixepoch_string {
+        serialize_result_type serialize() const {
+            return "UNIXEPOCH";
+        }
+    };
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3041000
+    struct unhex_string {
+        serialize_result_type serialize() const {
+            return "UNHEX";
+        }
+    };
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3043000
+    struct octet_length_string {
+        serialize_result_type serialize() const {
+            return "OCTET_LENGTH";
+        }
+    };
+
+    struct timediff_string {
+        serialize_result_type serialize() const {
+            return "TIMEDIFF";
+        }
+    };
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3044000
+    struct concat_string {
+        serialize_result_type serialize() const {
+            return "CONCAT";
+        }
+    };
+
+    struct concat_ws_string {
+        serialize_result_type serialize() const {
+            return "CONCAT_WS";
+        }
+    };
+
+    struct string_agg_string {
+        serialize_result_type serialize() const {
+            return "STRING_AGG";
+        }
+    };
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3048000
+    struct if_string {
+        serialize_result_type serialize() const {
+            return "IF";
+        }
+    };
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3050000
+    struct unistr_string {
+        serialize_result_type serialize() const {
+            return "UNISTR";
+        }
+    };
+
+    struct unistr_quote_string {
+        serialize_result_type serialize() const {
+            return "UNISTR_QUOTE";
+        }
+    };
+#endif
+
+#ifdef SQLITE_ENABLE_PERCENTILE
+    struct median_string {
+        serialize_result_type serialize() const {
+            return "MEDIAN";
+        }
+    };
+
+    struct percentile_string {
+        serialize_result_type serialize() const {
+            return "PERCENTILE";
+        }
+    };
+
+    struct percentile_cont_string {
+        serialize_result_type serialize() const {
+            return "PERCENTILE_CONT";
+        }
+    };
+
+    struct percentile_disc_string {
+        serialize_result_type serialize() const {
+            return "PERCENTILE_DISC";
+        }
+    };
+#endif
 #ifdef SQLITE_ENABLE_MATH_FUNCTIONS
     struct acos_string {
         serialize_result_type serialize() const {
@@ -1933,6 +2061,218 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     group_concat(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
+
+#if SQLITE_VERSION_NUMBER >= 3008003
+    /**
+     *  PRINTF(FORMAT,...) function https://www.sqlite.org/lang_corefunc.html#printf
+     */
+    template<class... Args>
+    constexpr internal::built_in_function_t<std::string, internal::printf_string, Args...> printf(Args... args) {
+        return {std::tuple<Args...>{std::forward<Args>(args)...}};
+    }
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3032000
+    /**
+     *  IIF(X,Y,Z) function https://www.sqlite.org/lang_corefunc.html#iif
+     *
+     *  The return type is the common type of Y and Z, unless it is explicitly specified as a template argument.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(iif(c(&User::age) > 18, "adult", "minor"));
+     */
+    template<class R = void, class X, class Y, class Z>
+    constexpr auto iif(X x, Y y, Z z) -> internal::built_in_function_t<
+        typename mpl::conditional_t<  //  choose R or common type
+            std::is_void<R>::value,
+            std::common_type<internal::field_type_or_type_t<Y>, internal::field_type_or_type_t<Z>>,
+            polyfill::type_identity<R>>::type,
+        internal::iif_string,
+        X,
+        Y,
+        Z> {
+        return {std::make_tuple(std::move(x), std::move(y), std::move(z))};
+    }
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3035000
+    /**
+     *  SIGN(X) function https://www.sqlite.org/lang_corefunc.html#sign
+     */
+    template<class X>
+    constexpr internal::built_in_function_t<int, internal::sign_string, X> sign(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  SIGN(X) function https://www.sqlite.org/lang_corefunc.html#sign
+     *
+     *  Difference with the previous function is that previous override has `int` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `std::optional<int>` etc. This override is handy when you expect `null` as result for a non-numeric argument.
+     */
+    template<class R, class X>
+    constexpr internal::built_in_function_t<R, internal::sign_string, X> sign(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3038000
+    /**
+     *  FORMAT(FORMAT,...) function https://www.sqlite.org/lang_corefunc.html#format
+     */
+    template<class... Args>
+    constexpr internal::built_in_function_t<std::string, internal::format_string, Args...> format(Args... args) {
+        return {std::tuple<Args...>{std::forward<Args>(args)...}};
+    }
+
+    /**
+     *  UNIXEPOCH(timestring, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
+     */
+    template<class... Args>
+    constexpr internal::built_in_function_t<int64, internal::unixepoch_string, Args...> unixepoch(Args... args) {
+        return {std::tuple<Args...>{std::forward<Args>(args)...}};
+    }
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3041000
+    /**
+     *  UNHEX(X) function https://www.sqlite.org/lang_corefunc.html#unhex
+     */
+    template<class X>
+    constexpr internal::built_in_function_t<std::vector<char>, internal::unhex_string, X> unhex(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  UNHEX(X,Y) function https://www.sqlite.org/lang_corefunc.html#unhex
+     */
+    template<class X, class Y>
+    constexpr internal::built_in_function_t<std::vector<char>, internal::unhex_string, X, Y> unhex(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+    }
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3043000
+    /**
+     *  OCTET_LENGTH(X) function https://www.sqlite.org/lang_corefunc.html#octet_length
+     */
+    template<class X>
+    constexpr internal::built_in_function_t<int, internal::octet_length_string, X> octet_length(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  TIMEDIFF(A,B) function https://www.sqlite.org/lang_datefunc.html#tmdiff
+     */
+    template<class X, class Y>
+    constexpr internal::built_in_function_t<std::string, internal::timediff_string, X, Y> timediff(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+    }
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3044000
+    /**
+     *  CONCAT(X,...) function https://www.sqlite.org/lang_corefunc.html#concat
+     */
+    template<class... Args>
+    constexpr internal::built_in_function_t<std::string, internal::concat_string, Args...> concat(Args... args) {
+        return {std::tuple<Args...>{std::forward<Args>(args)...}};
+    }
+
+    /**
+     *  CONCAT_WS(SEP,X,...) function https://www.sqlite.org/lang_corefunc.html#concat_ws
+     */
+    template<class... Args>
+    constexpr internal::built_in_function_t<std::string, internal::concat_ws_string, Args...> concat_ws(Args... args) {
+        return {std::tuple<Args...>{std::forward<Args>(args)...}};
+    }
+
+    /**
+     *  STRING_AGG(X,SEP) aggregate function https://www.sqlite.org/lang_aggfunc.html#string_agg
+     */
+    template<class X, class Y>
+    constexpr internal::built_in_aggregate_function_t<std::string, internal::string_agg_string, X, Y> string_agg(X x,
+                                                                                                                 Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+    }
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3048000
+    /**
+     *  IF(X,Y,Z) function, an alias for IIF() https://www.sqlite.org/lang_corefunc.html#iif
+     *
+     *  The return type is the common type of Y and Z, unless it is explicitly specified as a template argument.
+     */
+    template<class R = void, class X, class Y, class Z>
+    constexpr auto if_(X x, Y y, Z z) -> internal::built_in_function_t<
+        typename mpl::conditional_t<  //  choose R or common type
+            std::is_void<R>::value,
+            std::common_type<internal::field_type_or_type_t<Y>, internal::field_type_or_type_t<Z>>,
+            polyfill::type_identity<R>>::type,
+        internal::if_string,
+        X,
+        Y,
+        Z> {
+        return {std::make_tuple(std::move(x), std::move(y), std::move(z))};
+    }
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3050000
+    /**
+     *  UNISTR(X) function https://www.sqlite.org/lang_corefunc.html#unistr
+     */
+    template<class X>
+    constexpr internal::built_in_function_t<std::string, internal::unistr_string, X> unistr(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  UNISTR_QUOTE(X) function https://www.sqlite.org/lang_corefunc.html#unistr_quote
+     */
+    template<class X>
+    constexpr internal::built_in_function_t<std::string, internal::unistr_quote_string, X> unistr_quote(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+#endif
+
+#ifdef SQLITE_ENABLE_PERCENTILE
+    /**
+     *  MEDIAN(X) aggregate function https://www.sqlite.org/lang_aggfunc.html#percentile
+     */
+    template<class X>
+    constexpr internal::built_in_aggregate_function_t<std::unique_ptr<double>, internal::median_string, X> median(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  PERCENTILE(Y,P) aggregate function https://www.sqlite.org/lang_aggfunc.html#percentile
+     */
+    template<class X, class Y>
+    constexpr internal::built_in_aggregate_function_t<std::unique_ptr<double>, internal::percentile_string, X, Y>
+    percentile(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+    }
+
+    /**
+     *  PERCENTILE_CONT(Y,P) aggregate function https://www.sqlite.org/lang_aggfunc.html#percentile
+     */
+    template<class X, class Y>
+    constexpr internal::built_in_aggregate_function_t<std::unique_ptr<double>, internal::percentile_cont_string, X, Y>
+    percentile_cont(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+    }
+
+    /**
+     *  PERCENTILE_DISC(Y,P) aggregate function https://www.sqlite.org/lang_aggfunc.html#percentile
+     */
+    template<class X, class Y>
+    constexpr internal::built_in_aggregate_function_t<std::unique_ptr<double>, internal::percentile_disc_string, X, Y>
+    percentile_disc(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+    }
+#endif
 #ifdef SQLITE_ENABLE_JSON1
     template<class X>
     constexpr internal::built_in_function_t<std::string, internal::json_string, X> json(X x) {

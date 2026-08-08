@@ -203,10 +203,10 @@ jobs:
             sqlite_dir: sqlite-amalgamation-3350500
             sqlite_defines: "-DSQLITE_ENABLE_FTS5 -DSQLITE_ENABLE_RTREE -DSQLITE_ENABLE_JSON1 -DSQLITE_ENABLE_DBSTAT_VTAB -DSQLITE_ENABLE_MATH_FUNCTIONS -DSQLITE_SOUNDEX"
 
-          - sqlite_version: "3.50.4"  # a recent pinned version
-            sqlite_url: "https://www.sqlite.org/2025/sqlite-amalgamation-3500400.zip"
-            sqlite_dir: sqlite-amalgamation-3500400
-            sqlite_defines: "-DSQLITE_ENABLE_FTS5 -DSQLITE_ENABLE_RTREE -DSQLITE_ENABLE_JSON1 -DSQLITE_ENABLE_DBSTAT_VTAB -DSQLITE_ENABLE_MATH_FUNCTIONS -DSQLITE_SOUNDEX"
+          - sqlite_version: "3.51.0"  # a recent pinned version, incl. the percentile family
+            sqlite_url: "https://www.sqlite.org/2025/sqlite-amalgamation-3510000.zip"
+            sqlite_dir: sqlite-amalgamation-3510000
+            sqlite_defines: "-DSQLITE_ENABLE_FTS5 -DSQLITE_ENABLE_RTREE -DSQLITE_ENABLE_JSON1 -DSQLITE_ENABLE_DBSTAT_VTAB -DSQLITE_ENABLE_MATH_FUNCTIONS -DSQLITE_ENABLE_PERCENTILE -DSQLITE_SOUNDEX"
 
     name: Linux - SQLite ${{ matrix.sqlite_version }}, C++17
 

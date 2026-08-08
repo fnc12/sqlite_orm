@@ -398,3 +398,122 @@ TEST_CASE("statement_serializer core functions") {
     }
     REQUIRE(value == expected);
 }
+
+TEST_CASE("statement_serializer newer core functions") {
+    internal::db_objects_tuple<> storage;
+    internal::serializer_context<internal::db_objects_tuple<>> context{storage};
+    context.use_parentheses = false;
+    std::string value;
+    decltype(value) expected;
+#if SQLITE_VERSION_NUMBER >= 3008003
+    SECTION("PRINTF") {
+        auto expression = sqlite_orm::printf("%d", 1);
+        expected = "PRINTF('%d', 1)";
+        value = serialize(expression, context);
+    }
+#endif
+#if SQLITE_VERSION_NUMBER >= 3032000
+    SECTION("IIF") {
+        auto expression = iif(c(2) > 1, "greater", "less");
+        expected = "IIF(2 > 1, 'greater', 'less')";
+        value = serialize(expression, context);
+    }
+#endif
+#if SQLITE_VERSION_NUMBER >= 3035000
+    SECTION("SIGN") {
+        auto expression = sign(-3);
+        expected = "SIGN(-3)";
+        value = serialize(expression, context);
+    }
+#endif
+#if SQLITE_VERSION_NUMBER >= 3038000
+    SECTION("FORMAT") {
+        auto expression = format("%d", 1);
+        expected = "FORMAT('%d', 1)";
+        value = serialize(expression, context);
+    }
+    SECTION("UNIXEPOCH") {
+        auto expression = unixepoch("now");
+        expected = "UNIXEPOCH('now')";
+        value = serialize(expression, context);
+    }
+#endif
+#if SQLITE_VERSION_NUMBER >= 3041000
+    SECTION("UNHEX") {
+        auto expression = unhex("3637");
+        expected = "UNHEX('3637')";
+        value = serialize(expression, context);
+    }
+#endif
+#if SQLITE_VERSION_NUMBER >= 3043000
+    SECTION("OCTET_LENGTH") {
+        auto expression = octet_length("hi");
+        expected = "OCTET_LENGTH('hi')";
+        value = serialize(expression, context);
+    }
+    SECTION("TIMEDIFF") {
+        auto expression = timediff("2026-08-08", "2026-08-07");
+        expected = "TIMEDIFF('2026-08-08', '2026-08-07')";
+        value = serialize(expression, context);
+    }
+#endif
+#if SQLITE_VERSION_NUMBER >= 3044000
+    SECTION("CONCAT") {
+        auto expression = concat("one", 2);
+        expected = "CONCAT('one', 2)";
+        value = serialize(expression, context);
+    }
+    SECTION("CONCAT_WS") {
+        auto expression = concat_ws("-", "one", "two");
+        expected = "CONCAT_WS('-', 'one', 'two')";
+        value = serialize(expression, context);
+    }
+    SECTION("STRING_AGG") {
+        auto expression = string_agg("x", ",");
+        expected = "STRING_AGG('x', ',')";
+        value = serialize(expression, context);
+    }
+#endif
+#if SQLITE_VERSION_NUMBER >= 3048000
+    SECTION("IF") {
+        auto expression = if_(c(2) > 1, "greater", "less");
+        expected = "IF(2 > 1, 'greater', 'less')";
+        value = serialize(expression, context);
+    }
+#endif
+#if SQLITE_VERSION_NUMBER >= 3050000
+    SECTION("UNISTR") {
+        auto expression = unistr("a\\u0062c");
+        expected = "UNISTR('a\\u0062c')";
+        value = serialize(expression, context);
+    }
+    SECTION("UNISTR_QUOTE") {
+        auto expression = unistr_quote("abc");
+        expected = "UNISTR_QUOTE('abc')";
+        value = serialize(expression, context);
+    }
+#endif
+#ifdef SQLITE_ENABLE_PERCENTILE
+    SECTION("MEDIAN") {
+        auto expression = median(1);
+        expected = "MEDIAN(1)";
+        value = serialize(expression, context);
+    }
+    SECTION("PERCENTILE") {
+        auto expression = percentile(1, 50);
+        expected = "PERCENTILE(1, 50)";
+        value = serialize(expression, context);
+    }
+    SECTION("PERCENTILE_CONT") {
+        auto expression = percentile_cont(1, 0.5);
+        expected = "PERCENTILE_CONT(1, 0.5)";
+        value = serialize(expression, context);
+    }
+    SECTION("PERCENTILE_DISC") {
+        auto expression = percentile_disc(1, 0.5);
+        expected = "PERCENTILE_DISC(1, 0.5)";
+        value = serialize(expression, context);
+    }
+#endif
+    REQUIRE(value == expected);
+}

@@ -1353,3 +1353,182 @@ TEST_CASE("ifnull") {
     expected.push_back({"Wyatt", "Girard", "Call:+33 05 56 96 96 96"});
     REQUIRE_THAT(rows, UnorderedEquals(expected));
 }
+
+#if SQLITE_VERSION_NUMBER >= 3008003
+TEST_CASE("printf") {
+    auto storage = make_storage({});
+    auto rows = storage.select(sqlite_orm::printf("%d/%s", 1, "one"));
+    REQUIRE(rows.size() == 1);
+    REQUIRE(rows.front() == "1/one");
+}
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3032000
+TEST_CASE("iif") {
+    auto storage = make_storage({});
+    {
+        auto rows = storage.select(iif<std::string>(c(2) > 1, "greater", "less"));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front() == "greater");
+    }
+    {
+        auto rows = storage.select(iif<int>(c(1) > 2, 10, 20));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front() == 20);
+    }
+}
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3035000
+TEST_CASE("sign") {
+    auto storage = make_storage({});
+    {
+        auto rows = storage.select(sign(-42));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front() == -1);
+    }
+    {
+        auto rows = storage.select(sign(3.5));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front() == 1);
+    }
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    {
+        auto rows = storage.select(sign<std::optional<int>>("ototo"));
+        REQUIRE(rows.size() == 1);
+        REQUIRE_FALSE(rows.front().has_value());
+    }
+#endif
+}
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3038000
+TEST_CASE("format") {
+    auto storage = make_storage({});
+    auto rows = storage.select(format("%d/%s", 2, "two"));
+    REQUIRE(rows.size() == 1);
+    REQUIRE(rows.front() == "2/two");
+}
+
+TEST_CASE("unixepoch") {
+    auto storage = make_storage({});
+    auto rows = storage.select(unixepoch("1970-01-02"));
+    REQUIRE(rows.size() == 1);
+    REQUIRE(rows.front() == 86400);
+}
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3041000
+TEST_CASE("unhex") {
+    auto storage = make_storage({});
+    auto rows = storage.select(unhex("3637"));
+    REQUIRE(rows.size() == 1);
+    REQUIRE(rows.front() == std::vector<char>{'6', '7'});
+}
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3043000
+TEST_CASE("octet_length") {
+    auto storage = make_storage({});
+    auto rows = storage.select(octet_length("ä"));
+    REQUIRE(rows.size() == 1);
+    REQUIRE(rows.front() == 2);
+}
+
+TEST_CASE("timediff") {
+    auto storage = make_storage({});
+    auto rows = storage.select(timediff("2026-08-08", "2026-08-07"));
+    REQUIRE(rows.size() == 1);
+    REQUIRE(rows.front() == "+0000-00-01 00:00:00.000");
+}
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3044000
+TEST_CASE("concat") {
+    auto storage = make_storage({});
+    {
+        auto rows = storage.select(concat("one", 2, "three"));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front() == "one2three");
+    }
+    {
+        auto rows = storage.select(concat_ws("-", "one", "two"));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front() == "one-two");
+    }
+}
+
+TEST_CASE("string_agg") {
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    auto storage = make_storage(
+        {},
+        make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)));
+    storage.sync_schema();
+    storage.replace(User{1, "Alex"});
+    storage.replace(User{2, "Michael"});
+    auto rows = storage.select(string_agg(&User::name, ", "), order_by(&User::id));
+    REQUIRE(rows.size() == 1);
+    REQUIRE(rows.front() == "Alex, Michael");
+}
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3048000
+TEST_CASE("if_") {
+    auto storage = make_storage({});
+    auto rows = storage.select(if_<std::string>(c(2) > 1, "greater", "less"));
+    REQUIRE(rows.size() == 1);
+    REQUIRE(rows.front() == "greater");
+}
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3050000
+TEST_CASE("unistr") {
+    auto storage = make_storage({});
+    auto rows = storage.select(unistr("a\\u0062c"));
+    REQUIRE(rows.size() == 1);
+    REQUIRE(rows.front() == "abc");
+}
+#endif
+
+#ifdef SQLITE_ENABLE_PERCENTILE
+TEST_CASE("median and percentile") {
+    struct Score {
+        int id = 0;
+        double value = 0;
+    };
+    auto storage = make_storage(
+        {},
+        make_table("scores", make_column("id", &Score::id, primary_key()), make_column("value", &Score::value)));
+    storage.sync_schema();
+    storage.replace(Score{1, 1.0});
+    storage.replace(Score{2, 2.0});
+    storage.replace(Score{3, 3.0});
+    {
+        auto rows = storage.select(median(&Score::value));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front());
+        REQUIRE(*rows.front() == 2.0);
+    }
+    {
+        auto rows = storage.select(percentile(&Score::value, 50));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front());
+        REQUIRE(*rows.front() == 2.0);
+    }
+    {
+        auto rows = storage.select(percentile_cont(&Score::value, 0.5));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front());
+        REQUIRE(*rows.front() == 2.0);
+    }
+    {
+        auto rows = storage.select(percentile_disc(&Score::value, 0.5));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front());
+        REQUIRE(*rows.front() == 2.0);
+    }
+}
+#endif
