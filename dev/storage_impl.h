@@ -140,15 +140,18 @@ namespace sqlite_orm::internal {
             using elements_type = elements_type_t<Table>;
             using unique_index_sequence =
                 filter_tuple_sequence_t<elements_type, check_if_is_template<unique_t>::template fn>;
-            iterate_tuple(table.elements, unique_index_sequence{}, [&dbObjects, &result, &name](auto& uniqueConstraint) {
-                iterate_tuple(uniqueConstraint.columns, [&dbObjects, &result, &name](auto& columnExpression) {
-                    if (const std::string* columnName = find_column_name(dbObjects, columnExpression)) {
-                        if (*columnName == name) {
-                            result = true;
+            iterate_tuple(
+                table.elements,
+                unique_index_sequence{},
+                [&dbObjects, &result, &name](auto& uniqueConstraint) {
+                    iterate_tuple(uniqueConstraint.columns, [&dbObjects, &result, &name](auto& columnExpression) {
+                        if (const std::string* columnName = find_column_name(dbObjects, columnExpression)) {
+                            if (*columnName == name) {
+                                result = true;
+                            }
                         }
-                    }
+                    });
                 });
-            });
         }
         return result;
     }
