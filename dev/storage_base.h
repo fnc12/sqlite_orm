@@ -1118,6 +1118,26 @@ namespace sqlite_orm::internal {
             return storage._busy_handler(triesCount);
         }
 
+        /**
+         *  Checks whether a serialized default value allows the column to be added with
+         *  `ALTER TABLE ... ADD COLUMN`: SQLite only permits constant default values there,
+         *  i.e. no CURRENT_TIME/CURRENT_DATE/CURRENT_TIMESTAMP and no expressions.
+         */
+        static bool is_default_value_addable(const std::string& dfltValue) {
+            if (dfltValue.empty()) {
+                return true;
+            }
+            //  a string literal is always a constant
+            if (dfltValue.front() == '\'' || dfltValue.front() == '"') {
+                return true;
+            }
+            if (dfltValue == "CURRENT_TIME" || dfltValue == "CURRENT_DATE" || dfltValue == "CURRENT_TIMESTAMP") {
+                return false;
+            }
+            //  everything containing an opening parenthesis is a function call or a parenthesized expression
+            return dfltValue.find('(') == std::string::npos;
+        }
+
         bool calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,
                                           std::vector<table_xinfo>& storageTableInfo,
                                           std::vector<table_xinfo>& dbTableInfo) const {

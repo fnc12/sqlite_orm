@@ -15,6 +15,7 @@
 #include "../type_traits.h"
 #include "../table_constraints.h"
 #include "../table_info.h"
+#include "../column_pointer.h"
 #include "table_base.h"
 #include "column.h"
 #include "index.h"
@@ -55,6 +56,49 @@ namespace sqlite_orm::internal {
                     result = &std::get<opIndex>(column.constraints)._storage;
                 });
 #endif
+            return result;
+        }
+
+        /**
+         *  Finds the column name by a column expression used in a table constraint,
+         *  which can be a member pointer or a column pointer.
+         *  @return column name or nullptr if the expression kind is not supported.
+         */
+        template<class E>
+        const std::string* find_column_name_of(const E& columnExpression) const {
+            if constexpr (std::is_member_pointer<E>::value) {
+                return this->find_column_name(columnExpression);
+            } else if constexpr (is_column_pointer_v<E>) {
+                return this->find_column_name_of(columnExpression.field);
+            } else {
+                return nullptr;
+            }
+        }
+
+        /**
+         *  Checks whether the column with the specified name has a column-level `UNIQUE` constraint
+         *  or is contained in a table-level `UNIQUE` constraint.
+         */
+        bool is_column_unique(const std::string& name) const {
+            bool result = false;
+            this->for_each_column([&result, &name](auto& column) {
+                if (column.name == name && column.template is_template<unique_t>()) {
+                    result = true;
+                }
+            });
+            if (!result) {
+                using unique_index_sequence =
+                    filter_tuple_sequence_t<elements_type, check_if_is_template<unique_t>::template fn>;
+                iterate_tuple(this->elements, unique_index_sequence{}, [this, &result, &name](auto& uniqueConstraint) {
+                    iterate_tuple(uniqueConstraint.columns, [this, &result, &name](auto& columnExpression) {
+                        if (const std::string* columnName = this->find_column_name_of(columnExpression)) {
+                            if (*columnName == name) {
+                                result = true;
+                            }
+                        }
+                    });
+                });
+            }
             return result;
         }
 

@@ -12815,11 +12815,19 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         new_columns_added_and_old_columns_removed,
 
         /**
-         *  old table is dropped and new is recreated. Reasons :
-         *  1. delete excess columns in the table than storage if preseve = false
-         *  2. Reasons 1 and 4 both together
-         *  3. data_type mismatch between table and storage.
+         *  old table is dropped and new is recreated. Reasons:
+         *  1. an existing column differs from the storage definition by one of the compared
+         *     properties: primary key membership and order, `NOT NULL`, the presence of a
+         *     default value, the generated flag
+         *  2. delete excess columns in the table than storage if preserve = false and
+         *     SQLite is older than 3.35.0 (no `DROP COLUMN` support)
+         *  3. a new column cannot be added with `ALTER TABLE ... ADD COLUMN`: it is a STORED
+         *     generated column, has a `PRIMARY KEY` or `UNIQUE` constraint or a non-constant
+         *     default value
          *  Data is preserved through a backup table when preserve = true.
+         *  Note that changes of the column type, of the default value itself, of a generated
+         *  column expression and of `UNIQUE`/`CHECK`/`COLLATE`/`FOREIGN KEY` constraints are
+         *  not detected.
          */
         dropped_and_recreated,
 
@@ -12888,7 +12896,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         bool notnull = false;
         std::string dflt_value;
         int pk = 0;
-        int hidden = 0;  // different than 0 => generated_always_as() - TODO verify
+        //  as reported by `PRAGMA table_xinfo`: 0 = normal column, 1 = hidden column in a virtual table,
+        //  2 = VIRTUAL generated column, 3 = STORED generated column;
+        //  `get_table_info()` stores 1 for a generated column, so only zero vs non-zero may be compared
+        int hidden = 0;
 
 #ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
         table_xinfo(decltype(cid) cid_,
@@ -13247,6 +13258,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "schema/constraints/check.h"
 
 // #include "../table_info.h"
+
+// #include "../column_pointer.h"
 
 // #include "table_base.h"
 
@@ -13728,6 +13741,49 @@ namespace sqlite_orm::internal {
                     result = &std::get<opIndex>(column.constraints)._storage;
                 });
 #endif
+            return result;
+        }
+
+        /**
+         *  Finds the column name by a column expression used in a table constraint,
+         *  which can be a member pointer or a column pointer.
+         *  @return column name or nullptr if the expression kind is not supported.
+         */
+        template<class E>
+        const std::string* find_column_name_of(const E& columnExpression) const {
+            if constexpr (std::is_member_pointer<E>::value) {
+                return this->find_column_name(columnExpression);
+            } else if constexpr (is_column_pointer_v<E>) {
+                return this->find_column_name_of(columnExpression.field);
+            } else {
+                return nullptr;
+            }
+        }
+
+        /**
+         *  Checks whether the column with the specified name has a column-level `UNIQUE` constraint
+         *  or is contained in a table-level `UNIQUE` constraint.
+         */
+        bool is_column_unique(const std::string& name) const {
+            bool result = false;
+            this->for_each_column([&result, &name](auto& column) {
+                if (column.name == name && column.template is_template<unique_t>()) {
+                    result = true;
+                }
+            });
+            if (!result) {
+                using unique_index_sequence =
+                    filter_tuple_sequence_t<elements_type, check_if_is_template<unique_t>::template fn>;
+                iterate_tuple(this->elements, unique_index_sequence{}, [this, &result, &name](auto& uniqueConstraint) {
+                    iterate_tuple(uniqueConstraint.columns, [this, &result, &name](auto& columnExpression) {
+                        if (const std::string* columnName = this->find_column_name_of(columnExpression)) {
+                            if (*columnName == name) {
+                                result = true;
+                            }
+                        }
+                    });
+                });
+            }
             return result;
         }
 
@@ -20993,6 +21049,26 @@ namespace sqlite_orm::internal {
             return storage._busy_handler(triesCount);
         }
 
+        /**
+         *  Checks whether a serialized default value allows the column to be added with
+         *  `ALTER TABLE ... ADD COLUMN`: SQLite only permits constant default values there,
+         *  i.e. no CURRENT_TIME/CURRENT_DATE/CURRENT_TIMESTAMP and no expressions.
+         */
+        static bool is_default_value_addable(const std::string& dfltValue) {
+            if (dfltValue.empty()) {
+                return true;
+            }
+            //  a string literal is always a constant
+            if (dfltValue.front() == '\'' || dfltValue.front() == '"') {
+                return true;
+            }
+            if (dfltValue == "CURRENT_TIME" || dfltValue == "CURRENT_DATE" || dfltValue == "CURRENT_TIMESTAMP") {
+                return false;
+            }
+            //  everything containing an opening parenthesis is a function call or a parenthesized expression
+            return dfltValue.find('(') == std::string::npos;
+        }
+
         bool calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,
                                           std::vector<table_xinfo>& storageTableInfo,
                                           std::vector<table_xinfo>& dbTableInfo) const {
@@ -26802,8 +26878,9 @@ namespace sqlite_orm::internal {
                                 table.find_column_generated_storage_type(colInfo->name);
                             if (generatedStorageType) {
                                 if (*generatedStorageType == basic_generated_always::storage_type::stored) {
+                                    //  a STORED generated column cannot be added with `ALTER TABLE ... ADD COLUMN`,
+                                    //  but the scan must continue: another new column may still make data preservation impossible
                                     gottaCreateTable = true;
-                                    break;
                                 }
                                 //  fallback cause VIRTUAL can be added
                             } else {
@@ -26815,6 +26892,13 @@ namespace sqlite_orm::internal {
                                         *attempt_to_preserve = false;
                                     };
                                     break;
+                                }
+                                //  `ALTER TABLE ... ADD COLUMN` cannot add a column with a PRIMARY KEY or
+                                //  UNIQUE constraint or with a non-constant default value;
+                                //  such a column requires the table to be recreated
+                                if (colInfo->pk != 0 || !is_default_value_addable(colInfo->dflt_value) ||
+                                    table.is_column_unique(colInfo->name)) {
+                                    gottaCreateTable = true;
                                 }
                             }
                         }
@@ -26980,10 +27064,16 @@ namespace sqlite_orm::internal {
          *  - every table from storage is compared with it's db analog and
          *      - if table doesn't exist it is being created
          *      - if table exists its colums are being compared with table_info from db and
-         *          - if there are columns in db that do not exist in storage (excess) table will be dropped and recreated
-         *          - if there are columns in storage that do not exist in db they will be added using `ALTER TABLE ... ADD COLUMN ...' command
-         *          - if there is any column existing in both db and storage but differs by any of
-         *  properties/constraints (pk, notnull, dflt_value) table will be dropped and recreated. Be aware that
+         *          - if there are columns in db that do not exist in storage (excess) they are removed
+         *  using `ALTER TABLE ... DROP COLUMN` on SQLite >= 3.35.0, otherwise through a backup table if
+         *  `preserve` is true or by recreating the table with data loss if `preserve` is false
+         *          - if there are columns in storage that do not exist in db they will be added using `ALTER TABLE ... ADD COLUMN ...' command;
+         *  in case a column cannot be added that way (a STORED generated column, a column with a `PRIMARY KEY` or `UNIQUE` constraint
+         *  or with a non-constant default value) the table is recreated through a backup table
+         *          - if there is any column existing in both db and storage but differs by any of the compared
+         *  properties (primary key membership and order, notnull, the presence of a default value, the generated flag)
+         *  table will be dropped and recreated. Note that the column type, the default value itself, a generated
+         *  column expression and `UNIQUE`/`CHECK`/`COLLATE` constraints are NOT compared, so changing them is not detected. Be aware that
          *  `sync_schema` doesn't guarantee that data will not be dropped. It guarantees only that it will make db
          *  schema the same as you specified in `make_storage` function call. A good point is that if you have no db
          *  file at all it will be created and all tables also will be created with exact tables and columns you
@@ -27619,6 +27709,7 @@ namespace sqlite_orm::internal {
 #include <ostream>  //  std::flush
 #include <functional>  //  std::reference_wrapper, std::cref
 #include <algorithm>  //  std::find_if, std::ranges::find
+#include <system_error>  //  std::system_error
 #endif
 
 // #include "../type_traits.h"
@@ -27728,13 +27819,27 @@ namespace sqlite_orm::internal {
 
                     if (schema_stat == sync_schema_result::old_columns_removed) {
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
-                        for (auto& tableInfo: dbTableInfo) {
-                            this->drop_column(db, table.name, tableInfo.name);
+                        try {
+                            for (auto& tableInfo: dbTableInfo) {
+                                this->drop_column(db, table.name, tableInfo.name);
+                            }
+                        } catch (const std::system_error&) {
+                            //  `ALTER TABLE ... DROP COLUMN` fails if the column is part of the primary key,
+                            //  has a UNIQUE constraint, is indexed or is referenced in a generated column,
+                            //  index, trigger or view expression;
+                            //  fall back to recreating the table through a backup table,
+                            //  which preserves the remaining data
+                            auto storageTableInfo = table.get_table_info();
+                            this->add_generated_cols(columnsToAdd, storageTableInfo);
+                            this->backup_table(db, table, columnsToAdd);
                         }
                         res = sync_schema_result::old_columns_removed;
 #else
-                        //  extra table columns than storage columns
-                        this->backup_table(db, table, {});
+                        //  extra table columns than storage columns;
+                        //  note: generated columns must not be copied into the backup table
+                        auto storageTableInfo = table.get_table_info();
+                        this->add_generated_cols(columnsToAdd, storageTableInfo);
+                        this->backup_table(db, table, columnsToAdd);
                         res = sync_schema_result::old_columns_removed;
 #endif
                     }
