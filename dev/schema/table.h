@@ -17,14 +17,12 @@
 #include "../table_info.h"
 #include "table_base.h"
 #include "column.h"
-#include "index.h"
 
 namespace sqlite_orm::internal {
     template<class T>
     using is_base_table_element_or_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_column>,
                                                                                check_if<is_primary_key>,
                                                                                check_if<is_foreign_key>,
-                                                                               check_if_is_template<index_t>,
                                                                                check_if_is_template<unique_t>,
                                                                                check_if_is_template<check_t>>,
                                                               T>;

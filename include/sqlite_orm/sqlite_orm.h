@@ -12983,6 +12983,26 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../../functional/cxx_type_traits_polyfill.h"
 
+// #include "../../functional/addressof.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::is_standard_layout
+#endif
+
+namespace sqlite_orm::internal {
+    template<class F, class O>
+    size_t offsetof_member(F O::* member) {
+        static_assert(std::is_standard_layout_v<O>);
+        return &reinterpret_cast<const unsigned char&>(((O*)nullptr)->*member) - (const unsigned char*)nullptr;
+    }
+
+    template<class Nested, class Enclosing>
+    const Enclosing* addressof_enclosing(const Nested* _this, Nested Enclosing::* member) {
+        return reinterpret_cast<const Enclosing*>(reinterpret_cast<const unsigned char*>(_this) -
+                                                  offsetof_member(member));
+    }
+}
+
 // #include "../../tuple_helper/same_or_void.h"
 
 // #include "../../alias_traits.h"
@@ -13034,94 +13054,75 @@ namespace sqlite_orm::internal {
         return os;
     }
 
-    struct on_update_delete_base {
-        const bool update;  //  true if update and false if delete
+    struct on_fk_action {
+        foreign_key_action _action = foreign_key_action::none;
 
-        operator std::string() const {
-            if (this->update) {
-                return "ON UPDATE";
-            } else {
-                return "ON DELETE";
-            }
+        explicit operator bool() const {
+            return _action != foreign_key_action::none;
         }
+
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+        friend bool operator==(const on_fk_action&, const on_fk_action&) = default;
+#else
+        friend bool operator==(const on_fk_action& lhs, const on_fk_action& rhs) {
+            return lhs._action == rhs._action;
+        }
+#endif
     };
 
     /**
      *  F - foreign key class
      */
-    template<class F>
-    struct on_update_delete_t : on_update_delete_base {
+    template<class F, bool forUpdate>
+    struct on_fk_update_delete : on_fk_action {
+        static_assert(polyfill::is_specialization_of_v<F, foreign_key_t>);
         using foreign_key_type = F;
 
-        const foreign_key_type& fk;
-
-        foreign_key_action _action = foreign_key_action::none;
-
-        on_update_delete_t(const on_update_delete_t&) = delete;
-        on_update_delete_t& operator=(const on_update_delete_t&) = delete;
-
-        on_update_delete_t(foreign_key_type& fk_, decltype(update) update_, foreign_key_action action_) :
-            on_update_delete_base{update_}, fk(fk_), _action(action_) {}
-
         foreign_key_type no_action() const {
-            auto res = this->fk;
-            if (update) {
-                res.on_update._action = foreign_key_action::no_action;
-            } else {
-                res.on_delete._action = foreign_key_action::no_action;
-            }
-            return res;
+            return this->copy_fk(foreign_key_action::no_action);
         }
 
         foreign_key_type restrict_() const {
-            auto res = this->fk;
-            if (update) {
-                res.on_update._action = foreign_key_action::restrict_;
-            } else {
-                res.on_delete._action = foreign_key_action::restrict_;
-            }
-            return res;
+            return this->copy_fk(foreign_key_action::restrict_);
         }
 
         foreign_key_type set_null() const {
-            auto res = this->fk;
-            if (update) {
-                res.on_update._action = foreign_key_action::set_null;
-            } else {
-                res.on_delete._action = foreign_key_action::set_null;
-            }
-            return res;
+            return this->copy_fk(foreign_key_action::set_null);
         }
 
         foreign_key_type set_default() const {
-            auto res = this->fk;
-            if (update) {
-                res.on_update._action = foreign_key_action::set_default;
-            } else {
-                res.on_delete._action = foreign_key_action::set_default;
-            }
-            return res;
+            return this->copy_fk(foreign_key_action::set_default);
         }
 
         foreign_key_type cascade() const {
-            auto res = this->fk;
-            if (update) {
-                res.on_update._action = foreign_key_action::cascade;
-            } else {
-                res.on_delete._action = foreign_key_action::cascade;
-            }
-            return res;
+            return this->copy_fk(foreign_key_action::cascade);
         }
 
-        explicit operator bool() const {
-            return _action != foreign_key_action::none;
+        operator std::string() const {
+            if constexpr (forUpdate)
+                return "ON UPDATE";
+            else
+                return "ON DELETE";
+        }
+
+      private:
+        foreign_key_type copy_fk(foreign_key_action newAction) const {
+            const foreign_key_type* thisFk;
+            if constexpr (forUpdate) {
+                thisFk = addressof_enclosing(this, &F::on_update);
+            } else {
+                thisFk = addressof_enclosing(this, &F::on_delete);
+            }
+
+            foreign_key_type fk2 = *thisFk;
+            if constexpr (forUpdate) {
+                fk2.on_update._action = newAction;
+            } else {
+                fk2.on_delete._action = newAction;
+            }
+            return fk2;
         }
     };
-
-    template<class F>
-    bool operator==(const on_update_delete_t<F>& lhs, const on_update_delete_t<F>& rhs) {
-        return lhs._action == rhs._action;
-    }
 
     template<class... Cs, class... Rs>
     struct foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> {
@@ -13129,46 +13130,27 @@ namespace sqlite_orm::internal {
         using references_type = std::tuple<Rs...>;
 
         /**
-         *  Holds obect type of all referenced columns.
+         *  Type of all referenced columns.
          */
         using target_type = same_or_void_t<table_type_of_t<Rs>...>;
 
         /**
-         *  Holds obect type of all source columns.
+         *  Type of all source columns.
          */
         using source_type = same_or_void_t<table_type_of_t<Cs>...>;
 
         columns_type _columns;
         references_type _references;
+        on_fk_update_delete<foreign_key_t, true> on_update;
+        on_fk_update_delete<foreign_key_t, false> on_delete;
 
-        on_update_delete_t<foreign_key_t> on_update;
-        on_update_delete_t<foreign_key_t> on_delete;
-
-        static_assert(std::tuple_size<columns_type>::value == std::tuple_size<references_type>::value,
-                      "Columns size must be equal to references tuple");
         static_assert(!std::is_same<source_type, void>::value, "All columns must have the same mapped type");
         static_assert(!std::is_same<target_type, void>::value, "All references must have the same mapped type");
 
-        foreign_key_t(columns_type columns, references_type references) :
-            _columns(std::move(columns)), _references(std::move(references)),
-            on_update(std::ref(*this), true, foreign_key_action::none),
-            on_delete(std::ref(*this), false, foreign_key_action::none) {}
-
-        foreign_key_t(const foreign_key_t& other) :
-            _columns(other._columns), _references(other._references),
-            on_update(std::ref(*this), true, other.on_update._action),
-            on_delete(std::ref(*this), false, other.on_delete._action) {}
-
-        foreign_key_t& operator=(const foreign_key_t&) = delete;
-
-#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
-        friend bool operator==(const foreign_key_t& lhs, const foreign_key_t& rhs) = default;
-#else
         friend bool operator==(const foreign_key_t& lhs, const foreign_key_t& rhs) {
             return lhs._columns == rhs._columns && lhs._references == rhs._references &&
                    lhs.on_update == rhs.on_update && lhs.on_delete == rhs.on_delete;
         }
-#endif
     };
 
     /**
@@ -13185,7 +13167,9 @@ namespace sqlite_orm::internal {
          *  Specify one or more target fields, which can either be pointers to class members or column pointers.
          */
         template<class... Rs>
-        foreign_key_t<tuple_type, std::tuple<Rs...>> references(Rs... refs) {
+        foreign_key_t<tuple_type, std::tuple<Rs...>> references(Rs... refs) && {
+            static_assert(std::tuple_size<tuple_type>::value == sizeof...(Rs),
+                          "Columns size must be equal to references tuple");
             return {std::move(_columns), {std::forward<Rs>(refs)...}};
         }
 
@@ -13194,9 +13178,11 @@ namespace sqlite_orm::internal {
          *  specifying the derived class as an explicit template argument.
          */
         template<class O, class... Base, class... F>
-        foreign_key_t<tuple_type, std::tuple<F O::*...>> references(F Base::*... refs) {
+        foreign_key_t<tuple_type, std::tuple<F O::*...>> references(F Base::*... refs) && {
             static_assert(polyfill::conjunction<is_field_of<F Base::*, O>...>::value,
                           "Referenced fields must be from explicitly specified derived class");
+            static_assert(std::tuple_size<tuple_type>::value == sizeof...(F),
+                          "Columns size must be equal to references tuple");
             return {std::move(_columns), {refs...}};
         }
 
@@ -13206,8 +13192,8 @@ namespace sqlite_orm::internal {
          *  specifying the derived class as an explicit template argument.
          */
         template<orm_table_reference auto table, class... Base, class... F>
-        auto references(F Base::*... refs) {
-            return this->references<auto_decay_table_ref_t<table>>(refs...);
+        auto references(F Base::*... refs) && {
+            return std::move(*this).template references<auto_decay_table_ref_t<table>>(refs...);
         }
 #endif
     };
@@ -13589,135 +13575,11 @@ namespace sqlite_orm::internal {
 
 // #include "column.h"
 
-// #include "index.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <tuple>  //  std::tuple, std::make_tuple, std::declval, std::tuple_element_t
-#include <string>  //  std::string
-#include <utility>  //  std::forward
-#endif
-
-// #include "../tuple_helper/tuple_traits.h"
-
-// #include "../indexed_column.h"
-
-#ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <string>  //  std::string
-#include <utility>  //  std::move
-#endif
-
-// #include "ast/where.h"
-
-namespace sqlite_orm::internal {
-    template<class C>
-    struct indexed_column_t {
-        using column_type = C;
-
-        column_type _column_or_expression;
-        std::string _collation_name;
-        int _order = 0;  //  -1 = desc, 1 = asc, 0 = unspecified
-
-        indexed_column_t<column_type> collate(std::string name) && {
-            auto res = std::move(*this);
-            res._collation_name = std::move(name);
-            return res;
-        }
-
-        indexed_column_t<column_type> asc() && {
-            auto res = std::move(*this);
-            res._order = 1;
-            return res;
-        }
-
-        indexed_column_t<column_type> desc() && {
-            auto res = std::move(*this);
-            res._order = -1;
-            return res;
-        }
-    };
-
-    template<class C>
-    indexed_column_t<C> make_indexed_column(C col) {
-        return {std::move(col)};
-    }
-
-    template<class C>
-    where_t<C> make_indexed_column(where_t<C> wher) {
-        return std::move(wher);
-    }
-
-    template<class C>
-    indexed_column_t<C> make_indexed_column(indexed_column_t<C> col) {
-        return std::move(col);
-    }
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    /**
-     *  Use this function to specify indexed column inside `make_index` function call.
-     *  Example: make_index("index_name", indexed_column(&User::id).asc())
-     */
-    template<class C>
-    internal::indexed_column_t<C> indexed_column(C column_or_expression) {
-        return {std::move(column_or_expression)};
-    }
-}
-
-// #include "../table_type_of.h"
-
-namespace sqlite_orm::internal {
-    struct index_base {
-        std::string name;
-        bool unique = false;
-    };
-
-    template<class T, class... Els>
-    struct index_t : index_base {
-        using elements_type = std::tuple<Els...>;
-        using object_type = void;
-        using table_mapped_type = T;
-
-        elements_type elements;
-    };
-}
-
-SQLITE_ORM_EXPORT namespace sqlite_orm {
-    template<class T, class... Cols>
-    internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
-                                                                                                      Cols... cols) {
-        using cols_tuple = std::tuple<Cols...>;
-        static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
-                      "amount of where arguments can be 0 or 1");
-        return {std::move(name), false, std::make_tuple(internal::make_indexed_column(std::move(cols))...)};
-    }
-
-    template<class... Cols>
-    internal::index_t<internal::table_type_of_t<typename std::tuple_element_t<0, std::tuple<Cols...>>>,
-                      decltype(internal::make_indexed_column(std::declval<Cols>()))...>
-    make_index(std::string name, Cols... cols) {
-        using cols_tuple = std::tuple<Cols...>;
-        static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
-                      "amount of where arguments can be 0 or 1");
-        return {std::move(name), false, std::make_tuple(internal::make_indexed_column(std::move(cols))...)};
-    }
-
-    template<class... Cols>
-    internal::index_t<internal::table_type_of_t<typename std::tuple_element_t<0, std::tuple<Cols...>>>,
-                      decltype(internal::make_indexed_column(std::declval<Cols>()))...>
-    make_unique_index(std::string name, Cols... cols) {
-        using cols_tuple = std::tuple<Cols...>;
-        static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
-                      "amount of where arguments can be 0 or 1");
-        return {std::move(name), true, std::make_tuple(internal::make_indexed_column(std::move(cols))...)};
-    }
-}
-
 namespace sqlite_orm::internal {
     template<class T>
     using is_base_table_element_or_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_column>,
                                                                                check_if<is_primary_key>,
                                                                                check_if<is_foreign_key>,
-                                                                               check_if_is_template<index_t>,
                                                                                check_if_is_template<unique_t>,
                                                                                check_if_is_template<check_t>>,
                                                               T>;
@@ -21430,6 +21292,68 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "indexed_column.h"
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <string>  //  std::string
+#include <utility>  //  std::move
+#endif
+
+// #include "ast/where.h"
+
+namespace sqlite_orm::internal {
+    template<class C>
+    struct indexed_column_t {
+        using column_type = C;
+
+        column_type _column_or_expression;
+        std::string _collation_name;
+        int _order = 0;  //  -1 = desc, 1 = asc, 0 = unspecified
+
+        indexed_column_t<column_type> collate(std::string name) && {
+            auto res = std::move(*this);
+            res._collation_name = std::move(name);
+            return res;
+        }
+
+        indexed_column_t<column_type> asc() && {
+            auto res = std::move(*this);
+            res._order = 1;
+            return res;
+        }
+
+        indexed_column_t<column_type> desc() && {
+            auto res = std::move(*this);
+            res._order = -1;
+            return res;
+        }
+    };
+
+    template<class C>
+    indexed_column_t<C> make_indexed_column(C col) {
+        return {std::move(col)};
+    }
+
+    template<class C>
+    where_t<C> make_indexed_column(where_t<C> wher) {
+        return std::move(wher);
+    }
+
+    template<class C>
+    indexed_column_t<C> make_indexed_column(indexed_column_t<C> col) {
+        return std::move(col);
+    }
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Use this function to specify indexed column inside `make_index` function call.
+     *  Example: make_index("index_name", indexed_column(&User::id).asc())
+     */
+    template<class C>
+    internal::indexed_column_t<C> indexed_column(C column_or_expression) {
+        return {std::move(column_or_expression)};
+    }
+}
+
 // #include "function.h"
 
 // #include "prepared_statement.h"
@@ -22189,6 +22113,65 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "schema/column.h"
 
 // #include "schema/index.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <tuple>  //  std::tuple, std::make_tuple, std::declval, std::tuple_element_t
+#include <string>  //  std::string
+#include <utility>  //  std::forward
+#endif
+
+// #include "../tuple_helper/tuple_traits.h"
+
+// #include "../indexed_column.h"
+
+// #include "../table_type_of.h"
+
+namespace sqlite_orm::internal {
+    struct index_base {
+        std::string name;
+        bool unique = false;
+    };
+
+    template<class T, class... Els>
+    struct index_t : index_base {
+        using elements_type = std::tuple<Els...>;
+        using object_type = void;
+        using table_mapped_type = T;
+
+        elements_type elements;
+    };
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    template<class T, class... Cols>
+    internal::index_t<T, decltype(internal::make_indexed_column(std::declval<Cols>()))...> make_index(std::string name,
+                                                                                                      Cols... cols) {
+        using cols_tuple = std::tuple<Cols...>;
+        static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
+                      "amount of where arguments can be 0 or 1");
+        return {std::move(name), false, std::make_tuple(internal::make_indexed_column(std::move(cols))...)};
+    }
+
+    template<class... Cols>
+    internal::index_t<internal::table_type_of_t<typename std::tuple_element_t<0, std::tuple<Cols...>>>,
+                      decltype(internal::make_indexed_column(std::declval<Cols>()))...>
+    make_index(std::string name, Cols... cols) {
+        using cols_tuple = std::tuple<Cols...>;
+        static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
+                      "amount of where arguments can be 0 or 1");
+        return {std::move(name), false, std::make_tuple(internal::make_indexed_column(std::move(cols))...)};
+    }
+
+    template<class... Cols>
+    internal::index_t<internal::table_type_of_t<typename std::tuple_element_t<0, std::tuple<Cols...>>>,
+                      decltype(internal::make_indexed_column(std::declval<Cols>()))...>
+    make_unique_index(std::string name, Cols... cols) {
+        using cols_tuple = std::tuple<Cols...>;
+        static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
+                      "amount of where arguments can be 0 or 1");
+        return {std::move(name), true, std::make_tuple(internal::make_indexed_column(std::move(cols))...)};
+    }
+}
 
 // #include "schema/table.h"
 
