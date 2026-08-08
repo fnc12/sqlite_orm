@@ -34,7 +34,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
         bool notnull = false;
         std::string dflt_value;
         int pk = 0;
-        int hidden = 0;  // different than 0 => generated_always_as() - TODO verify
+        //  as reported by `PRAGMA table_xinfo`: 0 = normal column, 1 = hidden column in a virtual table,
+        //  2 = VIRTUAL generated column, 3 = STORED generated column;
+        //  `get_table_info()` stores 1 for a generated column, so only zero vs non-zero may be compared
+        int hidden = 0;
 
 #ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
         table_xinfo(decltype(cid) cid_,

@@ -47,8 +47,11 @@ endif()
 # Glob all .cpp files recursively in the current directory
 file(GLOB_RECURSE UNIT_TEST_SOURCES "*.cpp")
 ucm_remove_directories(named_module FROM UNIT_TEST_SOURCES)
-# Download .c file for the generate_series module
-file(DOWNLOAD "https://raw.githubusercontent.com/sqlite/sqlite/refs/tags/version-3.50.4/ext/misc/series.c" "${CMAKE_CURRENT_SOURCE_DIR}/.sqlite3/ext/misc/series.c")
+# Download .c file for the generate_series module.
+# The tag should roughly match the version of the SQLite library being linked,
+# since series.c uses API constants of the SQLite version it is shipped with.
+set(SQLITE_ORM_SERIES_C_TAG "version-3.50.4" CACHE STRING "sqlite/sqlite repository tag to download ext/misc/series.c from")
+file(DOWNLOAD "https://raw.githubusercontent.com/sqlite/sqlite/refs/tags/${SQLITE_ORM_SERIES_C_TAG}/ext/misc/series.c" "${CMAKE_CURRENT_SOURCE_DIR}/.sqlite3/ext/misc/series.c")
 # Build series.c as a static module, which will be directly initialized and used by the unit tests target
 set_source_files_properties(.sqlite3/ext/misc/series.c PROPERTIES
     SKIP_PRECOMPILE_HEADERS ON
