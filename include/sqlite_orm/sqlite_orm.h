@@ -3426,7 +3426,6 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
-#include <type_traits>  //  std::is_base_of
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::forward, std::move
 #endif
@@ -3453,7 +3452,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    constexpr bool is_unique_v = std::is_base_of<unique_base, T>::value;
+    constexpr bool is_unique_v = polyfill::is_specialization_of_v<T, unique_t>;
 
     template<class T>
     struct is_unique : polyfill::bool_constant<is_unique_v<T>> {};
@@ -19828,6 +19827,31 @@ namespace sqlite_orm::internal {
 // #include "storage_options.h"
 
 namespace sqlite_orm::internal {
+    /**
+     *  Checks whether a serialized default value allows the column to be added with
+     *  `ALTER TABLE ... ADD COLUMN`: SQLite only permits constant default values there,
+     *  i.e. no CURRENT_TIME/CURRENT_DATE/CURRENT_TIMESTAMP and no expressions.
+     */
+    inline bool is_default_value_addable(const std::string& dfltValue) {
+        constexpr char quoteChar = '\'';
+
+        if (dfltValue.empty()) {
+            return true;
+        }
+        //  a string literal is always a constant
+        if (dfltValue.front() == quoteChar) {
+            return true;
+        }
+        if (dfltValue == "CURRENT_TIME" || dfltValue == "CURRENT_DATE" || dfltValue == "CURRENT_TIMESTAMP") {
+            return false;
+        }
+        //  everything containing an opening parenthesis is a function call or a parenthesized expression
+        if (dfltValue.find('(') != std::string::npos) {
+            return false;
+        }
+        return true;
+    }
+
     struct storage_base {
       public:
         using collating_function = std::function<int(int, const void*, int, const void*)>;
@@ -20906,26 +20930,6 @@ namespace sqlite_orm::internal {
             contract_assert(storage._busy_handler);
 #endif
             return storage._busy_handler(triesCount);
-        }
-
-        /**
-         *  Checks whether a serialized default value allows the column to be added with
-         *  `ALTER TABLE ... ADD COLUMN`: SQLite only permits constant default values there,
-         *  i.e. no CURRENT_TIME/CURRENT_DATE/CURRENT_TIMESTAMP and no expressions.
-         */
-        static bool is_default_value_addable(const std::string& dfltValue) {
-            if (dfltValue.empty()) {
-                return true;
-            }
-            //  a string literal is always a constant
-            if (dfltValue.front() == '\'' || dfltValue.front() == '"') {
-                return true;
-            }
-            if (dfltValue == "CURRENT_TIME" || dfltValue == "CURRENT_DATE" || dfltValue == "CURRENT_TIMESTAMP") {
-                return false;
-            }
-            //  everything containing an opening parenthesis is a function call or a parenthesized expression
-            return dfltValue.find('(') == std::string::npos;
         }
 
         bool calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,
@@ -27803,10 +27807,13 @@ namespace sqlite_orm::internal {
                             for (auto& tableInfo: dbTableInfo) {
                                 this->drop_column(db, table.name, tableInfo.name);
                             }
-                        } catch (const std::system_error&) {
-                            //  `ALTER TABLE ... DROP COLUMN` fails if the column is part of the primary key,
-                            //  has a UNIQUE constraint, is indexed or is referenced in a generated column,
-                            //  index, trigger or view expression;
+                        } catch (const std::system_error& e) {
+                            if (e.code() != std::error_code{sqlite_errc(SQLITE_ERROR)}) {
+                                throw;
+                            }
+                            //  `ALTER TABLE ... DROP COLUMN` fails with SQLITE_ERROR if the column is part of
+                            //  the primary key, has a UNIQUE constraint, is indexed or is referenced in a
+                            //  generated column, index, trigger or view expression;
                             //  fall back to recreating the table through a backup table,
                             //  which preserves the remaining data
                             auto storageTableInfo = table.get_table_info();

@@ -2,7 +2,6 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
-#include <type_traits>  //  std::is_base_of
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::forward, std::move
 #endif
@@ -29,7 +28,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    constexpr bool is_unique_v = std::is_base_of<unique_base, T>::value;
+    constexpr bool is_unique_v = polyfill::is_specialization_of_v<T, unique_t>;
 
     template<class T>
     struct is_unique : polyfill::bool_constant<is_unique_v<T>> {};

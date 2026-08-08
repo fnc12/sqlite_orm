@@ -654,9 +654,7 @@ TEST_CASE("sync_schema attribute matrix: NOT NULL toggle") {
                                                    make_column("id", &UserNullable::id, primary_key()),
                                                    make_column("age", &UserNullable::age)));
             storage.sync_schema();
-            UserNullable user;
-            user.id = 1;
-            user.age = std::make_unique<int>(42);
+            UserNullable user{1, std::make_unique<int>(42)};
             storage.replace(user);
         }
         auto storage = make_storage(storagePath,
@@ -808,9 +806,13 @@ TEST_CASE("sync_schema attribute matrix: composite primary key") {
         int month = 0;
         int amount = 0;
 
+#ifdef SQLITE_ORM_DEFAULT_COMPARISONS_SUPPORTED
+        bool operator==(const Record&) const = default;
+#else
         bool operator==(const Record& other) const {
             return this->year == other.year && this->month == other.month && this->amount == other.amount;
         }
+#endif
     };
     auto storagePath = "sync_schema_matrix_pk.sqlite";
     std::remove(storagePath);
@@ -1065,13 +1067,9 @@ TEST_CASE("sync_schema new column edge cases") {
         auto users = storage.get_all<UserV2>();
         REQUIRE(users.size() == 2);
         //  the UNIQUE constraint must actually be in effect now
-        UserV2 user3;
-        user3.name = "Sucre";
-        user3.email = std::make_unique<std::string>("email@example.org");
+        UserV2 user3{0, "Sucre", std::make_unique<std::string>("email@example.org")};
         storage.insert(user3);
-        UserV2 user4;
-        user4.name = "Sara";
-        user4.email = std::make_unique<std::string>("email@example.org");
+        UserV2 user4{0, "Sara", std::make_unique<std::string>("email@example.org")};
         REQUIRE_THROWS(storage.insert(user4));
     }
     SECTION("new column with a non-constant default value") {
@@ -1264,8 +1262,7 @@ TEST_CASE("sync_schema removed column edge cases") {
                                         make_column("hash", &UserV1::hash, generated_always_as(c(&UserV1::id) + 4)),
                                         make_column("obsolete", &UserV1::obsolete, default_value(""))));
             storage.sync_schema();
-            UserV1 user;
-            user.id = 5;
+            UserV1 user{5, 0, ""};
             storage.replace(user);
         }
         auto storage =

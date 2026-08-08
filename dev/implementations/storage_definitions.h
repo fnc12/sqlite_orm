@@ -65,10 +65,13 @@ namespace sqlite_orm::internal {
                             for (auto& tableInfo: dbTableInfo) {
                                 this->drop_column(db, table.name, tableInfo.name);
                             }
-                        } catch (const std::system_error&) {
-                            //  `ALTER TABLE ... DROP COLUMN` fails if the column is part of the primary key,
-                            //  has a UNIQUE constraint, is indexed or is referenced in a generated column,
-                            //  index, trigger or view expression;
+                        } catch (const std::system_error& e) {
+                            if (e.code() != std::error_code{sqlite_errc(SQLITE_ERROR)}) {
+                                throw;
+                            }
+                            //  `ALTER TABLE ... DROP COLUMN` fails with SQLITE_ERROR if the column is part of
+                            //  the primary key, has a UNIQUE constraint, is indexed or is referenced in a
+                            //  generated column, index, trigger or view expression;
                             //  fall back to recreating the table through a backup table,
                             //  which preserves the remaining data
                             auto storageTableInfo = table.get_table_info();
