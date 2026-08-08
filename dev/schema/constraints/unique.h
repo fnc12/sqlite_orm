@@ -2,9 +2,12 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
+#include <type_traits>  //  std::is_base_of
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::forward, std::move
 #endif
+
+#include "../../functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm::internal {
     struct unique_base {
@@ -24,6 +27,12 @@ namespace sqlite_orm::internal {
 
         constexpr unique_t(columns_tuple columns_) : columns(std::move(columns_)) {}
     };
+
+    template<class T>
+    constexpr bool is_unique_v = std::is_base_of<unique_base, T>::value;
+
+    template<class T>
+    struct is_unique : polyfill::bool_constant<is_unique_v<T>> {};
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

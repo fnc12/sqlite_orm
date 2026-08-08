@@ -3426,9 +3426,12 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
+#include <type_traits>  //  std::is_base_of
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::forward, std::move
 #endif
+
+// #include "../../functional/cxx_type_traits_polyfill.h"
 
 namespace sqlite_orm::internal {
     struct unique_base {
@@ -3448,6 +3451,12 @@ namespace sqlite_orm::internal {
 
         constexpr unique_t(columns_tuple columns_) : columns(std::move(columns_)) {}
     };
+
+    template<class T>
+    constexpr bool is_unique_v = std::is_base_of<unique_base, T>::value;
+
+    template<class T>
+    struct is_unique : polyfill::bool_constant<is_unique_v<T>> {};
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -14272,19 +14281,20 @@ namespace sqlite_orm::internal {
      */
     template<class Table, class DBOs, satisfies<is_db_objects, DBOs> = true>
     bool is_column_unique(const DBOs& dbObjects, const Table& table, const std::string& name) {
+        using elements_type = elements_type_t<Table>;
+
         bool result = false;
-        table.for_each_column([&result, &name](auto& column) {
-            if (column.name == name && column.template is_template<unique_t>()) {
-                result = true;
-            }
-        });
+        iterate_tuple(table.elements,
+                      col_index_sequence_with<elements_type, is_unique>{},
+                      [&result, &name](auto& column) {
+                          if (column.name == name) {
+                              result = true;
+                          }
+                      });
         if (!result) {
-            using elements_type = elements_type_t<Table>;
-            using unique_index_sequence =
-                filter_tuple_sequence_t<elements_type, check_if_is_template<unique_t>::template fn>;
             iterate_tuple(
                 table.elements,
-                unique_index_sequence{},
+                filter_tuple_sequence_t<elements_type, is_unique>{},
                 [&dbObjects, &result, &name](auto& uniqueConstraint) {
                     iterate_tuple(uniqueConstraint.columns, [&dbObjects, &result, &name](auto& columnExpression) {
                         if (const std::string* columnName = find_column_name(dbObjects, columnExpression)) {
