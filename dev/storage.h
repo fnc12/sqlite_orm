@@ -1263,7 +1263,7 @@ namespace sqlite_orm::internal {
                                 //  UNIQUE constraint or with a non-constant default value;
                                 //  such a column requires the table to be recreated
                                 if (colInfo->pk != 0 || !is_default_value_addable(colInfo->dflt_value) ||
-                                    table.is_column_unique(colInfo->name)) {
+                                    is_column_unique(this->db_objects, table, colInfo->name)) {
                                     gottaCreateTable = true;
                                 }
                             }
