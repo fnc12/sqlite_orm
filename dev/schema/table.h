@@ -25,12 +25,15 @@
 
 namespace sqlite_orm::internal {
     template<class T>
-    using is_base_table_element_or_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_column>,
-                                                                               check_if<is_primary_key>,
-                                                                               check_if<is_foreign_key>,
-                                                                               check_if_is_template<unique_t>,
-                                                                               check_if_is_template<check_t>>,
-                                                              T>;
+    using is_base_table_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_primary_key>,
+                                                                    check_if<is_foreign_key>,
+                                                                    check_if_is_template<unique_t>,
+                                                                    check_if_is_template<check_t>>,
+                                                   T>;
+
+    template<class T>
+    using is_base_table_element_or_constraint =
+        mpl::invoke_t<mpl::disjunction<check_if<is_column>, check_if<is_base_table_constraint>>, T>;
 
     /** 
      *  Encapsulates base table elements, i.e. columns and constraints for a base table,
@@ -118,7 +121,7 @@ namespace sqlite_orm::internal {
 
     template<class... Cs>
     constexpr void validate_base_table_definition() {
-        static_assert(polyfill::conjunction_v<internal::is_base_table_element_or_constraint<Cs>...>,
+        static_assert(polyfill::conjunction_v<is_base_table_element_or_constraint<Cs>...>,
                       "Incorrect base table elements or constraints");
 
         using elements_type = std::tuple<Cs...>;
@@ -218,7 +221,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  the `requires` clause — column-level constraints come from annotations only.
      */
     template<class T, class... Cs>
-        requires (!internal::is_column_v<Cs> && ...)
+        requires (internal::is_base_table_constraint<Cs>::value && ...)
     auto make_table(Cs... tableConstraints) {
         return internal::make_reflected_table<T>(std::forward<Cs>(tableConstraints)...);
     }
@@ -237,7 +240,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  the `requires` clause — column-level constraints come from annotations only.
      */
     template<orm_table_reference auto table, class... Cs>
-        requires (!internal::is_column_v<Cs> && ...)
+        requires (internal::is_base_table_constraint<Cs>::value && ...)
     auto make_table(Cs... tableConstraints) {
         return internal::make_reflected_table<internal::auto_decay_table_ref_t<table>>(
             std::forward<Cs>(tableConstraints)...);

@@ -118,10 +118,8 @@ namespace sqlite_orm {
 TEST_CASE("bindables") {
     using internal::serialize;
 
-    struct Dummy {
-        int64 id;
-    };
-    auto table = make_table<Dummy>("", make_column("id", &Dummy::id));
+    struct Dummy {};
+    auto table = make_table<Dummy>("");
     using db_objects_t = internal::db_objects_tuple<decltype(table)>;
     auto dbObjects = db_objects_t{table};
     using context_t = internal::serializer_context<db_objects_t>;

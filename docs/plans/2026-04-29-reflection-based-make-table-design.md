@@ -153,19 +153,6 @@ ordering of the name argument.
 Ordinary overload resolution plus one `requires` clause does the dispatch — no
 SFINAE, no metaprogramming gymnastics.
 
-**Sharp edge — `make_table<User>("u")`.** Passing only a name to the explicit-`T`
-form selects the *reflection* overload, not the classical one: `Cs` deduces to
-`const char*` (an exact match after array-to-pointer decay), which beats the
-classical overload's user-defined conversion to `std::string`. The string
-literal is then treated as a table-level constraint and
-`validate_base_table_definition` fires its "Incorrect base table elements or
-constraints" `static_assert`. This is a compile-time diagnostic, not silent
-misbehaviour, but the message doesn't point at the real mistake. Callers who
-want a runtime name must pass at least one column, i.e. use the classical
-overload proper. (Derived from the overload set as written; not covered by a
-test — worth adding a `static_assert`-friendly diagnostic or a deleted overload
-if it bites in practice.)
-
 ## Reflection mechanics
 
 ### Generic helpers in `dev/functional/meta_util.h`
@@ -608,11 +595,6 @@ Tests originally planned but not landed:
 
 - `examples/view.cpp` — base tables converted to the reflection-based
   `make_table` overload; see "Worked example" above.
-
-## Follow-ups
-
-- Consider a better diagnostic for `make_table<T>("name")` — see "Sharp edge"
-  under overload resolution.
 
 ## Out of scope (deferred until somebody asks)
 

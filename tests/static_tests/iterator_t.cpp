@@ -125,9 +125,7 @@ concept storage_yield_result_set = requires(S& storage_type, Select select) {
 #endif
 
 namespace {
-    struct Object {
-        int64 id;
-    };
+    struct Object {};
 #if defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED) && defined(SQLITE_ORM_WITH_CPP20_ALIASES)
     constexpr orm_table_alias auto object_alias = "o"_alias.for_<Object>();
     constexpr orm_table_reference auto object_table = c<Object>();
@@ -135,7 +133,7 @@ namespace {
 }
 
 TEST_CASE("can view and iterate mapped") {
-    using storage_type = decltype(make_storage("", make_table<Object>("", make_column("id", &Object::id))));
+    using storage_type = decltype(make_storage("", make_table<Object>("")));
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     using iter = mapped_iterator<Object, storage_type::db_objects_type>;
@@ -198,12 +196,10 @@ TEST_CASE("can view and iterate mapped") {
 
 #if defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED) && defined(SQLITE_ORM_CPP20_VIEWS_SUPPORTED)
 TEST_CASE("can view and iterate result set") {
-    struct Object {
-        int64 id;
-    };
+    struct Object {};
     using empty_storage_type = decltype(make_storage(""));
     using empty_db_objects_type = empty_storage_type::db_objects_type;
-    using storage_type = decltype(make_storage("", make_table<Object>("", make_column("id", &Object::id))));
+    using storage_type = decltype(make_storage("", make_table<Object>("")));
     using db_objects_type = storage_type::db_objects_type;
 
     STATIC_REQUIRE(can_iterate_result_set<result_set_iterator<int, empty_db_objects_type>, int>);
