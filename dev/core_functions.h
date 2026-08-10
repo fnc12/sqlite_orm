@@ -2077,22 +2077,36 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  IIF(X,Y,Z) function https://www.sqlite.org/lang_corefunc.html#iif
      *
      *  The return type is the common type of Y and Z, unless it is explicitly specified as a template argument.
+     *  The function is only enabled if a common type of Y and Z can be determined or the return type is explicit.
      *
      *  Example:
      *
-     *  auto rows = storage.select(iif(c(&User::age) > 18, "adult", "minor"));
+     *  auto rows = storage.select(iif<std::string>(c(&User::age) > 18, "adult", "minor"));
      */
-    template<class R = void, class X, class Y, class Z>
-    constexpr auto iif(X x, Y y, Z z) -> internal::built_in_function_t<
-        typename mpl::conditional_t<  //  choose R or common type
-            std::is_void<R>::value,
-            std::common_type<internal::field_type_or_type_t<Y>, internal::field_type_or_type_t<Z>>,
-            polyfill::type_identity<R>>::type,
-        internal::iif_string,
-        X,
-        Y,
-        Z> {
-        return {std::make_tuple(std::move(x), std::move(y), std::move(z))};
+    template<class R = void,
+             class X,
+             class Y,
+             class Z,
+             std::enable_if_t<polyfill::disjunction_v<polyfill::negation<std::is_void<R>>,
+                                                      polyfill::is_detected<std::common_type_t,
+                                                                            internal::field_type_or_type_t<Y>,
+                                                                            internal::field_type_or_type_t<Z>>>,
+                              bool> = true>
+    constexpr auto iif(X x, Y y, Z z) {
+        if constexpr (std::is_void<R>::value) {
+            using F = internal::built_in_function_t<
+                std::common_type_t<internal::field_type_or_type_t<Y>, internal::field_type_or_type_t<Z>>,
+                internal::iif_string,
+                X,
+                Y,
+                Z>;
+
+            return F{std::make_tuple(std::move(x), std::move(y), std::move(z))};
+        } else {
+            using F = internal::built_in_function_t<R, internal::iif_string, X, Y, Z>;
+
+            return F{std::make_tuple(std::move(x), std::move(y), std::move(z))};
+        }
     }
 #endif
 
@@ -2204,18 +2218,32 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      *  IF(X,Y,Z) function, an alias for IIF() https://www.sqlite.org/lang_corefunc.html#iif
      *
      *  The return type is the common type of Y and Z, unless it is explicitly specified as a template argument.
+     *  The function is only enabled if a common type of Y and Z can be determined or the return type is explicit.
      */
-    template<class R = void, class X, class Y, class Z>
-    constexpr auto if_(X x, Y y, Z z) -> internal::built_in_function_t<
-        typename mpl::conditional_t<  //  choose R or common type
-            std::is_void<R>::value,
-            std::common_type<internal::field_type_or_type_t<Y>, internal::field_type_or_type_t<Z>>,
-            polyfill::type_identity<R>>::type,
-        internal::if_string,
-        X,
-        Y,
-        Z> {
-        return {std::make_tuple(std::move(x), std::move(y), std::move(z))};
+    template<class R = void,
+             class X,
+             class Y,
+             class Z,
+             std::enable_if_t<polyfill::disjunction_v<polyfill::negation<std::is_void<R>>,
+                                                      polyfill::is_detected<std::common_type_t,
+                                                                            internal::field_type_or_type_t<Y>,
+                                                                            internal::field_type_or_type_t<Z>>>,
+                              bool> = true>
+    constexpr auto if_(X x, Y y, Z z) {
+        if constexpr (std::is_void<R>::value) {
+            using F = internal::built_in_function_t<
+                std::common_type_t<internal::field_type_or_type_t<Y>, internal::field_type_or_type_t<Z>>,
+                internal::if_string,
+                X,
+                Y,
+                Z>;
+
+            return F{std::make_tuple(std::move(x), std::move(y), std::move(z))};
+        } else {
+            using F = internal::built_in_function_t<R, internal::if_string, X, Y, Z>;
+
+            return F{std::make_tuple(std::move(x), std::move(y), std::move(z))};
+        }
     }
 #endif
 
