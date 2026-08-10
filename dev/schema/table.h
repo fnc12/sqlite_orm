@@ -17,24 +17,15 @@
 #include "../tuple_helper/tuple_filter.h"
 #include "../tuple_helper/tuple_transformer.h"
 #include "../type_traits.h"
-#include "../table_constraints.h"
 #include "../table_info.h"
+#include "../vocabulary/node_traits.h"
+#include "../vocabulary/node_algorithms.h"
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "table_base.h"
-#include "column.h"
+#include "column.h"  //  sqlite_orm::make_column
 #include "dbo_name.h"
 
 namespace sqlite_orm::internal {
-    template<class T>
-    using is_base_table_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_primary_key>,
-                                                                    check_if<is_foreign_key>,
-                                                                    check_if_is_template<unique_t>,
-                                                                    check_if_is_template<check_t>>,
-                                                   T>;
-
-    template<class T>
-    using is_base_table_element_or_constraint =
-        mpl::invoke_t<mpl::disjunction<check_if<is_column>, check_if<is_base_table_constraint>>, T>;
-
     /** 
      *  Encapsulates base table elements, i.e. columns and constraints for a base table,
      *  and provides additional methods to those of a generic table definition in order to deal with foreign key and generated columns.
@@ -114,10 +105,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_base_table_v = polyfill::is_specialization_of_v<T, base_table>;
-
-    template<class T>
-    using is_base_table = polyfill::bool_constant<is_base_table_v<T>>;
+    constexpr bool is_base_table_v = polyfill::is_specialization_of_v<T, base_table>;
 
     template<class... Cs>
     constexpr void validate_base_table_definition() {

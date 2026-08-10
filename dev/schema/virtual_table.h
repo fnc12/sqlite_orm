@@ -11,6 +11,7 @@
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/gsl.h"
 #include "../type_traits.h"
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "table_base.h"
 
 namespace sqlite_orm::internal {
@@ -94,10 +95,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_virtual_table_v = polyfill::is_specialization_of_v<T, virtual_table>;
-
-    template<class T>
-    using is_virtual_table = polyfill::bool_constant<is_virtual_table_v<T>>;
+    constexpr bool is_virtual_table_v = polyfill::is_specialization_of_v<T, virtual_table>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

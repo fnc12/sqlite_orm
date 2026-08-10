@@ -10,7 +10,8 @@
 #include <algorithm>  //  std::find_if, std::ranges::find
 #endif
 
-#include "../type_traits.h"
+#include "../vocabulary/node_traits.h"
+#include "../vocabulary/node_algorithms.h"
 #include "../type_printer.h"
 #include "../schema/table.h"
 
@@ -27,9 +28,9 @@ namespace sqlite_orm::internal {
             }
             using constraints_tuple = decltype(column.constraints);
             constexpr bool hasExplicitNull =
-                mpl::invoke_t<mpl::disjunction<check_if_has_type<null_t>>, constraints_tuple>::value;
+                mpl::invoke_t<mpl::disjunction<check_if_has<is_null_constraint>>, constraints_tuple>::value;
             constexpr bool hasExplicitNotNull =
-                mpl::invoke_t<mpl::disjunction<check_if_has_type<not_null_t>>, constraints_tuple>::value;
+                mpl::invoke_t<mpl::disjunction<check_if_has<is_not_null_constraint>>, constraints_tuple>::value;
             res.emplace_back(-1,
                              column.name,
                              type_printer<field_type>().print(),

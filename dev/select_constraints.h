@@ -17,13 +17,13 @@
 #include "tuple_helper/tuple_transformer.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "optional_container.h"
-#include "ast/where.h"
-#include "ast/group_by.h"
-#include "ast/limit.h"
 #include "core_functions.h"
 #include "alias_traits.h"
 #include "cte_moniker.h"
-#include "schema/column.h"
+#include "vocabulary/node_traits.h"
+#include "vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+#include "vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits
+#include "vocabulary/traits/semantic_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -42,7 +42,7 @@ namespace sqlite_orm::internal {
     };
 
     /**
-     *  DISCTINCT generic container.
+     *  DISTINCT generic container.
      */
     template<class T>
     struct distinct_t : distinct_string {
@@ -75,12 +75,8 @@ namespace sqlite_orm::internal {
      *  Whether a type represents a keyword for a result set modifier (as part of a simple select expression).
      */
     template<class T>
-    inline constexpr bool is_rowset_deduplicator_v =
-        polyfill::disjunction<polyfill::is_specialization_of<T, distinct_t>,
-                              polyfill::is_specialization_of<T, all_t>>::value;
-
-    template<class T>
-    struct is_rowset_deduplicator : polyfill::bool_constant<is_rowset_deduplicator_v<T>> {};
+    constexpr bool is_rowset_deduplicator_v = polyfill::disjunction<polyfill::is_specialization_of<T, distinct_t>,
+                                                                    polyfill::is_specialization_of<T, all_t>>::value;
 
     template<class... Args>
     struct columns_t {
@@ -92,10 +88,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_columns_v = polyfill::is_specialization_of<T, columns_t>::value;
-
-    template<class T>
-    using is_columns = polyfill::bool_constant<is_columns_v<T>>;
+    constexpr bool is_columns_v = polyfill::is_specialization_of<T, columns_t>::value;
 
     /*
      *  Captures the type of an aggregate/structure/object and column expressions, such that
@@ -112,10 +105,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_struct_v = polyfill::is_specialization_of<T, struct_t>::value;
-
-    template<class T>
-    using is_struct = polyfill::bool_constant<is_struct_v<T>>;
+    constexpr bool is_struct_v = polyfill::is_specialization_of<T, struct_t>::value;
 
     /**
      *  Subselect object type.
@@ -131,10 +121,10 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_select_v = polyfill::is_specialization_of<T, select_t>::value;
+    constexpr bool is_select_v = polyfill::is_specialization_of<T, select_t>::value;
 
-    template<class T>
-    using is_select = polyfill::bool_constant<is_select_v<T>>;
+    template<class Select>
+    constexpr bool is_select_expression_v<Select, std::enable_if_t<is_select_v<Select>>> = true;
 
     /**
      *  Base for UNION, UNION ALL, EXCEPT and INTERSECT
@@ -153,10 +143,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_compound_operator_v = is_base_template_of<compound_operator, T>::value;
-
-    template<class T>
-    using is_compound_operator = polyfill::bool_constant<is_compound_operator_v<T>>;
+    constexpr bool is_compound_operator_v = is_base_template_of<compound_operator, T>::value;
 
     struct union_base {
         bool all = false;
@@ -317,14 +304,16 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_with_clause_v = polyfill::is_specialization_of<T, with_t>::value;
+    constexpr bool is_with_clause_v = polyfill::is_specialization_of<T, with_t>::value;
 #else
     template<class T>
-    inline constexpr bool is_with_clause_v = false;
+    constexpr bool is_with_clause_v = false;
 #endif
 
-    template<class T>
-    using is_with_clause = polyfill::bool_constant<is_with_clause_v<T>>;
+    template<class With>
+    constexpr bool is_select_expression_v<
+        With,
+        std::enable_if_t<polyfill::conjunction_v<is_with_clause<With>, is_select<expression_type_t<With>>>>> = true;
 
     template<class T>
     struct asterisk_t {
@@ -393,23 +382,6 @@ namespace sqlite_orm::internal {
             return {{std::move(this->case_expression)}, std::move(args), {std::move(el)}};
         }
     };
-
-    /**
-     *  Specialize if a type is a select statement expression.
-     */
-    template<class T, class SFINAE = void>
-    inline constexpr bool is_select_expression_v = false;
-
-    template<class T>
-    using is_select_expression = polyfill::bool_constant<is_select_expression_v<T>>;
-
-    template<class Select>
-    inline constexpr bool is_select_expression_v<Select, std::enable_if_t<is_select_v<Select>>> = true;
-
-    template<class With>
-    inline constexpr bool is_select_expression_v<
-        With,
-        std::enable_if_t<polyfill::conjunction_v<is_with_clause<With>, is_select<expression_type_t<With>>>>> = true;
 
     /*  
      *  Access the main select expression of a with clause or the passed in select expression.

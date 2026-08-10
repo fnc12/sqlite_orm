@@ -37,9 +37,6 @@
 #include "ast/is_not_null.h"
 #include "core_functions.h"
 #include "window_functions.h"
-#include "column_constraints.h"
-#include "table_constraints.h"
-#include "fts5_constraints.h"
 #include "conditions.h"
 #include "indexed_column.h"
 #include "function.h"
@@ -62,11 +59,11 @@
 #include "util.h"
 #include "error_code.h"
 #include "schema/triggers.h"
-#include "schema/column.h"
 #include "schema/index.h"
-#include "schema/table.h"
-#include "schema/view.h"
-#include "schema/virtual_table.h"
+#include "schema/constraints/primary_key.h"  // conflict_clause_t
+#include "schema/constraints/generated_always.h"  // basic_generated_always
+#include "vocabulary/node_traits.h"
+#include "vocabulary/node_fwd.h"  // column_constraints
 
 namespace sqlite_orm::internal {
     template<class T, class SFINAE = void>
@@ -1337,10 +1334,10 @@ namespace sqlite_orm::internal {
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
-            ss << serialize(c.arg, context) << " ";
+            ss << serialize(c._arg, context) << " ";
             ss << static_cast<std::string>(c) << " ";
-            ss << serialize(c.pattern, context);
-            c.arg3.apply([&ss, &context](auto& value) {
+            ss << serialize(c._pattern, context);
+            c._escape.apply([&ss, &context](auto& value) {
                 ss << " ESCAPE " << serialize(value, context);
             });
             return ss.str();
@@ -1417,20 +1414,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class PK>
-    struct statement_serializer<primary_key_with_autoincrement<PK>, void> {
-        using statement_type = primary_key_with_autoincrement<PK>;
-
-        template<class Ctx>
-        SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
-                                                        const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
-            return serialize(statement.as_base(), context) + " AUTOINCREMENT";
-        }
-    };
-
-    template<>
-    struct statement_serializer<null_t, void> {
-        using statement_type = null_t;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_null_constraint<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& /*statement*/,
@@ -1439,9 +1425,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<>
-    struct statement_serializer<not_null_t, void> {
-        using statement_type = not_null_t;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_not_null_constraint<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& /*statement*/,
@@ -1450,9 +1436,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class... Cs>
-    struct statement_serializer<primary_key_t<Cs...>, void> {
-        using statement_type = primary_key_t<Cs...>;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_primary_key<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -1472,26 +1458,27 @@ namespace sqlite_orm::internal {
             if (statement._options.conflict_clause_is_on) {
                 ss << " ON CONFLICT " << serialize(statement._options.conflict_clause, context);
             }
-            using columns_tuple = typename statement_type::columns_tuple;
-            constexpr size_t columnsCount = std::tuple_size<columns_tuple>::value;
+            constexpr size_t columnsCount = std::tuple_size<columns_tuple_t<statement_type>>::value;
             if constexpr (columnsCount > 0) {
                 ss << "(" << streaming_mapped_columns_expressions(statement._columns, context) << ")";
+            }
+            if constexpr (polyfill::is_specialization_of<T, primary_key_with_autoincrement>::value) {
+                ss << " AUTOINCREMENT";
             }
             return ss.str();
         }
     };
 
-    template<class... Args>
-    struct statement_serializer<unique_t<Args...>, void> {
-        using statement_type = unique_t<Args...>;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_unique<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
             ss << static_cast<std::string>(c);
-            using columns_tuple = typename statement_type::columns_tuple;
-            const size_t columnsCount = std::tuple_size<columns_tuple>::value;
+            constexpr size_t columnsCount = std::tuple_size<columns_tuple_t<statement_type>>::value;
             if constexpr (columnsCount > 0) {
                 ss << "(" << streaming_mapped_columns_expressions(c.columns, context) << ")";
             }
@@ -1500,9 +1487,9 @@ namespace sqlite_orm::internal {
     };
 
 #if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
-    template<>
-    struct statement_serializer<unindexed_t, void> {
-        using statement_type = unindexed_t;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_unindexed<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP serialize_result_type operator()(const statement_type& /*statement*/,
@@ -1512,8 +1499,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<prefix_t<T>, void> {
-        using statement_type = prefix_t<T>;
+    struct statement_serializer<T, std::enable_if_t<is_prefix<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -1525,8 +1512,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<tokenize_t<T>, void> {
-        using statement_type = tokenize_t<T>;
+    struct statement_serializer<T, std::enable_if_t<is_tokenize<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -1538,8 +1525,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<content_t<T>, void> {
-        using statement_type = content_t<T>;
+    struct statement_serializer<T, std::enable_if_t<is_content<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -1551,8 +1538,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<table_content_t<T>, void> {
-        using statement_type = table_content_t<T>;
+    struct statement_serializer<T, std::enable_if_t<is_table_content<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& /*statement*/,
@@ -1568,9 +1555,9 @@ namespace sqlite_orm::internal {
     };
 #endif
 
-    template<>
-    struct statement_serializer<collate_constraint_t, void> {
-        using statement_type = collate_constraint_t;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_collate_constraint<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -1580,8 +1567,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<default_t<T>, void> {
-        using statement_type = default_t<T>;
+    struct statement_serializer<T, std::enable_if_t<is_default<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -1591,9 +1578,9 @@ namespace sqlite_orm::internal {
     };
 
 #if SQLITE_VERSION_NUMBER >= 3006019
-    template<class... Cs, class... Rs>
-    struct statement_serializer<foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>>, void> {
-        using statement_type = foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>>;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_foreign_key<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& fk,
@@ -1620,8 +1607,8 @@ namespace sqlite_orm::internal {
 #endif
 
     template<class T>
-    struct statement_serializer<check_t<T>, void> {
-        using statement_type = check_t<T>;
+    struct statement_serializer<T, std::enable_if_t<is_check<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -1631,10 +1618,11 @@ namespace sqlite_orm::internal {
             return ss.str();
         }
     };
+
 #if SQLITE_VERSION_NUMBER >= 3031000
     template<class T>
-    struct statement_serializer<generated_always_t<T>, void> {
-        using statement_type = generated_always_t<T>;
+    struct statement_serializer<T, std::enable_if_t<is_generated_always<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -1660,9 +1648,9 @@ namespace sqlite_orm::internal {
         }
     };
 #endif
-    template<class G, class S, class... Op>
-    struct statement_serializer<column_t<G, S, Op...>, void> {
-        using statement_type = column_t<G, S, Op...>;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_column<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& column,
@@ -1675,7 +1663,7 @@ namespace sqlite_orm::internal {
 #endif
             ss << streaming_identifier(column.name);
             if (!context.omit_column_type) {
-                ss << " " << type_printer<field_type_t<column_field<G, S>>>().print();
+                ss << " " << type_printer<field_type_t<statement_type>>().print();
             }
             ss << streaming_column_constraints(call_as_template_base<column_constraints>(polyfill::identity{})(column),
                                                column.is_not_null(),
@@ -1896,10 +1884,10 @@ namespace sqlite_orm::internal {
                 [&table, &columnNames](auto& column) {
                     if (!without_rowid::value &&
                         (is_single_table_primary_key(table, column) ||
-                         (column.template is_template<default_t>() && table_primary_key_contains(table, column)))) {
+                         (column.template is<is_default>() && table_primary_key_contains(table, column)))) {
                         return;
-                    } else if (without_rowid::value && (column.template is_template<default_t>() &&
-                                                        table_primary_key_contains(table, column))) {
+                    } else if (without_rowid::value &&
+                               (column.template is<is_default>() && table_primary_key_contains(table, column))) {
                         return;
                     }
 
@@ -1923,10 +1911,10 @@ namespace sqlite_orm::internal {
                               mpl::quote_fn<is_generated_always>>{},
                           [&table](auto& column) {
                               return (!without_rowid::value && (is_single_table_primary_key(table, column) ||
-                                                                (column.template is_template<default_t>() &&
+                                                                (column.template is<is_default>() &&
                                                                  table_primary_key_contains(table, column)))) ||
-                                     (without_rowid::value && (column.template is_template<default_t>() &&
-                                                               table_primary_key_contains(table, column)));
+                                     (without_rowid::value &&
+                                      (column.template is<is_default>() && table_primary_key_contains(table, column)));
                           },
                           context,
                           get_ref(statement.object))
@@ -2078,10 +2066,10 @@ namespace sqlite_orm::internal {
                 [&table, &columnNames](auto& column) {
                     if (!without_rowid::value &&
                         (is_single_table_primary_key(table, column) ||
-                         (column.template is_template<default_t>() && table_primary_key_contains(table, column)))) {
+                         (column.template is<is_default>() && table_primary_key_contains(table, column)))) {
                         return;
-                    } else if (without_rowid::value && (column.template is_template<default_t>() &&
-                                                        table_primary_key_contains(table, column))) {
+                    } else if (without_rowid::value &&
+                               (column.template is<is_default>() && table_primary_key_contains(table, column))) {
                         return;
                     }
 

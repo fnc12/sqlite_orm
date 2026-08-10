@@ -29,10 +29,11 @@
 #include "tuple_helper/tuple_transformer.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "type_traits.h"
-#include "alias.h"
+#include "vocabulary/node_traits.h"
+#include "vocabulary/node_algorithms.h"
+#include "vocabulary/node_fwd.h"  // column_field
 #include "error_code.h"
-#include "column_constraints.h"
-#include "schema/traits/constraining_traits.h"
+#include "alias.h"
 #include "field_printer.h"
 #include "operators.h"
 #include "select_constraints.h"
@@ -54,12 +55,9 @@
 #include "serializer_context.h"
 #include "object_from_column_builder.h"
 #include "row_extractor.h"
-#include "schema/table.h"
-#include "schema/view.h"
-#include "schema/virtual_table.h"
-#include "schema/column.h"
 #include "schema/index.h"
 #include "schema/triggers.h"
+#include "schema/constraints/generated_always.h"  // basic_generated_always
 #include "cte_storage.h"
 #include "util.h"
 #include "serializing_util.h"
@@ -1672,10 +1670,10 @@ namespace sqlite_orm::internal {
                     [&table, &bindValue, &object](auto& column) {
                         if (!table_type::is_without_rowid::value &&
                             (is_single_table_primary_key(table, column) ||
-                             (column.template is_template<default_t>() && table_primary_key_contains(table, column)))) {
+                             (column.template is<is_default>() && table_primary_key_contains(table, column)))) {
                             return;
-                        } else if (table_type::is_without_rowid::value && (column.template is_template<default_t>() &&
-                                                                           table_primary_key_contains(table, column))) {
+                        } else if (table_type::is_without_rowid::value &&
+                                   (column.template is<is_default>() && table_primary_key_contains(table, column))) {
                             return;
                         }
                         bindValue(polyfill::invoke(column.member_pointer, object));

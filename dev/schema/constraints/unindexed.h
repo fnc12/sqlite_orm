@@ -1,7 +1,16 @@
 #pragma once
 
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::is_same
+#endif
+
+#include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+
 namespace sqlite_orm::internal {
     struct unindexed_t {};
+
+    template<class T>
+    constexpr bool is_unindexed_v = std::is_same<T, unindexed_t>::value;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

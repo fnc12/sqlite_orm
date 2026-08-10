@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::is_same, std::decay, std::is_arithmetic
+#include <type_traits>  //  std::enable_if, std::decay, std::add_lvalue_reference
 #include <tuple>  //  std::tuple
 #include <functional>  //  std::reference_wrapper
 #endif

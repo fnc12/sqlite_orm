@@ -5,6 +5,8 @@
     "dev/functional/start_macros.h",
     "dev/functional/config.h",
     "dev/storage.h",
+    "dev/node_definitions.h",
+    "dev/node_algorithm_definitions.h",
     "dev/interface_definitions.h",
     "dev/get_prepared_statement.h",
     "dev/vtabs/vtabs.h",

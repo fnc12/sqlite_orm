@@ -12,14 +12,15 @@
 #include "../functional/gsl.h"
 #include "../functional/mpl.h"
 #include "../member_traits/member_traits.h"
-#include "../schema/virtual_table.h"
-#include "../schema/column.h"
-#include "../fts5_constraints.h"
+#include "../vocabulary/node_traits.h"
+#include "../schema/constraints/prefix.h"
+#include "../schema/constraints/tokenize.h"
+#include "../schema/constraints/content.h"
 
 #if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
 namespace sqlite_orm::internal {
     template<class T>
-    inline constexpr bool is_fts5_table_element_or_constraint_v =
+    constexpr bool is_fts5_table_element_or_constraint_v =
         mpl::invoke_t<mpl::disjunction<check_if<is_column>,
                                        check_if_is_template<prefix_t>,
                                        check_if_is_template<tokenize_t>,

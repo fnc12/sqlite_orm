@@ -4,13 +4,10 @@
 #include <type_traits>  //  std::enable_if, std::is_convertible, std::bool_constant
 #endif
 
-#include "functional/cxx_type_traits_polyfill.h"
-#include "member_traits/member_traits.h"
+#include "../functional/cxx_type_traits_polyfill.h"
+#include "../vocabulary/node_fwd.h"  // column_pointer
 
 namespace sqlite_orm::internal {
-    template<class T, class F>
-    struct column_pointer;
-
     /*
      *  This trait can be used to check whether the object type of a member pointer or column pointer matches the target type.
      *  
@@ -20,20 +17,19 @@ namespace sqlite_orm::internal {
      *  short:   `alias_column<alias_d<Derived>>(&Base::field)`
      */
     template<class F, class T, class SFINAE = void>
-    inline constexpr bool is_field_of_v = false;
+    constexpr bool is_field_of_v = false;
 
     /*
      *  `true` if a pointer-to-member of Base is convertible to a pointer-to-member of Derived.
      */
     template<class O, class Base, class F>
-    inline constexpr bool is_field_of_v<F Base::*, O, std::enable_if_t<std::is_convertible<F Base::*, F O::*>::value>> =
-        true;
+    constexpr bool is_field_of_v<F Base::*, O, std::enable_if_t<std::is_convertible<F Base::*, F O::*>::value>> = true;
 
     template<class F, class T>
-    inline constexpr bool is_field_of_v<column_pointer<T, F>, T, void> = true;
+    constexpr bool is_field_of_v<column_pointer<T, F>, T, void> = true;
 
     template<class F, class T>
-    struct is_field_of : polyfill::bool_constant<is_field_of_v<F, T>> {};
+    using is_field_of = polyfill::bool_constant<is_field_of_v<F, T>>;
 
     /*
      *  Compare unrelated fields, like from completely different class types or an empty setter.

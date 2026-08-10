@@ -16,11 +16,12 @@
 #include "serialize_result_type.h"
 #include "operators.h"
 #include "tags.h"
-#include "field_traits.h"
 #include "alias_traits.h"
+#include "vocabulary/node_traits.h"
+#include "vocabulary/node_algorithms.h"
 #include "ast/into.h"
 #include "ast/window.h"
-#include "field_of.h"
+#include "vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
     template<class T>
@@ -46,10 +47,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_built_in_function_v = is_base_template_of<built_in_function_t, T>::value;
-
-    template<class T>
-    struct is_built_in_function : polyfill::bool_constant<is_built_in_function_v<T>> {};
+    constexpr bool is_built_in_function_v = is_base_template_of<built_in_function_t, T>::value;
 
     template<class F, class W>
     struct filtered_aggregate_function {

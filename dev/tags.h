@@ -1,26 +1,30 @@
 #pragma once
 
-#include "functional/cxx_functional_polyfill.h"
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::is_base_of
+#endif
+
+#include "vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
     struct negatable_t {};
+
+    template<class T>
+    constexpr bool is_negatable_operand_v = std::is_base_of<negatable_t, T>::value;
 
     /**
      *  Inherit from this class to support arithmetic types overloading
      */
     struct arithmetic_t {};
 
+    template<class T>
+    constexpr bool is_arithmetic_operand_v = std::is_base_of<arithmetic_t, T>::value;
+
     /**
      *  Inherit from this class if target class can be chained with other conditions with '&&' and '||' operators
      */
     struct condition_t {};
 
-    /**
-     *  Specialize if a type participates as an argument to overloaded operators (arithmetic, conditional, negation, chaining)
-     */
-    template<class T, class SFINAE = void>
-    inline constexpr bool is_operator_argument_v = false;
-
     template<class T>
-    using is_operator_argument = polyfill::bool_constant<is_operator_argument_v<T>>;
+    constexpr bool is_conditional_operand_v = std::is_base_of<condition_t, T>::value;
 }

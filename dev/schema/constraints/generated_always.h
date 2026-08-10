@@ -5,6 +5,7 @@
 #endif
 
 #include "../../functional/cxx_type_traits_polyfill.h"
+#include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
     struct basic_generated_always {
@@ -44,9 +45,6 @@ namespace sqlite_orm::internal {
 #else
         false;
 #endif
-
-    template<class T>
-    struct is_generated_always : polyfill::bool_constant<is_generated_always_v<T>> {};
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

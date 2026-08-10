@@ -1,14 +1,13 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <tuple>
 #include <type_traits>  //  std::enable_if
 #include <utility>  //  std::move, std::forward, std::declval
 #endif
 #include "functional/cxx_optional.h"
 
 #include "functional/cxx_type_traits_polyfill.h"
-#include "tags.h"
+#include "vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 #include "operators.h"
 
 namespace sqlite_orm::internal {
@@ -63,8 +62,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool
-        is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, expression_t>::value>> = true;
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, expression_t>::value>> =
+        true;
 
     template<class T>
     constexpr T get_from_expression(T&& value) {

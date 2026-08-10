@@ -4,8 +4,6 @@
 #include <utility>  //  std::move
 #endif
 
-#include "../type_traits.h"
-
 namespace sqlite_orm::internal {
     template<class T, class X>
     struct match_with_table_t {

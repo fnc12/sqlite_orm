@@ -2,11 +2,11 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <utility>  //  std::move
-#include <type_traits>  //  std::true_type, std::false_type
 #endif  //  SQLITE_ORM_IMPORT_STD_MODULE
 
 #include "../optional_container.h"
 #include "../type_traits.h"
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "offset.h"
 
 namespace sqlite_orm::internal {
@@ -19,11 +19,8 @@ namespace sqlite_orm::internal {
         optional_container<O> offset;
     };
 
-    template<class T>
-    struct is_limit : std::false_type {};
-
     template<class T, bool has_offset, bool offset_is_implicit, class O>
-    struct is_limit<limit_t<T, has_offset, offset_is_implicit, O>> : std::true_type {};
+    constexpr bool is_limit_v<limit_t<T, has_offset, offset_is_implicit, O>> = true;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

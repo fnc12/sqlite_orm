@@ -9,7 +9,6 @@
 
 #include "../functional/gsl.h"
 #include "../schema/virtual_table.h"
-#include "../schema/column.h"
 #include "../table_reference.h"
 
 #if SQLITE_VERSION_NUMBER >= 3008012

@@ -1,12 +1,8 @@
 #pragma once
 
+#include "vocabulary/node_fwd.h"
+
 namespace sqlite_orm::internal {
-    template<class T, class F>
-    struct column_pointer;
-
-    template<class C>
-    struct indexed_column_t;
-
     /**
      *  Trait class used to define table mapped type by setter/getter/member
      *  T - member pointer

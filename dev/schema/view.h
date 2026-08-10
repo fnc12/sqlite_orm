@@ -11,9 +11,9 @@
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/meta_util.h"
-#include "../column_pointer.h"
-#include "../select_constraints.h"
-#include "column.h"
+#include "../vocabulary/node_traits.h"
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+#include "column.h"  // sqlite_orm::make_column
 #include "table_base.h"
 #include "dbo_name.h"
 
@@ -38,9 +38,6 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool is_view_v = false;
 #endif
-
-    template<class T>
-    using is_view = polyfill::bool_constant<is_view_v<T>>;
 }
 
 #ifdef SQLITE_ORM_WITH_VIEW

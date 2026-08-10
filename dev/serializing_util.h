@@ -14,11 +14,10 @@
 #include "functional/gsl.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "type_traits.h"
+#include "vocabulary/node_traits.h"
+#include "vocabulary/node_fwd.h"  // column_constraints
 #include "error_code.h"
-#include "serializer_context.h"
 #include "serialize_result_type.h"
-#include "util.h"
-#include "schema/column.h"
 
 namespace sqlite_orm::internal {
     template<class O>
@@ -449,7 +448,7 @@ namespace sqlite_orm::internal {
         // add implicit null constraint
         if (!context.omit_column_type) {
             constexpr bool hasExplicitNullableConstraint =
-                mpl::invoke_t<mpl::disjunction<check_if_has_type<null_t>, check_if_has_type<not_null_t>>,
+                mpl::invoke_t<mpl::disjunction<check_if_has<is_null_constraint>, check_if_has<is_not_null_constraint>>,
                               constraints_tuple>::value;
             if constexpr (!hasExplicitNullableConstraint) {
                 if (isNotNull) {

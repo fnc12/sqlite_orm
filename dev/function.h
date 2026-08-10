@@ -16,6 +16,8 @@
 #include "functional/function_traits.h"
 #include "type_traits.h"
 #include "tags.h"
+#include "vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+#include "vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 
 // export forward-declarations
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -39,26 +41,16 @@ namespace sqlite_orm::internal {
     template<class F>
     using aggregate_fin_function_t = decltype(&F::fin);
 
-    template<class F, class SFINAE = void>
-    inline constexpr bool is_scalar_udf_v = false;
     template<class F>
-    inline constexpr bool is_scalar_udf_v<F, polyfill::void_t<scalar_call_function_t<F>>> = true;
+    constexpr bool is_scalar_udf_v<F, polyfill::void_t<scalar_call_function_t<F>>> = true;
 
     template<class F>
-    struct is_scalar_udf : polyfill::bool_constant<is_scalar_udf_v<F>> {};
-
-    template<class F, class SFINAE = void>
-    inline constexpr bool is_aggregate_udf_v = false;
-    template<class F>
-    inline constexpr bool is_aggregate_udf_v<
+    constexpr bool is_aggregate_udf_v<
         F,
         polyfill::void_t<aggregate_step_function_t<F>,
                          aggregate_fin_function_t<F>,
                          std::enable_if_t<std::is_member_function_pointer<aggregate_step_function_t<F>>::value>,
                          std::enable_if_t<std::is_member_function_pointer<aggregate_fin_function_t<F>>::value>>> = true;
-
-    template<class F>
-    struct is_aggregate_udf : polyfill::bool_constant<is_aggregate_udf_v<F>> {};
 
     template<class UDF>
     struct function;
@@ -230,7 +222,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool
+    constexpr bool
         is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, function_call>::value>> = true;
 
     template<class T>

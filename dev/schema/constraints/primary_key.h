@@ -7,8 +7,9 @@
 #endif
 
 #include "../../functional/cxx_type_traits_polyfill.h"
+#include "../../member_traits/field_of.h"
 #include "../../alias_traits.h"
-#include "../../field_of.h"
+#include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
     enum class conflict_clause_t {
@@ -111,7 +112,7 @@ namespace sqlite_orm::internal {
     constexpr bool is_primary_key_v = std::is_base_of<primary_key_base, T>::value;
 
     template<class T>
-    struct is_primary_key : polyfill::bool_constant<is_primary_key_v<T>> {};
+    constexpr bool is_column_primary_key_v = std::is_base_of<primary_key_t<>, T>::value;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

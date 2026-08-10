@@ -134,6 +134,17 @@ namespace sqlite_orm::internal {
         }
     };
 
+    template<class T, class... Args>
+    struct ast_iterator<group_by_with_having<T, Args...>, void> {
+        using node_type = group_by_with_having<T, Args...>;
+
+        template<class L>
+        SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
+            iterate_ast(node.args, lambda);
+            iterate_ast(node.expression, lambda);
+        }
+    };
+
     template<class T, class X, class Y, class Z>
     struct ast_iterator<highlight_t<T, X, Y, Z>, void> {
         using node_type = highlight_t<T, X, Y, Z>;
@@ -431,17 +442,6 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class T, class... Args>
-    struct ast_iterator<group_by_with_having<T, Args...>, void> {
-        using node_type = group_by_with_having<T, Args...>;
-
-        template<class L>
-        SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-            iterate_ast(node.args, lambda);
-            iterate_ast(node.expression, lambda);
-        }
-    };
-
     template<class T, class E>
     struct ast_iterator<cast_t<T, E>, void> {
         using node_type = cast_t<T, E>;
@@ -468,9 +468,9 @@ namespace sqlite_orm::internal {
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& lk, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
-            iterate_ast(lk.arg, lambda);
-            iterate_ast(lk.pattern, lambda);
-            lk.arg3.apply([&lambda](auto& value) {
+            iterate_ast(lk._arg, lambda);
+            iterate_ast(lk._pattern, lambda);
+            lk._escape.apply([&lambda](auto& value) {
                 iterate_ast(value, lambda);
             });
         }

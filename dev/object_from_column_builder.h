@@ -9,9 +9,9 @@
 #include "functional/gsl.h"
 #include "member_traits/member_traits.h"
 #include "type_traits.h"
+#include "vocabulary/node_fwd.h"  // column_field
 #include "table_reference.h"
 #include "row_extractor.h"
-#include "schema/column.h"
 #include "storage_lookup.h"
 
 namespace sqlite_orm::internal {
