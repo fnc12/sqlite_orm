@@ -165,8 +165,8 @@ namespace sqlite_orm::internal {
             });
         }
 
-        template<class... Cs>
-        std::vector<std::string> table_key_columns_names(const primary_key_t<Cs...>& primaryKey) const {
+        template<class... Args>
+        std::vector<std::string> table_key_columns_names(const primary_key_t<Args...>& primaryKey) const {
             return create_from_tuple<std::vector<std::string>>(primaryKey._columns,
                                                                [this, empty = std::string{}](auto& memberPointer) {
                                                                    if (const std::string* columnName =
