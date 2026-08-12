@@ -2431,6 +2431,8 @@ namespace sqlite_orm::internal {
     template<class... Op>
     struct column_constraints;
 
+    struct table_identifier;
+
     template<class T, class F>
     struct column_pointer;
 
@@ -3295,6 +3297,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #endif
 #endif
 }
+// #include "vocabulary/node_fwd.h"
+// table_identifier
 // #include "vocabulary/traits/operand_traits_fwd.h"
 // Included to specialize traits
 
@@ -10888,6 +10892,8 @@ namespace sqlite_orm::internal {
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
+// #include "vocabulary/node_projections.h"
+
 // #include "type_traits.h"
 
 namespace sqlite_orm::internal {
@@ -11088,8 +11094,11 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     };
 }
 
-// #include "../vocabulary/traits/grammar_traits_fwd.h"
-// Included to specialize traits
+// #include "column_identifier.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <string>  //  std::string
+#endif
 
 namespace sqlite_orm::internal {
     struct column_identifier {
@@ -11099,7 +11108,14 @@ namespace sqlite_orm::internal {
          */
         std::string name;
     };
+}
 
+// #include "../vocabulary/node_algorithms.h"
+
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+
+namespace sqlite_orm::internal {
     struct empty_setter {};
 
     /*
@@ -17635,6 +17651,8 @@ namespace sqlite_orm {
 
 // #include "vocabulary/node_fwd.h"
 // column_constraints
+// #include "schema/column_identifier.h"
+
 // #include "error_code.h"
 
 // #include "serialize_result_type.h"
@@ -20510,6 +20528,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <utility>  //  std::move
 #endif
 
+// #include "type_traits.h"
+
 // #include "tuple_helper/tuple_traits.h"
 
 // #include "tuple_helper/tuple_iteration.h"
@@ -20520,13 +20540,32 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "alias_traits.h"
 
-// #include "select_constraints.h"
-
 // #include "storage_lookup.h"
 //  pick_table
-// #include "serializer_context.h"
-
 // #include "util.h"
+// quote_identifier
+// #include "vocabulary/node_traits.h"
+
+// #include "schema/column_identifier.h"
+
+// #include "schema/table_identifier.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <string>  //  std::string
+#endif
+
+namespace sqlite_orm::internal {
+    struct table_identifier {
+
+        /**
+         *  Table name.
+         */
+        std::string name;
+    };
+}
+
+// #include "select_constraints.h"
+// access_column_expression
 
 namespace sqlite_orm::internal {
     template<class T, class Ctx>
@@ -20655,6 +20694,8 @@ namespace sqlite_orm::internal {
 // #include "alias.h"
 
 // #include "select_constraints.h"
+
+// #include "schema/column_identifier.h"
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 namespace sqlite_orm::internal {
@@ -24377,16 +24418,11 @@ namespace sqlite_orm::internal {
 
 // #include "../vocabulary/node_fwd.h"
 // primary_key_t, column_field
+// #include "column_identifier.h"
+
+// #include "table_identifier.h"
 
 namespace sqlite_orm::internal {
-    struct table_identifier {
-
-        /**
-         *  Table name.
-         */
-        std::string name;
-    };
-
     /** 
      *  Encapsulates table elements, i.e. columns and constraints for any type of table.
      */
@@ -28520,6 +28556,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // #include "../serializing_util.h"
 
 // #include "../storage.h"
+
+// #include "../vocabulary/node_traits.h"
+
+// #include "../schema/column_identifier.h"
 
 namespace sqlite_orm::internal {
     template<class... DBO>

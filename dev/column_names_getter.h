@@ -9,15 +9,18 @@
 #include <utility>  //  std::move
 #endif
 
+#include "type_traits.h"
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "error_code.h"
 #include "mapped_type_proxy.h"
 #include "alias_traits.h"
-#include "select_constraints.h"
 #include "storage_lookup.h"  //  pick_table
-#include "serializer_context.h"
-#include "util.h"
+#include "util.h"  // quote_identifier
+#include "vocabulary/node_traits.h"
+#include "schema/column_identifier.h"
+#include "schema/table_identifier.h"
+#include "select_constraints.h"  // access_column_expression
 
 namespace sqlite_orm::internal {
     template<class T, class Ctx>

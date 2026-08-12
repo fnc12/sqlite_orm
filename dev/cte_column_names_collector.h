@@ -16,6 +16,7 @@
 #include "error_code.h"
 #include "alias.h"
 #include "select_constraints.h"
+#include "schema/column_identifier.h"
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 namespace sqlite_orm::internal {

@@ -10,6 +10,8 @@ namespace sqlite_orm::internal {
     template<class... Op>
     struct column_constraints;
 
+    struct table_identifier;
+
     template<class T, class F>
     struct column_pointer;
 

@@ -18,6 +18,8 @@
 #include "../util.h"
 #include "../serializing_util.h"
 #include "../storage.h"
+#include "../vocabulary/node_traits.h"
+#include "../schema/column_identifier.h"
 
 namespace sqlite_orm::internal {
     template<class... DBO>

@@ -18,6 +18,7 @@
 #include "alias_traits.h"
 #include "table_type_of.h"
 #include "column_pointer.h"
+#include "vocabulary/node_fwd.h"  // table_identifier
 #include "vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {

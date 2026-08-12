@@ -14,17 +14,11 @@
 #include "../member_traits/member_traits.h"
 #include "../type_traits.h"
 #include "../type_is_nullable.h"
+#include "column_identifier.h"
+#include "../vocabulary/node_algorithms.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
-    struct column_identifier {
-
-        /**
-         *  Column name.
-         */
-        std::string name;
-    };
-
     struct empty_setter {};
 
     /*

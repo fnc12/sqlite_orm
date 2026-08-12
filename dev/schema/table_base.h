@@ -18,16 +18,10 @@
 #include "../vocabulary/node_traits.h"
 #include "../vocabulary/node_algorithms.h"
 #include "../vocabulary/node_fwd.h"  // primary_key_t, column_field
+#include "column_identifier.h"
+#include "table_identifier.h"
 
 namespace sqlite_orm::internal {
-    struct table_identifier {
-
-        /**
-         *  Table name.
-         */
-        std::string name;
-    };
-
     /** 
      *  Encapsulates table elements, i.e. columns and constraints for any type of table.
      */

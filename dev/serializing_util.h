@@ -16,6 +16,7 @@
 #include "type_traits.h"
 #include "vocabulary/node_traits.h"
 #include "vocabulary/node_fwd.h"  // column_constraints
+#include "schema/column_identifier.h"
 #include "error_code.h"
 #include "serialize_result_type.h"
 
