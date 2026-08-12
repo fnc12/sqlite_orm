@@ -19,7 +19,9 @@ foreach(file ${files})
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
         target_compile_options(${file_basename} PUBLIC
             # disabled due to examples potentially containing deprecated features
-            -Wno-deprecated-declarations)
+            -Wno-deprecated-declarations
+            # disabled due to unit tests testing overaligned structs
+            -Wno-interference-size)
     endif()
 
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION GREATER_EQUAL 16)
