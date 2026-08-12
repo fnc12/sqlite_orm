@@ -1186,6 +1186,97 @@ int main(int, char** argv) {
         cout << endl;
     }
 
+#if SQLITE_VERSION_NUMBER >= 3008003
+    //  SELECT printf('%s scores %d points', name, points)
+    //  FROM marvel
+    {
+        cout << endl;
+        auto rows = storage.select(sqlite_orm::printf("%s scores %d points", &MarvelHero::name, &MarvelHero::points));
+        for (auto& row: rows) {
+            cout << row << endl;
+        }
+        cout << endl;
+    }
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3032000
+    //  SELECT name, IIF(points >= 0, 'happy', 'grumpy')
+    //  FROM marvel
+    {
+        auto rows = storage.select(
+            columns(&MarvelHero::name, iif<std::string>(c(&MarvelHero::points) >= 0, "happy", "grumpy")));
+        for (auto& row: rows) {
+            cout << get<0>(row) << " is " << get<1>(row) << endl;
+        }
+        cout << endl;
+    }
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3035000
+    //  SELECT sign(-42), sign(0.5)
+    cout << "SELECT sign(-42) = " << storage.select(sign(-42)).front() << endl;
+    cout << "SELECT sign(0.5) = " << storage.select(sign(0.5)).front() << endl;
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3038000
+    //  SELECT format('%d heroes in total', count(*)) FROM marvel
+    cout << storage.select(format("%d heroes in total", count<MarvelHero>())).front() << endl;
+
+    //  SELECT unixepoch('2004-01-01 02:34:56')
+    cout << "SELECT unixepoch('2004-01-01 02:34:56') = " << storage.select(unixepoch("2004-01-01 02:34:56")).front()
+         << endl;
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3041000
+    //  SELECT unhex('53514C697465') -- the blob 'SQLite'
+    {
+        auto blob = storage.select(unhex("53514C697465")).front();
+        cout << "SELECT unhex('53514C697465') = '" << std::string(blob.begin(), blob.end()) << "'" << endl;
+    }
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3043000
+    //  SELECT length('ä'), octet_length('ä') -- 1 character, 2 bytes in UTF-8
+    cout << "SELECT length('ä') = " << storage.select(length("ä")).front()
+         << ", octet_length('ä') = " << storage.select(octet_length("ä")).front() << endl;
+
+    //  SELECT timediff('2023-03-15', '2023-02-15')
+    cout << "SELECT timediff('2023-03-15', '2023-02-15') = "
+         << storage.select(timediff("2023-03-15", "2023-02-15")).front() << endl;
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3044000
+    //  SELECT concat_ws(', ', lastname, firstname) FROM customers
+    {
+        cout << endl;
+        auto rows = storage.select(concat_ws(", ", &Customer::lastName, &Customer::firstName));
+        for (auto& row: rows) {
+            cout << row << endl;
+        }
+        cout << endl;
+    }
+
+    //  SELECT string_agg(name, ', ') FROM marvel WHERE points > 0
+    cout << "positive heroes: "
+         << storage.select(string_agg(&MarvelHero::name, ", "), where(c(&MarvelHero::points) > 0)).front() << endl;
+#endif
+
+#if SQLITE_VERSION_NUMBER >= 3050000
+    //  SELECT unistr('ä') -- unicode escapes decoded at runtime
+    cout << "SELECT unistr('\\u00e4') = " << storage.select(unistr("\\u00e4")).front() << endl;
+#endif
+
+#if defined(SQLITE_ENABLE_PERCENTILE) && defined(SQLITE_ORM_OPTIONAL_SUPPORTED)
+    //  SELECT median(points), percentile(points, 90) FROM marvel
+    {
+        auto medianPoints = storage.select(median<std::optional<double>>(&MarvelHero::points)).front();
+        auto topPoints = storage.select(percentile<std::optional<double>>(&MarvelHero::points, 90)).front();
+        if (medianPoints && topPoints) {
+            cout << "median(points) = " << *medianPoints << ", percentile(points, 90) = " << *topPoints << endl;
+        }
+    }
+#endif
+
     storage.update_all(
         set(c(&Contact::phone) = select(&Customer::phone, from<Customer>(), where(c(&Customer::id) == 1))));
     return 0;
