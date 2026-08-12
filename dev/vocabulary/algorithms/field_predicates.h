@@ -7,8 +7,8 @@
 #include <type_traits>  //  std::is_base_of, std::is_integral, std::is_signed, std::enable_if
 #endif
 
-#include "field_predicates_fwd.h"  // Included to specialize field predicates
 #include "../../type_printer.h"
+#include "field_predicates_fwd.h"  // Included to specialize field predicates
 
 namespace sqlite_orm::internal {
     // Custom integral type:

@@ -2262,6 +2262,15 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_select_expression = polyfill::bool_constant<is_select_expression_v<T>>;
+
+    /**
+     *  Nodes that are or contain a DML statement expression.
+     */
+    template<class T, class SFINAE = void>
+    constexpr bool is_raw_dml_expression_v = false;
+
+    template<class T>
+    using is_raw_dml_expression = polyfill::bool_constant<is_raw_dml_expression_v<T>>;
 }
 
 // #include "traits/operand_traits_fwd.h"
@@ -2539,6 +2548,50 @@ namespace sqlite_orm::internal {
 #endif
 }
 
+// #include "algorithms/index_filters.h"
+
+/** @file Closed alias templates for filtering nodes by their traits.
+ */
+
+// #include "../../functional/mpl.h"
+
+// #include "../../tuple_helper/tuple_filter.h"
+
+// #include "../node_traits.h"
+
+namespace sqlite_orm::internal {
+    template<class Elements>
+    using col_index_sequence_of = filter_tuple_sequence_t<Elements, is_column>;
+
+    template<class Elements, class F>
+    using col_index_sequence_with_field_type = filter_tuple_sequence_t<Elements,
+                                                                       check_if_is_type<F>::template fn,
+                                                                       field_type_t,
+                                                                       filter_tuple_sequence_t<Elements, is_column>>;
+
+    template<class Elements, template<class...> class TraitFn>
+    using col_index_sequence_with = filter_tuple_sequence_t<Elements,
+                                                            check_if_has<TraitFn>::template fn,
+                                                            constraints_type_t,
+                                                            filter_tuple_sequence_t<Elements, is_column>>;
+
+    template<class Elements, template<class...> class TraitFn>
+    using col_index_sequence_excluding = filter_tuple_sequence_t<Elements,
+                                                                 check_if_has_not<TraitFn>::template fn,
+                                                                 constraints_type_t,
+                                                                 filter_tuple_sequence_t<Elements, is_column>>;
+
+    template<class Elements>
+    using hidden_col_index_sequence_of = filter_tuple_sequence_t<Elements, is_hidden_column>;
+
+    template<class Elements, class F>
+    using all_col_index_sequence_with_field_type = filter_tuple_sequence_t<
+        Elements,
+        check_if_is_type<F>::template fn,
+        field_type_t,
+        filter_tuple_sequence_t<Elements, mpl::disjunction_fn<is_column, is_hidden_column>::template fn>>;
+}
+
 // #include "algorithms/predicates.h"
 
 /** @file Closed composed alias templates for checking the validity of nodes.
@@ -2603,48 +2656,64 @@ namespace sqlite_orm::internal {
 #endif
 }
 
-// #include "algorithms/index_filters.h"
+// #include "algorithms/accessors.h"
 
-/** @file Closed alias templates for filtering nodes by their traits.
+/** @file Accessor functions for uniformly obtaining a node's relevant sub-expression or itself,
+          independent of which concrete grammar family it belongs to.
  */
 
-// #include "../../functional/mpl.h"
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::enable_if
+#include <utility>  //  std::declval
+#endif
 
-// #include "../../tuple_helper/tuple_filter.h"
+// #include "../../functional/cxx_type_traits_polyfill.h"
 
 // #include "../node_traits.h"
 
 namespace sqlite_orm::internal {
-    template<class Elements>
-    using col_index_sequence_of = filter_tuple_sequence_t<Elements, is_column>;
+    template<class T, std::enable_if_t<!is_rowset_deduplicator<T>::value, bool> = true>
+    const T& access_column_expression(const T& expression) {
+        return expression;
+    }
 
-    template<class Elements, class F>
-    using col_index_sequence_with_field_type = filter_tuple_sequence_t<Elements,
-                                                                       check_if_is_type<F>::template fn,
-                                                                       field_type_t,
-                                                                       filter_tuple_sequence_t<Elements, is_column>>;
+    /*  
+     *  Access a column expression prefixed by a result set deduplicator (as part of a simple select expression, i.e. distinct, all)
+     */
+    template<class D, std::enable_if_t<is_rowset_deduplicator<D>::value, bool> = true>
+    const typename D::expression_type& access_column_expression(const D& modifier) {
+        return modifier.expression;
+    }
 
-    template<class Elements, template<class...> class TraitFn>
-    using col_index_sequence_with = filter_tuple_sequence_t<Elements,
-                                                            check_if_has<TraitFn>::template fn,
-                                                            constraints_type_t,
-                                                            filter_tuple_sequence_t<Elements, is_column>>;
+    /*  
+     *  Access the main select expression of a with clause or the passed in select expression.
+     */
+    template<class Select, std::enable_if_t<is_select_expression<Select>::value, bool> = true>
+    constexpr decltype(auto) access_main_select(const Select& select) {
+        if constexpr (is_with_clause_v<Select>) {
+            return (select.expression);
+        } else {
+            return select;
+        }
+    }
 
-    template<class Elements, template<class...> class TraitFn>
-    using col_index_sequence_excluding = filter_tuple_sequence_t<Elements,
-                                                                 check_if_has_not<TraitFn>::template fn,
-                                                                 constraints_type_t,
-                                                                 filter_tuple_sequence_t<Elements, is_column>>;
+    template<class Select>
+    using main_select_t = polyfill::remove_cvref_t<decltype(access_main_select(std::declval<Select>()))>;
 
-    template<class Elements>
-    using hidden_col_index_sequence_of = filter_tuple_sequence_t<Elements, is_hidden_column>;
+    /*  
+     *  Access the main DML expression of a with clause or the passed in DML expression.
+     */
+    template<class DML, satisfies<is_raw_dml_expression, DML> = true>
+    constexpr decltype(auto) access_main_dml(const DML& dml) {
+        if constexpr (is_with_clause_v<DML>) {
+            return (dml.expression);
+        } else {
+            return dml;
+        }
+    }
 
-    template<class Elements, class F>
-    using all_col_index_sequence_with_field_type = filter_tuple_sequence_t<
-        Elements,
-        check_if_is_type<F>::template fn,
-        field_type_t,
-        filter_tuple_sequence_t<Elements, mpl::disjunction_fn<is_column, is_hidden_column>::template fn>>;
+    template<class DML>
+    using main_dml_t = polyfill::remove_cvref_t<decltype(access_main_dml(std::declval<DML>()))>;
 }
 
 // #include "vocabulary/node_fwd.h"
@@ -9207,34 +9276,6 @@ namespace sqlite_orm::internal {
         }
     };
 
-    /*  
-     *  Access the main select expression of a with clause or the passed in select expression.
-     */
-    template<class Select, satisfies<is_select_expression, Select> = true>
-    constexpr decltype(auto) access_main_select(const Select& select) {
-        if constexpr (is_with_clause_v<Select>) {
-            return (select.expression);
-        } else {
-            return select;
-        }
-    }
-
-    template<class Select>
-    using main_select_t = polyfill::remove_cvref_t<decltype(access_main_select(std::declval<Select>()))>;
-
-    template<class T, std::enable_if_t<!is_rowset_deduplicator_v<T>, bool> = true>
-    const T& access_column_expression(const T& expression) {
-        return expression;
-    }
-
-    /*  
-     *  Access a column expression prefixed by a result set deduplicator (as part of a simple select expression, i.e. distinct, all)
-     */
-    template<class D, std::enable_if_t<is_rowset_deduplicator_v<D>, bool> = true>
-    const typename D::expression_type& access_column_expression(const D& modifier) {
-        return modifier.expression;
-    }
-
     template<class T>
     constexpr void validate_conditions() {
         static_assert(count_tuple<T, is_where>::value <= 1, "a single query cannot contain > 1 WHERE blocks");
@@ -14481,9 +14522,9 @@ namespace sqlite_orm::internal {
 
 // #include "functional/gsl.h"
 
-// #include "tuple_helper/tuple_traits.h"
-
 // #include "type_traits.h"
+
+// #include "tuple_helper/tuple_traits.h"
 
 // #include "connection_holder.h"
 
@@ -15280,6 +15321,13 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 }
 
+// #include "vocabulary/node_traits.h"
+
+// #include "vocabulary/node_algorithms.h"
+// access_main_dml
+// #include "vocabulary/traits/semantic_traits_fwd.h"
+// Included to specialize traits
+
 namespace sqlite_orm::internal {
     struct prepared_statement_base {
         orm_gsl::owner<sqlite3_stmt*> stmt = nullptr;
@@ -15577,24 +15625,15 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_insert_constraint = std::is_same<T, insert_constraint>;
 
-    /**
-     *  Specialize if a type is a DML statement expression.
-     */
-    template<class T, class SFINAE = void>
-    inline constexpr bool is_raw_dml_expression_v = false;
-
-    template<class T>
-    using is_raw_dml_expression = polyfill::bool_constant<is_raw_dml_expression_v<T>>;
-
     template<class DML>
-    inline constexpr bool is_raw_dml_expression_v<
+    constexpr bool is_raw_dml_expression_v<
         DML,
         std::enable_if_t<
             polyfill::disjunction_v<is_insert_raw<DML>, is_replace_raw<DML>, is_update_all<DML>, is_remove_all<DML>>>> =
         true;
 
     template<class With>
-    inline constexpr bool is_raw_dml_expression_v<
+    constexpr bool is_raw_dml_expression_v<
         With,
         std::enable_if_t<polyfill::conjunction_v<is_with_clause<With>,
                                                  polyfill::disjunction<is_insert_raw<expression_type_t<With>>,
@@ -15602,21 +15641,6 @@ namespace sqlite_orm::internal {
                                                                        is_update_all<expression_type_t<With>>,
                                                                        is_remove_all<expression_type_t<With>>>>>> =
         true;
-
-    /*  
-     *  Access the main select expression of a with clause or the passed in select expression.
-     */
-    template<class DML, satisfies<is_raw_dml_expression, DML> = true>
-    constexpr decltype(auto) access_main_dml(const DML& dml) {
-        if constexpr (is_with_clause_v<DML>) {
-            return (dml.expression);
-        } else {
-            return dml;
-        }
-    }
-
-    template<class DML>
-    using main_dml_t = polyfill::remove_cvref_t<decltype(access_main_dml(std::declval<DML>()))>;
 
     template<class T, class Tpl>
     constexpr void validate_get_all_conditions() {
@@ -20463,6 +20487,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // quote_identifier
 // #include "vocabulary/node_traits.h"
 
+// #include "vocabulary/node_algorithms.h"
+// access_column_expression
 // #include "schema/column_identifier.h"
 
 // #include "schema/table_identifier.h"
@@ -20480,9 +20506,6 @@ namespace sqlite_orm::internal {
         std::string name;
     };
 }
-
-// #include "select_constraints.h"
-// access_column_expression
 
 namespace sqlite_orm::internal {
     template<class T, class Ctx>
@@ -20596,10 +20619,9 @@ namespace sqlite_orm::internal {
 
 // #include "vocabulary/node_traits.h"
 
-// #include "schema/column_identifier.h"
-
-// #include "select_constraints.h"
+// #include "vocabulary/node_algorithms.h"
 // access_column_expression
+// #include "schema/column_identifier.h"
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 namespace sqlite_orm::internal {
@@ -28330,9 +28352,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #include <type_traits>  //  std::is_base_of, std::is_integral, std::is_signed, std::enable_if
 #endif
 
+// #include "../../type_printer.h"
+
 // #include "field_predicates_fwd.h"
 // Included to specialize field predicates
-// #include "../../type_printer.h"
 
 namespace sqlite_orm::internal {
     // Custom integral type:

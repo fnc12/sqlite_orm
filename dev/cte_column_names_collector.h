@@ -16,8 +16,8 @@
 #include "error_code.h"
 #include "alias.h"
 #include "vocabulary/node_traits.h"
+#include "vocabulary/node_algorithms.h"  // access_column_expression
 #include "schema/column_identifier.h"
-#include "select_constraints.h"  // access_column_expression
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 namespace sqlite_orm::internal {

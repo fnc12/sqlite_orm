@@ -15,4 +15,13 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_select_expression = polyfill::bool_constant<is_select_expression_v<T>>;
+
+    /**
+     *  Nodes that are or contain a DML statement expression.
+     */
+    template<class T, class SFINAE = void>
+    constexpr bool is_raw_dml_expression_v = false;
+
+    template<class T>
+    using is_raw_dml_expression = polyfill::bool_constant<is_raw_dml_expression_v<T>>;
 }

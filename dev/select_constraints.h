@@ -389,34 +389,6 @@ namespace sqlite_orm::internal {
         }
     };
 
-    /*  
-     *  Access the main select expression of a with clause or the passed in select expression.
-     */
-    template<class Select, satisfies<is_select_expression, Select> = true>
-    constexpr decltype(auto) access_main_select(const Select& select) {
-        if constexpr (is_with_clause_v<Select>) {
-            return (select.expression);
-        } else {
-            return select;
-        }
-    }
-
-    template<class Select>
-    using main_select_t = polyfill::remove_cvref_t<decltype(access_main_select(std::declval<Select>()))>;
-
-    template<class T, std::enable_if_t<!is_rowset_deduplicator_v<T>, bool> = true>
-    const T& access_column_expression(const T& expression) {
-        return expression;
-    }
-
-    /*  
-     *  Access a column expression prefixed by a result set deduplicator (as part of a simple select expression, i.e. distinct, all)
-     */
-    template<class D, std::enable_if_t<is_rowset_deduplicator_v<D>, bool> = true>
-    const typename D::expression_type& access_column_expression(const D& modifier) {
-        return modifier.expression;
-    }
-
     template<class T>
     constexpr void validate_conditions() {
         static_assert(count_tuple<T, is_where>::value <= 1, "a single query cannot contain > 1 WHERE blocks");

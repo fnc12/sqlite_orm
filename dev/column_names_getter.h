@@ -18,9 +18,9 @@
 #include "storage_lookup.h"  //  pick_table
 #include "util.h"  // quote_identifier
 #include "vocabulary/node_traits.h"
+#include "vocabulary/node_algorithms.h"  // access_column_expression
 #include "schema/column_identifier.h"
 #include "schema/table_identifier.h"
-#include "select_constraints.h"  // access_column_expression
 
 namespace sqlite_orm::internal {
     template<class T, class Ctx>
