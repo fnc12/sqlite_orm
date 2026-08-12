@@ -15,8 +15,9 @@
 #include "type_traits.h"
 #include "error_code.h"
 #include "alias.h"
-#include "select_constraints.h"
+#include "vocabulary/node_traits.h"
 #include "schema/column_identifier.h"
+#include "select_constraints.h"  // access_column_expression
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
 namespace sqlite_orm::internal {
@@ -74,7 +75,7 @@ namespace sqlite_orm::internal {
     }
 
     template<class As>
-    struct cte_column_names_collector<As, match_specialization_of<As, as_t>> {
+    struct cte_column_names_collector<As, match_if<is_as_node, As>> {
         using expression_type = As;
 
         template<class Ctx>
@@ -96,7 +97,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class Asterisk>
-    struct cte_column_names_collector<Asterisk, match_specialization_of<Asterisk, asterisk_t>> {
+    struct cte_column_names_collector<Asterisk, match_if<is_asterisk, Asterisk>> {
         using expression_type = Asterisk;
         using T = typename Asterisk::type;
 
@@ -117,7 +118,7 @@ namespace sqlite_orm::internal {
 
     // No CTE for object expressions.
     template<class Object>
-    struct cte_column_names_collector<Object, match_specialization_of<Object, object_t>> {
+    struct cte_column_names_collector<Object, match_if<is_object_node, Object>> {
         static_assert(polyfill::always_false_v<Object>, "Selecting an object in a subselect is not allowed");
     };
 
@@ -128,7 +129,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class Columns>
-    struct cte_column_names_collector<Columns, match_specialization_of<Columns, columns_t>> {
+    struct cte_column_names_collector<Columns, match_if<is_columns, Columns>> {
         using expression_type = Columns;
 
         template<class Ctx>
@@ -141,7 +142,7 @@ namespace sqlite_orm::internal {
             iterate_tuple(cols.columns, [&columnNames, &newContext](auto& m) {
                 using value_type = polyfill::remove_cvref_t<decltype(m)>;
 
-                if constexpr (polyfill::is_specialization_of_v<value_type, as_t>) {
+                if constexpr (is_as_node_v<value_type>) {
                     columnNames.push_back(alias_extractor<alias_type_t<value_type>>::extract());
                 } else {
                     std::string columnName = serialize(m, newContext);
@@ -157,7 +158,7 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<typename Ctx, typename E, typename ExplicitColRefs, satisfies_is_specialization_of<E, select_t> = true>
+    template<typename Ctx, typename E, typename ExplicitColRefs, satisfies<is_select, E> = true>
     std::vector<std::string> collect_cte_column_names(const E& sel,
                                                       [[maybe_unused]] const ExplicitColRefs& explicitColRefs,
                                                       const Ctx& context) {
@@ -185,7 +186,7 @@ namespace sqlite_orm::internal {
                         // relaxed: allow any member pointer as column reference
                         columnNames[idx] = typeid(ColRef).name();
                     }
-                } else if constexpr (polyfill::is_specialization_of_v<ColRef, column_t>) {
+                } else if constexpr (is_column_v<ColRef>) {
                     columnNames[idx] = colRef.name;
                 } else if constexpr (std::is_same<ColRef, std::string>::value) {
                     if (!colRef.empty()) {

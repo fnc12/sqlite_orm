@@ -323,11 +323,17 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
+    constexpr bool is_asterisk_v = polyfill::is_specialization_of<T, asterisk_t>::value;
+
+    template<class T>
     struct object_t {
         using type = T;
 
         bool defined_order = false;
     };
+
+    template<class T>
+    constexpr bool is_object_node_v = polyfill::is_specialization_of<T, object_t>::value;
 
     template<class T>
     struct then_t {

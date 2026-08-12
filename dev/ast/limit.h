@@ -4,8 +4,8 @@
 #include <utility>  //  std::move
 #endif  //  SQLITE_ORM_IMPORT_STD_MODULE
 
-#include "../optional_container.h"
 #include "../type_traits.h"
+#include "../optional_container.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "offset.h"
 
@@ -15,6 +15,9 @@ namespace sqlite_orm::internal {
      */
     template<class T, bool has_offset, bool offset_is_implicit, class O>
     struct limit_t {
+        static constexpr bool has_offset_v = has_offset;
+        static constexpr bool offset_is_implicit_v = offset_is_implicit;
+
         T limit;
         optional_container<O> offset;
     };

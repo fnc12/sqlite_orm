@@ -1,5 +1,8 @@
 #pragma once
 
+/**	@file Umbrella header aggregating all concrete nodes.
+ */
+
 #include "vocabulary/node_traits.h"
 
 #include "schema/column.h"
@@ -40,3 +43,4 @@
 #include "ast/upsert_clause.h"
 #include "ast/where.h"
 #include "ast/window.h"
+#include "select_constraints.h"

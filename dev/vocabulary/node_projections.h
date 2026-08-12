@@ -17,6 +17,9 @@ namespace sqlite_orm::internal {
     using constraints_type_t = typename T::constraints_type;
 
     template<typename T>
+    using columns_type_t = typename T::columns_type;
+
+    template<typename T>
     using columns_tuple_t = typename T::columns_tuple;
 
     template<typename T>
@@ -39,6 +42,12 @@ namespace sqlite_orm::internal {
 
     template<typename T>
     using expression_type_t = typename T::expression_type;
+
+    template<typename T>
+    using expressions_tuple_t = typename T::expressions_tuple;
+
+    template<typename T>
+    using conditions_type_t = typename T::conditions_type;
 
     template<class As>
     using alias_type_t = typename As::alias_type;

@@ -19,6 +19,12 @@ namespace sqlite_orm::internal {
 
     template<class T>
     using is_struct = polyfill::bool_constant<is_struct_v<T>>;
+
+    template<class T>
+    extern const bool is_object_node_v;
+
+    template<class T>
+    using is_object_node = polyfill::bool_constant<is_object_node_v<T>>;
 }
 
 // Quoting traits

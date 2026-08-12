@@ -10,10 +10,11 @@
 #endif
 
 #include "tuple_helper/tuple_fy.h"
-#include "table_type_of.h"
 #include "column_result.h"
-#include "select_constraints.h"
+#include "vocabulary/node_traits.h"
+#include "schema/column.h"
 #include "schema/table_base.h"
+#include "select_constraints.h"
 #include "alias.h"
 #include "cte_types.h"
 #include "cte_column_names_collector.h"
@@ -240,7 +241,7 @@ namespace sqlite_orm::internal {
             return explicitColRef;
         } else if constexpr (std::is_member_pointer<ExplicitColRef>::value) {
             return explicitColRef;
-        } else if constexpr (std::is_base_of<column_identifier, ExplicitColRef>::value) {
+        } else if constexpr (is_column<ExplicitColRef>::value) {
             return explicitColRef.member_pointer;
         } else if constexpr (std::is_same<ExplicitColRef, std::string>::value) {
             return subselectColRef;

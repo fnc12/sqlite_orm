@@ -47,4 +47,14 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_base_table_element_or_constraint =
         mpl::invoke_t<mpl::disjunction<check_if<is_column>, check_if<is_base_table_constraint>>, T>;
+
+#if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
+    template<class T>
+    using is_fts5_table_element_or_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_column>,
+                                                                               check_if<is_prefix>,
+                                                                               check_if<is_tokenize>,
+                                                                               check_if<is_content>,
+                                                                               check_if<is_table_content>>,
+                                                              T>;
+#endif
 }

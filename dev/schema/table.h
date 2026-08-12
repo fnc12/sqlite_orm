@@ -16,7 +16,6 @@
 #include "../functional/mpl.h"
 #include "../tuple_helper/tuple_filter.h"
 #include "../tuple_helper/tuple_transformer.h"
-#include "../type_traits.h"
 #include "../table_info.h"
 #include "../vocabulary/node_traits.h"
 #include "../vocabulary/node_algorithms.h"
@@ -109,7 +108,7 @@ namespace sqlite_orm::internal {
 
     template<class... Cs>
     constexpr void validate_base_table_definition() {
-        static_assert(polyfill::conjunction_v<is_base_table_element_or_constraint<Cs>...>,
+        static_assert((is_base_table_element_or_constraint<Cs>::value && ...),
                       "Incorrect base table elements or constraints");
 
         using elements_type = std::tuple<Cs...>;

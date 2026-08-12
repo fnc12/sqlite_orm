@@ -13,8 +13,8 @@
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/mpl/conditional.h"
 #include "functional/cstring_literal.h"
-#include "member_traits/field_of.h"
 #include "type_traits.h"
+#include "member_traits/field_of.h"
 #include "alias_traits.h"
 #include "table_type_of.h"
 #include "column_pointer.h"
@@ -55,8 +55,6 @@ namespace sqlite_orm::internal {
     template<class T>
     constexpr bool
         is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, alias_column_t>::value>> = true;
-
-    struct table_identifier;
 
     /*
      *  Encapsulates extracting the alias identifier of a non-alias.
@@ -127,6 +125,9 @@ namespace sqlite_orm::internal {
 
         expression_type expression;
     };
+
+    template<class T>
+    constexpr bool is_as_node_v = polyfill::is_specialization_of<T, as_t>::value;
 
     /**
      *  Built-in column alias.

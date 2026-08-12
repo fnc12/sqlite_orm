@@ -24,6 +24,7 @@
 #include "functional/gsl.h"
 #include "functional/always_default.h"
 #include "functional/mpl.h"
+#include "type_traits.h"
 #include "tuple_helper/tuple_filter.h"
 #include "ast/upsert_clause.h"
 #include "ast/excluded.h"
@@ -32,7 +33,6 @@
 #include "ast/match.h"
 #include "ast/rank.h"
 #include "ast/special_keywords.h"
-#include "ast/limit.h"
 #include "ast/is_null.h"
 #include "ast/is_not_null.h"
 #include "core_functions.h"
@@ -763,15 +763,16 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class T, class E>
-    struct statement_serializer<as_t<T, E>, void> {
-        using statement_type = as_t<T, E>;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_as_node<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& c,
                                                         const Ctx& context) SQLITE_ORM_OR_CONST_CALLOP {
             std::stringstream ss;
-            ss << serialize(c.expression, context) + " AS " << streaming_identifier(alias_extractor<T>::extract());
+            ss << serialize(c.expression, context) + " AS "
+               << streaming_identifier(alias_extractor<alias_type_t<T>>::extract());
             return ss.str();
         }
     };
@@ -1035,7 +1036,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class With>
-    struct statement_serializer<With, match_specialization_of<With, with_t>> {
+    struct statement_serializer<With, match_if<is_with_clause, With>> {
         using statement_type = With;
 
         template<class Ctx>
@@ -2590,8 +2591,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<where_t<T>, void> {
-        using statement_type = where_t<T>;
+    struct statement_serializer<T, std::enable_if_t<is_where<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -2733,9 +2734,10 @@ namespace sqlite_orm::internal {
      *  HO - has offset
      *  OI - offset is implicit
      */
-    template<class T, bool HO, bool OI, class O>
-    struct statement_serializer<limit_t<T, HO, OI, O>, void> {
-        using statement_type = limit_t<T, HO, OI, O>;
+    template<class T>
+
+    struct statement_serializer<T, std::enable_if_t<is_limit<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -2744,20 +2746,23 @@ namespace sqlite_orm::internal {
             newContext.omit_table_name = false;
             std::stringstream ss;
             ss << "LIMIT ";
-            if constexpr (HO) {
-                if constexpr (OI) {
-                    statement.offset.apply([&newContext, &ss](auto& value) {
-                        ss << serialize(value, newContext);
-                    });
-                    ss << ", ";
-                    ss << serialize(statement.limit, newContext);
-                } else {
-                    ss << serialize(statement.limit, newContext) << " OFFSET ";
-                    statement.offset.apply([&newContext, &ss](auto& value) {
-                        ss << serialize(value, newContext);
-                    });
-                }
-            } else {
+            // ...
+            if constexpr (!statement_type::has_offset_v) {
+                ss << serialize(statement.limit, newContext);
+            }
+            // ...
+            else if constexpr (!statement_type::offset_is_implicit_v) {
+                ss << serialize(statement.limit, newContext) << " OFFSET ";
+                statement.offset.apply([&newContext, &ss](auto& value) {
+                    ss << serialize(value, newContext);
+                });
+            }
+            // ...
+            else {
+                statement.offset.apply([&newContext, &ss](auto& value) {
+                    ss << serialize(value, newContext);
+                });
+                ss << ", ";
                 ss << serialize(statement.limit, newContext);
             }
             return ss.str();

@@ -198,6 +198,18 @@ namespace sqlite_orm::internal {
 
     template<class F>
     using is_aggregate_udf = polyfill::bool_constant<is_aggregate_udf_v<F>>;
+
+    template<class T>
+    extern const bool is_asterisk_v;
+
+    template<class T>
+    using is_asterisk = polyfill::bool_constant<is_asterisk_v<T>>;
+
+    template<class T>
+    extern const bool is_as_node_v;
+
+    template<class T>
+    using is_as_node = polyfill::bool_constant<is_as_node_v<T>>;
 }
 
 // Role-based grammar traits

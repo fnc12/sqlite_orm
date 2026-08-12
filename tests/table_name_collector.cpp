@@ -15,6 +15,7 @@ TEST_CASE("table name collector") {
     internal::table_name_collector_base::table_name_set expected;
 
     SECTION("static tests") {
+        // Test whether the table_name_collector is invocable in the context of a reference to the iterated AST node itself (`iterate_ast` uses this feature).
         STATIC_REQUIRE(polyfill::is_invocable<internal::table_name_collector<std::tuple<>>,
                                               std::true_type,
                                               const internal::highlight_t<User, int, int, int>&>::value);

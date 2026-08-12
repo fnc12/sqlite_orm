@@ -15,7 +15,6 @@
 #include "functional/cstring_literal.h"
 #include "functional/function_traits.h"
 #include "type_traits.h"
-#include "tags.h"
 #include "vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 
