@@ -7,7 +7,7 @@
 
 namespace sqlite_orm::internal {
     template<class F, class SFINAE = void>
-    extern constexpr bool is_rowid_alias_capable_v;
+    extern const bool is_rowid_alias_capable_v;
 
     template<class F>
     using is_rowid_alias_capable = polyfill::bool_constant<is_rowid_alias_capable_v<F>>;

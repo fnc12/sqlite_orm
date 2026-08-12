@@ -12,7 +12,7 @@ namespace sqlite_orm::internal {
      *  Types participating as a negatable argument to overloaded operators
      */
     template<class T>
-    extern constexpr bool is_negatable_operand_v;
+    extern const bool is_negatable_operand_v;
 
     template<class T>
     using is_negatable_operand = polyfill::bool_constant<is_negatable_operand_v<T>>;
@@ -21,7 +21,7 @@ namespace sqlite_orm::internal {
      *  Types participating as an arithmetic argument to overloaded operators
      */
     template<class T>
-    extern constexpr bool is_arithmetic_operand_v;
+    extern const bool is_arithmetic_operand_v;
 
     template<class T>
     using is_arithmetic_operand = polyfill::bool_constant<is_arithmetic_operand_v<T>>;
@@ -30,7 +30,7 @@ namespace sqlite_orm::internal {
      *  Types participating as a conditional argument to overloaded operators
      */
     template<class T>
-    extern constexpr bool is_conditional_operand_v;
+    extern const bool is_conditional_operand_v;
 
     template<class T>
     using is_conditional_operand = polyfill::bool_constant<is_conditional_operand_v<T>>;

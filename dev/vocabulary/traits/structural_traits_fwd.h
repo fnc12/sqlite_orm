@@ -9,13 +9,13 @@
 // Structural traits
 namespace sqlite_orm::internal {
     template<class T>
-    extern constexpr bool is_columns_v;
+    extern const bool is_columns_v;
 
     template<class T>
     using is_columns = polyfill::bool_constant<is_columns_v<T>>;
 
     template<class T>
-    extern constexpr bool is_struct_v;
+    extern const bool is_struct_v;
 
     template<class T>
     using is_struct = polyfill::bool_constant<is_struct_v<T>>;
@@ -24,7 +24,7 @@ namespace sqlite_orm::internal {
 // Quoting traits
 namespace sqlite_orm::internal {
     template<class T>
-    extern constexpr bool is_column_pointer_v;
+    extern const bool is_column_pointer_v;
 
     template<class T>
     struct is_column_pointer : polyfill::bool_constant<is_column_pointer_v<T>> {};

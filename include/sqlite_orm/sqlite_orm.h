@@ -1967,127 +1967,127 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 // Schema classifier traits
 namespace sqlite_orm::internal {
     template<class T>
-    extern constexpr bool is_column_v;
+    extern const bool is_column_v;
 
     template<class T>
     using is_column = polyfill::bool_constant<is_column_v<T>>;
 
     template<class T>
-    extern constexpr bool is_hidden_column_v;
+    extern const bool is_hidden_column_v;
 
     template<class T>
     using is_hidden_column = polyfill::bool_constant<is_hidden_column_v<T>>;
 
     template<class T>
-    extern constexpr bool is_base_table_v;
+    extern const bool is_base_table_v;
 
     template<class T>
     using is_base_table = polyfill::bool_constant<is_base_table_v<T>>;
 
     template<class T>
-    extern constexpr bool is_view_v;
+    extern const bool is_view_v;
 
     template<class T>
     using is_view = polyfill::bool_constant<is_view_v<T>>;
 
     template<class T>
-    extern constexpr bool is_virtual_table_v;
+    extern const bool is_virtual_table_v;
 
     template<class T>
     using is_virtual_table = polyfill::bool_constant<is_virtual_table_v<T>>;
 
     template<class T>
-    extern constexpr bool is_primary_key_v;
+    extern const bool is_primary_key_v;
 
     template<class T>
     using is_primary_key = polyfill::bool_constant<is_primary_key_v<T>>;
 
     template<class T>
-    extern constexpr bool is_column_primary_key_v;
+    extern const bool is_column_primary_key_v;
 
     template<class T>
     using is_column_primary_key = polyfill::bool_constant<is_column_primary_key_v<T>>;
 
     template<class T>
-    extern constexpr bool is_foreign_key_v;
+    extern const bool is_foreign_key_v;
 
     template<class T>
     using is_foreign_key = polyfill::bool_constant<is_foreign_key_v<T>>;
 
     template<class T>
-    extern constexpr bool is_generated_always_v;
+    extern const bool is_generated_always_v;
 
     template<class T>
     using is_generated_always = polyfill::bool_constant<is_generated_always_v<T>>;
 
     template<class T>
-    extern constexpr bool is_null_constraint_v;
+    extern const bool is_null_constraint_v;
 
     template<class T>
     using is_null_constraint = polyfill::bool_constant<is_null_constraint_v<T>>;
 
     template<class T>
-    extern constexpr bool is_not_null_constraint_v;
+    extern const bool is_not_null_constraint_v;
 
     template<class T>
     using is_not_null_constraint = polyfill::bool_constant<is_not_null_constraint_v<T>>;
 
     template<class T>
-    extern constexpr bool is_unique_v;
+    extern const bool is_unique_v;
 
     template<class T>
     using is_unique = polyfill::bool_constant<is_unique_v<T>>;
 
     template<class T>
-    extern constexpr bool is_default_v;
+    extern const bool is_default_v;
 
     template<class T>
     using is_default = polyfill::bool_constant<is_default_v<T>>;
 
     template<class T>
-    extern constexpr bool is_check_v;
+    extern const bool is_check_v;
 
     template<class T>
     using is_check = polyfill::bool_constant<is_check_v<T>>;
 
     template<class T>
-    extern constexpr bool is_collate_constraint_v;
+    extern const bool is_collate_constraint_v;
 
     template<class T>
     using is_collate_constraint = polyfill::bool_constant<is_collate_constraint_v<T>>;
 
     template<class T>
-    extern constexpr bool is_auxiliary_v;
+    extern const bool is_auxiliary_v;
 
     template<class T>
     using is_auxiliary = polyfill::bool_constant<is_auxiliary_v<T>>;
 
     template<class T>
-    extern constexpr bool is_content_v;
+    extern const bool is_content_v;
 
     template<class T>
     using is_content = polyfill::bool_constant<is_content_v<T>>;
 
     template<class T>
-    extern constexpr bool is_table_content_v;
+    extern const bool is_table_content_v;
 
     template<class T>
     using is_table_content = polyfill::bool_constant<is_table_content_v<T>>;
 
     template<class T>
-    extern constexpr bool is_prefix_v;
+    extern const bool is_prefix_v;
 
     template<class T>
     using is_prefix = polyfill::bool_constant<is_prefix_v<T>>;
 
     template<class T>
-    extern constexpr bool is_unindexed_v;
+    extern const bool is_unindexed_v;
 
     template<class T>
     using is_unindexed = polyfill::bool_constant<is_unindexed_v<T>>;
 
     template<class T>
-    extern constexpr bool is_tokenize_v;
+    extern const bool is_tokenize_v;
 
     template<class T>
     using is_tokenize = polyfill::bool_constant<is_tokenize_v<T>>;
@@ -2096,31 +2096,31 @@ namespace sqlite_orm::internal {
 // Classifier traits
 namespace sqlite_orm::internal {
     template<class T>
-    extern constexpr bool is_select_v;
+    extern const bool is_select_v;
 
     template<class T>
     using is_select = polyfill::bool_constant<is_select_v<T>>;
 
     template<class T>
-    extern constexpr bool is_with_clause_v;
+    extern const bool is_with_clause_v;
 
     template<class T>
     using is_with_clause = polyfill::bool_constant<is_with_clause_v<T>>;
 
     template<class T>
-    extern constexpr bool is_where_v;
+    extern const bool is_where_v;
 
     template<class T>
     using is_where = polyfill::bool_constant<is_where_v<T>>;
 
     template<class T>
-    extern constexpr bool is_order_by_v;
+    extern const bool is_order_by_v;
 
     template<class T>
     using is_order_by = polyfill::bool_constant<is_order_by_v<T>>;
 
     template<class T>
-    extern constexpr bool is_group_by_v;
+    extern const bool is_group_by_v;
 
     template<class T>
     using is_group_by = polyfill::bool_constant<is_group_by_v<T>>;
@@ -2132,7 +2132,7 @@ namespace sqlite_orm::internal {
     using is_limit = polyfill::bool_constant<is_limit_v<T>>;
 
     template<class T>
-    extern constexpr bool is_offset_v;
+    extern const bool is_offset_v;
 
     template<class T>
     using is_offset = polyfill::bool_constant<is_offset_v<T>>;
@@ -2162,7 +2162,7 @@ namespace sqlite_orm::internal {
      *  Nodes representing a keyword for a result set modifier (as part of a simple select expression): ALL, DISTINCT.
      */
     template<class T>
-    extern constexpr bool is_rowset_deduplicator_v;
+    extern const bool is_rowset_deduplicator_v;
 
     template<class T>
     using is_rowset_deduplicator = polyfill::bool_constant<is_rowset_deduplicator_v<T>>;
@@ -2171,25 +2171,25 @@ namespace sqlite_orm::internal {
      *  Nodes representing a compound operator (as part of a select expression): UNION, UNION ALL, INTERSECT, EXCEPT.
      */
     template<class T>
-    extern constexpr bool is_compound_operator_v;
+    extern const bool is_compound_operator_v;
 
     template<class T>
     using is_compound_operator = polyfill::bool_constant<is_compound_operator_v<T>>;
 
     template<class T>
-    extern constexpr bool is_binary_operator_v;
+    extern const bool is_binary_operator_v;
 
     template<class T>
     using is_binary_operator = polyfill::bool_constant<is_binary_operator_v<T>>;
 
     template<class T>
-    extern constexpr bool is_binary_condition_v;
+    extern const bool is_binary_condition_v;
 
     template<class T>
     using is_binary_condition = polyfill::bool_constant<is_binary_condition_v<T>>;
 
     template<class T>
-    extern constexpr bool is_built_in_function_v;
+    extern const bool is_built_in_function_v;
 
     template<class T>
     using is_built_in_function = polyfill::bool_constant<is_built_in_function_v<T>>;
@@ -2206,13 +2206,13 @@ namespace sqlite_orm::internal {
 // Structural traits
 namespace sqlite_orm::internal {
     template<class T>
-    extern constexpr bool is_columns_v;
+    extern const bool is_columns_v;
 
     template<class T>
     using is_columns = polyfill::bool_constant<is_columns_v<T>>;
 
     template<class T>
-    extern constexpr bool is_struct_v;
+    extern const bool is_struct_v;
 
     template<class T>
     using is_struct = polyfill::bool_constant<is_struct_v<T>>;
@@ -2221,7 +2221,7 @@ namespace sqlite_orm::internal {
 // Quoting traits
 namespace sqlite_orm::internal {
     template<class T>
-    extern constexpr bool is_column_pointer_v;
+    extern const bool is_column_pointer_v;
 
     template<class T>
     struct is_column_pointer : polyfill::bool_constant<is_column_pointer_v<T>> {};
@@ -2260,7 +2260,7 @@ namespace sqlite_orm::internal {
      *  Types participating as a negatable argument to overloaded operators
      */
     template<class T>
-    extern constexpr bool is_negatable_operand_v;
+    extern const bool is_negatable_operand_v;
 
     template<class T>
     using is_negatable_operand = polyfill::bool_constant<is_negatable_operand_v<T>>;
@@ -2269,7 +2269,7 @@ namespace sqlite_orm::internal {
      *  Types participating as an arithmetic argument to overloaded operators
      */
     template<class T>
-    extern constexpr bool is_arithmetic_operand_v;
+    extern const bool is_arithmetic_operand_v;
 
     template<class T>
     using is_arithmetic_operand = polyfill::bool_constant<is_arithmetic_operand_v<T>>;
@@ -2278,7 +2278,7 @@ namespace sqlite_orm::internal {
      *  Types participating as a conditional argument to overloaded operators
      */
     template<class T>
-    extern constexpr bool is_conditional_operand_v;
+    extern const bool is_conditional_operand_v;
 
     template<class T>
     using is_conditional_operand = polyfill::bool_constant<is_conditional_operand_v<T>>;
@@ -2391,7 +2391,7 @@ namespace sqlite_orm::internal {
 
 namespace sqlite_orm::internal {
     template<class F, class SFINAE = void>
-    extern constexpr bool is_rowid_alias_capable_v;
+    extern const bool is_rowid_alias_capable_v;
 
     template<class F>
     using is_rowid_alias_capable = polyfill::bool_constant<is_rowid_alias_capable_v<F>>;
