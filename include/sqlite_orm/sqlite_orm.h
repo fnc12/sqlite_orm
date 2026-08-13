@@ -15171,7 +15171,7 @@ namespace sqlite_orm::internal {
             if constexpr (std::is_member_pointer<ColRef>::value) {
                 using table_type = table_type_of_t<ColRef>;
                 auto tableName = lookup_table_name<mapped_type_proxy_t<table_type>>(this->db_objects);
-                this->table_names.emplace(lookup_table_name<mapped_type_proxy_t<table_type>>(this->db_objects), "");
+                this->table_names.emplace(std::move(tableName), "");
             }
             // ...
             else if constexpr (is_column_pointer_v<ColRef>) {
