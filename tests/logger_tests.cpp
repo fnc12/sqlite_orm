@@ -145,6 +145,68 @@ TEST_CASE("logger") {
                 pushExpected("ROLLBACK");
             }
         }
+        SECTION("savepoint_guard") {
+            auto savepointGuard = storage.savepoint_guard("first");
+            pushExpected(R"(SAVEPOINT "first")");
+            runRequire();
+
+            SECTION("nothing") {
+                SECTION("nothing") {
+                    pushExpected(R"(ROLLBACK TO SAVEPOINT "first")");
+                    pushExpected(R"(RELEASE SAVEPOINT "first")");
+                }
+                SECTION("release_on_destroy = true") {
+                    savepointGuard.release_on_destroy = true;
+                    pushExpected(R"(RELEASE SAVEPOINT "first")");
+                }
+            }
+            SECTION("release") {
+                savepointGuard.release();
+                pushExpected(R"(RELEASE SAVEPOINT "first")");
+            }
+            SECTION("rollback_to") {
+                savepointGuard.rollback_to();
+                pushExpected(R"(ROLLBACK TO SAVEPOINT "first")");
+                //  the guard is still armed after `rollback_to()`
+                pushExpected(R"(ROLLBACK TO SAVEPOINT "first")");
+                pushExpected(R"(RELEASE SAVEPOINT "first")");
+            }
+        }
+        SECTION("savepoint") {
+            storage.savepoint("first");
+            pushExpected(R"(SAVEPOINT "first")");
+
+            SECTION("release") {
+                storage.release_savepoint("first");
+                pushExpected(R"(RELEASE SAVEPOINT "first")");
+            }
+            SECTION("rollback_to") {
+                storage.rollback_to_savepoint("first");
+                pushExpected(R"(ROLLBACK TO SAVEPOINT "first")");
+                storage.release_savepoint("first");
+                pushExpected(R"(RELEASE SAVEPOINT "first")");
+            }
+            SECTION("nothing") {}
+        }
+        SECTION("savepoint function") {
+            using Savepoint = std::function<bool()>;
+
+            const auto [savepointLambda, expectedVector] = GENERATE(table<Savepoint, std::vector<std::string>>({
+                {Savepoint(), {}},
+                {Savepoint([] {
+                     return false;
+                 }),
+                 {R"(SAVEPOINT "first")", R"(ROLLBACK TO SAVEPOINT "first")", R"(RELEASE SAVEPOINT "first")"}},
+                {Savepoint([] {
+                     return true;
+                 }),
+                 {R"(SAVEPOINT "first")", R"(RELEASE SAVEPOINT "first")"}},
+            }));
+            storage.savepoint("first", savepointLambda);
+            for (auto& expected: expectedVector) {
+                pushExpected(expected);
+            }
+        }
         SECTION("drop_index") {
             storage.drop_index("user_id_index");
             pushExpected(R"(DROP INDEX "user_id_index")");
