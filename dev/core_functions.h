@@ -751,9 +751,6 @@ namespace sqlite_orm::internal {
     };
 #endif  //  SQLITE_ENABLE_JSON1
 
-    template<class T>
-    using field_type_or_type_t = polyfill::detected_or_t<T, type_t, member_field_type<T>>;
-
     template<class T, class X, class Y, class Z>
     struct highlight_t {
         using table_type = T;

@@ -8,7 +8,10 @@
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
+#include "../type_traits.h"
+#include "../member_traits/member_traits.h"
 
+// Plain accessors
 namespace sqlite_orm::internal {
     template<typename T>
     using field_type_t = typename T::field_type;
@@ -72,12 +75,16 @@ namespace sqlite_orm::internal {
 
     template<typename T>
     using cte_mapper_type_t = typename T::cte_mapper_type;
+#endif
+}
 
-    // T::alias_type or nonesuch
+// Detected-or-fallback accessors
+namespace sqlite_orm::internal {
     template<class T>
-    using alias_holder_type_or_none = polyfill::detected<type_t, T>;
+    using field_type_or_type_t = polyfill::detected_or_t<T, type_t, member_field_type<T>>;
 
+#if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     template<class T>
-    using alias_holder_type_or_none_t = typename alias_holder_type_or_none<T>::type;
+    using alias_holder_type_or_none_t = polyfill::detected_t<type_t, T>;
 #endif
 }
