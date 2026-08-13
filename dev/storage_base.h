@@ -280,7 +280,7 @@ namespace sqlite_orm::internal {
 
         static std::string savepoint_sql(serialize_arg_type statementPrefix, const std::string& savepointName) {
             std::stringstream ss;
-            ss << statementPrefix << streaming_identifier(savepointName) << std::flush;
+            ss << statementPrefix << streaming_identifier(savepointName);
             return ss.str();
         }
 

@@ -70,7 +70,7 @@ namespace sqlite_orm::internal {
             this->rollback_to_func();
         }
 
-      protected:
+      private:
         connection_ref connection;
         std::function<void()> release_func;
         std::function<void()> rollback_to_func;

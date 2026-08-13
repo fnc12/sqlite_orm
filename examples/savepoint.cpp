@@ -12,7 +12,7 @@ using std::cout;
 using std::endl;
 
 struct Order {
-    int id = 0;
+    sqlite_orm::int64 id = 0;
     std::string item;
     int quantity = 0;
 };

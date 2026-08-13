@@ -19847,7 +19847,7 @@ namespace sqlite_orm::internal {
             this->rollback_to_func();
         }
 
-      protected:
+      private:
         connection_ref connection;
         std::function<void()> release_func;
         std::function<void()> rollback_to_func;
@@ -20611,7 +20611,7 @@ namespace sqlite_orm::internal {
 
         static std::string savepoint_sql(serialize_arg_type statementPrefix, const std::string& savepointName) {
             std::stringstream ss;
-            ss << statementPrefix << streaming_identifier(savepointName) << std::flush;
+            ss << statementPrefix << streaming_identifier(savepointName);
             return ss.str();
         }
 
