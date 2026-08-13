@@ -3,10 +3,11 @@
 /**	@file Umbrella header aggregating all concrete nodes.
  */
 
-#include "vocabulary/node_traits.h"
-
 #include "schema/column.h"
 #include "schema/table.h"
+// note: though the top-level sqlite_orm.h umbrella header will include all concrete virtual tables provided by sqlite_orm
+// we include it here to be independent and consistent with the other schema nodes
+#include "schema/virtual_table.h"
 #include "schema/view.h"
 #include "schema/index.h"
 #include "schema/triggers.h"
