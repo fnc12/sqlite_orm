@@ -28391,13 +28391,15 @@ namespace sqlite_orm::internal {
             true;
 }
 
+#pragma once
+
 /** @file Mainly existing to disentangle implementation details from circular and cross dependencies
  *  (e.g. column_t -> default_value_extractor -> serializer_context -> db_objects_tuple -> base_table -> column_t)
  *  this file is also used to provide definitions of interface methods 'hitting the database'.
  */
-#pragma once
 
 // #include "implementations/column_definitions.h"
+
 /** @file Mainly existing to disentangle implementation details from circular and cross dependencies
  *  (e.g. column_t -> default_value_extractor -> serializer_context -> db_objects_tuple -> base_table -> column_t)
  *  this file is also used to provide definitions of interface methods 'hitting the database'.
@@ -28453,6 +28455,7 @@ namespace sqlite_orm::internal {
 }
 
 // #include "implementations/table_definitions.h"
+
 /** @file Mainly existing to disentangle implementation details from circular and cross dependencies
  *  (e.g. column_t -> default_value_extractor -> serializer_context -> db_objects_tuple -> base_table -> column_t)
  *  this file is also used to provide definitions of interface methods 'hitting the database'.
@@ -28522,6 +28525,7 @@ namespace sqlite_orm::internal {
 }
 
 // #include "implementations/storage_definitions.h"
+
 /** @file Mainly existing to disentangle implementation details from circular and cross dependencies
  *  this file is also used to separate implementation details from the main header file.
  */
