@@ -6,7 +6,7 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if
-#include <utility>  //  std::declval
+#include <utility>  //  std::declval, std::move
 #endif
 
 #include "../../functional/cxx_type_traits_polyfill.h"
@@ -55,4 +55,31 @@ namespace sqlite_orm::internal {
 
     template<class DML>
     using main_dml_t = polyfill::remove_cvref_t<decltype(access_main_dml(std::declval<DML>()))>;
+
+    /*  
+     *  Move a possibly quoted plain expression or the expression itself.
+     */
+    template<class T>
+    constexpr auto unwrap_expression(T&& expression) {
+        if constexpr (is_quoted_expression_v<std::remove_cv_t<T>>) {
+            return std::move(expression._value);
+        } else {
+            return std::move(expression);
+        }
+    }
+
+    /*  
+     *  Access a possibly quoted plain expression or the expression itself.
+     */
+    template<class T>
+    constexpr decltype(auto) unwrap_expression(T& expression) {
+        if constexpr (is_quoted_expression_v<std::remove_cv_t<T>>) {
+            return (expression._value);
+        } else {
+            return expression;
+        }
+    }
+
+    template<class T>
+    using unwrap_expression_t = decltype(unwrap_expression(std::declval<T>()));
 }
