@@ -344,3 +344,154 @@ TEST_CASE("Transaction guard") {
     }
     std::remove("guard.sqlite");
 }
+
+TEST_CASE("savepoint") {
+    auto storage = make_storage(
+        {},
+        make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name)));
+    storage.sync_schema();
+
+    SECTION("release keeps changes") {
+        storage.savepoint("first");
+        storage.replace(Object{1, "Leony"});
+        storage.release_savepoint("first");
+        std::vector<Object> expected{{1, "Leony"}};
+        REQUIRE(storage.get_all<Object>() == expected);
+    }
+    SECTION("rollback to undoes changes") {
+        storage.savepoint("first");
+        storage.replace(Object{1, "Leony"});
+        storage.rollback_to_savepoint("first");
+        storage.release_savepoint("first");
+        REQUIRE(storage.get_all<Object>().empty());
+    }
+    SECTION("release removes savepoints back to the most recent matching name") {
+        storage.savepoint("point");
+        storage.replace(Object{1, "outer"});
+        storage.savepoint("point");
+        storage.replace(Object{2, "inner"});
+        //  releases the inner savepoint only
+        storage.release_savepoint("point");
+        REQUIRE(storage.count<Object>() == 2);
+        //  now targets the outer savepoint
+        storage.rollback_to_savepoint("point");
+        REQUIRE(storage.count<Object>() == 0);
+        storage.release_savepoint("point");
+    }
+    SECTION("unknown savepoint name") {
+        const ErrorCodeExceptionMatcher sqliteErrorMatcher(sqlite_errc(SQLITE_ERROR));
+        storage.savepoint("real");
+        REQUIRE_THROWS_MATCHES(storage.release_savepoint("unknown"), std::system_error, sqliteErrorMatcher);
+        REQUIRE_THROWS_MATCHES(storage.rollback_to_savepoint("unknown"), std::system_error, sqliteErrorMatcher);
+        storage.release_savepoint("real");
+    }
+}
+
+TEST_CASE("savepoint function") {
+    auto filename = "savepoint_function.sqlite";
+    std::remove(filename);
+    auto storage = make_storage(
+        filename,
+        make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name)));
+    storage.sync_schema();
+
+    SECTION("returning true releases the savepoint") {
+        storage.savepoint("first", [&storage] {
+            storage.replace(Object{1, "Leony"});
+            return true;
+        });
+        REQUIRE(storage.count<Object>() == 1);
+    }
+    SECTION("returning false rolls the savepoint back") {
+        storage.savepoint("first", [&storage] {
+            storage.replace(Object{1, "Leony"});
+            return false;
+        });
+        REQUIRE(storage.count<Object>() == 0);
+    }
+    std::remove(filename);
+}
+
+TEST_CASE("savepoint guard") {
+    const ErrorCodeExceptionMatcher notFoundExceptionMatcher(orm_error_code::not_found);
+
+    std::remove("savepoint_guard.sqlite");
+    auto storage = make_storage(
+        "savepoint_guard.sqlite",
+        make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name)));
+    storage.sync_schema();
+    storage.insert(Object{0, "Jack"});
+    auto countBefore = storage.count<Object>();
+
+    SECTION("changes are rolled back on destroy") {
+        {
+            auto savepointGuard = storage.savepoint_guard("first");
+            storage.insert(Object{0, "John"});
+        }
+        REQUIRE(storage.count<Object>() == countBefore);
+    }
+    SECTION("changes are kept with an explicit release") {
+        {
+            auto savepointGuard = storage.savepoint_guard("first");
+            storage.insert(Object{0, "John"});
+            savepointGuard.release();
+        }
+        REQUIRE(storage.count<Object>() == countBefore + 1);
+    }
+    SECTION("changes are kept with release_on_destroy") {
+        {
+            auto savepointGuard = storage.savepoint_guard("first");
+            savepointGuard.release_on_destroy = true;
+            storage.insert(Object{0, "John"});
+        }
+        REQUIRE(storage.count<Object>() == countBefore + 1);
+    }
+    SECTION("rollback_to keeps the savepoint active") {
+        {
+            auto savepointGuard = storage.savepoint_guard("first");
+            storage.insert(Object{0, "John"});
+            savepointGuard.rollback_to();
+            storage.insert(Object{0, "Jane"});
+            savepointGuard.release();
+        }
+        REQUIRE(storage.count<Object>() == countBefore + 1);
+        REQUIRE(storage.count<Object>(where(c(&Object::name) == "Jane")) == 1);
+    }
+    SECTION("an exception rolls the savepoint back") {
+        REQUIRE_THROWS_MATCHES(
+            [&storage] {
+                auto savepointGuard = storage.savepoint_guard("first");
+                storage.insert(Object{0, "John"});
+                storage.get<Object>(-1);
+            }(),
+            std::system_error,
+            notFoundExceptionMatcher);
+        REQUIRE(storage.count<Object>() == countBefore);
+    }
+    SECTION("partial rollback inside a transaction") {
+        {
+            auto transactionGuard = storage.transaction_guard();
+            storage.insert(Object{0, "kept"});
+            {
+                auto savepointGuard = storage.savepoint_guard("inner");
+                storage.insert(Object{0, "undone"});
+            }
+            transactionGuard.commit();
+        }
+        REQUIRE(storage.count<Object>() == countBefore + 1);
+        REQUIRE(storage.count<Object>(where(c(&Object::name) == "undone")) == 0);
+    }
+    SECTION("an inner release is undone by an outer rollback") {
+        {
+            auto transactionGuard = storage.transaction_guard();
+            {
+                auto savepointGuard = storage.savepoint_guard("inner");
+                storage.insert(Object{0, "John"});
+                savepointGuard.release();
+            }
+            transactionGuard.rollback();
+        }
+        REQUIRE(storage.count<Object>() == countBefore);
+    }
+    std::remove("savepoint_guard.sqlite");
+}
