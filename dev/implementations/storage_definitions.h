@@ -1,7 +1,8 @@
+#pragma once
+
 /** @file Mainly existing to disentangle implementation details from circular and cross dependencies
  *  this file is also used to separate implementation details from the main header file.
  */
-#pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::is_same
@@ -18,6 +19,8 @@
 #include "../util.h"
 #include "../serializing_util.h"
 #include "../storage.h"
+#include "../vocabulary/node_traits.h"
+#include "../schema/column_identifier.h"
 
 namespace sqlite_orm::internal {
     template<class... DBO>

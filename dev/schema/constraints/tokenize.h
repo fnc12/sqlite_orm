@@ -4,6 +4,9 @@
 #include <utility>  //  std::move
 #endif
 
+#include "../../functional/cxx_type_traits_polyfill.h"
+#include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+
 namespace sqlite_orm::internal {
     template<class T>
     struct tokenize_t {
@@ -11,6 +14,9 @@ namespace sqlite_orm::internal {
 
         value_type value;
     };
+
+    template<class T>
+    constexpr bool is_tokenize_v = polyfill::is_specialization_of<T, tokenize_t>::value;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

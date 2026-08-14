@@ -19,9 +19,9 @@
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/cxx_functional_polyfill.h"  // std::invoke
+#include "type_traits.h"
 #include "is_std_ptr.h"
 #include "tuple_helper/tuple_filter.h"
-#include "type_traits.h"
 #include "error_code.h"
 #include "arithmetic_tag.h"
 #include "xdestroy_handling.h"

@@ -11,34 +11,14 @@
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../tuple_helper/tuple_traits.h"
-#include "../tuple_helper/tuple_filter.h"
-#include "../member_traits/member_traits.h"
 #include "../type_traits.h"
+#include "../member_traits/member_traits.h"
 #include "../type_is_nullable.h"
-#include "../column_constraints.h"
+#include "column_identifier.h"
+#include "../vocabulary/node_algorithms.h"
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
-    template<class T>
-    using is_column_constraint = mpl::invoke_t<mpl::disjunction<check_if<std::is_base_of, primary_key_t<>>,
-                                                                check_if_is_type<null_t>,
-                                                                check_if_is_type<not_null_t>,
-                                                                check_if_is_type<unique_t<>>,
-                                                                check_if_is_template<default_t>,
-                                                                check_if_is_template<check_t>,
-                                                                check_if_is_type<collate_constraint_t>,
-                                                                check_if<is_generated_always>,
-                                                                check_if_is_type<unindexed_t>,
-                                                                check_if<is_auxiliary>>,
-                                               T>;
-
-    struct column_identifier {
-
-        /**
-         *  Column name.
-         */
-        std::string name;
-    };
-
     struct empty_setter {};
 
     /*
@@ -96,14 +76,6 @@ namespace sqlite_orm::internal {
         }
 
         /**
-         *  Checks whether constraints contain specified class template.
-         */
-        template<template<class...> class Primary>
-        constexpr static bool is_template() {
-            return tuple_has_template<constraints_type, Primary>::value;
-        }
-
-        /**
          *  Simplified interface for `DEFAULT` constraint
          *  @return string representation of default value if it exists otherwise nullptr
          */
@@ -118,6 +90,9 @@ namespace sqlite_orm::internal {
     template<class G, class S, class... Op>
     struct column_t : column_identifier, column_field<G, S>, column_constraints<Op...> {};
 
+    template<class T>
+    constexpr bool is_column_v = polyfill::is_specialization_of<T, column_t>::value;
+
     /**
      *  Definition of a hidden column.
      *  
@@ -126,6 +101,9 @@ namespace sqlite_orm::internal {
      */
     template<class G, class S, class... Op>
     struct hidden_column : column_identifier, column_field<G, S>, column_constraints<Op...> {};
+
+    template<class T>
+    constexpr bool is_hidden_column_v = polyfill::is_specialization_of<T, hidden_column>::value;
 
     template<class T, class SFINAE = void>
     struct column_field_expression {
@@ -139,18 +117,11 @@ namespace sqlite_orm::internal {
 
     template<typename T>
     using column_field_expression_t = typename column_field_expression<T>::type;
+}
 
+namespace sqlite_orm::internal {
     template<class T>
-    inline constexpr bool is_column_v = polyfill::is_specialization_of<T, column_t>::value;
-
-    template<class T>
-    using is_column = polyfill::bool_constant<is_column_v<T>>;
-
-    template<class T>
-    inline constexpr bool is_hidden_column_v = polyfill::is_specialization_of<T, hidden_column>::value;
-
-    template<class T>
-    using is_hidden_column = polyfill::bool_constant<is_hidden_column_v<T>>;
+    struct primary_key_with_autoincrement;
 
     // Custom type:
     // It is the programmer's responsibility to ensure data integrity in the value range of the custom type
@@ -193,7 +164,7 @@ namespace sqlite_orm::internal {
     constexpr void validate_column_definition() {
         using constraints_type = std::tuple<Op...>;
 
-        static_assert(polyfill::conjunction_v<is_column_constraint<Op>...>, "Incorrect column constraints");
+        static_assert((is_column_constraint<Op>::value && ...), "Incorrect column constraints");
 
         if constexpr (tuple_has_template<constraints_type, primary_key_with_autoincrement>::value) {
             check_pkcol<member_field_type_t<G>>::validate_column_primary_key_with_autoincrement();
@@ -205,7 +176,7 @@ namespace sqlite_orm::internal {
      */
     template<class M, class... Op, satisfies<std::is_member_object_pointer, M> = true>
     hidden_column<M, empty_setter, Op...> make_hidden_column(std::string name, M memberPointer, Op... constraints) {
-        static_assert(polyfill::conjunction_v<is_column_constraint<Op>...>, "Incorrect column constraints");
+        static_assert((is_column_constraint<Op>::value && ...), "Incorrect column constraints");
 
         // attention: do not use `std::make_tuple()` for constructing the tuple member `[[no_unique_address]] column_constraints::constraints`,
         // as this will lead to UB with Clang on MinGW!

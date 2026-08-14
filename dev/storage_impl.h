@@ -9,11 +9,8 @@
 #include "tuple_helper/tuple_filter.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "type_traits.h"
-#include "select_constraints.h"
+#include "vocabulary/node_traits.h"
 #include "cte_types.h"
-#include "schema/column.h"
-#include "schema/table.h"
-#include "schema/view.h"
 #include "storage_lookup.h"
 
 // interface functions

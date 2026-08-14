@@ -4,7 +4,9 @@
 #include <utility>  //  std::move
 #endif
 
+#include "../../functional/cxx_type_traits_polyfill.h"
 #include "../../alias_traits.h"
+#include "../../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
     template<class T>
@@ -15,9 +17,15 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
+    constexpr bool is_content_v = polyfill::is_specialization_of_v<T, content_t>;
+
+    template<class T>
     struct table_content_t {
         using mapped_type = T;
     };
+
+    template<class T>
+    constexpr bool is_table_content_v = polyfill::is_specialization_of_v<T, table_content_t>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

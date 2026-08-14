@@ -1,12 +1,12 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::false_type, std::true_type
 #include <utility>  //  std::move
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../serialize_result_type.h"
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
     struct where_string {
@@ -30,10 +30,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_where_v = polyfill::is_specialization_of<T, where_t>::value;
-
-    template<class T>
-    struct is_where : polyfill::bool_constant<is_where_v<T>> {};
+    constexpr bool is_where_v = polyfill::is_specialization_of<T, where_t>::value;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

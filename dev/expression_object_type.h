@@ -5,7 +5,7 @@
 #include <functional>  //  std::reference_wrapper
 #endif
 
-#include "type_traits.h"
+#include "vocabulary/node_traits.h"
 #include "prepared_statement.h"
 
 namespace sqlite_orm::internal {
@@ -70,9 +70,6 @@ namespace sqlite_orm::internal {
 
     template<class T>
     struct get_object_t;
-
-    template<class T>
-    struct get_object_t<const T> : get_object_t<T> {};
 
     template<class T>
     auto& get_object(T& t) {

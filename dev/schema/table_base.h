@@ -13,53 +13,15 @@
 #include "../tuple_helper/tuple_iteration.h"
 #include "../tuple_helper/tuple_transformer.h"
 #include "../member_traits/member_traits.h"
+#include "../member_traits/field_of.h"
 #include "../type_traits.h"
-#include "../field_of.h"
-#include "column.h"
+#include "../vocabulary/node_traits.h"
+#include "../vocabulary/node_algorithms.h"
+#include "../vocabulary/node_fwd.h"  // primary_key_t, column_field
+#include "column_identifier.h"
+#include "table_identifier.h"
 
 namespace sqlite_orm::internal {
-    template<class Elements>
-    using col_index_sequence_of = filter_tuple_sequence_t<Elements, is_column>;
-
-    template<class Elements, class F>
-    using col_index_sequence_with_field_type = filter_tuple_sequence_t<Elements,
-                                                                       check_if_is_type<F>::template fn,
-                                                                       field_type_t,
-                                                                       filter_tuple_sequence_t<Elements, is_column>>;
-
-    template<class Elements, template<class...> class TraitFn>
-    using col_index_sequence_with = filter_tuple_sequence_t<Elements,
-                                                            check_if_has<TraitFn>::template fn,
-                                                            constraints_type_t,
-                                                            filter_tuple_sequence_t<Elements, is_column>>;
-
-    template<class Elements, template<class...> class TraitFn>
-    using col_index_sequence_excluding = filter_tuple_sequence_t<Elements,
-                                                                 check_if_has_not<TraitFn>::template fn,
-                                                                 constraints_type_t,
-                                                                 filter_tuple_sequence_t<Elements, is_column>>;
-
-    template<class Elements>
-    using hidden_col_index_sequence_of = filter_tuple_sequence_t<Elements, is_hidden_column>;
-
-    template<class Elements, class F>
-    using all_col_index_sequence_with_field_type = filter_tuple_sequence_t<
-        Elements,
-        check_if_is_type<F>::template fn,
-        field_type_t,
-        filter_tuple_sequence_t<Elements, mpl::disjunction_fn<is_column, is_hidden_column>::template fn>>;
-}
-
-namespace sqlite_orm::internal {
-
-    struct table_identifier {
-
-        /**
-         *  Table name.
-         */
-        std::string name;
-    };
-
     /** 
      *  Encapsulates table elements, i.e. columns and constraints for any type of table.
      */

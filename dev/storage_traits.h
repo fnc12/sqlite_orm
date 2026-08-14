@@ -7,9 +7,9 @@
 #include "functional/cxx_type_traits_polyfill.h"
 #include "tuple_helper/tuple_filter.h"
 #include "tuple_helper/tuple_transformer.h"
-#include "type_traits.h"
+#include "vocabulary/node_traits.h"
 #include "storage_lookup.h"
-#include "schema/column.h"
+#include "schema/column.h"  // column_field_expression_t
 
 namespace sqlite_orm::internal::storage_traits {
     /**

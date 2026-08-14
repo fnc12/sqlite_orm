@@ -8,9 +8,8 @@
 #include "functional/cxx_optional.h"
 #endif
 
-#include "functional/cxx_type_traits_polyfill.h"
-#include "tuple_helper/tuple_filter.h"
 #include "type_traits.h"
+#include "tuple_helper/tuple_filter.h"
 #include "conditions.h"
 #include "operators.h"
 #include "select_constraints.h"
@@ -20,7 +19,6 @@
 #include "function.h"
 #include "ast/excluded.h"
 #include "ast/upsert_clause.h"
-#include "ast/where.h"
 #include "ast/into.h"
 #include "ast/group_by.h"
 #include "ast/match.h"
@@ -31,6 +29,7 @@
 #include "ast/is_not_null.h"
 #include "ast/window.h"
 #include "window_functions.h"
+#include "vocabulary/node_traits.h"
 
 namespace sqlite_orm::internal {
     template<class T, class SFINAE = void>
@@ -83,8 +82,8 @@ namespace sqlite_orm::internal {
     template<class T>
     struct node_tuple<excluded_t<T>, void> : node_tuple<T> {};
 
-    template<class C>
-    struct node_tuple<where_t<C>, void> : node_tuple<C> {};
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_where<T>::value>> : node_tuple<expression_type_t<T>> {};
 
     template<class T, class X>
     struct node_tuple<match_with_table_t<T, X>, void> : node_tuple<X> {};
@@ -119,11 +118,11 @@ namespace sqlite_orm::internal {
     template<class T>
     struct node_tuple<T, match_if<is_binary_operator, T>> : node_tuple_for<left_type_t<T>, right_type_t<T>> {};
 
-    template<class... Args>
-    struct node_tuple<columns_t<Args...>, void> : node_tuple_for<Args...> {};
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_columns<T>::value>> : node_tuple<columns_type_t<T>> {};
 
-    template<class T, class... Args>
-    struct node_tuple<struct_t<T, Args...>, void> : node_tuple_for<Args...> {};
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_struct<T>::value>> : node_tuple<columns_type_t<T>> {};
 
     template<class L, class A>
     struct node_tuple<dynamic_in_t<L, A>, void> : node_tuple_for<L, A> {};
@@ -132,16 +131,16 @@ namespace sqlite_orm::internal {
     struct node_tuple<in_t<L, Args...>, void> : node_tuple_for<L, Args...> {};
 
     template<class T>
-    struct node_tuple<T, match_if<is_compound_operator, T>> : node_tuple<typename T::expressions_tuple> {};
+    struct node_tuple<T, match_if<is_compound_operator, T>> : node_tuple<expressions_tuple_t<T>> {};
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     template<class CTE>
-    struct node_tuple<CTE, match_specialization_of<CTE, common_table_expression>>
-        : node_tuple<typename CTE::expression_type> {};
+    struct node_tuple<CTE, match_specialization_of<CTE, common_table_expression>> : node_tuple<expression_type_t<CTE>> {
+    };
 
     template<class With>
-    struct node_tuple<With, match_specialization_of<With, with_t>>
-        : node_tuple_for<typename With::cte_type, typename With::expression_type> {};
+    struct node_tuple<With, match_if<is_with_clause, With>>
+        : node_tuple_for<typename With::cte_type, expression_type_t<With>> {};
 #endif
 
     template<class T, class... Args>
@@ -250,8 +249,8 @@ namespace sqlite_orm::internal {
     template<class L, class R>
     struct node_tuple<std::pair<L, R>, void> : node_tuple_for<L, R> {};
 
-    template<class T, class E>
-    struct node_tuple<as_t<T, E>, void> : node_tuple<E> {};
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_as_node<T>::value>> : node_tuple<expression_type_t<T>> {};
 
     template<class T>
     struct node_tuple<limit_t<T, false, false, void>, void> : node_tuple<T> {};

@@ -27,6 +27,7 @@
 #include "literal.h"
 #include "ast/cross_join.h"
 #include "ast/rank.h"
+#include "vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
     /**
@@ -96,10 +97,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_binary_condition_v = is_base_template_of_v<binary_condition, T>;
-
-    template<class T>
-    struct is_binary_condition : polyfill::bool_constant<is_binary_condition_v<T>> {};
+    constexpr bool is_binary_condition_v = is_base_template_of_v<binary_condition, T>;
 
     struct and_condition_string {
         serialize_result_type serialize() const {
@@ -144,28 +142,26 @@ namespace sqlite_orm::internal {
      */
     template<class L, class R>
     struct is_equal_t : binary_condition<L, R, is_equal_string, bool>, negatable_t {
-        using self = is_equal_t<L, R>;
-
         using binary_condition<L, R, is_equal_string, bool>::binary_condition;
 
-        collate_t<self> collate_binary() const {
+        collate_t<is_equal_t> collate_binary() const {
             return {*this, collate_argument::binary};
         }
 
-        collate_t<self> collate_nocase() const {
+        collate_t<is_equal_t> collate_nocase() const {
             return {*this, collate_argument::nocase};
         }
 
-        collate_t<self> collate_rtrim() const {
+        collate_t<is_equal_t> collate_rtrim() const {
             return {*this, collate_argument::rtrim};
         }
 
-        named_collate<self> collate(std::string name) const {
+        named_collate<is_equal_t> collate(std::string name) const {
             return {*this, std::move(name)};
         }
 
         template<class C>
-        named_collate<self> collate() const {
+        named_collate<is_equal_t> collate() const {
             std::stringstream ss;
             ss << C::name() << std::flush;
             return {*this, ss.str()};
@@ -193,19 +189,17 @@ namespace sqlite_orm::internal {
      */
     template<class L, class R>
     struct is_not_equal_t : binary_condition<L, R, is_not_equal_string, bool>, negatable_t {
-        using self = is_not_equal_t<L, R>;
-
         using binary_condition<L, R, is_not_equal_string, bool>::binary_condition;
 
-        collate_t<self> collate_binary() const {
+        collate_t<is_not_equal_t> collate_binary() const {
             return {*this, collate_argument::binary};
         }
 
-        collate_t<self> collate_nocase() const {
+        collate_t<is_not_equal_t> collate_nocase() const {
             return {*this, collate_argument::nocase};
         }
 
-        collate_t<self> collate_rtrim() const {
+        collate_t<is_not_equal_t> collate_rtrim() const {
             return {*this, collate_argument::rtrim};
         }
     };
@@ -221,19 +215,17 @@ namespace sqlite_orm::internal {
      */
     template<class L, class R>
     struct greater_than_t : binary_condition<L, R, greater_than_string, bool>, negatable_t {
-        using self = greater_than_t<L, R>;
-
         using binary_condition<L, R, greater_than_string, bool>::binary_condition;
 
-        collate_t<self> collate_binary() const {
+        collate_t<greater_than_t> collate_binary() const {
             return {*this, collate_argument::binary};
         }
 
-        collate_t<self> collate_nocase() const {
+        collate_t<greater_than_t> collate_nocase() const {
             return {*this, collate_argument::nocase};
         }
 
-        collate_t<self> collate_rtrim() const {
+        collate_t<greater_than_t> collate_rtrim() const {
             return {*this, collate_argument::rtrim};
         }
     };
@@ -249,19 +241,17 @@ namespace sqlite_orm::internal {
      */
     template<class L, class R>
     struct greater_or_equal_t : binary_condition<L, R, greater_or_equal_string, bool>, negatable_t {
-        using self = greater_or_equal_t<L, R>;
-
         using binary_condition<L, R, greater_or_equal_string, bool>::binary_condition;
 
-        collate_t<self> collate_binary() const {
+        collate_t<greater_or_equal_t> collate_binary() const {
             return {*this, collate_argument::binary};
         }
 
-        collate_t<self> collate_nocase() const {
+        collate_t<greater_or_equal_t> collate_nocase() const {
             return {*this, collate_argument::nocase};
         }
 
-        collate_t<self> collate_rtrim() const {
+        collate_t<greater_or_equal_t> collate_rtrim() const {
             return {*this, collate_argument::rtrim};
         }
     };
@@ -277,19 +267,17 @@ namespace sqlite_orm::internal {
      */
     template<class L, class R>
     struct less_than_t : binary_condition<L, R, less_than_string, bool>, negatable_t {
-        using self = less_than_t<L, R>;
-
         using binary_condition<L, R, less_than_string, bool>::binary_condition;
 
-        collate_t<self> collate_binary() const {
+        collate_t<less_than_t> collate_binary() const {
             return {*this, collate_argument::binary};
         }
 
-        collate_t<self> collate_nocase() const {
+        collate_t<less_than_t> collate_nocase() const {
             return {*this, collate_argument::nocase};
         }
 
-        collate_t<self> collate_rtrim() const {
+        collate_t<less_than_t> collate_rtrim() const {
             return {*this, collate_argument::rtrim};
         }
     };
@@ -305,19 +293,17 @@ namespace sqlite_orm::internal {
      */
     template<class L, class R>
     struct less_or_equal_t : binary_condition<L, R, less_or_equal_string, bool>, negatable_t {
-        using self = less_or_equal_t<L, R>;
-
         using binary_condition<L, R, less_or_equal_string, bool>::binary_condition;
 
-        collate_t<self> collate_binary() const {
+        collate_t<less_or_equal_t> collate_binary() const {
             return {*this, collate_argument::binary};
         }
 
-        collate_t<self> collate_nocase() const {
+        collate_t<less_or_equal_t> collate_nocase() const {
             return {*this, collate_argument::nocase};
         }
 
-        collate_t<self> collate_rtrim() const {
+        collate_t<less_or_equal_t> collate_rtrim() const {
             return {*this, collate_argument::rtrim};
         }
     };
@@ -339,50 +325,49 @@ namespace sqlite_orm::internal {
     template<class O>
     struct order_by_t : order_by_base, order_by_string {
         using expression_type = O;
-        using self = order_by_t<expression_type>;
 
         expression_type _expression;
 
         order_by_t(expression_type expression) : order_by_base(), _expression(std::move(expression)) {}
 
-        self asc() const {
+        order_by_t asc() const {
             auto res = *this;
             res._order = 1;
             return res;
         }
 
-        self desc() const {
+        order_by_t desc() const {
             auto res = *this;
             res._order = -1;
             return res;
         }
 
-        self collate_binary() const {
+        order_by_t collate_binary() const {
             auto res = *this;
             res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::binary);
             return res;
         }
 
-        self collate_nocase() const {
+        order_by_t collate_nocase() const {
             auto res = *this;
             res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::nocase);
             return res;
         }
 
-        self collate_rtrim() const {
+        order_by_t collate_rtrim() const {
             auto res = *this;
             res._collate_argument = collate_constraint_t::string_from_collate_argument(collate_argument::rtrim);
             return res;
         }
 
-        self collate(std::string name) const {
+        order_by_t collate(std::string name) const {
             auto res = *this;
             res._collate_argument = std::move(name);
             return res;
         }
 
         template<class C>
-        self collate() const {
+        order_by_t collate() const {
             std::stringstream ss;
             ss << C::name() << std::flush;
             return this->collate(ss.str());
@@ -445,13 +430,9 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_order_by_v =
-        polyfill::disjunction<polyfill::is_specialization_of<T, order_by_t>,
-                              polyfill::is_specialization_of<T, multi_order_by_t>,
-                              polyfill::is_specialization_of<T, dynamic_order_by_t>>::value;
-
-    template<class T>
-    struct is_order_by : polyfill::bool_constant<is_order_by_v<T>> {};
+    constexpr bool is_order_by_v = polyfill::disjunction<polyfill::is_specialization_of<T, order_by_t>,
+                                                         polyfill::is_specialization_of<T, multi_order_by_t>,
+                                                         polyfill::is_specialization_of<T, dynamic_order_by_t>>::value;
 
     struct like_string {
         operator std::string() const {
@@ -464,21 +445,20 @@ namespace sqlite_orm::internal {
      */
     template<class A, class T, class E>
     struct like_t : condition_t, like_string, negatable_t {
-        using self = like_t<A, T, E>;
         using arg_t = A;
         using pattern_t = T;
         using escape_t = E;
 
-        arg_t arg;
-        pattern_t pattern;
-        optional_container<escape_t> arg3;  //  not escape cause escape exists as a function here
+        arg_t _arg;
+        pattern_t _pattern;
+        optional_container<escape_t> _escape;  //  not escape cause escape exists as a function here
 
         constexpr like_t(arg_t arg_, pattern_t pattern_, optional_container<escape_t> escape_) :
-            arg(std::move(arg_)), pattern(std::move(pattern_)), arg3(std::move(escape_)) {}
+            _arg(std::move(arg_)), _pattern(std::move(pattern_)), _escape(std::move(escape_)) {}
 
         template<class C>
-        constexpr like_t<A, T, C> escape(C c) const {
-            return {std::move(this->arg), std::move(this->pattern), {std::move(c)}};
+        constexpr like_t<A, T, C> escape(C c) && {
+            return {std::move(this->_arg), std::move(this->_pattern), {std::move(c)}};
         }
     };
 
@@ -490,7 +470,6 @@ namespace sqlite_orm::internal {
 
     template<class A, class T>
     struct glob_t : condition_t, glob_string, negatable_t {
-        using self = glob_t<A, T>;
         using arg_t = A;
         using pattern_t = T;
 
@@ -701,18 +680,17 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     // Intentionally place operators for types classified as arithmetic or general operator arguments in the internal namespace
     // to facilitate ADL (Argument Dependent Lookup)
     namespace internal {
-        template<
-            class T,
-            std::enable_if_t<polyfill::disjunction<std::is_base_of<negatable_t, T>, is_operator_argument<T>>::value,
-                             bool> = true>
+        template<class T,
+                 std::enable_if_t<polyfill::disjunction<is_negatable_operand<T>, is_operator_argument<T>>::value,
+                                  bool> = true>
         constexpr negated_condition_t<T> operator!(T arg) {
             return {std::move(arg)};
         }
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                        std::is_base_of<arithmetic_t, R>,
+                 std::enable_if_t<polyfill::disjunction<is_arithmetic_operand<L>,
+                                                        is_arithmetic_operand<R>,
                                                         is_operator_argument<L>,
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
@@ -722,8 +700,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                        std::is_base_of<arithmetic_t, R>,
+                 std::enable_if_t<polyfill::disjunction<is_arithmetic_operand<L>,
+                                                        is_arithmetic_operand<R>,
                                                         is_operator_argument<L>,
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
@@ -733,8 +711,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                        std::is_base_of<arithmetic_t, R>,
+                 std::enable_if_t<polyfill::disjunction<is_arithmetic_operand<L>,
+                                                        is_arithmetic_operand<R>,
                                                         is_operator_argument<L>,
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
@@ -744,8 +722,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                        std::is_base_of<arithmetic_t, R>,
+                 std::enable_if_t<polyfill::disjunction<is_arithmetic_operand<L>,
+                                                        is_arithmetic_operand<R>,
                                                         is_operator_argument<L>,
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
@@ -755,10 +733,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                        std::is_base_of<arithmetic_t, R>,
-                                                        std::is_base_of<condition_t, L>,
-                                                        std::is_base_of<condition_t, R>,
+                 std::enable_if_t<polyfill::disjunction<is_arithmetic_operand<L>,
+                                                        is_arithmetic_operand<R>,
+                                                        is_conditional_operand<L>,
+                                                        is_conditional_operand<R>,
                                                         is_operator_argument<L>,
                                                         is_operator_argument<R>>::value
 #ifndef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
@@ -772,10 +750,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, L>,
-                                                        std::is_base_of<arithmetic_t, R>,
-                                                        std::is_base_of<condition_t, L>,
-                                                        std::is_base_of<condition_t, R>,
+                 std::enable_if_t<polyfill::disjunction<is_arithmetic_operand<L>,
+                                                        is_arithmetic_operand<R>,
+                                                        is_conditional_operand<L>,
+                                                        is_conditional_operand<R>,
                                                         is_operator_argument<L>,
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
@@ -785,8 +763,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<polyfill::disjunction<std::is_base_of<condition_t, L>,
-                                                        std::is_base_of<condition_t, R>,
+                 std::enable_if_t<polyfill::disjunction<is_conditional_operand<L>,
+                                                        is_conditional_operand<R>,
                                                         is_operator_argument<L>,
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
@@ -796,25 +774,23 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
         template<class L,
                  class R,
-                 std::enable_if_t<
-                     polyfill::disjunction<std::is_base_of<condition_t, L>, std::is_base_of<condition_t, R>>::value,
-                     bool> = true>
+                 std::enable_if_t<polyfill::disjunction<is_conditional_operand<L>, is_conditional_operand<R>>::value,
+                                  bool> = true>
         constexpr or_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator||(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
         }
 
-        template<
-            class L,
-            class R,
-            std::enable_if_t<polyfill::conjunction<
-                                 polyfill::disjunction<std::is_base_of<conc_string, L>,
-                                                       std::is_base_of<conc_string, R>,
-                                                       is_operator_argument<L>,
-                                                       is_operator_argument<R>>,
-                                 // exclude conditions
-                                 polyfill::negation<polyfill::disjunction<std::is_base_of<condition_t, L>,
-                                                                          std::is_base_of<condition_t, R>>>>::value,
-                             bool> = true>
+        template<class L,
+                 class R,
+                 std::enable_if_t<
+                     polyfill::conjunction<polyfill::disjunction<is_chainable_operand<L>,
+                                                                 is_chainable_operand<R>,
+                                                                 is_operator_argument<L>,
+                                                                 is_operator_argument<R>>,
+                                           // exclude conditions
+                                           polyfill::negation<polyfill::disjunction<is_conditional_operand<L>,
+                                                                                    is_conditional_operand<R>>>>::value,
+                     bool> = true>
         constexpr conc_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator||(L l, R r) {
             return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
         }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../functional/cxx_type_traits_polyfill.h"
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
     /**
@@ -12,7 +13,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    using is_offset = polyfill::is_specialization_of<T, offset_t>;
+    constexpr bool is_offset_v = polyfill::is_specialization_of<T, offset_t>::value;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

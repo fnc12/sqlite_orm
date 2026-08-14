@@ -7,6 +7,7 @@
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
     template<class T, class... Args>
@@ -34,8 +35,9 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    using is_group_by = polyfill::disjunction<polyfill::is_specialization_of<T, group_by_t>,
-                                              polyfill::is_specialization_of<T, group_by_with_having>>;
+    constexpr bool is_group_by_v =
+        polyfill::disjunction<polyfill::is_specialization_of<T, group_by_t>,
+                              polyfill::is_specialization_of<T, group_by_with_having>>::value;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
