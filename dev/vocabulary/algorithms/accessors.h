@@ -13,17 +13,17 @@
 #include "../node_traits.h"
 
 namespace sqlite_orm::internal {
-    template<class T, std::enable_if_t<!is_rowset_deduplicator<T>::value, bool> = true>
-    const T& access_column_expression(const T& expression) {
-        return expression;
-    }
-
     /*  
-     *  Access a column expression prefixed by a result set deduplicator (as part of a simple select expression, i.e. distinct, all)
+     *  Access the column expression prefixed by a result set deduplicator (as part of a simple select expression, i.e. distinct, all)
+     *  or the column expression itself.
      */
-    template<class D, std::enable_if_t<is_rowset_deduplicator<D>::value, bool> = true>
-    const typename D::expression_type& access_column_expression(const D& modifier) {
-        return modifier.expression;
+    template<class T>
+    decltype(auto) access_column_expression(const T& expression) {
+        if constexpr (is_rowset_deduplicator_v<T>) {
+            return (expression.expression);
+        } else {
+            return expression;
+        }
     }
 
     /*  
