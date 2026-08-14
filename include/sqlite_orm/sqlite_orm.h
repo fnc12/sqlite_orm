@@ -19775,6 +19775,86 @@ namespace sqlite_orm::internal {
     };
 }
 
+// #include "savepoint.h"
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <functional>  //  std::function
+#include <utility>  //  std::move
+#endif
+
+// #include "connection_holder.h"
+
+namespace sqlite_orm::internal {
+    /**
+     *  Class used as a guard for a savepoint. Calls `ROLLBACK TO` and `RELEASE` in destructor.
+     *  Has explicit `release()` and `rollback_to()` functions. After the `release()` function is fired
+     *  the guard won't do anything in its d-tor. Note that unlike a rollback of a transaction
+     *  `rollback_to()` doesn't finish the savepoint: the savepoint remains on the transaction stack,
+     *  so `rollback_to()` may be called multiple times, and the guard is still armed afterwards.
+     *  Also you can set `release_on_destroy` to true to make the guard call `RELEASE` only on destroy,
+     *  keeping the changes.
+     *
+     *  Note: The guard's destructor is explicitly marked as potentially throwing,
+     *  so exceptions that occur during release or rollback are propagated to the caller.
+     */
+    struct savepoint_t {
+        /**
+         *  This is a public lever to tell a guard what it must do in its destructor
+         *  if `gotta_fire` is true
+         */
+        bool release_on_destroy = false;
+
+        savepoint_t(connection_ref connection_,
+                    std::function<void()> release_func_,
+                    std::function<void()> rollback_to_func_) :
+            connection(std::move(connection_)), release_func(std::move(release_func_)),
+            rollback_to_func(std::move(rollback_to_func_)) {}
+
+        savepoint_t(savepoint_t&& other) :
+            release_on_destroy(other.release_on_destroy), connection(std::move(other.connection)),
+            release_func(std::move(other.release_func)), rollback_to_func(std::move(other.rollback_to_func)),
+            gotta_fire(other.gotta_fire) {
+            other.gotta_fire = false;
+        }
+
+        ~savepoint_t() noexcept(false) {
+            if (this->gotta_fire) {
+                if (!this->release_on_destroy) {
+                    this->rollback_to_func();
+                }
+                this->release_func();
+            }
+        }
+
+        savepoint_t& operator=(savepoint_t&&) = delete;
+
+        /**
+         *  Call `RELEASE` explicitly. After this call
+         *  guard will not call `ROLLBACK TO` or `RELEASE`
+         *  in its destructor.
+         */
+        void release() {
+            this->gotta_fire = false;
+            this->release_func();
+        }
+
+        /**
+         *  Call `ROLLBACK TO` explicitly. The savepoint remains on the
+         *  transaction stack, so the guard is still armed after this call:
+         *  its destructor will fire unless `release()` is called.
+         */
+        void rollback_to() {
+            this->rollback_to_func();
+        }
+
+      private:
+        connection_ref connection;
+        std::function<void()> release_func;
+        std::function<void()> rollback_to_func;
+        bool gotta_fire = true;
+    };
+}
+
 // #include "row_extractor.h"
 
 // #include "connection_holder.h"
@@ -20378,6 +20458,26 @@ namespace sqlite_orm::internal {
         }
 
         /**
+         *  Executes `SAVEPOINT savepointName` and returns a guard object.
+         *  The guard executes `ROLLBACK TO SAVEPOINT` + `RELEASE SAVEPOINT` in its destructor,
+         *  unless `release()` was called or `release_on_destroy` is set to true.
+         *  More info: https://www.sqlite.org/lang_savepoint.html
+         */
+        savepoint_t savepoint_guard(const std::string& savepointName) {
+            auto connection = this->get_connection();
+            sqlite3* db = connection.get();
+            this->executor.perform_void_exec(db, this->savepoint_sql("SAVEPOINT ", savepointName).c_str());
+            return {
+                std::move(connection),
+                [&executor = this->executor, db, sql = this->savepoint_sql("RELEASE SAVEPOINT ", savepointName)] {
+                    executor.perform_void_exec(db, sql.c_str());
+                },
+                [&executor = this->executor, db, sql = this->savepoint_sql("ROLLBACK TO SAVEPOINT ", savepointName)] {
+                    executor.perform_void_exec(db, sql.c_str());
+                }};
+        }
+
+        /**
          *  Drops index with given name. 
          *  Calls `DROP INDEX indexName`.
          *  More info: https://www.sqlite.org/lang_dropindex.html
@@ -20509,6 +20609,12 @@ namespace sqlite_orm::internal {
             this->executor.perform_void_exec(db, sql.c_str());
         }
 
+        static std::string savepoint_sql(serialize_arg_type statementPrefix, const std::string& savepointName) {
+            std::stringstream ss;
+            ss << statementPrefix << streaming_identifier(savepointName);
+            return ss.str();
+        }
+
         void add_generated_cols(std::vector<const table_xinfo*>& columnsToAdd,
                                 const std::vector<table_xinfo>& storageTableInfo) {
             //  iterate through storage columns
@@ -20559,6 +20665,20 @@ namespace sqlite_orm::internal {
             }
             auto guard = this->transaction_guard();
             return guard.commit_on_destroy = function();
+        }
+
+        /**
+         *  Executes the passed function within a savepoint.
+         *  If the function returns true the savepoint is released (keeping the changes),
+         *  otherwise (false or an exception) the changes are rolled back.
+         *  More info: https://www.sqlite.org/lang_savepoint.html
+         */
+        bool savepoint(const std::string& savepointName, const std::function<bool()>& function) {
+            if (!function) {
+                return false;
+            }
+            auto guard = this->savepoint_guard(savepointName);
+            return guard.release_on_destroy = function();
         }
 
         std::string current_time() {
@@ -20938,6 +21058,48 @@ namespace sqlite_orm::internal {
         void begin_exclusive_transaction() {
             sqlite3* db = this->connection->retain();
             this->executor.perform_void_exec(db, "BEGIN EXCLUSIVE TRANSACTION");
+        }
+
+        /**
+         *  Executes `SAVEPOINT savepointName`.
+         *  A savepoint started outside of a transaction behaves like `BEGIN DEFERRED TRANSACTION`.
+         *  More info: https://www.sqlite.org/lang_savepoint.html
+         */
+        void savepoint(const std::string& savepointName) {
+            sqlite3* db = this->connection->retain();
+            this->executor.perform_void_exec(db, this->savepoint_sql("SAVEPOINT ", savepointName).c_str());
+        }
+
+        /**
+         *  Executes `RELEASE SAVEPOINT savepointName`, which works like a `COMMIT` for a savepoint:
+         *  it removes all savepoints back to and including the most recent one with the matching name.
+         *  If it empties the whole transaction stack the changes are committed.
+         */
+        void release_savepoint(const std::string& savepointName) {
+            if (connection_ptr maybeConnection = *this->connection) {
+                this->executor.perform_void_exec(maybeConnection.get(),
+                                                 this->savepoint_sql("RELEASE SAVEPOINT ", savepointName).c_str());
+            }
+            // check for programming error on user's side not having called `savepoint()` before
+            else {
+                throw std::system_error{orm_error_code::no_active_transaction};
+            }
+        }
+
+        /**
+         *  Executes `ROLLBACK TO SAVEPOINT savepointName`, which reverts the database back to the state
+         *  it was in right after the matching `SAVEPOINT`. Unlike a plain `ROLLBACK` the savepoint
+         *  remains on the transaction stack, so the transaction continues.
+         */
+        void rollback_to_savepoint(const std::string& savepointName) {
+            if (connection_ptr maybeConnection = *this->connection) {
+                this->executor.perform_void_exec(maybeConnection.get(),
+                                                 this->savepoint_sql("ROLLBACK TO SAVEPOINT ", savepointName).c_str());
+            }
+            // check for programming error on user's side not having called `savepoint()` before
+            else {
+                throw std::system_error{orm_error_code::no_active_transaction};
+            }
         }
 
         void commit() {
