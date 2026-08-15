@@ -31,7 +31,7 @@ namespace sqlite_orm {
              */
             template<class S, class Lookup>
             struct storage_columns_count
-                : storage_columns_count_impl<storage_find_table_t<Lookup, typename S::db_objects_type>> {};
+                : storage_columns_count_impl<schema_find_table_t<Lookup, typename S::db_objects_type>> {};
 
             template<class Table, class Lookup>
             using table_foreign_keys_t =

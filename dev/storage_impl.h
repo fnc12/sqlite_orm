@@ -11,7 +11,8 @@
 #include "type_traits.h"
 #include "vocabulary/node_traits.h"
 #include "cte_types.h"
-#include "storage_lookup.h"
+#include "schema/db_objects.h"
+#include "schema/algorithms/table_lookup.h"
 
 // interface functions
 namespace sqlite_orm::internal {
@@ -70,7 +71,7 @@ namespace sqlite_orm::internal {
     template<class Moniker, class ColAlias, class DBOs, satisfies<is_db_objects, DBOs> = true>
     constexpr decltype(auto) materialize_column_pointer(const DBOs&,
                                                         const column_pointer<Moniker, alias_holder<ColAlias>>&) {
-        using table_type = storage_pick_table_t<Moniker, DBOs>;
+        using table_type = schema_pick_table_t<Moniker, DBOs>;
         using cte_colrefs_tuple = typename cte_mapper_type_t<table_type>::final_colrefs_tuple;
         using cte_fields_type = typename cte_mapper_type_t<table_type>::fields_type;
 
@@ -102,7 +103,7 @@ namespace sqlite_orm::internal {
     template<class Moniker, class ColAlias, class DBOs, satisfies<is_db_objects, DBOs> = true>
     constexpr decltype(auto) find_column_name(const DBOs& dboObjects,
                                               const column_pointer<Moniker, alias_holder<ColAlias>>&) {
-        using table_type = storage_pick_table_t<Moniker, DBOs>;
+        using table_type = schema_pick_table_t<Moniker, DBOs>;
         using cte_colrefs_tuple = typename cte_mapper_type_t<table_type>::final_colrefs_tuple;
         using column_index_sequence = col_index_sequence_of<elements_type_t<table_type>>;
 

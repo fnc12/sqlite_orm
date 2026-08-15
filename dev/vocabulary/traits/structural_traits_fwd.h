@@ -2,6 +2,11 @@
 
 /** @file Closed classifier traits of DSL-only nodes with no SQL grammar counterpart.
  *        E.g. ad-hoc column-selection structs, mapped result objects, quoting nodes.
+ *
+ *        Quoting nodes - literals, pointer-to-member wrappers, anything lifting a foreign C++ value
+ *        into the DSL - are structural traits and belong here.
+ *        Should their volume or coupling ever justify it, they may be split out into a dedicated
+ *        `quoting_traits_fwd.h`; that would be a subdivision of the structural axis, not a new axis.
  */
 
 #include "../../functional/cxx_type_traits_polyfill.h"

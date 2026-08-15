@@ -8,7 +8,8 @@
 #include "tuple_helper/tuple_filter.h"
 #include "tuple_helper/tuple_transformer.h"
 #include "vocabulary/node_traits.h"
-#include "storage_lookup.h"
+#include "schema/db_objects.h"
+#include "schema/algorithms/table_lookup.h"
 #include "schema/column.h"  // column_field_expression_t
 
 namespace sqlite_orm::internal::storage_traits {
@@ -29,7 +30,7 @@ namespace sqlite_orm::internal::storage_traits {
      *  Lookup - mapped or unmapped data type
      */
     template<class DBOs, class Lookup>
-    struct storage_mapped_columns : storage_mapped_columns_impl<storage_find_table_t<Lookup, DBOs>> {};
+    struct storage_mapped_columns : storage_mapped_columns_impl<schema_find_table_t<Lookup, DBOs>> {};
 
     /**
      *  DBO - db object (table)
@@ -49,5 +50,5 @@ namespace sqlite_orm::internal::storage_traits {
      */
     template<class DBOs, class Lookup>
     struct storage_mapped_column_expressions
-        : storage_mapped_column_expressions_impl<storage_find_table_t<Lookup, DBOs>> {};
+        : storage_mapped_column_expressions_impl<schema_find_table_t<Lookup, DBOs>> {};
 }

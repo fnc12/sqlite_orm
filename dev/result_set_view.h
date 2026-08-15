@@ -10,13 +10,12 @@
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
-#include "row_extractor.h"
 #include "result_set_iterator.h"
 #include "ast_iterator.h"
 #include "connection_holder.h"
 #include "util.h"
-#include "type_traits.h"
-#include "storage_lookup.h"
+#include "vocabulary/node_traits.h"  // projections
+#include "schema/db_objects.h"
 
 namespace sqlite_orm::internal {
     /*  
