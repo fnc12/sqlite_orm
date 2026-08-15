@@ -2444,7 +2444,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, T>, is_operator_argument<T>>::value,
                              bool> = true>
         constexpr unary_minus_t<unwrap_expression_t<T>> operator-(T arg) {
-            return {get_from_expression(std::forward<T>(arg))};
+            return {unwrap_expression(std::forward<T>(arg))};
         }
 
         template<class L,
@@ -2455,7 +2455,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr add_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator+(L l, R r) {
-            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
 
         template<class L,
@@ -2466,7 +2466,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr sub_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator-(L l, R r) {
-            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
 
         template<class L,
@@ -2477,7 +2477,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr mul_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator*(L l, R r) {
-            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
 
         template<class L,
@@ -2488,7 +2488,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr div_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator/(L l, R r) {
-            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
 
         template<class L,
@@ -2499,7 +2499,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr mod_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator%(L l, R r) {
-            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
 
         template<
@@ -2507,7 +2507,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
             std::enable_if_t<polyfill::disjunction<std::is_base_of<arithmetic_t, T>, is_operator_argument<T>>::value,
                              bool> = true>
         constexpr bitwise_not_t<unwrap_expression_t<T>> operator~(T arg) {
-            return {get_from_expression(std::forward<T>(arg))};
+            return {unwrap_expression(std::forward<T>(arg))};
         }
 
         template<class L,
@@ -2518,7 +2518,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr bitwise_shift_left_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator<<(L l, R r) {
-            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
 
         template<class L,
@@ -2529,7 +2529,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr bitwise_shift_right_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator>>(L l, R r) {
-            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
 
         template<class L,
@@ -2540,7 +2540,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr bitwise_and_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator&(L l, R r) {
-            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
 
         template<class L,
@@ -2551,7 +2551,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr bitwise_or_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator|(L l, R r) {
-            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
     }
 

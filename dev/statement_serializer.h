@@ -38,7 +38,6 @@
 #include "core_functions.h"
 #include "window_functions.h"
 #include "conditions.h"
-#include "indexed_column.h"
 #include "function.h"
 #include "prepared_statement.h"
 #include "rowid.h"
@@ -46,7 +45,6 @@
 #include "type_printer.h"
 #include "field_printer.h"
 #include "literal.h"
-#include "expression.h"
 #include "table_name_collector.h"
 #include "column_names_getter.h"
 #include "cte_column_names_collector.h"
@@ -62,6 +60,7 @@
 #include "schema/index.h"
 #include "schema/constraints/primary_key.h"  // conflict_clause_t
 #include "schema/constraints/generated_always.h"  // basic_generated_always
+#include "vocabulary/node_algorithms.h"  // unwrap_expression
 #include "vocabulary/node_traits.h"
 #include "vocabulary/node_fwd.h"  // column_constraints
 
@@ -1142,7 +1141,7 @@ namespace sqlite_orm::internal {
             if constexpr (parenthesize) {
                 ss << "(";
             }
-            ss << serialize(get_from_expression(expression.argument), subCtx);
+            ss << serialize(unwrap_expression(expression.argument), subCtx);
             if constexpr (parenthesize) {
                 ss << ")";
             }
@@ -1169,7 +1168,7 @@ namespace sqlite_orm::internal {
             if constexpr (parenthesize) {
                 ss << "(";
             }
-            ss << serialize(get_from_expression(expression.c), subCtx);
+            ss << serialize(unwrap_expression(expression.c), subCtx);
             if constexpr (parenthesize) {
                 ss << ")";
             }
@@ -2309,8 +2308,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    struct statement_serializer<indexed_column_t<T>, void> {
-        using statement_type = indexed_column_t<T>;
+    struct statement_serializer<T, std::enable_if_t<is_indexed_column<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -2320,15 +2319,15 @@ namespace sqlite_orm::internal {
             if (!statement._collation_name.empty()) {
                 ss << " COLLATE " << statement._collation_name;
             }
-            if (statement._order) {
-                switch (statement._order) {
-                    case 1:
-                        ss << " ASC";
-                        break;
-                    case -1:
-                        ss << " DESC";
-                        break;
-                }
+            switch (statement._order) {
+                case 1:
+                    ss << " ASC";
+                    break;
+                case -1:
+                    ss << " DESC";
+                    break;
+                case 0:
+                    break;
             }
             return ss.str();
         }

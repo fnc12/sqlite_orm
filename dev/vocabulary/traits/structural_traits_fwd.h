@@ -9,6 +9,12 @@
 // Structural traits
 namespace sqlite_orm::internal {
     template<class T>
+    extern const bool is_indexed_column_v;
+
+    template<class T>
+    using is_indexed_column = polyfill::bool_constant<is_indexed_column_v<T>>;
+
+    template<class T>
     extern const bool is_columns_v;
 
     template<class T>
@@ -34,4 +40,10 @@ namespace sqlite_orm::internal {
 
     template<class T>
     struct is_column_pointer : polyfill::bool_constant<is_column_pointer_v<T>> {};
+
+    template<class T>
+    extern const bool is_quoted_expression_v;
+
+    template<class T>
+    struct is_quoted_expression : polyfill::bool_constant<is_quoted_expression_v<T>> {};
 }

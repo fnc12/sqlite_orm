@@ -6,24 +6,24 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <type_traits>  //  std::enable_if
-#include <utility>  //  std::declval
+#include <utility>  //  std::declval, std::move
 #endif
 
 #include "../../functional/cxx_type_traits_polyfill.h"
 #include "../node_traits.h"
 
 namespace sqlite_orm::internal {
-    template<class T, std::enable_if_t<!is_rowset_deduplicator<T>::value, bool> = true>
-    const T& access_column_expression(const T& expression) {
-        return expression;
-    }
-
     /*  
-     *  Access a column expression prefixed by a result set deduplicator (as part of a simple select expression, i.e. distinct, all)
+     *  Access the column expression prefixed by a result set deduplicator (as part of a simple select expression, i.e. distinct, all)
+     *  or the column expression itself.
      */
-    template<class D, std::enable_if_t<is_rowset_deduplicator<D>::value, bool> = true>
-    const typename D::expression_type& access_column_expression(const D& modifier) {
-        return modifier.expression;
+    template<class T>
+    decltype(auto) access_column_expression(const T& expression) {
+        if constexpr (is_rowset_deduplicator_v<T>) {
+            return (expression.expression);
+        } else {
+            return expression;
+        }
     }
 
     /*  
@@ -55,4 +55,31 @@ namespace sqlite_orm::internal {
 
     template<class DML>
     using main_dml_t = polyfill::remove_cvref_t<decltype(access_main_dml(std::declval<DML>()))>;
+
+    /*  
+     *  Move a possibly quoted plain expression or the expression itself.
+     */
+    template<class T>
+    constexpr auto unwrap_expression(T&& expression) {
+        if constexpr (is_quoted_expression_v<std::remove_cv_t<T>>) {
+            return std::move(expression._value);
+        } else {
+            return std::move(expression);
+        }
+    }
+
+    /*  
+     *  Access a possibly quoted plain expression or the expression itself.
+     */
+    template<class T>
+    constexpr decltype(auto) unwrap_expression(T& expression) {
+        if constexpr (is_quoted_expression_v<std::remove_cv_t<T>>) {
+            return (expression._value);
+        } else {
+            return expression;
+        }
+    }
+
+    template<class T>
+    using unwrap_expression_t = decltype(unwrap_expression(std::declval<T>()));
 }

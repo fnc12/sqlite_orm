@@ -14,19 +14,19 @@
 #include "functional/is_base_template_of.h"
 #include "type_traits.h"
 #include "collate_argument.h"
-#include "schema/constraints/collate.h"
+#include "schema/constraints/collate.h"  // string_from_collate_argument
 #include "optional_container.h"
 #include "serializer_context.h"
 #include "serialize_result_type.h"
 #include "tags.h"
 #include "table_reference.h"
 #include "alias_traits.h"
-#include "expression.h"
 #include "column_pointer.h"
 #include "type_printer.h"
 #include "literal.h"
 #include "ast/cross_join.h"
 #include "ast/rank.h"
+#include "vocabulary/node_algorithms.h"  // unwrap_expression
 #include "vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
@@ -695,7 +695,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr less_than_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator<(L l, R r) {
-            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
 
         template<class L,
@@ -706,7 +706,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr less_or_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator<=(L l, R r) {
-            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
 
         template<class L,
@@ -717,7 +717,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr greater_than_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator>(L l, R r) {
-            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
 
         template<class L,
@@ -728,7 +728,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr greater_or_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator>=(L l, R r) {
-            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
 
         template<class L,
@@ -745,7 +745,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                   ,
                                   bool> = true>
         constexpr is_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator==(L l, R r) {
-            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
 
         template<class L,
@@ -758,7 +758,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr is_not_equal_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator!=(L l, R r) {
-            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
 
         template<class L,
@@ -769,7 +769,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                         is_operator_argument<R>>::value,
                                   bool> = true>
         constexpr and_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator&&(L l, R r) {
-            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
 
         template<class L,
@@ -777,7 +777,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                  std::enable_if_t<polyfill::disjunction<is_conditional_operand<L>, is_conditional_operand<R>>::value,
                                   bool> = true>
         constexpr or_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator||(L l, R r) {
-            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
 
         template<class L,
@@ -792,7 +792,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
                                                                                     is_conditional_operand<R>>>>::value,
                      bool> = true>
         constexpr conc_t<unwrap_expression_t<L>, unwrap_expression_t<R>> operator||(L l, R r) {
-            return {get_from_expression(std::forward<L>(l)), get_from_expression(std::forward<R>(r))};
+            return {unwrap_expression(std::forward<L>(l)), unwrap_expression(std::forward<R>(r))};
         }
     }
 
@@ -880,15 +880,15 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class L, class R>
     constexpr auto and_(L l, R r) {
         using namespace ::sqlite_orm::internal;
-        return and_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>>{get_from_expression(std::forward<L>(l)),
-                                                                               get_from_expression(std::forward<R>(r))};
+        return and_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>>{unwrap_expression(std::forward<L>(l)),
+                                                                               unwrap_expression(std::forward<R>(r))};
     }
 
     template<class L, class R>
     constexpr auto or_(L l, R r) {
         using namespace ::sqlite_orm::internal;
-        return or_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>>{get_from_expression(std::forward<L>(l)),
-                                                                              get_from_expression(std::forward<R>(r))};
+        return or_condition_t<unwrap_expression_t<L>, unwrap_expression_t<R>>{unwrap_expression(std::forward<L>(l)),
+                                                                              unwrap_expression(std::forward<R>(r))};
     }
 
     template<class L, class R>

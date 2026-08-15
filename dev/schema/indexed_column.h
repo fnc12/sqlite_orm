@@ -5,7 +5,9 @@
 #include <utility>  //  std::move
 #endif
 
-#include "ast/where.h"
+#include "../functional/cxx_type_traits_polyfill.h"
+#include "../vocabulary/node_traits.h"
+#include "../vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
     template<class C>
@@ -17,37 +19,31 @@ namespace sqlite_orm::internal {
         int _order = 0;  //  -1 = desc, 1 = asc, 0 = unspecified
 
         indexed_column_t<column_type> collate(std::string name) && {
-            auto res = std::move(*this);
-            res._collation_name = std::move(name);
-            return res;
+            _collation_name = std::move(name);
+            return std::move(*this);
         }
 
         indexed_column_t<column_type> asc() && {
-            auto res = std::move(*this);
-            res._order = 1;
-            return res;
+            _order = 1;
+            return std::move(*this);
         }
 
         indexed_column_t<column_type> desc() && {
-            auto res = std::move(*this);
-            res._order = -1;
-            return res;
+            _order = -1;
+            return std::move(*this);
         }
     };
 
-    template<class C>
-    indexed_column_t<C> make_indexed_column(C col) {
-        return {std::move(col)};
-    }
+    template<class T>
+    constexpr bool is_indexed_column_v = polyfill::is_specialization_of<T, indexed_column_t>::value;
 
     template<class C>
-    where_t<C> make_indexed_column(where_t<C> wher) {
-        return std::move(wher);
-    }
-
-    template<class C>
-    indexed_column_t<C> make_indexed_column(indexed_column_t<C> col) {
-        return std::move(col);
+    auto make_indexed_column(C col) {
+        if constexpr (is_indexed_column_v<C> || is_where_v<C>) {
+            return std::move(col);
+        } else {
+            return indexed_column_t<C>{std::move(col)};
+        }
     }
 }
 

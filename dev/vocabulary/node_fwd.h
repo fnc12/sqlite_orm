@@ -1,5 +1,9 @@
 #pragma once
 
+/** @file Forward-declarations of concrete nodes that have to be used directly in template programming,
+ *        e.g. for base-class overloads or metafunctions.
+ */
+
 namespace sqlite_orm::internal {
     template<class... Cs>
     struct primary_key_t;
