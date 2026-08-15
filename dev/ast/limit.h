@@ -18,6 +18,9 @@ namespace sqlite_orm::internal {
         static constexpr bool has_offset_v = has_offset;
         static constexpr bool offset_is_implicit_v = offset_is_implicit;
 
+        using expression_type = T;
+        using offset_expression_type = O;
+
         T limit;
         optional_container<O> offset;
     };

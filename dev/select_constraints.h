@@ -21,6 +21,7 @@
 #include "alias_traits.h"
 #include "cte_moniker.h"
 #include "vocabulary/node_traits.h"
+#include "vocabulary/algorithms/clause_traits.h"
 #include "vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits
 #include "vocabulary/traits/semantic_traits_fwd.h"  // Included to specialize traits
@@ -388,61 +389,6 @@ namespace sqlite_orm::internal {
             return {{std::move(this->case_expression)}, std::move(args), {std::move(el)}};
         }
     };
-
-    template<class... Args>
-    struct group_by_t;
-
-    template<class T, class... Args>
-    struct group_by_with_having;
-
-    template<class T, bool has_offset, bool offset_is_implicit, class O>
-    struct limit_t;
-
-    /**
-     *  Rank of a statement-level clause in the canonical SQL clause order,
-     *  or 0 if the type is not a statement-level clause.
-     */
-    template<class T>
-    constexpr int clause_rank_v = polyfill::disjunction<is_from<T>, is_from2<T>>::value ? 1
-                                  : is_any_join<T>::value                               ? 2
-                                  : is_where<T>::value                                  ? 3
-                                  : is_group_by<T>::value                               ? 4
-                                  : is_window_defn<T>::value                            ? 5
-                                  : is_order_by<T>::value                               ? 6
-                                  : is_limit<T>::value                                  ? 7
-                                                                                        : 0;
-
-    template<class T>
-    using is_statement_clause = polyfill::bool_constant<clause_rank_v<T> != 0>;
-
-    /**
-     *  Checks that the expressions nested in a clause are not statement-level clauses themselves:
-     *  expressions like `where(group_by(...))` or `order_by(limit(...))` would generate invalid SQL.
-     */
-    template<class T>
-    struct clause_holds_no_clause : std::true_type {};
-
-    template<class C>
-    struct clause_holds_no_clause<where_t<C>> : polyfill::bool_constant<clause_rank_v<C> == 0> {};
-
-    template<class O>
-    struct clause_holds_no_clause<order_by_t<O>> : polyfill::bool_constant<clause_rank_v<O> == 0> {};
-
-    template<class... Args>
-    struct clause_holds_no_clause<multi_order_by_t<Args...>>
-        : polyfill::conjunction<polyfill::is_specialization_of<Args, order_by_t>...> {};
-
-    template<class... Args>
-    struct clause_holds_no_clause<group_by_t<Args...>> : polyfill::bool_constant<((clause_rank_v<Args> == 0) && ...)> {
-    };
-
-    template<class T, class... Args>
-    struct clause_holds_no_clause<group_by_with_having<T, Args...>>
-        : polyfill::bool_constant<clause_rank_v<T> == 0 && ((clause_rank_v<Args> == 0) && ...)> {};
-
-    template<class T, bool has_offset, bool offset_is_implicit, class O>
-    struct clause_holds_no_clause<limit_t<T, has_offset, offset_is_implicit, O>>
-        : polyfill::bool_constant<clause_rank_v<T> == 0 && clause_rank_v<O> == 0> {};
 
     template<class... Cs>
     constexpr bool clauses_are_correctly_ordered() {

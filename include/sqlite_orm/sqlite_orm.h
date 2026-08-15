@@ -2126,6 +2126,30 @@ namespace sqlite_orm::internal {
     using is_group_by = polyfill::bool_constant<is_group_by_v<T>>;
 
     template<class T>
+    extern const bool is_from_v;
+
+    template<class T>
+    using is_from = polyfill::bool_constant<is_from_v<T>>;
+
+    template<class T>
+    extern const bool is_from2_v;
+
+    template<class T>
+    using is_from2 = polyfill::bool_constant<is_from2_v<T>>;
+
+    template<class T>
+    extern const bool is_any_join_v;
+
+    template<class T>
+    using is_any_join = polyfill::bool_constant<is_any_join_v<T>>;
+
+    template<class T>
+    extern const bool is_window_defn_v;
+
+    template<class T>
+    using is_window_defn = polyfill::bool_constant<is_window_defn_v<T>>;
+
+    template<class T>
     constexpr bool is_limit_v = false;
 
     template<class T>
@@ -2402,6 +2426,12 @@ namespace sqlite_orm::internal {
 
     template<typename T>
     using expression_type_t = typename T::expression_type;
+
+    template<typename T>
+    using args_type_t = typename T::args_type;
+
+    template<typename T>
+    using offset_expression_type_t = typename T::offset_expression_type;
 
     template<typename T>
     using expressions_tuple_t = typename T::expressions_tuple;
@@ -2691,6 +2721,93 @@ namespace sqlite_orm::internal {
                                                                                check_if<is_table_content>>,
                                                               T>;
 #endif
+}
+
+// #include "algorithms/clause_traits.h"
+
+/** @file Combined grammar traits classifying statement-level clauses of a select statement.
+ *
+ *  A statement-level clause (FROM, JOIN, WHERE, GROUP BY, WINDOW, ORDER BY, LIMIT) may only
+ *  appear in the conditions pack of a statement, in the canonical clause order, and may only
+ *  hold expressions - the serializer streams clauses positionally, so any other arrangement
+ *  would generate invalid SQL.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <tuple>  //  std::tuple
+#include <type_traits>  //  std::enable_if, std::true_type
+#endif
+
+// #include "../../functional/cxx_type_traits_polyfill.h"
+
+// #include "../node_traits.h"
+
+namespace sqlite_orm::internal {
+    /**
+     *  Rank of a statement-level clause in the canonical SQL clause order,
+     *  or 0 if the type is not a statement-level clause.
+     */
+    template<class T>
+    constexpr int clause_rank_v = polyfill::disjunction<is_from<T>, is_from2<T>>::value ? 1
+                                  : is_any_join<T>::value                               ? 2
+                                  : is_where<T>::value                                  ? 3
+                                  : is_group_by<T>::value                               ? 4
+                                  : is_window_defn<T>::value                            ? 5
+                                  : is_order_by<T>::value                               ? 6
+                                  : is_limit<T>::value                                  ? 7
+                                                                                        : 0;
+
+    template<class T>
+    using is_statement_clause = polyfill::bool_constant<clause_rank_v<T> != 0>;
+
+    template<class Tpl>
+    struct tuple_holds_no_clause;
+
+    template<template<class...> class Tpl, class... Args>
+    struct tuple_holds_no_clause<Tpl<Args...>> : polyfill::bool_constant<((clause_rank_v<Args> == 0) && ...)> {};
+
+    template<class Tpl>
+    struct tuple_of_order_by_terms;
+
+    template<template<class...> class Tpl, class... Args>
+    struct tuple_of_order_by_terms<Tpl<Args...>>
+        : polyfill::conjunction<
+              polyfill::conjunction<is_order_by<Args>, polyfill::is_detected<expression_type_t, Args>>...> {};
+
+    /**
+     *  Checks that the expressions nested in a clause are not statement-level clauses themselves:
+     *  expressions like `where(group_by(...))` or `order_by(limit(...))` would generate invalid SQL.
+     */
+    template<class T, class SFINAE = void>
+    struct clause_holds_no_clause : std::true_type {};
+
+    //  clauses carrying a single expression: WHERE, a single ORDER BY term
+    template<class T>
+    struct clause_holds_no_clause<
+        T,
+        std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<is_where<T>, is_order_by<T>>,
+                                                 polyfill::is_detected<expression_type_t, T>>>>
+        : polyfill::bool_constant<clause_rank_v<polyfill::detected_or_t<void, expression_type_t, T>> == 0> {};
+
+    //  ORDER BY with multiple terms: every term must be a single ORDER BY term
+    template<class T>
+    struct clause_holds_no_clause<
+        T,
+        std::enable_if_t<polyfill::conjunction_v<is_order_by<T>, polyfill::is_detected<args_type_t, T>>>>
+        : tuple_of_order_by_terms<polyfill::detected_or_t<std::tuple<>, args_type_t, T>> {};
+
+    //  GROUP BY carries a tuple of expressions and possibly a HAVING expression
+    template<class T>
+    struct clause_holds_no_clause<T, std::enable_if_t<is_group_by_v<T>>>
+        : polyfill::conjunction<
+              tuple_holds_no_clause<polyfill::detected_or_t<std::tuple<>, args_type_t, T>>,
+              polyfill::bool_constant<clause_rank_v<polyfill::detected_or_t<void, expression_type_t, T>> == 0>> {};
+
+    //  LIMIT carries the limit and possibly an offset expression
+    template<class T>
+    struct clause_holds_no_clause<T, std::enable_if_t<is_limit_v<T>>>
+        : polyfill::bool_constant<clause_rank_v<polyfill::detected_or_t<void, expression_type_t, T>> == 0 &&
+                                  clause_rank_v<polyfill::detected_or_t<void, offset_expression_type_t, T>> == 0> {};
 }
 
 // #include "algorithms/accessors.h"
@@ -4865,6 +4982,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "../functional/cxx_type_traits_polyfill.h"
 
+// #include "../vocabulary/traits/grammar_traits_fwd.h"
+// Included to specialize traits
+
 namespace sqlite_orm::internal {
 
     struct unbounded_preceding_t {};
@@ -4957,10 +5077,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_window_defn_v = polyfill::is_specialization_of_v<T, window_defn_t>;
-
-    template<class T>
-    using is_window_defn = polyfill::bool_constant<is_window_defn_v<T>>;
+    constexpr bool is_window_defn_v = polyfill::is_specialization_of_v<T, window_defn_t>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -5664,10 +5781,10 @@ namespace sqlite_orm::internal {
     using is_constrained_join = polyfill::is_detected<on_type_t, T>;
 
     template<class T>
-    using is_any_join = mpl::invoke_t<mpl::disjunction<check_if<is_constrained_join>,
-                                                       check_if_is_template<cross_join_t>,
-                                                       check_if_is_template<natural_join_t>>,
-                                      T>;
+    constexpr bool is_any_join_v = mpl::invoke_t<mpl::disjunction<check_if<is_constrained_join>,
+                                                                  check_if_is_template<cross_join_t>,
+                                                                  check_if_is_template<natural_join_t>>,
+                                                 T>::value;
 
     template<class... Tables>
     struct from_t {
@@ -5675,7 +5792,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    using is_from = polyfill::is_specialization_of<T, from_t>;
+    constexpr bool is_from_v = polyfill::is_specialization_of_v<T, from_t>;
 
     template<class... TableExpr>
     struct from2_t {
@@ -5685,7 +5802,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    using is_from2 = polyfill::is_specialization_of<T, from2_t>;
+    constexpr bool is_from2_v = polyfill::is_specialization_of_v<T, from2_t>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -8864,6 +8981,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "vocabulary/node_traits.h"
 
+// #include "vocabulary/algorithms/clause_traits.h"
+
 // #include "vocabulary/traits/grammar_traits_fwd.h"
 // Included to specialize traits
 // #include "vocabulary/traits/structural_traits_fwd.h"
@@ -9234,61 +9353,6 @@ namespace sqlite_orm::internal {
             return {{std::move(this->case_expression)}, std::move(args), {std::move(el)}};
         }
     };
-
-    template<class... Args>
-    struct group_by_t;
-
-    template<class T, class... Args>
-    struct group_by_with_having;
-
-    template<class T, bool has_offset, bool offset_is_implicit, class O>
-    struct limit_t;
-
-    /**
-     *  Rank of a statement-level clause in the canonical SQL clause order,
-     *  or 0 if the type is not a statement-level clause.
-     */
-    template<class T>
-    constexpr int clause_rank_v = polyfill::disjunction<is_from<T>, is_from2<T>>::value ? 1
-                                  : is_any_join<T>::value                               ? 2
-                                  : is_where<T>::value                                  ? 3
-                                  : is_group_by<T>::value                               ? 4
-                                  : is_window_defn<T>::value                            ? 5
-                                  : is_order_by<T>::value                               ? 6
-                                  : is_limit<T>::value                                  ? 7
-                                                                                        : 0;
-
-    template<class T>
-    using is_statement_clause = polyfill::bool_constant<clause_rank_v<T> != 0>;
-
-    /**
-     *  Checks that the expressions nested in a clause are not statement-level clauses themselves:
-     *  expressions like `where(group_by(...))` or `order_by(limit(...))` would generate invalid SQL.
-     */
-    template<class T>
-    struct clause_holds_no_clause : std::true_type {};
-
-    template<class C>
-    struct clause_holds_no_clause<where_t<C>> : polyfill::bool_constant<clause_rank_v<C> == 0> {};
-
-    template<class O>
-    struct clause_holds_no_clause<order_by_t<O>> : polyfill::bool_constant<clause_rank_v<O> == 0> {};
-
-    template<class... Args>
-    struct clause_holds_no_clause<multi_order_by_t<Args...>>
-        : polyfill::conjunction<polyfill::is_specialization_of<Args, order_by_t>...> {};
-
-    template<class... Args>
-    struct clause_holds_no_clause<group_by_t<Args...>> : polyfill::bool_constant<((clause_rank_v<Args> == 0) && ...)> {
-    };
-
-    template<class T, class... Args>
-    struct clause_holds_no_clause<group_by_with_having<T, Args...>>
-        : polyfill::bool_constant<clause_rank_v<T> == 0 && ((clause_rank_v<Args> == 0) && ...)> {};
-
-    template<class T, bool has_offset, bool offset_is_implicit, class O>
-    struct clause_holds_no_clause<limit_t<T, has_offset, offset_is_implicit, O>>
-        : polyfill::bool_constant<clause_rank_v<T> == 0 && clause_rank_v<O> == 0> {};
 
     template<class... Cs>
     constexpr bool clauses_are_correctly_ordered() {
@@ -28839,6 +28903,9 @@ namespace sqlite_orm::internal {
     struct limit_t {
         static constexpr bool has_offset_v = has_offset;
         static constexpr bool offset_is_implicit_v = offset_is_implicit;
+
+        using expression_type = T;
+        using offset_expression_type = O;
 
         T limit;
         optional_container<O> offset;
