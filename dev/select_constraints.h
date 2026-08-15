@@ -389,6 +389,74 @@ namespace sqlite_orm::internal {
         }
     };
 
+    template<class... Args>
+    struct group_by_t;
+
+    template<class T, class... Args>
+    struct group_by_with_having;
+
+    template<class T, bool has_offset, bool offset_is_implicit, class O>
+    struct limit_t;
+
+    /**
+     *  Rank of a statement-level clause in the canonical SQL clause order,
+     *  or 0 if the type is not a statement-level clause.
+     */
+    template<class T>
+    constexpr int clause_rank_v = polyfill::disjunction<is_from<T>, is_from2<T>>::value ? 1
+                                  : is_any_join<T>::value                               ? 2
+                                  : is_where<T>::value                                  ? 3
+                                  : is_group_by<T>::value                               ? 4
+                                  : is_order_by<T>::value                               ? 5
+                                  : is_limit<T>::value                                  ? 6
+                                                                                        : 0;
+
+    template<class T>
+    using is_statement_clause = polyfill::bool_constant<clause_rank_v<T> != 0>;
+
+    /**
+     *  Checks that the expressions nested in a clause are not statement-level clauses themselves:
+     *  expressions like `where(group_by(...))` or `order_by(limit(...))` would generate invalid SQL.
+     */
+    template<class T>
+    struct clause_holds_no_clause : std::true_type {};
+
+    template<class C>
+    struct clause_holds_no_clause<where_t<C>> : polyfill::bool_constant<clause_rank_v<C> == 0> {};
+
+    template<class O>
+    struct clause_holds_no_clause<order_by_t<O>> : polyfill::bool_constant<clause_rank_v<O> == 0> {};
+
+    template<class... Args>
+    struct clause_holds_no_clause<multi_order_by_t<Args...>>
+        : polyfill::conjunction<polyfill::is_specialization_of<Args, order_by_t>...> {};
+
+    template<class... Args>
+    struct clause_holds_no_clause<group_by_t<Args...>> : polyfill::bool_constant<((clause_rank_v<Args> == 0) && ...)> {
+    };
+
+    template<class T, class... Args>
+    struct clause_holds_no_clause<group_by_with_having<T, Args...>>
+        : polyfill::bool_constant<clause_rank_v<T> == 0 && ((clause_rank_v<Args> == 0) && ...)> {};
+
+    template<class T, bool has_offset, bool offset_is_implicit, class O>
+    struct clause_holds_no_clause<limit_t<T, has_offset, offset_is_implicit, O>>
+        : polyfill::bool_constant<clause_rank_v<T> == 0 && clause_rank_v<O> == 0> {};
+
+    template<class... Cs>
+    constexpr bool clauses_are_correctly_ordered() {
+        int lastRank = 0;
+        bool ordered = true;
+        (((ordered = ordered && (clause_rank_v<Cs> >= lastRank)), (lastRank = clause_rank_v<Cs>)), ...);
+        return ordered;
+    }
+
+    template<class Tpl>
+    struct check_clause_order;
+
+    template<class... Cs>
+    struct check_clause_order<std::tuple<Cs...>> : polyfill::bool_constant<clauses_are_correctly_ordered<Cs...>()> {};
+
     template<class T>
     constexpr void validate_conditions() {
         static_assert(count_tuple<T, is_where>::value <= 1, "a single query cannot contain > 1 WHERE blocks");
@@ -397,6 +465,13 @@ namespace sqlite_orm::internal {
         static_assert(count_tuple<T, is_limit>::value <= 1, "a single query cannot contain > 1 LIMIT blocks");
         static_assert(mpl::invoke_t<mpl::counts<mpl::disjunction_fn<is_from, is_from2>>, T>::value <= 1,
                       "a single query cannot contain > 1 FROM blocks");
+        static_assert(std::tuple_size<T>::value == count_tuple<T, is_statement_clause>::value,
+                      "a query argument must be a FROM, JOIN, WHERE, GROUP BY, ORDER BY or LIMIT clause");
+        static_assert(check_clause_order<T>::value,
+                      "SQL clauses must be listed in the canonical order: FROM, JOINs, WHERE, GROUP BY, ORDER BY, "
+                      "LIMIT");
+        static_assert(std::tuple_size<T>::value == count_tuple<T, clause_holds_no_clause>::value,
+                      "a clause argument cannot be another clause");
     }
 }
 
@@ -438,6 +513,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class... Args>
     constexpr internal::columns_t<Args...> columns(Args... args) {
+        static_assert(internal::count_tuple<std::tuple<Args...>, internal::is_statement_clause>::value == 0,
+                      "a statement clause cannot be used as a column expression");
         return {{std::forward<Args>(args)...}};
     }
 
@@ -447,6 +524,8 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
      */
     template<class T, class... Args>
     constexpr internal::struct_t<T, Args...> struct_(Args... args) {
+        static_assert(internal::count_tuple<std::tuple<Args...>, internal::is_statement_clause>::value == 0,
+                      "a statement clause cannot be used as a column expression");
         return {{std::forward<Args>(args)...}};
     }
 
@@ -468,6 +547,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class... E>
     constexpr internal::union_t<E...> union_(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
+        static_assert((polyfill::disjunction_v<polyfill::bool_constant<internal::is_select_v<E>>,
+                                               polyfill::bool_constant<internal::is_compound_operator_v<E>>> &&
+                       ...),
+                      "Compound operators can only be applied to select statements");
         return {{std::forward<E>(expressions)...}, false};
     }
 
@@ -479,6 +562,10 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class... E>
     constexpr internal::union_t<E...> union_all(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
+        static_assert((polyfill::disjunction_v<polyfill::bool_constant<internal::is_select_v<E>>,
+                                               polyfill::bool_constant<internal::is_compound_operator_v<E>>> &&
+                       ...),
+                      "Compound operators can only be applied to select statements");
         return {{std::forward<E>(expressions)...}, true};
     }
 
@@ -490,12 +577,20 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class... E>
     constexpr internal::except_t<E...> except(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
+        static_assert((polyfill::disjunction_v<polyfill::bool_constant<internal::is_select_v<E>>,
+                                               polyfill::bool_constant<internal::is_compound_operator_v<E>>> &&
+                       ...),
+                      "Compound operators can only be applied to select statements");
         return {{std::forward<E>(expressions)...}};
     }
 
     template<class... E>
     constexpr internal::intersect_t<E...> intersect(E... expressions) {
         static_assert(sizeof...(E) >= 2, "Compound operators must have at least 2 select statements");
+        static_assert((polyfill::disjunction_v<polyfill::bool_constant<internal::is_select_v<E>>,
+                                               polyfill::bool_constant<internal::is_compound_operator_v<E>>> &&
+                       ...),
+                      "Compound operators can only be applied to select statements");
         return {{std::forward<E>(expressions)...}};
     }
 
