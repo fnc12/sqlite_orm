@@ -12,7 +12,7 @@
 #include "statement_finalizer.h"
 #include "error_code.h"
 #include "object_from_column_builder.h"
-#include "storage_lookup.h"
+#include "schema/algorithms/table_lookup.h"
 #include "util.h"
 
 namespace sqlite_orm::internal {

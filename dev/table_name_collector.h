@@ -11,7 +11,7 @@
 #include "rowid.h"
 #include "alias.h"
 #include "core_functions.h"
-#include "storage_lookup.h"  // lookup_table_name
+#include "schema/algorithms/table_lookup.h"  // lookup_table_name
 
 namespace sqlite_orm::internal {
     struct table_name_collector_base {
