@@ -21,14 +21,16 @@ TEST_CASE("statement clause classification and order are computed at compile tim
     using GroupBy = decltype(group_by(&User::id));
     using OrderBy = decltype(order_by(&User::id));
     using Limit = decltype(limit(5));
+    using Window = decltype(window("w", partition_by(&User::id)));
 
     SECTION("clause ranks follow the canonical clause order") {
         STATIC_REQUIRE(internal::clause_rank_v<From> == 1);
         STATIC_REQUIRE(internal::clause_rank_v<Join> == 2);
         STATIC_REQUIRE(internal::clause_rank_v<Where> == 3);
         STATIC_REQUIRE(internal::clause_rank_v<GroupBy> == 4);
-        STATIC_REQUIRE(internal::clause_rank_v<OrderBy> == 5);
-        STATIC_REQUIRE(internal::clause_rank_v<Limit> == 6);
+        STATIC_REQUIRE(internal::clause_rank_v<Window> == 5);
+        STATIC_REQUIRE(internal::clause_rank_v<OrderBy> == 6);
+        STATIC_REQUIRE(internal::clause_rank_v<Limit> == 7);
     }
     SECTION("expressions are not statement clauses") {
         STATIC_REQUIRE(internal::clause_rank_v<int> == 0);
@@ -40,12 +42,14 @@ TEST_CASE("statement clause classification and order are computed at compile tim
     SECTION("the canonical order is accepted") {
         STATIC_REQUIRE(internal::check_clause_order<std::tuple<>>::value);
         STATIC_REQUIRE(internal::check_clause_order<std::tuple<Where>>::value);
-        STATIC_REQUIRE(internal::check_clause_order<std::tuple<From, Join, Where, GroupBy, OrderBy, Limit>>::value);
+        STATIC_REQUIRE(
+            internal::check_clause_order<std::tuple<From, Join, Where, GroupBy, Window, OrderBy, Limit>>::value);
         STATIC_REQUIRE(internal::check_clause_order<std::tuple<Join, Join, Where>>::value);
     }
     SECTION("a wrong order is rejected") {
         STATIC_REQUIRE_FALSE(internal::check_clause_order<std::tuple<GroupBy, Where>>::value);
         STATIC_REQUIRE_FALSE(internal::check_clause_order<std::tuple<Limit, OrderBy>>::value);
+        STATIC_REQUIRE_FALSE(internal::check_clause_order<std::tuple<OrderBy, Window>>::value);
         STATIC_REQUIRE_FALSE(internal::check_clause_order<std::tuple<Where, Join>>::value);
         STATIC_REQUIRE_FALSE(internal::check_clause_order<std::tuple<OrderBy, From>>::value);
     }

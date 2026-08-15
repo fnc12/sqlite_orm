@@ -407,8 +407,9 @@ namespace sqlite_orm::internal {
                                   : is_any_join<T>::value                               ? 2
                                   : is_where<T>::value                                  ? 3
                                   : is_group_by<T>::value                               ? 4
-                                  : is_order_by<T>::value                               ? 5
-                                  : is_limit<T>::value                                  ? 6
+                                  : is_window_defn<T>::value                            ? 5
+                                  : is_order_by<T>::value                               ? 6
+                                  : is_limit<T>::value                                  ? 7
                                                                                         : 0;
 
     template<class T>
@@ -466,10 +467,10 @@ namespace sqlite_orm::internal {
         static_assert(mpl::invoke_t<mpl::counts<mpl::disjunction_fn<is_from, is_from2>>, T>::value <= 1,
                       "a single query cannot contain > 1 FROM blocks");
         static_assert(std::tuple_size<T>::value == count_tuple<T, is_statement_clause>::value,
-                      "a query argument must be a FROM, JOIN, WHERE, GROUP BY, ORDER BY or LIMIT clause");
+                      "a query argument must be a FROM, JOIN, WHERE, GROUP BY, WINDOW, ORDER BY or LIMIT clause");
         static_assert(check_clause_order<T>::value,
-                      "SQL clauses must be listed in the canonical order: FROM, JOINs, WHERE, GROUP BY, ORDER BY, "
-                      "LIMIT");
+                      "SQL clauses must be listed in the canonical order: FROM, JOINs, WHERE, GROUP BY, WINDOW, "
+                      "ORDER BY, LIMIT");
         static_assert(std::tuple_size<T>::value == count_tuple<T, clause_holds_no_clause>::value,
                       "a clause argument cannot be another clause");
     }
