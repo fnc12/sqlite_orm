@@ -1281,3 +1281,240 @@ TEST_CASE("sync_schema removed column edge cases") {
     }
 #endif
 }
+
+/**
+ *  SQLite validates foreign key targets lazily (at DML time, not at `CREATE TABLE` time),
+ *  so two tables with cross-referencing foreign keys can be created in ANY order.
+ *  These tests prove it with foreign key enforcement enabled
+ *  (sqlite_orm turns `PRAGMA foreign_keys` on automatically when the schema contains foreign keys).
+ */
+TEST_CASE("sync_schema with cross-referencing foreign keys") {
+    struct CrossArtist {
+        int id = 0;
+        std::unique_ptr<int> lastAlbumId;
+    };
+    struct CrossAlbum {
+        int id = 0;
+        std::unique_ptr<int> artistId;
+    };
+    auto storagePath = "sync_schema_cross_fk.sqlite";
+    std::remove(storagePath);
+
+    auto artistsTable = [] {
+        return make_table("artists",
+                          make_column("id", &CrossArtist::id, primary_key()),
+                          make_column("last_album_id", &CrossArtist::lastAlbumId),
+                          foreign_key(&CrossArtist::lastAlbumId).references(&CrossAlbum::id));
+    };
+    auto albumsTable = [] {
+        return make_table("albums",
+                          make_column("id", &CrossAlbum::id, primary_key()),
+                          make_column("artist_id", &CrossAlbum::artistId),
+                          foreign_key(&CrossAlbum::artistId).references(&CrossArtist::id));
+    };
+
+    auto requireForeignKeysWork = [](auto& storage) {
+        //  a valid insert sequence: the nullable foreign keys break the chicken-and-egg problem
+        CrossArtist artist;
+        artist.id = 1;
+        storage.replace(artist);
+        CrossAlbum album;
+        album.id = 10;
+        album.artistId = std::make_unique<int>(1);
+        storage.replace(album);
+        storage.update_all(set(c(&CrossArtist::lastAlbumId) = 10), where(c(&CrossArtist::id) == 1));
+
+        //  the foreign keys are actually enforced
+        CrossAlbum orphanAlbum;
+        orphanAlbum.id = 11;
+        orphanAlbum.artistId = std::make_unique<int>(777);
+        REQUIRE_THROWS(storage.replace(orphanAlbum));
+    };
+
+    SECTION("artists declared first") {
+        auto storage = make_storage(storagePath, artistsTable(), albumsTable());
+        auto simulateResult = storage.sync_schema_simulate();
+        auto syncResult = storage.sync_schema();
+        REQUIRE(simulateResult == syncResult);
+        REQUIRE(syncResult.at("artists") == sync_schema_result::new_table_created);
+        REQUIRE(syncResult.at("albums") == sync_schema_result::new_table_created);
+        requireForeignKeysWork(storage);
+    }
+    SECTION("albums declared first") {
+        auto storage = make_storage(storagePath, albumsTable(), artistsTable());
+        auto simulateResult = storage.sync_schema_simulate();
+        auto syncResult = storage.sync_schema();
+        REQUIRE(simulateResult == syncResult);
+        REQUIRE(syncResult.at("artists") == sync_schema_result::new_table_created);
+        REQUIRE(syncResult.at("albums") == sync_schema_result::new_table_created);
+        requireForeignKeysWork(storage);
+    }
+    std::remove(storagePath);
+}
+
+/**
+ *  Database objects must be synced in dependency order regardless of the declaration order:
+ *  an index has to be created after its table, and recreated after its table has been
+ *  recreated through the backup-table procedure (which drops the table's indexes).
+ */
+TEST_CASE("sync_schema syncs objects in dependency order") {
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    struct UserV2 {
+        int id = 0;
+        std::unique_ptr<std::string> name;
+    };
+    auto storagePath = "sync_schema_dependency_order.sqlite";
+    std::remove(storagePath);
+
+    auto indexCount = [&storagePath] {
+        auto inspectionStorage = make_storage(storagePath, make_sqlite_schema_table());
+        return inspectionStorage.count<sqlite_master>(
+            where(c(&sqlite_master::type) == "index" and c(&sqlite_master::name) == "idx_users_name"));
+    };
+
+    SECTION("a new table and its index are created from a straight declaration order") {
+        //  the order sqlite2orm generates: the table first, its index second
+        auto storage = make_storage(
+            storagePath,
+            make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)),
+            make_index("idx_users_name", &User::name));
+        storage.sync_schema();
+        REQUIRE(indexCount() == 1);
+    }
+    SECTION("the index is recreated after its table has been recreated") {
+        {
+            auto storage = make_storage(
+                storagePath,
+                make_index("idx_users_name", &User::name),
+                make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)));
+            storage.sync_schema();
+            storage.replace(User{1, "Leony"});
+            REQUIRE(indexCount() == 1);
+        }
+        //  straight declaration order + a column change which makes sync_schema recreate the table
+        auto storage = make_storage(
+            storagePath,
+            make_table("users", make_column("id", &UserV2::id, primary_key()), make_column("name", &UserV2::name)),
+            make_index("idx_users_name", &UserV2::name));
+        auto syncResult = storage.sync_schema(true);
+        REQUIRE(syncResult.at("users") == sync_schema_result::dropped_and_recreated);
+        REQUIRE(indexCount() == 1);
+    }
+    std::remove(storagePath);
+}
+
+TEST_CASE("sync_schema dependency order state matrix") {
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    struct UserV2 {
+        int id = 0;
+        std::unique_ptr<std::string> name;
+    };
+    struct UserWithEmail {
+        int id = 0;
+        std::string name;
+        std::unique_ptr<std::string> email;
+    };
+    auto storagePath = "sync_schema_dependency_matrix.sqlite";
+    std::remove(storagePath);
+
+    auto objectCount = [&storagePath](const std::string& type, const std::string& name) {
+        auto inspectionStorage = make_storage(storagePath, make_sqlite_schema_table());
+        return inspectionStorage.count<sqlite_master>(
+            where(c(&sqlite_master::type) == type and c(&sqlite_master::name) == name));
+    };
+
+    //  the common starting point: a table with an index and a trigger, everything in sync
+    {
+        auto storage = make_storage(
+            storagePath,
+            make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)),
+            make_index("idx_users_name", &User::name),
+            make_trigger("trg_users", after().insert().on<User>().begin(update_all(set(c(&User::name) = "updated")))));
+        storage.sync_schema();
+        storage.replace(User{1, "Leony"});
+        REQUIRE(objectCount("index", "idx_users_name") == 1);
+        REQUIRE(objectCount("trigger", "trg_users") == 1);
+    }
+    SECTION("an in-place column addition keeps the dependent objects") {
+        auto storage = make_storage(storagePath,
+                                    make_table("users",
+                                               make_column("id", &UserWithEmail::id, primary_key()),
+                                               make_column("name", &UserWithEmail::name),
+                                               make_column("email", &UserWithEmail::email)),
+                                    make_index("idx_users_name", &UserWithEmail::name),
+                                    make_trigger("trg_users",
+                                                 after().insert().on<UserWithEmail>().begin(
+                                                     update_all(set(c(&UserWithEmail::name) = "updated")))));
+        auto syncResult = storage.sync_schema(true);
+        REQUIRE(syncResult.at("users") == sync_schema_result::new_columns_added);
+        REQUIRE(objectCount("index", "idx_users_name") == 1);
+        REQUIRE(objectCount("trigger", "trg_users") == 1);
+    }
+    SECTION("dependent objects are recreated after the table has been recreated") {
+        //  a NOT NULL change makes sync_schema recreate the table through the backup procedure,
+        //  which destroys its indexes and triggers
+        auto storage = make_storage(
+            storagePath,
+            make_table("users", make_column("id", &UserV2::id, primary_key()), make_column("name", &UserV2::name)),
+            make_index("idx_users_name", &UserV2::name),
+            make_trigger("trg_users", after().insert().on<UserV2>().begin(update_all(set(c(&UserV2::id) = 100)))));
+        auto syncResult = storage.sync_schema(true);
+        REQUIRE(syncResult.at("users") == sync_schema_result::dropped_and_recreated);
+        REQUIRE(objectCount("index", "idx_users_name") == 1);
+        REQUIRE(objectCount("trigger", "trg_users") == 1);
+    }
+    std::remove(storagePath);
+}
+
+TEST_CASE("sync_schema dependency order compositions") {
+    struct Employee {
+        int id = 0;
+        std::unique_ptr<int> managerId;
+    };
+    struct Product {
+        int id = 0;
+        std::string title;
+    };
+    auto storagePath = "sync_schema_dependency_compositions.sqlite";
+    std::remove(storagePath);
+
+    SECTION("a self-referencing foreign key") {
+        auto storage = make_storage(storagePath,
+                                    make_table("employees",
+                                               make_column("id", &Employee::id, primary_key()),
+                                               make_column("manager_id", &Employee::managerId),
+                                               foreign_key(&Employee::managerId).references(&Employee::id)));
+        auto syncResult = storage.sync_schema();
+        REQUIRE(syncResult.at("employees") == sync_schema_result::new_table_created);
+        Employee manager;
+        manager.id = 1;
+        storage.replace(manager);
+        Employee worker;
+        worker.id = 2;
+        worker.managerId = std::make_unique<int>(1);
+        storage.replace(worker);
+        REQUIRE(storage.count<Employee>() == 2);
+    }
+    SECTION("interleaved declaration: every index before its own table") {
+        auto storage = make_storage(storagePath,
+                                    make_index("idx_products_title", &Product::title),
+                                    make_table("employees",
+                                               make_column("id", &Employee::id, primary_key()),
+                                               make_column("manager_id", &Employee::managerId)),
+                                    make_index("idx_employees_manager", &Employee::managerId),
+                                    make_table("products",
+                                               make_column("id", &Product::id, primary_key()),
+                                               make_column("title", &Product::title)));
+        storage.sync_schema();
+        auto inspectionStorage = make_storage(storagePath, make_sqlite_schema_table());
+        REQUIRE(inspectionStorage.count<sqlite_master>(
+                    where(c(&sqlite_master::type) == "index" and like(&sqlite_master::name, "idx_%"))) == 2);
+    }
+    std::remove(storagePath);
+}

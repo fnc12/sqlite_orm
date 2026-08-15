@@ -28,6 +28,13 @@ namespace sqlite_orm::internal {
     template<typename T>
     using object_type_t = typename T::object_type;
 
+    /**
+     *  The mapped object type of the schema object a database object is defined on
+     *  (e.g. of an index's or a trigger's target table).
+     */
+    template<typename T>
+    using table_mapped_type_t = typename T::table_mapped_type;
+
     template<typename T>
     using elements_type_t = typename T::elements_type;
 
