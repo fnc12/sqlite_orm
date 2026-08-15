@@ -43,6 +43,7 @@
 #include "column_result.h"
 #include "mapped_type_proxy.h"
 #include "sync_schema_result.h"
+#include "schema/algorithms/sync_order.h"
 #include "table_info.h"
 #include "storage_impl.h"
 #include "mapped_view.h"
@@ -1455,10 +1456,13 @@ namespace sqlite_orm::internal {
         std::map<std::string, sync_schema_result> sync_schema(bool preserve = false) {
             auto conRef = this->get_connection();
             std::map<std::string, sync_schema_result> result;
-            iterate_tuple<true>(this->db_objects, [this, db = conRef.get(), preserve, &result](auto& schemaObject) {
-                sync_schema_result status = this->sync_dbo(schemaObject, db, preserve);
-                result.emplace(schemaObject.name, status);
-            });
+            //  sync in dependency order: indexes and triggers after their target table or view
+            iterate_tuple(this->db_objects,
+                          sync_order_sequence_t<db_objects_type>{},
+                          [this, db = conRef.get(), preserve, &result](auto& schemaObject) {
+                              sync_schema_result status = this->sync_dbo(schemaObject, db, preserve);
+                              result.emplace(schemaObject.name, status);
+                          });
             return result;
         }
 
@@ -1470,10 +1474,13 @@ namespace sqlite_orm::internal {
         std::map<std::string, sync_schema_result> sync_schema_simulate(bool preserve = false) {
             auto conRef = this->get_connection();
             std::map<std::string, sync_schema_result> result;
-            iterate_tuple<true>(this->db_objects, [this, db = conRef.get(), preserve, &result](auto& schemaObject) {
-                sync_schema_result status = this->schema_status(schemaObject, db, preserve, nullptr);
-                result.emplace(schemaObject.name, status);
-            });
+            //  sync in dependency order: indexes and triggers after their target table or view
+            iterate_tuple(this->db_objects,
+                          sync_order_sequence_t<db_objects_type>{},
+                          [this, db = conRef.get(), preserve, &result](auto& schemaObject) {
+                              sync_schema_result status = this->schema_status(schemaObject, db, preserve, nullptr);
+                              result.emplace(schemaObject.name, status);
+                          });
             return result;
         }
 
