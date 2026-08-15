@@ -14,6 +14,7 @@
 #include "vocabulary/node_traits.h"
 #include "schema/column.h"
 #include "schema/table_base.h"
+#include "ast/quoted_expression.h"
 #include "select_constraints.h"
 #include "alias.h"
 #include "cte_types.h"
@@ -162,11 +163,12 @@ namespace sqlite_orm::internal {
         return {};
     }
 
-    // expression_t<>
+    // quoted_expression_t<>
     template<class DBOs, class E, size_t Idx = 0>
-    auto
-    extract_colref_expressions(const DBOs& dbObjects, const expression_t<E>& col, std::index_sequence<Idx> s = {}) {
-        return extract_colref_expressions(dbObjects, col.value, s);
+    auto extract_colref_expressions(const DBOs& dbObjects,
+                                    const quoted_expression_t<E>& col,
+                                    std::index_sequence<Idx> s = {}) {
+        return extract_colref_expressions(dbObjects, col._value, s);
     }
 
     // F O::* (field/getter) -> field/getter

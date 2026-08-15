@@ -11,6 +11,7 @@
 #include "schema/view.h"
 #include "schema/index.h"
 #include "schema/triggers.h"
+#include "schema/indexed_column.h"
 #include "schema/constraints/primary_key.h"
 #include "schema/constraints/foreign_key.h"
 #include "schema/constraints/null.h"
@@ -25,6 +26,7 @@
 #include "schema/constraints/unindexed.h"
 #include "schema/constraints/collate.h"
 
+#include "ast/quoted_expression.h"
 #include "ast/between.h"
 #include "ast/cast.h"
 #include "ast/cross_join.h"

@@ -20,6 +20,7 @@
 #include "../vocabulary/node_traits.h"
 #include "../vocabulary/node_algorithms.h"
 #include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+#include "constraints/generated_always.h"
 #include "table_base.h"
 #include "column.h"  //  sqlite_orm::make_column
 #include "dbo_name.h"
