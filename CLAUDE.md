@@ -85,12 +85,22 @@ The library uses a **storage-centric architecture** with compile-time type safet
 - `dev/schema/virtual_table.h` - Virtual table support
 - `dev/schema/index.h` - Index support
 - `dev/schema/triggers.h` - Trigger support
+- `dev/schema/constraints/` - One header per constraint (`primary_key`, `foreign_key`, `check`, ...)
+- `dev/schema/algorithms/` - Algorithms operating across the whole schema, e.g. `sync_order.h`
+- `dev/vtabs/` - Built-in virtual tables (fts5, rtree, dbstat, generate_series)
+
+**Vocabulary layer** (see [Header layers](#header-layers) below):
+- `dev/vocabulary/traits/` - Open classification traits, specialized at each node's own header
+- `dev/vocabulary/algorithms/` - Closed algorithms composed from those traits
+- `dev/vocabulary/node_traits.h`, `dev/vocabulary/node_algorithms.h` - Declaration-only umbrellas
+- `dev/node_definitions.h`, `dev/node_algorithm_definitions.h` - Completeness manifests
+- `dev/member_traits/` - Pointer-to-member mechanics; one tier below the DSL
 
 **Query building:**
-- `dev/conditions.h` - WHERE clause conditions (41K+ lines)
-- `dev/core_functions.h` - SQL functions (82K+ lines)
+- `dev/conditions.h` - WHERE clause conditions
+- `dev/core_functions.h` - SQL functions
 - `dev/select_constraints.h` - SELECT modifiers (ORDER BY, LIMIT, etc.)
-- `dev/ast/` - AST nodes for complex SQL constructs
+- `dev/ast/` - AST nodes for DML and operational constructs (`select_t`, `insert_t`, `where`, `window`, ...)
 
 **Type binding:**
 - `dev/statement_binder.h` - Binds C++ values to prepared statements
@@ -104,7 +114,46 @@ The library uses a **storage-centric architecture** with compile-time type safet
 - `dev/cte_storage.h` - Common Table Expression support
 
 ### Header Organization
-The library has ~22,500 lines across the `dev/` directory headers. The main header `include/sqlite_orm/sqlite_orm.h` includes all necessary components. The `dev/` directory contains the actual implementation, organized by functionality.
+
+`dev/` is the source of truth: ~30,000 lines across ~184 headers, organized by
+functionality. `include/sqlite_orm/sqlite_orm.h` is the **generated** single-header
+amalgamation of `dev/`. Never edit it by hand — change `dev/` and regenerate.
+`not_single_header_include/` holds the non-amalgamated variant.
+
+### Header layers
+
+**Read [`docs/internals/vocabulary-layer.md`](docs/internals/vocabulary-layer.md) before
+adding, moving or renaming anything under `dev/`.** It is the authority on where internal
+code belongs and why; what follows is only enough to know when to consult it.
+
+sqlite_orm models SQL as a compile-time DSL of individually named node structs. A
+*vocabulary layer* of traits and algorithms lets the rest of the library program against
+classification and capability ("is this a column", "is this a select expression") instead
+of against concrete node types. The placement test for anything new:
+
+- Specialized against something concrete — a node struct or a raw type? → `dev/vocabulary/traits/`
+- Composed from other vocabulary, but closed and single-node-scoped ("I already have a node, tell me something about it")? → `dev/vocabulary/algorithms/`
+- Searches or traverses *across a collection* to locate or relate nodes? → **not vocabulary.** `dev/schema/algorithms/`
+
+Complexity never determines the tier — only those three questions do. A trait that
+composes five others is still a trait.
+
+#### Adding a new DSL node
+
+1. Define the node struct in `dev/schema/` or `dev/ast/`.
+2. In **that same header**, specialize whichever vocabulary axes apply (grammar, semantic,
+   structural, operand), including the relevant `vocabulary/traits/*_fwd.h` for each.
+3. **Register the header in `dev/node_definitions.h`.**
+4. Add tests under `tests/`.
+
+Step 3 is not optional and does not fail loudly. The `_fwd` split removed the transitive
+inclusion that used to guarantee specializations were compiled in; a missing entry means
+the trait silently falls back to its primary template and the node quietly loses its
+classification. The test suite is the backstop.
+
+Definition-only headers deliberately excluded from the declaration-only umbrellas —
+`vocabulary/algorithms/field_predicates.h` today — are registered in
+`dev/node_algorithm_definitions.h` instead.
 
 ## Development Workflow
 
@@ -160,11 +209,14 @@ Queries are built using expression objects that overload operators:
 
 ## Important Notes
 
+- **Internal structure**: See `docs/internals/vocabulary-layer.md` for header layering and placement rules. It also records open work (traits not yet lifted into the vocabulary layer, `storage_*` → `schema_*` renames) — check it before starting a refactor that may already be planned there.
 - **Thread safety**: See `docs/thread-safety.md`. Storage objects are thread-safe by default since v1.10.
 - **Schema sync**: `sync_schema()` attempts to preserve data but may drop tables if column constraints change significantly. Back up data before schema changes.
 - **In-memory databases**: Use `:memory:` or `""` as filename.
 - **Primary key requirement**: CRUD operations like `get()`, `update()`, `remove()` require a primary key column.
 - **No raw SQL**: The library's design philosophy avoids raw SQL strings for type safety, but you can use `execute()` for raw queries if needed.
 
-## Current Branch
-The current branch is `experimental/sql-view` (based on `dev`). Main branch is `master`, but active development happens on `dev`.
+## Branches
+`master` is the release branch; active development happens on `dev`, and feature branches
+are based on it. Check out the actual current branch with `git branch --show-current`
+rather than assuming.
