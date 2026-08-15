@@ -6,7 +6,7 @@
 
 #include "schema/constraints/default.h"
 #include "serializer_context.h"
-#include "storage_lookup.h"
+#include "schema/db_objects.h"
 
 namespace sqlite_orm::internal {
     template<class T, class Ctx>

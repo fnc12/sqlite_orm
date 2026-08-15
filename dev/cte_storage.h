@@ -20,7 +20,8 @@
 #include "cte_types.h"
 #include "cte_column_names_collector.h"
 #include "column_expression.h"
-#include "storage_lookup.h"
+#include "schema/db_objects.h"
+#include "schema/algorithms/table_lookup.h"
 
 namespace sqlite_orm::internal {
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
@@ -217,7 +218,7 @@ namespace sqlite_orm::internal {
     // asterisk_t<> -> fields
     template<class DBOs, class O>
     auto extract_colref_expressions(const DBOs& dbObjects, const asterisk_t<O>& /*col*/) {
-        using table_type = storage_pick_table_t<O, DBOs>;
+        using table_type = schema_pick_table_t<O, DBOs>;
         using elements_type = typename table_type::elements_type;
         using column_idxs = filter_tuple_sequence_t<elements_type, is_column>;
 

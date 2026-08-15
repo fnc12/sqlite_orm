@@ -6,7 +6,6 @@
 #include <algorithm>  // std::ranges::find
 #endif
 
-#include "functional/cxx_type_traits_polyfill.h"
 #include "error_code.h"
 #include "conditions.h"
 #include "function.h"

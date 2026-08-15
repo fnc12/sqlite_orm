@@ -10926,34 +10926,26 @@ namespace sqlite_orm::internal {
 
 // #include "vocabulary/node_traits.h"
 
-// #include "storage_lookup.h"
+// #include "schema/db_objects.h"
+
+/** @file The tuple of database objects making up a schema.
+ *
+ *  A schema is represented as a tuple of database objects - tables, views, virtual tables,
+ *  indexes and triggers. These are the generic facilities for recognizing and passing around
+ *  such a tuple; locating an individual database object within one is the subject of
+ *  `algorithms/table_lookup.h`.
+ */
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::true_type, std::false_type, std::remove_const, std::enable_if, std::is_base_of, std::is_void
-#include <tuple>  // std::tuple_size, std::get
-#include <utility>  //  std::index_sequence, std::make_index_sequence
+#include <type_traits>  //  std::true_type, std::false_type
+#include <tuple>  //  std::tuple
 #endif
 
-// #include "functional/cxx_type_traits_polyfill.h"
-
-// #include "vocabulary/node_projections.h"
-
-// #include "type_traits.h"
+// #include "../type_traits.h"
 
 namespace sqlite_orm::internal {
     template<class... DBO>
-    struct storage_t;
-
-    template<class... DBO>
     using db_objects_tuple = std::tuple<DBO...>;
-
-    template<class T>
-    struct is_storage : std::false_type {};
-
-    template<class... DBO>
-    struct is_storage<storage_t<DBO...>> : std::true_type {};
-    template<class... DBO>
-    struct is_storage<const storage_t<DBO...>> : std::true_type {};
 
     template<class T>
     struct is_db_objects : std::false_type {};
@@ -10966,8 +10958,46 @@ namespace sqlite_orm::internal {
     struct is_db_objects<const std::tuple<DBO...>> : std::true_type {};
 
     /**
+     *  Return passed in DBOs.
+     */
+    template<class DBOs, class E, satisfies<is_db_objects, DBOs> = true>
+    decltype(auto) db_objects_for_expression(DBOs& dbObjects, const E&) {
+        return dbObjects;
+    }
+}
+
+// #include "schema/algorithms/table_lookup.h"
+
+/** @file Lookup of a table definition within a tuple of database objects.
+ *
+ *  These are schema-level algorithms: they search *across* the collection of database objects
+ *  to locate the one mapping a given lookup type, as opposed to classifying a node already in hand,
+ *  which is what the vocabulary layer does. They consume the vocabulary layer to do so.
+ *
+ *  "Table" is meant in the wide SQL table sense here, covering base tables, views
+ *  and virtual tables alike. Indexes and triggers are deliberately not covered:
+ *  their `object_type` is void, which `object_type_matches` filters out, so a lookup
+ *  answers whether a type is mapped as a table - not whether it occurs in the schema at all.
+ */
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <type_traits>  //  std::true_type, std::false_type, std::remove_const, std::enable_if, std::is_same, std::is_void
+#include <tuple>  // std::tuple_size, std::get
+#include <utility>  //  std::index_sequence, std::make_index_sequence
+#endif
+
+// #include "../../functional/cxx_type_traits_polyfill.h"
+
+// #include "../../vocabulary/node_projections.h"
+
+// #include "../../type_traits.h"
+
+// #include "../db_objects.h"
+
+namespace sqlite_orm::internal {
+    /**
      *  `std::true_type` if given object is mapped, `std::false_type` otherwise.
-     *  
+     *
      *  Note: unlike base_table<>, index_t<>::object_type and trigger_t<>::object_type is always void.
      */
     template<typename DBO, typename Lookup>
@@ -10992,56 +11022,56 @@ namespace sqlite_orm::internal {
 
     /**
      *  SFINAE friendly facility to pick a table definition (`base_table`) from a tuple of database objects.
-     *  
+     *
      *  Lookup - mapped data type
      *  Seq - index sequence matching the number of DBOs
      *  DBOs - db_objects_tuple type
      */
     template<class Lookup, class Seq, class DBOs>
-    struct storage_pick_table;
+    struct schema_pick_table;
 
     template<class Lookup, size_t... Ix, class... DBO>
-    struct storage_pick_table<Lookup, std::index_sequence<Ix...>, db_objects_tuple<DBO...>>
+    struct schema_pick_table<Lookup, std::index_sequence<Ix...>, db_objects_tuple<DBO...>>
         : enable_found_table<Lookup, Ix, DBO>... {};
 
     /**
      *  SFINAE friendly facility to pick a table definition (`base_table`) from a tuple of database objects.
-     *  
+     *
      *  Lookup - 'table' type, mapped data type
      *  DBOs - db_objects_tuple type, possibly const-qualified
      */
     template<class Lookup, class DBOs>
-    using storage_pick_table_t = typename storage_pick_table<Lookup,
-                                                             std::make_index_sequence<std::tuple_size<DBOs>::value>,
-                                                             std::remove_const_t<DBOs>>::type;
+    using schema_pick_table_t = typename schema_pick_table<Lookup,
+                                                           std::make_index_sequence<std::tuple_size<DBOs>::value>,
+                                                           std::remove_const_t<DBOs>>::type;
 
     /**
      *  Find a table definition (`base_table`) from a tuple of database objects;
      *  `std::nonesuch` if not found.
-     *  
+     *
      *  DBOs - db_objects_tuple type
      *  Lookup - mapped data type
      */
     template<class Lookup, class DBOs>
-    struct storage_find_table : polyfill::detected<storage_pick_table_t, Lookup, DBOs> {};
+    struct schema_find_table : polyfill::detected<schema_pick_table_t, Lookup, DBOs> {};
 
     /**
      *  Find a table definition (`base_table`) from a tuple of database objects;
      *  `std::nonesuch` if not found.
-     *  
+     *
      *  DBOs - db_objects_tuple type, possibly const-qualified
      *  Lookup - mapped data type
      */
     template<class Lookup, class DBOs>
-    using storage_find_table_t = typename storage_find_table<Lookup, std::remove_const_t<DBOs>>::type;
+    using schema_find_table_t = typename schema_find_table<Lookup, std::remove_const_t<DBOs>>::type;
 
 #ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
     template<class DBOs, class Lookup, class SFINAE = void>
     struct is_mapped : std::false_type {};
     template<class DBOs, class Lookup>
-    struct is_mapped<DBOs, Lookup, polyfill::void_t<storage_pick_table_t<Lookup, DBOs>>> : std::true_type {};
+    struct is_mapped<DBOs, Lookup, polyfill::void_t<schema_pick_table_t<Lookup, DBOs>>> : std::true_type {};
 #else
-    template<class DBOs, class Lookup, class SFINAE = storage_find_table_t<Lookup, DBOs>>
+    template<class DBOs, class Lookup, class SFINAE = schema_find_table_t<Lookup, DBOs>>
     struct is_mapped : std::true_type {};
     template<class DBOs, class Lookup>
     struct is_mapped<DBOs, Lookup, polyfill::nonesuch> : std::false_type {};
@@ -11055,21 +11085,13 @@ namespace sqlite_orm::internal {
 namespace sqlite_orm::internal {
     /**
      *  Pick the table definition for the specified lookup type from the given tuple of schema objects.
-     *  
+     *
      *  Note: This function requires Lookup to be mapped, otherwise it is removed from the overload resolution set.
      */
     template<class Lookup, class DBOs, satisfies<is_mapped, DBOs, Lookup> = true>
     auto& pick_table(DBOs& dbObjects) {
-        using table_type = storage_pick_table_t<Lookup, DBOs>;
+        using table_type = schema_pick_table_t<Lookup, DBOs>;
         return std::get<table_type>(dbObjects);
-    }
-
-    /**
-     *  Return passed in DBOs.
-     */
-    template<class DBOs, class E, satisfies<is_db_objects, DBOs> = true>
-    decltype(auto) db_objects_for_expression(DBOs& dbObjects, const E&) {
-        return dbObjects;
     }
 
     template<class Lookup, class DBOs, satisfies<is_db_objects, DBOs> = true>
@@ -11395,7 +11417,7 @@ namespace sqlite_orm::internal::storage_traits {
      *  Lookup - mapped or unmapped data type
      */
     template<class DBOs, class Lookup>
-    struct storage_mapped_columns : storage_mapped_columns_impl<storage_find_table_t<Lookup, DBOs>> {};
+    struct storage_mapped_columns : storage_mapped_columns_impl<schema_find_table_t<Lookup, DBOs>> {};
 
     /**
      *  DBO - db object (table)
@@ -11415,9 +11437,11 @@ namespace sqlite_orm::internal::storage_traits {
      */
     template<class DBOs, class Lookup>
     struct storage_mapped_column_expressions
-        : storage_mapped_column_expressions_impl<storage_find_table_t<Lookup, DBOs>> {};
+        : storage_mapped_column_expressions_impl<schema_find_table_t<Lookup, DBOs>> {};
 }
 
+// #include "schema/algorithms/table_lookup.h"
+// schema_pick_table_t
 // #include "function.h"
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
@@ -12877,7 +12901,7 @@ namespace sqlite_orm::internal {
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     template<class DBOs, class Moniker, class ColAlias>
     struct column_result_t<DBOs, column_pointer<Moniker, alias_holder<ColAlias>>, void> {
-        using table_type = storage_pick_table_t<Moniker, DBOs>;
+        using table_type = schema_pick_table_t<Moniker, DBOs>;
         using cte_mapper_type = cte_mapper_type_t<table_type>;
 
         // lookup ColAlias in the final column references
@@ -13250,7 +13274,9 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "cte_types.h"
 
-// #include "storage_lookup.h"
+// #include "schema/db_objects.h"
+
+// #include "schema/algorithms/table_lookup.h"
 
 // interface functions
 namespace sqlite_orm::internal {
@@ -13309,7 +13335,7 @@ namespace sqlite_orm::internal {
     template<class Moniker, class ColAlias, class DBOs, satisfies<is_db_objects, DBOs> = true>
     constexpr decltype(auto) materialize_column_pointer(const DBOs&,
                                                         const column_pointer<Moniker, alias_holder<ColAlias>>&) {
-        using table_type = storage_pick_table_t<Moniker, DBOs>;
+        using table_type = schema_pick_table_t<Moniker, DBOs>;
         using cte_colrefs_tuple = typename cte_mapper_type_t<table_type>::final_colrefs_tuple;
         using cte_fields_type = typename cte_mapper_type_t<table_type>::fields_type;
 
@@ -13341,7 +13367,7 @@ namespace sqlite_orm::internal {
     template<class Moniker, class ColAlias, class DBOs, satisfies<is_db_objects, DBOs> = true>
     constexpr decltype(auto) find_column_name(const DBOs& dboObjects,
                                               const column_pointer<Moniker, alias_holder<ColAlias>>&) {
-        using table_type = storage_pick_table_t<Moniker, DBOs>;
+        using table_type = schema_pick_table_t<Moniker, DBOs>;
         using cte_colrefs_tuple = typename cte_mapper_type_t<table_type>::final_colrefs_tuple;
         using column_index_sequence = col_index_sequence_of<elements_type_t<table_type>>;
 
@@ -14179,7 +14205,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "row_extractor.h"
 
-// #include "storage_lookup.h"
+// #include "schema/algorithms/table_lookup.h"
 
 namespace sqlite_orm::internal {
     struct object_from_column_builder_base {
@@ -14241,7 +14267,7 @@ namespace sqlite_orm::internal {
     };
 }
 
-// #include "storage_lookup.h"
+// #include "schema/algorithms/table_lookup.h"
 
 // #include "util.h"
 
@@ -15213,7 +15239,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "core_functions.h"
 
-// #include "storage_lookup.h"
+// #include "schema/algorithms/table_lookup.h"
 // lookup_table_name
 
 namespace sqlite_orm::internal {
@@ -17274,8 +17300,6 @@ inline constexpr bool std::ranges::enable_borrowed_range<sqlite_orm::internal::m
 
 // #include "functional/cxx_type_traits_polyfill.h"
 
-// #include "row_extractor.h"
-
 // #include "result_set_iterator.h"
 
 #include <sqlite3.h>
@@ -17379,9 +17403,9 @@ namespace sqlite_orm::internal {
 
 // #include "util.h"
 
-// #include "type_traits.h"
-
-// #include "storage_lookup.h"
+// #include "vocabulary/node_traits.h"
+// projections
+// #include "schema/db_objects.h"
 
 namespace sqlite_orm::internal {
     /*  
@@ -20596,7 +20620,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 
 // #include "alias_traits.h"
 
-// #include "storage_lookup.h"
+// #include "schema/algorithms/table_lookup.h"
 //  pick_table
 // #include "util.h"
 // quote_identifier
@@ -25005,7 +25029,9 @@ namespace sqlite_orm::internal {
     struct column_expression_type<DBOs, select_t<E, Args...>> : column_expression_type<DBOs, E> {};
 }
 
-// #include "storage_lookup.h"
+// #include "schema/db_objects.h"
+
+// #include "schema/algorithms/table_lookup.h"
 
 namespace sqlite_orm::internal {
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
@@ -25202,7 +25228,7 @@ namespace sqlite_orm::internal {
     // asterisk_t<> -> fields
     template<class DBOs, class O>
     auto extract_colref_expressions(const DBOs& dbObjects, const asterisk_t<O>& /*col*/) {
-        using table_type = storage_pick_table_t<O, DBOs>;
+        using table_type = schema_pick_table_t<O, DBOs>;
         using elements_type = typename table_type::elements_type;
         using column_idxs = filter_tuple_sequence_t<elements_type, is_column>;
 
@@ -25341,8 +25367,6 @@ namespace sqlite_orm::internal {
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <algorithm>  // std::ranges::find
 #endif
-
-// #include "functional/cxx_type_traits_polyfill.h"
 
 // #include "error_code.h"
 
@@ -25573,7 +25597,7 @@ namespace sqlite_orm::internal {
 
         template<class O>
         void assert_primary_key_type() const {
-            using table_type = storage_pick_table_t<O, db_objects_type>;
+            using table_type = schema_pick_table_t<O, db_objects_type>;
             using elements_type = elements_type_t<table_type>;
             using pk_index_sequence = filter_tuple_sequence_t<elements_type, is_primary_key>;
             using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
@@ -25584,7 +25608,7 @@ namespace sqlite_orm::internal {
 
         template<class O>
         void assert_updatable_type() const {
-            using table_type = storage_pick_table_t<O, db_objects_type>;
+            using table_type = schema_pick_table_t<O, db_objects_type>;
             using elements_type = elements_type_t<table_type>;
             using column_index_sequence = col_index_sequence_of<elements_type>;
             using pk_index_sequence = filter_tuple_sequence_t<elements_type, is_primary_key>;
@@ -25601,12 +25625,12 @@ namespace sqlite_orm::internal {
         }
 
         template<class O,
-                 class Table = storage_pick_table_t<O, db_objects_type>,
+                 class Table = schema_pick_table_t<O, db_objects_type>,
                  std::enable_if_t<Table::is_without_rowid::value, bool> = true>
         void assert_insertable_type() const {}
 
         template<class O,
-                 class Table = storage_pick_table_t<O, db_objects_type>,
+                 class Table = schema_pick_table_t<O, db_objects_type>,
                  std::enable_if_t<!Table::is_without_rowid::value, bool> = true>
         void assert_insertable_type() const {
             using elements_type = elements_type_t<Table>;
@@ -28914,7 +28938,7 @@ namespace sqlite_orm::internal {
 
 // #include "serializer_context.h"
 
-// #include "storage_lookup.h"
+// #include "schema/db_objects.h"
 
 namespace sqlite_orm::internal {
     template<class T, class Ctx>

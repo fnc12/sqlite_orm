@@ -233,7 +233,7 @@ namespace sqlite_orm::internal {
 
         template<class O>
         void assert_primary_key_type() const {
-            using table_type = storage_pick_table_t<O, db_objects_type>;
+            using table_type = schema_pick_table_t<O, db_objects_type>;
             using elements_type = elements_type_t<table_type>;
             using pk_index_sequence = filter_tuple_sequence_t<elements_type, is_primary_key>;
             using pkcol_index_sequence = col_index_sequence_with<elements_type, is_primary_key>;
@@ -244,7 +244,7 @@ namespace sqlite_orm::internal {
 
         template<class O>
         void assert_updatable_type() const {
-            using table_type = storage_pick_table_t<O, db_objects_type>;
+            using table_type = schema_pick_table_t<O, db_objects_type>;
             using elements_type = elements_type_t<table_type>;
             using column_index_sequence = col_index_sequence_of<elements_type>;
             using pk_index_sequence = filter_tuple_sequence_t<elements_type, is_primary_key>;
@@ -261,12 +261,12 @@ namespace sqlite_orm::internal {
         }
 
         template<class O,
-                 class Table = storage_pick_table_t<O, db_objects_type>,
+                 class Table = schema_pick_table_t<O, db_objects_type>,
                  std::enable_if_t<Table::is_without_rowid::value, bool> = true>
         void assert_insertable_type() const {}
 
         template<class O,
-                 class Table = storage_pick_table_t<O, db_objects_type>,
+                 class Table = schema_pick_table_t<O, db_objects_type>,
                  std::enable_if_t<!Table::is_without_rowid::value, bool> = true>
         void assert_insertable_type() const {
             using elements_type = elements_type_t<Table>;

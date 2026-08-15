@@ -290,9 +290,18 @@ deferring indexes and triggers until after their target table or view. It consum
 but it is not vocabulary: it starts from a *collection* and relates its members, rather
 than classifying a node already in hand.
 
-Table lookup (`storage_find_table` / `storage_pick_table` / `enable_found_table`, searching
-`db_objects_tuple` for a matching DBO) is the same tier. It currently still lives in
-top-level `dev/storage_lookup.h` — see [Open work](#open-work).
+`schema/algorithms/table_lookup.h` is the other example: `schema_find_table` /
+`schema_pick_table` / `enable_found_table` / `pick_table`, searching a `db_objects_tuple`
+for the database object mapping a given lookup type. "Table" is meant in the wide SQL table
+sense there, covering base tables, views and virtual tables alike.
+
+Note the naming. These algorithms operate on the **schema** — the mapped database objects —
+not on the `storage_t` object, so they are named `schema_*`. Apply the same reasoning to
+anything that joins them; `storage_` is the wrong prefix at this tier.
+
+The generic facilities for recognizing and passing around the tuple itself —
+`db_objects_tuple`, `is_db_objects`, `db_objects_for_expression` — are not algorithms and
+sit one level up, in `schema/db_objects.h`.
 
 ## The manifests
 
@@ -357,12 +366,6 @@ Decided, not yet done. The destination is settled in each case; only the work re
   **Naming:** drop `storage` in favour of `schema` when these move. These algorithms
   operate on the schema — the mapped database objects — not on the `storage_t` object.
   `storage_mapped_columns` → `schema_mapped_columns`, and so on.
-
-- **`storage_lookup.h`.** Schema-level traversal; belongs under `dev/schema/algorithms/`
-  alongside `sync_order.h`.
-
-  **Naming:** same substitution — `storage_find_table` → `schema_find_table`,
-  `storage_pick_table` → `schema_pick_table`, and correspondingly for the rest of the file.
 
 - **`type_printer` / `integer_printer`.** A genuine open per-raw-type customization point,
   the same shape as the field traits, but still in its current public, pre-existing
