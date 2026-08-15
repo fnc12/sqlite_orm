@@ -30,7 +30,17 @@ namespace sqlite_orm::internal {
     using tuple_has_template = mpl::invoke_t<check_if_has_template<Template>, Pack, mpl::quote_fn<ProjOp>>;
 
     /*
+     *  Higher-order metafunction returning the first index constant of the desired element having the specified trait in a tuple (possibly projected).
+     *  
+     *  `ProjOp` is a metafunction
+     */
+    template<class Pack, template<class...> class TraitFn, template<class...> class ProjOp = polyfill::type_identity_t>
+    using find_tuple_element = mpl::invoke_t<finds_if_has<TraitFn>, Pack, mpl::quote_fn<ProjOp>>;
+
+    /*
      *  Higher-order metafunction returning the first index constant of the desired type in a tuple (possibly projected).
+     *  
+     *  `ProjOp` is a metafunction
      */
     template<class Pack, class Type, template<class...> class ProjOp = polyfill::type_identity_t>
     using find_tuple_type = mpl::invoke_t<finds_if_has_type<Type>, Pack, mpl::quote_fn<ProjOp>>;

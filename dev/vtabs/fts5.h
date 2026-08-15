@@ -7,26 +7,16 @@
 #include <vector>
 #endif
 #endif
-
 #include "../functional/cxx_optional.h"
+
 #include "../functional/gsl.h"
-#include "../functional/mpl.h"
-#include "../field_of.h"
+#include "../member_traits/member_traits.h"
 #include "../schema/virtual_table.h"
-#include "../schema/column.h"
-#include "../constraints.h"
+#include "../vocabulary/node_traits.h"
+#include "../vocabulary/node_algorithms.h"
 
 #if SQLITE_VERSION_NUMBER >= 3009000 || defined(SQLITE_ORM_ENABLE_FTS5)
 namespace sqlite_orm::internal {
-    template<class T>
-    inline constexpr bool is_fts5_table_element_or_constraint_v =
-        mpl::invoke_t<mpl::disjunction<check_if<is_column>,
-                                       check_if_is_template<prefix_t>,
-                                       check_if_is_template<tokenize_t>,
-                                       check_if_is_template<content_t>,
-                                       check_if_is_template<table_content_t>>,
-                      T>::value;
-
     struct fts5_module_tag {
         // simplify conceptual/meta programming
         using module_type = fts5_module_tag;
@@ -37,7 +27,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class... Cs>
-    inline virtual_table_definition<fts5_module_tag, Cs...> make_fts5_definition(Cs... definition) {
+    virtual_table_definition<fts5_module_tag, Cs...> make_fts5_definition(Cs... definition) {
         return {{std::make_tuple(std::move(definition)...)}};
     }
 }
@@ -118,7 +108,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class T, class... Cs>
     [[deprecated("Specify the explicit object type when calling `make_virtual_table()`.")]]
     internal::virtual_table_description<T, internal::fts5_module_tag, Cs...> using_fts5(Cs... definition) {
-        static_assert((internal::is_fts5_table_element_or_constraint_v<Cs> && ...),
+        static_assert((internal::is_fts5_table_element_or_constraint<Cs>::value && ...),
                       "Incorrect table elements or constraints");
 
         return {std::make_tuple(std::forward<Cs>(definition)...)};

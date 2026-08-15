@@ -24,6 +24,8 @@ concept storage_aggregate_callable = requires(S& storage) {
     { storage.template create_aggregate_function<f>() };
     { storage.template delete_aggregate_function<f>() };
 };
+
+constexpr auto clamp_int_ptr = &std::clamp<int>;
 #endif
 
 TEST_CASE("function static") {
@@ -343,16 +345,20 @@ TEST_CASE("function static") {
         }
 #endif
         SECTION("freestanding function") {
-            constexpr auto quotedScalar = "f"_scalar.quote(std::clamp<int>);
-            using quoted_type = decltype("f"_scalar.quote(std::clamp<int>));
+#if (defined(SQLITE_ORM_GNU_GCC) && (__GNUC__ < 12)) || (defined(SQLITE_ORM_MS_MSVC) && _MSC_VER < 1930)
+            SKIP("GCC < 12 cannot use this function pointer as NTTP in this test.");
+#else
+            constexpr auto quotedScalar = "f"_scalar.quote(clamp_int_ptr);
+            using quoted_type = decltype("f"_scalar.quote(clamp_int_ptr));
+            using expected_callable_type = std::remove_cv_t<decltype(clamp_int_ptr)>;
 
             STATIC_REQUIRE(quotedScalar._nme[0] == 'f' && quotedScalar._nme[1] == '\0');
             STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar),
-                                          const quoted_scalar_function<decltype(&std::clamp<int>),
+                                          const quoted_scalar_function<expected_callable_type,
                                                                        const int&(const int&, const int&, const int&),
                                                                        2>>);
 
-            STATIC_REQUIRE(std::is_same_v<quoted_type::callable_type, decltype(&std::clamp<int>)>);
+            STATIC_REQUIRE(std::is_same_v<quoted_type::callable_type, expected_callable_type>);
             STATIC_REQUIRE(std::is_same_v<quoted_type::udf_type, const int&(const int&, const int&, const int&)>);
 
             STATIC_REQUIRE(std::is_same_v<callable_arguments<quoted_type::udf_type>::return_type, int>);
@@ -368,18 +374,25 @@ TEST_CASE("function static") {
 
             using storage_type = decltype(make_storage(""));
             STATIC_REQUIRE(storage_scalar_callable<storage_type, quotedScalar>);
+#endif
         }
         SECTION("template function") {
-            constexpr auto quotedScalar = "f"_scalar.quote<const int&(const int&, const int&, const int&)>(std::clamp);
-            using quoted_type = decltype("f"_scalar.quote<const int&(const int&, const int&, const int&)>(std::clamp));
+#if (defined(SQLITE_ORM_GNU_GCC) && (__GNUC__ < 12)) || (defined(SQLITE_ORM_MS_MSVC) && _MSC_VER < 1930)
+            SKIP("GCC < 12 cannot use this function pointer as NTTP in this test.");
+#else
+            constexpr auto quotedScalar =
+                "f"_scalar.quote<const int&(const int&, const int&, const int&)>(clamp_int_ptr);
+            using quoted_type =
+                decltype("f"_scalar.quote<const int&(const int&, const int&, const int&)>(clamp_int_ptr));
+            using expected_callable_type = std::remove_cv_t<decltype(clamp_int_ptr)>;
 
             STATIC_REQUIRE(quotedScalar._nme[0] == 'f' && quotedScalar._nme[1] == '\0');
             STATIC_REQUIRE(std::is_same_v<decltype(quotedScalar),
-                                          const quoted_scalar_function<decltype(&std::clamp<int>),
+                                          const quoted_scalar_function<expected_callable_type,
                                                                        const int&(const int&, const int&, const int&),
                                                                        2>>);
 
-            STATIC_REQUIRE(std::is_same_v<quoted_type::callable_type, decltype(&std::clamp<int>)>);
+            STATIC_REQUIRE(std::is_same_v<quoted_type::callable_type, expected_callable_type>);
             STATIC_REQUIRE(std::is_same_v<quoted_type::udf_type, const int&(const int&, const int&, const int&)>);
 
             STATIC_REQUIRE(std::is_same_v<callable_arguments<quoted_type::udf_type>::return_type, int>);
@@ -395,6 +408,7 @@ TEST_CASE("function static") {
 
             using storage_type = decltype(make_storage(""));
             STATIC_REQUIRE(storage_scalar_callable<storage_type, quotedScalar>);
+#endif
         }
         SECTION("lambda") {
             constexpr auto lambda = [](unsigned long errcode) {

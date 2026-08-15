@@ -4,31 +4,28 @@
 #include <string>  //  std::string
 #include <type_traits>  //  std::remove_const, std::true_type, std::false_type
 #include <vector>  //  std::vector
-#include <tuple>  //  std::tuple_element, std::make_tuple, std::get
+#include <tuple>  //  std::tuple_element, std::get, std::apply, std::tuple_cat
 #include <utility>  //  std::forward, std::move
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+#include <meta>  // std::meta::info, std::meta::identifier_of
+#endif
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
+#include "../functional/meta_util.h"
 #include "../functional/mpl.h"
 #include "../tuple_helper/tuple_filter.h"
 #include "../tuple_helper/tuple_transformer.h"
-#include "../type_traits.h"
-#include "../constraints.h"
 #include "../table_info.h"
+#include "../vocabulary/node_traits.h"
+#include "../vocabulary/node_algorithms.h"
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+#include "constraints/generated_always.h"
 #include "table_base.h"
-#include "column.h"
-#include "index.h"
+#include "column.h"  //  sqlite_orm::make_column
+#include "dbo_name.h"
 
 namespace sqlite_orm::internal {
-    template<class T>
-    using is_base_table_element_or_constraint = mpl::invoke_t<mpl::disjunction<check_if<is_column>,
-                                                                               check_if<is_primary_key>,
-                                                                               check_if<is_foreign_key>,
-                                                                               check_if_is_template<index_t>,
-                                                                               check_if_is_template<unique_t>,
-                                                                               check_if_is_template<check_t>>,
-                                                              T>;
-
     /** 
      *  Encapsulates base table elements, i.e. columns and constraints for a base table,
      *  and provides additional methods to those of a generic table definition in order to deal with foreign key and generated columns.
@@ -52,7 +49,7 @@ namespace sqlite_orm::internal {
                     using generated_op_index_sequence =
                         filter_tuple_sequence_t<std::remove_const_t<decltype(column.constraints)>, is_generated_always>;
                     constexpr size_t opIndex = index_sequence_value_at<0>(generated_op_index_sequence{});
-                    result = &std::get<opIndex>(column.constraints).storage;
+                    result = &std::get<opIndex>(column.constraints)._storage;
                 });
 #endif
             return result;
@@ -108,14 +105,11 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_base_table_v = polyfill::is_specialization_of_v<T, base_table>;
-
-    template<class T>
-    using is_base_table = polyfill::bool_constant<is_base_table_v<T>>;
+    constexpr bool is_base_table_v = polyfill::is_specialization_of_v<T, base_table>;
 
     template<class... Cs>
     constexpr void validate_base_table_definition() {
-        static_assert(polyfill::conjunction_v<internal::is_base_table_element_or_constraint<Cs>...>,
+        static_assert((is_base_table_element_or_constraint<Cs>::value && ...),
                       "Incorrect base table elements or constraints");
 
         using elements_type = std::tuple<Cs...>;
@@ -131,6 +125,37 @@ namespace sqlite_orm::internal {
             static_assert(nTablePrimaryKeyColumns > 0, "Table primary key definition must contain one column");
         }
     }
+
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+    template<class O, class... Cs>
+    auto make_reflected_table(Cs... constraints) {
+        auto classAnnotations = extract_type_annotations<O>();
+        std::string tableName{resolve_dbo_name<O>(classAnnotations)};
+        auto annotationConstraints = filter_out_dbo_name(std::move(classAnnotations));
+        static /*gcc*/ constexpr auto members = extract_members<O>();
+
+        auto columns = []<size_t... I>(std::index_sequence<I...>) static {
+            return std::tuple {
+                []<std::meta::info member>() static {
+                    return std::apply(
+                        [](auto&&... columnConstraints) static {
+                            return sqlite_orm::make_column(std::string(std::meta::identifier_of(member)),
+                                                           splice_member_pointer<member>(),
+                                                           std::move(columnConstraints)...);
+                        },
+                        splice_annotations<member>());
+                }.template operator()<members[I]>()...
+            };
+        }(std::make_index_sequence<members.size()>{});
+
+        return [&tableName]<class... Es>(std::tuple<Es...>&& definition) {
+            validate_base_table_definition<Es...>();
+            return base_table<O, std::false_type, Es...>{std::move(tableName), std::move(definition)};
+        }(std::tuple_cat(std::move(columns),
+                         std::move(annotationConstraints),
+                         std::tuple<Cs...>{std::move(constraints)...}));
+    }
+#endif
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
@@ -159,7 +184,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     /**
      *  Factory function for a base table.
-     *  
+     *
      *  The mapped object type is explicitly specified.
      */
     template<orm_table_reference auto table, class... Cs>
@@ -168,3 +193,46 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     }
 #endif
 }
+
+#ifdef SQLITE_ORM_REFLECTION_SUPPORTED
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+    /**
+     *  Factory function for a base table.
+     *
+     *  The mapped object type is explicitly specified, columns and column constraints are deferred from
+     *  the object type's non-static data members and their annotations. Class-scope annotations on
+     *  the object type contribute table-level constraints; the optional `[[=orm_name("…")]]` annotation
+     *  overrides the table name (otherwise the type's reflected identifier is used).
+     *
+     *  Variadic `constraints` carry table-level constraints that either cannot be expressed as annotations
+     *  (e.g. `check()`) or that the user prefers to pass at the call site. Columns are rejected by
+     *  the `requires` clause — column-level constraints come from annotations only.
+     */
+    template<class T, class... Cs>
+        requires (internal::is_base_table_constraint<Cs>::value && ...)
+    auto make_table(Cs... tableConstraints) {
+        return internal::make_reflected_table<T>(std::forward<Cs>(tableConstraints)...);
+    }
+
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+    /**
+     *  Factory function for a base table.
+     *
+     *  The mapped object type is explicitly specified, columns and column constraints are deferred from
+     *  the object type's non-static data members and their annotations. Class-scope annotations on
+     *  the object type contribute table-level constraints; the optional `[[=orm_name("…")]]` annotation
+     *  overrides the table name (otherwise the type's reflected identifier is used).
+     *
+     *  Variadic `constraints` carry table-level constraints that either cannot be expressed as annotations
+     *  (e.g. `check()`) or that the user prefers to pass at the call site. Columns are rejected by
+     *  the `requires` clause — column-level constraints come from annotations only.
+     */
+    template<orm_table_reference auto table, class... Cs>
+        requires (internal::is_base_table_constraint<Cs>::value && ...)
+    auto make_table(Cs... tableConstraints) {
+        return internal::make_reflected_table<internal::auto_decay_table_ref_t<table>>(
+            std::forward<Cs>(tableConstraints)...);
+    }
+#endif
+}
+#endif

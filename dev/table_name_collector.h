@@ -6,13 +6,12 @@
 #include <utility>  //  std::pair, std::move
 #endif
 
-#include "functional/cxx_type_traits_polyfill.h"
-#include "type_traits.h"
 #include "mapped_type_proxy.h"
-#include "select_constraints.h"
+#include "vocabulary/node_traits.h"
+#include "rowid.h"
 #include "alias.h"
 #include "core_functions.h"
-#include "storage_lookup.h"
+#include "storage_lookup.h"  // lookup_table_name
 
 namespace sqlite_orm::internal {
     struct table_name_collector_base {
@@ -29,64 +28,67 @@ namespace sqlite_orm::internal {
 
         table_name_collector(const db_objects_type& dbObjects) : db_objects{dbObjects} {}
 
-        template<class T>
-        SQLITE_ORM_STATIC_CALLOP void operator()(const T&) SQLITE_ORM_OR_CONST_CALLOP {}
-
-        template<class F, class Lookup>
-        void operator()(F Lookup::*) {
-            this->table_names.emplace(lookup_table_name<mapped_type_proxy_t<Lookup>>(this->db_objects), "");
-        }
-
-        template<class T, class F>
-        void operator()(const column_pointer<T, F>&) {
-            auto tableName = lookup_table_name<mapped_type_proxy_t<T>>(this->db_objects);
-            this->table_names.emplace(std::move(tableName), alias_extractor<T>::as_alias());
-        }
-
-        template<class A, class C>
-        void operator()(const alias_column_t<A, C>&) {
-            // note: instead of accessing the column, we are interested in the type the column is aliased into
-            auto tableName = lookup_table_name<mapped_type_proxy_t<A>>(this->db_objects);
-            this->table_names.emplace(std::move(tableName), alias_extractor<A>::as_alias());
-        }
-
-        template<class T>
-        void operator()(const count_asterisk_t<T>&) {
-            auto tableName = lookup_table_name<T>(this->db_objects);
-            if (!tableName.empty()) {
+        template<class ColRef>
+        void operator()(const ColRef&) {
+            if constexpr (std::is_member_pointer<ColRef>::value) {
+                using table_type = table_type_of_t<ColRef>;
+                auto tableName = lookup_table_name<mapped_type_proxy_t<table_type>>(this->db_objects);
                 this->table_names.emplace(std::move(tableName), "");
+            }
+            // ...
+            else if constexpr (is_column_pointer_v<ColRef>) {
+                using table_type = table_type_of_t<ColRef>;
+                auto tableName = lookup_table_name<mapped_type_proxy_t<table_type>>(this->db_objects);
+                this->table_names.emplace(std::move(tableName), alias_extractor<table_type>::as_alias());
+            }
+            // ...
+            else if constexpr (polyfill::is_specialization_of_v<ColRef, alias_column_t>) {
+                // note: instead of accessing the column, we are interested in the type the column is aliased into
+                using A = alias_type_t<ColRef>;
+                auto tableName = lookup_table_name<mapped_type_proxy_t<A>>(this->db_objects);
+                this->table_names.emplace(std::move(tableName), alias_extractor<A>::as_alias());
+            }
+            // ...
+            else if constexpr (polyfill::is_specialization_of_v<ColRef, count_asterisk_t>) {
+                using table_type = type_t<ColRef>;
+                auto tableName = lookup_table_name<table_type>(this->db_objects);
+                if (!tableName.empty()) {
+                    this->table_names.emplace(std::move(tableName), "");
+                }
+            }
+            // ...
+            else if constexpr (is_asterisk_v<ColRef>) {
+                using recordset_type = type_t<ColRef>;
+                auto tableName = lookup_table_name<mapped_type_proxy_t<recordset_type>>(this->db_objects);
+                this->table_names.emplace(std::move(tableName), alias_extractor<recordset_type>::as_alias());
+            }
+            // ...
+            else if constexpr (is_object_node_v<ColRef> || polyfill::is_specialization_of_v<ColRef, table_rowid_t> ||
+                               polyfill::is_specialization_of_v<ColRef, table_oid_t> ||
+                               polyfill::is_specialization_of_v<ColRef, table__rowid_t>) {
+                using table_type = type_t<ColRef>;
+                this->table_names.emplace(lookup_table_name<table_type>(this->db_objects), "");
+            }
+            // ...
+            else {
+                // Do nothing for other types of expressions
             }
         }
 
-        template<class T>
-        void operator()(const asterisk_t<T>&) {
-            auto tableName = lookup_table_name<mapped_type_proxy_t<T>>(this->db_objects);
-            table_names.emplace(std::move(tableName), alias_extractor<T>::as_alias());
-        }
-
-        template<class T>
-        void operator()(const object_t<T>&) {
-            this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
-        }
-
-        template<class T>
-        void operator()(const table_rowid_t<T>&) {
-            this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
-        }
-
-        template<class T>
-        void operator()(const table_oid_t<T>&) {
-            this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
-        }
-
-        template<class T>
-        void operator()(const table__rowid_t<T>&) {
-            this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
-        }
-
-        template<class T, class X, class Y, class Z>
-        void operator()(std::true_type, const highlight_t<T, X, Y, Z>&) {
-            this->table_names.emplace(lookup_table_name<T>(this->db_objects), "");
+        /*  
+         *  Invoked by the AST iterator for the node itself
+         */
+        template<class ColRef>
+        void operator()(std::true_type, const ColRef&) {
+            // ...
+            if constexpr (polyfill::is_specialization_of_v<ColRef, highlight_t>) {
+                using table_type = typename ColRef::table_type;
+                this->table_names.emplace(lookup_table_name<table_type>(this->db_objects), "");
+            }
+            // ...
+            else {
+                // Do nothing for other types of expressions
+            }
         }
     };
 }

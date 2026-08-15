@@ -6,7 +6,7 @@
 #include <utility>  //  std::move
 #include <iterator>  //  std::input_iterator_tag
 #include <system_error>  //  std::system_error
-#include <functional>  //  std::bind
+#include <functional>  //  std::bind, std::ref
 #endif
 
 #include "statement_finalizer.h"
@@ -51,7 +51,7 @@ namespace sqlite_orm::internal {
 
         void extract_object() {
             this->current = std::make_shared<value_type>();
-            object_from_column_builder<value_type> builder{*this->current, this->stmt.get()};
+            object_from_column_builder<value_type> builder{std::ref(*this->current), this->stmt.get()};
             auto& table = pick_table<value_type>(*this->db_objects);
             table.for_each_column(builder);
         }

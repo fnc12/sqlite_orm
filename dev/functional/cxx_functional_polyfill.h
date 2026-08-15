@@ -100,6 +100,31 @@ namespace sqlite_orm::internal::polyfill {
     template<class Callable, class... Args>
     struct is_invocable : is_invocable_impl<void, Callable, Args...>::type {};
 #endif
+
+#if __cpp_lib_unwrap_ref >= 201811L
+    using std::unwrap_reference, std::unwrap_reference_t, std::unwrap_ref_decay, std::unwrap_ref_decay_t;
+#else
+    template<class T>
+    struct unwrap_reference {
+        using type = T;
+    };
+
+    template<class T>
+    struct unwrap_reference<std::reference_wrapper<T>> {
+        using type = T&;
+    };
+
+    template<class T>
+    using unwrap_reference_t = typename unwrap_reference<T>::type;
+
+    template<class T>
+    using unwrap_ref_decay_t = unwrap_reference_t<std::decay_t<T>>;
+
+    template<class T>
+    struct unwrap_ref_decay {
+        using type = unwrap_ref_decay_t<T>;
+    };
+#endif
 }
 
 namespace sqlite_orm {

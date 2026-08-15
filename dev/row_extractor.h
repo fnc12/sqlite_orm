@@ -20,6 +20,8 @@
 
 #include "functional/cxx_functional_polyfill.h"
 #include "functional/gsl.h"
+#include "type_traits.h"
+#include "is_std_ptr.h"
 #include "tuple_helper/tuple_transformer.h"
 #include "column_result_proxy.h"
 #include "arithmetic_tag.h"
@@ -27,8 +29,6 @@
 #include "journal_mode.h"
 #include "locking_mode.h"
 #include "error_code.h"
-#include "is_std_ptr.h"
-#include "type_traits.h"
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
 

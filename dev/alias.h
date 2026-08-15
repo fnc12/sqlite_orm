@@ -14,16 +14,17 @@
 #include "functional/mpl/conditional.h"
 #include "functional/cstring_literal.h"
 #include "type_traits.h"
+#include "member_traits/field_of.h"
 #include "alias_traits.h"
-#include "field_of.h"
 #include "table_type_of.h"
-#include "tags.h"
 #include "column_pointer.h"
+#include "vocabulary/node_fwd.h"  // table_identifier
+#include "vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<class T>
-    inline constexpr bool is_operator_argument_v<T, std::enable_if_t<orm_column_alias<T>>> = true;
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<orm_column_alias<T>>> = true;
 #endif
 
     /**
@@ -52,10 +53,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool
+    constexpr bool
         is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, alias_column_t>::value>> = true;
-
-    struct table_identifier;
 
     /*
      *  Encapsulates extracting the alias identifier of a non-alias.
@@ -127,6 +126,9 @@ namespace sqlite_orm::internal {
         expression_type expression;
     };
 
+    template<class T>
+    constexpr bool is_as_node_v = polyfill::is_specialization_of<T, as_t>::value;
+
     /**
      *  Built-in column alias.
      *  For convenience there exist type aliases `colalias_a`, `colalias_b`, ...
@@ -149,8 +151,8 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool
-        is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, alias_holder>::value>> = true;
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<polyfill::is_specialization_of<T, alias_holder>::value>> =
+        true;
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
     template<char A, char... X>

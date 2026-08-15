@@ -7,7 +7,7 @@ using namespace sqlite_orm;
 TEST_CASE("statement_serializer unindexed") {
     internal::db_objects_tuple<> storage;
     internal::serializer_context<internal::db_objects_tuple<>> context{storage};
-    auto node = unindexed();
+    constexpr auto node = unindexed();
     auto value = serialize(node, context);
     REQUIRE(value == "UNINDEXED");
 }

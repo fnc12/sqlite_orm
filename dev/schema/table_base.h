@@ -13,20 +13,15 @@
 #include "../tuple_helper/tuple_iteration.h"
 #include "../tuple_helper/tuple_transformer.h"
 #include "../member_traits/member_traits.h"
+#include "../member_traits/field_of.h"
 #include "../type_traits.h"
-#include "../field_of.h"
-#include "column.h"
+#include "../vocabulary/node_traits.h"
+#include "../vocabulary/node_algorithms.h"
+#include "../vocabulary/node_fwd.h"  // primary_key_t, column_field
+#include "column_identifier.h"
+#include "table_identifier.h"
 
 namespace sqlite_orm::internal {
-
-    struct table_identifier {
-
-        /**
-         *  Table name.
-         */
-        std::string name;
-    };
-
     /** 
      *  Encapsulates table elements, i.e. columns and constraints for any type of table.
      */
@@ -160,13 +155,13 @@ namespace sqlite_orm::internal {
                               lambda(column.member_pointer);
                           }));
             this->visit_table_primary_key([&lambda](auto& primaryKey) {
-                iterate_tuple(primaryKey.columns, lambda);
+                iterate_tuple(primaryKey._columns, lambda);
             });
         }
 
         template<class... Args>
         std::vector<std::string> table_key_columns_names(const primary_key_t<Args...>& primaryKey) const {
-            return create_from_tuple<std::vector<std::string>>(primaryKey.columns,
+            return create_from_tuple<std::vector<std::string>>(primaryKey._columns,
                                                                [this, empty = std::string{}](auto& memberPointer) {
                                                                    if (const std::string* columnName =
                                                                            this->find_column_name(memberPointer)) {
@@ -186,12 +181,12 @@ namespace sqlite_orm::internal {
         if constexpr (/*bool hasNoColumnPK =*/!insertable_table_definition<Cs...>::template count_of_columns_with<
                       is_primary_key>()) {
             definition.visit_table_primary_key([&column, &res](auto& primaryKey) {
-                using colrefs_tuple = decltype(primaryKey.columns);
+                using colrefs_tuple = decltype(primaryKey._columns);
                 using same_type_index_sequence =
                     filter_tuple_sequence_t<colrefs_tuple,
                                             check_if_is_type<member_field_type_t<G>>::template fn,
                                             member_field_type_t>;
-                iterate_tuple(primaryKey.columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
+                iterate_tuple(primaryKey._columns, same_type_index_sequence{}, [&res, &column](auto& memberPointer) {
                     if (compare_fields(memberPointer, column.member_pointer) ||
                         compare_fields(memberPointer, column.setter)) {
                         res = true;
@@ -213,7 +208,7 @@ namespace sqlite_orm::internal {
                 // note: use `decltype(primaryKey)` instead of `decltype(primaryKey.columns)` otherwise msvc 141 chokes on the `if constexpr` below
                 using colrefs_tuple = columns_tuple_t<polyfill::remove_cvref_t<decltype(primaryKey)>>;
                 if constexpr (std::tuple_size<colrefs_tuple>::value == 1) {
-                    auto& memberPointer = std::get<0>(primaryKey.columns);
+                    auto& memberPointer = std::get<0>(primaryKey._columns);
                     if (compare_fields(memberPointer, column.member_pointer) ||
                         compare_fields(memberPointer, column.setter)) {
                         res = true;
@@ -225,7 +220,7 @@ namespace sqlite_orm::internal {
     }
 
     /**
-     *  Mixin for a base table, providing methods used to access a mapped object's members.
+     *  Mixin for a base table, providing methods used to access a mapped object's member variables for insertion.
      *  
      *  Implementation note: it is provided as a mixin to reduce the number of involved template parameters,
      *  which is possible in C++23 mode for 'getters'.

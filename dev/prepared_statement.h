@@ -12,8 +12,8 @@
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/cxx_functional_polyfill.h"
 #include "functional/gsl.h"
-#include "tuple_helper/tuple_traits.h"
 #include "type_traits.h"
+#include "tuple_helper/tuple_traits.h"
 #include "connection_holder.h"
 #include "select_constraints.h"
 #include "values.h"
@@ -21,6 +21,9 @@
 #include "mapped_type_proxy.h"
 #include "ast/upsert_clause.h"
 #include "ast/set.h"
+#include "vocabulary/node_traits.h"
+#include "vocabulary/node_algorithms.h"  // access_main_dml
+#include "vocabulary/traits/semantic_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
     struct prepared_statement_base {
@@ -319,24 +322,15 @@ namespace sqlite_orm::internal {
     template<class T>
     using is_insert_constraint = std::is_same<T, insert_constraint>;
 
-    /**
-     *  Specialize if a type is a DML statement expression.
-     */
-    template<class T, class SFINAE = void>
-    inline constexpr bool is_raw_dml_expression_v = false;
-
-    template<class T>
-    using is_raw_dml_expression = polyfill::bool_constant<is_raw_dml_expression_v<T>>;
-
     template<class DML>
-    inline constexpr bool is_raw_dml_expression_v<
+    constexpr bool is_raw_dml_expression_v<
         DML,
         std::enable_if_t<
             polyfill::disjunction_v<is_insert_raw<DML>, is_replace_raw<DML>, is_update_all<DML>, is_remove_all<DML>>>> =
         true;
 
     template<class With>
-    inline constexpr bool is_raw_dml_expression_v<
+    constexpr bool is_raw_dml_expression_v<
         With,
         std::enable_if_t<polyfill::conjunction_v<is_with_clause<With>,
                                                  polyfill::disjunction<is_insert_raw<expression_type_t<With>>,
@@ -344,21 +338,6 @@ namespace sqlite_orm::internal {
                                                                        is_update_all<expression_type_t<With>>,
                                                                        is_remove_all<expression_type_t<With>>>>>> =
         true;
-
-    /*  
-     *  Access the main select expression of a with clause or the passed in select expression.
-     */
-    template<class DML, satisfies<is_raw_dml_expression, DML> = true>
-    constexpr decltype(auto) access_main_dml(const DML& dml) {
-        if constexpr (is_with_clause_v<DML>) {
-            return (dml.expression);
-        } else {
-            return dml;
-        }
-    }
-
-    template<class DML>
-    using main_dml_t = polyfill::remove_cvref_t<decltype(access_main_dml(std::declval<DML>()))>;
 
     template<class T, class Tpl>
     constexpr void validate_get_all_conditions() {

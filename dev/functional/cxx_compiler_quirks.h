@@ -27,6 +27,10 @@
 #define SQLITE_ORM_CLANG_MSVC
 #endif
 
+#if defined(__GNUC__) && !defined(__clang__)
+#define SQLITE_ORM_GNU_GCC
+#endif
+
 #ifdef SQLITE_ORM_MS_MSVC
 #define SQLITE_ORM_DO_PRAGMA(...) __pragma(__VA_ARGS__)
 #endif
@@ -71,4 +75,8 @@
 // the compiler reports an error instead of dismissing the templated function.
 #if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && (defined(__clang__) && (__clang_major__ == 10))
 #define SQLITE_ORM_BROKEN_NONTEMPLATE_CONCEPTS
+#endif
+
+#if defined(__clang__) && (__clang_major__ <= 15)
+#define SQLITE_ORM_BROKEN_CPP20_VIEWS
 #endif

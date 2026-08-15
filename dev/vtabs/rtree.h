@@ -12,14 +12,14 @@
 #include "../functional/gsl.h"
 #include "../functional/mpl.h"
 #include "../tuple_helper/tuple_filter.h"
-#include "../type_traits.h"
+#include "../vocabulary/node_traits.h"
+#include "../vocabulary/node_algorithms.h"
 #include "../schema/virtual_table.h"
-#include "../schema/column.h"
 
 #ifdef SQLITE_ENABLE_RTREE
 namespace sqlite_orm::internal {
     template<class T>
-    inline constexpr bool is_rtree_table_element_or_constraint_v =
+    constexpr bool is_rtree_table_element_or_constraint_v =
         mpl::invoke_t<mpl::disjunction<check_if<is_column>>, T>::value;
 
     struct rtree_module_tag {

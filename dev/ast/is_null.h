@@ -1,0 +1,34 @@
+#pragma once
+
+#ifndef SQLITE_ORM_IMPORT_STD_MODULE
+#include <utility>  //  std::move
+#endif
+
+#include "../tags.h"
+#include "../functional/config.h"
+
+namespace sqlite_orm::internal {
+    /**
+     *  IS NULL operator object.
+     */
+    template<class T>
+    struct is_null_t : condition_t, negatable_t {
+        using argument_type = T;
+        using self = is_null_t<argument_type>;
+
+        argument_type argument;
+
+        is_null_t(argument_type argument_) : argument(std::move(argument_)) {}
+    };
+}
+
+SQLITE_ORM_EXPORT namespace sqlite_orm {
+
+    /**
+     *  IS NULL operator.
+     */
+    template<class T>
+    internal::is_null_t<T> is_null(T t) {
+        return {std::move(t)};
+    }
+}

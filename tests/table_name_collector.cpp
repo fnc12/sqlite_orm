@@ -15,6 +15,7 @@ TEST_CASE("table name collector") {
     internal::table_name_collector_base::table_name_set expected;
 
     SECTION("static tests") {
+        // Test whether the table_name_collector is invocable in the context of a reference to the iterated AST node itself (`iterate_ast` uses this feature).
         STATIC_REQUIRE(polyfill::is_invocable<internal::table_name_collector<std::tuple<>>,
                                               std::true_type,
                                               const internal::highlight_t<User, int, int, int>&>::value);
@@ -48,6 +49,22 @@ TEST_CASE("table name collector") {
         SECTION("count asterisk") {
             auto expression = count<User>();
             expected.emplace(tableName, "");
+            iterate_ast(expression, collector);
+        }
+        SECTION("asterisk") {
+            auto expression = asterisk<User>();
+            expected.emplace(tableName, "");
+            iterate_ast(expression, collector);
+        }
+        SECTION("object") {
+            auto expression = object<User>();
+            expected.emplace(tableName, "");
+            iterate_ast(expression, collector);
+        }
+        SECTION("aliased asterisk") {
+            using als = alias_z<User>;
+            auto expression = asterisk<als>();
+            expected.emplace(tableName, "z");
             iterate_ast(expression, collector);
         }
         REQUIRE(collector.table_names == expected);

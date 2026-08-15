@@ -472,6 +472,12 @@ namespace sqlite_orm::internal {
     using check_if_lacks = mpl::not_<check_if_names<Op>>;
 
     /*
+     *  Quoted metafunction that finds the index of the element having the specified trait in a tuple.
+     */
+    template<template<class...> class TraitFn>
+    using finds_if_has = mpl::finds<check_if<TraitFn>>;
+
+    /*
      *  Quoted metafunction that finds the index of the given type in a tuple.
      */
     template<class Type>

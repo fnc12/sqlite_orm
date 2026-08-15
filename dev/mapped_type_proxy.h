@@ -6,13 +6,13 @@
 
 #include "functional/cxx_type_traits_polyfill.h"
 #include "type_traits.h"
-#include "table_reference.h"
 #include "alias_traits.h"
 
 namespace sqlite_orm::internal {
     /** 
      *  Defines the `type` typename to be:
      *  - The unqualified unwrapped table reference type if T is a table reference.
+     *  - The unqualified unwrapped table-valued expression type if T is a table-valued expression.
      *  - The unqualified aliased type if T is a recordset alias.
      *  - The enclosing data struct for eponymous virtual tables with hidden columns.
      *  - ... otherwise unqualified T.
@@ -27,6 +27,9 @@ namespace sqlite_orm::internal {
 
     template<class R>
     struct mapped_type_proxy<R, match_if<is_table_reference, R>> : R {};
+
+    template<class E>
+    struct mapped_type_proxy<E, match_if<is_table_valued_expression, E>> : E {};
 
     template<class A>
     struct mapped_type_proxy<A, match_if<is_recordset_alias, A>> : std::remove_const<type_t<A>> {};

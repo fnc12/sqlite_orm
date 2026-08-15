@@ -41,7 +41,7 @@ struct SignFunction {
     }
 };
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
-inline constexpr orm_scalar_function auto sign = func<SignFunction>;
+inline constexpr orm_scalar_function auto signum = func<SignFunction>;
 #endif
 
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
@@ -151,12 +151,12 @@ int main() {
      *  This function can be called at any time doesn't matter whether connection is open or not.
      *  To delete created scalar function use `storage.delete_scalar_function<T>()` function call.
      */
-    storage.create_scalar_function<sign>();
+    storage.create_scalar_function<signum>();
 
-    //  SELECT SIGN(3), SIGN(0), SIGN(-3)
+    //  SELECT SIGNUM(3), SIGNUM(0), SIGNUM(-3)
     {
-        auto [c1, c2, c3] = storage.select(columns(sign(3), sign(0), sign(-3))).at(0);
-        cout << "SELECT SIGN(3) = " << c1 << ", SIGN(0) = " << c2 << ", SIGN(-3) = " << c3 << endl;
+        auto [c1, c2, c3] = storage.select(columns(signum(3), signum(0), signum(-3))).at(0);
+        cout << "SELECT SIGNUM(3) = " << c1 << ", SIGNUM(0) = " << c2 << ", SIGNUM(-3) = " << c3 << endl;
     }
 
 #if __cpp_lib_bit_cast >= 201806L
@@ -205,9 +205,9 @@ int main() {
      */
     storage.create_scalar_function<SignFunction>();
 
-    //  SELECT SIGN(3)
+    //  SELECT SIGNUM(3)
     auto signRows = storage.select(func<SignFunction>(3));
-    cout << "SELECT SIGN(3) = " << signRows.at(0) << endl;
+    cout << "SELECT SIGNUM(3) = " << signRows.at(0) << endl;
 
     storage.insert(Table{1, -1, 2});
     storage.insert(Table{2, -2, 4});

@@ -10,10 +10,12 @@
 #endif
 
 #include "tuple_helper/tuple_fy.h"
-#include "table_type_of.h"
 #include "column_result.h"
-#include "select_constraints.h"
+#include "vocabulary/node_traits.h"
+#include "schema/column.h"
 #include "schema/table_base.h"
+#include "ast/quoted_expression.h"
+#include "select_constraints.h"
 #include "alias.h"
 #include "cte_types.h"
 #include "cte_column_names_collector.h"
@@ -84,7 +86,7 @@ namespace sqlite_orm::internal {
     auto make_cte_column(std::string name, const ColRef& finalColRef) {
         using column_type = column_t<ColRef, empty_setter>;
 
-        return column_type{std::move(name), finalColRef, empty_setter{}};
+        return column_type{std::move(name), finalColRef, empty_setter{}, std::tuple<>{}};
     }
 
 #ifdef SQLITE_ORM_STRUCTURED_BINDING_PACK_SUPPORTED
@@ -161,11 +163,12 @@ namespace sqlite_orm::internal {
         return {};
     }
 
-    // expression_t<>
+    // quoted_expression_t<>
     template<class DBOs, class E, size_t Idx = 0>
-    auto
-    extract_colref_expressions(const DBOs& dbObjects, const expression_t<E>& col, std::index_sequence<Idx> s = {}) {
-        return extract_colref_expressions(dbObjects, col.value, s);
+    auto extract_colref_expressions(const DBOs& dbObjects,
+                                    const quoted_expression_t<E>& col,
+                                    std::index_sequence<Idx> s = {}) {
+        return extract_colref_expressions(dbObjects, col._value, s);
     }
 
     // F O::* (field/getter) -> field/getter
@@ -240,7 +243,7 @@ namespace sqlite_orm::internal {
             return explicitColRef;
         } else if constexpr (std::is_member_pointer<ExplicitColRef>::value) {
             return explicitColRef;
-        } else if constexpr (std::is_base_of<column_identifier, ExplicitColRef>::value) {
+        } else if constexpr (is_column<ExplicitColRef>::value) {
             return explicitColRef.member_pointer;
         } else if constexpr (std::is_same<ExplicitColRef, std::string>::value) {
             return subselectColRef;

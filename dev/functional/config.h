@@ -41,7 +41,8 @@
 #define SQLITE_ORM_CPP_UNLIKELY
 #endif
 
-#ifdef SQLITE_ORM_CONSTEVAL_SUPPORTED
+// note: Visual Studio 2019 v16.11 supports `consteval` but not for functions returning void.
+#if defined(SQLITE_ORM_CONSTEVAL_SUPPORTED) && (!defined(SQLITE_ORM_MS_MSVC) || (_MSC_VER >= 1930))
 #define SQLITE_ORM_CONSTEVAL consteval
 #else
 #define SQLITE_ORM_CONSTEVAL constexpr
@@ -53,6 +54,10 @@
 
 #if __cpp_lib_ranges >= 201911L
 #define SQLITE_ORM_CPP20_RANGES_SUPPORTED
+#endif
+
+#if __cpp_lib_ranges >= 202110L && !defined(SQLITE_ORM_BROKEN_CPP20_VIEWS)
+#define SQLITE_ORM_CPP20_VIEWS_SUPPORTED
 #endif
 
 #if __cpp_lib_generator >= 202207L
@@ -85,6 +90,10 @@
 #endif
 
 #define SQLITE_ORM_WITH_CTE
+
+#if defined(SQLITE_ORM_REFLECTION_SUPPORTED)
+#define SQLITE_ORM_WITH_VIEW
+#endif
 
 // define the inline namespace "literals" so that it is available even if it was not introduced by a feature
 namespace sqlite_orm {

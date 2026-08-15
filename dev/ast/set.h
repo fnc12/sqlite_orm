@@ -93,8 +93,7 @@ SQLITE_ORM_EXPORT namespace sqlite_orm {
     template<class... Args>
     internal::set_t<Args...> set(Args... args) {
         using arg_tuple = std::tuple<Args...>;
-        static_assert(std::tuple_size<arg_tuple>::value ==
-                          internal::count_tuple<arg_tuple, internal::is_assign_t>::value,
+        static_assert(std::tuple_size<arg_tuple>::value == internal::count_tuple<arg_tuple, internal::is_assign>::value,
                       "set function accepts assign operators only");
         return {std::make_tuple(std::forward<Args>(args)...)};
     }

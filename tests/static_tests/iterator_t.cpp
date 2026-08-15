@@ -126,7 +126,7 @@ concept storage_yield_result_set = requires(S& storage_type, Select select) {
 
 namespace {
     struct Object {};
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#if defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED) && defined(SQLITE_ORM_WITH_CPP20_ALIASES)
     constexpr orm_table_alias auto object_alias = "o"_alias.for_<Object>();
     constexpr orm_table_reference auto object_table = c<Object>();
 #endif
@@ -177,8 +177,14 @@ TEST_CASE("can view and iterate mapped") {
 
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
     STATIC_REQUIRE(storage_iterate_mapped<storage_type, Object>);
+#ifdef SQLITE_ORM_CPP20_VIEWS_SUPPORTED
     STATIC_REQUIRE(storage_iterate_mapped_ref<storage_type, object_table, Object>);
+#endif
+#ifdef SQLITE_ORM_WITH_CPP20_ALIASES
+#ifdef SQLITE_ORM_CPP20_VIEWS_SUPPORTED
     STATIC_REQUIRE(storage_iterate_mapped_ref<storage_type, object_alias, Object>);
+#endif
+#endif
 #endif
 
 #ifdef SQLITE_ORM_CPP23_GENERATOR_SUPPORTED
@@ -188,7 +194,7 @@ TEST_CASE("can view and iterate mapped") {
 #endif
 }
 
-#ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
+#if defined(SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED) && defined(SQLITE_ORM_CPP20_VIEWS_SUPPORTED)
 TEST_CASE("can view and iterate result set") {
     struct Object {};
     using empty_storage_type = decltype(make_storage(""));

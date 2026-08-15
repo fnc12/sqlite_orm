@@ -23,6 +23,7 @@
 #endif
 
 #ifdef ENABLE_THIS_EXAMPLE
+#include <iomanip>  // std::hex, std::setw, std::setfill
 #include <iostream>
 #include <cstdio>  //  std::remove
 

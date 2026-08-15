@@ -129,6 +129,7 @@ TEST_CASE("fts5 virtual table schema") {
     }
 }
 
+#if SQLITE_VERSION_NUMBER >= 3034000  //  the `trigram` tokenizer was added in SQLite 3.34.0
 TEST_CASE("issue1410") {
     struct NormalTable {
         int64 id;
@@ -160,6 +161,7 @@ TEST_CASE("issue1410") {
         std::ignore = row;
     }  // must compile
 }
+#endif
 #endif
 
 #ifdef SQLITE_ENABLE_DBSTAT_VTAB

@@ -9,19 +9,19 @@ TEST_CASE("statement_serializer core functions") {
     std::string value;
     decltype(value) expected;
     SECTION("MAX(X,Y)") {
-        auto expression = max(3, 4);
+        constexpr auto expression = max(3, 4);
         context.use_parentheses = false;
         expected = "MAX(3, 4)";
         value = serialize(expression, context);
     }
     SECTION("MIN(X,Y)") {
-        auto expression = min(3, 4);
+        constexpr auto expression = min(3, 4);
         context.use_parentheses = false;
         expected = "MIN(3, 4)";
         value = serialize(expression, context);
     }
     SECTION("LENGTH") {
-        auto expression = length("hi");
+        constexpr auto expression = length("hi");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "LENGTH('hi')";
@@ -33,7 +33,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("ABS") {
-        auto expression = sqlite_orm::abs(-100);
+        constexpr auto expression = sqlite_orm::abs(-100);
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "ABS(-100)";
@@ -45,7 +45,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("LOWER") {
-        auto expression = lower("dancefloor");
+        constexpr auto expression = lower("dancefloor");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "LOWER('dancefloor')";
@@ -57,7 +57,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("UPPER") {
-        auto expression = upper("call");
+        constexpr auto expression = upper("call");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "UPPER('call')";
@@ -69,7 +69,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("TOTAL_CHANGES") {
-        auto expression = total_changes();
+        constexpr auto expression = total_changes();
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "TOTAL_CHANGES()";
@@ -81,7 +81,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("CHANGES") {
-        auto expression = changes();
+        constexpr auto expression = changes();
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "CHANGES()";
@@ -93,7 +93,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("TRIM(X)") {
-        auto expression = trim("hey");
+        constexpr auto expression = trim("hey");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "TRIM('hey')";
@@ -105,7 +105,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("TRIM(X,Y)") {
-        auto expression = trim("hey", "h");
+        constexpr auto expression = trim("hey", "h");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "TRIM('hey', 'h')";
@@ -117,7 +117,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("LTRIM(X)") {
-        auto expression = ltrim("hey");
+        constexpr auto expression = ltrim("hey");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "LTRIM('hey')";
@@ -129,7 +129,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("LTRIM(X,Y)") {
-        auto expression = ltrim("hey", "h");
+        constexpr auto expression = ltrim("hey", "h");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "LTRIM('hey', 'h')";
@@ -141,7 +141,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("RTRIM(X)") {
-        auto expression = rtrim("hey");
+        constexpr auto expression = rtrim("hey");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "RTRIM('hey')";
@@ -153,7 +153,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("RTRIM(X,Y)") {
-        auto expression = rtrim("hey", "h");
+        constexpr auto expression = rtrim("hey", "h");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "RTRIM('hey', 'h')";
@@ -165,7 +165,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("HEX") {
-        auto expression = hex("love");
+        constexpr auto expression = hex("love");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "HEX('love')";
@@ -177,7 +177,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("QUOTE") {
-        auto expression = quote("one");
+        constexpr auto expression = quote("one");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "QUOTE('one')";
@@ -189,7 +189,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("RANDOMBLOB") {
-        auto expression = randomblob(5);
+        constexpr auto expression = randomblob(5);
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "RANDOMBLOB(5)";
@@ -201,7 +201,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("INSTR") {
-        auto expression = instr("hi", "i");
+        constexpr auto expression = instr("hi", "i");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "INSTR('hi', 'i')";
@@ -213,7 +213,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("REPLACE") {
-        auto expression = replace("contigo", "o", "a");
+        constexpr auto expression = replace("contigo", "o", "a");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "REPLACE('contigo', 'o', 'a')";
@@ -225,7 +225,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("ROUND(X)") {
-        auto expression = sqlite_orm::round(10.5);
+        constexpr auto expression = sqlite_orm::round(10.5);
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "ROUND(10.5)";
@@ -237,7 +237,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("ROUND(X,Y)") {
-        auto expression = sqlite_orm::round(10.5, 0.5);
+        constexpr auto expression = sqlite_orm::round(10.5, 0.5);
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "ROUND(10.5, 0.5)";
@@ -250,7 +250,7 @@ TEST_CASE("statement_serializer core functions") {
     }
 #if SQLITE_VERSION_NUMBER >= 3007016
     SECTION("CHAR") {
-        auto expression = char_(40, 45);
+        constexpr auto expression = char_(40, 45);
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "CHAR(40, 45)";
@@ -262,7 +262,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("RANDOM") {
-        auto expression = sqlite_orm::random();
+        constexpr auto expression = sqlite_orm::random();
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "RANDOM()";
@@ -275,7 +275,7 @@ TEST_CASE("statement_serializer core functions") {
     }
 #endif
     SECTION("COALESCE") {
-        auto expression = coalesce<std::string>(10, 15);
+        constexpr auto expression = coalesce<std::string>(10, 15);
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "COALESCE(10, 15)";
@@ -287,7 +287,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("DATE") {
-        auto expression = date("now");
+        constexpr auto expression = date("now");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "DATE('now')";
@@ -299,7 +299,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("TIME") {
-        auto expression = time("12:00", "localtime");
+        constexpr auto expression = time("12:00", "localtime");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "TIME('12:00', 'localtime')";
@@ -311,7 +311,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("DATETIME") {
-        auto expression = datetime("now");
+        constexpr auto expression = datetime("now");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "DATETIME('now')";
@@ -323,7 +323,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("JULIANDAY") {
-        auto expression = julianday("now");
+        constexpr auto expression = julianday("now");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "JULIANDAY('now')";
@@ -335,7 +335,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("STRFTIME") {
-        auto expression = strftime("%s", "2014-10-07 02:34:56");
+        constexpr auto expression = strftime("%s", "2014-10-07 02:34:56");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "STRFTIME('%s', '2014-10-07 02:34:56')";
@@ -347,7 +347,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("ZEROBLOB") {
-        auto expression = zeroblob(5);
+        constexpr auto expression = zeroblob(5);
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "ZEROBLOB(5)";
@@ -359,7 +359,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("SUBSTR(X,Y)") {
-        auto expression = substr("Zara", 2);
+        constexpr auto expression = substr("Zara", 2);
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "SUBSTR('Zara', 2)";
@@ -371,7 +371,7 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
     }
     SECTION("SUBSTR(X,Y,Z)") {
-        auto expression = substr("Natasha", 3, 2);
+        constexpr auto expression = substr("Natasha", 3, 2);
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "SUBSTR('Natasha', 3, 2)";
@@ -384,7 +384,7 @@ TEST_CASE("statement_serializer core functions") {
     }
     SECTION("SOUNDEX") {
 #ifdef SQLITE_SOUNDEX
-        auto expression = soundex("Vaso");
+        constexpr auto expression = soundex("Vaso");
         SECTION("use_parentheses") {
             context.use_parentheses = true;
             expected = "SOUNDEX('Vaso')";
@@ -396,5 +396,124 @@ TEST_CASE("statement_serializer core functions") {
         value = serialize(expression, context);
 #endif
     }
+    REQUIRE(value == expected);
+}
+
+TEST_CASE("statement_serializer newer core functions") {
+    internal::db_objects_tuple<> storage;
+    internal::serializer_context<internal::db_objects_tuple<>> context{storage};
+    context.use_parentheses = false;
+    std::string value;
+    decltype(value) expected;
+#if SQLITE_VERSION_NUMBER >= 3008003
+    SECTION("PRINTF") {
+        auto expression = sqlite_orm::printf("%d", 1);
+        expected = "PRINTF('%d', 1)";
+        value = serialize(expression, context);
+    }
+#endif
+#if SQLITE_VERSION_NUMBER >= 3032000
+    SECTION("IIF") {
+        auto expression = iif(c(2) > 1, "greater", "less");
+        expected = "IIF(2 > 1, 'greater', 'less')";
+        value = serialize(expression, context);
+    }
+#endif
+#if SQLITE_VERSION_NUMBER >= 3035000
+    SECTION("SIGN") {
+        auto expression = sign(-3);
+        expected = "SIGN(-3)";
+        value = serialize(expression, context);
+    }
+#endif
+#if SQLITE_VERSION_NUMBER >= 3038000
+    SECTION("FORMAT") {
+        auto expression = format("%d", 1);
+        expected = "FORMAT('%d', 1)";
+        value = serialize(expression, context);
+    }
+    SECTION("UNIXEPOCH") {
+        auto expression = unixepoch("now");
+        expected = "UNIXEPOCH('now')";
+        value = serialize(expression, context);
+    }
+#endif
+#if SQLITE_VERSION_NUMBER >= 3041000
+    SECTION("UNHEX") {
+        auto expression = unhex("3637");
+        expected = "UNHEX('3637')";
+        value = serialize(expression, context);
+    }
+#endif
+#if SQLITE_VERSION_NUMBER >= 3043000
+    SECTION("OCTET_LENGTH") {
+        auto expression = octet_length("hi");
+        expected = "OCTET_LENGTH('hi')";
+        value = serialize(expression, context);
+    }
+    SECTION("TIMEDIFF") {
+        auto expression = timediff("2026-08-08", "2026-08-07");
+        expected = "TIMEDIFF('2026-08-08', '2026-08-07')";
+        value = serialize(expression, context);
+    }
+#endif
+#if SQLITE_VERSION_NUMBER >= 3044000
+    SECTION("CONCAT") {
+        auto expression = concat("one", 2);
+        expected = "CONCAT('one', 2)";
+        value = serialize(expression, context);
+    }
+    SECTION("CONCAT_WS") {
+        auto expression = concat_ws("-", "one", "two");
+        expected = "CONCAT_WS('-', 'one', 'two')";
+        value = serialize(expression, context);
+    }
+    SECTION("STRING_AGG") {
+        auto expression = string_agg("x", ",");
+        expected = "STRING_AGG('x', ',')";
+        value = serialize(expression, context);
+    }
+#endif
+#if SQLITE_VERSION_NUMBER >= 3048000
+    SECTION("IF") {
+        auto expression = if_(c(2) > 1, "greater", "less");
+        expected = "IF(2 > 1, 'greater', 'less')";
+        value = serialize(expression, context);
+    }
+#endif
+#if SQLITE_VERSION_NUMBER >= 3050000
+    SECTION("UNISTR") {
+        auto expression = unistr("a\\u0062c");
+        expected = "UNISTR('a\\u0062c')";
+        value = serialize(expression, context);
+    }
+    SECTION("UNISTR_QUOTE") {
+        auto expression = unistr_quote("abc");
+        expected = "UNISTR_QUOTE('abc')";
+        value = serialize(expression, context);
+    }
+#endif
+#ifdef SQLITE_ENABLE_PERCENTILE
+    SECTION("MEDIAN") {
+        auto expression = median(1);
+        expected = "MEDIAN(1)";
+        value = serialize(expression, context);
+    }
+    SECTION("PERCENTILE") {
+        auto expression = percentile(1, 50);
+        expected = "PERCENTILE(1, 50)";
+        value = serialize(expression, context);
+    }
+    SECTION("PERCENTILE_CONT") {
+        auto expression = percentile_cont(1, 0.5);
+        expected = "PERCENTILE_CONT(1, 0.5)";
+        value = serialize(expression, context);
+    }
+    SECTION("PERCENTILE_DISC") {
+        auto expression = percentile_disc(1, 0.5);
+        expected = "PERCENTILE_DISC(1, 0.5)";
+        value = serialize(expression, context);
+    }
+#endif
     REQUIRE(value == expected);
 }

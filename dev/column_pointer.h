@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::enable_if, std::is_convertible, std::is_base_of
+#include <type_traits>  //  std::enable_if, std::is_convertible
 #include <utility>  // std::move
 #endif
 
@@ -9,7 +9,9 @@
 #include "type_traits.h"
 #include "table_reference.h"
 #include "alias_traits.h"
-#include "tags.h"
+#include "vocabulary/node_traits.h"  //  node projections
+#include "vocabulary/traits/structural_traits_fwd.h"  // Included to specialize traits
+#include "vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 
 namespace sqlite_orm::internal {
     /**
@@ -25,13 +27,10 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_column_pointer_v = polyfill::is_specialization_of<T, column_pointer>::value;
+    constexpr bool is_column_pointer_v = polyfill::is_specialization_of<T, column_pointer>::value;
 
     template<class T>
-    struct is_column_pointer : polyfill::bool_constant<is_column_pointer_v<T>> {};
-
-    template<class T>
-    inline constexpr bool is_operator_argument_v<T, std::enable_if_t<is_column_pointer<T>::value>> = true;
+    constexpr bool is_operator_argument_v<T, std::enable_if_t<is_column_pointer<T>::value>> = true;
 
 #if (SQLITE_VERSION_NUMBER >= 3008003) && defined(SQLITE_ORM_WITH_CTE)
     template<class A>

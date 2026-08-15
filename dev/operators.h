@@ -1,13 +1,14 @@
 #pragma once
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
-#include <type_traits>  //  std::false_type, std::true_type
 #include <utility>  //  std::move
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"
-#include "tags.h"
+#include "vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
+#include "vocabulary/traits/operand_traits_fwd.h"  // Included to specialize traits
 #include "serialize_result_type.h"
+#include "tags.h"
 
 namespace sqlite_orm::internal {
     template<class L, class R, class... Ds>
@@ -22,10 +23,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_binary_operator_v = polyfill::is_specialization_of<T, binary_operator>::value;
-
-    template<class T>
-    using is_binary_operator = polyfill::bool_constant<is_binary_operator_v<T>>;
+    constexpr bool is_binary_operator_v = polyfill::is_specialization_of<T, binary_operator>::value;
 
     struct conc_string {
         serialize_result_type serialize() const {
@@ -38,6 +36,9 @@ namespace sqlite_orm::internal {
      */
     template<class L, class R>
     using conc_t = binary_operator<L, R, conc_string>;
+
+    template<class L, class R>
+    constexpr bool is_chainable_operand_v<conc_t<L, R>> = true;
 
     struct unary_minus_string {
         serialize_result_type serialize() const {
@@ -195,17 +196,8 @@ namespace sqlite_orm::internal {
     template<class L, class R>
     using assign_t = binary_operator<L, R, assign_string>;
 
-    /**
-     *  Assign operator traits. Common case
-     */
-    template<class T>
-    struct is_assign_t : public std::false_type {};
-
-    /**
-     *  Assign operator traits. Specialized case
-     */
     template<class L, class R>
-    struct is_assign_t<assign_t<L, R>> : public std::true_type {};
+    constexpr bool is_assign_v<assign_t<L, R>> = true;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {

@@ -8,12 +8,12 @@
 #include "functional/cxx_type_traits_polyfill.h"
 #include "functional/gsl.h"
 #include "functional/mpl.h"
+#include "type_traits.h"
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_fy.h"
 #include "tuple_helper/tuple_filter.h"
 #include "tuple_helper/tuple_transformer.h"
 #include "tuple_helper/same_or_void.h"
-#include "type_traits.h"
 #include "member_traits/member_traits.h"
 #include "mapped_type_proxy.h"
 #include "core_functions.h"
@@ -27,6 +27,13 @@
 #include "function.h"
 #include "ast/special_keywords.h"
 #include "ast/cast.h"
+#include "ast/in.h"
+#include "ast/between.h"
+#include "ast/is_null.h"
+#include "ast/is_not_null.h"
+#include "ast/window.h"
+#include "ast/rank.h"
+#include "window_functions.h"
 
 namespace sqlite_orm::internal {
     /**
@@ -80,6 +87,21 @@ namespace sqlite_orm::internal {
         using type = bool;
     };
 
+    template<class DBOs, class A, class T>
+    struct column_result_t<DBOs, between_t<A, T>, void> {
+        using type = bool;
+    };
+
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, is_null_t<T>, void> {
+        using type = bool;
+    };
+
+    template<class DBOs, class T>
+    struct column_result_t<DBOs, is_not_null_t<T>, void> {
+        using type = bool;
+    };
+
     template<class DBOs>
     struct column_result_t<DBOs, current_time_t, void> {
         using type = std::string;
@@ -125,6 +147,67 @@ namespace sqlite_orm::internal {
 
     template<class DBOs, class T>
     struct column_result_t<DBOs, count_asterisk_t<T>, void> {
+        using type = int;
+    };
+
+    template<class DBOs, class F, class W>
+    struct column_result_t<DBOs, filtered_aggregate_function<F, W>, void> : column_result_t<DBOs, F> {};
+
+    template<class DBOs, class F, class... Args>
+    struct column_result_t<DBOs, over_t<F, Args...>, void> : column_result_t<DBOs, F> {};
+
+    template<class DBOs>
+    struct column_result_t<DBOs, row_number_t, void> {
+        using type = int;
+    };
+
+    template<class DBOs>
+    struct column_result_t<DBOs, dense_rank_t, void> {
+        using type = int;
+    };
+
+    template<class DBOs>
+    struct column_result_t<DBOs, percent_rank_t, void> {
+        using type = double;
+    };
+
+    template<class DBOs>
+    struct column_result_t<DBOs, cume_dist_t, void> {
+        using type = double;
+    };
+
+    template<class DBOs, class... Args>
+    struct column_result_t<DBOs, ntile_t<Args...>, void> {
+        using type = int;
+    };
+
+    template<class DBOs, class X, class... Rest>
+    struct column_result_t<DBOs, lag_t<X, Rest...>, void> {
+        using type = column_result_of_t<DBOs, X>;
+    };
+
+    template<class DBOs, class X, class... Rest>
+    struct column_result_t<DBOs, lead_t<X, Rest...>, void> {
+        using type = column_result_of_t<DBOs, X>;
+    };
+
+    template<class DBOs, class X, class... Rest>
+    struct column_result_t<DBOs, first_value_t<X, Rest...>, void> {
+        using type = column_result_of_t<DBOs, X>;
+    };
+
+    template<class DBOs, class X, class... Rest>
+    struct column_result_t<DBOs, last_value_t<X, Rest...>, void> {
+        using type = column_result_of_t<DBOs, X>;
+    };
+
+    template<class DBOs, class X, class... Rest>
+    struct column_result_t<DBOs, nth_value_t<X, Rest...>, void> {
+        using type = column_result_of_t<DBOs, X>;
+    };
+
+    template<class DBOs>
+    struct column_result_t<DBOs, rank_t, void> {
         using type = int;
     };
 

@@ -8,7 +8,7 @@
 #include <type_traits>  //  std::remove_reference, std::remove_cvref, std::decay
 #include <functional>  //   std::identity
 #include <sstream>  //  std::stringstream
-#include <iomanip>  //  std::flush
+#include <ostream>  //  std::flush
 #include <map>  //  std::map
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_size, std::tuple, std::make_tuple, std::tie
@@ -29,12 +29,12 @@
 #include "tuple_helper/tuple_transformer.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "type_traits.h"
-#include "alias.h"
+#include "vocabulary/node_traits.h"
+#include "vocabulary/node_algorithms.h"
+#include "vocabulary/node_fwd.h"  // column_field
 #include "error_code.h"
-#include "type_printer.h"
-#include "constraints.h"
+#include "alias.h"
 #include "field_printer.h"
-#include "rowid.h"
 #include "operators.h"
 #include "select_constraints.h"
 #include "core_functions.h"
@@ -45,7 +45,6 @@
 #include "sync_schema_result.h"
 #include "table_info.h"
 #include "storage_impl.h"
-#include "journal_mode.h"
 #include "mapped_view.h"
 #include "result_set_view.h"
 #include "ast_iterator.h"
@@ -56,11 +55,9 @@
 #include "serializer_context.h"
 #include "object_from_column_builder.h"
 #include "row_extractor.h"
-#include "schema/table.h"
-#include "schema/virtual_table.h"
-#include "schema/column.h"
 #include "schema/index.h"
 #include "schema/triggers.h"
+#include "schema/constraints/generated_always.h"  // basic_generated_always
 #include "cte_storage.h"
 #include "util.h"
 #include "serializing_util.h"
@@ -113,7 +110,11 @@ namespace sqlite_orm::internal {
                          storage_opt_or_default<will_run_query_spec>(options),
                          storage_opt_or_default<did_run_query_spec>(options),
                          foreign_keys_count<db_objects_type>()},
-            db_objects{std::move(dbObjects)} {}
+            db_objects{std::move(dbObjects)} {
+#ifdef SQLITE_ORM_WITH_VIEW
+            this->validate_dbos();
+#endif
+        }
 
         storage_t(const storage_t&) = default;
 
@@ -135,6 +136,25 @@ namespace sqlite_orm::internal {
         friend const db_objects_type& obtain_db_objects(const self_type& storage) noexcept {
             return storage.db_objects;
         }
+
+#ifdef SQLITE_ORM_WITH_VIEW
+        void validate_dbos() const {
+            // validate views: a view cannot select sub-objects, and column results must be convertible to view's object type
+            iterate_tuple<db_objects_type>(views_index_sequence<db_objects_type>{}, [this](const auto* view) {
+                using DrivingSelect = polyfill::remove_cvref_t<decltype(access_main_select(view->select))>;
+                using ExprDBOs =
+                    polyfill::remove_cvref_t<decltype(db_objects_for_expression(this->db_objects, view->select))>;
+                using ColResult = column_result_of_t<ExprDBOs, DrivingSelect>;
+                using elements_type = elements_type_t<std::remove_reference_t<decltype(*view)>>;
+                using field_types = transform_tuple_t<filter_tuple_t<elements_type, is_column>, field_type_t>;
+
+                static_assert(std::is_same<column_result_proxy_t<ColResult>, ColResult>::value,
+                              "A view cannot select sub-objects");
+                static_assert(std::is_convertible<tuplify_t<ColResult>, field_types>::value,
+                              "Column results must be convertible to view's object type");
+            });
+        }
+#endif
 
         template<class Table>
         void create_table(sqlite3* db, const std::string& tableName, const Table& table) {
@@ -173,7 +193,7 @@ namespace sqlite_orm::internal {
         template<class Table>
         void drop_create_with_loss(sqlite3* db, const Table& table) {
             // eliminated all transaction handling
-            this->drop_table_internal(db, table.name, false);
+            this->drop_dbo_internal(db, "TABLE", table.name, false);
             this->create_table(db, table.name, table);
         }
 
@@ -183,13 +203,13 @@ namespace sqlite_orm::internal {
             //  here we copy source table to another with a name with '_backup' suffix, but in case table with such
             //  a name already exists we append suffix 1, then 2, etc until we find a free name..
             auto backupTableName = table.name + "_backup";
-            if (this->table_exists(db, backupTableName)) {
+            if (this->object_exists(db, "table", backupTableName)) {
                 int suffix = 1;
                 do {
                     std::stringstream ss;
                     ss << suffix << std::flush;
                     auto anotherBackupTableName = backupTableName + ss.str();
-                    if (!this->table_exists(db, anotherBackupTableName)) {
+                    if (!this->object_exists(db, "table", anotherBackupTableName)) {
                         backupTableName = std::move(anotherBackupTableName);
                         break;
                     }
@@ -200,9 +220,9 @@ namespace sqlite_orm::internal {
 
             this->copy_table(db, table.name, backupTableName, table, columnsToIgnore);
 
-            this->drop_table_internal(db, table.name, false);
+            this->drop_dbo_internal(db, "TABLE", table.name, false);
 
-            this->rename_table(db, backupTableName, table.name);
+            this->rename_table_internal(db, backupTableName, table.name);
         }
 
         template<class O>
@@ -392,6 +412,7 @@ namespace sqlite_orm::internal {
          */
         template<class O, class... Ids>
         void remove(Ids... ids) {
+            static_assert((internal::is_bindable_v<Ids> && ...), "Only primary key values are accepted as Ids");
             this->assert_mapped_type<O>();
             auto statement = this->prepare(sqlite_orm::remove<O>(std::forward<Ids>(ids)...));
             this->execute(statement);
@@ -535,6 +556,7 @@ namespace sqlite_orm::internal {
          */
         template<class O, class... Ids>
         O get(Ids... ids) {
+            static_assert((internal::is_bindable_v<Ids> && ...), "Only primary key values are accepted as Ids");
             this->assert_mapped_type<O>();
             this->assert_primary_key_type<O>();
             auto statement = this->prepare(sqlite_orm::get<O>(std::forward<Ids>(ids)...));
@@ -554,6 +576,7 @@ namespace sqlite_orm::internal {
          */
         template<class O, class... Ids>
         std::unique_ptr<O> get_pointer(Ids... ids) {
+            static_assert((internal::is_bindable_v<Ids> && ...), "Only primary key values are accepted as Ids");
             this->assert_mapped_type<O>();
             this->assert_primary_key_type<O>();
             auto statement = this->prepare(sqlite_orm::get_pointer<O>(std::forward<Ids>(ids)...));
@@ -592,6 +615,7 @@ namespace sqlite_orm::internal {
          */
         template<class O, class... Ids>
         std::optional<O> get_optional(Ids... ids) {
+            static_assert((internal::is_bindable_v<Ids> && ...), "Only primary key values are accepted as Ids");
             this->assert_mapped_type<O>();
             this->assert_primary_key_type<O>();
             auto statement = this->prepare(sqlite_orm::get_optional<O>(std::forward<Ids>(ids)...));
@@ -939,7 +963,7 @@ namespace sqlite_orm::internal {
          *  @return The ID of the last inserted record for a rowid table, otherwise a meaningless value.
          *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
          *          Attention: While SQLite returns a 64-bit integer as rowid, this function returns an `int` that most likely has less precision.
-             *                     If you need the full 64-bit rowid value, use `storage_t<>::execute()` instead, or call `storage_t<>::last_insert_rowid()` after inserting.
+         *                     If you need the full 64-bit rowid value, use `storage_t<>::execute()` instead, or call `storage_t<>::last_insert_rowid()` after inserting.
          */
         template<class O, class... Cols>
         int insert(const O& o, columns_t<Cols...> cols) {
@@ -964,7 +988,7 @@ namespace sqlite_orm::internal {
          *  @return The ID of the last inserted record for a rowid table, otherwise a meaningless value.
          *          Attention: `sqlite3_last_insert_rowid()` is used to retrieve the last inserted ID, therefore the ID is only useful in single-threaded contexts.
          *          Attention: While SQLite returns a 64-bit integer as rowid, this function returns an `int` that most likely has less precision.
-             *                     If you need the full 64-bit rowid value, use `storage_t<>::execute()` instead, or call `storage_t<>::last_insert_rowid()` after inserting.
+         *                     If you need the full 64-bit rowid value, use `storage_t<>::execute()` instead, or call `storage_t<>::last_insert_rowid()` after inserting.
          */
         template<class O>
         int insert(const O& o) {
@@ -1115,14 +1139,46 @@ namespace sqlite_orm::internal {
         }
 
         template<class T, class... S>
-        sync_schema_result schema_status(const trigger_t<T, S...>&, sqlite3*, bool, bool*) {
-            return sync_schema_result::already_in_sync;
+        sync_schema_result schema_status(const trigger_t<T, S...>& trigger, sqlite3* db, bool, bool*) {
+            auto dbTriggerSql = this->retrieve_object_sql(db, "trigger", trigger.name);
+            if (dbTriggerSql.empty()) {
+                return sync_schema_result::new_table_created;
+            }
+
+            const serializer_context<db_objects_type> context{this->db_objects};
+            auto storageSql = serialize(trigger, context);
+
+            if (dbTriggerSql == storageSql) {
+                return sync_schema_result::already_in_sync;
+            }
+            return sync_schema_result::dropped_and_recreated;
         }
 
         template<class... Cols>
         sync_schema_result schema_status(const index_t<Cols...>&, sqlite3*, bool, bool*) {
             return sync_schema_result::already_in_sync;
         }
+
+#ifdef SQLITE_ORM_WITH_VIEW
+        template<class View, satisfies<is_view, View> = true>
+        sync_schema_result schema_status(const View& queryView, sqlite3* db, bool, bool*) {
+            auto dbViewSql = this->retrieve_object_sql(db, "view", queryView.name);
+            if (dbViewSql.empty()) {
+                return sync_schema_result::new_table_created;
+            }
+
+            const auto& exprDBOs = db_objects_for_expression(this->db_objects, queryView.select);
+
+            using context_t = serializer_context<std::remove_cvref_t<decltype(exprDBOs)>>;
+            const context_t context{exprDBOs};
+            auto storageSql = serialize(queryView, context);
+
+            if (dbViewSql == storageSql) {
+                return sync_schema_result::already_in_sync;
+            }
+            return sync_schema_result::dropped_and_recreated;
+        }
+#endif
 
         template<class Table, satisfies<is_base_table, Table> = true>
         sync_schema_result schema_status(const Table& table, sqlite3* db, bool preserve, bool* attempt_to_preserve) {
@@ -1132,9 +1188,10 @@ namespace sqlite_orm::internal {
 
             auto dbTableInfo = this->pragma.table_xinfo(table.name);
             auto res = sync_schema_result::already_in_sync;
+            bool canPreserveData = true;
 
             //  first let's see if table with such name exists..
-            auto gottaCreateTable = !this->table_exists(db, table.name);
+            auto gottaCreateTable = !this->object_exists(db, "table", table.name);
             if (!gottaCreateTable) {
 
                 //  get table info provided in `make_table` call..
@@ -1163,7 +1220,20 @@ namespace sqlite_orm::internal {
                     }
                 }
                 if (gottaCreateTable) {
-                    res = sync_schema_result::dropped_and_recreated;
+                    // check if any new columns prevent data preservation
+                    for (const table_xinfo* colInfo: columnsToAdd) {
+                        if (!table.find_column_generated_storage_type(colInfo->name)) {
+                            if (colInfo->notnull && colInfo->dflt_value.empty()) {
+                                canPreserveData = false;
+                                if (attempt_to_preserve) {
+                                    *attempt_to_preserve = false;
+                                };
+                                break;
+                            }
+                        }
+                    }
+                    res = canPreserveData ? sync_schema_result::dropped_and_recreated
+                                          : sync_schema_result::dropped_and_recreated_with_data_loss;
                 } else {
                     if (!columnsToAdd.empty()) {
                         // extra storage columns than table columns
@@ -1172,18 +1242,27 @@ namespace sqlite_orm::internal {
                                 table.find_column_generated_storage_type(colInfo->name);
                             if (generatedStorageType) {
                                 if (*generatedStorageType == basic_generated_always::storage_type::stored) {
+                                    //  a STORED generated column cannot be added with `ALTER TABLE ... ADD COLUMN`,
+                                    //  but the scan must continue: another new column may still make data preservation impossible
                                     gottaCreateTable = true;
-                                    break;
                                 }
                                 //  fallback cause VIRTUAL can be added
                             } else {
                                 if (colInfo->notnull && colInfo->dflt_value.empty()) {
                                     gottaCreateTable = true;
+                                    canPreserveData = false;
                                     // no matter if preserve is true or false, there is no way to preserve data, so we wont try!
                                     if (attempt_to_preserve) {
                                         *attempt_to_preserve = false;
                                     };
                                     break;
+                                }
+                                //  `ALTER TABLE ... ADD COLUMN` cannot add a column with a PRIMARY KEY or
+                                //  UNIQUE constraint or with a non-constant default value;
+                                //  such a column requires the table to be recreated
+                                if (colInfo->pk != 0 || !is_default_value_addable(colInfo->dflt_value) ||
+                                    is_column_unique(this->db_objects, table, colInfo->name)) {
+                                    gottaCreateTable = true;
                                 }
                             }
                         }
@@ -1194,7 +1273,8 @@ namespace sqlite_orm::internal {
                                 res = sync_schema_result::new_columns_added;
                             }
                         } else {
-                            res = sync_schema_result::dropped_and_recreated;
+                            res = canPreserveData ? sync_schema_result::dropped_and_recreated
+                                                  : sync_schema_result::dropped_and_recreated_with_data_loss;
                         }
                     } else {
                         if (res != sync_schema_result::old_columns_removed) {
@@ -1234,13 +1314,38 @@ namespace sqlite_orm::internal {
         }
 
         template<class... Cols>
-        sync_schema_result sync_dbo(const trigger_t<Cols...>& trigger, sqlite3* db, bool) {
-            const auto res = sync_schema_result::already_in_sync;  // TODO Change accordingly
-            const serializer_context<db_objects_type> context{this->db_objects};
-            const auto sql = serialize(trigger, context);
-            this->executor.perform_void_exec(db, sql.c_str());
+        sync_schema_result sync_dbo(const trigger_t<Cols...>& trigger, sqlite3* db, bool preserve) {
+            auto res = this->schema_status(trigger, db, preserve, nullptr);
+            if (res != sync_schema_result::already_in_sync) {
+                if (res == sync_schema_result::dropped_and_recreated) {
+                    this->drop_dbo_internal(db, "TRIGGER", trigger.name, true);
+                }
+                const serializer_context<db_objects_type> context{this->db_objects};
+                const auto sql = serialize(trigger, context);
+                this->executor.perform_void_exec(db, sql.c_str());
+            }
             return res;
         }
+
+#ifdef SQLITE_ORM_WITH_VIEW
+        template<class View, satisfies<is_view, View> = true>
+        sync_schema_result sync_dbo(const View& queryView, sqlite3* db, bool preserve) {
+            auto res = this->schema_status(queryView, db, preserve, nullptr);
+            if (res != sync_schema_result::already_in_sync) {
+                if (res == sync_schema_result::dropped_and_recreated) {
+                    this->drop_dbo_internal(db, "VIEW", queryView.name, true);
+                }
+
+                const auto& exprDBOs = db_objects_for_expression(this->db_objects, queryView.select);
+
+                using context_t = serializer_context<polyfill::remove_cvref_t<decltype(exprDBOs)>>;
+                const context_t context{exprDBOs};
+                const auto sql = serialize(queryView, context);
+                this->executor.perform_void_exec(db, sql.c_str());
+            }
+            return res;
+        }
+#endif
 
         template<class Table, satisfies<is_base_table, Table> = true>
         sync_schema_result sync_dbo(const Table& table, sqlite3* db, bool preserve);
@@ -1286,7 +1391,6 @@ namespace sqlite_orm::internal {
             const auto& exprDBOs = db_objects_for_expression(this->db_objects, expression);
 
             using context_t = serializer_context<polyfill::remove_cvref_t<decltype(exprDBOs)>>;
-
             context_t context{exprDBOs};
             context.replace_bindable_with_question = parametrized;
             // just like prepare_impl()
@@ -1306,7 +1410,6 @@ namespace sqlite_orm::internal {
             const auto& exprDBOs = db_objects_for_expression(this->db_objects, statement);
 
             using context_t = serializer_context<polyfill::remove_cvref_t<decltype(exprDBOs)>>;
-
             context_t context{exprDBOs};
             context.omit_table_name = false;
             context.replace_bindable_with_question = true;
@@ -1325,21 +1428,27 @@ namespace sqlite_orm::internal {
          *  - every table from storage is compared with it's db analog and
          *      - if table doesn't exist it is being created
          *      - if table exists its colums are being compared with table_info from db and
-         *          - if there are columns in db that do not exist in storage (excess) table will be dropped and recreated
-         *          - if there are columns in storage that do not exist in db they will be added using `ALTER TABLE ... ADD COLUMN ...' command
-         *          - if there is any column existing in both db and storage but differs by any of
-         *  properties/constraints (pk, notnull, dflt_value) table will be dropped and recreated. Be aware that
+         *          - if there are columns in db that do not exist in storage (excess) they are removed
+         *  using `ALTER TABLE ... DROP COLUMN` on SQLite >= 3.35.0, otherwise through a backup table if
+         *  `preserve` is true or by recreating the table with data loss if `preserve` is false
+         *          - if there are columns in storage that do not exist in db they will be added using `ALTER TABLE ... ADD COLUMN ...' command;
+         *  in case a column cannot be added that way (a STORED generated column, a column with a `PRIMARY KEY` or `UNIQUE` constraint
+         *  or with a non-constant default value) the table is recreated through a backup table
+         *          - if there is any column existing in both db and storage but differs by any of the compared
+         *  properties (primary key membership and order, notnull, the presence of a default value, the generated flag)
+         *  table will be dropped and recreated. Note that the column type, the default value itself, a generated
+         *  column expression and `UNIQUE`/`CHECK`/`COLLATE` constraints are NOT compared, so changing them is not detected. Be aware that
          *  `sync_schema` doesn't guarantee that data will not be dropped. It guarantees only that it will make db
          *  schema the same as you specified in `make_storage` function call. A good point is that if you have no db
          *  file at all it will be created and all tables also will be created with exact tables and columns you
          *  specified in `make_storage`, `make_table` and `make_column` calls. The best practice is to call this
          *  function right after storage creation.
-         *   @param preserve affects function's behaviour in case it is needed to remove a column. If it is `false`
+         *  @param preserve affects function's behaviour in case it is needed to remove a column. If it is `false`
          *  so table will be dropped if there is column to remove if SQLite version is < 3.35.0 and remove column if SQLite version >= 3.35.0,
          *  if `true` -  table is being copied into another table, dropped and copied table is renamed with source table name.
          *  Warning: sync_schema doesn't check foreign keys cause it is unable to do so in sqlite3. If you know how to get foreign key info please
          *  submit an issue https://github.com/fnc12/sqlite_orm/issues
-         *   @return std::map with std::string key equal table name and `sync_schema_result` as value.
+         *  @return std::map with std::string key equal table name and `sync_schema_result` as value.
          *  `sync_schema_result` is a enum value that stores table state after syncing a schema. `sync_schema_result`
          *  can be printed out on std::ostream with `operator<<`.
          */
@@ -1367,8 +1476,6 @@ namespace sqlite_orm::internal {
             });
             return result;
         }
-
-        using storage_base::table_exists;  // now that it is in storage_base make it into overload set
 
         template<class DML, std::enable_if_t<is_raw_dml_expression_v<DML>, bool> = true>
         prepared_statement_t<DML> prepare(DML statement) {
@@ -1555,19 +1662,18 @@ namespace sqlite_orm::internal {
             auto processObject = [&table = this->get_table<object_type>(),
                                   bindValue = field_value_binder{stmt}](const object_type& object) mutable {
                 using table_type = polyfill::remove_cvref_t<decltype(table)>;
-                using without_rowid = typename table_type::is_without_rowid;
-                using is_pkcolumn_q =
-                    mpl::conjunction<mpl::not_<mpl::always<without_rowid>>, mpl::quote_fn<is_primary_key>>;
+                using is_pkcolumn_q = mpl::conjunction<mpl::not_<mpl::always<typename table_type::is_without_rowid>>,
+                                                       mpl::quote_fn<is_primary_key>>;
                 using is_generated_always_q = mpl::quote_fn<is_generated_always>;
 
                 table.template for_each_column_excluding<mpl::disjunction<is_pkcolumn_q, is_generated_always_q>>(
                     [&table, &bindValue, &object](auto& column) {
-                        if (!without_rowid::value &&
+                        if (!table_type::is_without_rowid::value &&
                             (is_single_table_primary_key(table, column) ||
-                             (column.template is_template<default_t>() && table_primary_key_contains(table, column)))) {
+                             (column.template is<is_default>() && table_primary_key_contains(table, column)))) {
                             return;
-                        } else if (without_rowid::value && (column.template is_template<default_t>() &&
-                                                            table_primary_key_contains(table, column))) {
+                        } else if (table_type::is_without_rowid::value &&
+                                   (column.template is<is_default>() && table_primary_key_contains(table, column))) {
                             return;
                         }
                         bindValue(polyfill::invoke(column.member_pointer, object));

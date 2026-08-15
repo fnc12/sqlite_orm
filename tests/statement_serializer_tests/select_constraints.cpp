@@ -71,23 +71,39 @@ TEST_CASE("statement_serializer select constraints") {
             value = serialize(expression, context);
             expected = R"(FROM "users" "u")";
         }
+        SECTION("with multiple") {
+            auto expression = from<User, alias_u<User>>();
+            value = serialize(expression, context);
+            expected = R"(FROM "users", "users" "u")";
+        }
 #ifdef SQLITE_ORM_WITH_CPP20_ALIASES
         {
+            constexpr auto user = c<User>();
+            constexpr auto u = "u"_alias.for_<User>();
             SECTION("with table reference") {
-                constexpr auto user = c<User>();
                 auto expression = from<user>();
                 value = serialize(expression, context);
                 expected = R"(FROM "users")";
             }
+            SECTION("with table reference 2") {
+                auto expression = from(user);
+                value = serialize(expression, context);
+                expected = R"(FROM "users")";
+            }
             SECTION("with alias 2") {
-                auto expression = from<alias<'u'>.for_<User>()>();
+                auto expression = from<u>();
                 value = serialize(expression, context);
                 expected = R"(FROM "users" "u")";
             }
             SECTION("with alias 3") {
-                auto expression = from<"u"_alias.for_<User>()>();
+                auto expression = from(u);
                 value = serialize(expression, context);
                 expected = R"(FROM "users" "u")";
+            }
+            SECTION("with multiple 2") {
+                auto expression = from(user, u, user());
+                value = serialize(expression, context);
+                expected = R"(FROM "users", "users" "u", "users"())";
             }
         }
 #endif

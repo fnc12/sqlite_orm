@@ -10,15 +10,15 @@
 #endif
 
 #include "functional/cxx_type_traits_polyfill.h"  // std::remove_cvref, polyfill::is_detected
-#include "functional/cxx_functional_polyfill.h"
+#include "functional/cxx_functional_polyfill.h"  // std::unwrap_reference
 #include "functional/gsl.h"
 #include "tuple_helper/tuple_iteration.h"
 #include "type_traits.h"
+#include "vocabulary/node_traits.h"
+#include "vocabulary/node_fwd.h"  // column_constraints
+#include "schema/column_identifier.h"
 #include "error_code.h"
-#include "serializer_context.h"
 #include "serialize_result_type.h"
-#include "util.h"
-#include "schema/column.h"
 
 namespace sqlite_orm::internal {
     template<class O>
@@ -72,11 +72,11 @@ namespace sqlite_orm::internal {
         }
     }
 
-    inline void stream_identifier(std::ostream& ss, const std::string& identifier, const std::string& alias) {
+    inline void stream_identifier(std::ostream& ss, serialize_arg_type identifier, serialize_arg_type alias) {
         return stream_identifier(ss, "", identifier, alias);
     }
 
-    inline void stream_identifier(std::ostream& ss, const std::string& identifier) {
+    inline void stream_identifier(std::ostream& ss, serialize_arg_type identifier) {
         return stream_identifier(ss, "", identifier, "");
     }
 
@@ -302,7 +302,8 @@ namespace sqlite_orm::internal {
         bool first = true;
         for (auto& identifier: identifiers) {
             ss << sep[std::exchange(first, false)];
-            stream_identifier(ss, identifier);
+            // note: `identifier` may be a reference-wrapped string, so unwrap it if needed before streaming
+            stream_identifier(ss, polyfill::unwrap_ref_decay_t<decltype(identifier)>(identifier));
         }
         return ss;
     }
@@ -448,7 +449,7 @@ namespace sqlite_orm::internal {
         // add implicit null constraint
         if (!context.omit_column_type) {
             constexpr bool hasExplicitNullableConstraint =
-                mpl::invoke_t<mpl::disjunction<check_if_has_type<null_t>, check_if_has_type<not_null_t>>,
+                mpl::invoke_t<mpl::disjunction<check_if_has<is_null_constraint>, check_if_has<is_not_null_constraint>>,
                               constraints_tuple>::value;
             if constexpr (!hasExplicitNullableConstraint) {
                 if (isNotNull) {

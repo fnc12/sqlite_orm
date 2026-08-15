@@ -9,12 +9,12 @@ TEST_CASE("statement_serializer tokenize") {
     std::string value;
     std::string expected;
     SECTION("porter ascii") {
-        auto node = tokenize("porter ascii");
+        constexpr auto node = tokenize("porter ascii");
         value = serialize(node, context);
         expected = "tokenize = 'porter ascii'";
     }
     SECTION("unicode61 remove_diacritics 1") {
-        auto node = tokenize("unicode61 remove_diacritics 1");
+        constexpr auto node = tokenize("unicode61 remove_diacritics 1");
         value = serialize(node, context);
         expected = "tokenize = 'unicode61 remove_diacritics 1'";
     }

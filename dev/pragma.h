@@ -7,7 +7,7 @@
 #include <memory>  // std::shared_ptr
 #include <vector>  //  std::vector
 #include <sstream>
-#include <iomanip>  //  std::flush
+#include <ostream>  //  std::flush
 #endif
 
 #include "functional/gsl.h"
@@ -271,10 +271,10 @@ namespace sqlite_orm::internal {
 
         void set_pragma_impl(const std::string& sql, sqlite3* db = nullptr) {
             if (db) {
-                this->executor.perform_void_exec(db, sql.data());
+                this->executor.perform_void_exec(db, sql.c_str());
             } else {
                 auto connection = this->get_connection();
-                this->executor.perform_void_exec(connection.get(), sql.data());
+                this->executor.perform_void_exec(connection.get(), sql.c_str());
             }
         }
     };

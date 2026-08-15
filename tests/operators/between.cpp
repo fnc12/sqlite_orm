@@ -19,6 +19,38 @@ TEST_CASE("Between") {
     storage.insert(Object{});
 
     auto allObjects = storage.get_all<Object>();
-    auto rows = storage.select(&Object::id, where(between(&Object::id, 1, 3)));
-    REQUIRE(rows.size() == 3);
+    REQUIRE(allObjects.size() == 5);
+
+    SECTION("between in where clause") {
+        auto rows = storage.select(&Object::id, where(between(&Object::id, 1, 3)));
+        REQUIRE(rows.size() == 3);
+    }
+
+    SECTION("between as select expression") {
+        auto rows = storage.select(between(&Object::id, 2, 4));
+        REQUIRE(rows.size() == 5);
+        REQUIRE(rows[0] == false);
+        REQUIRE(rows[1] == true);
+        REQUIRE(rows[2] == true);
+        REQUIRE(rows[3] == true);
+        REQUIRE(rows[4] == false);
+    }
+
+    SECTION("negated between in where clause") {
+        auto rows = storage.select(&Object::id, where(!between(&Object::id, 2, 4)));
+        REQUIRE(rows.size() == 2);
+        REQUIRE(rows[0] == 1);
+        REQUIRE(rows[1] == 5);
+    }
+
+    SECTION("between with empty result") {
+        auto rows = storage.select(&Object::id, where(between(&Object::id, 10, 20)));
+        REQUIRE(rows.empty());
+    }
+
+    SECTION("between with single match") {
+        auto rows = storage.select(&Object::id, where(between(&Object::id, 3, 3)));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows[0] == 3);
+    }
 }

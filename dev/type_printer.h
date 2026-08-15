@@ -2,7 +2,6 @@
 
 #ifndef SQLITE_ORM_IMPORT_STD_MODULE
 #include <string>  //  std::string
-#include <memory>  //  std::shared_ptr, std::unique_ptr
 #include <vector>  //  std::vector
 #endif
 #include "functional/cxx_optional.h"

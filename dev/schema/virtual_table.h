@@ -5,17 +5,14 @@
 #include <concepts>  // std::convertible_to
 #endif
 #include <string>  //  std::string
-#include <tuple>  //  std::tuple_element, std::make_tuple
-#include <utility>  //  std::forward, std::move
+#include <utility>  //  std::move
 #endif
 
 #include "../functional/cxx_type_traits_polyfill.h"
 #include "../functional/gsl.h"
-#include "../functional/mpl.h"
 #include "../type_traits.h"
-#include "../constraints.h"
+#include "../vocabulary/traits/grammar_traits_fwd.h"  // Included to specialize traits
 #include "table_base.h"
-#include "column.h"
 
 namespace sqlite_orm::internal {
 #ifdef SQLITE_ORM_CPP20_CONCEPTS_SUPPORTED
@@ -98,10 +95,7 @@ namespace sqlite_orm::internal {
     };
 
     template<class T>
-    inline constexpr bool is_virtual_table_v = polyfill::is_specialization_of_v<T, virtual_table>;
-
-    template<class T>
-    using is_virtual_table = polyfill::bool_constant<is_virtual_table_v<T>>;
+    constexpr bool is_virtual_table_v = polyfill::is_specialization_of_v<T, virtual_table>;
 }
 
 SQLITE_ORM_EXPORT namespace sqlite_orm {
