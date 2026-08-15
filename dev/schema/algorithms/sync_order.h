@@ -18,72 +18,19 @@
 #include <utility>  //  std::index_sequence
 #endif
 
+#include "../../functional/cxx_type_traits_polyfill.h"  //  polyfill::detected_or_t
+#include "../../vocabulary/node_traits.h"  //  object_type_t, table_mapped_type_t
+
 namespace sqlite_orm::internal {
-    template<class T, class... Els>
-    struct index_t;
-
-    template<class T, class... S>
-    struct trigger_t;
-
-    template<class O, class WithoutRowId, class... Cs>
-    struct base_table;
-
-    template<class O, class Select, class... Cs>
-    struct query_view;
-
     /**
-     *  Maps a database object to the mapped object type of the schema object
-     *  it hard-depends on at creation time, or `void` if it depends on nothing.
-     */
-    template<class DBO>
-    struct sync_dependency_target {
-        using type = void;
-    };
-
-    template<class T, class... Els>
-    struct sync_dependency_target<index_t<T, Els...>> {
-        using type = T;
-    };
-
-    template<class T, class... S>
-    struct sync_dependency_target<trigger_t<T, S...>> {
-        using type = typename T::table_type;
-    };
-
-    template<class DBO>
-    using sync_dependency_target_t = typename sync_dependency_target<DBO>::type;
-
-    /**
-     *  Maps a database object to the mapped object type it provides as a dependency target,
-     *  or `void` if it cannot be a target of a hard dependency.
-     */
-    template<class DBO>
-    struct sync_dependency_source {
-        using type = void;
-    };
-
-    template<class O, class WithoutRowId, class... Cs>
-    struct sync_dependency_source<base_table<O, WithoutRowId, Cs...>> {
-        using type = O;
-    };
-
-#ifdef SQLITE_ORM_WITH_VIEW
-    template<class O, class Select, class... Cs>
-    struct sync_dependency_source<query_view<O, Select, Cs...>> {
-        using type = O;
-    };
-#endif
-
-    template<class DBO>
-    using sync_dependency_source_t = typename sync_dependency_source<DBO>::type;
-
-    /**
-     *  Whether database object `D` must be synced after database object `S`.
+     *  Whether database object `D` must be synced after database object `S`:
+     *  indexes and triggers project the mapped object type of their target table (or view)
+     *  as `table_mapped_type`, which is matched against the object type provided by `S`.
      */
     template<class D, class S>
-    inline constexpr bool sync_depends_on_v =
-        !std::is_void<sync_dependency_target_t<D>>::value &&
-        std::is_same<sync_dependency_target_t<D>, sync_dependency_source_t<S>>::value;
+    constexpr bool sync_depends_on_v =
+        !std::is_void<polyfill::detected_or_t<void, table_mapped_type_t, D>>::value &&
+        std::is_same<polyfill::detected_or_t<void, table_mapped_type_t, D>, object_type_t<S>>::value;
 
     template<class D, class... DBO>
     constexpr std::array<bool, sizeof...(DBO)> make_sync_dependency_row() {
@@ -99,20 +46,20 @@ namespace sqlite_orm::internal {
      */
     template<class... DBO>
     constexpr std::array<size_t, sizeof...(DBO)> compute_sync_order() {
-        constexpr size_t size = sizeof...(DBO);
-        const std::array<std::array<bool, size>, size> dependencies{{make_sync_dependency_row<DBO, DBO...>()...}};
+        constexpr size_t nDBOs = sizeof...(DBO);
+        const std::array<std::array<bool, nDBOs>, nDBOs> dependencies{{make_sync_dependency_row<DBO, DBO...>()...}};
 
-        std::array<size_t, size> order{};
-        std::array<bool, size> placed{};
+        std::array<size_t, nDBOs> order{};
+        std::array<bool, nDBOs> placed{};
         size_t position = 0;
-        while (position < size) {
+        while (position < nDBOs) {
             bool madeProgress = false;
-            for (size_t candidate = 0; candidate < size; ++candidate) {
+            for (size_t candidate = 0; candidate < nDBOs; ++candidate) {
                 if (placed[candidate]) {
                     continue;
                 }
                 bool isReady = true;
-                for (size_t dependency = 0; dependency < size; ++dependency) {
+                for (size_t dependency = 0; dependency < nDBOs; ++dependency) {
                     if (dependencies[candidate][dependency] && !placed[dependency]) {
                         isReady = false;
                         break;
@@ -129,7 +76,7 @@ namespace sqlite_orm::internal {
             //  in case an index or a trigger targets a type which is not mapped in the schema:
             //  place the remaining objects in declaration order
             if (!madeProgress) {
-                for (size_t candidate = 0; candidate < size; ++candidate) {
+                for (size_t candidate = 0; candidate < nDBOs; ++candidate) {
                     if (!placed[candidate]) {
                         order[position] = candidate;
                         ++position;

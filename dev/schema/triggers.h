@@ -60,6 +60,7 @@ namespace sqlite_orm::internal {
     template<class T, class... S>
     struct trigger_t : trigger_base {
         using object_type = void;
+        using table_mapped_type = typename T::table_type;
         using elements_type = typename partial_trigger_t<T, S...>::statements_type;
 
         /**

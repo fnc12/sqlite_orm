@@ -43,7 +43,7 @@
 #include "column_result.h"
 #include "mapped_type_proxy.h"
 #include "sync_schema_result.h"
-#include "vocabulary/algorithms/sync_order.h"
+#include "schema/algorithms/sync_order.h"
 #include "table_info.h"
 #include "storage_impl.h"
 #include "mapped_view.h"
