@@ -794,9 +794,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class... Args>
-    struct ast_iterator<window_defn_t<Args...>, void> {
-        using node_type = window_defn_t<Args...>;
+    template<class T>
+    struct ast_iterator<T, std::enable_if_t<is_window_defn<T>::value>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {

@@ -593,9 +593,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class... Args>
-    struct statement_serializer<window_defn_t<Args...>, void> {
-        using statement_type = window_defn_t<Args...>;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_window_defn<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,

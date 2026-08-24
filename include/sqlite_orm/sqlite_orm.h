@@ -5034,8 +5034,8 @@ namespace sqlite_orm::internal {
 
     template<class... Args>
     struct partition_by_t {
-        using arguments_type = std::tuple<Args...>;
-        arguments_type arguments;
+        using args_type = std::tuple<Args...>;
+        args_type arguments;
     };
 
     template<class T>
@@ -5051,10 +5051,10 @@ namespace sqlite_orm::internal {
     template<class F, class... Args>
     struct over_t {
         using function_type = F;
-        using arguments_type = std::tuple<Args...>;
+        using args_type = std::tuple<Args...>;
 
         function_type function;
-        arguments_type arguments;
+        args_type arguments;
     };
 
     template<class T>
@@ -5066,8 +5066,8 @@ namespace sqlite_orm::internal {
     template<class... Args>
     struct window_defn_t {
         std::string name;
-        using arguments_type = std::tuple<Args...>;
-        arguments_type arguments;
+        using args_type = std::tuple<Args...>;
+        args_type arguments;
     };
 
     template<class T>
@@ -17317,9 +17317,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class... Args>
-    struct ast_iterator<window_defn_t<Args...>, void> {
-        using node_type = window_defn_t<Args...>;
+    template<class T>
+    struct ast_iterator<T, std::enable_if_t<is_window_defn<T>::value>> {
+        using node_type = T;
 
         template<class L>
         SQLITE_ORM_STATIC_CALLOP void operator()(const node_type& node, L& lambda) SQLITE_ORM_OR_CONST_CALLOP {
@@ -22384,9 +22384,9 @@ namespace sqlite_orm::internal {
         }
     };
 
-    template<class... Args>
-    struct statement_serializer<window_defn_t<Args...>, void> {
-        using statement_type = window_defn_t<Args...>;
+    template<class T>
+    struct statement_serializer<T, std::enable_if_t<is_window_defn<T>::value>> {
+        using statement_type = T;
 
         template<class Ctx>
         SQLITE_ORM_STATIC_CALLOP std::string operator()(const statement_type& statement,
@@ -29786,8 +29786,8 @@ namespace sqlite_orm::internal {
     template<class F, class... Args>
     struct node_tuple<over_t<F, Args...>, void> : node_tuple_for<F, Args...> {};
 
-    template<class... Args>
-    struct node_tuple<window_defn_t<Args...>, void> : node_tuple_for<Args...> {};
+    template<class T>
+    struct node_tuple<T, std::enable_if_t<is_window_defn<T>::value>> : node_tuple<args_type_t<T>> {};
 
     template<>
     struct node_tuple<row_number_t, void> {

@@ -65,8 +65,8 @@ namespace sqlite_orm::internal {
 
     template<class... Args>
     struct partition_by_t {
-        using arguments_type = std::tuple<Args...>;
-        arguments_type arguments;
+        using args_type = std::tuple<Args...>;
+        args_type arguments;
     };
 
     template<class T>
@@ -82,10 +82,10 @@ namespace sqlite_orm::internal {
     template<class F, class... Args>
     struct over_t {
         using function_type = F;
-        using arguments_type = std::tuple<Args...>;
+        using args_type = std::tuple<Args...>;
 
         function_type function;
-        arguments_type arguments;
+        args_type arguments;
     };
 
     template<class T>
@@ -97,8 +97,8 @@ namespace sqlite_orm::internal {
     template<class... Args>
     struct window_defn_t {
         std::string name;
-        using arguments_type = std::tuple<Args...>;
-        arguments_type arguments;
+        using args_type = std::tuple<Args...>;
+        args_type arguments;
     };
 
     template<class T>
